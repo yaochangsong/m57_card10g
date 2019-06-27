@@ -17,29 +17,15 @@
  * USA
  */
 
-#include <stdio.h>
-#include <errno.h>
-#include <string.h>
-#include <stdarg.h>
+#ifndef _UHTTPD_CONFIG_H
+#define _UHTTPD_CONFIG_H
 
-#include "log.h"
+#define UHTTPD_VERSION_MAJOR 2
+#define UHTTPD_VERSION_MINOR 2
+#define UHTTPD_VERSION_PATCH 2
+#define UHTTPD_VERSION_STRING "2.2.2"
 
-void __uh_log(const char *filename, int line, int priority, const char *fmt, ...)
-{
-    va_list ap;
-    static char buf[128];
+#define UHTTPD_SSL_SUPPORT 0
+#define UHTTPD_LUA_SUPPORT 0
 
-    snprintf(buf, sizeof(buf), "(%s:%d) ", filename, line);
-    
-    va_start(ap, fmt);
-    vsnprintf(buf + strlen(buf), sizeof(buf) - strlen(buf), fmt, ap);
-    va_end(ap);
-
-    if (priority == LOG_ERR && errno > 0) {
-        snprintf(buf + strlen(buf), sizeof(buf) - strlen(buf), ":%s", strerror(errno));
-        errno = 0;
-    }
-
-    ulog(priority, "%s\n", buf);
-}
-
+#endif

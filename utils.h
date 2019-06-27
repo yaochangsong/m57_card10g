@@ -17,29 +17,24 @@
  * USA
  */
 
-#include <stdio.h>
-#include <errno.h>
-#include <string.h>
-#include <stdarg.h>
+#ifndef _UTILS_H
+#define _UTILS_H
 
-#include "log.h"
+#include "client.h"
 
-void __uh_log(const char *filename, int line, int priority, const char *fmt, ...)
-{
-    va_list ap;
-    static char buf[128];
+#define min(x, y) (((x) < (y)) ? (x) : (y))
+#define max(x, y) (((x) > (y)) ? (x) : (y))
 
-    snprintf(buf, sizeof(buf), "(%s:%d) ", filename, line);
-    
-    va_start(ap, fmt);
-    vsnprintf(buf + strlen(buf), sizeof(buf) - strlen(buf), fmt, ap);
-    va_end(ap);
+void uh_printf(struct uh_client *cl, const char *format, ...);
+void uh_vprintf(struct uh_client *cl, const char *format, va_list arg);
+void uh_chunk_send(struct uh_client *cl, const void *data, int len);
+void uh_chunk_printf(struct uh_client *cl, const char *format, ...);
+void uh_chunk_vprintf(struct uh_client *cl, const char *format, va_list arg);
 
-    if (priority == LOG_ERR && errno > 0) {
-        snprintf(buf + strlen(buf), sizeof(buf) - strlen(buf), ":%s", strerror(errno));
-        errno = 0;
-    }
+char *uh_split_header(char *str);
+int uh_urldecode(char *buf, int blen, const char *src, int slen);
+int uh_urlencode(char *buf, int blen, const char *src, int slen);
 
-    ulog(priority, "%s\n", buf);
-}
+int find_idx(const char *const *list, int max, const char *str);
 
+#endif

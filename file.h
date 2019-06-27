@@ -17,29 +17,28 @@
  * USA
  */
 
-#include <stdio.h>
-#include <errno.h>
-#include <string.h>
-#include <stdarg.h>
+#ifndef _FILE_H
+#define _FILE_H
 
-#include "log.h"
+#include <sys/stat.h>
 
-void __uh_log(const char *filename, int line, int priority, const char *fmt, ...)
-{
-    va_list ap;
-    static char buf[128];
+#include "client.h"
 
-    snprintf(buf, sizeof(buf), "(%s:%d) ", filename, line);
-    
-    va_start(ap, fmt);
-    vsnprintf(buf + strlen(buf), sizeof(buf) - strlen(buf), fmt, ap);
-    va_end(ap);
+struct path_info {
+    const char *root;
+    const char *phys;
+    const char *name;
+    const char *info;
+    bool redirected;
+    struct stat stat;
+};
 
-    if (priority == LOG_ERR && errno > 0) {
-        snprintf(buf + strlen(buf), sizeof(buf) - strlen(buf), ":%s", strerror(errno));
-        errno = 0;
-    }
+struct mimetype {
+    const char *extn;
+    const char *mime;
+};
 
-    ulog(priority, "%s\n", buf);
-}
+struct path_info *uh_path_lookup(struct uh_client *cl, const char *path);
+bool handle_file_request(struct uh_client *cl, const char *path);
 
+#endif

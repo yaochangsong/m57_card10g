@@ -12,10 +12,13 @@
 
 static inline void tcp_ustream_read_cb(struct ustream *s, int bytes)
 {
-    char *str;
+    char str[1024];
     int len;
-    printf("tcp_ustream_read_cb[%d]bytes\n", bytes);
-    str = ustream_get_read_buf(s, &len);
+    struct uh_client *cl = container_of(s, struct uh_client, sfd.stream);
+
+    printf("data from: %s:%d\n", cl->get_peer_addr(cl), cl->get_peer_port(cl));
+    //str = ustream_get_read_buf(s, &len);
+    len =ustream_read(s, str, 1024);
     if (!str || !len)
         return;
     printf("str = %s[%d]\n", str, len);
@@ -138,6 +141,7 @@ static void tcp_accept_cb(struct uloop_fd *fd, unsigned int events)
     //cl->chunk_printf(cl, buf);
    // cl->chunk_send(cl, buf, sizeof(buf));
    ustream_write(cl->us, buf, sizeof(buf), true);
+   //cl->chunk_printf(cl, buf);
 #endif
     return;
 err:

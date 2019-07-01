@@ -21,8 +21,8 @@
 #define _CLIENT_H_
 
 #include <netinet/in.h>
-#include <libubox/kvlist.h>
-#include <libubox/ustream.h>
+#include "../libubox/kvlist.h"
+#include "../libubox/ustream.h"
 
 #include "config.h"
 

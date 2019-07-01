@@ -1,34 +1,29 @@
-SOURCE  := $(wildcard *.c)
-APP_OBJS    := $(patsubst %.c,%.o,$(SOURCE))
-HEADERS = $(wildcard *.h)
+CC=gcc
+CFLAGS = -Wall
 
-STA_DIR = libubox
-SOURCES_STA = $(wildcard $(STA_DIR)/*.c)
-OBJS_STA = $(patsubst %.c, %.o, $(SOURCES_STA))
+SUBDIRS := json  http  libubox log  net
+LIBS := json/libjson.a http/libuhttpd.a libubox/libubox.a log/liblog.a net/libnet.a
+LDFLAGS = $(LIBS)
 
-APP  := helloworld
-CC      := gcc
-CXX      := gcc
-LIBS    += -lpthread
-LDFLAGS += -Wl,--no-as-needed -lpthread
-DEFINES :=
-INCLUDE += -I./ -I./$(STA_DIR)
-CFLAGS  += -g -Wall -O2  -pthread  $(DEFINES) $(INCLUDE)
-#CFLAGS  += -Wall -O2 --std=c++11 -pthread  $(DEFINES) $(INCLUDE)
-CXXFLAGS += $(CFLAGS)
+RM = -rm -rf
+__OBJS = main.o
+__SRCS = $(subst .o,.c,$(__OBJS))
 
+INCLUDE = ./http/
+target = spectrum
+MAKE = make
 
-# Add any other object files to this list below
+all: $(target)
 
-all: build
+$(__OBJS): $(__SRCS)
+	$(CC) $(CFLAGS) -c $^ -I ./http/ -I ./libubox/ 
 
-build: $(APP)
-@echo "sources_sta:" $(SOURCES_STA)
-$(APP): $(APP_OBJS) $(OBJS_STA)
-	$(CC) $(LDFLAGS) -o $@ $(APP_OBJS) $(OBJS_STA) $(LDLIBS) $(CXXFLAGS)
+$(target): $(__OBJS)
+	for dir in $(SUBDIRS); \
+	do $(MAKE) -C $$dir all || exit 1; \
+	done
+	$(CC) $(CFLAGS) $^ -o $@ $(LDFLAGS)
 
 clean:
-	-rm -f $(APP) *.elf *.gdb *.o ; \
-	rm -fr *.so ; \
-        rm -fr *.o ; \
-        rm -fr $(APP)
+	@for dir in $(SUBDIRS); do make -C $$dir clean|| exit 1; done
+	$(RM) $(__OBJS) $(target) *.bak *~

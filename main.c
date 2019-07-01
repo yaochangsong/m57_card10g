@@ -22,9 +22,9 @@
 #include <unistd.h>
 #include <uhttpd.h>
 #include <string.h>
-#include <libubox/ulog.h>
+#include "libubox/ulog.h"
 #include <arpa/inet.h>
-#include "net_socket.h"
+#include "net/net_socket.h"
 
 static void on_accept(struct uh_client *cl)
 {

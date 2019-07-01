@@ -1,12 +1,12 @@
 #include <stdlib.h>
 #include <unistd.h>
-#include <libubox/usock.h>
-#include <libubox/avl-cmp.h>
+#include "../libubox/usock.h"
+#include "../libubox/avl-cmp.h"
 #include <arpa/inet.h>
-#include "net_socket.h"
-#include "uhttpd.h"
-#include "log.h"
-#include "utils.h"
+#include "../net/net_socket.h"
+#include "../http/uhttpd.h"
+#include "../log/log.h"
+#include "../http/utils.h"
 
 
 

@@ -1,7 +1,7 @@
 #ifndef NET_SOCKET_H
 #define NET_SOCKET_H
-#include "uhttpd.h"
-#include "client.h"
+#include "../http/uhttpd.h"
+#include "../http/client.h"
 
 struct server {
     struct uloop_fd fd;

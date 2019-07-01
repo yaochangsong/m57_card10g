@@ -1,7 +1,7 @@
 AR = ar
 ARFLAGS = cr
 
-LIB = libubox.a
+LIB = liblog.a
 
 RM = -rm -rf
 

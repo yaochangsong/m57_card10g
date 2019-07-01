@@ -1,7 +1,7 @@
 AR = ar
 ARFLAGS = cr
 
-LIB = libubox.a
+LIB = libnet.a
 
 RM = -rm -rf
 

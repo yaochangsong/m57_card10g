@@ -19,12 +19,12 @@
 
 #include <stdlib.h>
 #include <unistd.h>
-#include <libubox/usock.h>
-#include <libubox/avl-cmp.h>
+#include "../libubox/usock.h"
+#include "../libubox/avl-cmp.h"
 
 #include "uhttpd.h"
 //#include "uh_ssl.h"
-#include "log.h"
+#include "../log/log.h"
  
 static void uh_set_docroot(struct uh_server *srv, const char *docroot)
 {

@@ -1,7 +1,7 @@
 CC=gcc
 CFLAGS = -Wall
 
-SUBDIRS := json  http  libubox log  net
+SUBDIRS := dao json  http  libubox log  net
 LIBS := json/libjson.a http/libuhttpd.a libubox/libubox.a log/liblog.a net/libnet.a
 LDFLAGS = $(LIBS)
 

@@ -20,7 +20,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <ctype.h>
-#include "../libubox/ustream.h"
+#include "../../libubox/ustream.h"
 #include "utils.h"
 
 void uh_printf(struct uh_client *cl, const char *format, ...)

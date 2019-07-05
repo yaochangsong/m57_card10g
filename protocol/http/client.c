@@ -22,14 +22,14 @@
 #include <unistd.h>
 #include <arpa/inet.h>
 #include <linux/limits.h>
-#include "../libubox/blobmsg.h"
+#include "../../libubox/blobmsg.h"
 
 #include "uhttpd.h"
 #include "client.h"
 #include "file.h"
 #include "utils.h"
 //#include "uh_ssl.h"
-#include "../log/log.h"
+#include "../../log/log.h"
 
 static const char *const http_versions[] = {
     [UH_HTTP_VER_09] = "HTTP/0.9",

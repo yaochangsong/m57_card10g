@@ -1,20 +1,6 @@
 /*
- * Copyright (C) 2017 xiuwei
+ * Copyright (C) 2019 Chengdu Xiuwei Technology Co.,Ltd
  *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU Lesser General Public
- * License as published by the Free Software Foundation; either
- * version 2.1 of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this library; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301
- * USA
  */
 
 #include "config.h"
@@ -74,7 +60,7 @@ int main()
 }
 #endif
 
-#if 1
+#if 0
 int main(int argc, char **argv)
 {
     struct uh_server *srv = NULL;
@@ -144,4 +130,53 @@ done:
     
     return 0;
 }
+
+
 #endif
+void dao_oal_test1(void)
+{
+    FILE *fp;
+    mxml_node_t *xml;    /* <?xml ... ?> */
+    mxml_node_t *data;   /* <data> */
+    mxml_node_t *node;   /* <node> */
+    mxml_node_t *group;  /* <group> */
+
+    xml = mxmlNewXML("1.0");
+
+    data = mxmlNewElement(xml, "data");
+
+    node = mxmlNewElement(data, "node");
+    mxmlNewText(node, 0, "val1");
+    node = mxmlNewElement(data, "node");
+    mxmlNewText(node, 0, "val2");
+    node = mxmlNewElement(data, "node");
+    mxmlNewText(node, 0, "val3");
+
+    group = mxmlNewElement(data, "group");
+
+    node = mxmlNewElement(group, "node");
+    mxmlNewText(node, 0, "val4");
+    node = mxmlNewElement(group, "node");
+    mxmlNewText(node, 0, "val5");
+    node = mxmlNewElement(group, "node");
+    mxmlNewText(node, 0, "val6");
+
+    node = mxmlNewElement(data, "node");
+    mxmlNewText(node, 0, "val7");
+    node = mxmlNewElement(data, "node");
+    mxmlNewText(node, 0, "val8");
+
+    fp = fopen("filename.xml", "w");
+    mxmlSaveFile(xml, fp, MXML_NO_CALLBACK);
+    fclose(fp);
+
+}
+
+
+int main(int argc, char **argv)
+{
+    dao_oal_test1();
+    return 0;
+}
+
+

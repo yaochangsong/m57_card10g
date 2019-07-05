@@ -17,9 +17,9 @@
 #include "libubox/uloop.h"
 #include "libubox/usock.h"
 #include "log/log.h"
-#include "http/utils.h"
-#include "http/uhttpd.h"
-#include "http/client.h"
+#include "protocol/http/utils.h"
+#include "protocol/http/uhttpd.h"
+#include "protocol/http/client.h"
 
 #include "net/net_socket.h"
 #include "dao/mxml-3.0/mxml.h"

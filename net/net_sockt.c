@@ -1,13 +1,4 @@
-#include <stdlib.h>
-#include <unistd.h>
-#include "../libubox/usock.h"
-#include "../libubox/avl-cmp.h"
-#include <arpa/inet.h>
-#include "../net/net_socket.h"
-#include "../http/uhttpd.h"
-#include "../log/log.h"
-#include "../http/utils.h"
-
+#include "../config.h"
 
 
 static inline void tcp_ustream_read_cb(struct ustream *s, int bytes)

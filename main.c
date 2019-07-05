@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 Jianhui Zhao <jianhuizhao329@gmail.com>
+ * Copyright (C) 2017 
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -17,14 +17,7 @@
  * USA
  */
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include <uhttpd.h>
-#include <string.h>
-#include "libubox/ulog.h"
-#include <arpa/inet.h>
-#include "net/net_socket.h"
+#include "config.h"
 
 static void on_accept(struct uh_client *cl)
 {

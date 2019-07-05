@@ -104,7 +104,7 @@ clean:
 	$(RM) libmxml.so.1.6
 	$(RM) libmxml.sl.1
 	$(RM) libmxml.1.dylib
-
+	$(RM) libmxml.so libmxml.so.1
 
 #
 # Really clean everything...

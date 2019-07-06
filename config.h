@@ -24,14 +24,27 @@
 #include "protocol/http/utils.h"
 #include "protocol/http/uhttpd.h"
 #include "protocol/http/client.h"
+#include "protocol/akt/akt.h"
+#include "protocol/xnrp/xnrp.h"
+#include "protocol/oal/poal.h"
 
 #include "net/net_socket.h"
 #include "dao/mxml-3.0/mxml.h"
 #include "dao/oal/dao_oal.h"
 
 /*define*/
-#define PLAT_FORM_ARCH_X86   //PLAT_FORM_ARCH_ARM
-#define SPCTRUM_VERSION_STRING "1.0.0-"__DATE__"."__TIME__
+/*Support PlatForm Arch: 
+PLAT_FORM_ARCH_X86, (For debug)
+PLAT_FORM_ARCH_ARM
+*/
+#define PLAT_FORM_ARCH_X86   
+#define SPCTRUM_VERSION_STRING "1.0.0-"__DATE__"."__TIME__ /* application version */
+
+/*Protocal Support*/
+#define PROTOCAL_HTTP  0
+#define PROTOCAL_XNRP  0
+#define PROTOCAL_ATE   1
+
 
 
 

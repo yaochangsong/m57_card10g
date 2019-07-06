@@ -1,21 +1,18 @@
-/*
- * Copyright (C) 2017 Jianhui Zhao <jianhuizhao329@gmail.com>
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU Lesser General Public
- * License as published by the Free Software Foundation; either
- * version 2.1 of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this library; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301
- * USA
- */
+/******************************************************************************
+*  Copyright 2019, Showay Technology Dev Co.,Ltd.
+*  ---------------------------------------------------------------------------
+*  Statement:
+*  ----------
+*  This software is protected by Copyright and the information contained
+*  herein is confidential. The software may not be copied and the information
+*  contained herein may not be used or disclosed except with the written
+*  permission of Showay Technology Dev Co.,Ltd. (C) 2019
+******************************************************************************/
+/*****************************************************************************     
+*  Rev 1.0   06 July 2019   yaochangsong
+*  Initial revision.
+******************************************************************************/
+
 
 #include <stdio.h>
 #include <errno.h>
@@ -45,6 +42,8 @@ void __uh_log(const char *filename, int line, int priority, const char *fmt, ...
 
 void log_init(int threshold)
 {
+    //ulog_open(ULOG_SYSLOG, LOG_DAEMON, NULL);
+    ulog_open(ULOG_STDIO, LOG_USER, NULL);
     ulog_threshold(threshold);
 }
 

@@ -1,38 +1,22 @@
-/*
- * Copyright (C) 2019 Chengdu Xiuwei Technology Co.,Ltd
- *
- */
+/******************************************************************************
+*  Copyright 2019, Showay Technology Dev Co.,Ltd.
+*  ---------------------------------------------------------------------------
+*  Statement:
+*  ----------
+*  This software is protected by Copyright and the information contained
+*  herein is confidential. The software may not be copied and the information
+*  contained herein may not be used or disclosed except with the written
+*  permission of Showay Technology Dev Co.,Ltd. (C) 2019
+******************************************************************************/
+/*****************************************************************************     
+*  Rev 1.0   06 July 2019   yaochangsong
+*  Initial revision.
+******************************************************************************/
 
 #include "config.h"
 
-static void on_accept(struct uh_client *cl)
-{
-    ULOG_INFO("New connection from: %s:%d\n", cl->get_peer_addr(cl), cl->get_peer_port(cl));
-}
 
-static int on_request(struct uh_client *cl)
-{
-    const char *path = cl->get_path(cl);
-    int body_len = 0;
 
-    if (strcmp(path, "/hello"))
-        return UH_REQUEST_CONTINUE;
-
-    cl->send_header(cl, 200, "OK", -1);
-    cl->append_header(cl, "Myheader", "Hello");
-    cl->header_end(cl);
-
-    cl->chunk_printf(cl, "<h1>Hello Libuhttpd %s</h1>", UHTTPD_VERSION_STRING);
-    cl->chunk_printf(cl, "<h1>REMOTE_ADDR: %s</h1>", cl->get_peer_addr(cl));
-    cl->chunk_printf(cl, "<h1>URL: %s</h1>", cl->get_url(cl));
-    cl->chunk_printf(cl, "<h1>PATH: %s</h1>", cl->get_path(cl));
-    cl->chunk_printf(cl, "<h1>QUERY: %s</h1>", cl->get_query(cl));
-    cl->chunk_printf(cl, "<h1>VAR name: %s</h1>", cl->get_var(cl, "name"));
-    cl->chunk_printf(cl, "<h1>BODY:%s</h1>", cl->get_body(cl, &body_len));
-    cl->request_done(cl);
-
-    return UH_REQUEST_DONE;
-}
 
 static void usage(const char *prog)
 {
@@ -133,8 +117,47 @@ done:
 
 
 #endif
+void thread_ping(void *arg)
+{
+    pthread_cond_t cond = PTHREAD_COND_INITIALIZER;
+    pthread_mutex_t cond_mutex = PTHREAD_MUTEX_INITIALIZER;
+    struct timespec timeout;
+
+    while (1) {
+        /* Make sure we check the servers at the very begining */
+        printf_debug("Running ping()");
+        //ping();
+
+        /* Sleep for config.checkinterval seconds... */
+        //timeout.tv_sec = time(NULL) checkinterval;
+        //timeout.tv_nsec = 0;
+
+        /* Mutex must be locked for pthread_cond_timedwait... */
+        pthread_mutex_lock(&cond_mutex);
+
+        /* Thread safe "sleep" */
+        pthread_cond_timedwait(&cond, &cond_mutex, &timeout);
+
+        /* No longer needs to be locked */
+        pthread_mutex_unlock(&cond_mutex);
+    }
+}
 
 
+/******************************************************************************
+* FUNCTION:
+*     main
+*
+* DESCRIPTION:
+*     
+*     
+*
+* PARAMETERS
+*     not used
+*
+* RETURNS
+*     none
+******************************************************************************/
 int main(int argc, char **argv)
 {
     bool verbose = false;
@@ -145,17 +168,16 @@ int main(int argc, char **argv)
     if (!verbose)
         log_init(log_debug);
     
-    printf_debug("%s\n",SPCTRUM_VERSION_STRING);
-    printf_info("info:%x, %p\n", 0x1234,0x1234);
-    printf_note("note\n");
-    printf_warn("warn\n");
-    printf_err("err\n");
-    printfd("%d\n", 12);
+    printf_note("VERSION:%s\n",SPCTRUM_VERSION_STRING);
     config_init();
-    
-    //uloop_init();
-    //server_init();
-    //uloop_run();
+    uloop_init();
+    if(server_init() == -1){
+        printf_err("server init fail!\n");
+        goto done;
+    }
+    uloop_run();
+done:
+    uloop_done();
     return 0;
 }
 

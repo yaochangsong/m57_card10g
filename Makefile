@@ -1,7 +1,22 @@
+#******************************************************************************
+#  Copyright 2019, Showay Technology Dev Co.,Ltd.
+#  ---------------------------------------------------------------------------
+#  Statement:
+#  ----------
+#  This software is protected by Copyright and the information contained
+#  herein is confidential. The software may not be copied and the information
+#  contained herein may not be used or disclosed except with the written
+#  permission of Showay Technology Dev Co.,Ltd. (C) 2019
+#*****************************************************************************
+#*****************************************************************************     
+#  Rev 1.0   06 July 2019   yaochangsong
+#  Initial revision.
+#*****************************************************************************
+
 CC=gcc
 #arm-linux-gnueabihf-gcc
 
-SOURCE_DIR = log net protocol/http dao/oal conf
+SOURCE_DIR = log net protocol/http protocol/akt protocol/xnrp protocol/oal dao/oal conf
 SUB_LIBS := dao/mxml-3.0/libmxml.a dao/json/libjson.a libubox/libubox.a
 
 ALL_C_FILES := $(foreach n,$(SOURCE_DIR),$(n)/*.c)
@@ -23,7 +38,6 @@ target = spectrum
 all: $(target)
 
 $(target): $(objs)
-	@echo ==========$(PLAT_FORM_ARCH)=============
 	for dir in $(SUB_LIB_DIRS); \
 	do $(MAKE) -C $$dir all || exit 1; \
 	done

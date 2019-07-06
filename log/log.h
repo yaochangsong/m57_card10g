@@ -1,21 +1,19 @@
-/*
- * Copyright (C) 2017 Jianhui Zhao <jianhuizhao329@gmail.com>
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU Lesser General Public
- * License as published by the Free Software Foundation; either
- * version 2.1 of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this library; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301
- * USA
- */
+/******************************************************************************
+*  Copyright 2019, Showay Technology Dev Co.,Ltd.
+*  ---------------------------------------------------------------------------
+*  Statement:
+*  ----------
+*  This software is protected by Copyright and the information contained
+*  herein is confidential. The software may not be copied and the information
+*  contained herein may not be used or disclosed except with the written
+*  permission of Showay Technology Dev Co.,Ltd. (C) 2019
+******************************************************************************/
+
+/*****************************************************************************     
+*  Rev 1.0   06 July 2019   yaochangsong
+*  Initial revision.
+******************************************************************************/
+
  
 #ifndef _LOG_H
 #define _LOG_H
@@ -44,11 +42,11 @@
 
 #define printfd ULOG_DEBUG
 
-#define printf_debug(fmt, ...)   ULOG_DEBUG("[%s,%4d][DEBUG]"fmt, __func__, __LINE__, ##__VA_ARGS__)
-#define printf_info(fmt, ...)    ULOG_INFO("[%s,%4d][INFO]"fmt, __func__, __LINE__, ##__VA_ARGS__)
-#define printf_note(fmt, ...)    ULOG_NOTE("[%s,%4d][NOTE]"fmt, __func__, __LINE__, ##__VA_ARGS__)
-#define printf_warn(fmt, ...)    ULOG_WARN("[%s,%4d][WARN]"fmt, __func__, __LINE__, ##__VA_ARGS__)
-#define printf_err(fmt, ...)     ULOG_ERR("[%s,%4d][ERR]"fmt, __func__, __LINE__, ##__VA_ARGS__)
+#define printf_debug(fmt, ...)   ULOG_DEBUG("[DEBUG][%s,%4d]"fmt, __func__, __LINE__, ##__VA_ARGS__)
+#define printf_info(fmt, ...)    ULOG_INFO("[INFO][%s,%4d]"fmt, __func__, __LINE__, ##__VA_ARGS__)
+#define printf_note(fmt, ...)    ULOG_NOTE("[NOTE][%s,%4d]"fmt, __func__, __LINE__, ##__VA_ARGS__)
+#define printf_warn(fmt, ...)    ULOG_WARN("[WARN][%s,%4d]"fmt, __func__, __LINE__, ##__VA_ARGS__)
+#define printf_err(fmt, ...)     ULOG_ERR("[ERROR][%s,%4d]"fmt, __func__, __LINE__, ##__VA_ARGS__)
 
 
 

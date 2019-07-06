@@ -43,3 +43,8 @@ void __uh_log(const char *filename, int line, int priority, const char *fmt, ...
     ulog(priority, "%s\n", buf);
 }
 
+void log_init(int threshold)
+{
+    ulog_threshold(threshold);
+}
+

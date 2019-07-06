@@ -54,7 +54,7 @@ static const char *ulog_default_ident(void)
 static void ulog_defaults(void)
 {
 	char *env;
-    printf("_ulog_initialized = %d", _ulog_initialized);
+    
 	if (_ulog_initialized)
 		return;
 

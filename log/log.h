@@ -21,7 +21,7 @@
 #define _LOG_H
 
 #include <string.h>
-#include "../libubox/ulog.h"
+#include "libubox/ulog.h"
 
 #define __FILENAME__ (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
 
@@ -33,6 +33,25 @@
 #define uh_log_debug(fmt...)     uh_log(LOG_DEBUG, fmt)
 #define uh_log_info(fmt...)      uh_log(LOG_INFO, fmt)
 #define uh_log_err(fmt...)       uh_log(LOG_ERR, fmt)
+
+#define log_err     LOG_ERR		/* 3 error conditions */
+#define	log_warn    LOG_WARNING /* 4 warning conditions */
+#define	log_notice  LOG_NOTICE	/* 5 normal but significant condition */
+#define	log_info    LOG_INFO	/* 6 informational */
+#define	log_debug   LOG_DEBUG	/* 7 debug-level messages */
+#define	log_off     -1
+
+
+#define printfd ULOG_DEBUG
+
+#define printf_debug(fmt, ...)   ULOG_DEBUG("[%s,%4d][DEBUG]"fmt, __func__, __LINE__, ##__VA_ARGS__)
+#define printf_info(fmt, ...)    ULOG_INFO("[%s,%4d][INFO]"fmt, __func__, __LINE__, ##__VA_ARGS__)
+#define printf_note(fmt, ...)    ULOG_NOTE("[%s,%4d][NOTE]"fmt, __func__, __LINE__, ##__VA_ARGS__)
+#define printf_warn(fmt, ...)    ULOG_WARN("[%s,%4d][WARN]"fmt, __func__, __LINE__, ##__VA_ARGS__)
+#define printf_err(fmt, ...)     ULOG_ERR("[%s,%4d][ERR]"fmt, __func__, __LINE__, ##__VA_ARGS__)
+
+
+
 
 void  __uh_log(const char *filename, int line, int priority, const char *fmt, ...);
 

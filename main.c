@@ -137,7 +137,25 @@ done:
 
 int main(int argc, char **argv)
 {
-    dao_oal_test();
+    bool verbose = false;
+    bool ssl = false;
+    int port = 8081;
+    int opt;
+
+    if (!verbose)
+        log_init(log_debug);
+    
+    printf_debug("%s\n",SPCTRUM_VERSION_STRING);
+    printf_info("info:%x, %p\n", 0x1234,0x1234);
+    printf_note("note\n");
+    printf_warn("warn\n");
+    printf_err("err\n");
+    printfd("%d\n", 12);
+    config_init();
+    
+    //uloop_init();
+    //server_init();
+    //uloop_run();
     return 0;
 }
 

@@ -1,14 +1,12 @@
 CC=gcc
 #arm-linux-gnueabihf-gcc
 
-SOURCE_DIR = log net protocol/http dao/oal
+SOURCE_DIR = log net protocol/http dao/oal conf
 SUB_LIBS := dao/mxml-3.0/libmxml.a dao/json/libjson.a libubox/libubox.a
 
 ALL_C_FILES := $(foreach n,$(SOURCE_DIR),$(n)/*.c)
 SUB_LIB_DIRS := $(foreach n,$(SUB_LIBS),$(dir $(n)))
 
-#ALL_INCLUDE_DIR := $(foreach n,$(SOURCE_DIR),-I./$(n))
-#ALL_INCLUDE_DIR += $(foreach n,$(SUB_LIBS),-I./$(dir $(n)))
 
 INCLUDE_DIR = -I.
 
@@ -20,13 +18,12 @@ MAKE := make
 source = $(wildcard *.c $(ALL_C_FILES))
 objs = $(source:%.c=%.o)
 
-#VPATH = foo:fun
-
 target = spectrum
 
 all: $(target)
 
 $(target): $(objs)
+	@echo ==========$(PLAT_FORM_ARCH)=============
 	for dir in $(SUB_LIB_DIRS); \
 	do $(MAKE) -C $$dir all || exit 1; \
 	done

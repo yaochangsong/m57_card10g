@@ -1,29 +1,41 @@
 CC=gcc
-CFLAGS = -Wall
+#arm-linux-gnueabihf-gcc
 
-SUBDIRS := dao  protocol  libubox log  net
-LIBS := dao/mxml-3.0/libmxml.a dao/json/libjson.a dao/oal/liboal.a protocol/http/libuhttpd.a libubox/libubox.a log/liblog.a net/libnet.a
-LDFLAGS = $(LIBS)
+SOURCE_DIR = log net protocol/http dao/oal
+SUB_LIBS := dao/mxml-3.0/libmxml.a dao/json/libjson.a libubox/libubox.a
 
-RM = -rm -rf
-__OBJS = main.o
-__SRCS = $(subst .o,.c,$(__OBJS))
+ALL_C_FILES := $(foreach n,$(SOURCE_DIR),$(n)/*.c)
+SUB_LIB_DIRS := $(foreach n,$(SUB_LIBS),$(dir $(n)))
 
+#ALL_INCLUDE_DIR := $(foreach n,$(SOURCE_DIR),-I./$(n))
+#ALL_INCLUDE_DIR += $(foreach n,$(SUB_LIBS),-I./$(dir $(n)))
+
+INCLUDE_DIR = -I.
+
+LDFLAGS = $(SUB_LIBS)
+CFLAGS = -Wall $(INCLUDE_DIR)
+
+MAKE := make
+
+source = $(wildcard *.c $(ALL_C_FILES))
+objs = $(source:%.c=%.o)
+
+#VPATH = foo:fun
 
 target = spectrum
-MAKE = make
 
 all: $(target)
 
-$(__OBJS): $(__SRCS)
-	$(CC) $(CFLAGS) -c $^ 
-
-$(target): $(__OBJS)
-	for dir in $(SUBDIRS); \
+$(target): $(objs)
+	for dir in $(SUB_LIB_DIRS); \
 	do $(MAKE) -C $$dir all || exit 1; \
 	done
 	$(CC) $(CFLAGS) $^ -o $@ $(LDFLAGS)  -lpthread
+	
+%.o:%c
+	$(CC) $(CFLAGS) -c $<
 
+.PHONY: clean
 clean:
-	@for dir in $(SUBDIRS); do make -C $$dir clean|| exit 1; done
-	$(RM) $(__OBJS) $(target) *.bak *~
+	@for dir in $(SUB_LIB_DIRS); do make -C $$dir clean|| exit 1; done
+	$(RM) $(objs) $(target) *.bak *~

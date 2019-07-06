@@ -28,7 +28,7 @@
 #include "file.h"
 #include "utils.h"
 #include "uhttpd.h"
-#include "../../log/log.h"
+#include "log/log.h"
 
 static const struct mimetype uh_mime_types[] = {
     { "txt",     "text/plain" },

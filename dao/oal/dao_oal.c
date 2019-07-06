@@ -1,9 +1,10 @@
-#include "../../config.h"
-#include "../mxml-3.0/mxml.h"
+#include "config.h"
 
 
 void dao_oal_test(void)
 {
+
+	FILE *fp;
     mxml_node_t *xml;    /* <?xml ... ?> */
     mxml_node_t *data;   /* <data> */
     mxml_node_t *node;   /* <node> */
@@ -33,5 +34,8 @@ void dao_oal_test(void)
     mxmlNewText(node, 0, "val7");
     node = mxmlNewElement(data, "node");
     mxmlNewText(node, 0, "val8");
+	fp = fopen("filename1.xml", "w");
+    mxmlSaveFile(xml, fp, MXML_NO_CALLBACK);
+    fclose(fp);
 
 }

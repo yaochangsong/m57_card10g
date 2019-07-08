@@ -42,8 +42,8 @@ PLAT_FORM_ARCH_ARM
 
 /*Protocal Support*/
 #define PROTOCAL_HTTP  0
-#define PROTOCAL_XNRP  0
-#define PROTOCAL_ATE   1
+#define PROTOCAL_XNRP  1
+#define PROTOCAL_ATE   0
 
 
 

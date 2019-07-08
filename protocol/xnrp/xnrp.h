@@ -3,6 +3,63 @@
 
 #define XNRP_HEADER_START  "XNRP"
 
+typedef enum {
+    RET_CODE_SUCCSESS         = 0,
+    RET_CODE_FORMAT_ERR       = 1,
+    RET_CODE_PARAMTER_ERR     = 2,
+    RET_CODE_PARAMTER_INVALID = 3,
+    RET_CODE_CHANNEL_ERR      = 4,
+    RET_CODE_INVALID_MODULE   = 5,
+    RET_CODE_INTERNAL_ERR     = 6
+} return_code;
+
+/* method code */
+enum {
+    METHOD_SET_COMMAND      = 0x01,
+    METHOD_GET_COMMAND      = 0x02,
+    METHOD_RESPONSE_COMMAND = 0x04,
+    METHOD_REPORT_COMMAND   = 0x08,
+};
+
+/* class code */
+enum {
+    CLASS_CODE_REGISTER  = 0x00,
+    CLASS_CODE_NET       = 0x01,
+    CLASS_CODE_WORK_MODE = 0x02,
+    CLASS_CODE_MID_FRQ   = 0x04,
+    CLASS_CODE_RF        = 0x08,
+    CLASS_CODE_CONTROL   = 0x10,
+    CLASS_CODE_STATUS    = 0x11,
+    CLASS_CODE_JOURNAL   = 0x12,
+    CLASS_CODE_FILE      = 0x14,
+    CLASS_CODE_HEARTBEAT = 0xaa
+};
+
+/* bussiness code */
+/*net*/
+enum {
+    B_CODE_ALL_NET  = 0x01,
+};
+
+/*work mode*/
+enum {
+    B_CODE_WK_MODE_MULTI_FRQ_POINT    = 0x01,
+    B_CODE_WK_MODE_SUB_CH_DEC         = 0x02,
+    B_CODE_WK_MODE_MULTI_FRQ_FREGMENT = 0x01,
+};
+    
+/*middle frequency*/
+enum {
+    B_CODE_MID_FRQ_MUTE_SW        = 0x11,
+    B_CODE_MID_FRQ_MUTE_THRE      = 0x12,
+    B_CODE_MID_FRQ_DEC_METHOD     = 0x13,
+    B_CODE_MID_FRQ_AU_SAMPLE_RATE = 0x14,
+};
+
+
+
+
+
 struct xnrp_header {
     char start_flag[4];
     uint8_t version;
@@ -12,12 +69,14 @@ struct xnrp_header {
     uint8_t business_code;
     uint8_t client_id[6];
     uint8_t device_id[6];
-    long time_stamp;
+    uint32_t time_stamp;
     uint16_t msg_id;
     uint16_t check_sum;
-    long payload_len;
+    uint32_t payload_len;
     uint8_t *payload;
 }__attribute__ ((packed));
+
+
 
 struct xnrp_multi_frequency_point {
 }__attribute__ ((packed));

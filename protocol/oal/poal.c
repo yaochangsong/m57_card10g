@@ -40,6 +40,7 @@ int poal_handle_request(struct net_tcp_client *cl, char *data, int len)
         }
         poal_send_ok_response(cl, send_buf, send_len);
     }else{
+        printf_info("error_code = %d\n", error_code);
         poal_send_error_response(cl, error_code);
     }
     return -1;

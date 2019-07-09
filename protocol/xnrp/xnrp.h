@@ -1,7 +1,24 @@
+/******************************************************************************
+*  Copyright 2019, Showay Technology Dev Co.,Ltd.
+*  ---------------------------------------------------------------------------
+*  Statement:
+*  ----------
+*  This software is protected by Copyright and the information contained
+*  herein is confidential. The software may not be copied and the information
+*  contained herein may not be used or disclosed except with the written
+*  permission of Showay Technology Dev Co.,Ltd. (C) 2019
+******************************************************************************/
+/*****************************************************************************     
+*  Rev 1.0   09 July 2019   yaochangsong
+*  Initial revision.
+******************************************************************************/
+
 #ifndef _XNRP_H_H
 #define _XNRP_H_H
 
 #define XNRP_HEADER_START  "XNRP"
+#define XNRP_HEADER_VERSION  1
+
 
 typedef enum {
     RET_CODE_SUCCSESS         = 0,
@@ -59,7 +76,7 @@ enum {
 
 
 
-
+/* xnrp header info */
 struct xnrp_header {
     char start_flag[4];
     uint8_t version;
@@ -76,6 +93,15 @@ struct xnrp_header {
     uint8_t *payload;
 }__attribute__ ((packed));
 
+struct xnrp_net_paramter {
+    uint8_t mac[6];
+    struct in_addr gateway;
+    struct in_addr netmask;
+    struct in_addr ipaddress;
+    uint16_t port;
+}__attribute__ ((packed));
+
+
 
 
 struct xnrp_multi_frequency_point {
@@ -83,7 +109,8 @@ struct xnrp_multi_frequency_point {
 
 
 
-bool xnrp_handle_request(uint8_t *data, int len, int *code);
+extern bool xnrp_handle_request(uint8_t *data, int len, int *code);
+extern int xnrp_assamble_response_data(uint8_t *buf,          int err_code);
 
 #endif
 

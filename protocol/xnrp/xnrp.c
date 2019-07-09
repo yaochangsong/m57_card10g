@@ -60,6 +60,23 @@ static int xnrp_execute_set_command(void)
         }
         case CLASS_CODE_WORK_MODE:
         {
+            switch (header->business_code)
+            {
+                case B_CODE_WK_MODE_MULTI_FRQ_POINT:
+                {
+                    struct xnrp_multi_frequency_point frqp;
+                    config_parse_data(header->payload, header->payload_len, &frqp);
+                    config_save_batch(header->class_code, header->business_code,&frqp);
+                    executor_set_command(header->class_code, header->business_code,&frqp);
+                    break;
+                }
+                case B_CODE_WK_MODE_SUB_CH_DEC:
+                    break;
+                case B_CODE_WK_MODE_MULTI_FRQ_FREGMENT:
+                    break;
+                default:
+                    printf_err("invalid bussiness code[%d]", header->business_code);
+            }
             break;
         }
         case CLASS_CODE_MID_FRQ:
@@ -102,10 +119,12 @@ static int xnrp_execute_set_command(void)
 static int xnrp_execute_get_command(void)
 {
     struct xnrp_header *header;
+    struct xnrp_header *resp_header;
     int err_code;
     uint8_t *resp_payload;
     resp_payload = &xnrp_response_payload_data;
     header = &xnrp_data;
+    resp_header = &xnrp_response_data;
 
     err_code = RET_CODE_SUCCSESS;
     
@@ -113,13 +132,14 @@ static int xnrp_execute_get_command(void)
     {
         case CLASS_CODE_REGISTER:
         {
-            break;
+            printf_debug("register\n");
         }
         case CLASS_CODE_NET:
         {
             struct xnrp_net_paramter value;
             value.ipaddress.s_addr = htonl(1255577);
             memcpy(resp_payload, &value, sizeof(struct xnrp_net_paramter));
+            resp_header->payload_len = sizeof(struct xnrp_net_paramter);
             break;
         }
         case CLASS_CODE_WORK_MODE:
@@ -214,7 +234,7 @@ static bool xnrp_parse_header(const uint8_t *data, int len, uint8_t **payload, i
         return false;
     }
     printf_debug("parse_header[%c %c %c %c][%x,%x,%x,%x]\n", data[0], data[1], data[2], data[3],data[0], data[1], data[2], data[3]);
-    val = xnrp_strstr(data, XNRP_HEADER_START, len);
+    val = xnrp_strstr(data, (uint8_t *)XNRP_HEADER_START, len);
     if (!val){
         printf_debug("parse_header error\n");
         *err_code = RET_CODE_FORMAT_ERR;

@@ -16,7 +16,7 @@
 CC=gcc
 #arm-linux-gnueabihf-gcc
 
-SOURCE_DIR = log net protocol/http protocol/akt protocol/xnrp protocol/oal dao/oal conf
+SOURCE_DIR = log net protocol/http protocol/akt protocol/xnrp protocol/oal dao/oal conf executor
 SUB_LIBS := dao/mxml-3.0/libmxml.a dao/json/libjson.a libubox/libubox.a
 
 ALL_C_FILES := $(foreach n,$(SOURCE_DIR),$(n)/*.c)

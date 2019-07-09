@@ -32,4 +32,17 @@ config_init(void)
 }
 
 
+int8_t config_parse_data(uint8_t class_code, uint8_t business_code, void *data)
+{
+    printf_debug("start to config parse data\n");
+    return 0;
+}
+
+int8_t config_save_batch(uint8_t class_code, uint8_t business_code, void *data)
+{
+    printf_debug("save parse data\n");
+    return 0;
+}
+
+
 

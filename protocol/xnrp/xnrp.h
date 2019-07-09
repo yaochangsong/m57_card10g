@@ -62,7 +62,7 @@ enum {
 enum {
     B_CODE_WK_MODE_MULTI_FRQ_POINT    = 0x01,
     B_CODE_WK_MODE_SUB_CH_DEC         = 0x02,
-    B_CODE_WK_MODE_MULTI_FRQ_FREGMENT = 0x01,
+    B_CODE_WK_MODE_MULTI_FRQ_FREGMENT = 0x03,
 };
     
 /*middle frequency*/

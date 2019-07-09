@@ -18,17 +18,31 @@
 static s_config config;
 
 /**
- * Mutex for the configuration file, used by the auth_servers related
+ * Mutex for the configuration file, used by the related
  * functions. */
 pthread_mutex_t config_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 /** Sets the default config parameters and initialises the configuration system */
-void
-config_init(void)
+void config_init(void)
 {  
-    //config.configfile = safe_strdup(DEFAULT_CONFIGFILE);
-
+    
+    config.configfile = safe_strdup(DEFAULT_CONFIGFILE);
     config.daemon = -1;
+
+    
+
+
+
+    dao_read_create_config_file(config.configfile, &config);
+
+}
+
+/** Accessor for the current configuration
+@return:  A pointer to the current config.  The pointer isn't opaque, but should be treated as READ-ONLY
+ */
+s_config *config_get_config(void)
+{
+    return &config;
 }
 
 

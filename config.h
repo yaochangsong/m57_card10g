@@ -31,6 +31,8 @@
 #include "net/net_socket.h"
 #include "dao/mxml-3.0/mxml.h"
 #include "dao/oal/dao_oal.h"
+#include "utils/utils.h"
+
 
 /*define*/
 /*Support PlatForm Arch: 
@@ -44,6 +46,10 @@ PLAT_FORM_ARCH_ARM
 #define PROTOCAL_HTTP  0
 #define PROTOCAL_XNRP  1
 #define PROTOCAL_ATE   0
+
+/*dao support*/
+#define DAO_JSON  0
+#define DAO_XML   1
 
 
 

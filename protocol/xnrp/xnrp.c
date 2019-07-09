@@ -228,7 +228,12 @@ bool xnrp_parse_header(const uint8_t *data, int len, uint8_t **payload, int *err
     printf_info("header.msg_id=%x\n", header->msg_id);
     printf_info("header.check_sum=%x\n", header->check_sum);
     printf_info("header.payload_len=%x\n", header->payload_len);
-    
+
+    if(header_len + header->payload_len > len){
+        *err_code = RET_CODE_FORMAT_ERR;
+        printf_err("invalid payload len=%d\n", header->payload_len);
+        return false;
+    }
     if(header->payload_len > 0){
         *payload = data + header_len;
     }
@@ -243,23 +248,21 @@ bool xnrp_parse_data(const uint8_t *payload)
 {
     struct xnrp_header *header;
     header = &xnrp_data;
-    printf_debug("0\n");
-
+    
     if(payload == NULL){
         return true;
     }
     if(header->payload_len == 0){
         return true;
     }
-    printf_debug("0\n");
+
     header->payload = calloc(1, header->payload_len);
     if (!header->payload){
         printf_err("calloc failed\n");
         return false;
     }
-    printf_debug("0\n");
+
     memcpy(header->payload, payload, header->payload_len);
-    printf_debug("1\n");
 
     return true;
 }
@@ -267,6 +270,7 @@ bool xnrp_parse_data(const uint8_t *payload)
 bool xnrp_handle_request(uint8_t *data, int len, int *code)
 {
     uint8_t *payload = NULL;
+    uint8_t i;
     
     printf_info("len[%d] %d\n", len, sizeof(struct xnrp_header));
     printf_info("Prepare to handle xnrp protocol data\n");
@@ -275,7 +279,7 @@ bool xnrp_handle_request(uint8_t *data, int len, int *code)
     }
     if(payload != NULL){
         printf_debug("payload:\n");
-        for(int i = 0; i< len; i++)
+        for(i = 0; i< len; i++)
             printfd("%x ", payload[i]);
         printf_debug("\n");
         

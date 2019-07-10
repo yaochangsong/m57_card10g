@@ -51,7 +51,6 @@ static void *dao_load_default_config_file(char *file)
     fp = fopen(file, "w");
     mxmlSaveFile(root, fp, MXML_NO_CALLBACK);
     fclose(fp);
-    printf_debug("1\n");
     return (void *)root;
 #elif DAO_JSON == 1
 
@@ -108,8 +107,6 @@ void dao_read_create_config_file(char *file, void *root_config)
         printf_debug("create new config file\n");
         root = dao_load_default_config_file(file);
     }
-    printf_debug("1\n");
     root_config = dao_load_root(root);
-    printf_debug("1\n");
 }
 

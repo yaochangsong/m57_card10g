@@ -111,6 +111,13 @@
 #define MAX_LINE_CHAR_NUMBER (LINE_DATA_POINT_NUMBER*7+100)
 #define MAX_COMMON_PARAM_LEN 512
 
+typedef enum _OPERATION_CODE{
+  SET_CMD_REQ = 0x00,
+  QUERY_CMD_REQ = 0x01,
+  SET_CMD_RSP = 0x80,
+  QUERY_CMD_RSP = 0x81,
+  NET_CTRL_CMD = 0xAA
+}OPERATION_CODE;
 
 
 typedef enum _BUSINESS_CODE{
@@ -272,7 +279,7 @@ typedef struct  _PDU_REQ_HEADER{
     uint8_t usr_id[32];
     uint16_t receiver_id;
     uint16_t crc;
-    uint8_t buf[0];
+    uint8_t *pbuf;
 }__attribute__ ((packed)) PDU_CFG_REQ_HEADER_ST;
 
 
@@ -524,6 +531,31 @@ typedef struct  _CH_PARAMETERS {
     DEVICE_RF_INFO_ST rf_parameter;
     RF_PARAMETERS mode_parameter;
 }__attribute__ ((packed)) CH_PARAMETERS;
+
+
+typedef struct _DIRECTION_MULTI_ZONE_CHANNEL_PARAM{
+    uint64_t center_freq;
+    uint64_t bandwidth;
+    float freq_resolution;
+    uint32_t fft_size;
+    uint32_t freq_step;
+}__attribute__ ((packed)) DIRECTION_MULTI_ZONE_CHANNEL_PARAM;
+
+typedef struct _DIRECTION_MULTI_FREQ_ZONE_PARAM{
+    uint8_t cid;
+    uint32_t freq_band_cnt;
+    uint8_t resident_time;
+    DIRECTION_MULTI_ZONE_CHANNEL_PARAM  sig_ch[MAX_SIG_CHANNLE];
+}__attribute__ ((packed)) DIRECTION_MULTI_FREQ_ZONE_PARAM;
+
+
+/*************************************************************************/
+struct akt_config{
+    WORK_MODE_TYPE work_mode;
+    OUTPUT_ENABLE_PARAM_ST enable;
+    DIRECTION_MULTI_FREQ_ZONE_PARAM  multi_freq_param[MAX_CHANNEL_NUM];
+}__attribute__ ((packed));
+
 
 
 bool akt_handle_request(char *data, int len, int *code);

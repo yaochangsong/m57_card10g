@@ -40,6 +40,17 @@ static uint8_t *xnrp_strstr(const uint8_t *s1, const uint8_t *s2, int len)
         return s1;   
 } 
 
+static void xnrp_free(void)
+{
+    struct xnrp_header *header;
+    header = &xnrp_data;
+    if(header->payload != NULL){
+        free(header->payload);
+        header->payload = NULL;
+    }
+}
+
+
 static int xnrp_execute_set_command(void)
 {
     struct xnrp_header *header;
@@ -298,6 +309,7 @@ static bool xnrp_parse_data(const uint8_t *payload)
     return true;
 }
 
+
 bool xnrp_handle_request(uint8_t *data, int len, int *code)
 {
     uint8_t *payload = NULL;
@@ -315,8 +327,10 @@ bool xnrp_handle_request(uint8_t *data, int len, int *code)
     }
 
     if(xnrp_execute_method() != RET_CODE_SUCCSESS){
+        xnrp_free();
         return false;
     }
+    xnrp_free();
     return true;
 }
 

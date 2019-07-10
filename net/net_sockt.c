@@ -167,7 +167,7 @@ struct net_tcp_server *tcp_server_new(const char *host, int port)
     sock = usock(USOCK_TCP | USOCK_SERVER | USOCK_IPV4ONLY, host, usock_port(port));
     if (sock < 0) {
         uh_log_err("usock");
-        return sock;
+        return NULL;
     }
     printf_debug("sock=%d\n", sock);
     srv = calloc(1, sizeof(struct net_tcp_server));

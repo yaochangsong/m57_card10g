@@ -9,6 +9,8 @@
 #define SPI_START_FLAG 0xAA
 #define SPI_END_FLAG  0x55
 
+#define MAX_RADIO_CHANNEL_NUM (8)
+
 #define EXTRAC_FACTOR (4)
 #define SMOOTH_FACTOR (128)
 #define SAMPLE_RATE (102400000)
@@ -77,8 +79,6 @@
 #define CENTER_POINT_NUM_ON_1M_BW      524288  // POINT_NUM_ON_1M_BW/2
 #define POINT_NUM_ON_1M_BW             1048576
 
-
-#define MAX_CHANNEL_NUM (8)
 #define MAX_SIGNAL_CHANNEL_NUM (16)
 #define MAX_CALIBRATE_POINT_NUM (8)
 #define CHAN_NUM_OFFSET  (0)
@@ -109,7 +109,7 @@
 // 7: 1 symbol + 5 digital + 1 blank
 // 100: reserve
 #define MAX_LINE_CHAR_NUMBER (LINE_DATA_POINT_NUMBER*7+100)
-#define MAX_COMMON_PARAM_LEN 512
+
 
 typedef enum _OPERATION_CODE{
   SET_CMD_REQ = 0x00,
@@ -458,7 +458,7 @@ typedef struct _CHANNLE_STATUS_PARAM{
 //table 21 page 31
 typedef struct _DEVICE_STATUS_PARAM{
     uint8_t num;
-    CHANNLE_STATUS_PARAM sig_ch[MAX_CHANNEL_NUM];
+    CHANNLE_STATUS_PARAM sig_ch[MAX_RADIO_CHANNEL_NUM];
 }__attribute__ ((packed)) DEVICE_STATUS_PARAM_ST;
 
 //table 22 page 32
@@ -549,13 +549,59 @@ typedef struct _DIRECTION_MULTI_FREQ_ZONE_PARAM{
 }__attribute__ ((packed)) DIRECTION_MULTI_FREQ_ZONE_PARAM;
 
 
+typedef struct __MULTI_FREQ_DECODE_CHANNEL_PARAM{
+    uint64_t center_freq;
+    uint8_t decode_method_id;
+    uint32_t bandwidth;
+    uint8_t quiet_noise_switch;
+    int8_t quiet_noise_threshold;
+}__attribute__ ((packed)) MULTI_FREQ_DECODE_CHANNEL_PARAM;
+
+typedef struct  _DIRECTION_FFT_PARAM{
+    uint8_t channel;
+    float freq_resolution;
+    uint32_t fft_size;
+}__attribute__ ((packed)) DIRECTION_FFT_PARAM;
+
+
+typedef struct _MULTI_FREQ_DECODE_PARAM{
+    uint8_t cid;
+    uint32_t freq_band_cnt;
+    uint8_t resident_time;
+    MULTI_FREQ_DECODE_CHANNEL_PARAM  sig_ch[MAX_SIG_CHANNLE];
+    DIRECTION_FFT_PARAM fft[MAX_RADIO_CHANNEL_NUM];
+}__attribute__ ((packed)) MULTI_FREQ_DECODE_PARAM;
+
+
+
+typedef struct _DIRECTION_SMOOTH_PARAM{
+    uint8_t ch;
+    uint16_t smooth;
+}__attribute__ ((packed)) DIRECTION_SMOOTH_PARAM;
 /*************************************************************************/
-struct akt_config{
-    WORK_MODE_TYPE work_mode;
+#define check_radio_channel(ch)  (ch > MAX_RADIO_CHANNEL_NUM ? 1 : 0)
+
+struct akt_protocal_param{
+    uint8_t cid;
     OUTPUT_ENABLE_PARAM_ST enable;
-    DIRECTION_MULTI_FREQ_ZONE_PARAM  multi_freq_param[MAX_CHANNEL_NUM];
+    DIRECTION_MULTI_FREQ_ZONE_PARAM multi_freq_zone[MAX_RADIO_CHANNEL_NUM];
+    MULTI_FREQ_DECODE_PARAM decode_param[MAX_RADIO_CHANNEL_NUM];
+    DIRECTION_FFT_PARAM fft[MAX_RADIO_CHANNEL_NUM];
+    DIRECTION_SMOOTH_PARAM smooth[MAX_RADIO_CHANNEL_NUM];
 }__attribute__ ((packed));
 
+
+struct protocal_convert_handle {
+    uint8_t  class_code;
+    uint8_t  bussiness_code;
+    
+    //bool (*poal_parse_header)(const uint8_t *data, int len, uint8_t **payload);
+   // bool (*poal_execute_method)(void);
+    bool (*poal_execute_get_command)(void);
+    bool (*poal_execute_set_command)(void);
+    bool (*dao_save_config)(void);
+    bool (*executor_set_command)(void);
+};
 
 
 bool akt_handle_request(char *data, int len, int *code);

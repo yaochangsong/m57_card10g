@@ -13,6 +13,7 @@
 #include <poll.h>
 #include <arpa/inet.h>
 #include <pthread.h>
+#include <sys/ioctl.h>
 
 
 #include "libubox/ulog.h"
@@ -32,6 +33,10 @@
 #include "dao/mxml-3.0/mxml.h"
 #include "dao/oal/dao_oal.h"
 #include "utils/utils.h"
+
+#include "executor/executor.h"
+#include "executor/io.h"
+
 
 
 /*define*/

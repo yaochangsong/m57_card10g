@@ -13,29 +13,52 @@
         <port>8000</port>
     </network>
     <mediumfrequency>
-        <channel>0</channel>
-        <subChannel>1</subChannel>
-        <midFreq>8</midFreq>
-        <bandwith>8</bandwith>
-        <freqResolution>20</freqResolution>
-        <fftPoints>64</fftPoints>
-        <windowType>0</windowType>
-        <frameDropCnt>15</frameDropCnt>
-        <smoothTimes>64</smoothTimes>
-        <muteSwitch>0</muteSwitch>
-        <muteThreshold>50</muteThreshold>
-        <decMethodId>1</decMethodId>
-        <decBandwidth>16</decBandwidth>
-        <startFrequency>16</startFrequency>
-        <endFrequency>64</endFrequency>
-        <step>20</step>
-        <subChannelNum>16</subChannelNum>
-        <residenceTime>100</residenceTime>
-        <frequencyNum>20</frequencyNum>
-        <residencePolicy>300</residencePolicy>
-        <audioSampleRate>8</audioSampleRate>
-        <freqSegmentCnt>1</freqSegmentCnt>
-        <refPowerLevel>20</refPowerLevel>
+        <freqPoint>
+            <channel>0</channel>
+            <windowType>0</windowType>
+            <frameDropCnt>15</frameDropCnt>
+            <freqPointCnt>1</freqPointCnt>
+            <smoothTimes></smoothTimes>
+            <residenceTime>100</residenceTime>
+        	<residencePolicy>300</residencePolicy>
+            <audioSampleRate>8</audioSampleRate>
+            <freqPointCnt>1</freqPointCnt>
+            <array>
+                <index>1</index>
+                <centerFreq>1000000</centerFreq>
+                <bandwith>1000</bandwith>
+                <freqResolution>20</freqResolution>
+                <fftSize>64</fftSize>
+                <decMethodId>1</decMethodId>
+        		<decBandwidth>16</decBandwidth>
+        		<muteSwitch>0</muteSwitch>
+        		<muteThreshold>50</muteThreshold>
+            </array>
+        </freqPoint>
+        <subChannel>
+            <subChannelNum>1</subChannelNum>
+        	<audioSampleRate>8</audioSampleRate>
+            <array>
+                <index>1</index>
+                <centerFreq>1000000</centerFreq>
+                <fftSize>64</fftSize>
+                <decMethodId>1</decMethodId>
+        		<decBandwidth>16</decBandwidth>
+        		<muteSwitch>0</muteSwitch>
+        		<muteThreshold>50</muteThreshold>
+            </array>
+        </subChannel>
+        <freqSegment>
+            <freqSegmentCnt>1</freqSegmentCnt>
+            <array>
+                <index>1</index>
+                <startFrequency>100</startFrequency>
+                <endFrequency>1000</endFrequency>
+                <step>20</step>
+                <freqResolution>20</freqResolution>
+                <fftSize>64</fftSize>
+            </array>
+        </freqSegment>
     </mediumfrequency>
     <radiofrequency>
         <channel>0</channel>
@@ -47,30 +70,21 @@
         <antennaSelect>1</antennaSelect>
         <rfAttenuation>10</rfAttenuation>
     </radiofrequency>
-    <controlspara>
-        <rfOutPutEn>0</rfOutPutEn>
-        <dataOutPutEn>0</dataOutPutEn>
-        <spectrumAnalysisEn>0</spectrumAnalysisEn>
-        <directionEn>0</directionEn>
-        <calibration>1</calibration>
+    <controlPara>
         <ctrlMode>1</ctrlMode>
-        <channelPower>1</channelPower>
+        <dataOutPutEn>
+            <enable>1</enable>
+            <subChannel>-1</subChannel>
+            <psdEnable>0</psdEnable>
+            <audioEnable>1</audioEnable>
+            <IQEnable>0</IQEnable>
+            <spectrumAnalysisEn>0</spectrumAnalysisEn>
+            <directionEn>0</directionEn>
+        </dataOutPutEn>
+        <calibration>1</calibration>
         <timeSet>1</timeSet>
-    </controlspara>
-    <statepara>
-        <channelNum>0</channelNum>
-        <dataOutPutEn>1</dataOutPutEn>
-        <powerStatus>1</powerStatus>
-        <diskStatus>1</diskStatus>
-        <clockStatus>1</clockStatus>
-        <adStatus>1</adStatus>
-        <fpgaTemprature>1</fpgaTemprature>
-        <rfTemprature>1</rfTemprature>
-        <signalStatus>1</signalStatus>
-        <softVersion>1</softVersion>
-        <antennaStatus>1</antennaStatus>
-        <gpsStatus>1</gpsStatus>
-        <ecStatus>1</ecStatus>
+    </controlPara>
+    <statusPara>
         <channelInfo>
             <channelNum>4</channelNum>
             <channelNode>
@@ -129,14 +143,14 @@
             	<freeSpace>5665641</freeSpace>
             </diskNode>
         </powerstate>
-  	</statepara>
-	<filestorepara>
+  	</statusPara>
+	<fileStorePara>
         <iqDataStore>1</iqDataStore>
         <iqDataBackTrace>1</iqDataBackTrace>
         <fileQuery>1</fileQuery>
         <fileDelete>1</fileDelete>
         <fileStrategy>1</fileStrategy>
-	</filestorepara>
+	</fileStorePara>
 </root>
 ```
 

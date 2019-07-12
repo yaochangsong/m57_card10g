@@ -14,12 +14,6 @@
 ******************************************************************************/
 #include "config.h"
 
-struct third_party_comparison_table comparison_table[] = {
-    {CLASS_CODE_REGISTER,       0,                           0, RCV_NET_PARAM},
-    {CLASS_CODE_NET,            0,                           0, RCV_NET_PARAM},
-    {CLASS_CODE_WORK_MODE,  B_CODE_WK_MODE_MULTI_FRQ_POINT,  0, RCV_NET_PARAM},
-};
-
 
 int poal_send_ok_response(struct net_tcp_client *cl, char *data, int len)
 {

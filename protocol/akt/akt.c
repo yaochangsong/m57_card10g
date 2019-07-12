@@ -33,7 +33,7 @@ static int akt_free(void)
 static int akt_convert_oal_config(uint8_t ch)
 {
     struct akt_protocal_param *pakt_config = &akt_config;
-    struct poal_config *poal_config = &oal_config;
+    struct poal_config *poal_config = &(config_get_config()->oal_config);
 
     /*切换频点（频段）数*/
     uint8_t sig_cnt = 0;
@@ -88,7 +88,7 @@ static int akt_convert_oal_config(uint8_t ch)
 
 static int akt_work_mode_set(struct akt_protocal_param *akt_config)
 {
-    struct poal_config *poal_config = &oal_config;
+    struct poal_config *poal_config = &(config_get_config()->oal_config);
    
     if(akt_config->multi_freq_zone[akt_config->cid].resident_time== 0){
         if(akt_config->multi_freq_zone[akt_config->cid].freq_band_cnt == 1){
@@ -112,7 +112,7 @@ static int akt_work_mode_set(struct akt_protocal_param *akt_config)
 
 static int akt_executor_set_command(void)
 {
-    struct poal_config *poal_config = &oal_config;
+    struct poal_config *poal_config = &(config_get_config()->oal_config);
     
     if(poal_config->enable.psd_en){
         executor_set_command(EX_ENABLE_CMD, PSD_MODE_ENABLE, poal_config);
@@ -149,7 +149,7 @@ static int akt_execute_set_command(void)
 
     PDU_CFG_REQ_HEADER_ST *header;
     struct akt_protocal_param *pakt_config = &akt_config;
-    struct poal_config *poal_config = &oal_config;
+    struct poal_config *poal_config = &(config_get_config()->oal_config);
     int err_code;
     header = &akt_header;
     int ch;

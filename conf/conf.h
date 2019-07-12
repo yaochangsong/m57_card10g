@@ -21,6 +21,7 @@ extern pthread_mutex_t config_mutex;
 typedef struct {
     char *configfile;       /**< @brief name of the config file */
     int daemon;             /**< @brief if daemon > 0, use daemon mode */
+    struct poal_config oal_config;
 } s_config;
 
 
@@ -41,5 +42,6 @@ void config_init(void);
 	printf_debug("Config unlocked"); \
 } while (0)
 
+extern s_config *config_get_config(void);
 #endif
 

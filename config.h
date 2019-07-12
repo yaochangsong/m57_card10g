@@ -14,6 +14,7 @@
 #include <arpa/inet.h>
 #include <pthread.h>
 #include <sys/ioctl.h>
+#include <semaphore.h>
 
 
 #include "libubox/ulog.h"
@@ -49,8 +50,8 @@ PLAT_FORM_ARCH_ARM
 
 /*Protocal Support*/
 #define PROTOCAL_HTTP  0
-#define PROTOCAL_XNRP  1
-#define PROTOCAL_ATE   0
+#define PROTOCAL_XNRP  0
+#define PROTOCAL_ATE   1
 
 /*dao support*/
 #define DAO_JSON  0

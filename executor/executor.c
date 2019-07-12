@@ -14,12 +14,78 @@
 ******************************************************************************/
 #include "config.h"
 
+struct sem_st work_sem;
+
+static int8_t executor_wait_kernel_deal(void)
+{
+    struct timespec ts;
+    if (clock_gettime(CLOCK_REALTIME, &ts) == -1) {
+        printf_note("clock_gettime failed\n");
+        sem_wait(&work_sem.kernel_sysn);
+    }else{
+        ts.tv_sec += DEFAULT_FFT_TIMEOUT;
+        if(sem_timedwait(&work_sem.kernel_sysn, &ts) == -1){
+            printf_note("sem waited timeout\n");
+        }
+    }
+    return 0;
+}
+
+void executor_work_mode_thread(void *arg)
+{
+    struct poal_config *poal_config = &(config_get_config()->oal_config);
+    
+    while(1)
+    {
+        printf_info("######create work mode thread######\n");
+loop:
+        sem_wait(&work_sem.notify_deal);
+        printf_info("receive notify, start to deal work\n");
+        for(;;){
+            switch(poal_config->work_mode)
+            {
+                case OAL_FIXED_FREQ_ANYS_MODE:
+                {
+                    uint32_t fft_size;
+                    uint8_t ch = poal_config->enable.cid;
+                    uint8_t sub_ch = poal_config->enable.sub_id;
+                    printf_info("start fixed freq thread\n");
+                    fft_size = poal_config->multi_freq_point_param[ch].points[sub_ch].fft_size;
+                    if(poal_config->enable.psd_en){
+                        io_set_enable_command(PSD_MODE_ENABLE, poal_config->enable.cid, fft_size);
+                        executor_wait_kernel_deal();
+                    }else{
+                        io_set_enable_command(PSD_MODE_DISABLE, poal_config->enable.cid, fft_size);
+                        io_set_enable_command(AUDIO_MODE_DISABLE, poal_config->enable.cid, fft_size);
+                        goto loop;
+                    }
+                }
+                    break;
+                case OAL_FAST_SCAN_MODE:
+                    printf_info("start fast scan thread\n");
+                    break;
+                case OAL_MULTI_ZONE_SCAN_MODE:
+                    printf_info("start multi zone thread\n");
+                    break;
+                case OAL_MULTI_POINT_SCAN_MODE:
+                    printf_info("start multi point thread\n");
+                    break;
+                default:
+                    printf_err("not support work thread\n");
+            }
+        }
+    }
+}
+
 static int8_t executor_set_kernel_command(uint8_t type, void *data)
 {
+    
     switch(type)
      {
         case EX_CHANNEL_SELECT:
         {
+            printf_debug("channel select: %d\n", *(uint8_t *)data);
+            io_set_para_command(type, data);
             break;
         }
         case EX_MUTE_SW:
@@ -101,6 +167,10 @@ static int8_t executor_set_rf_command(uint8_t type, void *data)
         {
             break;
         }
+        case EX_RF_MID_BW:
+        {
+            break;
+        }
         case EX_RF_ANTENNA_SELECT:
         {
             break;
@@ -115,36 +185,10 @@ static int8_t executor_set_rf_command(uint8_t type, void *data)
     return 0;
 }
 
-static int8_t executor_set_mode_command(uint8_t type, void *data)
-{
-    struct poal_config *poal_config;
-    poal_config = (struct poal_config *)data;
-    
-    switch(type)
-    {
-        case PSD_MODE_ENABLE:
-            io_set_command(EX_CHANNEL_SELECT, EX_MID_FREQ_CMD, poal_config->enable.cid);
-            
-            break;
-        case AUDIO_MODE_ENABLE:
-        case IQ_MODE_ENABLE:
-        case SPCTRUM_MODE_ANALYSIS_ENABLE:
-        case DIRECTION_MODE_ENABLE:
-            
-        case PSD_MODE_DISABLE:
-        case AUDIO_MODE_DISABLE:
-        case IQ_MODE_DISABLE:
-        case SPCTRUM_MODE_ANALYSIS_DISABLE:
-        case DIRECTION_MODE_ENABLE_DISABLE:
-        default:
-            printf_err("not support type[%d]\n", type);
-    }
-    return 0;
-}
 
 int8_t executor_set_command(exec_cmd cmd, uint8_t type,  void *data)
 {
-     printf_debug("cmd[%d], type[%d]\n", cmd, type);
+     struct poal_config *poal_config = &(config_get_config()->oal_config);
 
      switch(cmd)
      {
@@ -160,7 +204,16 @@ int8_t executor_set_command(exec_cmd cmd, uint8_t type,  void *data)
         }
         case EX_ENABLE_CMD:
         {
-            executor_set_mode_command(type, data);
+            /* notify thread to deal data */
+            sem_post(&work_sem.notify_deal);
+            break;
+        }
+        case EX_WORK_MODE_CMD:
+        {
+            char *pbuf;
+            printf_info("set work mode[%d]\n", type);
+            poal_config->assamble_kernel_response_data(pbuf, type);
+            io_set_work_mode_command((void *)pbuf);
             break;
         }
         default:
@@ -169,6 +222,18 @@ int8_t executor_set_command(exec_cmd cmd, uint8_t type,  void *data)
      return 0;
 }
 
+void executor_init(void)
+{
+    int ret;
+    pthread_t work_id;
+    io_init();
+    sem_init(&(work_sem.notify_deal), 0, 0);
+    sem_init(&(work_sem.kernel_sysn), 0, 0);
+    ret=pthread_create(&work_id,NULL,(void *)executor_work_mode_thread, NULL);//创建线程
+    if(ret!=0)
+        perror("pthread cread work_id");
+    pthread_join(work_id,NULL);
+}
 
 
 

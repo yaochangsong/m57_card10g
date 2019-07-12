@@ -64,13 +64,15 @@ int server_init(void)
 {
 #if (PROTOCAL_XNRP != 0) || (PROTOCAL_ATE != 0) 
     struct net_tcp_server *tcpsrv = NULL;
-    tcpsrv = tcp_server_new("0.0.0.0", 1234);
+    printf_debug("tcp server init\n");
+    tcpsrv = tcp_server_new("0.0.0.0", 2234);
     if (!tcpsrv)
         return -1;
    // tcpsrv->on_accept = on_accept;
 #endif
 #if  PROTOCAL_HTTP != 0
     struct uh_server *srv = NULL;
+    printf_debug("http server init\n");
     srv = uh_server_new("0.0.0.0", 8088);
     if (!srv)
         return -1;

@@ -134,4 +134,9 @@ struct  band_table_t{
 }__attribute__ ((packed)); 
 
 
+extern void io_init(void);
+extern int8_t io_set_enable_command(uint8_t type, uint8_t ch, uint32_t fftsize);
+extern int8_t io_set_work_mode_command(void *data);
+extern int8_t io_set_para_command(uint8_t type, void *data);
+
 #endif

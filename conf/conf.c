@@ -25,16 +25,10 @@ pthread_mutex_t config_mutex = PTHREAD_MUTEX_INITIALIZER;
 /** Sets the default config parameters and initialises the configuration system */
 void config_init(void)
 {  
-    
+    printf_debug("config init\n");
     config.configfile = safe_strdup(DEFAULT_CONFIGFILE);
     config.daemon = -1;
-
-    
-
-
-
     dao_read_create_config_file(config.configfile, &config);
-
 }
 
 /** Accessor for the current configuration

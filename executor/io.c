@@ -16,7 +16,7 @@
 
 static int io_ctrl_fd = -1;
 
-struct  band_table_t bandtable[] ={
+static struct  band_table_t bandtable[] ={
     {459085, 134, 600},
     {459085, 133, 1500},
     {459085, 132, 2400},
@@ -60,7 +60,9 @@ static void  io_compute_extract_factor_by_fftsize(uint32_t anays_band,uint32_t *
 
 void io_init(void)
 {
-    int Oflags,i;
+    printf_info("io init!\n");
+#ifdef PLAT_FORM_ARCH_ARM
+    int Oflags;
     
     if (io_ctrl_fd > 0) {
         return;
@@ -73,116 +75,263 @@ void io_init(void)
     fcntl(io_ctrl_fd, F_SETOWN, getpid());
     Oflags = fcntl(io_ctrl_fd, F_GETFL);
     fcntl(io_ctrl_fd, F_SETFL, Oflags | FASYNC|FNONBLOCK);
+#endif
 }
 
-void io_set_common_param(uint8_t type, uint8_t *buf,uint32_t buf_len)
+static void io_set_common_param(uint8_t type, uint8_t *buf,uint32_t buf_len)
 {
     printf_debug("set common param: type=%d,data_len=%d\n",type,buf_len);
+#ifdef PLAT_FORM_ARCH_ARM
     COMMON_PARAM_ST c_p_param;
     c_p_param.type = type;
     if(buf_len >0){
         memcpy(c_p_param.buf,buf,buf_len);
     }
     ioctl(io_ctrl_fd, IOCTL_COMMON_PARAM_CMD, &c_p_param);
+#endif    
 }
 
 
-void io_set_smooth_factor(uint32_t factor)
+static void io_set_smooth_factor(uint32_t factor)
 {
+    printf_debug("set smooth_factor: factor=%d\n",factor);
+#ifdef PLAT_FORM_ARCH_ARM
     //smooth mode
     ioctl(io_ctrl_fd,IOCTL_SMOOTH_CH0,0x10000);
     //smooth value
     ioctl(io_ctrl_fd,IOCTL_SMOOTH_CH0,factor);
+#endif    
 }
 
 
-void io_set_calibrate_val(uint32_t ch, uint32_t  factor)
+static void io_set_calibrate_val(uint32_t ch, uint32_t  factor)
 {
     printf_debug("factor = %08x,%d\n",factor,factor);
+#ifdef PLAT_FORM_ARCH_ARM
     ioctl(io_ctrl_fd,IOCTL_CALIBRATE_CH0,&factor);
+#endif
 }
 
-void io_set_dq_param(uint32_t ch,FIXED_FREQ_ANYS_D_PARAM_ST dq)
+static void io_set_dq_param(uint32_t ch)
 {
-
-    uint64_t tmp_freq,center_freq;
+    struct poal_config *poal_config = &(config_get_config()->oal_config);
+    
+    uint64_t tmp_freq;
+    uint32_t bindwith;
     uint64_t fix_value1 = (0x100000000ULL);
     uint64_t fix_value2 = (102400000);
-    uint32_t freq_factor,band_factor;
+    uint32_t freq_factor,band_factor, filter_factor;
 
     uint32_t d_method = 0;
-
-    unsigned char convert_buf[32]={0};
-    //for 8 channel device only one sub channel 
     uint16_t sub_ch = 0;
 
-    printf_debug("ch:%d, decode method:%d\n",ch, dq.d_method);
-    if(dq.d_method == DQ_MODE_AM){
-        d_method = 0x0;
-    }else if(dq.d_method == DQ_MODE_FM || dq.d_method == DQ_MODE_WFM) {
-        d_method = 0x1;
-    }else if(dq.d_method == DQ_MODE_LSB || dq.d_method == DQ_MODE_USB) {
-        d_method = 0x2;
-    }else if(dq.d_method == DQ_MODE_CW) {
-        d_method = 0x3;
-    }else if(dq.d_method == DQ_MODE_IQ) {
-        d_method = 0x7;
-    }else{
-        printf_info("decode method not support:%d\n",dq.d_method);
-        return;
-    }
+    unsigned char convert_buf[32]={0};    
     //mid frequency  map value
     tmp_freq = fix_value2 ;
     tmp_freq = tmp_freq*fix_value1;
     tmp_freq /= fix_value2;
     freq_factor = (uint32_t)tmp_freq;
-#if 0
-	//banwidth 
-	compute_extract_fftsize(dq.bandwith,&band_factor);
-	printf_info("bd=%u,factor=%x\n",dq.bandwith,band_factor);
-	
-	//first close iq
-	band_factor |= 0x1000000;
 
-	ioctl(dma_fd,IOCTL_RUN_DEC_PARAM,&dq);
+    //banwidth 
+    sub_ch = poal_config->enable.sub_id;
+    bindwith = poal_config->multi_freq_point_param[ch].points[sub_ch].bandwidth;
+    d_method = poal_config->multi_freq_point_param[ch].points[sub_ch].d_method;
 
-	memcpy(convert_buf,(uint8_t *)(&ch),sizeof(uint8_t));
-	memcpy(convert_buf+1,(uint8_t *)(&sub_ch),sizeof(uint16_t));
-	memcpy(convert_buf+3,(uint8_t *)(&freq_factor),sizeof(uint32_t));
-	memcpy(convert_buf+3+sizeof(uint32_t),(uint8_t *)(&band_factor),sizeof(uint32_t));
-	memcpy(convert_buf+3+2*sizeof(uint32_t),(uint8_t *)(&d_method),sizeof(uint32_t));
+    io_compute_extract_factor_by_fftsize(bindwith,&band_factor, &filter_factor);
+    printf_info("bindwith=%u,band_factor=%u, filter_factor=%u\n",bindwith, band_factor, filter_factor);
 
-	set_common_param(3,convert_buf,sizeof(uint32_t)*3+3);
+    //first close iq
+    band_factor |= 0x1000000;
+
+
+    FIXED_FREQ_ANYS_D_PARAM_ST dq;
+    dq.bandwith = bindwith;
+    dq.center_freq = poal_config->multi_freq_point_param[ch].points[sub_ch].center_freq;
+    dq.d_method = poal_config->multi_freq_point_param[ch].points[sub_ch].d_method;
+    
+#ifdef PLAT_FORM_ARCH_ARM
+    ioctl(io_ctrl_fd,IOCTL_RUN_DEC_PARAM,&dq);
+    
+    memcpy(convert_buf,(uint8_t *)(&ch),sizeof(uint8_t));
+    memcpy(convert_buf+1,(uint8_t *)(&sub_ch),sizeof(uint16_t));
+    memcpy(convert_buf+3,(uint8_t *)(&freq_factor),sizeof(uint32_t));
+    memcpy(convert_buf+3+sizeof(uint32_t),(uint8_t *)(&band_factor),sizeof(uint32_t));
+    memcpy(convert_buf+3+2*sizeof(uint32_t),(uint8_t *)(&d_method),sizeof(uint32_t));
+
+    io_set_common_param(3,convert_buf,sizeof(uint32_t)*3+3);
+#endif 
+}
+
+static void io_set_dma_DQ_out_en(uint8_t ch, uint8_t outputen,uint32_t trans_len,uint8_t continious)
+{
+    //for 8 channel device only one sub channel 
+    uint16_t sub_ch = 0;
+    //for iq and dq dma .for 512 fixed length ,continious mode
+    if((outputen&(D_OUT_MASK|IQ_OUT_MASK)) > 0){
+        uint8_t convert_buf[512] = {0};
+        memcpy(convert_buf,(uint8_t *)(&ch),sizeof(uint8_t));
+        memcpy(convert_buf+1,(uint8_t *)(&sub_ch),sizeof(uint16_t));
+        memcpy(convert_buf+3,(uint8_t *)(&outputen),sizeof(uint8_t));
+        io_set_common_param(1,convert_buf,4);
+    }
+}
+
+static void io_set_dma_DQ_out_disable(uint8_t ch)
+{
+    uint8_t convert_buf[512] = {0};
+    uint8_t outputen = 0;
+    //for 8 channel device only one sub channel 
+    uint16_t sub_ch = 0;
+    memcpy(convert_buf,(uint8_t *)(&ch),sizeof(uint8_t));
+    memcpy(convert_buf+1,(uint8_t *)(&sub_ch),sizeof(uint16_t));
+    memcpy(convert_buf+3,(uint8_t *)(&outputen),sizeof(uint8_t));
+    io_set_common_param(1,convert_buf,4);
+}
+
+static void io_dma_dev_enable(uint32_t ch,uint8_t continuous)
+{
+#ifdef PLAT_FORM_ARCH_ARM
+    uint32_t ctrl_val = 0;
+    uint32_t con ;
+    con = continuous;
+    if (io_ctrl_fd > 0) {
+        ctrl_val = ((con&0xff)<<16) | ((ch & 0xFF) << 8) | 1;
+        ioctl(io_ctrl_fd,IOCTL_ENABLE_DISABLE,ctrl_val);
+    }
+#endif    
+}
+
+static void io_dma_dev_trans_len(uint32_t ch, uint32_t len)
+{
+#ifdef PLAT_FORM_ARCH_ARM
+    TRANS_LEN_PARAMETERS tran_parameter;
+    if (io_ctrl_fd > 0) {
+        tran_parameter.ch = ch;
+        tran_parameter.len = len;
+        tran_parameter.type = FAST_SCAN;
+        ioctl(io_ctrl_fd,IOCTL_TRANSLEN, &tran_parameter);
+    }
 #endif
 }
 
-
-int8_t io_set_command(uint8_t cmd, uint8_t type, void *data)
+static void io_set_dma_SPECTRUM_out_en(uint8_t cid, uint8_t outputen,uint32_t trans_len,uint8_t continuous)
 {
-    switch(cmd)
+    uint8_t ch = cid;
+    printf_debug("ch[%d]output en[len:%d]\n",cid, trans_len);
+    if((outputen&SPECTRUM_MASK) > 0){
+        io_dma_dev_enable(ch,continuous);
+        io_dma_dev_trans_len(ch,trans_len);
+        }
+    }
+
+static void io_dma_dev_disable(uint32_t ch)
+{
+#ifdef PLAT_FORM_ARCH_ARM
+    uint32_t ctrl_val = 0;
+
+    if (io_ctrl_fd > 0) {
+        ctrl_val = (ch & 0xFF) << 8;
+        ioctl(io_ctrl_fd,IOCTL_ENABLE_DISABLE,ctrl_val);
+    }
+#endif
+}
+
+static void io_set_dma_SPECTRUM_out_disable(uint8_t ch)
+{
+    io_dma_dev_disable(ch);
+}
+
+int8_t io_set_para_command(uint8_t type, void *data)
+{
+    switch(type)
     {
         case EX_CHANNEL_SELECT:
             printf_debug("select ch:%d\n", *(uint8_t *)data);
-            io_set_common_param(7, &data,sizeof(uint8_t));
+            io_set_common_param(7, data,sizeof(uint8_t));
             break;
         case EX_SMOOTH_TIME:
             printf_debug("smooth time:%d\n", *(uint16_t *)data);
             io_set_smooth_factor(*(uint16_t *)data);
             break;
+        case EX_DEC_METHOD:
+            io_set_dq_param(*(uint32_t *)data);
+            break;
         default:
-            printf_err("invalid cmd[%d]", cmd);
-            return -1;
+            printf_err("invalid type[%d]", type);
+        return -1;
+     break;
     }
     return 0;
 }
 
+int8_t io_set_work_mode_command(void *data)
+{
+    io_set_assamble_kernel_header_response_data(data);
+    return 0;
+}
+
+
+int8_t io_set_enable_command(uint8_t type, uint8_t ch, uint32_t fftsize)
+{
+    struct poal_config *poal_config = &(config_get_config()->oal_config);
+    switch(type)
+    {
+        case PSD_MODE_ENABLE:
+        {
+            uint8_t outputen;
+            outputen = poal_config->enable.bit_en;
+            io_set_dma_SPECTRUM_out_en(ch, outputen,fftsize*2,0);
+            break;
+        }
+        case PSD_MODE_DISABLE:
+        {
+            io_set_dma_SPECTRUM_out_disable(ch);
+            break;
+        }
+        case AUDIO_MODE_ENABLE:
+        case IQ_MODE_ENABLE:
+        {
+            uint8_t outputen;
+            outputen = poal_config->enable.bit_en;
+            io_set_dma_DQ_out_en(ch, outputen, 512, 0);
+            break;
+        }
+        case AUDIO_MODE_DISABLE:
+        case IQ_MODE_DISABLE:
+        {
+            io_set_dma_DQ_out_disable(ch);
+            break;
+        }
+        case SPCTRUM_MODE_ANALYSIS_ENABLE:
+        {
+            break;
+        }
+        case SPCTRUM_MODE_ANALYSIS_DISABLE:
+        {
+            break;
+        }
+        case DIRECTION_MODE_ENABLE:
+        {
+            break;
+        }
+        case DIRECTION_MODE_ENABLE_DISABLE:
+        {
+            break;
+        }
+    }
+}
+
+
+
 int16_t io_get_adc_temperature(void)
 {
+    float result=0; 
+#ifdef PLAT_FORM_ARCH_ARM
     char  path[128], upset[20];  
     char value=0;  
     int fd = -1, offset;
     float raw_data=0;
-    float result=0; 
+    
 
     sprintf(path,"/sys/bus/iio/devices/iio:device0/in_temp0_raw");
     fd = open(path, O_RDONLY);
@@ -203,8 +352,23 @@ int16_t io_get_adc_temperature(void)
     raw_data=atoi(upset);
     result = ((raw_data * 503.975)/4096) - 273.15;
     close(fd);
-    
+#endif
     return (signed short)result;
+
+}
+
+int32_t io_set_assamble_kernel_header_response_data(void *data){
+
+    int32_t ret = 0;
+#ifdef PLAT_FORM_ARCH_ARM
+    DATUM_SPECTRUM_HEADER_ST *pdata;
+    pdata = (DATUM_SPECTRUM_HEADER_ST *)data;
+    if(io_ctrl_fd <= 0){
+        return 0;
+    }
+    ret = ioctl(io_ctrl_fd, IOCTL_FFT_HDR_PARAM,data);
+ #endif
+    return ret;
 }
 
 

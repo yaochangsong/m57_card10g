@@ -15,7 +15,7 @@
 #include "config.h"
 
 
-int poal_send_ok_response(struct net_tcp_client *cl, char *data, int len)
+int poal_send_ok_response(struct net_tcp_client *cl, uint8_t *data, int len)
 {
     printf_info("send ok response\n");
     return 0;
@@ -28,11 +28,11 @@ int poal_send_error_response(struct net_tcp_client *cl, int error_code)
 }
 
 
-int poal_handle_request(struct net_tcp_client *cl, char *data, int len)
+int poal_handle_request(struct net_tcp_client *cl, uint8_t *data, int len)
 {
     int error_code = 0;
     int send_len = 0;
-    char send_buf[MAX_SEND_DATA_LEN];
+    uint8_t send_buf[MAX_SEND_DATA_LEN];
 
     if(oal_handle_request(data, len, &error_code)){
         send_len = assamble_response_data(send_buf, error_code);

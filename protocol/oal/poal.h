@@ -3,6 +3,9 @@
 
 #include "config.h"
 
+#define MAX_RADIO_CHANNEL_NUM 8
+#define MAX_SIG_CHANNLE 128
+
 #if PROTOCAL_XNRP != 0
     #define oal_handle_request  xnrp_handle_request
     #define assamble_response_data  xnrp_assamble_response_data
@@ -13,25 +16,42 @@
     #error "NOT DEFINE PROTOCAL"
 #endif
 
+#define INTERNEL_ENABLE_BIT_SET(en, s) \
+    (en=(s.psd_en<<PSD_EN_BIT_OFFSET|s.audio_en<<AUDIO_EN_BIT_OFFSET|s.iq_en<<IQ_EN_BIT_OFFSET|s.spec_analy_en<<SPEC_ANALY_EN_BIT_OFFSET|s.direction_en<<DIRECTION_EN_BIT_OFFSET))
 
 /* 工作模式参数参数 */
 typedef enum _work_mode_type {
-    OAL_FIXED_FREQ_ANYS_MODE = 0x00,
-    OAL_FAST_SCAN_MODE = 0x01,
-    OAL_MULTI_ZONE_SCAN_MODE = 0x02,
-    OAL_MULTI_POINT_SCAN_MODE = 0x03
+    OAL_NULL_MODE               = 0x00,
+    OAL_FIXED_FREQ_ANYS_MODE    = 0x01,
+    OAL_FAST_SCAN_MODE          = 0x02,
+    OAL_MULTI_ZONE_SCAN_MODE    = 0x03,
+    OAL_MULTI_POINT_SCAN_MODE   = 0x04,
+    
 }work_mode_type;
 
-
+/* bit_en：内部使能位定义 */
+enum {
+    PSD_EN_BIT_OFFSET           = 0x01,
+    AUDIO_EN_BIT_OFFSET         = 0x02,
+    IQ_EN_BIT_OFFSET            = 0x04,
+    SPEC_ANALY_EN_BIT_OFFSET    = 0x08,
+    DIRECTION_EN_BIT_OFFSET     = 0x10,
+};
+    
 /* 输出使能 */
 struct output_en_st{
     uint8_t cid;
-    int8_t sub_id;
-    uint8_t  psd_en;
-    uint8_t  audio_en;
-    uint8_t  iq_en;
-    uint8_t  spec_analy_en;
-    uint8_t  direction_en;
+    int8_t  sub_id;
+    volatile uint8_t  psd_en;
+    volatile uint8_t  audio_en;
+    volatile uint8_t  iq_en;
+    volatile uint8_t  spec_analy_en;
+    volatile uint8_t  direction_en;
+    /*        bit_en: 8bit
+    bit[7]---bit[6]---bit[5]------bit[4]--------bit[3]--------bit[2]-----bit[1]------bit[0]
+     **-----**-------**-- [direction_en]--[spec_analy_en]--[iq_en]--[audio_en]--[psd_en]
+    */
+    volatile uint8_t  bit_en;
 }__attribute__ ((packed));
 
 /* 频点参数 */
@@ -91,34 +111,30 @@ struct multi_freq_fregment_para_st{
     struct freq_fregment_para_st  fregment[MAX_SIG_CHANNLE];
 }__attribute__ ((packed));
 
+/* 射频参数 */
+struct rf_para_st{
+    uint8_t cid;
+    uint64_t mid_freq;              /* 中心频率 */
+    uint8_t rf_mode_code;           /* 射频模式码; 0：低失真 1：常规 2：低噪声 */
+    uint8_t gain_ctrl_method;       /* 增益方法; 0：手动控制（MGC） 1：自动控制（AGC）*/
+    int8_t mgc_gain_value;          /* MGC 增益值; 单位 dB，精度 1dB*/
+    uint32_t agc_ctrl_time;         /* AGC 控制时间; 单位：10 微秒 快速：100 微秒  中速：1000 微秒 慢速：10000 微秒*/
+    int8_t agc_mid_freq_out_level;  /* AGC 中频 输出幅度;单位，dBm 默认值：-10dBm*/
+    uint32_t mid_bw;                /* 射频中频带宽; 0~2^32 */
+    uint8_t antennas_elect;         /* 天线选择 */
+    int8_t  attenuation;            /* 射频衰减 ;  -100 至 120 单位 dB，精度 1dB*/
+}__attribute__ ((packed));
 
 struct poal_config{
     work_mode_type work_mode;
     struct output_en_st enable;
-    struct multi_freq_point_para_st  multi_freq_point_param;
-    struct sub_channel_freq_para_st sub_channel_para;
-    struct multi_freq_fregment_para_st  multi_freq_fregment_para;
+    struct multi_freq_point_para_st  multi_freq_point_param[MAX_RADIO_CHANNEL_NUM];
+    struct sub_channel_freq_para_st sub_channel_para[MAX_RADIO_CHANNEL_NUM];
+    struct multi_freq_fregment_para_st  multi_freq_fregment_para[MAX_RADIO_CHANNEL_NUM];
+    struct rf_para_st rf_para;
+    bool (*assamble_kernel_response_data)(char *, uint8_t);
 }__attribute__ ((packed));
 
-struct protocal_oal_handle {
-    uint8_t  class_code;
-    uint8_t  bussiness_code;
-    
-    //bool (*poal_parse_header)(const uint8_t *data, int len, uint8_t **payload);
-   // bool (*poal_execute_method)(void);
-    bool (*poal_execute_get_command)(void);
-    bool (*poal_execute_set_command)(void);
-    bool (*dao_save_config)(void);
-    bool (*executor_set_command)(void);
-};
 
-/* Third party protocol comparison table define */
-struct third_party_comparison_table {
-    uint8_t  xnrp_class_code;
-    uint8_t  xnrp_bussiness_code;
-    uint8_t  akt_class_code;
-    uint8_t  akt_bussiness_code;
-};
-
-int poal_handle_request(struct net_tcp_client *cl, char *data, int len);
+int poal_handle_request(struct net_tcp_client *cl, uint8_t *data, int len);
 #endif

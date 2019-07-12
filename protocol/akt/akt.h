@@ -1,15 +1,15 @@
 #ifndef _AKT_H_H
 #define _AKT_H_H
 
+#include "config.h"
+
 #define AKT_START_FLAG 0x7E7E
 #define AKT_END_FLAG  0xA5A5
-
-#define MAX_SIG_CHANNLE 128
 
 #define SPI_START_FLAG 0xAA
 #define SPI_END_FLAG  0x55
 
-#define MAX_RADIO_CHANNEL_NUM (8)
+//#define MAX_RADIO_CHANNEL_NUM (8)
 
 #define EXTRAC_FACTOR (4)
 #define SMOOTH_FACTOR (128)
@@ -591,20 +591,7 @@ struct akt_protocal_param{
 }__attribute__ ((packed));
 
 
-struct protocal_convert_handle {
-    uint8_t  class_code;
-    uint8_t  bussiness_code;
-    
-    //bool (*poal_parse_header)(const uint8_t *data, int len, uint8_t **payload);
-   // bool (*poal_execute_method)(void);
-    bool (*poal_execute_get_command)(void);
-    bool (*poal_execute_set_command)(void);
-    bool (*dao_save_config)(void);
-    bool (*executor_set_command)(void);
-};
-
-
-bool akt_handle_request(char *data, int len, int *code);
+bool akt_handle_request(uint8_t *data, int len, int *code);
 
 #endif
 

@@ -18,17 +18,16 @@
 
 static inline void tcp_ustream_read_cb(struct ustream *s, int bytes)
 {
-    char str[MAX_RECEIVE_DATA_LEN];
+    uint8_t str[MAX_RECEIVE_DATA_LEN];
     int len;
     struct net_tcp_client *cl = container_of(s, struct net_tcp_client, sfd.stream);
 
-    printf_debug("data from: %s:%d\n", cl->get_peer_addr(cl), cl->get_peer_port(cl));
+    printf_info("data from: %s:%d\n", cl->get_peer_addr(cl), cl->get_peer_port(cl));
     //str = ustream_get_read_buf(s, &len);
     memset(str, 0 ,sizeof(str));
     len =ustream_read(s, str, MAX_RECEIVE_DATA_LEN);
     if (!str || !len)
         return;
-   // printf("str = %s[%d]\n", str, len);
     poal_handle_request(cl, str,  len);
 }
 

@@ -72,6 +72,7 @@ loop:
                     break;
                 default:
                     printf_err("not support work thread\n");
+                    break;
             }
         }
     }
@@ -232,7 +233,7 @@ void executor_init(void)
     ret=pthread_create(&work_id,NULL,(void *)executor_work_mode_thread, NULL);//创建线程
     if(ret!=0)
         perror("pthread cread work_id");
-    pthread_join(work_id,NULL);
+    pthread_detach(work_id);
 }
 
 

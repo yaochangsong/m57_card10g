@@ -50,7 +50,7 @@ int main(int argc, char **argv)
     
     printf_note("VERSION:%s\n",SPCTRUM_VERSION_STRING);
     config_init();
-    //executor_init();
+    executor_init();
     uloop_init();
     if(server_init() == -1){
         printf_err("server init fail!\n");

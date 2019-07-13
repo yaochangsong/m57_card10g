@@ -20,7 +20,7 @@ struct akt_protocal_param akt_config;
 
 bool akt_assamble_kernel_header_response_data(char *pbuf, work_mode wmode);
 
-static int akt_free(void)
+int akt_free(void)
 {
     PDU_CFG_REQ_HEADER_ST *header;
     header = &akt_header;
@@ -37,7 +37,7 @@ int akt_get_device_id(void)
 
 static int akt_convert_oal_config(uint8_t ch)
 {
-    #define  convert_enable_mode(en, mask)   (en|mask == 0 ? 0 : 1)
+    #define  convert_enable_mode(en, mask)   ((en&mask) == 0 ? 0 : 1)
     
     struct akt_protocal_param *pakt_config = &akt_config;
     struct poal_config *poal_config = &(config_get_config()->oal_config);
@@ -50,11 +50,11 @@ static int akt_convert_oal_config(uint8_t ch)
     poal_config->enable.psd_en = convert_enable_mode(pakt_config->enable.output_en, SPECTRUM_MASK);
     poal_config->enable.audio_en = convert_enable_mode(pakt_config->enable.output_en, D_OUT_MASK);
     poal_config->enable.iq_en = convert_enable_mode(pakt_config->enable.output_en, IQ_OUT_MASK);
-    poal_config->enable.bit_en = pakt_config->enable.output_en;
+   // poal_config->enable.bit_en = pakt_config->enable.output_en;
     INTERNEL_ENABLE_BIT_SET(poal_config->enable.bit_en,poal_config->enable);
     printf_debug("bit_en=%x,psd_en=%d, audio_en=%d,iq_en=%d\n", poal_config->enable.bit_en, 
                 poal_config->enable.psd_en,poal_config->enable.audio_en,poal_config->enable.iq_en);
-    
+    printf_debug("work_mode=%d\n", poal_config->work_mode);
     switch (poal_config->work_mode)
     {
         case OAL_FIXED_FREQ_ANYS_MODE:
@@ -102,6 +102,7 @@ static int akt_convert_oal_config(uint8_t ch)
             break;
         default:
             printf_err("work mode not set:%d\n", poal_config->work_mode);
+            return -1;
     }
     return 0;
 }
@@ -134,9 +135,9 @@ static int akt_executor_set_enable_command(uint8_t ch)
 {
     struct akt_protocal_param *pakt_config = &akt_config;
     struct poal_config *poal_config = &(config_get_config()->oal_config);
-    
+    printf_debug("bit_en[%x]\n", poal_config->enable.bit_en);
     if(poal_config->enable.bit_en == 0){
-        printf_info("all Work disabled");
+        printf_info("all Work disabled\n");
         /*disable all output*/
         executor_set_command(EX_ENABLE_CMD, PSD_MODE_DISABLE, poal_config);
         executor_set_command(EX_ENABLE_CMD, AUDIO_MODE_ENABLE, poal_config);
@@ -144,6 +145,9 @@ static int akt_executor_set_enable_command(uint8_t ch)
         executor_set_command(EX_ENABLE_CMD, SPCTRUM_MODE_ANALYSIS_DISABLE, poal_config);
         executor_set_command(EX_ENABLE_CMD, DIRECTION_MODE_ENABLE_DISABLE, poal_config);
     }else{
+        printf_debug("akt_assamble work_mode[%d]\n", poal_config->work_mode);
+        printf_debug("bit_en=%x,psd_en=%d, audio_en=%d,iq_en=%d\n", poal_config->enable.bit_en, 
+            poal_config->enable.psd_en,poal_config->enable.audio_en,poal_config->enable.iq_en);
         poal_config->assamble_kernel_response_data = akt_assamble_kernel_header_response_data;
         switch (poal_config->work_mode)
         {
@@ -158,15 +162,23 @@ static int akt_executor_set_enable_command(uint8_t ch)
                 executor_set_command(EX_MID_FREQ_CMD, EX_SMOOTH_TIME, &poal_config->multi_freq_point_param[ch].smooth_time);
                 executor_set_command(EX_MID_FREQ_CMD, EX_FFT_SIZE, &poal_config->multi_freq_point_param[ch].points[poal_config->enable.sub_id].fft_size);
                 executor_set_command(EX_MID_FREQ_CMD, EX_BANDWITH, &poal_config->multi_freq_point_param[ch].points[poal_config->enable.sub_id].bandwidth);
+                break;
             }
             case OAL_FAST_SCAN_MODE:
             {
+                executor_set_command(EX_WORK_MODE_CMD, EX_FAST_SCAN_MODE, NULL);
+                break;
             }
             case OAL_MULTI_ZONE_SCAN_MODE:
             {
+                executor_set_command(EX_WORK_MODE_CMD, EX_MULTI_ZONE_SCAN_MODE, NULL);
+                break;
             }
             case OAL_MULTI_POINT_SCAN_MODE:
+                executor_set_command(EX_WORK_MODE_CMD, EX_MULTI_POINT_SCAN_MODE, NULL);
                 break;
+            default:
+                return -1;
         }
 
         if(poal_config->enable.psd_en){
@@ -196,17 +208,22 @@ static int akt_execute_set_command(void)
     int ch;
 
     err_code = RET_CODE_SUCCSESS;
-    printf_info("bussiness code[%d]", header->code);
+    printf_info("bussiness code[%x]\n", header->code);
     switch (header->code)
     {
         case OUTPUT_ENABLE_PARAM:
         {
+            printf_debug("enable[cid:%x en:%x]\n", header->pbuf[0], header->pbuf[1]);
             memcpy(&(pakt_config->enable), header->pbuf, sizeof(OUTPUT_ENABLE_PARAM_ST));
             if(check_radio_channel(pakt_config->enable.cid)){
-                return -1;
+                err_code = RET_CODE_PARAMTER_ERR;
+                goto set_exit;
             }
             if(pakt_config->enable.output_en){
-                akt_convert_oal_config(pakt_config->enable.cid);
+                if(akt_convert_oal_config(pakt_config->enable.cid) == -1){
+                    err_code = RET_CODE_PARAMTER_NOT_SET;
+                    goto set_exit;
+                }
             }   
             akt_executor_set_enable_command(pakt_config->enable.cid);
             break;
@@ -219,7 +236,8 @@ static int akt_execute_set_command(void)
         {
             pakt_config->cid = header->pbuf[0];
             if(check_radio_channel(pakt_config->cid)){
-                return -1;
+                err_code = RET_CODE_PARAMTER_ERR;
+                goto set_exit;
             }
             ch = pakt_config->cid;
             memcpy(&(pakt_config->fft[ch]), header->pbuf, sizeof(DIRECTION_FFT_PARAM));
@@ -230,9 +248,11 @@ static int akt_execute_set_command(void)
             
             pakt_config->cid = header->pbuf[0];
             if(check_radio_channel(pakt_config->cid)){
-                return -1;
+                err_code = RET_CODE_PARAMTER_ERR;
+                goto set_exit;
             }
             ch = pakt_config->cid;
+            printf_debug("cid:%d\n", ch);
             memcpy(&pakt_config->multi_freq_zone[ch], header->pbuf, sizeof(DIRECTION_MULTI_FREQ_ZONE_PARAM));
             akt_work_mode_set(pakt_config);
             break;
@@ -241,7 +261,8 @@ static int akt_execute_set_command(void)
         {
             pakt_config->cid = header->pbuf[0];
             if(check_radio_channel(pakt_config->cid)){
-                return -1;
+                err_code = RET_CODE_PARAMTER_ERR;
+                goto set_exit;
             }
             memcpy(&(pakt_config->decode_param[pakt_config->cid]), header->pbuf, sizeof(MULTI_FREQ_DECODE_PARAM));
             break;
@@ -250,7 +271,8 @@ static int akt_execute_set_command(void)
         {
             pakt_config->cid = header->pbuf[0];
             if(check_radio_channel(pakt_config->cid)){
-                return -1;
+                err_code = RET_CODE_PARAMTER_ERR;
+                goto set_exit;
             }
             memcpy(&(pakt_config->smooth[pakt_config->cid]), header->pbuf, sizeof(DIRECTION_SMOOTH_PARAM));
             break;
@@ -286,10 +308,10 @@ static int akt_execute_set_command(void)
         default:
           printf_err("error class code[%d]\n",header->code);
           err_code = RET_CODE_PARAMTER_ERR;
-          goto exit;
+          goto set_exit;
     }
 
-exit:
+set_exit:
     return err_code;
 
 }
@@ -317,14 +339,14 @@ static int akt_execute_net_command(void)
 * RETURNS
 *     err_code: error code
 ******************************************************************************/
-static int akt_execute_method(void)
+bool akt_execute_method(int *code)
 {
     PDU_CFG_REQ_HEADER_ST *header;
     int err_code;
     header = &akt_header;
 
     err_code = RET_CODE_SUCCSESS;
-    printf_info("operation code[%d]", header->operation);
+    printf_info("operation code[%d]\n", header->operation);
     switch (header->operation)
     {
         case SET_CMD_REQ:
@@ -346,17 +368,20 @@ static int akt_execute_method(void)
         case QUERY_CMD_RSP:
         {
             err_code = RET_CODE_PARAMTER_INVALID;
-            printf_err("invalid method[%d]", header->operation);
+            printf_err("invalid method[%d]\n", header->operation);
             break;
         }
         default:
-            printf_err("error method[%d]", header->operation);
+            printf_err("error method[%d]\n", header->operation);
             err_code = RET_CODE_PARAMTER_ERR;
             break;
     }
-    return err_code;
-
-    return 0;
+    *code = err_code;
+     printf_debug("error code[%d]\n", *code);
+    if(err_code == RET_CODE_SUCCSESS)
+        return true;
+    else
+        return false;
 }
 
 /******************************************************************************
@@ -375,7 +400,7 @@ static int akt_execute_method(void)
 *     false: handle data false 
 *      ture: handle data successful
 ******************************************************************************/
-static bool akt_parse_header(const uint8_t *data, int len, uint8_t **payload, int *err_code)
+bool akt_parse_header(const uint8_t *data, int len, uint8_t **payload, int *err_code)
 {
     uint8_t *val;
     PDU_CFG_REQ_HEADER_ST *header, *pdata;
@@ -400,11 +425,11 @@ static bool akt_parse_header(const uint8_t *data, int len, uint8_t **payload, in
     memcpy(header, pdata, sizeof(PDU_CFG_REQ_HEADER_ST));
     printf_info("header.start_flag=%x\n", header->start_flag);
     printf_info("header.len=%x\n", header->len);
-    printf_info("header.method_code=%x\n", header->operation);
+    printf_info("header.operation_code=%x\n", header->operation);
     printf_info("header.code=%x\n", header->code);
     printf_info("header.usr_id=%llx\n", header->usr_id);
     printf_info("header.receiver_id=%x\n", header->receiver_id);
-    printf_info("header.crc=%s, %x\n", header->crc);
+    printf_info("header.crc=%x\n", header->crc);
 
     if(header_len + header->len > len){
         *err_code = RET_CODE_FORMAT_ERR;
@@ -422,7 +447,7 @@ static bool akt_parse_header(const uint8_t *data, int len, uint8_t **payload, in
 }
 
 
-static bool akt_parse_data(const uint8_t *payload)
+bool akt_parse_data(const uint8_t *payload, int *code)
 {
     int i;
     PDU_CFG_REQ_HEADER_ST *header;
@@ -436,6 +461,7 @@ static bool akt_parse_data(const uint8_t *payload)
     header->pbuf = calloc(1, header->len);
     if (!header->pbuf){
         printf_err("calloc failed\n");
+        *code = RET_CODE_INTERNAL_ERR;
         return false;
     }
 
@@ -444,45 +470,6 @@ static bool akt_parse_data(const uint8_t *payload)
     return true;
 }
 
-/******************************************************************************
-* FUNCTION:
-*     akt_handle_request
-*
-* DESCRIPTION:
-*     akt protocol receive data handle process
-*     
-* PARAMETERS
-*     data:  receive data pointer
-*       len:  reveive data length
-*       code:  return error code
-* RETURNS
-*     false: handle data false 
-*      ture: handle data successful
-******************************************************************************/
-
-bool akt_handle_request(uint8_t *data, int len, int *code)
-{
-    uint8_t *payload = NULL;
-    
-    printf_info("len[%d] %d\n", len, sizeof(struct xnrp_header));
-    printf_info("Prepare to handle akt protocol data\n");
-    if(akt_parse_header(data, len, &payload, code) == false){
-        return false;
-    }
-    if(payload != NULL){
-        if(akt_parse_data(payload) == false){
-            *code = RET_CODE_INTERNAL_ERR;
-            return false;
-        }
-    }
-
-    if(akt_execute_method() != RET_CODE_SUCCSESS){
-        akt_free();
-        return false;
-    }
-    akt_free();
-    return true;
-}
 
 /******************************************************************************
 * FUNCTION:
@@ -519,6 +506,7 @@ bool akt_assamble_kernel_header_response_data(char *pbuf, work_mode wmode)
     ext_hdr->gain = poal_config->rf_para.mgc_gain_value;
     ext_hdr->duration = 0;   
     ext_hdr->datum_type = 0;
+    printf_debug("assamble kernel header[mode: %d]\n", wmode);
     switch (wmode)
     {
         case EX_FIXED_FREQ_ANYS_MODE:

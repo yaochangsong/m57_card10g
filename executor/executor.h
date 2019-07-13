@@ -43,10 +43,11 @@ enum {
 
 /* executor: work mode  */
 typedef enum {
-    EX_FIXED_FREQ_ANYS_MODE=0x00,      /*定频模式*/
-    EX_FAST_SCAN_MODE=0x01,            /*快速扫描模式*/
-    EX_MULTI_ZONE_SCAN_MODE=0x02,      /*多频段模式*/
-    EX_MULTI_POINT_SCAN_MODE=0x03,     /*多频点模式*/
+    EX_NULL_MODE            =0x00,
+    EX_FIXED_FREQ_ANYS_MODE =0x01,      /*定频模式*/
+    EX_FAST_SCAN_MODE       =0x02,      /*快速扫描模式*/
+    EX_MULTI_ZONE_SCAN_MODE =0x03,      /*多频段模式*/
+    EX_MULTI_POINT_SCAN_MODE=0x04,      /*多频点模式*/
 }work_mode;
 
 

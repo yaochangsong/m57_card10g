@@ -40,7 +40,7 @@ static uint8_t *xnrp_strstr(const uint8_t *s1, const uint8_t *s2, int len)
         return s1;   
 } 
 
-static void xnrp_free(void)
+void xnrp_free(void)
 {
     struct xnrp_header *header;
     header = &xnrp_data;
@@ -194,14 +194,13 @@ static int xnrp_execute_get_command(void)
 }
 
 
-static int xnrp_execute_method(void)
+bool xnrp_execute_method(int *code)
 {
     struct xnrp_header *header;
     int err_code;
     header = &xnrp_data;
 
     err_code = RET_CODE_SUCCSESS;
-    
     switch (header->method_code)
     {
         case METHOD_SET_COMMAND:
@@ -226,11 +225,17 @@ static int xnrp_execute_method(void)
             err_code = RET_CODE_PARAMTER_ERR;
             break;
     }
-    return err_code;
+    *code = err_code;
+     printf_debug("error code[%d]\n", *code);
+    if(err_code == RET_CODE_SUCCSESS)
+        return true;
+    else
+        return false;
+
 }
 
 
-static bool xnrp_parse_header(const uint8_t *data, int len, uint8_t **payload, int *err_code)
+bool xnrp_parse_header(const uint8_t *data, int len, uint8_t **payload, int *err_code)
 {
     uint8_t *val;
     struct xnrp_header *header;
@@ -280,7 +285,7 @@ static bool xnrp_parse_header(const uint8_t *data, int len, uint8_t **payload, i
     return true;
 }
 
-static bool xnrp_parse_data(const uint8_t *payload)
+bool xnrp_parse_data(const uint8_t *payload, int *code)
 {
     uint8_t i;
     struct xnrp_header *header;
@@ -300,37 +305,13 @@ static bool xnrp_parse_data(const uint8_t *payload)
 
     header->payload = calloc(1, header->payload_len);
     if (!header->payload){
+        *code = RET_CODE_INTERNAL_ERR;
         printf_err("calloc failed\n");
         return false;
     }
 
     memcpy(header->payload, payload, header->payload_len);
 
-    return true;
-}
-
-
-bool xnrp_handle_request(uint8_t *data, int len, int *code)
-{
-    uint8_t *payload = NULL;
-    
-    printf_info("len[%d] %d\n", len, sizeof(struct xnrp_header));
-    printf_info("Prepare to handle xnrp protocol data\n");
-    if(xnrp_parse_header(data, len, &payload, code) == false){
-        return false;
-    }
-    if(payload != NULL){
-        if(xnrp_parse_data(payload) == false){
-            *code = RET_CODE_INTERNAL_ERR;
-            return false;
-        }
-    }
-
-    if(xnrp_execute_method() != RET_CODE_SUCCSESS){
-        xnrp_free();
-        return false;
-    }
-    xnrp_free();
     return true;
 }
 

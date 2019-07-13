@@ -63,15 +63,19 @@ loop:
                     break;
                 case OAL_FAST_SCAN_MODE:
                     printf_info("start fast scan thread\n");
+                    goto loop;
                     break;
                 case OAL_MULTI_ZONE_SCAN_MODE:
                     printf_info("start multi zone thread\n");
+                    goto loop;
                     break;
                 case OAL_MULTI_POINT_SCAN_MODE:
                     printf_info("start multi point thread\n");
+                    goto loop;
                     break;
                 default:
                     printf_err("not support work thread\n");
+                    goto loop;
                     break;
             }
         }

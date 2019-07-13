@@ -7,17 +7,21 @@
 #define MAX_SIG_CHANNLE 128
 
 #if PROTOCAL_XNRP != 0
-    #define oal_handle_request  xnrp_handle_request
-    #define assamble_response_data  xnrp_assamble_response_data
+    #define poal_parse_header xnrp_parse_header
+    #define poal_parse_data   xnrp_parse_data
+    #define poal_execute_method xnrp_execute_method
+    #define poal_assamble_response_data  xnrp_assamble_response_data
+    #define poal_free   xnrp_free
 #elif PROTOCAL_ATE != 0
-    #define oal_handle_request  akt_handle_request
-    #define assamble_response_data  akt_assamble_response_data
+    #define poal_parse_header akt_parse_header
+    #define poal_parse_data   akt_parse_data
+    #define poal_execute_method akt_execute_method
+    #define poal_assamble_response_data  akt_assamble_response_data
+    #define poal_free   akt_free
 #else
     #error "NOT DEFINE PROTOCAL"
 #endif
 
-#define INTERNEL_ENABLE_BIT_SET(en, s) \
-    (en=(s.psd_en<<PSD_EN_BIT_OFFSET|s.audio_en<<AUDIO_EN_BIT_OFFSET|s.iq_en<<IQ_EN_BIT_OFFSET|s.spec_analy_en<<SPEC_ANALY_EN_BIT_OFFSET|s.direction_en<<DIRECTION_EN_BIT_OFFSET))
 
 /* 工作模式参数参数 */
 typedef enum _work_mode_type {
@@ -31,12 +35,15 @@ typedef enum _work_mode_type {
 
 /* bit_en：内部使能位定义 */
 enum {
-    PSD_EN_BIT_OFFSET           = 0x01,
-    AUDIO_EN_BIT_OFFSET         = 0x02,
-    IQ_EN_BIT_OFFSET            = 0x04,
-    SPEC_ANALY_EN_BIT_OFFSET    = 0x08,
-    DIRECTION_EN_BIT_OFFSET     = 0x10,
+    PSD_EN_BIT_OFFSET           = 0x00,
+    AUDIO_EN_BIT_OFFSET         = 0x01,
+    IQ_EN_BIT_OFFSET            = 0x02,
+    SPEC_ANALY_EN_BIT_OFFSET    = 0x03,
+    DIRECTION_EN_BIT_OFFSET     = 0x04,
 };
+    
+#define INTERNEL_ENABLE_BIT_SET(en, s) \
+    (en=(s.psd_en<<PSD_EN_BIT_OFFSET|s.audio_en<<AUDIO_EN_BIT_OFFSET|s.iq_en<<IQ_EN_BIT_OFFSET|s.spec_analy_en<<SPEC_ANALY_EN_BIT_OFFSET|s.direction_en<<DIRECTION_EN_BIT_OFFSET))
     
 /* 输出使能 */
 struct output_en_st{

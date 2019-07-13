@@ -579,7 +579,7 @@ typedef struct _DIRECTION_SMOOTH_PARAM{
     uint16_t smooth;
 }__attribute__ ((packed)) DIRECTION_SMOOTH_PARAM;
 /*************************************************************************/
-#define check_radio_channel(ch)  (ch > MAX_RADIO_CHANNEL_NUM ? 1 : 0)
+#define check_radio_channel(ch)  (ch > MAX_RADIO_CHANNEL_NUM ? 1 : 0) 
 
 struct akt_protocal_param{
     uint8_t cid;
@@ -591,7 +591,10 @@ struct akt_protocal_param{
 }__attribute__ ((packed));
 
 
-bool akt_handle_request(uint8_t *data, int len, int *code);
-
+extern bool akt_parse_header(const uint8_t *data, int len, uint8_t **payload, int *err_code);
+extern bool akt_parse_data(const uint8_t *payload, int *code);
+extern bool akt_execute_method(int *code);
+extern int akt_assamble_response_data(uint8_t *buf, int err_code);
+extern int akt_free(void);
 #endif
 

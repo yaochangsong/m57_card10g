@@ -27,7 +27,8 @@ typedef enum {
     RET_CODE_PARAMTER_INVALID = 3,
     RET_CODE_CHANNEL_ERR      = 4,
     RET_CODE_INVALID_MODULE   = 5,
-    RET_CODE_INTERNAL_ERR     = 6
+    RET_CODE_INTERNAL_ERR     = 6,
+    RET_CODE_PARAMTER_NOT_SET = 7,
 } return_code;
 
 /* method code */
@@ -108,9 +109,10 @@ struct xnrp_multi_frequency_point {
 }__attribute__ ((packed));
 
 
-
-extern bool xnrp_handle_request(uint8_t *data, int len, int *code);
 extern int xnrp_assamble_response_data(uint8_t *buf,          int err_code);
-
+extern bool xnrp_parse_header(const uint8_t *data, int len, uint8_t **payload, int *err_code);
+extern bool xnrp_parse_data(const uint8_t *payload, int *code);
+extern bool xnrp_execute_method(int *code);
+extern void xnrp_free(void);
 #endif
 

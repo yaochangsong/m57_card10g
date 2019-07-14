@@ -17,8 +17,6 @@
 struct xnrp_header xnrp_data;
 struct xnrp_header xnrp_response_data;
 
-//uint8_t  xnrp_response_payload_data[MAX_SEND_DATA_LEN];
-
 
 static uint8_t *xnrp_strstr(const uint8_t *s1, const uint8_t *s2, int len)   
 {  
@@ -290,7 +288,7 @@ bool xnrp_parse_data(const uint8_t *payload, int *code)
         printfd("%x ", payload[i]);
     printfd("\n");
 
-    if(header->payload_len > MAX_SEND_DATA_LEN){
+    if(header->payload_len > MAX_RECEIVE_DATA_LEN){
         *code = RET_CODE_PARAMTER_TOO_LONG;
         return false;
     }

@@ -31,7 +31,7 @@ static inline int udp_get_peer_port(struct net_udp_client *cl)
 static void udp_read_cb(struct uloop_fd *fd, unsigned int events)
 {
     struct net_udp_server *srv = container_of(fd, struct net_udp_server, fd);
-    struct net_udp_client *cl;
+    struct net_udp_client *cl = NULL;
     unsigned int sl, n;
     
     struct sockaddr_in addr;
@@ -53,22 +53,28 @@ static void udp_read_cb(struct uloop_fd *fd, unsigned int events)
             goto udp_handle;
         }
     }
+    if(srv->nclients > MAX_CLINET_NUM){
+        printf_warn("server client is full\n");
+        struct net_udp_client cl_tmp;
+        cl = &cl_tmp;
+    }else{
+        cl = calloc(1, sizeof(struct net_udp_client));
+        if (!cl) {
+            printf_err("calloc\n");
+            return;
+        }
+        memcpy(&cl->peer_addr, &addr, sizeof(addr));
+        cl->get_peer_addr = udp_get_peer_addr;
+        cl->get_peer_port = udp_get_peer_port;
 
-    cl = calloc(1, sizeof(struct net_udp_client));
-    if (!cl) {
-    printf_err("calloc\n");
-    return;
+        list_add(&cl->list, &srv->clients);
+        cl->srv = srv;
+        cl->srv->nclients++;
+        printf_info("Receive New UDP data From: %s:%d\n", cl->get_peer_addr(cl), cl->get_peer_port(cl));
     }
-    memcpy(&cl->peer_addr, &addr, sizeof(addr));
-    cl->get_peer_addr = udp_get_peer_addr;
-    cl->get_peer_port = udp_get_peer_port;
-
-    list_add(&cl->list, &srv->clients);
-    cl->srv = srv;
-    cl->srv->nclients++;
-    printf_info("Receive New UDP data From: %s:%d\n", cl->get_peer_addr(cl), cl->get_peer_port(cl));
 udp_handle:
-    poal_udp_handle_request(cl, data, n);
+    if(cl != NULL)
+        poal_udp_handle_request(cl, data, n);
 }
 
 struct net_udp_server *udp_server_new(const char *host, int port)

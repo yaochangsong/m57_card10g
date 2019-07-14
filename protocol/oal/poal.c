@@ -14,6 +14,10 @@
 ******************************************************************************/
 #include "config.h"
 
+int poal_send_active_to_all_client(uint8_t *data, int len)
+{
+    tcp_active_send_all_client(data, len);
+}
 
 int poal_send_response(struct net_tcp_client *cl, uint8_t *data, int len)
 {
@@ -32,11 +36,15 @@ int poal_send_response(struct net_tcp_client *cl, uint8_t *data, int len)
 int poal_send_error_response(struct net_tcp_client *cl, int error_code)
 {
     uint8_t *send_buf;
-    int send_len = 0;
-    
+    int send_len = 0, i;
+
+
     send_len = poal_assamble_error_response_data(&send_buf, error_code);
-    printf_info("send error[%d] response\n", error_code);
-    ustream_write(cl->us, send_buf, sizeof(send_len), true);
+    for(i = 0; i< send_len; i++){
+        printfd("%02x ", send_buf[i]);
+    }
+    printf_info("send error[%d] response[len=%d]\n", error_code, send_len);
+    ustream_write(cl->us, send_buf,send_len, true);
     return 0;
 }
 
@@ -82,7 +90,7 @@ int poal_handle_request(struct net_tcp_client *cl, uint8_t *data, int len)
     int error_code = 0;
     int send_len = 0;
     uint8_t *send_buf;
-    
+
     if(poal_parse_request(data, len, &error_code)){
         send_len = poal_assamble_response_data(&send_buf, error_code);
         if(send_len > MAX_SEND_DATA_LEN){

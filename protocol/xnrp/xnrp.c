@@ -17,7 +17,7 @@
 struct xnrp_header xnrp_data;
 struct xnrp_header xnrp_response_data;
 
-uint8_t  xnrp_response_payload_data[MAX_SEND_DATA_LEN];
+//uint8_t  xnrp_response_payload_data[MAX_SEND_DATA_LEN];
 
 
 static uint8_t *xnrp_strstr(const uint8_t *s1, const uint8_t *s2, int len)   
@@ -39,17 +39,6 @@ static uint8_t *xnrp_strstr(const uint8_t *s1, const uint8_t *s2, int len)
     else   
         return s1;   
 } 
-
-void xnrp_free(void)
-{
-    struct xnrp_header *header;
-    header = &xnrp_data;
-    if(header->payload != NULL){
-        free(header->payload);
-        header->payload = NULL;
-    }
-}
-
 
 static int xnrp_execute_set_command(void)
 {
@@ -132,8 +121,6 @@ static int xnrp_execute_get_command(void)
     struct xnrp_header *header;
     struct xnrp_header *resp_header;
     int err_code;
-    uint8_t *resp_payload;
-    resp_payload = &xnrp_response_payload_data;
     header = &xnrp_data;
     resp_header = &xnrp_response_data;
 
@@ -149,7 +136,7 @@ static int xnrp_execute_get_command(void)
         {
             struct xnrp_net_paramter value;
             value.ipaddress.s_addr = htonl(1255577);
-            memcpy(resp_payload, &value, sizeof(struct xnrp_net_paramter));
+            memcpy(resp_header->payload, &value, sizeof(struct xnrp_net_paramter));
             resp_header->payload_len = sizeof(struct xnrp_net_paramter);
             break;
         }
@@ -303,29 +290,38 @@ bool xnrp_parse_data(const uint8_t *payload, int *code)
         printfd("%x ", payload[i]);
     printfd("\n");
 
+    if(header->payload_len > MAX_SEND_DATA_LEN){
+        *code = RET_CODE_PARAMTER_TOO_LONG;
+        return false;
+    }
+/*    
     header->payload = calloc(1, header->payload_len);
     if (!header->payload){
         *code = RET_CODE_INTERNAL_ERR;
         printf_err("calloc failed\n");
         return false;
     }
-
+*/    
     memcpy(header->payload, payload, header->payload_len);
 
     return true;
 }
 
-int xnrp_assamble_response_data(uint8_t *buf,          int err_code)
+int xnrp_assamble_response_data(uint8_t **buf,          int err_code)
 {
     struct xnrp_header *header, *response_header;
     header = &xnrp_data;
     response_header = &xnrp_response_data;
     int len = 0;
     static uint16_t msg_id_counter = 0;
+    
+    printf_info("Prepare to assamble response xnrp data\n");
 
+    *buf = response_header;
     memcpy(response_header->start_flag, XNRP_HEADER_START, sizeof(response_header->start_flag)); 
     response_header->version = XNRP_HEADER_VERSION;
     response_header->method_code = METHOD_RESPONSE_COMMAND;
+    response_header->error_code = err_code;
     response_header->class_code = header->class_code;
     response_header->business_code = header->business_code;
     memcpy(response_header->client_id, header->client_id, sizeof(response_header->client_id));
@@ -333,8 +329,10 @@ int xnrp_assamble_response_data(uint8_t *buf,          int err_code)
     response_header->time_stamp = time(NULL);
     response_header->msg_id = msg_id_counter++;
     response_header->check_sum = 0;
-    
-    printf_info("Prepare to assamble response xnrp data\n");
+
+    len = sizeof(struct xnrp_header) - sizeof(response_header->payload) + response_header->payload_len;
+   
     return len;
 }
+
 

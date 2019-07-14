@@ -16,6 +16,8 @@
 #ifndef _XNRP_H_H
 #define _XNRP_H_H
 
+#include "config.h"
+
 #define XNRP_HEADER_START  "XNRP"
 #define XNRP_HEADER_VERSION  1
 
@@ -29,6 +31,7 @@ typedef enum {
     RET_CODE_INVALID_MODULE   = 5,
     RET_CODE_INTERNAL_ERR     = 6,
     RET_CODE_PARAMTER_NOT_SET = 7,
+    RET_CODE_PARAMTER_TOO_LONG= 8
 } return_code;
 
 /* method code */
@@ -91,7 +94,7 @@ struct xnrp_header {
     uint16_t msg_id;
     uint16_t check_sum;
     uint32_t payload_len;
-    uint8_t *payload;
+    uint8_t payload[MAX_RECEIVE_DATA_LEN];
 }__attribute__ ((packed));
 
 struct xnrp_net_paramter {
@@ -108,11 +111,9 @@ struct xnrp_net_paramter {
 struct xnrp_multi_frequency_point {
 }__attribute__ ((packed));
 
-
-extern int xnrp_assamble_response_data(uint8_t *buf,          int err_code);
+extern int xnrp_assamble_response_data(uint8_t **buf, int err_code);
 extern bool xnrp_parse_header(const uint8_t *data, int len, uint8_t **payload, int *err_code);
 extern bool xnrp_parse_data(const uint8_t *payload, int *code);
 extern bool xnrp_execute_method(int *code);
-extern void xnrp_free(void);
 #endif
 

@@ -69,6 +69,12 @@ int server_init(void)
     if (!tcpsrv)
         return -1;
    // tcpsrv->on_accept = on_accept;
+
+    struct net_udp_server *udpsrv = NULL;
+    printf_debug("udp server init\n");
+    udpsrv = udp_server_new("0.0.0.0", 3234);
+    if (!udpsrv)
+        return -1;
 #endif
 #if  PROTOCAL_HTTP != 0
     struct uh_server *srv = NULL;

@@ -31,6 +31,8 @@
 #include "protocol/oal/poal.h"
 
 #include "net/net_socket.h"
+#include "net/net_udp.h"
+
 #include "dao/mxml-3.0/mxml.h"
 #include "dao/oal/dao_oal.h"
 #include "utils/utils.h"

@@ -11,13 +11,13 @@
     #define poal_parse_data   xnrp_parse_data
     #define poal_execute_method xnrp_execute_method
     #define poal_assamble_response_data  xnrp_assamble_response_data
-    #define poal_free   xnrp_free
+    #define poal_assamble_error_response_data xnrp_assamble_response_data
 #elif PROTOCAL_ATE != 0
     #define poal_parse_header akt_parse_header
     #define poal_parse_data   akt_parse_data
     #define poal_execute_method akt_execute_method
     #define poal_assamble_response_data  akt_assamble_response_data
-    #define poal_free   akt_free
+    #define poal_assamble_error_response_data akt_assamble_error_response_data
 #else
     #error "NOT DEFINE PROTOCAL"
 #endif
@@ -144,4 +144,6 @@ struct poal_config{
 
 
 int poal_handle_request(struct net_tcp_client *cl, uint8_t *data, int len);
+int poal_udp_handle_request(struct net_udp_client *cl, uint8_t *data, int len);
+
 #endif

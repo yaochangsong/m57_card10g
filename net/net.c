@@ -62,17 +62,19 @@ static int on_request(struct uh_client *cl)
 
 int server_init(void)
 {
+    struct poal_config *poal_config = &(config_get_config()->oal_config);
+
 #if (PROTOCAL_XNRP != 0) || (PROTOCAL_ATE != 0) 
     struct net_tcp_server *tcpsrv = NULL;
-    printf_debug("tcp server init\n");
-    tcpsrv = tcp_server_new("0.0.0.0", 2234);
+    printf_debug("tcp server init [port:%d]\n", poal_config->network.port);
+    tcpsrv = tcp_server_new("0.0.0.0", poal_config->network.port);
     if (!tcpsrv)
         return -1;
    // tcpsrv->on_accept = on_accept;
 
     struct net_udp_server *udpsrv = NULL;
-    printf_debug("udp server init\n");
-    udpsrv = udp_server_new("0.0.0.0", 3234);
+    printf_debug("udp server init[port:%d]\n", poal_config->network.port+1);
+    udpsrv = udp_server_new("0.0.0.0",  poal_config->network.port+1);
     if (!udpsrv)
         return -1;
 #endif

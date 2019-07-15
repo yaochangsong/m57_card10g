@@ -104,7 +104,7 @@ static void io_set_smooth_factor(uint32_t factor)
 }
 
 
-static void io_set_calibrate_val(uint32_t ch, uint32_t  factor)
+void io_set_calibrate_val(uint32_t ch, uint32_t  factor)
 {
     printf_debug("factor = %08x,%d\n",factor,factor);
 #ifdef PLAT_FORM_ARCH_ARM
@@ -112,7 +112,7 @@ static void io_set_calibrate_val(uint32_t ch, uint32_t  factor)
 #endif
 }
 
-static void io_set_dq_param(uint32_t ch)
+void io_set_dq_param(void)
 {
     struct poal_config *poal_config = &(config_get_config()->oal_config);
     
@@ -123,7 +123,7 @@ static void io_set_dq_param(uint32_t ch)
     uint32_t freq_factor,band_factor, filter_factor;
 
     uint32_t d_method = 0;
-    uint16_t sub_ch = 0;
+    uint16_t ch, sub_ch = 0;
 
     unsigned char convert_buf[32]={0};    
     //mid frequency  map value
@@ -133,6 +133,7 @@ static void io_set_dq_param(uint32_t ch)
     freq_factor = (uint32_t)tmp_freq;
 
     //banwidth 
+    ch = poal_config->enable.cid;
     sub_ch = poal_config->enable.sub_id;
     bindwith = poal_config->multi_freq_point_param[ch].points[sub_ch].bandwidth;
     d_method = poal_config->multi_freq_point_param[ch].points[sub_ch].d_method;
@@ -162,7 +163,7 @@ static void io_set_dq_param(uint32_t ch)
 #endif 
 }
 
-static void io_set_dma_DQ_out_en(uint8_t ch, uint8_t outputen,uint32_t trans_len,uint8_t continious)
+void io_set_dma_DQ_out_en(uint8_t ch, uint8_t outputen,uint32_t trans_len,uint8_t continious)
 {
     //for 8 channel device only one sub channel 
     uint16_t sub_ch = 0;
@@ -176,7 +177,7 @@ static void io_set_dma_DQ_out_en(uint8_t ch, uint8_t outputen,uint32_t trans_len
     }
 }
 
-static void io_set_dma_DQ_out_disable(uint8_t ch)
+void io_set_dma_DQ_out_disable(uint8_t ch)
 {
     uint8_t convert_buf[512] = {0};
     uint8_t outputen = 0;
@@ -188,7 +189,7 @@ static void io_set_dma_DQ_out_disable(uint8_t ch)
     io_set_common_param(1,convert_buf,4);
 }
 
-static void io_dma_dev_enable(uint32_t ch,uint8_t continuous)
+void io_dma_dev_enable(uint32_t ch,uint8_t continuous)
 {
 #ifdef PLAT_FORM_ARCH_ARM
     uint32_t ctrl_val = 0;
@@ -252,9 +253,6 @@ int8_t io_set_para_command(uint8_t type, void *data)
         case EX_SMOOTH_TIME:
             printf_debug("smooth time:%d\n", *(uint16_t *)data);
             io_set_smooth_factor(*(uint16_t *)data);
-            break;
-        case EX_DEC_METHOD:
-            io_set_dq_param(*(uint32_t *)data);
             break;
         default:
             printf_err("invalid type[%d]", type);
@@ -369,6 +367,76 @@ int32_t io_set_assamble_kernel_header_response_data(void *data){
     ret = ioctl(io_ctrl_fd, IOCTL_FFT_HDR_PARAM,data);
  #endif
     return ret;
+}
+
+#define do_system(cmd)   // system(cmd)
+
+uint8_t  io_set_network_to_interfaces(void *netinfo)
+{
+
+        
+    #ifdef PLAT_FORM_ARCH_X86
+    #define NETWORK_INTERFACES_FILE_PATH  "./etc/network/interfaces"
+    #else
+    #define NETWORK_INTERFACES_FILE_PATH  "./etc/network/interfaces"
+    #endif
+    #define NETWORK_EHTHERNET_POINT       "eth0"
+    struct in_addr ip_sin_addr, mask_sin_addr, gw_sin_addr;
+    struct network_st *pnetwork = netinfo;
+    char cmd[256];
+    uint8_t ret = 0;
+    char *s_ip=NULL;
+    char *s_gw=NULL;
+    char *s_mask=NULL;
+    
+
+    printf_debug("ipaddress=%x, netmask=%x,gateway=%x\n", pnetwork->ipaddress, pnetwork->netmask, pnetwork->gateway);
+
+    sprintf(cmd, "echo \"auto lo\" > %s", NETWORK_INTERFACES_FILE_PATH);
+    printf_debug("%s\n", cmd);
+    do_system(cmd);
+
+    sprintf(cmd, "echo \"iface lo inet loopback\" >> %s", NETWORK_INTERFACES_FILE_PATH);
+    printf_debug("%s\n", cmd);
+    do_system(cmd);
+
+    sprintf(cmd, "echo \"auto %s\" >> %s", NETWORK_EHTHERNET_POINT, NETWORK_INTERFACES_FILE_PATH);
+    printf_debug("%s\n", cmd);
+    do_system(cmd);
+    
+    sprintf(cmd, "echo \"iface %s inet static\" >> %s", NETWORK_EHTHERNET_POINT, NETWORK_INTERFACES_FILE_PATH);
+    printf_debug("%s\n", cmd);
+    do_system(cmd);
+
+    
+    //ip_sin_addr.s_addr = htonl(pnetwork->ipaddress);
+    ip_sin_addr.s_addr = pnetwork->ipaddress;
+    s_ip = inet_ntoa(ip_sin_addr);
+
+    sprintf(cmd, "echo \"address %s\" >> %s", s_ip, NETWORK_INTERFACES_FILE_PATH);
+    printf_debug("%s\n", cmd);
+    do_system(cmd);
+
+   // mask_sin_addr.s_addr = htonl(pnetwork->netmask);
+    mask_sin_addr.s_addr = pnetwork->netmask;
+    s_mask = inet_ntoa(mask_sin_addr);
+
+    sprintf(cmd, "echo \"netmask %s\" >> %s", s_mask, NETWORK_INTERFACES_FILE_PATH);
+    printf_debug("%s\n", cmd);
+    do_system(cmd);
+
+   // gw_sin_addr.s_addr = htonl(pnetwork->gateway);
+    gw_sin_addr.s_addr = pnetwork->gateway;
+    s_gw = inet_ntoa(gw_sin_addr);
+
+    sprintf(cmd, "echo \"gateway %s\" >> %s", s_gw, NETWORK_INTERFACES_FILE_PATH);
+    do_system(cmd);
+    
+    sprintf(cmd, "/etc/init.d/networking restart");
+    printf_debug("%s\n", cmd);
+    //system(cmd);
+    return ret;
+    
 }
 
 

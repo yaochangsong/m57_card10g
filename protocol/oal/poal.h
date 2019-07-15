@@ -47,8 +47,8 @@ enum {
     
 /* 输出使能 */
 struct output_en_st{
-    uint8_t cid;
-    int8_t  sub_id;
+    volatile uint8_t cid;
+    volatile int8_t  sub_id;
     volatile uint8_t  psd_en;
     volatile uint8_t  audio_en;
     volatile uint8_t  iq_en;
@@ -67,7 +67,7 @@ struct freq_points_st{
     uint64_t center_freq; /* rf */
     uint64_t bandwidth;   /* rf */
     float freq_resolution;
-    uint32_t fft_size;
+    volatile uint32_t fft_size;
     uint8_t d_method;
     uint32_t d_bandwith;
     uint8_t  noise_en;
@@ -132,13 +132,30 @@ struct rf_para_st{
     int8_t  attenuation;            /* 射频衰减 ;  -100 至 120 单位 dB，精度 1dB*/
 }__attribute__ ((packed));
 
+/* 控制参数 */
+struct ctrl_st{
+    
+}__attribute__ ((packed));
+
+
+/* 网络参数 */
+struct network_st{
+    uint8_t mac[6];
+    uint32_t ipaddress;
+    uint32_t netmask;
+    uint32_t gateway;
+    uint16_t port;
+}__attribute__ ((packed));
+
+
 struct poal_config{
-    work_mode_type work_mode;
+    volatile work_mode_type work_mode;
     struct output_en_st enable;
     struct multi_freq_point_para_st  multi_freq_point_param[MAX_RADIO_CHANNEL_NUM];
     struct sub_channel_freq_para_st sub_channel_para[MAX_RADIO_CHANNEL_NUM];
     struct multi_freq_fregment_para_st  multi_freq_fregment_para[MAX_RADIO_CHANNEL_NUM];
     struct rf_para_st rf_para;
+    struct network_st network;
     bool (*assamble_kernel_response_data)(char *, uint8_t);
 }__attribute__ ((packed));
 

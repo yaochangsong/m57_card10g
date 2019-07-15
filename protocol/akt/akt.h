@@ -569,7 +569,7 @@ typedef struct _MULTI_FREQ_DECODE_PARAM{
     uint32_t freq_band_cnt;
     uint8_t resident_time;
     MULTI_FREQ_DECODE_CHANNEL_PARAM  sig_ch[MAX_SIG_CHANNLE];
-    DIRECTION_FFT_PARAM fft[MAX_RADIO_CHANNEL_NUM];
+//    DIRECTION_FFT_PARAM fft[MAX_RADIO_CHANNEL_NUM];
 }__attribute__ ((packed)) MULTI_FREQ_DECODE_PARAM;
 
 

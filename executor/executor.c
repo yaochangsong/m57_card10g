@@ -37,8 +37,7 @@ void executor_work_mode_thread(void *arg)
     
     while(1)
     {
-        printf_info("######create work mode thread######\n");
-loop:
+loop:   printf_info("######wait to deal work######\n");
         sem_wait(&work_sem.notify_deal);
         printf_info("receive notify, start to deal work\n");
         for(;;){
@@ -106,11 +105,9 @@ static int8_t executor_set_kernel_command(uint8_t type, void *data)
             break;
         }
         case EX_DEC_METHOD:
-        {
-            break;
-        }
         case EX_DEC_BW:
         {
+            io_set_dq_param();
             break;
         }
         case EX_SMOOTH_TIME:
@@ -210,6 +207,7 @@ int8_t executor_set_command(exec_cmd cmd, uint8_t type,  void *data)
         case EX_ENABLE_CMD:
         {
             /* notify thread to deal data */
+            printf_debug("notify thread to deal data\n");
             sem_post(&work_sem.notify_deal);
             break;
         }
@@ -219,6 +217,11 @@ int8_t executor_set_command(exec_cmd cmd, uint8_t type,  void *data)
             printf_info("set work mode[%d]\n", type);
             poal_config->assamble_kernel_response_data(pbuf, type);
             io_set_work_mode_command((void *)pbuf);
+            break;
+        }
+        case EX_NETWORK_CMD:
+        {
+            io_set_network_to_interfaces((void *)&poal_config->network);
             break;
         }
         default:
@@ -232,9 +235,11 @@ void executor_init(void)
     int ret;
     pthread_t work_id;
     io_init();
+    /* set default network */
+    executor_set_command(EX_NETWORK_CMD, 0, NULL);
     sem_init(&(work_sem.notify_deal), 0, 0);
     sem_init(&(work_sem.kernel_sysn), 0, 0);
-    ret=pthread_create(&work_id,NULL,(void *)executor_work_mode_thread, NULL);//创建线程
+    ret=pthread_create(&work_id,NULL,(void *)executor_work_mode_thread, NULL);
     if(ret!=0)
         perror("pthread cread work_id");
     pthread_detach(work_id);

@@ -27,7 +27,7 @@ int akt_get_device_id(void)
     return 0;
 }
 
-static int akt_convert_oal_config(uint8_t ch)
+static int akt_convert_oal_config(uint8_t ch, uint8_t cmd)
 {
     #define  convert_enable_mode(en, mask)   ((en&mask) == 0 ? 0 : 1)
     
@@ -36,65 +36,82 @@ static int akt_convert_oal_config(uint8_t ch)
 
     /*切换频点（频段）数*/
     uint8_t sig_cnt = 0;
-    /* 使能位转换 */
-    poal_config->enable.cid = pakt_config->enable.cid;
-    poal_config->enable.sub_id = -1; /* not support in akt protocal */
-    poal_config->enable.psd_en = convert_enable_mode(pakt_config->enable.output_en, SPECTRUM_MASK);
-    poal_config->enable.audio_en = convert_enable_mode(pakt_config->enable.output_en, D_OUT_MASK);
-    poal_config->enable.iq_en = convert_enable_mode(pakt_config->enable.output_en, IQ_OUT_MASK);
-   // poal_config->enable.bit_en = pakt_config->enable.output_en;
-    INTERNEL_ENABLE_BIT_SET(poal_config->enable.bit_en,poal_config->enable);
-    printf_debug("bit_en=%x,psd_en=%d, audio_en=%d,iq_en=%d\n", poal_config->enable.bit_en, 
-                poal_config->enable.psd_en,poal_config->enable.audio_en,poal_config->enable.iq_en);
-    printf_debug("work_mode=%d\n", poal_config->work_mode);
-    switch (poal_config->work_mode)
+    
+    switch (cmd)
     {
-        case OAL_FIXED_FREQ_ANYS_MODE:
-        {
-            sig_cnt= 0;
-            /*主通道转换*/
-            poal_config->multi_freq_point_param[ch].cid = pakt_config->cid;
-            /*(RF)中心频率转换*/
-            poal_config->multi_freq_point_param[ch].points[sig_cnt].center_freq = pakt_config->multi_freq_zone[ch].sig_ch[sig_cnt].center_freq;
-            /* (RF)带宽转换 */
-            poal_config->multi_freq_point_param[ch].points[sig_cnt].bandwidth = pakt_config->multi_freq_zone[ch].sig_ch[sig_cnt].bandwidth;
+        case OUTPUT_ENABLE_PARAM:
+                /* 使能位转换 */
+            poal_config->enable.cid = pakt_config->enable.cid;
+            poal_config->enable.sub_id = -1; /* not support in akt protocal */
+            poal_config->enable.psd_en = convert_enable_mode(pakt_config->enable.output_en, SPECTRUM_MASK);
+            poal_config->enable.audio_en = convert_enable_mode(pakt_config->enable.output_en, D_OUT_MASK);
+            poal_config->enable.iq_en = convert_enable_mode(pakt_config->enable.output_en, IQ_OUT_MASK);
+           // poal_config->enable.bit_en = pakt_config->enable.output_en;
+            INTERNEL_ENABLE_BIT_SET(poal_config->enable.bit_en,poal_config->enable);
+            printf_debug("bit_en=%x,psd_en=%d, audio_en=%d,iq_en=%d\n", poal_config->enable.bit_en, 
+                        poal_config->enable.psd_en,poal_config->enable.audio_en,poal_config->enable.iq_en);
+            printf_debug("work_mode=%d\n", poal_config->work_mode);
+            break;
+        case MULTI_FREQ_DECODE_CMD: /* 多频点解调参数 */
             /* 解调带宽转换 */
             poal_config->multi_freq_point_param[ch].points[sig_cnt].d_bandwith = pakt_config->decode_param[ch].sig_ch[sig_cnt].bandwidth;
             /* 不在需要解调中心频率，除非窄带解调 */
             /*解调方式转换*/
             poal_config->multi_freq_point_param[ch].points[sig_cnt].d_method = pakt_config->decode_param[ch].sig_ch[sig_cnt].decode_method_id;
-            /* fft size转换 */
-            poal_config->multi_freq_point_param[ch].points[sig_cnt].fft_size = pakt_config->fft[ch].fft_size;
-             /* smooth */
-            poal_config->multi_freq_point_param[ch].smooth_time = pakt_config->smooth[ch].smooth;
-        }
-        case OAL_FAST_SCAN_MODE:
-        {
-            sig_cnt= 0;
-            /*主通道转换*/
-            poal_config->multi_freq_fregment_para[ch].cid = pakt_config->cid;
-            /*(RF)开始频率转换 = 中心频率 - 带宽/2 */
-            poal_config->multi_freq_fregment_para[ch].fregment[sig_cnt].start_freq = pakt_config->multi_freq_zone[ch].sig_ch[sig_cnt].center_freq - pakt_config->multi_freq_zone[ch].sig_ch[sig_cnt].bandwidth/2;
-            /*(RF)结束频率转换 = 中心频率 + 带宽/2 */
-            poal_config->multi_freq_fregment_para[ch].fregment[sig_cnt].end_freq = pakt_config->multi_freq_zone[ch].sig_ch[sig_cnt].center_freq + pakt_config->multi_freq_zone[ch].sig_ch[sig_cnt].bandwidth/2;
-            /* 步长 */
-            poal_config->multi_freq_fregment_para[ch].fregment[sig_cnt].step = pakt_config->multi_freq_zone[ch].sig_ch[sig_cnt].freq_step;
-            /* fft size转换 */
-            poal_config->multi_freq_fregment_para[ch].fregment[sig_cnt].fft_size = pakt_config->fft[ch].fft_size;
-            /* smooth */
-            poal_config->multi_freq_fregment_para[ch].smooth_time = pakt_config->smooth[ch].smooth;
-            /*分辨率转换*/
-            poal_config->multi_freq_fregment_para[ch].fregment[sig_cnt].freq_resolution = pakt_config->multi_freq_zone[ch].sig_ch[sig_cnt].freq_resolution;
-        }
-        case OAL_MULTI_ZONE_SCAN_MODE:
-        {
-
-        }
-        case OAL_MULTI_POINT_SCAN_MODE:
             break;
-        default:
-            printf_err("work mode not set:%d\n", poal_config->work_mode);
-            return -1;
+        case DIRECTION_MULTI_FREQ_ZONE_CMD: /* 多频段扫描参数 */
+            switch (poal_config->work_mode)
+            {
+                case OAL_FIXED_FREQ_ANYS_MODE:
+                {
+                    sig_cnt= 0;
+                    /*主通道转换*/
+                    poal_config->multi_freq_point_param[ch].cid = pakt_config->cid;
+                    /*(RF)中心频率转换*/
+                    poal_config->multi_freq_point_param[ch].points[sig_cnt].center_freq = pakt_config->multi_freq_zone[ch].sig_ch[sig_cnt].center_freq;
+                    /* (RF)带宽转换 */
+                    poal_config->multi_freq_point_param[ch].points[sig_cnt].bandwidth = pakt_config->multi_freq_zone[ch].sig_ch[sig_cnt].bandwidth;
+                    /* 解调带宽转换 */
+                   // poal_config->multi_freq_point_param[ch].points[sig_cnt].d_bandwith = pakt_config->decode_param[ch].sig_ch[sig_cnt].bandwidth;
+                    /* 不在需要解调中心频率，除非窄带解调 */
+                    /*解调方式转换*/
+                   // poal_config->multi_freq_point_param[ch].points[sig_cnt].d_method = pakt_config->decode_param[ch].sig_ch[sig_cnt].decode_method_id;
+                    /* fft size转换 */
+                    poal_config->multi_freq_point_param[ch].points[sig_cnt].fft_size = pakt_config->fft[ch].fft_size;
+                     /* smooth */
+                    poal_config->multi_freq_point_param[ch].smooth_time = pakt_config->smooth[ch].smooth;
+                }
+                case OAL_FAST_SCAN_MODE:
+                {
+                    sig_cnt= 0;
+                    /*主通道转换*/
+                    poal_config->multi_freq_fregment_para[ch].cid = pakt_config->cid;
+                    /*(RF)开始频率转换 = 中心频率 - 带宽/2 */
+                    poal_config->multi_freq_fregment_para[ch].fregment[sig_cnt].start_freq = pakt_config->multi_freq_zone[ch].sig_ch[sig_cnt].center_freq - pakt_config->multi_freq_zone[ch].sig_ch[sig_cnt].bandwidth/2;
+                    /*(RF)结束频率转换 = 中心频率 + 带宽/2 */
+                    poal_config->multi_freq_fregment_para[ch].fregment[sig_cnt].end_freq = pakt_config->multi_freq_zone[ch].sig_ch[sig_cnt].center_freq + pakt_config->multi_freq_zone[ch].sig_ch[sig_cnt].bandwidth/2;
+                    /* 步长 */
+                    poal_config->multi_freq_fregment_para[ch].fregment[sig_cnt].step = pakt_config->multi_freq_zone[ch].sig_ch[sig_cnt].freq_step;
+                    /* fft size转换 */
+                    poal_config->multi_freq_fregment_para[ch].fregment[sig_cnt].fft_size = pakt_config->fft[ch].fft_size;
+                    /* smooth */
+                    poal_config->multi_freq_fregment_para[ch].smooth_time = pakt_config->smooth[ch].smooth;
+                    /*分辨率转换*/
+                    poal_config->multi_freq_fregment_para[ch].fregment[sig_cnt].freq_resolution = pakt_config->multi_freq_zone[ch].sig_ch[sig_cnt].freq_resolution;
+                }
+                case OAL_MULTI_ZONE_SCAN_MODE:
+                {
+
+                }
+                case OAL_MULTI_POINT_SCAN_MODE:
+                    break;
+                default:
+                    printf_err("work mode not set:%d\n", poal_config->work_mode);
+                    return -1;
+                    break;
+            }
+      default: 
+          printf_err("not support cmd:%d\n", cmd);
     }
     return 0;
 }
@@ -129,13 +146,7 @@ static int akt_executor_set_enable_command(uint8_t ch)
     struct poal_config *poal_config = &(config_get_config()->oal_config);
     printf_debug("bit_en[%x]\n", poal_config->enable.bit_en);
     if(poal_config->enable.bit_en == 0){
-        printf_info("all Work disabled\n");
-        /*disable all output*/
-        executor_set_command(EX_ENABLE_CMD, PSD_MODE_DISABLE, poal_config);
-        executor_set_command(EX_ENABLE_CMD, AUDIO_MODE_ENABLE, poal_config);
-        executor_set_command(EX_ENABLE_CMD, IQ_MODE_DISABLE, poal_config);
-        executor_set_command(EX_ENABLE_CMD, SPCTRUM_MODE_ANALYSIS_DISABLE, poal_config);
-        executor_set_command(EX_ENABLE_CMD, DIRECTION_MODE_ENABLE_DISABLE, poal_config);
+        printf_info("all Work disabled, waite thread stop...\n");
     }else{
         printf_debug("akt_assamble work_mode[%d]\n", poal_config->work_mode);
         printf_debug("bit_en=%x,psd_en=%d, audio_en=%d,iq_en=%d\n", poal_config->enable.bit_en, 
@@ -172,19 +183,7 @@ static int akt_executor_set_enable_command(uint8_t ch)
             default:
                 return -1;
         }
-
-        if(poal_config->enable.psd_en){
-            executor_set_command(EX_ENABLE_CMD, PSD_MODE_ENABLE, poal_config);
-        }
-        if(poal_config->enable.audio_en || poal_config->enable.iq_en){
-            executor_set_command(EX_ENABLE_CMD, AUDIO_MODE_ENABLE, poal_config);
-        }
-        if(poal_config->enable.spec_analy_en){
-            executor_set_command(EX_ENABLE_CMD, SPCTRUM_MODE_ANALYSIS_ENABLE, poal_config);
-        }
-        if(poal_config->enable.direction_en){
-            executor_set_command(EX_ENABLE_CMD, DIRECTION_MODE_ENABLE, poal_config);
-        }
+        executor_set_command(EX_ENABLE_CMD, 0, NULL);
     }
     return 0;
 }
@@ -212,7 +211,7 @@ static int akt_execute_set_command(void)
                 goto set_exit;
             }
             if(pakt_config->enable.output_en){
-                if(akt_convert_oal_config(pakt_config->enable.cid) == -1){
+                if(akt_convert_oal_config(pakt_config->enable.cid, OUTPUT_ENABLE_PARAM) == -1){
                     err_code = RET_CODE_PARAMTER_NOT_SET;
                     goto set_exit;
                 }
@@ -247,6 +246,11 @@ static int akt_execute_set_command(void)
             printf_debug("cid:%d\n", ch);
             memcpy(&pakt_config->multi_freq_zone[ch], header->buf, sizeof(DIRECTION_MULTI_FREQ_ZONE_PARAM));
             akt_work_mode_set(pakt_config);
+            if(akt_convert_oal_config(pakt_config->enable.cid, DIRECTION_MULTI_FREQ_ZONE_CMD) == -1){
+                err_code = RET_CODE_PARAMTER_NOT_SET;
+                goto set_exit;
+            }
+            config_save_batch(EX_WORK_MODE_CMD, EX_MULTI_ZONE_SCAN_MODE, poal_config);
             break;
         }
         case MULTI_FREQ_DECODE_CMD:
@@ -257,6 +261,12 @@ static int akt_execute_set_command(void)
                 goto set_exit;
             }
             memcpy(&(pakt_config->decode_param[pakt_config->cid]), header->buf, sizeof(MULTI_FREQ_DECODE_PARAM));
+            if(akt_convert_oal_config(pakt_config->enable.cid, DIRECTION_MULTI_FREQ_ZONE_CMD) == -1){
+                err_code = RET_CODE_PARAMTER_NOT_SET;
+                goto set_exit;
+            }
+            executor_set_command(EX_MID_FREQ_CMD, EX_DEC_METHOD, NULL);
+            config_save_batch(EX_WORK_MODE_CMD, EX_MULTI_POINT_SCAN_MODE, poal_config);
             break;
         }
         case DIRECTION_SMOOTH_CMD:
@@ -318,17 +328,27 @@ static int akt_execute_get_command(void)
     printf_info("bussiness code[%x]\n", header->code);
     switch (header->code)
     {
-
     }
     return 0;
 }
 
 static int akt_execute_net_command(void)
 {
-    printf_debug("repsonse net data\n");
-    uint8_t buffer[]={0xbb, 0xcc};
-    memcpy(akt_response_data.payload_data, buffer, sizeof(buffer));
-    akt_response_data.header.len = sizeof(buffer);
+    struct poal_config *poal_config = &(config_get_config()->oal_config);
+    
+    DEVICE_NET_INFO_ST netinfo;
+    struct in_addr ipdata;
+    
+    memcpy(netinfo.mac, poal_config->network.mac, sizeof(netinfo.mac));
+    netinfo.ipaddr = poal_config->network.ipaddress;
+    netinfo.gateway = poal_config->network.gateway;
+    netinfo.mask = poal_config->network.netmask;
+    netinfo.port = poal_config->network.port;
+    netinfo.status = 1;
+    ipdata.s_addr = netinfo.ipaddr;
+    printf_debug("ipaddr=%x[%s], gateway=%x\n", netinfo.ipaddr, inet_ntoa(ipdata), netinfo.gateway);
+    memcpy(akt_response_data.payload_data, &netinfo, sizeof(DEVICE_NET_INFO_ST));
+    akt_response_data.header.len = sizeof(DEVICE_NET_INFO_ST);
     return 0;
 }
 

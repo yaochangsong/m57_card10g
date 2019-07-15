@@ -22,6 +22,7 @@ typedef enum {
     EX_ENABLE_CMD,             /*使能命令*/
     EX_STATUS_CMD,             /*状态参数命令*/
     EX_WORK_MODE_CMD,          /*工作模式命令*/
+    EX_NETWORK_CMD             /*网络参数命令*/
 }exec_cmd;
 
 /* executor: mid frequency paramter */

@@ -25,9 +25,20 @@ pthread_mutex_t config_mutex = PTHREAD_MUTEX_INITIALIZER;
 /** Sets the default config parameters and initialises the configuration system */
 void config_init(void)
 {  
+    /* to test*/
+    struct sockaddr_in saddr;
+    saddr.sin_addr.s_addr=inet_addr("192.168.0.105");
+    config.oal_config.network.ipaddress = saddr.sin_addr.s_addr;
+    saddr.sin_addr.s_addr=inet_addr("192.168.0.1");
+    config.oal_config.network.gateway = saddr.sin_addr.s_addr;
+    saddr.sin_addr.s_addr=inet_addr("255.255.255.0");
+    config.oal_config.network.netmask = saddr.sin_addr.s_addr;
+    config.oal_config.network.port = 1234;
+
     printf_debug("config init\n");
     config.configfile = safe_strdup(DEFAULT_CONFIGFILE);
     config.daemon = -1;
+    
     dao_read_create_config_file(config.configfile, &config);
 }
 

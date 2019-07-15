@@ -573,6 +573,19 @@ typedef struct _MULTI_FREQ_DECODE_PARAM{
 }__attribute__ ((packed)) MULTI_FREQ_DECODE_PARAM;
 
 
+typedef struct  _DEVICE_SELF_CHECK_TEMPERATUE_ST{
+    signed short  rf_temperature;
+    uint8_t ch_status;
+}__attribute__ ((packed)) DEVICE_SELF_CHECK_TEMPERATUE_ST; 
+
+typedef struct  _DEVICE_SELF_CHECK_STATUS_RSP_ST{
+    uint8_t clk_status;    
+    uint8_t ad_status;
+    signed short  pfga_temperature;
+    uint8_t ch_num;
+    DEVICE_SELF_CHECK_TEMPERATUE_ST t_s[MAX_RADIO_CHANNEL_NUM];
+}__attribute__ ((packed)) DEVICE_SELF_CHECK_STATUS_RSP_ST; 
+
 
 typedef struct _DIRECTION_SMOOTH_PARAM{
     uint8_t ch;

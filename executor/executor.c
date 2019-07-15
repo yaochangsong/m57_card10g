@@ -81,6 +81,13 @@ loop:   printf_info("######wait to deal work######\n");
     }
 }
 
+static int8_t executor_get_kernel_command(uint8_t type, void *data)
+{
+
+    
+}
+
+
 static int8_t executor_set_kernel_command(uint8_t type, void *data)
 {
     

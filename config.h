@@ -15,6 +15,7 @@
 #include <pthread.h>
 #include <sys/ioctl.h>
 #include <semaphore.h>
+#include <net/if.h> 
 
 
 #include "libubox/ulog.h"

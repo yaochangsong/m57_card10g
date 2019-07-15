@@ -328,6 +328,21 @@ static int akt_execute_get_command(void)
     printf_info("bussiness code[%x]\n", header->code);
     switch (header->code)
     {
+        case DEVICE_SELF_CHECK_CMD:
+        {
+            DEVICE_SELF_CHECK_STATUS_RSP_ST self_check;
+            self_check.clk_status = 1;
+            self_check.ad_status = 0;
+            self_check.pfga_temperature = io_get_adc_temperature();
+            printf_debug("pfga_temperature=%d\n", self_check.pfga_temperature);
+            memcpy(akt_response_data.payload_data, &self_check, sizeof(DEVICE_SELF_CHECK_STATUS_RSP_ST));
+            akt_response_data.header.len = sizeof(DEVICE_SELF_CHECK_STATUS_RSP_ST);
+            break;
+        }
+        case SOFTWARE_VERSION_CMD:
+            break;
+        default:
+            printf_debug("not sppoort get commmand\n");
     }
     return 0;
 }

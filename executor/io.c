@@ -380,7 +380,7 @@ uint8_t  io_set_network_to_interfaces(void *netinfo)
     #else
     #define NETWORK_INTERFACES_FILE_PATH  "./etc/network/interfaces"
     #endif
-    #define NETWORK_EHTHERNET_POINT       "eth0"
+    
     struct in_addr ip_sin_addr, mask_sin_addr, gw_sin_addr;
     struct network_st *pnetwork = netinfo;
     char cmd[256];

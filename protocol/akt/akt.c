@@ -338,7 +338,7 @@ static int akt_execute_net_command(void)
     
     DEVICE_NET_INFO_ST netinfo;
     struct in_addr ipdata;
-    
+
     memcpy(netinfo.mac, poal_config->network.mac, sizeof(netinfo.mac));
     netinfo.ipaddr = poal_config->network.ipaddress;
     netinfo.gateway = poal_config->network.gateway;
@@ -346,7 +346,8 @@ static int akt_execute_net_command(void)
     netinfo.port = poal_config->network.port;
     netinfo.status = 1;
     ipdata.s_addr = netinfo.ipaddr;
-    printf_debug("ipaddr=%x[%s], gateway=%x\n", netinfo.ipaddr, inet_ntoa(ipdata), netinfo.gateway);
+    printf_debug("mac:%x%x%x%x%x%x, ipaddr=%x[%s], gateway=%x\n", netinfo.mac[0],netinfo.mac[1],netinfo.mac[2],netinfo.mac[3],netinfo.mac[4],netinfo.mac[5],
+                                                            netinfo.ipaddr, inet_ntoa(ipdata), netinfo.gateway);
     memcpy(akt_response_data.payload_data, &netinfo, sizeof(DEVICE_NET_INFO_ST));
     akt_response_data.header.len = sizeof(DEVICE_NET_INFO_ST);
     return 0;

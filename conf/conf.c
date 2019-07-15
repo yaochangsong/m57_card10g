@@ -27,6 +27,8 @@ void config_init(void)
 {  
     /* to test*/
     struct sockaddr_in saddr;
+    uint8_t  mac[6];
+    
     saddr.sin_addr.s_addr=inet_addr("192.168.0.105");
     config.oal_config.network.ipaddress = saddr.sin_addr.s_addr;
     saddr.sin_addr.s_addr=inet_addr("192.168.0.1");
@@ -34,7 +36,10 @@ void config_init(void)
     saddr.sin_addr.s_addr=inet_addr("255.255.255.0");
     config.oal_config.network.netmask = saddr.sin_addr.s_addr;
     config.oal_config.network.port = 1234;
-
+    if(get_mac(mac, sizeof(mac)) != -1){
+        memcpy(config.oal_config.network.mac, mac, sizeof(config.oal_config.network.mac));
+    }
+    printf_debug("mac:%x%x%x%x%x%x\n", mac[0],mac[1],mac[2],mac[3],mac[4],mac[5]);
     printf_debug("config init\n");
     config.configfile = safe_strdup(DEFAULT_CONFIGFILE);
     config.daemon = -1;

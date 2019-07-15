@@ -73,8 +73,8 @@ int server_init(void)
    // tcpsrv->on_accept = on_accept;
 
     struct net_udp_server *udpsrv = NULL;
-    printf_debug("udp server init[port:%d]\n", poal_config->network.port+1);
-    udpsrv = udp_server_new("0.0.0.0",  poal_config->network.port+1);
+    printf_debug("udp server init[port:%d]\n", poal_config->network.port);
+    udpsrv = udp_server_new("0.0.0.0",  poal_config->network.port);
     if (!udpsrv)
         return -1;
 #endif

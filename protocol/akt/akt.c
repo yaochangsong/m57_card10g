@@ -15,7 +15,9 @@
 #include "config.h"
 
 PDU_CFG_REQ_HEADER_ST akt_header;
-struct response_data akt_response_data;
+
+struct response_get_data akt_get_response_data;
+struct response_set_data akt_set_response_data;
 
 struct akt_protocal_param akt_config;
 
@@ -196,16 +198,17 @@ static int akt_execute_set_command(void)
     struct poal_config *poal_config = &(config_get_config()->oal_config);
     int err_code;
     header = &akt_header;
-    int ch;
+    int ch = -1;
 
     err_code = RET_CODE_SUCCSESS;
-    printf_info("bussiness code[%x]\n", header->code);
+    printf_info("set bussiness code[%x]\n", header->code);
     switch (header->code)
     {
         case OUTPUT_ENABLE_PARAM:
         {
             printf_debug("enable[cid:%x en:%x]\n", header->buf[0], header->buf[1]);
             memcpy(&(pakt_config->enable), header->buf, sizeof(OUTPUT_ENABLE_PARAM_ST));
+            ch = pakt_config->enable.cid;
             if(check_radio_channel(pakt_config->enable.cid)){
                 err_code = RET_CODE_PARAMTER_ERR;
                 goto set_exit;
@@ -260,6 +263,7 @@ static int akt_execute_set_command(void)
                 err_code = RET_CODE_PARAMTER_ERR;
                 goto set_exit;
             }
+            ch = pakt_config->cid;
             memcpy(&(pakt_config->decode_param[pakt_config->cid]), header->buf, sizeof(MULTI_FREQ_DECODE_PARAM));
             if(akt_convert_oal_config(pakt_config->enable.cid, DIRECTION_MULTI_FREQ_ZONE_CMD) == -1){
                 err_code = RET_CODE_PARAMTER_NOT_SET;
@@ -276,6 +280,7 @@ static int akt_execute_set_command(void)
                 err_code = RET_CODE_PARAMTER_ERR;
                 goto set_exit;
             }
+            ch = pakt_config->cid;
             memcpy(&(pakt_config->smooth[pakt_config->cid]), header->buf, sizeof(DIRECTION_SMOOTH_PARAM));
             break;
         }
@@ -307,13 +312,41 @@ static int akt_execute_set_command(void)
         {
             break;
         }
+        case SNIFFER_DATA_REPORT_PARAM:
+        {
+            SNIFFER_DATA_REPORT_ST net_para;
+
+            net_para.cid = header->buf[0];
+            ch = net_para.cid;
+            printf_debug("net_para.cid=%d\n", net_para.cid);
+            if(check_radio_channel(net_para.cid)){
+                err_code = RET_CODE_PARAMTER_ERR;
+                goto set_exit;
+            }
+            memcpy(&net_para, header->buf, sizeof(SNIFFER_DATA_REPORT_ST));
+            
+            struct in_addr ipdata;
+            char *ipstr=NULL;
+            ipdata.s_addr = ntohl(net_para.ipaddr);
+            ipstr= inet_ntoa(ipdata);
+            printf_debug("ipstr=%s  ipaddr=%x, port=%d, type=%d\n", ipstr,  ipdata.s_addr, htons(net_para.port), net_para.type);
+            break;
+        }
         default:
-          printf_err("error class code[%d]\n",header->code);
+          printf_err("not support class code[%d]\n",header->code);
           err_code = RET_CODE_PARAMTER_ERR;
           goto set_exit;
     }
-
 set_exit:
+    memcpy(akt_set_response_data.payload_data, &err_code, sizeof(err_code));
+    akt_set_response_data.header.len = sizeof(err_code);
+    akt_set_response_data.header.operation = SET_CMD_RSP;
+    if(ch != -1){
+        akt_set_response_data.cid = (uint8_t)ch;
+    }else{
+        akt_set_response_data.cid = 0;
+    }
+    printf_debug("set cid=%d\n", akt_set_response_data.cid);
     return err_code;
 
 }
@@ -325,7 +358,7 @@ static int akt_execute_get_command(void)
     header = &akt_header;
 
     err_code = RET_CODE_SUCCSESS;
-    printf_info("bussiness code[%x]\n", header->code);
+    printf_info("get bussiness code[%x]\n", header->code);
     switch (header->code)
     {
         case DEVICE_SELF_CHECK_CMD:
@@ -335,8 +368,8 @@ static int akt_execute_get_command(void)
             self_check.ad_status = 0;
             self_check.pfga_temperature = io_get_adc_temperature();
             printf_debug("pfga_temperature=%d\n", self_check.pfga_temperature);
-            memcpy(akt_response_data.payload_data, &self_check, sizeof(DEVICE_SELF_CHECK_STATUS_RSP_ST));
-            akt_response_data.header.len = sizeof(DEVICE_SELF_CHECK_STATUS_RSP_ST);
+            memcpy(akt_get_response_data.payload_data, &self_check, sizeof(DEVICE_SELF_CHECK_STATUS_RSP_ST));
+            akt_get_response_data.header.len = sizeof(DEVICE_SELF_CHECK_STATUS_RSP_ST);
             break;
         }
         case SOFTWARE_VERSION_CMD:
@@ -344,6 +377,7 @@ static int akt_execute_get_command(void)
         default:
             printf_debug("not sppoort get commmand\n");
     }
+    akt_get_response_data.header.operation = QUERY_CMD_RSP;
     return 0;
 }
 
@@ -363,8 +397,9 @@ static int akt_execute_net_command(void)
     ipdata.s_addr = netinfo.ipaddr;
     printf_debug("mac:%x%x%x%x%x%x, ipaddr=%x[%s], gateway=%x\n", netinfo.mac[0],netinfo.mac[1],netinfo.mac[2],netinfo.mac[3],netinfo.mac[4],netinfo.mac[5],
                                                             netinfo.ipaddr, inet_ntoa(ipdata), netinfo.gateway);
-    memcpy(akt_response_data.payload_data, &netinfo, sizeof(DEVICE_NET_INFO_ST));
-    akt_response_data.header.len = sizeof(DEVICE_NET_INFO_ST);
+    memcpy(akt_get_response_data.payload_data, &netinfo, sizeof(DEVICE_NET_INFO_ST));
+    akt_get_response_data.header.len = sizeof(DEVICE_NET_INFO_ST);
+//    akt_get_response_data.header.operation = QUERY_CMD_RSP;
     return 0;
 }
 
@@ -450,6 +485,12 @@ bool akt_parse_header(const uint8_t *data, int len, uint8_t **payload, int *err_
     pdata = data;
     int header_len;
 
+    int i;
+    printf_debug("receive data:\n");
+    for(i = 0; i< len; i++)
+        printfd("%02x ", data[i]);
+    printfd("\n");
+
     header_len = sizeof(PDU_CFG_REQ_HEADER_ST) - sizeof(header->buf);
 
     if(len < header_len){
@@ -469,7 +510,11 @@ bool akt_parse_header(const uint8_t *data, int len, uint8_t **payload, int *err_
     printf_info("header.len=%x\n", header->len);
     printf_info("header.operation_code=%x\n", header->operation);
     printf_info("header.code=%x\n", header->code);
-    printf_info("header.usr_id=%llx\n", header->usr_id);
+    printf_info("header.usr_id:");
+    for(i = 0; i< sizeof(header->usr_id); i++){
+        printfd("%x", header->usr_id[i]);
+    }
+    printfd("\n");
     printf_info("header.receiver_id=%x\n", header->receiver_id);
     printf_info("header.crc=%x\n", header->crc);
 
@@ -497,7 +542,7 @@ bool akt_parse_data(const uint8_t *payload, int *code)
     
     printf_debug("payload:\n");
     for(i = 0; i< header->len; i++)
-        printfd("%x ", payload[i]);
+        printfd("%02x ", payload[i]);
     printfd("\n");
     
     if(header->len > MAX_RECEIVE_DATA_LEN){
@@ -524,6 +569,7 @@ bool akt_parse_data(const uint8_t *payload, int *code)
 *
 * DESCRIPTION:
 *     akt protocol send data prepare: assamble package
+*     注：  协议中，设置命令返回和查询命令返回头格式不一致（fuck!), 需要做判断
 *     
 * PARAMETERS
 *     buf:  send data pointer(not include header)
@@ -538,23 +584,39 @@ int akt_assamble_response_data(uint8_t **buf, int err_code)
     printf_info("Prepare to assamble response akt data\n");
 
     PDU_CFG_REQ_HEADER_ST *req_header;
-    PDU_CFG_RSP_HEADER_ST *response_header;
-    struct response_data *response_data;
+    struct response_get_data *response_data;
+    int header_len=0;
 
     req_header = &akt_header;
-    response_data = &akt_response_data;
+    response_data = &akt_get_response_data;
+    
+    header_len = sizeof(PDU_CFG_RSP_HEADER_ST);
+    if(req_header->operation == SET_CMD_REQ){
+        header_len += 1; /*结构体struct response_set_data cid长度*/
+        response_data = &akt_set_response_data;
+    }
+    
     *buf = response_data;
 
     response_data->header.start_flag = AKT_START_FLAG; 
-    response_data->header.operation =  req_header->operation;
     response_data->header.code = req_header->code;
     memcpy(response_data->header.usr_id, req_header->usr_id, sizeof(req_header->usr_id));
     response_data->header.receiver_id = 0;
-    response_data->header.crc = 0;
+    response_data->header.crc = crc16_caculate((uint8_t *)response_data->payload_data, response_data->header.len);
+    printf_info("crc:%04x\n", response_data->header.crc);
     response_data->end_flag = AKT_END_FLAG;
-    len = sizeof(PDU_CFG_RSP_HEADER_ST) + response_data->header.len;
+    
+    int i;
+    for(i = 0 ;i< response_data->header.len; i++){
+        printfd("%02x ", response_data->payload_data[i]);
+    }
+    printfd("\n");
+
+    printf_info("headerlen=%d, data len:%d\n", header_len, response_data->header.len);
+    len = header_len + response_data->header.len;
     memcpy(*buf+len, (uint8_t *)&response_data->end_flag, sizeof(response_data->end_flag));
     len +=  sizeof(response_data->end_flag);
+    
     return len;
 }
 
@@ -564,7 +626,7 @@ int akt_assamble_response_data(uint8_t **buf, int err_code)
 *
 * DESCRIPTION:
 *     错误时，组装返回错误包
-*     
+*     注：协议中，只有设置命令有错误返回！
 * PARAMETERS
 *     buf:  send data pointer(not include header)
 *    code: error code
@@ -577,21 +639,21 @@ int akt_assamble_error_response_data(uint8_t **buf, int err_code)
     printf_info("Prepare to assamble error response akt data\n");
 
     PDU_CFG_REQ_HEADER_ST *req_header;
-    PDU_CFG_RSP_HEADER_ST *response_header;
-    struct response_data *response_data;
+    struct response_set_data *response_data;
 
     req_header = &akt_header;
-    response_data = &akt_response_data;
+    response_data = &akt_set_response_data;
     *buf = response_data;
 
     response_data->header.start_flag = AKT_START_FLAG; 
-    response_data->header.operation =  req_header->operation;
+    //response_data->header.operation =  req_header->operation;
     response_data->header.code = req_header->code;
     memcpy(response_data->header.usr_id, req_header->usr_id, sizeof(req_header->usr_id));
     response_data->header.receiver_id = 0;
-    response_data->header.crc = 0;
     memcpy(response_data->payload_data, &err_code, sizeof(err_code));
     response_data->header.len = sizeof(err_code);
+    response_data->header.crc = crc16_caculate((uint8_t *)response_data->payload_data, response_data->header.len);
+    printf_info("crc:%x\n", response_data->header.crc);
     response_data->end_flag = AKT_END_FLAG;
     len = sizeof(PDU_CFG_RSP_HEADER_ST) + response_data->header.len;
     memcpy(*buf+len, (uint8_t *)&response_data->end_flag, sizeof(response_data->end_flag));

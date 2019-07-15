@@ -283,7 +283,6 @@ typedef struct  _PDU_REQ_HEADER{
 }__attribute__ ((packed)) PDU_CFG_REQ_HEADER_ST;
 
 
-
 //table 4 page 22
 typedef struct  _PDU_RSP_HEADER{
     uint16_t start_flag;
@@ -293,7 +292,6 @@ typedef struct  _PDU_RSP_HEADER{
     uint8_t usr_id[32];
     uint16_t receiver_id;
     uint16_t crc;
-    uint8_t cid;
 //    uint32_t *data;
 //    uint16_t end_flag;
 }__attribute__ ((packed)) PDU_CFG_RSP_HEADER_ST;
@@ -603,11 +601,19 @@ struct akt_protocal_param{
     DIRECTION_SMOOTH_PARAM smooth[MAX_RADIO_CHANNEL_NUM];
 }__attribute__ ((packed));
 
-struct response_data{
+struct response_get_data{
     PDU_CFG_RSP_HEADER_ST header;
     uint8_t  payload_data[MAX_SEND_DATA_LEN];
     uint16_t end_flag;
 };
+
+struct response_set_data{
+    PDU_CFG_RSP_HEADER_ST header;
+    uint8_t cid;
+    uint8_t  payload_data[MAX_SEND_DATA_LEN];
+    uint16_t end_flag;
+};
+
 
 extern bool akt_parse_header(const uint8_t *data, int len, uint8_t **payload, int *err_code);
 extern bool akt_parse_data(const uint8_t *payload, int *code);

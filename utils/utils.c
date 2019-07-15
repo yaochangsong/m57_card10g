@@ -58,6 +58,28 @@ int get_mac(char * mac, int len_limit)
     memcpy(mac, &ifreq.ifr_hwaddr.sa_data, len_limit);
     
     return 0;
-    //return snprintf (mac, len_limit, "%x%x%x%x%x%x", (unsigned char) ifreq.ifr_hwaddr.sa_data[0], (unsigned char) ifreq.ifr_hwaddr.sa_data[1], (unsigned char) ifreq.ifr_hwaddr.sa_data[2], (unsigned char) ifreq.ifr_hwaddr.sa_data[3], (unsigned char) ifreq.ifr_hwaddr.sa_data[4], (unsigned char) ifreq.ifr_hwaddr.sa_data[5]);
+}
+
+
+#define CRC_16_POLYNOMIALS   0x8005
+uint16_t crc16_caculate(uint8_t *pchMsg, uint16_t wDataLen) {
+    uint8_t i;
+    uint8_t chChar;
+    uint16_t wCRC = 0xFFFF; //g_CRC_value;
+
+    while (wDataLen--) {
+        chChar = *pchMsg++;
+        wCRC ^= (((uint16_t) chChar) << 8);
+
+        for (i = 0; i < 8; i++) {
+            if (wCRC & 0x8000) {
+                wCRC = (wCRC << 1) ^ CRC_16_POLYNOMIALS;
+            } else {
+                wCRC <<= 1;
+            }
+        }
+    }
+
+    return wCRC;
 }
 

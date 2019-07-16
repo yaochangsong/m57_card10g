@@ -2,109 +2,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 
 <root> 
+  <version>1.0</version>  
   <network> 
     <mac>38:2c:4a:ba:57:1d</mac>  
     <gateway>192.168.2.1</gateway>  
     <netmask>255.255.255.0</netmask>  
     <ipaddress>192.168.2.112</ipaddress>  
     <port>8000</port> 
-  </network>  
-  <mediumfrequency> 
-    <freqPoint> 
-      <channel>0</channel>  
-      <windowType>0</windowType>  
-      <frameDropCnt>15</frameDropCnt>  
-      <freqPointCnt>1</freqPointCnt>  
-      <smoothTimes/>  
-      <residenceTime>100</residenceTime>  
-      <residencePolicy>300</residencePolicy>  
-      <audioSampleRate>8</audioSampleRate>  
-      <freqPointCnt>1</freqPointCnt>  
-      <array> 
-        <index>1</index>  
-        <centerFreq>1000000</centerFreq>  
-        <bandwith>1000</bandwith>  
-        <freqResolution>20</freqResolution>  
-        <fftSize>64</fftSize>  
-        <decMethodId>1</decMethodId>  
-        <decBandwidth>16</decBandwidth>  
-        <muteSwitch>0</muteSwitch>  
-        <muteThreshold>50</muteThreshold> 
-      </array> 
-    </freqPoint>  
-    <subChannel> 
-      <subChannelNum>1</subChannelNum>  
-      <audioSampleRate>8</audioSampleRate>  
-      <array> 
-        <index>1</index>  
-        <centerFreq>1000000</centerFreq>  
-        <fftSize>64</fftSize>  
-        <decMethodId>1</decMethodId>  
-        <decBandwidth>16</decBandwidth>  
-        <muteSwitch>0</muteSwitch>  
-        <muteThreshold>50</muteThreshold> 
-      </array> 
-    </subChannel>  
-    <freqSegment> 
-      <freqSegmentCnt>1</freqSegmentCnt>  
-      <array> 
-        <index>1</index>  
-        <startFrequency>100</startFrequency>  
-        <endFrequency>1000</endFrequency>  
-        <step>20</step>  
-        <freqResolution>20</freqResolution>  
-        <fftSize>64</fftSize> 
-      </array> 
-    </freqSegment> 
-  </mediumfrequency>  
-  <radiofrequency> 
-    <channel>0</channel>  
-    <modeCode>0</modeCode>  
-    <gainMode>0</gainMode>  
-    <agcCtrlTime>10</agcCtrlTime>  
-    <agcOutPutAmp>1</agcOutPutAmp>  
-    <midBw>100</midBw>  
-    <antennaSelect>1</antennaSelect>  
-    <rfAttenuation>10</rfAttenuation> 
-  </radiofrequency>  
-  <controlPara> 
-    <ctrlMode>1</ctrlMode>  
-    <dataOutPutEn> 
-      <enable>1</enable>  
-      <subChannel>-1</subChannel>  
-      <psdEnable>0</psdEnable>  
-      <audioEnable>1</audioEnable>  
-      <IQEnable>0</IQEnable>  
-      <spectrumAnalysisEn>0</spectrumAnalysisEn>  
-      <directionEn>0</directionEn> 
-    </dataOutPutEn>  
-    <calibration>1</calibration>  
-    <timeSet>1</timeSet> 
-  </controlPara>  
-  <statusPara> 
-    <channelInfo> 
-      <channelNum>4</channelNum>  
-      <channelNode> 
-        <channel>1</channel>  
-        <channelStatus>1</channelStatus>  
-        <channelSignal>100</channelSignal> 
-      </channelNode>  
-      <channelNode> 
-        <channel>2</channel>  
-        <channelStatus>1</channelStatus>  
-        <channelSignal>200</channelSignal> 
-      </channelNode>  
-      <channelNode> 
-        <channel>3</channel>  
-        <channelStatus>1</channelStatus>  
-        <channelSignal>300</channelSignal> 
-      </channelNode>  
-      <channelNode> 
-        <channel>4</channel>  
-        <channelStatus>1</channelStatus>  
-        <channelSignal>500</channelSignal> 
-      </channelNode> 
-    </channelInfo>  
+  </network>
+  <statusPara>  
     <softVersion> 
       <app>v1.0-20190702-134310</app>  
       <kernel>v1.0-20190702-134310</kernel>  
@@ -122,14 +28,7 @@
     </clkInfo>  
     <adInfo> 
       <status>1</status> 
-    </adInfo>  
-    <rfInfo> 
-      <rfnum>1</rfnum>  
-      <rfnode> 
-        <status>1</status>  
-        <temprature>56</temprature> 
-      </rfnode> 
-    </rfInfo>  
+    </adInfo>   
     <fpgaInfo> 
       <temprature>67</temprature> 
     </fpgaInfo>  
@@ -140,7 +39,47 @@
         <freeSpace>5665641</freeSpace> 
       </diskNode> 
     </powerstate> 
-  </statusPara>  
+  </statusPara>
+  <channellist>
+      <channelNum>1</channelNum>
+      <array index=1>
+          <channel>0</channel>  
+          <mediumfrequency> 
+              <centerFreq>1000000</centerFreq>  
+              <bandwith>1000</bandwith>  
+              <freqResolution>20</freqResolution>  
+              <fftSize>64</fftSize>  
+              <decMethodId>1</decMethodId>  
+              <decBandwidth>16</decBandwidth>  
+              <muteSwitch>0</muteSwitch>  
+              <muteThreshold>50</muteThreshold>   
+          </mediumfrequency>  
+          <radiofrequency>
+            <status>1</status> 
+            <modeCode>0</modeCode>  
+            <gainMode>0</gainMode>  
+            <agcCtrlTime>10</agcCtrlTime>  
+            <agcOutPutAmp>1</agcOutPutAmp>  
+            <midBw>100</midBw>  
+            <rfAttenuation>10</rfAttenuation>           
+        	<temprature>56</temprature> 
+          </radiofrequency>
+      </array>
+  </channellist>    
+  <controlPara> 
+    <ctrlMode>1</ctrlMode>  
+    <dataOutPutEn> 
+      <enable>1</enable>  
+      <subChannel>-1</subChannel>  
+      <psdEnable>0</psdEnable>  
+      <audioEnable>1</audioEnable>  
+      <IQEnable>0</IQEnable>  
+      <spectrumAnalysisEn>0</spectrumAnalysisEn>  
+      <directionEn>0</directionEn> 
+    </dataOutPutEn>  
+    <calibration>1</calibration>  
+    <timeSet>1</timeSet> 
+  </controlPara>  
   <fileStorePara> 
     <iqDataStore>1</iqDataStore>  
     <iqDataBackTrace>1</iqDataBackTrace>  

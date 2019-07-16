@@ -133,39 +133,39 @@ static void *dao_load_default_config_file_array(char *file,char *array,char *nam
 {
 #if DAO_XML == 1
 
-    FILE *fp;
-    mxml_node_t *root,*parent_node,*node;
-    printf_debug("create singular xml config file\n");
-	
-    fp = fopen(file, "r");
+	FILE *fp;
+	mxml_node_t *root,*parent_node,*node;
+	printf_debug("create singular xml config file\n");
+
+	fp = fopen(file, "r");
 	if(fp != NULL){
-      root = mxmlLoadFile(NULL, fp, MXML_TEXT_CALLBACK);
-	  fclose(fp);
+	root = mxmlLoadFile(NULL, fp, MXML_TEXT_CALLBACK);
+	fclose(fp);
 	}
 	else root = mxmlNewXML("1.0");
 
 	parent_node = mxmlFindElement(root, root, array, name, value,MXML_DESCEND);
-	
+
 	if(parent_node == NULL){  
-       parent_node = mxmlNewElement(root, array);
-	   mxmlElementSetAttr(parent_node,name,value);
+	parent_node = mxmlNewElement(root, array);
+	mxmlElementSetAttr(parent_node,name,value);
 	}
 
 	node = mxmlFindElement(parent_node, root, element,NULL, NULL,MXML_DESCEND);
-	
-	if(node != NULL)  mxmlDelete(node);  //找到该元素，删除修改
-      
-	node =mxmlNewElement(parent_node, element);
-	
-    mxmlNewInteger(node, val);
-	
-    printf_debug("%s\n", file);
-    fp = fopen(file, "w");
-    mxmlSaveFile(root, fp, MXML_NO_CALLBACK);
-    fclose(fp);
 
-    printf_debug("1\n");
-    return (void *)root;
+	if(node != NULL)  mxmlDelete(node);  //找到该元素，删除修改
+
+	node =mxmlNewElement(parent_node, element);
+
+	mxmlNewInteger(node, val);
+
+	printf_debug("%s\n", file);
+	fp = fopen(file, "w");
+	mxmlSaveFile(root, fp, MXML_NO_CALLBACK);
+	fclose(fp);
+
+	printf_debug("1\n");
+	return (void *)root;
 #elif DAO_JSON == 1
 
 #else

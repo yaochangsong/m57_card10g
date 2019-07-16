@@ -56,13 +56,28 @@ s_config *config_get_config(void)
 }
 
 
-int8_t config_parse_data(uint8_t class_code, uint8_t business_code, void *data)
+int8_t config_parse_data(exec_cmd cmd, uint8_t type, void *data)
 {
     printf_debug("start to config parse data\n");
     return 0;
 }
 
-int8_t config_save_batch(uint8_t class_code, uint8_t business_code, void *data)
+/******************************************************************************
+* FUNCTION:
+*     config_save_batch
+*
+* DESCRIPTION:
+*     根据命令批量（单个）保存对应参数
+* PARAMETERS
+*     cmd:  保存参数对应类型命令; 见executor.h定义
+*    type:  子类型 见executor.h定义
+*     data: 对应数据结构；默认专递全局配置config结构体指针
+* RETURNS
+*       -1:  失败
+*        0：成功
+******************************************************************************/
+
+int8_t config_save_batch(exec_cmd cmd, uint8_t type, void *data)
 {
     printf_debug("save parse data\n");
     return 0;

@@ -72,7 +72,7 @@ spectrum spectrum_fre;
 
    注:若写入整数，则string 填 NULL
 */
-static void *dao_load_default_config_file_singular(char *file,char *parent_element,char *element,char *string,int val)
+void *dao_load_default_config_file_singular(char *file,char *parent_element,char *element,char *string,int val)
 {
 #if DAO_XML == 1
 
@@ -129,7 +129,7 @@ static void *dao_load_default_config_file_singular(char *file,char *parent_eleme
 */
 
 
-static void *dao_load_default_config_file_array(char *file,char *array,char *name,char *value,char *element,int val)
+void *dao_load_default_config_file_array(char *file,char *array,char *name,char *value,char *element,int val)
 {
 #if DAO_XML == 1
 

@@ -27,7 +27,7 @@ typedef struct {
 	mxml_node_t *array;
 	mxml_node_t *infchannel;
 
-    int portval;
+	int portval;
 
 	int channelval;
 	int windowTypeval;
@@ -38,27 +38,25 @@ typedef struct {
 	int residencePolicyval;
 	int audioSampleRateval;
 
-	
 
-    const char *buf;
+
+	const char *buf;
 	const char *macval;
-    const char *gatewayval;
-    const char *netmaskval;
+	const char *gatewayval;
+	const char *netmaskval;
 	const char *ipaddressval;
 
 
-    mxml_node_t *root;    /* <?xml ... ?> */
+	mxml_node_t *root;    /* <?xml ... ?> */
 	mxml_node_t *tree;
 	mxml_node_t *node; 
-    mxml_node_t *network;  
+	mxml_node_t *network;  
 
 	mxml_node_t *mediumfrequency;
 	mxml_node_t *freqPoint;
 	mxml_node_t *channel;
 	mxml_node_t *windowType;
-	mxml_node_t *frameDropCnt;
-	
-	
+	mxml_node_t *frameDropCnt;	
 } spectrum;
 
 spectrum spectrum_fre;
@@ -78,19 +76,19 @@ static void *dao_load_default_config_file_singular(char *file,char *parent_eleme
 {
 #if DAO_XML == 1
 
-    FILE *fp;
-    mxml_node_t *root,*parent_node,*node;
-    printf_debug("create singular xml config file\n");
+	FILE *fp;
+	mxml_node_t *root,*parent_node,*node;
+	printf_debug("create singular xml config file\n");
 
 
 	fp = fopen(file, "r");
 	if(fp != NULL) {	
-      root = mxmlLoadFile(NULL, fp, MXML_TEXT_CALLBACK);
-	  fclose(fp);
+	root = mxmlLoadFile(NULL, fp, MXML_TEXT_CALLBACK);
+	fclose(fp);
 	}
 	else root = mxmlNewXML("1.0");
 
-    parent_node = mxmlFindElement(root, root, parent_element, NULL, NULL,MXML_DESCEND);
+	parent_node = mxmlFindElement(root, root, parent_element, NULL, NULL,MXML_DESCEND);
 	if(parent_node == NULL)  parent_node = mxmlNewElement(root, parent_element);
 
 	node = mxmlFindElement(parent_node, root, element, NULL, NULL,MXML_DESCEND);
@@ -98,18 +96,18 @@ static void *dao_load_default_config_file_singular(char *file,char *parent_eleme
 	if(node != NULL)  mxmlDelete(node); //找到该元素，删除修改
 
 	node =mxmlNewElement(parent_node, element);
-   
+
 	if(string != NULL) mxmlNewText(node, 0, string);//写字符串
 
- 	else   mxmlNewInteger(node, val); //写整型数组
-		
-    printf_debug("%s\n", file);
-    fp = fopen(file, "w");
-    mxmlSaveFile(root, fp, MXML_NO_CALLBACK);
-    fclose(fp);
-	
-    printf_debug("1\n");
-    return (void *)root;
+	else   mxmlNewInteger(node, val); //写整型数组
+
+	printf_debug("%s\n", file);
+	fp = fopen(file, "w");
+	mxmlSaveFile(root, fp, MXML_NO_CALLBACK);
+	fclose(fp);
+
+	printf_debug("1\n");
+	return (void *)root;
 #elif DAO_JSON == 1
 
 #else
@@ -180,10 +178,10 @@ static void *dao_load_default_config_file_array(char *file,char *array,char *nam
 
 static void *dao_load_default_config_file(char *file)
 {
-    void *root;
-    root = dao_load_default_config_file_singular(file,"network","mac",NULL,87);
+	void *root;
+	root = dao_load_default_config_file_singular(file,"network","mac",NULL,87);
 	root = dao_load_default_config_file_singular(file,"network","ip",NULL,64);
-	
+
 	root = dao_load_default_config_file_array(file,"infchannel","index","1","centerFreq",2000);
 	root = dao_load_default_config_file_array(file,"infchannel","index","1","bandwith",5000);
 	root = dao_load_default_config_file_array(file,"infchannel","index","1","freqResolution",155);
@@ -217,76 +215,76 @@ static void *dao_load_config_file(FILE *fp)
     }
 #if DAO_XML == 1
     //mxml_node_t *root;
-    printf_debug("load xml config file\n");
+	printf_debug("load xml config file\n");
 
-	
+
 	spectrum_fre.tree = mxmlLoadFile(NULL, fp,MXML_TEXT_CALLBACK);
 
-	
-    spectrum_fre.node= mxmlFindElement(spectrum_fre.tree, spectrum_fre.tree, "mac", NULL, NULL, MXML_DESCEND);
-    spectrum_fre.macval = mxmlGetText(spectrum_fre.node, NULL);
-    printf_debug("mac结构体读取:%s\n",spectrum_fre.macval);
+
+	spectrum_fre.node= mxmlFindElement(spectrum_fre.tree, spectrum_fre.tree, "mac", NULL, NULL, MXML_DESCEND);
+	spectrum_fre.macval = mxmlGetText(spectrum_fre.node, NULL);
+	printf_debug("mac结构体读取:%s\n",spectrum_fre.macval);
 
 
 	spectrum_fre.node= mxmlFindElement(spectrum_fre.tree, spectrum_fre.tree, "gateway", NULL, NULL, MXML_DESCEND);
-    spectrum_fre.gatewayval = mxmlGetText(spectrum_fre.node, NULL);
-    printf_debug("gateway结构体读取:%s\n",spectrum_fre.gatewayval);
+	spectrum_fre.gatewayval = mxmlGetText(spectrum_fre.node, NULL);
+	printf_debug("gateway结构体读取:%s\n",spectrum_fre.gatewayval);
 
 	spectrum_fre.node= mxmlFindElement(spectrum_fre.tree, spectrum_fre.tree, "netmask", NULL, NULL, MXML_DESCEND);
-    spectrum_fre.netmaskval = mxmlGetText(spectrum_fre.node, NULL);
-    printf_debug("netmask结构体读取:%s\n",spectrum_fre.netmaskval);
+	spectrum_fre.netmaskval = mxmlGetText(spectrum_fre.node, NULL);
+	printf_debug("netmask结构体读取:%s\n",spectrum_fre.netmaskval);
 
 	spectrum_fre.node= mxmlFindElement(spectrum_fre.tree, spectrum_fre.tree, "ipaddress", NULL, NULL, MXML_DESCEND);
-    spectrum_fre.ipaddressval = mxmlGetText(spectrum_fre.node, NULL);
-    printf_debug("ipaddress结构体读取:%s\n",spectrum_fre.ipaddressval);
-   
-    
-    spectrum_fre.node= mxmlFindElement(spectrum_fre.tree, spectrum_fre.tree, "port",NULL, NULL,MXML_DESCEND);
-    spectrum_fre.buf = mxmlGetText(spectrum_fre.node,NULL);
-    spectrum_fre.portval = atoi(spectrum_fre.buf);
-    printf_debug("port结构体读取:%d\n",spectrum_fre.portval);
+	spectrum_fre.ipaddressval = mxmlGetText(spectrum_fre.node, NULL);
+	printf_debug("ipaddress结构体读取:%s\n",spectrum_fre.ipaddressval);
+
+
+	spectrum_fre.node= mxmlFindElement(spectrum_fre.tree, spectrum_fre.tree, "port",NULL, NULL,MXML_DESCEND);
+	spectrum_fre.buf = mxmlGetText(spectrum_fre.node,NULL);
+	spectrum_fre.portval = atoi(spectrum_fre.buf);
+	printf_debug("port结构体读取:%d\n",spectrum_fre.portval);
 
 
 	spectrum_fre.node= mxmlFindElement(spectrum_fre.tree, spectrum_fre.tree, "channel",NULL, NULL,MXML_DESCEND);
-    spectrum_fre.buf = mxmlGetText(spectrum_fre.node,NULL);
-    spectrum_fre.channelval = atoi(spectrum_fre.buf);
-    printf_debug("channel结构体读取:%d\n",spectrum_fre.channelval);
+	spectrum_fre.buf = mxmlGetText(spectrum_fre.node,NULL);
+	spectrum_fre.channelval = atoi(spectrum_fre.buf);
+	printf_debug("channel结构体读取:%d\n",spectrum_fre.channelval);
 
 	spectrum_fre.node= mxmlFindElement(spectrum_fre.tree, spectrum_fre.tree, "windowType",NULL, NULL,MXML_DESCEND);
-    spectrum_fre.buf = mxmlGetText(spectrum_fre.node,NULL);
-    spectrum_fre.windowTypeval = atoi(spectrum_fre.buf);
-    printf_debug("windowType结构体读取:%d\n",spectrum_fre.windowTypeval);
+	spectrum_fre.buf = mxmlGetText(spectrum_fre.node,NULL);
+	spectrum_fre.windowTypeval = atoi(spectrum_fre.buf);
+	printf_debug("windowType结构体读取:%d\n",spectrum_fre.windowTypeval);
 
 	spectrum_fre.node= mxmlFindElement(spectrum_fre.tree, spectrum_fre.tree, "frameDropCnt",NULL, NULL,MXML_DESCEND);
-    spectrum_fre.buf = mxmlGetText(spectrum_fre.node,NULL);
-    spectrum_fre.frameDropCntval = atoi(spectrum_fre.buf);
-    printf_debug("frameDropCnt结构体读取:%d\n",spectrum_fre.frameDropCntval);
+	spectrum_fre.buf = mxmlGetText(spectrum_fre.node,NULL);
+	spectrum_fre.frameDropCntval = atoi(spectrum_fre.buf);
+	printf_debug("frameDropCnt结构体读取:%d\n",spectrum_fre.frameDropCntval);
 
 	spectrum_fre.node= mxmlFindElement(spectrum_fre.tree, spectrum_fre.tree, "freqPointCnt",NULL, NULL,MXML_DESCEND);
-    spectrum_fre.buf = mxmlGetText(spectrum_fre.node,NULL);
-    spectrum_fre.freqPointCntval = atoi(spectrum_fre.buf);
-    printf_debug("freqPointCnt结构体读取:%d\n",spectrum_fre.freqPointCntval);
+	spectrum_fre.buf = mxmlGetText(spectrum_fre.node,NULL);
+	spectrum_fre.freqPointCntval = atoi(spectrum_fre.buf);
+	printf_debug("freqPointCnt结构体读取:%d\n",spectrum_fre.freqPointCntval);
 
 	spectrum_fre.node= mxmlFindElement(spectrum_fre.tree, spectrum_fre.tree, "smoothTimes",NULL, NULL,MXML_DESCEND);
-    spectrum_fre.buf = mxmlGetText(spectrum_fre.node,NULL);
-    spectrum_fre.smoothTimesval = atoi(spectrum_fre.buf);
-    printf_debug("smoothTimes结构体读取:%d\n",spectrum_fre.smoothTimesval);
+	spectrum_fre.buf = mxmlGetText(spectrum_fre.node,NULL);
+	spectrum_fre.smoothTimesval = atoi(spectrum_fre.buf);
+	printf_debug("smoothTimes结构体读取:%d\n",spectrum_fre.smoothTimesval);
 
 
 	spectrum_fre.node= mxmlFindElement(spectrum_fre.tree, spectrum_fre.tree, "residenceTime",NULL, NULL,MXML_DESCEND);
-    spectrum_fre.buf = mxmlGetText(spectrum_fre.node,NULL);
-    spectrum_fre.residenceTimeval = atoi(spectrum_fre.buf);
-    printf_debug("residenceTime结构体读取:%d\n",spectrum_fre.residenceTimeval);
+	spectrum_fre.buf = mxmlGetText(spectrum_fre.node,NULL);
+	spectrum_fre.residenceTimeval = atoi(spectrum_fre.buf);
+	printf_debug("residenceTime结构体读取:%d\n",spectrum_fre.residenceTimeval);
 
 	spectrum_fre.node= mxmlFindElement(spectrum_fre.tree, spectrum_fre.tree, "residencePolicy",NULL, NULL,MXML_DESCEND);
-    spectrum_fre.buf = mxmlGetText(spectrum_fre.node,NULL);
-    spectrum_fre.residencePolicyval = atoi(spectrum_fre.buf);
-    printf_debug("residencePolicy结构体读取:%d\n",spectrum_fre.residencePolicyval);
+	spectrum_fre.buf = mxmlGetText(spectrum_fre.node,NULL);
+	spectrum_fre.residencePolicyval = atoi(spectrum_fre.buf);
+	printf_debug("residencePolicy结构体读取:%d\n",spectrum_fre.residencePolicyval);
 
 	spectrum_fre.node= mxmlFindElement(spectrum_fre.tree, spectrum_fre.tree, "audioSampleRate",NULL, NULL,MXML_DESCEND);
-    spectrum_fre.buf = mxmlGetText(spectrum_fre.node,NULL);
-    spectrum_fre.audioSampleRateval = atoi(spectrum_fre.buf);
-    printf_debug("audioSampleRate结构体读取:%d\n",spectrum_fre.audioSampleRateval);
+	spectrum_fre.buf = mxmlGetText(spectrum_fre.node,NULL);
+	spectrum_fre.audioSampleRateval = atoi(spectrum_fre.buf);
+	printf_debug("audioSampleRate结构体读取:%d\n",spectrum_fre.audioSampleRateval);
 
 
 
@@ -302,17 +300,17 @@ static void *dao_load_config_file(FILE *fp)
 	spectrum_fre.centerFreq = mxmlFindElement(spectrum_fre.infchannel, spectrum_fre.tree, "centerFreq",NULL, NULL,MXML_DESCEND);
 
 	printf_debug("centerFreq2 = %s\n",mxmlGetText(spectrum_fre.centerFreq, NULL));
-	
 
 
-    mxmlDelete(spectrum_fre.tree);
 
-	
-    //root = mxmlLoadFile(NULL, fp, MXML_OPAQUE_CALLBACK);
-    /*mxml_node_t * tree;
+	mxmlDelete(spectrum_fre.tree);
+
+
+	//root = mxmlLoadFile(NULL, fp, MXML_OPAQUE_CALLBACK);
+	/*mxml_node_t * tree;
 	tree = mxmlLoadFile(NULL, fp,MXML_TEXT_CALLBACK);
 
-    return (void *)tree;*/
+	return (void *)tree;*/
 #elif DAO_JSON == 1
 
 #else

@@ -84,6 +84,7 @@ struct multi_freq_point_para_st{
     uint32_t residence_time;
     int32_t residence_policy;
     float audio_sample_rate;
+    uint64_t bandwidth;     /* add */
     uint32_t freq_point_cnt;
     struct freq_points_st  points[MAX_SIG_CHANNLE];
 }__attribute__ ((packed));
@@ -155,7 +156,7 @@ struct poal_config{
     struct multi_freq_point_para_st  multi_freq_point_param[MAX_RADIO_CHANNEL_NUM];
     struct sub_channel_freq_para_st sub_channel_para[MAX_RADIO_CHANNEL_NUM];
     struct multi_freq_fregment_para_st  multi_freq_fregment_para[MAX_RADIO_CHANNEL_NUM];
-    struct rf_para_st rf_para;
+    struct rf_para_st rf_para[MAX_RADIO_CHANNEL_NUM];
     struct network_st network;
     bool (*assamble_kernel_response_data)(char *, uint8_t);
 }__attribute__ ((packed));

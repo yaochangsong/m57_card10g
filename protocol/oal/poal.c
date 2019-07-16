@@ -68,7 +68,7 @@ bool poal_parse_request(uint8_t *data, int len, int *code)
 {
     uint8_t *payload = NULL;
     
-    printf_info("Prepare to parse data\n");
+    printf_debug("Prepare to parse data\n");
     if(poal_parse_header(data, len, &payload, code) == false){
         return false;
     }

@@ -119,6 +119,7 @@ static int8_t executor_set_kernel_command(uint8_t type, void *data)
         }
         case EX_SMOOTH_TIME:
         {
+            io_set_para_command(type, data);
             break;
         }
         case EX_RESIDENCE_TIME:
@@ -131,6 +132,7 @@ static int8_t executor_set_kernel_command(uint8_t type, void *data)
         }
         case EX_AUDIO_SAMPLE_RATE:
         {
+            io_set_para_command(type, data);
             break;
         }
         case EX_FFT_SIZE:
@@ -138,6 +140,10 @@ static int8_t executor_set_kernel_command(uint8_t type, void *data)
             break;
         }
         case EX_FRAME_DROP_CNT:
+        {
+            break;
+        }
+        case EX_BANDWITH:
         {
             break;
         }
@@ -150,14 +156,17 @@ static int8_t executor_set_kernel_command(uint8_t type, void *data)
 
 static int8_t executor_set_rf_command(uint8_t type, void *data)
 {
+    struct poal_config *poal_config = &(config_get_config()->oal_config);
     switch(type)
      {
         case EX_RF_MODE_CODE:
         {
+            printf_info("set rf bw: ch: %d, rf_mode_code:%d\n", poal_config->cid, poal_config->rf_para[poal_config->cid].rf_mode_code);
             break;
         }
         case EX_RF_GAIN_MODE:
         {
+            printf_info("set rf bw: ch: %d, gain_ctrl_method:%d\n", poal_config->cid, poal_config->rf_para[poal_config->cid].gain_ctrl_method);
             break;
         }
         case EX_RF_MGC_GAIN:
@@ -178,6 +187,7 @@ static int8_t executor_set_rf_command(uint8_t type, void *data)
         }
         case EX_RF_MID_BW:
         {
+            printf_info("set rf bw: ch: %d, bw:%d\n", poal_config->cid, poal_config->multi_freq_point_param[poal_config->cid].bandwidth);
             break;
         }
         case EX_RF_ANTENNA_SELECT:
@@ -186,6 +196,7 @@ static int8_t executor_set_rf_command(uint8_t type, void *data)
         }
         case EX_RF_ATTENUATION:
         {
+            printf_info("set rf bw: ch: %d, attenuation:%d\n", poal_config->cid, poal_config->rf_para[poal_config->cid].attenuation);
             break;
         }
         default:

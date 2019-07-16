@@ -30,7 +30,7 @@ enum {
     EX_MUTE_SW=11,                /*静噪开关*/
     EX_MUTE_THRE=12,              /*静噪门限*/
     EX_MID_FREQ=13,               /*中心频率*/
-    EX_BANDWITH=14,               /*中心频率*/
+    EX_BANDWITH=14,               /*带宽*/
     EX_DEC_METHOD=15,             /*解调方式*/
     EX_DEC_BW=16,                 /*解调带宽*/
     EX_SMOOTH_TIME=17,            /*平滑次数*/

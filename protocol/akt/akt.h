@@ -589,6 +589,15 @@ typedef struct _DIRECTION_SMOOTH_PARAM{
     uint8_t ch;
     uint16_t smooth;
 }__attribute__ ((packed)) DIRECTION_SMOOTH_PARAM;
+
+typedef struct _SUB_AUDIO_PARAM{
+    uint8_t cid;
+    uint8_t au_switch;
+    uint8_t volume;
+    uint8_t noise_en;
+    uint32_t sample_rate;
+}__attribute__ ((packed)) SUB_AUDIO_PARAM;
+
 /*************************************************************************/
 #define check_radio_channel(ch)  (ch > MAX_RADIO_CHANNEL_NUM ? 1 : 0) 
 

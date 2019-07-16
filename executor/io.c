@@ -94,7 +94,7 @@ static void io_set_common_param(uint8_t type, uint8_t *buf,uint32_t buf_len)
 
 static void io_set_smooth_factor(uint32_t factor)
 {
-    printf_debug("set smooth_factor: factor=%d\n",factor);
+    printf_info("set smooth_factor: factor=%d\n",factor);
 #ifdef PLAT_FORM_ARCH_ARM
     //smooth mode
     ioctl(io_ctrl_fd,IOCTL_SMOOTH_CH0,0x10000);
@@ -133,13 +133,14 @@ void io_set_dq_param(void)
     freq_factor = (uint32_t)tmp_freq;
 
     //banwidth 
-    ch = poal_config->enable.cid;
-    sub_ch = poal_config->enable.sub_id;
-    bindwith = poal_config->multi_freq_point_param[ch].points[sub_ch].bandwidth;
+    ch = poal_config->cid;
+    sub_ch = 0;
+    bindwith = poal_config->multi_freq_point_param[ch].points[sub_ch].d_bandwith;
     d_method = poal_config->multi_freq_point_param[ch].points[sub_ch].d_method;
 
     io_compute_extract_factor_by_fftsize(bindwith,&band_factor, &filter_factor);
-    printf_info("bindwith=%u,band_factor=%u, filter_factor=%u\n",bindwith, band_factor, filter_factor);
+    printf_info("ch:%d, sub_ch:%d,bindwith=%u,d_method=%d, band_factor=%u, filter_factor=%u\n",ch, sub_ch, bindwith, d_method, band_factor, filter_factor);
+
 
     //first close iq
     band_factor |= 0x1000000;
@@ -244,14 +245,25 @@ static void io_set_dma_SPECTRUM_out_disable(uint8_t ch)
 
 int8_t io_set_para_command(uint8_t type, void *data)
 {
+    struct poal_config *poal_config = &(config_get_config()->oal_config);
+
     switch(type)
     {
         case EX_CHANNEL_SELECT:
             printf_debug("select ch:%d\n", *(uint8_t *)data);
             io_set_common_param(7, data,sizeof(uint8_t));
             break;
+        case EX_AUDIO_SAMPLE_RATE:
+        {
+            SUB_AUDIO_PARAM paudio;
+            paudio.cid= *(uint8_t *)data;
+            paudio.sample_rate = (uint32_t)poal_config->multi_freq_point_param[paudio.cid].audio_sample_rate;
+            printf_info("set audio sample, ch:%d rate:%u\n", paudio.cid, paudio.sample_rate);
+            io_set_common_param(9, &paudio,sizeof(SUB_AUDIO_PARAM));
+            break;
+        }
         case EX_SMOOTH_TIME:
-            printf_debug("smooth time:%d\n", *(uint16_t *)data);
+            printf_info("smooth time:%d\n", *(uint16_t *)data);
             io_set_smooth_factor(*(uint16_t *)data);
             break;
         default:

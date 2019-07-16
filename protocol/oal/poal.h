@@ -149,6 +149,7 @@ struct network_st{
 
 
 struct poal_config{
+    uint8_t cid;
     volatile work_mode_type work_mode;
     struct output_en_st enable;
     struct multi_freq_point_para_st  multi_freq_point_param[MAX_RADIO_CHANNEL_NUM];

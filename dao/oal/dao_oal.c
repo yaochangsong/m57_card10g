@@ -15,52 +15,10 @@
 
 #include "config.h"
 
-typedef struct {
-	
-	int subChannelval;
-	int midFreqval;
-	int bandwithval;
-	int freqResolutionval;
-	int centerFreqval;
 
-	mxml_node_t *centerFreq;
-	mxml_node_t *array;
-	mxml_node_t *infchannel;
-
-	int portval;
-
-	int channelval;
-	int windowTypeval;
-	int frameDropCntval;
-	int freqPointCntval;
-	int smoothTimesval;
-	int residenceTimeval;
-	int residencePolicyval;
-	int audioSampleRateval;
-
-
-
-	const char *buf;
-	const char *macval;
-	const char *gatewayval;
-	const char *netmaskval;
-	const char *ipaddressval;
-
-
-	mxml_node_t *root;    /* <?xml ... ?> */
-	mxml_node_t *tree;
-	mxml_node_t *node; 
-	mxml_node_t *network;  
-
-	mxml_node_t *mediumfrequency;
-	mxml_node_t *freqPoint;
-	mxml_node_t *channel;
-	mxml_node_t *windowType;
-	mxml_node_t *frameDropCnt;	
-} spectrum;
-
-spectrum spectrum_fre;
-
+#define ARRAY        0
+#define ARRAY_PARENT 1
+#define ARRAY_ARRAY  2
 
 /* 
    功能:               将各个变量写入或修改到XML文件里
@@ -72,7 +30,7 @@ spectrum spectrum_fre;
 
    注:若写入整数，则string 填 NULL
 */
-void *dao_load_default_config_file_singular(char *file,const char *parent_element,const char *element,const char *string,int val)
+void *write_config_file_single(char *file,const char *parent_element,const char *element,const char *string,int val)
 {
 #if DAO_XML == 1
 
@@ -123,18 +81,23 @@ void *dao_load_default_config_file_singular(char *file,const char *parent_elemen
    name :            属性名称
    value :           属性值
    element :         子元素
+   seed_element:     下级子元素
+   seed_array:       下级数组名
+   seed_name:        下级属性名
+   seed_value:       下级属性值
    val:              子元素值
-
-   注:若写入整数，则string 填 NULL，否则 string不为NULL，则表示写入字符串
+   series:           建立类型  
 */
 
-
-void *dao_load_default_config_file_array(char *file,const char *array,const char *name,const char *value,const char *element,int val)
+void *write_config_file_array(char *file,const char *array,
+const char *name,const char *value,const char *element,const char *seed_element,
+const char *seed_array,const char *seed_name,const char *seed_value,
+int val,char series)
 {
 #if DAO_XML == 1
 
 	FILE *fp;
-	mxml_node_t *root,*parent_node,*node;
+	mxml_node_t *root,*parent_node,*node,*seed_node,*s_node;
 	printf_debug("create singular xml config file\n");
 
 	fp = fopen(file, "r");
@@ -153,11 +116,44 @@ void *dao_load_default_config_file_array(char *file,const char *array,const char
 
 	node = mxmlFindElement(parent_node, root, element,NULL, NULL,MXML_DESCEND);
 
-	if(node != NULL)  mxmlDelete(node);  //找到该元素，删除修改
 
-	node =mxmlNewElement(parent_node, element);
+	if(series == 0)
+	{
+		if(node != NULL)  mxmlDelete(node);  //找到该元素，删除修改
+		node =mxmlNewElement(parent_node, element);
 
-	mxmlNewInteger(node, val);
+		mxmlNewInteger(node, val);
+	}
+	else if(series == 1)  
+	{
+		if(node == NULL)  node = mxmlNewElement(parent_node, element);
+
+		seed_node = mxmlFindElement(node, parent_node, seed_element,NULL, NULL,MXML_DESCEND);
+
+		if(seed_node != NULL)  mxmlDelete(seed_node);  //找到该元素，删除修改
+
+		seed_node =mxmlNewElement(node, seed_element);
+
+		mxmlNewInteger(seed_node, val);
+	}
+	else if(series == 2)  
+	{
+
+		if(node == NULL)  node =  mxmlNewElement(parent_node, element);
+
+		s_node =  mxmlNewElement(node, seed_array);
+
+		mxmlElementSetAttr(s_node,seed_name,seed_value);
+
+		seed_node = mxmlFindElement(s_node, node, seed_element,NULL, NULL,MXML_DESCEND);
+
+		if(seed_node != NULL)  mxmlDelete(seed_node);  //找到该元素，删除修改
+
+		seed_node =mxmlNewElement(s_node, seed_element);
+
+		mxmlNewInteger(seed_node, val);
+	}
+
 
 	printf_debug("%s\n", file);
 	fp = fopen(file, "w");
@@ -185,7 +181,7 @@ void *dao_load_default_config_file_array(char *file,const char *array,const char
 */
 
 
-const char *dao_load_config_file_singular(char *file,const char *parent_element,const char *element)
+const char *read_config_file_single(char *file,const char *parent_element,const char *element)
 {
     FILE *fp;
     
@@ -226,7 +222,7 @@ const char *dao_load_config_file_singular(char *file,const char *parent_element,
    函数将返回数组元素变量值
 */
 
-const char *dao_load_config_file_array(char *file,const char *array,const char *name,const char *value,const char *element)
+const char *read_config_file_array(char *file,const char *array,const char *name,const char *value,const char *element)
 {
 	FILE *fp;
 #if DAO_XML == 1
@@ -254,20 +250,22 @@ const char *dao_load_config_file_array(char *file,const char *array,const char *
     return NULL;
 }
 
-
-
+#define ARRAY        0
+#define ARRAY_PARENT 1
+#define ARRAY_ARRAY  2
 
 static void *dao_load_default_config_file(char *file)
 {
 	void *root;
-	root = dao_load_default_config_file_singular(file,"network","mac",NULL,87);
-	root = dao_load_default_config_file_singular(file,"network","ip",NULL,64);
+	root = write_config_file_single(file,"network","mac",NULL,87);
+	root = write_config_file_single(file,"network","ip",NULL,64);
 
-	root = dao_load_default_config_file_array(file,"infchannel","index","1","centerFreq",2000);
-	root = dao_load_default_config_file_array(file,"infchannel","index","1","bandwith",5000);
-	root = dao_load_default_config_file_array(file,"infchannel","index","1","freqResolution",155);
-	root = dao_load_default_config_file_array(file,"infchannel","index","1","fftSize",23);
-	root = dao_load_default_config_file_array(file,"infchannel","index","1","decMethodId",56);
+	root = write_config_file_array(file,"channel","index","0","cid",NULL,NULL,NULL,NULL,1,ARRAY);
+
+
+	root = write_config_file_array(file,"channel","index","0","mediumfrequency","centerFreq","freqPoint","indexx","33",77,ARRAY_ARRAY);
+
+	root = write_config_file_array(file,"channel","index","0","radiofrequency","status",NULL,NULL,NULL,99,ARRAY_PARENT);
 
 	return root;
 }
@@ -302,7 +300,7 @@ void dao_read_create_config_file(char *file, void *root_config)
 		fclose(fp);
         printf_debug("load config file\n");
 
-        const char *buf = dao_load_config_file_singular(file,"network","mac");
+        const char *buf = read_config_file_single(file,"network","mac");
 		printf_debug("查找mac地址:%s............\n",buf);       
        
     }else{

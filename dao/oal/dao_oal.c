@@ -20,6 +20,10 @@
 #define ARRAY_PARENT 1
 #define ARRAY_ARRAY  2
 
+
+mxml_node_t *whole_root;
+spectrum spectrum_fre;
+
 /* 
    功能:               将各个变量写入或修改到XML文件里
    file:             xml文件名
@@ -30,42 +34,73 @@
 
    注:若写入整数，则string 填 NULL
 */
-void *write_config_file_single(char *file,const char *parent_element,const char *element,const char *string,int val)
+void *write_config_file_single(char *file,const char *parent_element,const char *element,
+const char *s_element,const char *seed_element,
+const char *string,int val,char series)
 {
 #if DAO_XML == 1
-
-	FILE *fp;
-	mxml_node_t *root,*parent_node,*node;
+    FILE *fp;
+	mxml_node_t *parent_node,*node,*seed_node,*s_node;;
 	printf_debug("create singular xml config file\n");
 
+	parent_node = mxmlFindElement(whole_root, whole_root, parent_element, NULL, NULL,MXML_DESCEND);
+	if(parent_node == NULL)  parent_node = mxmlNewElement(whole_root, parent_element);
 
-	fp = fopen(file, "r");
-	if(fp != NULL) {	
-	root = mxmlLoadFile(NULL, fp, MXML_TEXT_CALLBACK);
-	fclose(fp);
+	node = mxmlFindElement(parent_node, whole_root, element, NULL, NULL,MXML_DESCEND);
+	
+	if(series ==0)
+	{
+      if(node != NULL)  mxmlDelete(node); //找到该元素，删除修改
+
+	  node =mxmlNewElement(parent_node, element);
+
+	  if(string != NULL) mxmlNewText(node, 0, string);//写字符串
+
+	  else   mxmlNewInteger(node, val); //写整型数组
 	}
-	else root = mxmlNewXML("1.0");
+	else if(series == 1)
+	{
+       if(node == NULL)  node =mxmlNewElement(parent_node, element);
 
-	parent_node = mxmlFindElement(root, root, parent_element, NULL, NULL,MXML_DESCEND);
-	if(parent_node == NULL)  parent_node = mxmlNewElement(root, parent_element);
+	   s_node = mxmlFindElement(node, parent_node, s_element, NULL, NULL,MXML_DESCEND);
 
-	node = mxmlFindElement(parent_node, root, element, NULL, NULL,MXML_DESCEND);
+	   if(s_node != NULL)  mxmlDelete(s_node); //找到该元素，删除修改
 
-	if(node != NULL)  mxmlDelete(node); //找到该元素，删除修改
+	   s_node =mxmlNewElement(node, s_element);
+	  
+	   if(string != NULL) mxmlNewText(s_node, 0, string);//写字符串
 
-	node =mxmlNewElement(parent_node, element);
+	   else   mxmlNewInteger(s_node, val); //写整型数组
+	}
+	else if(series == 2)
+	{
+       if(node == NULL)  node =mxmlNewElement(parent_node, element);
 
-	if(string != NULL) mxmlNewText(node, 0, string);//写字符串
+	   s_node = mxmlFindElement(node, parent_node, s_element, NULL, NULL,MXML_DESCEND);
 
-	else   mxmlNewInteger(node, val); //写整型数组
+	   if(s_node == NULL)  s_node =mxmlNewElement(node, s_element);
+
+	   seed_node = mxmlFindElement(s_node, node, seed_element, NULL, NULL,MXML_DESCEND);
+
+	   
+	   if(seed_node != NULL)  mxmlDelete(seed_node); //找到该元素，删除修改
+
+	   seed_node =mxmlNewElement(s_node, seed_element);
+	  
+	   if(string != NULL) mxmlNewText(seed_node, 0, string);//写字符串
+
+	   else   mxmlNewInteger(seed_node, val); //写整型数组
+	}
+
+	
 
 	printf_debug("%s\n", file);
 	fp = fopen(file, "w");
-	mxmlSaveFile(root, fp, MXML_NO_CALLBACK);
+	mxmlSaveFile(whole_root, fp, MXML_NO_CALLBACK);
 	fclose(fp);
 
 	printf_debug("1\n");
-	return (void *)root;
+	return (void *)whole_root;
 #elif DAO_JSON == 1
 
 #else
@@ -89,79 +124,74 @@ void *write_config_file_single(char *file,const char *parent_element,const char 
    series:           建立类型  
 */
 
-void *write_config_file_array(char *file,const char *array,
-const char *name,const char *value,const char *element,const char *seed_element,
-const char *seed_array,const char *seed_name,const char *seed_value,
-int val,char series)
+
+
+
+
+
+void *write_config_file_array(spectrum        spectrum_fre)
 {
 #if DAO_XML == 1
 
 	FILE *fp;
-	mxml_node_t *root,*parent_node,*node,*seed_node,*s_node;
+	mxml_node_t *parent_node,*node,*seed_node,*s_node;
 	printf_debug("create singular xml config file\n");
 
-	fp = fopen(file, "r");
-	if(fp != NULL){
-	root = mxmlLoadFile(NULL, fp, MXML_TEXT_CALLBACK);
-	fclose(fp);
-	}
-	else root = mxmlNewXML("1.0");
-
-	parent_node = mxmlFindElement(root, root, array, name, value,MXML_DESCEND);
+	parent_node = mxmlFindElement(whole_root, whole_root, spectrum_fre.array, spectrum_fre.name, spectrum_fre.value,MXML_DESCEND);
 
 	if(parent_node == NULL){  
-	parent_node = mxmlNewElement(root, array);
-	mxmlElementSetAttr(parent_node,name,value);
+	parent_node = mxmlNewElement(whole_root, spectrum_fre.array);
+	mxmlElementSetAttr(parent_node,spectrum_fre.name,spectrum_fre.value);
 	}
 
-	node = mxmlFindElement(parent_node, root, element,NULL, NULL,MXML_DESCEND);
+	node = mxmlFindElement(parent_node, whole_root, spectrum_fre.element,NULL, NULL,MXML_DESCEND);
 
 
-	if(series == 0)
+	if(spectrum_fre.series == ARRAY)
 	{
 		if(node != NULL)  mxmlDelete(node);  //找到该元素，删除修改
-		node =mxmlNewElement(parent_node, element);
+		node =mxmlNewElement(parent_node, spectrum_fre.element);
 
-		mxmlNewInteger(node, val);
+		mxmlNewInteger(node, spectrum_fre.val);
 	}
-	else if(series == 1)  
+	else if(spectrum_fre.series == ARRAY_PARENT)  
 	{
-		if(node == NULL)  node = mxmlNewElement(parent_node, element);
+		if(node == NULL)  node = mxmlNewElement(parent_node, spectrum_fre.element);
 
-		seed_node = mxmlFindElement(node, parent_node, seed_element,NULL, NULL,MXML_DESCEND);
+		seed_node = mxmlFindElement(node, parent_node, spectrum_fre.seed_element,NULL, NULL,MXML_DESCEND);
 
 		if(seed_node != NULL)  mxmlDelete(seed_node);  //找到该元素，删除修改
 
-		seed_node =mxmlNewElement(node, seed_element);
+		seed_node =mxmlNewElement(node, spectrum_fre.seed_element);
 
-		mxmlNewInteger(seed_node, val);
+		mxmlNewInteger(seed_node, spectrum_fre.val);
 	}
-	else if(series == 2)  
+	else if(spectrum_fre.series == ARRAY_ARRAY)  
 	{
 
-		if(node == NULL)  node =  mxmlNewElement(parent_node, element);
+		if(node == NULL)  node =  mxmlNewElement(parent_node, spectrum_fre.element);
 
-		s_node =  mxmlNewElement(node, seed_array);
+		s_node =  mxmlNewElement(node, spectrum_fre.seed_array);
 
-		mxmlElementSetAttr(s_node,seed_name,seed_value);
+		mxmlElementSetAttr(s_node,spectrum_fre.seed_name,spectrum_fre.seed_value);
 
-		seed_node = mxmlFindElement(s_node, node, seed_element,NULL, NULL,MXML_DESCEND);
+		seed_node = mxmlFindElement(s_node, node, spectrum_fre.seed_element,NULL, NULL,MXML_DESCEND);
 
 		if(seed_node != NULL)  mxmlDelete(seed_node);  //找到该元素，删除修改
 
-		seed_node =mxmlNewElement(s_node, seed_element);
+		seed_node =mxmlNewElement(s_node, spectrum_fre.seed_element);
 
-		mxmlNewInteger(seed_node, val);
+		mxmlNewInteger(seed_node, spectrum_fre.val);
 	}
 
 
-	printf_debug("%s\n", file);
-	fp = fopen(file, "w");
-	mxmlSaveFile(root, fp, MXML_NO_CALLBACK);
+	printf_debug("%s\n", spectrum_fre.file);
+	fp = fopen(spectrum_fre.file, "w");
+	mxmlSaveFile(whole_root, fp, MXML_NO_CALLBACK);
 	fclose(fp);
 
 	printf_debug("1\n");
-	return (void *)root;
+	return (void *)whole_root;
 #elif DAO_JSON == 1
 
 #else
@@ -182,21 +212,15 @@ int val,char series)
 
 
 const char *read_config_file_single(char *file,const char *parent_element,const char *element)
-{
-    FILE *fp;
-    
+{ 
 #if DAO_XML == 1
-	mxml_node_t *tree,*parent_node,*node;
+	mxml_node_t *parent_node,*node;
 	printf_debug("load xml config file\n");
 
-	fp = fopen(file, "r");
-	if(fp != NULL){
-	tree = mxmlLoadFile(NULL, fp,MXML_TEXT_CALLBACK);
-	fclose(fp);
-	}
-	parent_node= mxmlFindElement(tree, tree, parent_element, NULL, NULL, MXML_DESCEND);
 
-	node= mxmlFindElement(parent_node, tree, element, NULL, NULL, MXML_DESCEND);
+	parent_node= mxmlFindElement(whole_root, whole_root, parent_element, NULL, NULL, MXML_DESCEND);
+
+	node= mxmlFindElement(parent_node, whole_root, element, NULL, NULL, MXML_DESCEND);
 
 	const char *string = mxmlGetText(node, NULL);
 
@@ -224,20 +248,14 @@ const char *read_config_file_single(char *file,const char *parent_element,const 
 
 const char *read_config_file_array(char *file,const char *array,const char *name,const char *value,const char *element)
 {
-	FILE *fp;
 #if DAO_XML == 1
-	mxml_node_t *tree,*parent_node,*node;
+	mxml_node_t *parent_node,*node;
 	printf_debug("load xml config file\n");
 
-	fp = fopen(file, "r");
-	if(fp != NULL){
-	tree = mxmlLoadFile(NULL, fp,MXML_TEXT_CALLBACK);
-	fclose(fp);
-	}
 
-	parent_node = mxmlFindElement(tree, tree, array, name,value, MXML_DESCEND);
+	parent_node = mxmlFindElement(whole_root, whole_root, array, name,value, MXML_DESCEND);
 
-	node = mxmlFindElement(parent_node,tree, element,NULL, NULL,MXML_DESCEND);
+	node = mxmlFindElement(parent_node,whole_root, element,NULL, NULL,MXML_DESCEND);
 
 	const char *string = mxmlGetText(node, NULL);
 
@@ -250,22 +268,41 @@ const char *read_config_file_array(char *file,const char *array,const char *name
     return NULL;
 }
 
-#define ARRAY        0
-#define ARRAY_PARENT 1
-#define ARRAY_ARRAY  2
+
 
 static void *dao_load_default_config_file(char *file)
 {
 	void *root;
-	root = write_config_file_single(file,"network","mac",NULL,87);
-	root = write_config_file_single(file,"network","ip",NULL,64);
+	
+	root = write_config_file_single(file,"network","mac","asd",NULL,NULL,87,1);
+	root = write_config_file_single(file,"network","aa","bb","cc",NULL,87,2);
+	root = write_config_file_single(file,"network","ip",NULL,NULL,NULL,64,0);
 
-	root = write_config_file_array(file,"channel","index","0","cid",NULL,NULL,NULL,NULL,1,ARRAY);
 
 
-	root = write_config_file_array(file,"channel","index","0","mediumfrequency","centerFreq","freqPoint","indexx","33",77,ARRAY_ARRAY);
 
-	root = write_config_file_array(file,"channel","index","0","radiofrequency","status",NULL,NULL,NULL,99,ARRAY_PARENT);
+	spectrum_fre.file = file;
+	spectrum_fre.array = "channel";
+	spectrum_fre.name = "index";
+	spectrum_fre.value = "0";
+	
+    spectrum_fre.element = "mediumfrequency";
+	spectrum_fre.seed_element = "centerFreq";
+	spectrum_fre.seed_array = "freqPoint";
+	spectrum_fre.seed_name = "indexx";
+	spectrum_fre.seed_value = "37";
+	spectrum_fre.val = 90;   
+	spectrum_fre.series = ARRAY_ARRAY;
+	root = write_config_file_array(spectrum_fre);
+
+    spectrum_fre.element = "cid";
+	spectrum_fre.val = 3;   
+	spectrum_fre.series = ARRAY;
+	root = write_config_file_array(spectrum_fre);
+
+	
+	//root = write_config_file_array(file,"channel","index","0","mediumfrequency","centerFreq","freqPoint","indexx","33",77,ARRAY_ARRAY);
+	//root = write_config_file_array(file,"channel","index","0","radiofrequency","status",NULL,NULL,NULL,99,ARRAY_PARENT);
 
 	return root;
 }
@@ -290,6 +327,7 @@ static void *dao_load_root(void *root)
 
 
 
+
 void dao_read_create_config_file(char *file, void *root_config)
 {
     void *root;
@@ -297,16 +335,20 @@ void dao_read_create_config_file(char *file, void *root_config)
     /* read/write or create file */
     fp = fopen(file, "r");
     if(fp != NULL){
-		fclose(fp);
+		whole_root = mxmlLoadFile(NULL, fp, MXML_TEXT_CALLBACK);
+		
         printf_debug("load config file\n");
-
-        const char *buf = read_config_file_single(file,"network","mac");
-		printf_debug("查找mac地址:%s............\n",buf);       
+        const char *buf = read_config_file_single(file,"network","cc");
+		printf_debug("查找cc地址:%s............\n",buf);   
+		fclose(fp);
        
     }else{
+		
+		whole_root = mxmlNewXML("1.0");	
         printf_debug("create new config file\n");
 		root = dao_load_default_config_file(file);
     }
+	
     printf_debug("1\n");
     root_config = dao_load_root(root);
     printf_debug("1\n");

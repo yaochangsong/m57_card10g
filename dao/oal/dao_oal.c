@@ -342,7 +342,7 @@ void dao_read_create_config_file(char *file, void *root_config)
 		printf_debug("查找cc地址:%s............\n",buf);   
 		fclose(fp);
        
-    }else{
+    }else{//
 		
 		whole_root = mxmlNewXML("1.0");	
         printf_debug("create new config file\n");

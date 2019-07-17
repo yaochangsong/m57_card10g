@@ -99,5 +99,5 @@ struct sem_st{
 
 extern void executor_init(void);
 extern int8_t executor_set_command(exec_cmd cmd, uint8_t type, uint8_t ch,  void *data);
-
+extern int8_t executor_get_command(exec_cmd cmd, uint8_t type, uint8_t ch,  void *data);
 #endif

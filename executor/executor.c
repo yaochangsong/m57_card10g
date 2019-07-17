@@ -31,6 +31,11 @@ static int8_t executor_wait_kernel_deal(void)
     return 0;
 }
 
+void executor_fast_scan_mode(void)
+{
+    
+}
+
 void executor_work_mode_thread(void *arg)
 {
     struct poal_config *poal_config = &(config_get_config()->oal_config);
@@ -43,10 +48,11 @@ void executor_work_mode_thread(void *arg)
 loop:   printf_info("######wait to deal work######\n");
         sem_wait(&work_sem.notify_deal);
         printf_info("receive notify, %s Work: [%s], [%s], [%s]\n", 
-                                                 poal_config->enable.bit_en == 0 ? "Stop" : "Start",
-                                                 poal_config->enable.psd_en == 0 ? "Psd Stop" : "Psd Start",
-                                                 poal_config->enable.audio_en == 0 ? "Audio Stop" : "Audio Start",
-                                                 poal_config->enable.iq_en == 0 ? "IQ Stop" : "IQ Start");
+                     poal_config->enable.bit_en == 0 ? "Stop" : "Start",
+                     poal_config->enable.psd_en == 0 ? "Psd Stop" : "Psd Start",
+                     poal_config->enable.audio_en == 0 ? "Audio Stop" : "Audio Start",
+                     poal_config->enable.iq_en == 0 ? "IQ Stop" : "IQ Start");
+        
         if(poal_config->enable.audio_en || poal_config->enable.iq_en){
             io_set_enable_command(AUDIO_MODE_ENABLE, poal_config->enable.cid, fft_size);
         }else{
@@ -70,6 +76,7 @@ loop:   printf_info("######wait to deal work######\n");
                 }
                     break;
                 case OAL_FAST_SCAN_MODE:
+                    executor_fast_scan_mode();
                     printf_info("start fast scan thread\n");
                     goto loop;
                     break;
@@ -163,6 +170,18 @@ static int8_t executor_set_kernel_command(uint8_t type, uint8_t ch, void *data)
     return 0;
 }
 
+static int8_t executor_get_rf_command(uint8_t type, uint8_t ch, void *data)
+{
+    switch(type)
+    {
+        case EX_RF_STATUS_TEMPERAT:
+            rf_read_interface(EX_RF_STATUS_TEMPERAT, ch, data);
+            break;
+        default:
+            printf_err("not support get type[%d]\n", type);
+    }
+    return 0;
+}
 
 static int8_t executor_set_rf_command(uint8_t type, uint8_t ch, void *data)
 {
@@ -171,15 +190,18 @@ static int8_t executor_set_rf_command(uint8_t type, uint8_t ch, void *data)
         case EX_RF_MODE_CODE:
         {
             printf_info("set rf bw: ch: %d, rf_mode_code:%d\n", ch, *(uint8_t *)data);
+            rf_set_interface(type, ch, *(uint8_t *)data);
             break;
         }
         case EX_RF_GAIN_MODE:
         {
             printf_info("set rf bw: ch: %d, gain_ctrl_method:%d\n", ch, *(uint8_t *)data);
+            rf_set_interface(type, ch, *(uint8_t *)data);
             break;
         }
         case EX_RF_MGC_GAIN:
         {
+            rf_set_interface(type, ch, *(uint8_t *)data);
             printf_info("set mgc gain: ch: %d, mgc_gain_value:%d\n", ch, *(int8_t *)data);
             
             break;
@@ -203,10 +225,12 @@ static int8_t executor_set_rf_command(uint8_t type, uint8_t ch, void *data)
         }
         case EX_RF_ANTENNA_SELECT:
         {
+            rf_set_interface(type, ch, *(uint8_t *)data);
             break;
         }
         case EX_RF_ATTENUATION:
         {
+            rf_set_interface(type, ch, *(uint8_t *)data);
             printf_info("set rf bw: ch: %d, attenuation:%d\n", ch, *(uint8_t *)data);
             break;
         }
@@ -258,6 +282,31 @@ int8_t executor_set_command(exec_cmd cmd, uint8_t type, uint8_t ch,  void *data)
      }
      return 0;
 }
+
+int8_t executor_get_command(exec_cmd cmd, uint8_t type, uint8_t ch,  void *data)
+{
+    switch(cmd)
+    {
+        case EX_MID_FREQ_CMD:
+        {
+            break;
+        }
+        case EX_RF_FREQ_CMD:
+        {
+            executor_get_rf_command(type, ch, data);
+            break;
+        }
+        case EX_NETWORK_CMD:
+        {
+            break;
+        }
+        default:
+            printf_err("invalid get command[%d]\n", cmd);
+    }
+    return 0;
+
+}
+
 
 void executor_init(void)
 {

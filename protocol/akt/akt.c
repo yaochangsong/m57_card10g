@@ -205,7 +205,7 @@ static int akt_executor_set_enable_command(uint8_t ch)
                 executor_set_command(EX_RF_FREQ_CMD, EX_RF_MID_FREQ, ch, &poal_config->rf_para[ch].mid_freq);
                 executor_set_command(EX_RF_FREQ_CMD, EX_RF_MID_BW, ch, &poal_config->rf_para[ch].mid_bw);
                 executor_set_command(EX_WORK_MODE_CMD, EX_FIXED_FREQ_ANYS_MODE, ch, NULL);
-                executor_set_command(EX_MID_FREQ_CMD, EX_CHANNEL_SELECT, ch, &poal_config->enable.cid);
+                executor_set_command(EX_MID_FREQ_CMD, EX_CHANNEL_SELECT, ch, &ch);
                 executor_set_command(EX_MID_FREQ_CMD, EX_SMOOTH_TIME, ch, &poal_config->multi_freq_point_param[ch].smooth_time);
                 for(i= 0; i< poal_config->multi_freq_point_param[ch].freq_point_cnt; i++){
                     executor_set_command(EX_MID_FREQ_CMD, EX_FFT_SIZE, ch, &poal_config->multi_freq_point_param[ch].points[i].fft_size);
@@ -217,6 +217,12 @@ static int akt_executor_set_enable_command(uint8_t ch)
             case OAL_FAST_SCAN_MODE:
             {
                 executor_set_command(EX_WORK_MODE_CMD, EX_FAST_SCAN_MODE, ch, NULL);
+                executor_set_command(EX_RF_FREQ_CMD, EX_RF_ATTENUATION, ch, &poal_config->rf_para[ch].attenuation);
+                executor_set_command(EX_RF_FREQ_CMD, EX_RF_MID_FREQ, ch, &poal_config->rf_para[ch].mid_freq);
+                executor_set_command(EX_RF_FREQ_CMD, EX_RF_MID_BW, ch, &poal_config->rf_para[ch].mid_bw);
+                executor_set_command(EX_MID_FREQ_CMD, EX_CHANNEL_SELECT, ch, &ch);
+                executor_set_command(EX_MID_FREQ_CMD, EX_BANDWITH, ch, &poal_config->multi_freq_fregment_para[ch].bandwith);
+                executor_set_command(EX_MID_FREQ_CMD, EX_SMOOTH_TIME, ch, &poal_config->multi_freq_fregment_para[ch].smooth_time);
                 break;
             }
             case OAL_MULTI_ZONE_SCAN_MODE:
@@ -379,7 +385,8 @@ static int akt_execute_set_command(void)
             }
             ch = poal_config->cid;
             poal_config->rf_para[ch].mid_bw = *((uint32_t *)(header->buf+1));
-            executor_set_command(EX_MID_FREQ_CMD, EX_BANDWITH, ch, &poal_config->rf_para[ch].mid_bw);
+            poal_config->multi_freq_fregment_para[ch].bandwith = *((uint32_t *)(header->buf+1));
+            executor_set_command(EX_RF_FREQ_CMD, EX_RF_MID_BW, ch, &poal_config->rf_para[ch].mid_bw);
             break;
         }
         case RF_ATTENUATION_CMD:

@@ -788,49 +788,76 @@ static uint8_t query_rf_temperature(uint8_t ch,int16_t *temperature){
 uint8_t rf_set_interface(uint8_t cmd,uint8_t ch,void *data){
     uint8_t ret = -1;
     uint8_t mgc_gain_value,noise_mode,rf_gain_value,tmp;
+    uint32_t rf_bw;
+    uint64_t rf_freq;
     uint8_t *precv;
     RF_TRANSLATE_CMD *pres_cmd;
 
     switch(cmd){
         case EX_RF_MID_FREQ :{
-            return ret; 
+            break; 
         }
         case EX_RF_MID_BW :{
-            return ret; 
+            break; 
         }
         case EX_RF_MODE_CODE :{
             noise_mode = *((uint8_t *)data);
+            printf_debug("rf_set_interface %d noise_mode=%d\n",EX_RF_MODE_CODE,noise_mode);
+            #if defined(PLAT_FORM_ARCH_ARM)
             ret = send_noise_mode_set_cmd(ch,noise_mode);//设置射频接收模式
-            return ret; 
+            #endif
+            break; 
         }
         case EX_RF_GAIN_MODE :{
-            return ret; 
+            break; 
 
         }
         case EX_RF_MGC_GAIN : {
             mgc_gain_value = *((uint8_t *)data);
+            printf_debug("rf_set_interface %d mgc_gain_value=%d\n",EX_RF_MGC_GAIN,mgc_gain_value);
+            #if defined(PLAT_FORM_ARCH_ARM)
             ret = send_mid_freq_attenuation_set_cmd(ch,mgc_gain_value);//设置中频增益
-            return ret; 
+            #endif
+            break; 
         }
         case EX_RF_AGC_CTRL_TIME :{
-            return ret; 
+            break; 
         }
         case EX_RF_AGC_OUTPUT_AMP :{
-            return ret; 
+            break; 
         }
         case EX_RF_ANTENNA_SELECT :{
-            return ret; 
+            break; 
         }
         case EX_RF_ATTENUATION :{
             rf_gain_value = *((uint8_t *)data);
+            printf_debug("rf_set_interface %d rf_gain_value=%d\n",EX_RF_ATTENUATION,rf_gain_value);
+            #if defined(PLAT_FORM_ARCH_ARM)
             ret = send_rf_attenuation_set_cmd(ch,rf_gain_value);//设置射频增益
-            return ret; 
+            #endif
+            break; 
+        }
+        case EX_RF_AGC_FREQUENCY :{
+            rf_freq = *((uint64_t *)data);
+            printf_debug("rf_set_interface %d rf_freq=%lld\n",EX_RF_AGC_FREQUENCY,rf_freq);
+            #if defined(PLAT_FORM_ARCH_ARM)
+            ret = send_freq_set_cmd(ch,rf_freq);//设置射频频率
+            #endif
+            break; 
+        }
+        case EX_RF_AGC_BW :{
+            rf_bw = *((uint32_t *)data);
+            printf_debug("rf_set_interface %d rf_freq=%d\n",EX_RF_AGC_BW,rf_bw);
+            #if defined(PLAT_FORM_ARCH_ARM)
+            ret = send_rf_freq_bandwidth_set_cmd(ch,rf_bw);//设置射频带宽
+            #endif
+            break; 
         }
         default:{
-            return ret; 
+            break;
         }
     }
-
+    return ret;
 }
 
 
@@ -844,42 +871,47 @@ uint8_t rf_read_interface(uint8_t cmd,uint8_t ch,void *data){
 
     switch(cmd){
         case EX_RF_MID_FREQ : {
-            return ret; 
+            printf_debug("rf_read_interface %d\n",EX_RF_MID_FREQ);
+            break;
         }
         case EX_RF_MID_BW :   {
-            return ret; 
+            break; 
         }
         case EX_RF_MODE_CODE :{
-            return ret; 
+            break; 
         }
         case EX_RF_GAIN_MODE :{
-            return ret; 
+            break; 
         }
         case EX_RF_MGC_GAIN : {
-            return ret; 
+            break; 
         }
         case EX_RF_AGC_CTRL_TIME : {
-            return ret; 
+            break; 
         }
         case EX_RF_AGC_OUTPUT_AMP :{
-            return ret; 
+            break; 
         }
         case EX_RF_ANTENNA_SELECT :{
-            return ret; 
+            break; 
         }
         case EX_RF_ATTENUATION :{
-            return ret; 
+            break; 
         }
         case EX_RF_STATUS_TEMPERAT :{
+            printf_debug("rf_read_interface %d\n",EX_RF_STATUS_TEMPERAT);
+            #if defined(PLAT_FORM_ARCH_ARM)
             ret = query_rf_temperature(ch,&rf_temperature);//设置射频增益
-            return ret; 
+            data = (void *)&rf_temperature;
+            #endif
+            break;
         }
-
         default:{
-            return ret;
+            break;
         }
 
     }
+    return ret;
 
 }
 
@@ -905,9 +937,13 @@ void spi_close(void)
 int8_t spi_init(void)
 {
     int ret = -1;
+    printf_debug("spi init!\n");
+    #if defined(PLAT_FORM_ARCH_ARM)
     pthread_mutex_init(&mut,NULL);
     spi_fd_init();
     ret = spi_dev_init();
+    #endif
+    
     return ret;
 }
 

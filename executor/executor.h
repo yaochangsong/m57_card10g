@@ -88,6 +88,8 @@ enum {
     EX_RF_ANTENNA_SELECT,         /*天线选择*/
     EX_RF_ATTENUATION,            /*射频衰减*/
     EX_RF_STATUS_TEMPERAT,         /*射频温度*/
+    EX_RF_AGC_FREQUENCY,          /*AGC 频率设置*/
+    EX_RF_AGC_BW,                 /*AGC 带宽设置*/
 };
 
 struct sem_st{

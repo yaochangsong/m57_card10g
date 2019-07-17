@@ -34,28 +34,37 @@ static int8_t executor_wait_kernel_deal(void)
 void executor_work_mode_thread(void *arg)
 {
     struct poal_config *poal_config = &(config_get_config()->oal_config);
+    uint32_t fft_size;
+    uint8_t ch = poal_config->enable.cid;
+    uint8_t sub_ch = poal_config->enable.sub_id;
     
     while(1)
     {
 loop:   printf_info("######wait to deal work######\n");
         sem_wait(&work_sem.notify_deal);
-        printf_info("receive notify, start to deal work\n");
+        printf_info("receive notify, %s Work: [%s], [%s], [%s]\n", 
+                                                 poal_config->enable.bit_en == 0 ? "Stop" : "Start",
+                                                 poal_config->enable.psd_en == 0 ? "Psd Stop" : "Psd Start",
+                                                 poal_config->enable.audio_en == 0 ? "Audio Stop" : "Audio Start",
+                                                 poal_config->enable.iq_en == 0 ? "IQ Stop" : "IQ Start");
+        if(poal_config->enable.audio_en || poal_config->enable.iq_en){
+            io_set_enable_command(AUDIO_MODE_ENABLE, poal_config->enable.cid, fft_size);
+        }else{
+            io_set_enable_command(AUDIO_MODE_DISABLE, poal_config->enable.cid, fft_size);
+        }
+        
         for(;;){
             switch(poal_config->work_mode)
             {
                 case OAL_FIXED_FREQ_ANYS_MODE:
                 {
-                    uint32_t fft_size;
-                    uint8_t ch = poal_config->enable.cid;
-                    uint8_t sub_ch = poal_config->enable.sub_id;
-                    printf_info("start fixed freq thread\n");
                     fft_size = poal_config->multi_freq_point_param[ch].points[sub_ch].fft_size;
                     if(poal_config->enable.psd_en){
+                        printf_info("start fixed freq thread, psd_en:%d \n", poal_config->enable.psd_en);
                         io_set_enable_command(PSD_MODE_ENABLE, poal_config->enable.cid, fft_size);
                         executor_wait_kernel_deal();
                     }else{
                         io_set_enable_command(PSD_MODE_DISABLE, poal_config->enable.cid, fft_size);
-                        io_set_enable_command(AUDIO_MODE_DISABLE, poal_config->enable.cid, fft_size);
                         goto loop;
                     }
                 }
@@ -88,15 +97,14 @@ static int8_t executor_get_kernel_command(uint8_t type, void *data)
 }
 
 
-static int8_t executor_set_kernel_command(uint8_t type, void *data)
+static int8_t executor_set_kernel_command(uint8_t type, uint8_t ch, void *data)
 {
-    
     switch(type)
      {
         case EX_CHANNEL_SELECT:
         {
             printf_debug("channel select: %d\n", *(uint8_t *)data);
-            io_set_para_command(type, data);
+            io_set_para_command(type, ch, data);
             break;
         }
         case EX_MUTE_SW:
@@ -119,7 +127,7 @@ static int8_t executor_set_kernel_command(uint8_t type, void *data)
         }
         case EX_SMOOTH_TIME:
         {
-            io_set_para_command(type, data);
+            io_set_smooth_factor(*(uint32_t *)data);
             break;
         }
         case EX_RESIDENCE_TIME:
@@ -132,11 +140,12 @@ static int8_t executor_set_kernel_command(uint8_t type, void *data)
         }
         case EX_AUDIO_SAMPLE_RATE:
         {
-            io_set_para_command(type, data);
+            io_set_para_command(type, ch, data);
             break;
         }
         case EX_FFT_SIZE:
         {
+            io_set_fft_size(ch, *(uint32_t *)data);
             break;
         }
         case EX_FRAME_DROP_CNT:
@@ -145,6 +154,7 @@ static int8_t executor_set_kernel_command(uint8_t type, void *data)
         }
         case EX_BANDWITH:
         {
+            printf_debug("ch:%d, bw:%u\n", ch, *(uint32_t *)data);
             break;
         }
         default:
@@ -154,23 +164,24 @@ static int8_t executor_set_kernel_command(uint8_t type, void *data)
 }
 
 
-static int8_t executor_set_rf_command(uint8_t type, void *data)
+static int8_t executor_set_rf_command(uint8_t type, uint8_t ch, void *data)
 {
-    struct poal_config *poal_config = &(config_get_config()->oal_config);
     switch(type)
      {
         case EX_RF_MODE_CODE:
         {
-            printf_info("set rf bw: ch: %d, rf_mode_code:%d\n", poal_config->cid, poal_config->rf_para[poal_config->cid].rf_mode_code);
+            printf_info("set rf bw: ch: %d, rf_mode_code:%d\n", ch, *(uint8_t *)data);
             break;
         }
         case EX_RF_GAIN_MODE:
         {
-            printf_info("set rf bw: ch: %d, gain_ctrl_method:%d\n", poal_config->cid, poal_config->rf_para[poal_config->cid].gain_ctrl_method);
+            printf_info("set rf bw: ch: %d, gain_ctrl_method:%d\n", ch, *(uint8_t *)data);
             break;
         }
         case EX_RF_MGC_GAIN:
         {
+            printf_info("set mgc gain: ch: %d, mgc_gain_value:%d\n", ch, *(int8_t *)data);
+            
             break;
         }
         case EX_RF_AGC_CTRL_TIME:
@@ -187,7 +198,7 @@ static int8_t executor_set_rf_command(uint8_t type, void *data)
         }
         case EX_RF_MID_BW:
         {
-            printf_info("set rf bw: ch: %d, bw:%d\n", poal_config->cid, poal_config->multi_freq_point_param[poal_config->cid].bandwidth);
+            printf_info("set rf bw: ch: %d, bw:%u\n", ch, *(uint32_t *)data);
             break;
         }
         case EX_RF_ANTENNA_SELECT:
@@ -196,7 +207,7 @@ static int8_t executor_set_rf_command(uint8_t type, void *data)
         }
         case EX_RF_ATTENUATION:
         {
-            printf_info("set rf bw: ch: %d, attenuation:%d\n", poal_config->cid, poal_config->rf_para[poal_config->cid].attenuation);
+            printf_info("set rf bw: ch: %d, attenuation:%d\n", ch, *(uint8_t *)data);
             break;
         }
         default:
@@ -206,7 +217,7 @@ static int8_t executor_set_rf_command(uint8_t type, void *data)
 }
 
 
-int8_t executor_set_command(exec_cmd cmd, uint8_t type,  void *data)
+int8_t executor_set_command(exec_cmd cmd, uint8_t type, uint8_t ch,  void *data)
 {
      struct poal_config *poal_config = &(config_get_config()->oal_config);
 
@@ -214,12 +225,12 @@ int8_t executor_set_command(exec_cmd cmd, uint8_t type,  void *data)
      {
         case EX_MID_FREQ_CMD:
         {
-            executor_set_kernel_command(type, data);
+            executor_set_kernel_command(type, ch, data);
             break;
         }
         case EX_RF_FREQ_CMD:
         {
-            executor_set_rf_command(type, data);
+            executor_set_rf_command(type,ch, data);
             break;
         }
         case EX_ENABLE_CMD:
@@ -254,7 +265,7 @@ void executor_init(void)
     pthread_t work_id;
     io_init();
     /* set default network */
-    executor_set_command(EX_NETWORK_CMD, 0, NULL);
+    executor_set_command(EX_NETWORK_CMD, 0, 0, NULL);
     sem_init(&(work_sem.notify_deal), 0, 0);
     sem_init(&(work_sem.kernel_sysn), 0, 0);
     ret=pthread_create(&work_id,NULL,(void *)executor_work_mode_thread, NULL);

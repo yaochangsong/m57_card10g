@@ -92,7 +92,7 @@ static void io_set_common_param(uint8_t type, uint8_t *buf,uint32_t buf_len)
 }
 
 
-static void io_set_smooth_factor(uint32_t factor)
+void io_set_smooth_factor(uint32_t factor)
 {
     printf_info("set smooth_factor: factor=%d\n",factor);
 #ifdef PLAT_FORM_ARCH_ARM
@@ -169,6 +169,7 @@ void io_set_dma_DQ_out_en(uint8_t ch, uint8_t outputen,uint32_t trans_len,uint8_
     //for 8 channel device only one sub channel 
     uint16_t sub_ch = 0;
     //for iq and dq dma .for 512 fixed length ,continious mode
+    printf_info("dq output enable, ch:%d, en:%x\n", ch, outputen);
     if((outputen&(D_OUT_MASK|IQ_OUT_MASK)) > 0){
         uint8_t convert_buf[512] = {0};
         memcpy(convert_buf,(uint8_t *)(&ch),sizeof(uint8_t));
@@ -184,6 +185,7 @@ void io_set_dma_DQ_out_disable(uint8_t ch)
     uint8_t outputen = 0;
     //for 8 channel device only one sub channel 
     uint16_t sub_ch = 0;
+    printf_info("dq output disable, ch:%d\n", ch);
     memcpy(convert_buf,(uint8_t *)(&ch),sizeof(uint8_t));
     memcpy(convert_buf+1,(uint8_t *)(&sub_ch),sizeof(uint16_t));
     memcpy(convert_buf+3,(uint8_t *)(&outputen),sizeof(uint8_t));
@@ -216,10 +218,42 @@ static void io_dma_dev_trans_len(uint32_t ch, uint32_t len)
 #endif
 }
 
+void io_set_fft_size(uint32_t ch, uint32_t fft_size)
+{
+    printf_info("set fft size:%d\n",ch, fft_size);
+#ifdef PLAT_FORM_ARCH_ARM
+    uint32_t factor;
+
+    factor = 0xc;
+    if(fft_size == FFT_SIZE_256){
+        factor = 0x8;
+    }else if(fft_size == FFT_SIZE_512){
+        factor = 0x9;
+    }else if(fft_size == FFT_SIZE_1024){
+        factor = 0xa;
+    }else if(fft_size == FFT_SIZE_2048){
+        factor = 0xb;
+    }else if(fft_size == FFT_SIZE_4096){
+        factor = 0xc;
+    }else if(fft_size == FFT_SIZE_8192){
+        factor = 0xd;
+    }else if(fft_size == FFT_SIZE_16384){
+        factor = 0xe;
+    }else if(fft_size == FFT_SIZE_32768){
+        factor = 0xf;
+    }
+    if(io_ctrl_fd<=0){
+        return;
+    }
+    ioctl(io_ctrl_fd,IOCTL_FFT_SIZE_CH0,factor);
+#endif
+}
+
+
 static void io_set_dma_SPECTRUM_out_en(uint8_t cid, uint8_t outputen,uint32_t trans_len,uint8_t continuous)
 {
     uint8_t ch = cid;
-    printf_debug("ch[%d]output en[len:%d]\n",cid, trans_len);
+    printf_info("SPECTRUM out enable: ch[%d]output en[outputen:%x]\n",cid, outputen);
     if((outputen&SPECTRUM_MASK) > 0){
         io_dma_dev_enable(ch,continuous);
         io_dma_dev_trans_len(ch,trans_len);
@@ -240,10 +274,11 @@ static void io_dma_dev_disable(uint32_t ch)
 
 static void io_set_dma_SPECTRUM_out_disable(uint8_t ch)
 {
+    printf_info("SPECTRUM out disable: ch[%d]\n",ch);
     io_dma_dev_disable(ch);
 }
 
-int8_t io_set_para_command(uint8_t type, void *data)
+int8_t io_set_para_command(uint8_t type, uint8_t ch, void *data)
 {
     struct poal_config *poal_config = &(config_get_config()->oal_config);
 
@@ -256,16 +291,12 @@ int8_t io_set_para_command(uint8_t type, void *data)
         case EX_AUDIO_SAMPLE_RATE:
         {
             SUB_AUDIO_PARAM paudio;
-            paudio.cid= *(uint8_t *)data;
-            paudio.sample_rate = (uint32_t)poal_config->multi_freq_point_param[paudio.cid].audio_sample_rate;
+            paudio.cid= ch;
+            paudio.sample_rate = (uint32_t)*(float *)data;
             printf_info("set audio sample, ch:%d rate:%u\n", paudio.cid, paudio.sample_rate);
             io_set_common_param(9, &paudio,sizeof(SUB_AUDIO_PARAM));
             break;
         }
-        case EX_SMOOTH_TIME:
-            printf_info("smooth time:%d\n", *(uint16_t *)data);
-            io_set_smooth_factor(*(uint16_t *)data);
-            break;
         default:
             printf_err("invalid type[%d]", type);
         return -1;

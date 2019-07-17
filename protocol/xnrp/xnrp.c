@@ -65,7 +65,6 @@ static int xnrp_execute_set_command(void)
                     struct xnrp_multi_frequency_point frqp;
                     config_parse_data(header->payload, header->payload_len, &frqp);
                     config_save_batch(header->class_code, header->business_code,&frqp);
-                    executor_set_command(header->class_code, header->business_code,&frqp);
                     break;
                 }
                 case B_CODE_WK_MODE_SUB_CH_DEC:

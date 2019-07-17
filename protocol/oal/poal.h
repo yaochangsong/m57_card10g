@@ -84,7 +84,6 @@ struct multi_freq_point_para_st{
     uint32_t residence_time;
     int32_t residence_policy;
     float audio_sample_rate;
-    uint64_t bandwidth;     /* add */
     uint32_t freq_point_cnt;
     struct freq_points_st  points[MAX_SIG_CHANNLE];
 }__attribute__ ((packed));

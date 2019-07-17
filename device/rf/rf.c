@@ -865,7 +865,6 @@ uint8_t rf_set_interface(uint8_t cmd,uint8_t ch,void *data){
 uint8_t rf_read_interface(uint8_t cmd,uint8_t ch,void *data){
     uint8_t ret = -1;
     uint8_t mgc_gain_value,noise_mode;
-    int16_t  rf_temperature;
     uint8_t *precv;
     RF_TRANSLATE_CMD *pres_cmd;
 
@@ -899,11 +898,12 @@ uint8_t rf_read_interface(uint8_t cmd,uint8_t ch,void *data){
             break; 
         }
         case EX_RF_STATUS_TEMPERAT :{
-            printf_debug("rf_read_interface %d\n",EX_RF_STATUS_TEMPERAT);
+            int16_t  rf_temperature = 0;
             #if defined(PLAT_FORM_ARCH_ARM)
             ret = query_rf_temperature(ch,&rf_temperature);//设置射频增益
-            data = (void *)&rf_temperature;
             #endif
+            *(int16_t *)data = rf_temperature;
+            printf_info("rf temprature:%d\n", *(int16_t *)data);
             break;
         }
         default:{

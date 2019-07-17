@@ -328,20 +328,20 @@ void dao_read_create_config_file(char *file, void *root_config)
     /* read/write or create file */
     fp = fopen(file, "r");
     if(fp != NULL){
-		whole_root = mxmlLoadFile(NULL, fp, MXML_TEXT_CALLBACK);
-		
-        printf_debug("load config file\n");
-        const char *buf = read_config_file_single(file,"network","cc");
-		printf_debug("查找cc地址:%s............\n",buf);   
-		fclose(fp);
-       
-    }else{//
-		
-		whole_root = mxmlNewXML("1.0");	
-        printf_debug("create new config file\n");
-		root = dao_load_default_config_file(file);
+    whole_root = mxmlLoadFile(NULL, fp, MXML_TEXT_CALLBACK);
+
+    printf_debug("load config file\n");
+    const char *buf = read_config_file_single(file,"network","cc");
+    printf_debug("查找cc地址:%s............\n",buf);   
+    fclose(fp);
+
+    }else{
+
+    whole_root = mxmlNewXML("1.0");	
+    printf_debug("create new config file\n");
+    root = dao_load_default_config_file(file);
     }
-	
+
     printf_debug("1\n");
     root_config = dao_load_root(root);
     printf_debug("1\n");

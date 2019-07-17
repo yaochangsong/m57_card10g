@@ -15,7 +15,13 @@
 #include <pthread.h>
 #include <sys/ioctl.h>
 #include <semaphore.h>
-#include <net/if.h> 
+#include <net/if.h>
+#include <sys/stat.h>
+#include <termios.h>
+#include <errno.h>
+#include <linux/spi/spidev.h>
+#include <time.h>
+
 
 
 #include "libubox/ulog.h"
@@ -41,7 +47,8 @@
 #include "executor/executor.h"
 #include "executor/io.h"
 
-
+#include "device/uart/uart.h"
+#include "device/rf/rf.h"
 
 /*define*/
 /*Support PlatForm Arch: 

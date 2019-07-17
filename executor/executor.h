@@ -87,6 +87,7 @@ enum {
     EX_RF_AGC_OUTPUT_AMP,         /*AGC 中频输出幅度*/
     EX_RF_ANTENNA_SELECT,         /*天线选择*/
     EX_RF_ATTENUATION,            /*射频衰减*/
+    EX_RF_STATUS_TEMPERAT,         /*射频温度*/
 };
 
 struct sem_st{

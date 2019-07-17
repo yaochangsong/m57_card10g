@@ -131,6 +131,7 @@ struct rf_para_st{
     uint32_t mid_bw;                /* 射频中频带宽; 0~2^32 */
     uint8_t antennas_elect;         /* 天线选择 */
     int8_t  attenuation;            /* 射频衰减 ;  -100 至 120 单位 dB，精度 1dB*/
+    int16_t temperature;            /* 射频温度 */
 }__attribute__ ((packed));
 
 /* 控制参数 */

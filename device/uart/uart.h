@@ -1,8 +1,14 @@
 #ifndef __SERIALCOM_H
 #define __SERIALCOM_H
 
-int uart_init(char *name);
-char *uart_write_read(int fd ,char *cmd,unsigned int cmd_len ,int *recv_len);
+#define SERIAL_BUF_LEN 1024
 
+struct uart_t {
+    struct uloop_fd fd;
+};
+
+extern void uart_init(void);
+extern long uart0_send_data(uint8_t *buf, uint32_t len);
+extern long uart1_send_data(uint8_t *buf, uint32_t len);
 #endif
 

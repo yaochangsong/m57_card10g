@@ -21,7 +21,7 @@ struct response_set_data akt_set_response_data;
 
 struct akt_protocal_param akt_config;
 
-bool akt_assamble_kernel_header_response_data(char *pbuf, work_mode wmode);
+bool akt_assamble_kernel_header_response_data(char *pbuf, work_mode wmode, void *config);
 
 
 int akt_get_device_id(void)
@@ -90,52 +90,87 @@ static int akt_convert_oal_config(uint8_t ch, uint8_t cmd)
             {
                 case OAL_FIXED_FREQ_ANYS_MODE:
                 {
+                    struct multi_freq_point_para_st *point;
+                    point = &poal_config->multi_freq_point_param[ch];
                     sig_cnt= 0;
                     /*主通道转换*/
-                    poal_config->multi_freq_point_param[ch].cid = pakt_config->cid;
+                    point->cid = ch;
                     /*(RF)中心频率转换*/
-                    poal_config->multi_freq_point_param[ch].points[sig_cnt].center_freq = pakt_config->multi_freq_zone[ch].sig_ch[sig_cnt].center_freq;
+                    point->points[sig_cnt].center_freq = pakt_config->multi_freq_zone[ch].sig_ch[sig_cnt].center_freq;
                     /* (RF)带宽转换 */
-                    poal_config->multi_freq_point_param[ch].points[sig_cnt].bandwidth = pakt_config->multi_freq_zone[ch].sig_ch[sig_cnt].bandwidth;
+                    point->points[sig_cnt].bandwidth = pakt_config->multi_freq_zone[ch].sig_ch[sig_cnt].bandwidth;
                     /* 解调带宽转换 */
                    // poal_config->multi_freq_point_param[ch].points[sig_cnt].d_bandwith = pakt_config->decode_param[ch].sig_ch[sig_cnt].bandwidth;
                     /* 不在需要解调中心频率，除非窄带解调 */
                     /*解调方式转换*/
                    // poal_config->multi_freq_point_param[ch].points[sig_cnt].d_method = pakt_config->decode_param[ch].sig_ch[sig_cnt].decode_method_id;
                     /* fft size转换 */
-                    poal_config->multi_freq_point_param[ch].points[sig_cnt].fft_size = pakt_config->fft[ch].fft_size;
-                    poal_config->multi_freq_point_param[ch].points[sig_cnt].freq_resolution = pakt_config->fft[ch].freq_resolution;
+                    point->points[sig_cnt].fft_size = pakt_config->fft[ch].fft_size;
+                    point->points[sig_cnt].freq_resolution = ((float)point->points[sig_cnt].bandwidth/(float)point->points[sig_cnt].fft_size)*BAND_FACTOR;
                      /* smooth */
-                    poal_config->multi_freq_point_param[ch].smooth_time = pakt_config->smooth[ch].smooth;
-                    printf_info("----------------------------fixed freq:---------------------------------\n");
-                    printf_info("ch:%d, sig_cnt:%d,center_freq:%u\n", ch,sig_cnt,poal_config->multi_freq_point_param[ch].points[sig_cnt].center_freq);
-                    printf_info("bandwidth:%u\n",poal_config->multi_freq_point_param[ch].points[sig_cnt].bandwidth);
-                    printf_info("fft_size:%u\n",poal_config->multi_freq_point_param[ch].points[sig_cnt].fft_size);
-                    printf_info("smooth_time:%u\n",poal_config->multi_freq_point_param[ch].smooth_time);
+                    point->smooth_time = pakt_config->smooth[ch].smooth;
+                    printf_info("----------------------------Fixed Freq:---------------------------------\n");
+                    printf_info("ch:%d, sig_cnt:%d,center_freq:%u\n", ch,sig_cnt,point->points[sig_cnt].center_freq);
+                    printf_info("bandwidth:%u\n",point->points[sig_cnt].bandwidth);
+                    printf_info("fft_size:%u\n",point->points[sig_cnt].fft_size);
+                    printf_info("smooth_time:%u\n",point->smooth_time);
                     break;
                 }
                 case OAL_FAST_SCAN_MODE:
                 {
+                    struct multi_freq_fregment_para_st *fregment;
+                    fregment = &poal_config->multi_freq_fregment_para[ch];
                     sig_cnt= 0;
                     /*主通道转换*/
-                    poal_config->multi_freq_fregment_para[ch].cid = pakt_config->cid;
+                    fregment->cid = ch;
                     /*(RF)开始频率转换 = 中心频率 - 带宽/2 */
-                    poal_config->multi_freq_fregment_para[ch].fregment[sig_cnt].start_freq = pakt_config->multi_freq_zone[ch].sig_ch[sig_cnt].center_freq - pakt_config->multi_freq_zone[ch].sig_ch[sig_cnt].bandwidth/2;
+                    fregment->fregment[sig_cnt].start_freq = pakt_config->multi_freq_zone[ch].sig_ch[sig_cnt].center_freq - pakt_config->multi_freq_zone[ch].sig_ch[sig_cnt].bandwidth/2;
                     /*(RF)结束频率转换 = 中心频率 + 带宽/2 */
-                    poal_config->multi_freq_fregment_para[ch].fregment[sig_cnt].end_freq = pakt_config->multi_freq_zone[ch].sig_ch[sig_cnt].center_freq + pakt_config->multi_freq_zone[ch].sig_ch[sig_cnt].bandwidth/2;
+                    fregment->fregment[sig_cnt].end_freq = pakt_config->multi_freq_zone[ch].sig_ch[sig_cnt].center_freq + pakt_config->multi_freq_zone[ch].sig_ch[sig_cnt].bandwidth/2;
                     /* 步长 */
-                    poal_config->multi_freq_fregment_para[ch].fregment[sig_cnt].step = pakt_config->multi_freq_zone[ch].sig_ch[sig_cnt].freq_step;
+                    fregment->fregment[sig_cnt].step = pakt_config->multi_freq_zone[ch].sig_ch[sig_cnt].freq_step;
                     /* fft size转换 */
-                    poal_config->multi_freq_fregment_para[ch].fregment[sig_cnt].fft_size = pakt_config->fft[ch].fft_size;
-                    poal_config->multi_freq_fregment_para[ch].fregment[sig_cnt].freq_resolution = pakt_config->fft[ch].freq_resolution;
+                    fregment->fregment[sig_cnt].fft_size = pakt_config->fft[ch].fft_size;
+                    //fregment.fregment[sig_cnt].freq_resolution = pakt_config->fft[ch].freq_resolution;
                     /* smooth */
-                    poal_config->multi_freq_fregment_para[ch].smooth_time = pakt_config->smooth[ch].smooth;
+                    fregment->smooth_time = pakt_config->smooth[ch].smooth;
                     /*分辨率转换*/
-                    poal_config->multi_freq_fregment_para[ch].fregment[sig_cnt].freq_resolution = pakt_config->multi_freq_zone[ch].sig_ch[sig_cnt].freq_resolution;
+                    fregment->fregment[sig_cnt].freq_resolution = pakt_config->multi_freq_zone[ch].sig_ch[sig_cnt].freq_resolution;
+                    printf_info("----------------------------Fast Scan:---------------------------------\n");
+                    printf_info("ch:%d\n", ch);
+                    printf_info("start_freq:%d\n", fregment->fregment[sig_cnt].start_freq);
+                    printf_info("end_freq:%d\n", fregment->fregment[sig_cnt].end_freq);
+                    printf_info("step:%d\n", fregment->fregment[sig_cnt].step);
+                    printf_info("fft_size:%d\n", fregment->fregment[sig_cnt].fft_size);
+                    printf_info("freq_resolution:%d\n", fregment->fregment[sig_cnt].freq_resolution);
+                    printf_info("smooth_time:%d\n", fregment->smooth_time);
                     break;
                 }
                 case OAL_MULTI_ZONE_SCAN_MODE:
                 {
+                    struct multi_freq_fregment_para_st *fregment;
+                    
+                    fregment = &poal_config->multi_freq_fregment_para[ch];
+                    /*主通道转换*/
+                    fregment->cid = ch;
+                    /*扫描频段转换*/
+                    fregment->freq_segment_cnt = pakt_config->multi_freq_zone[ch].freq_band_cnt;
+                     /* smooth */
+                    fregment->smooth_time = pakt_config->smooth[ch].smooth;
+                    printf_info("----------------------------Multi Zone Scan:---------------------------------\n");
+                    printf_info("ch:%d, sig_cnt:%d,freq_segment_cnt:%u\n", ch,sig_cnt,fregment->freq_segment_cnt);
+                    for(i = 0; i < poal_config->multi_freq_fregment_para[ch].freq_segment_cnt; i++){
+                        fregment->fregment[i].start_freq = pakt_config->multi_freq_zone[ch].sig_ch[i].center_freq - pakt_config->multi_freq_zone[ch].sig_ch[i].bandwidth/2;
+                        fregment->fregment[i].end_freq = pakt_config->multi_freq_zone[ch].sig_ch[i].center_freq + pakt_config->multi_freq_zone[ch].sig_ch[i].bandwidth/2;
+                        fregment->fregment[i].step = pakt_config->multi_freq_zone[ch].sig_ch[i].freq_step;
+                        fregment->fregment[i].fft_size = pakt_config->fft[ch].fft_size;
+                        fregment->fregment[i].freq_resolution = pakt_config->multi_freq_zone[ch].sig_ch[i].freq_resolution;
+                        printf_info("[%d]start_freq:%u\n",i, fregment->fregment[i].start_freq);
+                        printf_info("[%d]end_freq:%u\n",i, fregment->fregment[i].end_freq);
+                        printf_info("[%d]fft_size:%u\n",i, fregment->fregment[i].fft_size);
+                        printf_info("[%d]step:%u\n",i, fregment->fregment[i].step);
+                        printf_info("[%d]resolution:%u\n",i, fregment->fregment[i].freq_resolution);
+                    }
                     break;
                 }
                 case OAL_MULTI_POINT_SCAN_MODE:
@@ -156,7 +191,8 @@ static int akt_convert_oal_config(uint8_t ch, uint8_t cmd)
 static int akt_work_mode_set(struct akt_protocal_param *akt_config)
 {
     struct poal_config *poal_config = &(config_get_config()->oal_config);
-   
+   printf_info("resident_time:%d, freq_band_cnt:%d\n", akt_config->multi_freq_zone[akt_config->cid].resident_time,
+    akt_config->multi_freq_zone[akt_config->cid].freq_band_cnt);
     if(akt_config->multi_freq_zone[akt_config->cid].resident_time== 0){
         if(akt_config->multi_freq_zone[akt_config->cid].freq_band_cnt == 1){
              /*scan mode*/
@@ -228,6 +264,9 @@ static int akt_executor_set_enable_command(uint8_t ch)
             case OAL_MULTI_ZONE_SCAN_MODE:
             {
                 executor_set_command(EX_WORK_MODE_CMD, EX_MULTI_ZONE_SCAN_MODE, ch, NULL);
+                executor_set_command(EX_RF_FREQ_CMD, EX_RF_ATTENUATION, ch, &poal_config->rf_para[ch].attenuation);
+                executor_set_command(EX_RF_FREQ_CMD, EX_RF_MGC_GAIN, ch, &poal_config->rf_para[ch].mgc_gain_value);
+                executor_set_command(EX_MID_FREQ_CMD, EX_SMOOTH_TIME, ch, &poal_config->multi_freq_fregment_para[ch].smooth_time);
                 break;
             }
             case OAL_MULTI_POINT_SCAN_MODE:
@@ -384,6 +423,7 @@ static int akt_execute_set_command(void)
                 goto set_exit;
             }
             ch = poal_config->cid;
+            memcpy(&(pakt_config->mid_freq_bandwidth[ch]), header->buf, sizeof(DIRECTION_MID_FREQ_BANDWIDTH_PARAM));
             poal_config->rf_para[ch].mid_bw = *((uint32_t *)(header->buf+1));
             poal_config->multi_freq_fregment_para[ch].bandwith = *((uint32_t *)(header->buf+1));
             executor_set_command(EX_RF_FREQ_CMD, EX_RF_MID_BW, ch, &poal_config->rf_para[ch].mid_bw);
@@ -793,7 +833,7 @@ int akt_assamble_error_response_data(uint8_t **buf, int err_code)
     return len;
 }
 
-bool akt_assamble_kernel_header_response_data(char *pbuf, work_mode wmode)
+bool akt_assamble_kernel_header_response_data(char *pbuf, work_mode wmode, void *config)
 {
     struct poal_config *poal_config = &(config_get_config()->oal_config);
     DATUM_SPECTRUM_HEADER_ST *ext_hdr = NULL;
@@ -801,7 +841,7 @@ bool akt_assamble_kernel_header_response_data(char *pbuf, work_mode wmode)
     
     ext_hdr = (DATUM_SPECTRUM_HEADER_ST*)(&param_buf + sizeof(DATUM_PDU_HEADER_ST));
     ext_hdr->dev_id = akt_get_device_id();
-    ext_hdr->cid = poal_config->cid;
+    
     ext_hdr->work_mode = poal_config->work_mode;
     ext_hdr->gain_mode = poal_config->rf_para[poal_config->cid].gain_ctrl_method;
     ext_hdr->gain = poal_config->rf_para[poal_config->cid].mgc_gain_value;
@@ -815,6 +855,7 @@ bool akt_assamble_kernel_header_response_data(char *pbuf, work_mode wmode)
             uint8_t point_cnt;
             point_cnt = 0;
             /* start freq = center freq - bindwith/2*/
+            ext_hdr->cid = poal_config->cid;
             ext_hdr->start_freq = poal_config->multi_freq_point_param[ext_hdr->cid].points[point_cnt].center_freq - poal_config->multi_freq_point_param[ext_hdr->cid].points[point_cnt].bandwidth/2;
             ext_hdr->cutoff_freq = poal_config->multi_freq_point_param[ext_hdr->cid].points[point_cnt].center_freq + poal_config->multi_freq_point_param[ext_hdr->cid].points[point_cnt].bandwidth/2;
             ext_hdr->center_freq = poal_config->multi_freq_point_param[ext_hdr->cid].points[point_cnt].center_freq;
@@ -828,6 +869,18 @@ bool akt_assamble_kernel_header_response_data(char *pbuf, work_mode wmode)
         }
         case EX_FAST_SCAN_MODE:
         {
+            struct fast_kernel_param *fast_param;
+            fast_param = (struct fast_kernel_param *)config;
+            ext_hdr->cid = fast_param->ch;
+            ext_hdr->center_freq = fast_param->m_freq;
+            ext_hdr->sn = fast_param->fft_sn;
+            ext_hdr->datum_total = fast_param->total_fft;
+            ext_hdr->bandwith = poal_config->rf_para[fast_param->ch].mid_bw;
+            ext_hdr->start_freq = poal_config->multi_freq_fregment_para[fast_param->ch].fregment[0].start_freq;
+            ext_hdr->cutoff_freq = poal_config->multi_freq_fregment_para[fast_param->ch].fregment[0].end_freq;
+            ext_hdr->sample_rate = 0;
+            ext_hdr->fft_len = poal_config->multi_freq_fregment_para[fast_param->ch].fregment[0].fft_size;
+            ext_hdr->freq_resolution = poal_config->multi_freq_fregment_para[fast_param->ch].fregment[0].freq_resolution;
             break;
         }
         case EX_MULTI_ZONE_SCAN_MODE:

@@ -159,7 +159,7 @@ struct poal_config{
     struct multi_freq_fregment_para_st  multi_freq_fregment_para[MAX_RADIO_CHANNEL_NUM];
     struct rf_para_st rf_para[MAX_RADIO_CHANNEL_NUM];
     struct network_st network;
-    bool (*assamble_kernel_response_data)(char *, uint8_t);
+    bool (*assamble_kernel_response_data)(char *, uint8_t, void *);
 }__attribute__ ((packed));
 
 

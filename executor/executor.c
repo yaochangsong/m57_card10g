@@ -31,9 +31,53 @@ static int8_t executor_wait_kernel_deal(void)
     return 0;
 }
 
-void executor_fast_scan_mode(void)
+void inline executor_fregment_scan(uint8_t ch)
 {
-    
+    struct poal_config *poal_config = &(config_get_config()->oal_config);
+
+    uint64_t c_freq, s_freq, e_freq, m_freq;
+    /* 扫描带宽 */
+    uint32_t scan_bw, left_band;
+    uint32_t scan_count, i;
+    uint8_t is_remainder = 0;
+
+    /* 需要向内核发送的工作模式参数信息，内核用作发送到客户端头信息 */
+    struct fast_kernel_param fast_param;
+
+    /* 
+       Step 1: 扫描次数计算
+        扫描次数 = (截止频率 - 开始频率 )/中频扫描带宽，这里中频扫描带宽认为和射频带宽一样 ;
+    */
+    s_freq = poal_config->multi_freq_fregment_para[ch].fregment[0].start_freq;
+    e_freq = poal_config->multi_freq_fregment_para[ch].fregment[0].end_freq;
+    scan_bw = poal_config->rf_para[ch].mid_bw;
+    c_freq = (s_freq - e_freq);
+    scan_count = c_freq /scan_bw;
+
+    /* 扫描次数不是整数倍, 需要向上取整 */
+    if(c_freq % scan_bw){
+        is_remainder = 1;
+    }
+    /* 
+       Step 2: 根据扫描带宽， 从开始频率到截止频率循环扫描
+    */
+    for(i = 0; i < scan_count + is_remainder; i++){
+        if(i < scan_count){
+            /* 计算扫描中心频率 */
+            m_freq = s_freq + i * scan_bw + scan_bw/2;
+        }
+        else{
+            /* 若不是整数，需计算剩余带宽中心频率 */
+            left_band = e_freq - s_freq + i * scan_bw;
+            m_freq = s_freq + i * scan_bw + left_band/2;
+        }
+        fast_param.ch = ch;
+        fast_param.fft_sn = i;
+        fast_param.total_fft = scan_count + is_remainder;
+        fast_param.m_freq = m_freq;
+        executor_set_command(EX_RF_FREQ_CMD, EX_RF_MID_BW, ch, &m_freq);
+        executor_set_command(EX_WORK_MODE_CMD, EX_FAST_SCAN_MODE, ch, &fast_param);
+    }
 }
 
 void executor_work_mode_thread(void *arg)
@@ -47,18 +91,20 @@ void executor_work_mode_thread(void *arg)
     {
 loop:   printf_info("######wait to deal work######\n");
         sem_wait(&work_sem.notify_deal);
-        printf_info("receive notify, %s Work: [%s], [%s], [%s]\n", 
+        ch = poal_config->enable.cid;
+        printf_info("receive notify, [Channel:%d]%s Work: [%s], [%s], [%s]\n", 
+                     ch,
                      poal_config->enable.bit_en == 0 ? "Stop" : "Start",
                      poal_config->enable.psd_en == 0 ? "Psd Stop" : "Psd Start",
                      poal_config->enable.audio_en == 0 ? "Audio Stop" : "Audio Start",
                      poal_config->enable.iq_en == 0 ? "IQ Stop" : "IQ Start");
         
+        io_set_enable_command(AUDIO_MODE_DISABLE, ch, fft_size);
         if(poal_config->enable.audio_en || poal_config->enable.iq_en){
-            io_set_enable_command(AUDIO_MODE_ENABLE, poal_config->enable.cid, fft_size);
+            io_set_enable_command(AUDIO_MODE_ENABLE, ch, fft_size);
         }else{
-            io_set_enable_command(AUDIO_MODE_DISABLE, poal_config->enable.cid, fft_size);
+            io_set_enable_command(AUDIO_MODE_DISABLE, ch, fft_size);
         }
-        
         for(;;){
             switch(poal_config->work_mode)
             {
@@ -67,22 +113,36 @@ loop:   printf_info("######wait to deal work######\n");
                     fft_size = poal_config->multi_freq_point_param[ch].points[sub_ch].fft_size;
                     if(poal_config->enable.psd_en){
                         printf_info("start fixed freq thread, psd_en:%d \n", poal_config->enable.psd_en);
-                        io_set_enable_command(PSD_MODE_ENABLE, poal_config->enable.cid, fft_size);
+                        io_set_enable_command(PSD_MODE_ENABLE, ch, fft_size);
                         executor_wait_kernel_deal();
                     }else{
-                        io_set_enable_command(PSD_MODE_DISABLE, poal_config->enable.cid, fft_size);
+                        io_set_enable_command(PSD_MODE_DISABLE, ch, fft_size);
                         goto loop;
                     }
                 }
                     break;
                 case OAL_FAST_SCAN_MODE:
-                    executor_fast_scan_mode();
+                    if(poal_config->enable.psd_en){
+                        executor_fregment_scan(ch);
+                        io_set_enable_command(PSD_MODE_ENABLE, ch, fft_size);
+                        executor_wait_kernel_deal();
+                    }
                     printf_info("start fast scan thread\n");
                     goto loop;
                     break;
                 case OAL_MULTI_ZONE_SCAN_MODE:
-                    printf_info("start multi zone thread\n");
+                {   
+                    uint32_t i;
+                    printf_info("start multi zone thread cnt: %d\n", poal_config->multi_freq_fregment_para[ch].freq_segment_cnt);
+                    if(poal_config->enable.psd_en){
+                        for(i = 0; i < poal_config->multi_freq_fregment_para[ch].freq_segment_cnt; i++){
+                            executor_fregment_scan(ch);
+                            io_set_enable_command(PSD_MODE_ENABLE, ch, fft_size);
+                            executor_wait_kernel_deal();
+                        }
+                    }
                     goto loop;
+                }
                     break;
                 case OAL_MULTI_POINT_SCAN_MODE:
                     printf_info("start multi point thread\n");
@@ -190,18 +250,18 @@ static int8_t executor_set_rf_command(uint8_t type, uint8_t ch, void *data)
         case EX_RF_MODE_CODE:
         {
             printf_info("set rf bw: ch: %d, rf_mode_code:%d\n", ch, *(uint8_t *)data);
-            rf_set_interface(type, ch, *(uint8_t *)data);
+            rf_set_interface(type, ch, data);
             break;
         }
         case EX_RF_GAIN_MODE:
         {
             printf_info("set rf bw: ch: %d, gain_ctrl_method:%d\n", ch, *(uint8_t *)data);
-            rf_set_interface(type, ch, *(uint8_t *)data);
+            rf_set_interface(type, ch, data);
             break;
         }
         case EX_RF_MGC_GAIN:
         {
-            rf_set_interface(type, ch, *(uint8_t *)data);
+            rf_set_interface(type, ch, data);
             printf_info("set mgc gain: ch: %d, mgc_gain_value:%d\n", ch, *(int8_t *)data);
             
             break;
@@ -225,12 +285,12 @@ static int8_t executor_set_rf_command(uint8_t type, uint8_t ch, void *data)
         }
         case EX_RF_ANTENNA_SELECT:
         {
-            rf_set_interface(type, ch, *(uint8_t *)data);
+            rf_set_interface(type, ch, data);
             break;
         }
         case EX_RF_ATTENUATION:
         {
-            rf_set_interface(type, ch, *(uint8_t *)data);
+            rf_set_interface(type, ch, data);
             printf_info("set rf bw: ch: %d, attenuation:%d\n", ch, *(uint8_t *)data);
             break;
         }
@@ -268,7 +328,7 @@ int8_t executor_set_command(exec_cmd cmd, uint8_t type, uint8_t ch,  void *data)
         {
             char *pbuf;
             printf_info("set work mode[%d]\n", type);
-            poal_config->assamble_kernel_response_data(pbuf, type);
+            poal_config->assamble_kernel_response_data(pbuf, type, data);
             io_set_work_mode_command((void *)pbuf);
             break;
         }

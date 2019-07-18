@@ -66,21 +66,20 @@ int server_init(void)
 
 #if (PROTOCAL_XNRP != 0) || (PROTOCAL_ATE != 0) 
     struct net_tcp_server *tcpsrv = NULL;
-    printf_debug("tcp server init [port:%d]\n", poal_config->network.port);
+    printf_info("tcp server init [port:%d]\n", poal_config->network.port);
     tcpsrv = tcp_server_new("0.0.0.0", poal_config->network.port);
     if (!tcpsrv)
         return -1;
-   // tcpsrv->on_accept = on_accept;
 
     struct net_udp_server *udpsrv = NULL;
-    printf_debug("udp server init[port:%d]\n", poal_config->network.port);
+    printf_info("udp server init[port:%d]\n", poal_config->network.port);
     udpsrv = udp_server_new("0.0.0.0",  poal_config->network.port);
     if (!udpsrv)
         return -1;
 #endif
 #if  PROTOCAL_HTTP != 0
     struct uh_server *srv = NULL;
-    printf_debug("http server init\n");
+    printf_info("http server init\n");
     srv = uh_server_new("0.0.0.0", 8088);
     if (!srv)
         return -1;

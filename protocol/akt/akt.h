@@ -598,6 +598,11 @@ typedef struct _SUB_AUDIO_PARAM{
     uint32_t sample_rate;
 }__attribute__ ((packed)) SUB_AUDIO_PARAM;
 
+typedef struct _DIRECTION_MID_FREQ_BANDWIDTH_PARAM{
+    uint8_t ch;
+    uint32_t bandwidth;
+}__attribute__ ((packed)) DIRECTION_MID_FREQ_BANDWIDTH_PARAM;
+
 /*************************************************************************/
 #define check_radio_channel(ch)  (ch > MAX_RADIO_CHANNEL_NUM ? 1 : 0) 
 
@@ -608,6 +613,7 @@ struct akt_protocal_param{
     MULTI_FREQ_DECODE_PARAM decode_param[MAX_RADIO_CHANNEL_NUM];
     DIRECTION_FFT_PARAM fft[MAX_RADIO_CHANNEL_NUM];
     DIRECTION_SMOOTH_PARAM smooth[MAX_RADIO_CHANNEL_NUM];
+    DIRECTION_MID_FREQ_BANDWIDTH_PARAM  mid_freq_bandwidth[MAX_RADIO_CHANNEL_NUM];
 }__attribute__ ((packed));
 
 struct response_get_data{

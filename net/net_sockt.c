@@ -23,7 +23,7 @@ static inline void tcp_ustream_read_cb(struct ustream *s, int bytes)
     int len;
     struct net_tcp_client *cl = container_of(s, struct net_tcp_client, sfd.stream);
 
-    printf_info("data from: %s:%d\n", cl->get_peer_addr(cl), cl->get_peer_port(cl));
+    printf_debug("data from: %s:%d\n", cl->get_peer_addr(cl), cl->get_peer_port(cl));
     //str = ustream_get_read_buf(s, &len);
     memset(str, 0 ,sizeof(str));
     len =ustream_read(s, str, MAX_RECEIVE_DATA_LEN);
@@ -184,7 +184,6 @@ struct net_tcp_server *tcp_server_new(const char *host, int port)
     uloop_fd_add(&srv->fd, ULOOP_READ);
     
     INIT_LIST_HEAD(&srv->clients);
-    //srv->free = uh_server_free;
     g_srv = srv;
 
     return srv;

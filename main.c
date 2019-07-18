@@ -40,18 +40,13 @@ static void usage(const char *prog)
 ******************************************************************************/
 int main(int argc, char **argv)
 {
-    bool verbose = false;
-    bool ssl = false;
-    int port = 8081;
-    int opt;
-
-    if (!verbose)
-        log_init(log_debug);
-    
+    log_init(log_info);
     printf_note("VERSION:%s\n",SPCTRUM_VERSION_STRING);
     config_init();
     executor_init();
     uloop_init();
+    uart_init();
+    spi_init();
     if(server_init() == -1){
         printf_err("server init fail!\n");
         goto done;

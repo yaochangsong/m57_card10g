@@ -97,6 +97,14 @@ struct sem_st{
     sem_t   kernel_sysn;
 };
 
+/* 扫描模式下，需要向内核发送的工作模式参数信息，内核用作发送到客户端头信息 */
+struct fast_kernel_param{
+   uint64_t m_freq;
+   uint32_t fft_sn;
+   uint32_t total_fft;
+   uint8_t ch;
+};
+
 extern void executor_init(void);
 extern int8_t executor_set_command(exec_cmd cmd, uint8_t type, uint8_t ch,  void *data);
 extern int8_t executor_get_command(exec_cmd cmd, uint8_t type, uint8_t ch,  void *data);

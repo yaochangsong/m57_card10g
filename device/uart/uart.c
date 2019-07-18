@@ -4,6 +4,8 @@ unsigned long  speed_arr[] = {B115200,B57600,B38400, B19200, B9600, B4800, B2400
 unsigned long name_arr[] = {115200,57600,38400,  19200,  9600,  4800,  2400,  1200,  300, 38400,
           19200,  9600, 4800, 2400, 1200,  300, };
 
+struct uart_t uart[2];
+
 static void set_speed(int fd, unsigned long speed)
 {
     int   i;
@@ -125,7 +127,7 @@ static int openserial(char *name)
     return fd;
 }
 
-int uart_init(char *name)
+int uart_init_dev(char *name)
 {
 
     int fd;
@@ -165,3 +167,52 @@ char *uart_write_read(int fd ,char *cmd,unsigned int cmd_len ,int *recv_len){
     return pbuf;
 }
 
+static void uart0_read_cb(struct uloop_fd *fd, unsigned int events)
+{
+    printf_debug("uart0 read cb\n");
+}
+
+long uart0_send_data(uint8_t *buf, uint32_t len)
+{
+    return write(uart[0].fd.fd,buf,len);
+}
+
+long uart1_send_data(uint8_t *buf, uint32_t len)
+{
+    return write(uart[1].fd.fd,buf,len);
+}
+
+static void uart1_read_cb(struct uloop_fd *fd, unsigned int events)
+{
+    uint8_t buf[SERIAL_BUF_LEN]; 
+    int32_t  nread; 
+
+    printf_debug("uart1 read cb\n");
+    memset(buf,0,SERIAL_BUF_LEN);
+    nread = read(uart[1].fd.fd, buf, SERIAL_BUF_LEN);
+    if (nread > 0){
+       /* deal uart1 read work */
+    }
+}
+
+void uart_init(void)
+{
+    printf_info("uart init\n");
+    
+#if defined(PLAT_FORM_ARCH_ARM)
+    uart[0].fd.fd = uart_init_dev("/dev/ttyPS0");
+        if(uart[0].fd.fd <=0 ){
+        printf_err("/dev/ttyPS0 serial init failed\n");
+    }
+
+    uart[1].fd.fd = uart_init_dev("/dev/ttyPS1");
+        if(uart[1].fd.fd <=0 ){
+        printf_err("/dev/ttyPS1 serial init failed\n");
+    }
+    uart[0].fd.cb = uart0_read_cb;
+    uart[1].fd.cb = uart1_read_cb;
+    
+    uloop_fd_add(&uart[0].fd, ULOOP_READ);
+    uloop_fd_add(&uart[1].fd, ULOOP_READ);
+#endif
+}

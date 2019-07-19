@@ -25,6 +25,8 @@ pthread_mutex_t config_mutex = PTHREAD_MUTEX_INITIALIZER;
 /** Sets the default config parameters and initialises the configuration system */
 void config_init(void)
 {  
+    printf_debug("config init\n");
+
     /* to test*/
     struct sockaddr_in saddr;
     uint8_t  mac[6];
@@ -77,9 +79,20 @@ int8_t config_parse_data(exec_cmd cmd, uint8_t type, void *data)
 *        0：成功
 ******************************************************************************/
 
-int8_t config_save_batch(exec_cmd cmd, uint8_t type, void *data)
+int8_t config_save_batch(exec_cmd cmd, uint8_t type,s_config *config)
 {
-    printf_debug("save parse data\n");
+    printf_debug(" config_save_batch\n");
+
+#if DAO_XML == 1
+     dao_conf_save_batch(cmd,type,config);
+        
+#elif DAO_JSON == 1
+    
+#else
+    #error "NOT SUPPORT DAO FORMAT"
+#endif
+        return NULL;
+
     return 0;
 }
 

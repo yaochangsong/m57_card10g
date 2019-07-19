@@ -283,7 +283,8 @@ void *write_struc_config_file_array(spectrum         spectrum_fre)
 
     if(parent_node == NULL){  
         parent_node = mxmlNewElement(whole_root, spectrum_fre.array);
-        mxmlElementSetAttr(parent_node,spectrum_fre.name,spectrum_fre.value);
+        mxmlElementSetAttr(parent_node,spectrum_fre.name,spectrum_fre.value);
+
     }
 
     node = mxmlFindElement(parent_node, whole_root, spectrum_fre.element,NULL, NULL,MXML_DESCEND);
@@ -314,7 +315,8 @@ void *write_struc_config_file_array(spectrum         spectrum_fre)
 
         s_node =  mxmlNewElement(node, spectrum_fre.seed_array);
 
-        mxmlElementSetAttr(s_node,spectrum_fre.seed_name,spectrum_fre.seed_value);
+        mxmlElementSetAttr(s_node,spectrum_fre.seed_name,spectrum_fre.seed_value);
+
 
         seed_node = mxmlFindElement(s_node, node, spectrum_fre.seed_element,NULL, NULL,MXML_DESCEND);
 
@@ -413,44 +415,217 @@ const char *read_config_file_array(const char *array,const char *name,const char
 
 static void *dao_load_default_config_file(char *file)
 {
-    void *root;
+#if DAO_XML == 1
+    FILE *fp;
+    mxml_node_t *xml;
 
-    spectrum_sing.file = file;
-    spectrum_sing.parent_element = "network";
-    spectrum_sing.element = "mac";
+    mxml_node_t *root;    /* <?xml ... ?> */
+    mxml_node_t *child;   /* <data> */
+    mxml_node_t *node;   /* <node> */
+    mxml_node_t *group;  /* <group> */
+    printf_debug("create xml config file\n");
 
-    //spectrum_sing.s_element = "bb";
-    //spectrum_sing.seed_element = "cc";
-    spectrum_sing.string = "38:2c:4a:ba:57:1d";
-    spectrum_sing.series = ONE_LEVEL;
+    /*二级节点*/
+    mxml_node_t *network;
+    mxml_node_t *controlPara;
+    mxml_node_t *statusPara;
+    mxml_node_t *fileStorePara;
+    mxml_node_t *channel;
 
-    root = write_struc_config_file_single(spectrum_sing);
+    /*控制参数下节点*/
+    mxml_node_t *dataOutPutEn;
+    /*状态参数下节点的定义*/
+   // mxml_node_t *channelInfo;
+    mxml_node_t *softVersion;
+    mxml_node_t *diskInfo;
+    mxml_node_t *clkInfo;
+    mxml_node_t *adInfo;
+   // mxml_node_t *rfInfo;
+    mxml_node_t *fpgaInfo;
+    mxml_node_t *powerstate;
+    //mxml_node_t *diskNode;
+    mxml_node_t *version;
+    
+    /*root下的一级节点*/
+    printf_debug("create xml config file\n");
+    xml = mxmlNewXML("1.0");
+    /*创建版本信息*/
+    root = mxmlNewElement(xml, "root");
+    version = mxmlNewElement(root, "version");
+    mxmlNewText(version, 0, "1.0");
 
-    spectrum_array.file = file;
-    spectrum_array.array = "channel";
-    spectrum_array.name = "index";
-    spectrum_array.value = "0";
+   
+    network= mxmlNewElement(root, "network");
+    controlPara = mxmlNewElement(root, "controlPara");
+    statusPara = mxmlNewElement(root, "statusPara");
+    fileStorePara = mxmlNewElement(root, "fileStorePara");
 
-    spectrum_array.element = "mediumfrequency";
-    spectrum_array.seed_element = "centerFreq";
-    spectrum_array.seed_array = "freqPoint";
-    spectrum_array.seed_name = "indexx";
-    spectrum_array.seed_value = "37";
-    spectrum_array.val = 90;   
-    spectrum_array.series = ARRAY_ARRAY;
-    root = write_struc_config_file_array(spectrum_array);
+     /*创建网络参数*/
+    node = mxmlNewElement(network, "mac");
+    mxmlNewText(node, 0, "38:2c:4a:ba:57:1d");
+    node = mxmlNewElement(network, "gateway");
+    mxmlNewText(node, 0, "192.168.2.1");
+    node = mxmlNewElement(network, "netmask");
+    mxmlNewText(node, 0, "255.255.255.0");
+    node = mxmlNewElement(network, "ipaddress");
+    mxmlNewText(node, 0, "192.168.2.112");
+    node = mxmlNewElement(network, "port");
+    mxmlNewText(node, 0, "8000");
 
-    spectrum_array.element = "cid";
-    spectrum_array.val = 3;   
-    spectrum_array.series = ARRAY;
+    /*中频参数*/
+    char p[10]={0};
+    char temp[10]={0};
+    int i=0;
+    int j=0;
+    for(i=0;i<1;i++)
+    {
+        memset(p,0,sizeof(char)*10);
+        sprintf(p,"%d",i);
+        channel=mxmlNewElement(root,"channel");
+        mxmlElementSetAttr(channel,"index",p);
+        node = mxmlNewElement(channel, "cid");
+        mxmlNewText(node, 0, "1");
+        node = mxmlNewElement(channel, "mediumfrequency");
+        for(j=0;j<1;j++)
+        {
+            memset(temp,0,sizeof(char)*10);
+            sprintf(temp,"%d",j);
+            group = mxmlNewElement(node, "freqPoint");
+            mxmlElementSetAttr(group,"index",temp);
+            child = mxmlNewElement(group, "centerFreq");
+            mxmlNewText(child, 0, "1000000");
+            child = mxmlNewElement(group, "bandwith");
+            mxmlNewText(child, 0, "1000");
+            child = mxmlNewElement(group, "freqResolution");
+            mxmlNewText(child, 0, "20");
+            child = mxmlNewElement(group, "fftSize");
+            mxmlNewText(child, 0, "64");
+            child = mxmlNewElement(group, "decMethodId");
+            mxmlNewText(child, 0, "1");
+            child = mxmlNewElement(group, "decBandwidth");
+            mxmlNewText(child, 0, "16");
+            child = mxmlNewElement(group, "muteSwitch");
+            mxmlNewText(child, 0, "0");
+            child = mxmlNewElement(group, "muteThreshold");
+            mxmlNewText(child, 0, "50");
+
+        }
+        node = mxmlNewElement(channel, "radiofrequency");
+        group = mxmlNewElement(node, "status");
+        mxmlNewText(group, 0, "1");
+        group = mxmlNewElement(node, "modeCode");
+        mxmlNewText(group, 0, "0");
+        group = mxmlNewElement(node, "gainMode");
+        mxmlNewText(group, 0, "0");
+        group = mxmlNewElement(node, "agcCtrlTime");
+        mxmlNewText(group, 0, "10");
+        group = mxmlNewElement(node, "agcOutPutAmp");
+        mxmlNewText(group, 0, "1");
+        group = mxmlNewElement(node, "midBw");
+        mxmlNewText(group, 0, "100");
+        group = mxmlNewElement(node, "rfAttenuation");
+        mxmlNewText(group, 0, "10");
+        group = mxmlNewElement(node, "temprature");
+        mxmlNewText(group, 0, "50");
+         
+    }
+
 
     
-    root = write_struc_config_file_array(spectrum_array);
+    /*控制参数*/
+    node = mxmlNewElement(controlPara, "ctrlMode");
+    mxmlNewText(node, 0, "1");
+    node = mxmlNewElement(controlPara, "calibration");
+    mxmlNewText(node, 0, "1");
+    node = mxmlNewElement(controlPara, "timeSet");
+    mxmlNewText(node, 0, "1");
+    dataOutPutEn = mxmlNewElement(controlPara, "dataOutPutEn");
+    /*控制参数下dataOutPutEn的子节点*/
+    node = mxmlNewElement(dataOutPutEn, "enable");
+    mxmlNewText(node, 0, "1");
+    node = mxmlNewElement(dataOutPutEn, "subChannel");
+    mxmlNewText(node, 0, "-1");
+    node = mxmlNewElement(dataOutPutEn, "psdEnable");
+    mxmlNewText(node, 0, "0");
+    node = mxmlNewElement(dataOutPutEn,  "audioEnable");
+    mxmlNewText(node, 0, "1");
+    node = mxmlNewElement(dataOutPutEn, "IQEnable");
+    mxmlNewText(node, 0, "0");
+    node = mxmlNewElement(dataOutPutEn, "spectrumAnalysisEn");
+    mxmlNewText(node, 0, "0");
+    node = mxmlNewElement(dataOutPutEn, "directionEn");
+    mxmlNewText(node, 0, "0");
+    /*状态参数的子节点*/ 
+    //channelInfo = mxmlNewElement(statusPara, "channelInfo");
+    softVersion = mxmlNewElement(statusPara, "softVersion");
+    diskInfo = mxmlNewElement(statusPara, "diskInfo");
+    clkInfo = mxmlNewElement(statusPara, "clkInfo");
+    adInfo = mxmlNewElement(statusPara, "adInfo");
+    //rfInfo = mxmlNewElement(statusPara, "rfInfo");
+    fpgaInfo = mxmlNewElement(statusPara, "fpgaInfo");
+    powerstate = mxmlNewElement(statusPara, "powerstate");
+    /*状态参数下softVersion的子节点*/
+    node = mxmlNewElement(softVersion, "app");
+    mxmlNewText(node, 0, "v1.0-20190702-134310");
+    node = mxmlNewElement(softVersion, "kernel");
+    mxmlNewText(node, 0, "v1.0-20190702-134310");
+    node = mxmlNewElement(softVersion, "uboot");
+    mxmlNewText(node, 0, "v1.0-20190702-134310");
 
-    //root = write_config_file_array(file,"channel","index","0","mediumfrequency","centerFreq","freqPoint","indexx","33",77,ARRAY_ARRAY);
-    //root = write_config_file_array(file,"channel","index","0","radiofrequency","status",NULL,NULL,NULL,99,ARRAY_PARENT);
-	return root;
+    /*状态参数下diskInfo的子节点*/
+    node = mxmlNewElement(diskInfo, "diskNum");
+    mxmlNewText(node, 0, "1");
+    node = mxmlNewElement(diskInfo, "diskNode");
+    group = mxmlNewElement(node, "totalSpace");
+    mxmlNewText(group, 0, "100000000");
+    group = mxmlNewElement(node, "freeSpace");
+    mxmlNewText(group, 0, "5665641");
+    /*状态参数下clkInfo的子节点*/
+    node = mxmlNewElement(clkInfo, "inout");
+    mxmlNewText(node, 0, "1");
+    /*状态参数下adInfo的子节点*/
+    node = mxmlNewElement(adInfo, "status");
+    mxmlNewText(node, 0, "1");
+    /*状态参数下fpgaInfo的子节点*/
+    node = mxmlNewElement(fpgaInfo, "temprature");
+    mxmlNewText(node, 0, "67");
+    /*状态参数下 powerstate的子节点*/
+    node = mxmlNewElement(powerstate, "diskNum");
+    mxmlNewText(node, 0, "1");
+    node = mxmlNewElement(powerstate, "diskNode");
+    group = mxmlNewElement(node, "totalSpace");
+    mxmlNewText(group, 0, "100000000");
+    group = mxmlNewElement(node, "freeSpace");
+    mxmlNewText(group, 0, "5665641");
+
+    /*状态参数下fileStorePara的子节点*/
+    node = mxmlNewElement(fileStorePara, "iqDataStore");
+    mxmlNewText(node, 0, "1");
+    node = mxmlNewElement(fileStorePara, "iqDataBackTrace");
+    mxmlNewText(node, 0, "1");
+    node = mxmlNewElement(fileStorePara, "fileQuery");
+    mxmlNewText(node, 0, "1");
+    node = mxmlNewElement(fileStorePara, "fileDelete");
+    mxmlNewText(node, 0, "1");
+    node = mxmlNewElement(fileStorePara, "fileStrategy");
+    mxmlNewText(node, 0, "1");
+
+    printf_debug("4\n");
+
+
+    printf_debug("%s\n", file);
+    fp = fopen(file, "w");
+    mxmlSaveFile(root, fp, NULL);
+    fclose(fp);
+    return (void *)root;
+#elif DAO_JSON == 1
+
+#else
+#error "NOT SUPPORT DAO FORMAT"
+#endif
+    return NULL;
 }
+
 
 
 static void *dao_load_root(void *root)
@@ -546,7 +721,7 @@ void dao_read_create_config_file(char *file, void *root_config)
 
     }else{
 
-    whole_root = mxmlNewXML("1.0");	
+    //whole_root = mxmlNewXML("1.0");	
     printf_debug("create new config file\n");
     root = dao_load_default_config_file(file);
     }
@@ -555,4 +730,5 @@ void dao_read_create_config_file(char *file, void *root_config)
     root_config = dao_load_root(root);
     printf_debug("1\n");
 }
+
 

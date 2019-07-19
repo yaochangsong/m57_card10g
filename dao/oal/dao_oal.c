@@ -16,13 +16,7 @@
 #include "config.h"
 
 
-#define ARRAY        0
-#define ARRAY_PARENT 1
-#define ARRAY_ARRAY  2
 
-#define  ONE_LEVEL   0
-#define  TWO_LEVEL   1
-#define  THREE_LEVEL   2
 
 
 mxml_node_t *whole_root;

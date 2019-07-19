@@ -43,5 +43,8 @@ void config_init(void);
 } while (0)
 
 extern s_config *config_get_config(void);
+
+int8_t config_save_batch(exec_cmd cmd, uint8_t type,s_config *config);
+
 #endif
 

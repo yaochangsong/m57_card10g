@@ -75,7 +75,7 @@ static inline void  executor_fregment_scan(uint8_t ch)
             m_freq = s_freq + i * scan_bw + scan_bw/2;
         }
         else{
-            /* 若不是整数，需计算剩余带宽中心频率 */ */
+            /* 若不是整数，需计算剩余带宽中心频率 */
             left_band = e_freq - s_freq + i * scan_bw;
             m_freq = s_freq + i * scan_bw + left_band/2;
         }

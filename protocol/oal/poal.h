@@ -114,7 +114,6 @@ struct multi_freq_fregment_para_st{
     uint8_t window_type;
     uint8_t frame_drop_cnt;
     uint16_t smooth_time;
-    uint64_t bandwith;
     uint32_t freq_segment_cnt;
     struct freq_fregment_para_st  fregment[MAX_SIG_CHANNLE];
 }__attribute__ ((packed));

@@ -98,10 +98,13 @@ struct sem_st{
 };
 
 /* 扫描模式下，需要向内核发送的工作模式参数信息，内核用作发送到客户端头信息 */
-struct fast_kernel_param{
-   uint64_t m_freq;
+struct kernel_header_param{
+   uint64_t s_freq;             /* 开始频率 */
+   uint64_t e_freq;             /* 截止频率 */
+   uint64_t m_freq;             /* 中心频率 */
    uint32_t fft_sn;
    uint32_t total_fft;
+   float freq_resolution;       /* 分辨率 */
    uint8_t ch;
 };
 

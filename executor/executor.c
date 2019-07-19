@@ -14,6 +14,7 @@
 ******************************************************************************/
 #include "config.h"
 
+
 struct sem_st work_sem;
 
 static int8_t executor_wait_kernel_deal(void)
@@ -31,7 +32,7 @@ static int8_t executor_wait_kernel_deal(void)
     return 0;
 }
 
-void inline executor_fregment_scan(uint8_t ch)
+static inline void  executor_fregment_scan(uint8_t ch)
 {
     struct poal_config *poal_config = &(config_get_config()->oal_config);
 

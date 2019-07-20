@@ -74,6 +74,7 @@ enum {
     EX_AD_INFO=73,                /*AD 信息*/
     EX_RF_INFO=74,                /*射频信息*/
     EX_FPGA_INFO=75,              /*fpga 信息*/
+    EX_FPGA_TEMPERATURE=76        /*fpga 温度*/
 };
 
 /* executor: RF paramter */
@@ -107,6 +108,21 @@ struct kernel_header_param{
    float freq_resolution;       /* 分辨率 */
    uint8_t ch;
 };
+
+
+/*  define the command setting lock */
+#define LOCK_SET_COMMAND() do { \
+    printf_debug("Locking set command\n"); \
+    pthread_mutex_lock(&config_mutex); \
+    printf_debug("Set command locked\n"); \
+} while (0)
+
+#define UNLOCK_SET_COMMAND() do { \
+    printf_debug("Unlocking set command\n"); \
+    pthread_mutex_unlock(&config_mutex); \
+    printf_debug("Set command unlocked\n"); \
+} while (0)
+
 
 extern void executor_init(void);
 extern int8_t executor_set_command(exec_cmd cmd, uint8_t type, uint8_t ch,  void *data);

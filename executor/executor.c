@@ -14,6 +14,10 @@
 ******************************************************************************/
 #include "config.h"
 
+/**
+ * Mutex for the set command, used by command setting related functions. 
+ */
+pthread_mutex_t set_cmd_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 struct sem_st work_sem;
 
@@ -232,10 +236,16 @@ loop:   printf_info("######wait to deal work######\n");
     }
 }
 
-static int8_t executor_get_kernel_command(uint8_t type, void *data)
+static int8_t executor_get_kernel_command(uint8_t type, uint8_t ch, void *data)
 {
-
-    
+    switch(type)
+    {
+        case EX_FPGA_TEMPERATURE:
+            *(int16_t *)data = io_get_adc_temperature();
+            break;
+        default:
+            printf_err("not support type[%d]\n", type);
+    }
 }
 
 
@@ -379,7 +389,7 @@ static int8_t executor_set_rf_command(uint8_t type, uint8_t ch, void *data)
 int8_t executor_set_command(exec_cmd cmd, uint8_t type, uint8_t ch,  void *data)
 {
      struct poal_config *poal_config = &(config_get_config()->oal_config);
-
+     LOCK_SET_COMMAND();
      switch(cmd)
      {
         case EX_MID_FREQ_CMD:
@@ -415,6 +425,7 @@ int8_t executor_set_command(exec_cmd cmd, uint8_t type, uint8_t ch,  void *data)
         default:
             printf_err("invalid set command[%d]\n", cmd);
      }
+     UNLOCK_SET_COMMAND();
      return 0;
 }
 
@@ -424,6 +435,7 @@ int8_t executor_get_command(exec_cmd cmd, uint8_t type, uint8_t ch,  void *data)
     {
         case EX_MID_FREQ_CMD:
         {
+            executor_get_kernel_command(type, ch, data);
             break;
         }
         case EX_RF_FREQ_CMD:

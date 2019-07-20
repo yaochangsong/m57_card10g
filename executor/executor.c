@@ -21,7 +21,7 @@ pthread_mutex_t set_cmd_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 struct sem_st work_sem;
 
-static int8_t executor_wait_kernel_deal(void)
+static inline int8_t executor_wait_kernel_deal(void)
 {
     struct timespec ts;
     if (clock_gettime(CLOCK_REALTIME, &ts) == -1) {

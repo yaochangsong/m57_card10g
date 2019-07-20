@@ -79,8 +79,8 @@ int server_init(void)
 #endif
 #if  PROTOCAL_HTTP != 0
     struct uh_server *srv = NULL;
-    printf_info("http server init\n");
-    srv = uh_server_new("0.0.0.0", 8088);
+    printf_info("http server init[port:%d]\n", poal_config->network.port+1);
+    srv = uh_server_new("0.0.0.0", poal_config->network.port+1);
     if (!srv)
         return -1;
     srv->on_accept = on_accept;

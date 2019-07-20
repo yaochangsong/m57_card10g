@@ -123,7 +123,7 @@ struct kernel_header_param{
     printf_debug("Set command unlocked\n"); \
 } while (0)
 
-
+extern struct sem_st work_sem;
 extern void executor_init(void);
 extern int8_t executor_set_command(exec_cmd cmd, uint8_t type, uint8_t ch,  void *data);
 extern int8_t executor_get_command(exec_cmd cmd, uint8_t type, uint8_t ch,  void *data);

@@ -58,25 +58,6 @@ static void  io_compute_extract_factor_by_fftsize(uint32_t anays_band,uint32_t *
     }
 }
 
-void io_init(void)
-{
-    printf_info("io init!\n");
-#ifdef PLAT_FORM_ARCH_ARM
-    int Oflags;
-    
-    if (io_ctrl_fd > 0) {
-        return;
-    }
-    io_ctrl_fd = open(DMA_DEVICE, O_RDWR);
-    if(io_ctrl_fd < 0) {
-        perror("open");
-        return;
-    }
-    fcntl(io_ctrl_fd, F_SETOWN, getpid());
-    Oflags = fcntl(io_ctrl_fd, F_GETFL);
-    fcntl(io_ctrl_fd, F_SETFL, Oflags | FASYNC|FNONBLOCK);
-#endif
-}
 
 static void io_set_common_param(uint8_t type, uint8_t *buf,uint32_t buf_len)
 {
@@ -481,5 +462,36 @@ uint8_t  io_set_network_to_interfaces(void *netinfo)
     return ret;
     
 }
+
+static void io_asyn_signal_handler(int signum)
+{
+    printf_info("receive a signal, signalnum:%d\n", signum);
+    sem_post(&work_sem.kernel_sysn);
+}
+
+
+
+void io_init(void)
+{
+    printf_info("io init!\n");
+#ifdef PLAT_FORM_ARCH_ARM
+    int Oflags;
+    
+    if (io_ctrl_fd > 0) {
+        return;
+    }
+    io_ctrl_fd = open(DMA_DEVICE, O_RDWR);
+    if(io_ctrl_fd < 0) {
+        perror("open");
+        return;
+    }
+    /* Asynchronous notification initial */
+    signal(SIGIO, io_asyn_signal_handler);
+    fcntl(io_ctrl_fd, F_SETOWN, getpid());
+    Oflags = fcntl(io_ctrl_fd, F_GETFL);
+    fcntl(io_ctrl_fd, F_SETFL, Oflags | FASYNC|FNONBLOCK);
+#endif
+}
+
 
 

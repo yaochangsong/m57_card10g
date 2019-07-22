@@ -289,13 +289,9 @@ static int akt_executor_set_enable_command(uint8_t ch)
                 executor_set_command(EX_RF_FREQ_CMD, EX_RF_MGC_GAIN, ch, &poal_config->rf_para[ch].mgc_gain_value);
                 executor_set_command(EX_RF_FREQ_CMD, EX_RF_MID_FREQ, ch, &poal_config->rf_para[ch].mid_freq);
                 executor_set_command(EX_RF_FREQ_CMD, EX_RF_MID_BW, ch, &poal_config->rf_para[ch].mid_bw);
+                executor_set_command(EX_MID_FREQ_CMD, EX_BANDWITH, ch, &poal_config->rf_para[ch].mid_bw);
                 executor_set_command(EX_MID_FREQ_CMD, EX_CHANNEL_SELECT, ch, &ch);
                 executor_set_command(EX_MID_FREQ_CMD, EX_SMOOTH_TIME, ch, &poal_config->multi_freq_point_param[ch].smooth_time);
-                for(i= 0; i< poal_config->multi_freq_point_param[ch].freq_point_cnt; i++){
-                    executor_set_command(EX_MID_FREQ_CMD, EX_FFT_SIZE, ch, &poal_config->multi_freq_point_param[ch].points[i].fft_size);
-                    executor_set_command(EX_MID_FREQ_CMD, EX_BANDWITH, ch, &poal_config->multi_freq_point_param[ch].points[i].bandwidth);
-                }
-                executor_set_command(EX_MID_FREQ_CMD, EX_DEC_METHOD, ch, NULL);
                 break;
             }
             case OAL_FAST_SCAN_MODE:
@@ -303,9 +299,9 @@ static int akt_executor_set_enable_command(uint8_t ch)
                 executor_set_command(EX_RF_FREQ_CMD, EX_RF_ATTENUATION, ch, &poal_config->rf_para[ch].attenuation);
                 executor_set_command(EX_RF_FREQ_CMD, EX_RF_MID_FREQ, ch, &poal_config->rf_para[ch].mid_freq);
                 executor_set_command(EX_RF_FREQ_CMD, EX_RF_MID_BW, ch, &poal_config->rf_para[ch].mid_bw);
-                executor_set_command(EX_MID_FREQ_CMD, EX_CHANNEL_SELECT, ch, &ch);
                 /* 中频带宽和射频带宽一直 */
                 executor_set_command(EX_MID_FREQ_CMD, EX_BANDWITH, ch, &poal_config->rf_para[ch].mid_bw);
+                executor_set_command(EX_MID_FREQ_CMD, EX_CHANNEL_SELECT, ch, &ch);
                 executor_set_command(EX_MID_FREQ_CMD, EX_SMOOTH_TIME, ch, &poal_config->multi_freq_fregment_para[ch].smooth_time);
                 break;
             }
@@ -314,12 +310,14 @@ static int akt_executor_set_enable_command(uint8_t ch)
                 executor_set_command(EX_RF_FREQ_CMD, EX_RF_ATTENUATION, ch, &poal_config->rf_para[ch].attenuation);
                 executor_set_command(EX_RF_FREQ_CMD, EX_RF_MGC_GAIN, ch, &poal_config->rf_para[ch].mgc_gain_value);
                 executor_set_command(EX_MID_FREQ_CMD, EX_SMOOTH_TIME, ch, &poal_config->multi_freq_fregment_para[ch].smooth_time);
+                executor_set_command(EX_MID_FREQ_CMD, EX_CHANNEL_SELECT, ch, &ch);
                 break;
             }
             case OAL_MULTI_POINT_SCAN_MODE:
                 executor_set_command(EX_RF_FREQ_CMD, EX_RF_ATTENUATION, ch, &poal_config->rf_para[ch].attenuation);
                 executor_set_command(EX_RF_FREQ_CMD, EX_RF_MGC_GAIN, ch, &poal_config->rf_para[ch].mgc_gain_value);
                 executor_set_command(EX_MID_FREQ_CMD, EX_SMOOTH_TIME, ch, &poal_config->multi_freq_fregment_para[ch].smooth_time);
+                executor_set_command(EX_MID_FREQ_CMD, EX_CHANNEL_SELECT, ch, &ch);
                 break;
             default:
                 return -1;
@@ -404,7 +402,6 @@ static int akt_execute_set_command(void)
                 err_code = RET_CODE_PARAMTER_NOT_SET;
                 goto set_exit;
             }
-            config_save_batch(EX_WORK_MODE_CMD, EX_DEC_METHOD, poal_config);
             break;
         }
         case DIRECTION_SMOOTH_CMD:

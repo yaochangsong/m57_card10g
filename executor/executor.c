@@ -94,6 +94,7 @@ static inline void  executor_fregment_scan(uint32_t fregment_num,uint8_t ch, wor
         header_param.fft_size = poal_config->multi_freq_fregment_para[ch].fregment[fregment_num].fft_size;
         header_param.freq_resolution = poal_config->multi_freq_fregment_para[ch].fregment[fregment_num].freq_resolution;
         executor_set_command(EX_RF_FREQ_CMD, EX_RF_MID_FREQ, ch, &m_freq);
+        executor_set_command(EX_MID_FREQ_CMD, EX_BANDWITH, ch, &m_freq);
         executor_set_command(EX_WORK_MODE_CMD, mode, ch, &header_param);
         io_set_enable_command(PSD_MODE_ENABLE, ch, header_param.fft_size);
         executor_wait_kernel_deal();
@@ -137,6 +138,7 @@ static inline void  executor_points_scan(uint8_t ch, work_mode mode)
         executor_set_command(EX_RF_FREQ_CMD,  EX_RF_MID_FREQ, ch, &point->points[i].center_freq);
         executor_set_command(EX_MID_FREQ_CMD, EX_MID_FREQ,    ch, &point->points[i].center_freq);
         executor_set_command(EX_WORK_MODE_CMD,mode, ch, &header_param);
+
         if(poal_config->enable.audio_en || poal_config->enable.iq_en){
             io_set_enable_command(AUDIO_MODE_ENABLE, ch, point->points[i].fft_size);
         }else{
@@ -463,11 +465,16 @@ int8_t executor_get_command(exec_cmd cmd, uint8_t type, uint8_t ch,  void *data)
 
 void executor_init(void)
 {
-    int ret;
+    int ret, i;
     pthread_t work_id;
     io_init();
     /* set default network */
     executor_set_command(EX_NETWORK_CMD, 0, 0, NULL);
+    /* shutdown all channel */
+    for(i = 0; i<MAX_RADIO_CHANNEL_NUM ; i++){
+        io_set_enable_command(PSD_MODE_DISABLE, i, 0);
+        io_set_enable_command(AUDIO_MODE_DISABLE, i, 0);
+    }
     sem_init(&(work_sem.notify_deal), 0, 0);
     sem_init(&(work_sem.kernel_sysn), 0, 0);
     ret=pthread_create(&work_id,NULL,(void *)executor_work_mode_thread, NULL);

@@ -11,6 +11,8 @@
 /*****************************************************************************     
 *  Rev 1.0   06 July 2019   yaochangsong
 *  Initial revision.
+*  Rev 2.0   22 July 2019   yonglang
+*  Initial revision.
 ******************************************************************************/
 
 #include "config.h"
@@ -470,7 +472,7 @@ static void *dao_load_default_config_file(char *file)
     node = mxmlNewElement(network, "ipaddress");
     mxmlNewText(node, 0, "192.168.2.112");
     node = mxmlNewElement(network, "port");
-    mxmlNewText(node, 0, "8000");
+    mxmlNewText(node, 0, "1234");
 
     /*中频参数*/
     char p[10]={0};

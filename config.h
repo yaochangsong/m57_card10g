@@ -59,7 +59,7 @@ PLAT_FORM_ARCH_ARM
 #define SPCTRUM_VERSION_STRING "1.0.0-"__DATE__"."__TIME__ /* application version */
 
 /*Protocal Support*/
-#define PROTOCAL_HTTP  0
+#define PROTOCAL_HTTP  1
 #define PROTOCAL_XNRP  0
 #define PROTOCAL_ATE   1
 

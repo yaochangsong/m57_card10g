@@ -38,7 +38,7 @@ int8_t lcd_scanf(uint8_t *data, int32_t len)
 int8_t lcd_printf(uint8_t cmd, uint8_t type, uint8_t *data)
 {
 #ifdef LCD_TYPE == DWIN_K600_SERIAL_SCREEN
-
+    k600_receive_from_user_data(cmd, type, data);
 #endif
     return 0;
 }

@@ -32,18 +32,18 @@ typedef enum {
     RET_CODE_INTERNAL_ERR     = 6,
     RET_CODE_PARAMTER_NOT_SET = 7,
     RET_CODE_PARAMTER_TOO_LONG= 8
-} return_code;
+} x_return_code;
 
 /* method code */
-enum {
+typedef enum {
     METHOD_SET_COMMAND      = 0x01,
     METHOD_GET_COMMAND      = 0x02,
     METHOD_RESPONSE_COMMAND = 0x04,
     METHOD_REPORT_COMMAND   = 0x08,
-};
+}x_method_code;
 
 /* class code */
-enum {
+typedef enum {
     CLASS_CODE_REGISTER  = 0x00,
     CLASS_CODE_NET       = 0x01,
     CLASS_CODE_WORK_MODE = 0x02,
@@ -54,7 +54,7 @@ enum {
     CLASS_CODE_JOURNAL   = 0x12,
     CLASS_CODE_FILE      = 0x14,
     CLASS_CODE_HEARTBEAT = 0xaa
-};
+}x_class_code;
 
 /* bussiness code */
 /*net*/
@@ -63,19 +63,19 @@ enum {
 };
 
 /*work mode*/
-enum {
+typedef enum {
     B_CODE_WK_MODE_MULTI_FRQ_POINT    = 0x01,
     B_CODE_WK_MODE_SUB_CH_DEC         = 0x02,
     B_CODE_WK_MODE_MULTI_FRQ_FREGMENT = 0x03,
-};
+}x_work_mode;
     
 /*middle frequency*/
-enum {
+typedef enum {
     B_CODE_MID_FRQ_MUTE_SW        = 0x11,
     B_CODE_MID_FRQ_MUTE_THRE      = 0x12,
     B_CODE_MID_FRQ_DEC_METHOD     = 0x13,
     B_CODE_MID_FRQ_AU_SAMPLE_RATE = 0x14,
-};
+}x_middle_param;
 
 
 

@@ -59,6 +59,7 @@ struct output_en_st{
      **-----**-------**-- [direction_en]--[spec_analy_en]--[iq_en]--[audio_en]--[psd_en]
     */
     volatile uint8_t  bit_en;
+    volatile bool  bit_reset;
 }__attribute__ ((packed));
 
 /* 频点参数 */

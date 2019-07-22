@@ -22,7 +22,7 @@
 #define MAX_COMMON_PARAM_LEN 512
 
 #ifdef PLAT_FORM_ARCH_X86
-#define NETWORK_EHTHERNET_POINT       "em1"
+#define NETWORK_EHTHERNET_POINT       "eno1"
 #else
 #define NETWORK_EHTHERNET_POINT       "eth0"
 #endif

@@ -36,7 +36,7 @@ static inline int8_t executor_wait_kernel_deal(void)
     return 0;
 }
 
-static inline void  executor_fregment_scan(uint8_t ch)
+static inline void  executor_fregment_scan(uint32_t fregment_num,uint8_t ch, work_mode mode)
 {
     struct poal_config *poal_config = &(config_get_config()->oal_config);
 
@@ -46,14 +46,14 @@ static inline void  executor_fregment_scan(uint8_t ch)
     uint8_t is_remainder = 0;
 
     /* we need assamble pakege for kernel */
-    struct kernel_header_param fast_param;
+    struct kernel_header_param header_param;
 
     /* 
         Step 1: 扫描次数计算
         扫描次数 = (截止频率 - 开始频率 )/中频扫描带宽，这里中频扫描带宽认为和射频带宽一样 ;
     */
-    s_freq = poal_config->multi_freq_fregment_para[ch].fregment[0].start_freq;
-    e_freq = poal_config->multi_freq_fregment_para[ch].fregment[0].end_freq;
+    s_freq = poal_config->multi_freq_fregment_para[ch].fregment[fregment_num].start_freq;
+    e_freq = poal_config->multi_freq_fregment_para[ch].fregment[fregment_num].end_freq;
     scan_bw = poal_config->rf_para[ch].mid_bw;
     
     if(e_freq < s_freq || scan_bw <= 0){
@@ -74,6 +74,7 @@ static inline void  executor_fregment_scan(uint8_t ch)
            Step 2: 根据扫描带宽， 从开始频率到截止频率循环扫描
    */
     for(i = 0; i < scan_count + is_remainder; i++){
+        printf_info("Bandwidth Scan [%d]......\n", i);
         if(i < scan_count){
             /* 计算扫描中心频率 */
             m_freq = s_freq + i * scan_bw + scan_bw/2;
@@ -83,16 +84,28 @@ static inline void  executor_fregment_scan(uint8_t ch)
             left_band = e_freq - s_freq + i * scan_bw;
             m_freq = s_freq + i * scan_bw + left_band/2;
         }
-        fast_param.ch = ch;
-        fast_param.fft_sn = i;
-        fast_param.total_fft = scan_count + is_remainder;
-        fast_param.m_freq = m_freq;
+        header_param.ch = ch;
+        header_param.s_freq = s_freq;
+        header_param.e_freq = e_freq;
+        header_param.bandwidth = scan_bw;
+        header_param.fft_sn = i;
+        header_param.total_fft = scan_count + is_remainder;
+        header_param.m_freq = m_freq;
+        header_param.fft_size = poal_config->multi_freq_fregment_para[ch].fregment[fregment_num].fft_size;
+        header_param.freq_resolution = poal_config->multi_freq_fregment_para[ch].fregment[fregment_num].freq_resolution;
         executor_set_command(EX_RF_FREQ_CMD, EX_RF_MID_FREQ, ch, &m_freq);
-        executor_set_command(EX_WORK_MODE_CMD, EX_FAST_SCAN_MODE, ch, &fast_param);
+        executor_set_command(EX_WORK_MODE_CMD, mode, ch, &header_param);
+        io_set_enable_command(PSD_MODE_ENABLE, ch, header_param.fft_size);
+        executor_wait_kernel_deal();
+        if(poal_config->enable.bit_reset == true){
+            printf_info("receive reset task sigal\n");
+            break;
+        }
     }
+    printf_info("Exit fregment scan function\n");
 }
 
-static inline void  executor_points_scan(uint8_t ch)
+static inline void  executor_points_scan(uint8_t ch, work_mode mode)
 {
     struct poal_config *poal_config = &(config_get_config()->oal_config);
     uint32_t points_count, i;
@@ -104,8 +117,9 @@ static inline void  executor_points_scan(uint8_t ch)
     point = &poal_config->multi_freq_point_param[ch];
     points_count = point->freq_point_cnt;
     
-    printf_info("residence_time=%d\n", point->residence_time);
+    printf_info("residence_time=%d, points_count=%d\n", point->residence_time, points_count);
     for(i = 0; i < points_count; i++){
+        printf_info("Scan Point [%d]......\n", i);
         s_freq = point->points[i].center_freq - point->points[i].bandwidth/2;
         e_freq = point->points[i].center_freq + point->points[i].bandwidth/2;
         header_param.ch = ch;
@@ -113,11 +127,16 @@ static inline void  executor_points_scan(uint8_t ch)
         header_param.s_freq = s_freq;
         header_param.e_freq = e_freq;
         header_param.total_fft = points_count;
+        header_param.fft_size = point->points[i].fft_size;
+        header_param.bandwidth = point->points[i].bandwidth;
+        header_param.m_freq = point->points[i].center_freq;
         header_param.freq_resolution = (float)point->points[i].bandwidth * BAND_FACTOR / (float)point->points[i].fft_size;
+        printf_info("ch=%d, s_freq=%llu, e_freq=%llu, fft_size=%u\n", ch, s_freq, e_freq, header_param.fft_size);
+        printf_info("bandwidth=%u, m_freq=%llu, freq_resolution=%f\n", header_param.bandwidth, header_param.m_freq, header_param.freq_resolution);
         executor_set_command(EX_RF_FREQ_CMD,  EX_RF_MID_BW,   ch, &point->points[i].bandwidth);
         executor_set_command(EX_RF_FREQ_CMD,  EX_RF_MID_FREQ, ch, &point->points[i].center_freq);
         executor_set_command(EX_MID_FREQ_CMD, EX_MID_FREQ,    ch, &point->points[i].center_freq);
-        executor_set_command(EX_WORK_MODE_CMD,EX_FAST_SCAN_MODE, ch, &header_param);
+        executor_set_command(EX_WORK_MODE_CMD,mode, ch, &header_param);
         if(poal_config->enable.audio_en || poal_config->enable.iq_en){
             io_set_enable_command(AUDIO_MODE_ENABLE, ch, point->points[i].fft_size);
         }else{
@@ -125,7 +144,7 @@ static inline void  executor_points_scan(uint8_t ch)
         }
         if(poal_config->enable.psd_en){
             executor_set_command(EX_MID_FREQ_CMD, EX_FFT_SIZE, ch, &point->points[i].fft_size);
-            executor_set_command(EX_MID_FREQ_CMD, EX_DEC_BW, ch, &point->points[i].fft_size); 
+            executor_set_command(EX_MID_FREQ_CMD, EX_DEC_BW, ch, &point->points[i].bandwidth); 
         }else{
             io_set_enable_command(PSD_MODE_DISABLE, ch, point->points[i].fft_size);
         }
@@ -133,13 +152,15 @@ static inline void  executor_points_scan(uint8_t ch)
         do{
             if(poal_config->enable.psd_en){
                 io_set_enable_command(PSD_MODE_ENABLE, ch, point->points[i].fft_size);
-                executor_wait_kernel_deal();
             }
-            if(poal_config->enable.bit_en == 0){
+            executor_wait_kernel_deal();
+            if(poal_config->enable.bit_en == 0 || poal_config->enable.bit_reset == true){
                 break;
             }
-        }while(time(NULL) < s_time + point->residence_time);
+        }while(time(NULL) < s_time + point->residence_time ||  /* multi-frequency switching */
+               points_count == 1);                             /* single-frequency station */
     }
+    printf_info("Exit points scan function\n");
 }
 
 
@@ -149,83 +170,67 @@ void executor_work_mode_thread(void *arg)
     uint32_t fft_size;
     uint8_t ch = poal_config->enable.cid;
     uint8_t sub_ch = poal_config->enable.sub_id;
-    uint32_t i;
+    uint32_t j;
     
     while(1)
     {
 loop:   printf_info("######wait to deal work######\n");
         sem_wait(&work_sem.notify_deal);
         ch = poal_config->enable.cid;
+        if(OAL_NULL_MODE == poal_config->work_mode){
+            printf_warn("Work Mode not set\n");
+            goto loop;
+        }
         printf_info("receive notify, [Channel:%d]%s Work: [%s], [%s], [%s]\n", 
                      ch,
                      poal_config->enable.bit_en == 0 ? "Stop" : "Start",
                      poal_config->enable.psd_en == 0 ? "Psd Stop" : "Psd Start",
                      poal_config->enable.audio_en == 0 ? "Audio Stop" : "Audio Start",
                      poal_config->enable.iq_en == 0 ? "IQ Stop" : "IQ Start");
-        
-        io_set_enable_command(AUDIO_MODE_DISABLE, ch, 0);
-        if(poal_config->enable.audio_en || poal_config->enable.iq_en){
-            io_set_enable_command(AUDIO_MODE_ENABLE, ch, 0);
+        poal_config->enable.bit_reset = false;
+        printf_note("-------------------------------------\n");
+        if(poal_config->work_mode == OAL_FAST_SCAN_MODE){
+            printf_note("            FastScan             \n");
+        }else if(poal_config->work_mode == OAL_MULTI_ZONE_SCAN_MODE){
+            printf_note("             MultiZoneScan       \n");
+        }else if(poal_config->work_mode == OAL_FIXED_FREQ_ANYS_MODE){
+            printf_note("             Fixed Freq          \n");
+        }else if(poal_config->work_mode == OAL_MULTI_POINT_SCAN_MODE){
+            printf_note("             MultiPointScan       \n");
         }else{
-            io_set_enable_command(AUDIO_MODE_DISABLE, ch, 0);
+            goto loop;
         }
+        printf_note("-------------------------------------\n");
         for(;;){
             switch(poal_config->work_mode)
             {
-                case OAL_FIXED_FREQ_ANYS_MODE:
-                {
-                    fft_size = poal_config->multi_freq_point_param[ch].points[sub_ch].fft_size;
-                    if(poal_config->enable.psd_en){
-                        printf_info("start fixed freq thread, psd_en:%d \n", poal_config->enable.psd_en);
-                        io_set_enable_command(PSD_MODE_ENABLE, ch, fft_size);
-                        executor_wait_kernel_deal();
-                    }else{
-                        printf_info("stop fixed freq thread\n");
-                        goto loop;
-                    }
-                }
-                    break;
                 case OAL_FAST_SCAN_MODE:
-                {
-                    fft_size = poal_config->multi_freq_fregment_para[ch].fregment[0].fft_size;
-                    if(poal_config->enable.psd_en){
-                        printf_info("start fast scan thread\n");
-                        executor_fregment_scan(ch);
-                        io_set_enable_command(PSD_MODE_ENABLE, ch, fft_size);
-                        executor_wait_kernel_deal();
-                    }else{
-                        printf_info("stop fast scan thread\n");
-                        io_set_enable_command(PSD_MODE_DISABLE, ch, fft_size);
-                        goto loop;
-                    }
-                    break;
-                }
                 case OAL_MULTI_ZONE_SCAN_MODE:
                 {   
-                    printf_info("start multi zone thread cnt: %d\n", poal_config->multi_freq_fregment_para[ch].freq_segment_cnt);
+                    printf_info("scan segment count: %d\n", poal_config->multi_freq_fregment_para[ch].freq_segment_cnt);
                     if(poal_config->enable.psd_en){
-                        for(i = 0; i < poal_config->multi_freq_fregment_para[ch].freq_segment_cnt; i++){
-                            fft_size = poal_config->multi_freq_fregment_para[ch].fregment[i].fft_size;
-                            executor_fregment_scan(ch);
-                            io_set_enable_command(PSD_MODE_ENABLE, ch, fft_size);
-                            executor_wait_kernel_deal();
+                        for(j = 0; j < poal_config->multi_freq_fregment_para[ch].freq_segment_cnt; j++){
+                            printf_info("Segment Scan [%d]\n", j);
+                            executor_fregment_scan(j, ch, poal_config->work_mode);
                         }
                     }else{
-                        io_set_enable_command(PSD_MODE_DISABLE, ch, fft_size);
+                        io_set_enable_command(PSD_MODE_DISABLE, ch, 0);
                         goto loop;
                     }
                 }
                     break;
+                case OAL_FIXED_FREQ_ANYS_MODE:
                 case OAL_MULTI_POINT_SCAN_MODE:
-                    printf_info("start multi point thread\n");
+                {
+                    printf_info("start point scan: points_count=%d\n", poal_config->multi_freq_point_param[ch].freq_point_cnt);
                     if(poal_config->enable.bit_en){
-                        executor_points_scan(ch);
-                        executor_wait_kernel_deal();
+                        executor_points_scan(ch, poal_config->work_mode);
                     }else{
                         io_set_enable_command(PSD_MODE_DISABLE, ch, 0);
                         io_set_enable_command(AUDIO_MODE_DISABLE, ch, 0);
                         goto loop;
                     }
+                }
                     break;
                 default:
                     printf_err("not support work thread\n");
@@ -406,6 +411,7 @@ int8_t executor_set_command(exec_cmd cmd, uint8_t type, uint8_t ch,  void *data)
         {
             /* notify thread to deal data */
             printf_debug("notify thread to deal data\n");
+            poal_config->enable.bit_reset = true; /* reset(stop) all working task */
             sem_post(&work_sem.notify_deal);
             break;
         }

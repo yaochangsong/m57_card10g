@@ -356,7 +356,7 @@ typedef struct _DEV_DISCOVER_PARAM{
 typedef struct _FIXED_FREQ_ANYS_B_PARAM{
     uint8_t cid;
     uint64_t center_freq;
-    uint32_t bandwith;
+    uint32_t bandwidth;
     float freq_resolution;
     uint32_t fft_size;
     uint8_t  win_type;
@@ -367,7 +367,7 @@ typedef struct _FIXED_FREQ_ANYS_B_PARAM{
 typedef struct _CALIBRATION_PARAM{
     uint8_t cid;
     uint64_t center_freq;
-    uint32_t bandwith;
+    uint32_t bandwidth;
     float freq_resolution;
     uint32_t fft_size;
     uint8_t  win_type;
@@ -380,7 +380,7 @@ typedef struct _CALIBRATION_PARAM{
 typedef struct _FIXED_FREQ_ANYS_D_PARAM{
     uint8_t cid;
     uint64_t center_freq;
-    uint32_t bandwith;
+    uint32_t bandwidth;
     uint8_t  noise_en;
     int8_t noise_thrh;
     uint8_t d_method;
@@ -421,7 +421,7 @@ typedef struct _MULTI_SCAN_PARAM{
 
 typedef struct _MULTI_SERH_CHANNLE_PARAM{
    uint64_t center_freq;
-   uint64_t bandwith;
+   uint64_t bandwidth;
    float freq_resolution;
    uint32_t fft_size;
    uint8_t d_method;
@@ -484,7 +484,7 @@ typedef struct  _DATUM_SPECTRUM_HEADER{
     uint64_t start_freq;
     uint64_t cutoff_freq;
     uint64_t center_freq;
-    uint32_t bandwith;
+    uint32_t bandwidth;
     uint32_t sample_rate;
     float freq_resolution;
     uint16_t fft_len;
@@ -507,7 +507,7 @@ typedef struct  _DATUM_DEMODULATE_HEADER{
     int8_t gain;
     uint64_t duration;
     uint64_t center_freq;
-    uint32_t bandwith;
+    uint32_t bandwidth;
     uint8_t demodulate_type;
     uint32_t sample_rate;
     uint8_t frag_total_num;

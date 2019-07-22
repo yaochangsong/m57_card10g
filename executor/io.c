@@ -54,7 +54,7 @@ static void  io_compute_extract_factor_by_fftsize(uint32_t anays_band,uint32_t *
     if(found == 0){
         *extract = bandtable[i-1].extract_factor;
         *extract_filter = bandtable[i-1].filter_factor;
-        printf_info("not find band table, set default: extract=%d, extract_filter=%d\n", *extract, *extract_filter);
+        printf_warn("[%u]not find band table, set default: extract=%d, extract_filter=%d\n", anays_band, *extract, *extract_filter);
     }
 }
 
@@ -98,7 +98,7 @@ void io_set_dq_param(void)
     struct poal_config *poal_config = &(config_get_config()->oal_config);
     
     uint64_t tmp_freq;
-    uint32_t bindwith;
+    uint32_t bandwidth;
     uint64_t fix_value1 = (0x100000000ULL);
     uint64_t fix_value2 = (102400000);
     uint32_t freq_factor,band_factor, filter_factor;
@@ -116,11 +116,11 @@ void io_set_dq_param(void)
     //banwidth 
     ch = poal_config->cid;
     sub_ch = 0;
-    bindwith = poal_config->multi_freq_point_param[ch].points[sub_ch].d_bandwith;
+    bandwidth = poal_config->multi_freq_point_param[ch].points[sub_ch].d_bandwith;
     d_method = poal_config->multi_freq_point_param[ch].points[sub_ch].d_method;
 
-    io_compute_extract_factor_by_fftsize(bindwith,&band_factor, &filter_factor);
-    printf_info("ch:%d, sub_ch:%d,bindwith=%u,d_method=%d, band_factor=%u, filter_factor=%u\n",ch, sub_ch, bindwith, d_method, band_factor, filter_factor);
+    io_compute_extract_factor_by_fftsize(bandwidth,&band_factor, &filter_factor);
+    printf_info("ch:%d, sub_ch:%d,bandwidth=%u,d_method=%d, band_factor=%u, filter_factor=%u\n",ch, sub_ch, bandwidth, d_method, band_factor, filter_factor);
 
 
     //first close iq
@@ -128,7 +128,7 @@ void io_set_dq_param(void)
 
 
     FIXED_FREQ_ANYS_D_PARAM_ST dq;
-    dq.bandwith = bindwith;
+    dq.bandwidth = bandwidth;
     dq.center_freq = poal_config->multi_freq_point_param[ch].points[sub_ch].center_freq;
     dq.d_method = poal_config->multi_freq_point_param[ch].points[sub_ch].d_method;
     

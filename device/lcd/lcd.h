@@ -3,7 +3,7 @@
 
 enum lcd_type_e{
     DWIN_K600_SERIAL_SCREEN,
-}
+};
 
 #define LCD_TYPE DWIN_K600_SERIAL_SCREEN
 

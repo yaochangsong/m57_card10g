@@ -77,8 +77,32 @@ typedef enum {
     B_CODE_MID_FRQ_AU_SAMPLE_RATE = 0x14,
 }x_middle_param;
 
+/*rf frequency*/
+typedef enum {
+    B_CODE_RF_FRQ_PARA               = 0x01,
+    B_CODE_RF_FRQ_ANTENASELEC        = 0x11,
+    B_CODE_RF_FRQ_OUTPUT_ATTENUATION = 0x12,
+    B_CODE_RF_FRQ_INTPUT_ATTENUATION = 0x13,
+    B_CODE_RF_FRQ_INTPUT_BANDWIDTH   = 0x14,
+}x_rf_param;
 
+/*Control parameters*/
+typedef enum {
+    B_CODE_CONTROL_CONTR_DATA_OUTPUT_ENABLE   = 0x01,
+    B_CODE_CONTROL_CONTR_CALIBRATION_CONTR  = 0x02,
+    B_CODE_CONTROL_CONTR_LOCAL_REMOTE    = 0x03,
+    B_CODE_CONTROL_CONTR_CHANNEL_POWER   = 0x04,
+    B_CODE_CONTROL_CONTR_TIME_CONTR      = 0x05,
+}x_contr_param;
 
+/*State parameter*/
+typedef enum {
+    B_CODE_STATE_GET_EQUIP_BASIC_INFOR    = 0x01,        
+    B_CODE_STATE_CHANNEL_STATUS_QUERY     = 0x02,
+    B_CODE_STATE_POWER_STATUS_QUERY       = 0x03,
+    B_CODE_STATE_STORAGE_STATUS_QUERY     = 0x04,
+    B_CODE_STATE_GET_SOFTWARE_VERSION     = 0x05,
+}x_state_param;
 
 /* xnrp header info */
 struct xnrp_header {
@@ -116,4 +140,6 @@ extern bool xnrp_parse_header(const uint8_t *data, int len, uint8_t **payload, i
 extern bool xnrp_parse_data(const uint8_t *payload, int *code);
 extern bool xnrp_execute_method(int *code);
 #endif
+
+
 

@@ -37,7 +37,7 @@ void config_init(void)
     config.oal_config.network.gateway = saddr.sin_addr.s_addr;
     saddr.sin_addr.s_addr=inet_addr("255.255.255.0");
     config.oal_config.network.netmask = saddr.sin_addr.s_addr;
-    config.oal_config.network.port = 1234;
+    config.oal_config.network.port = 1325;
     if(get_mac(mac, sizeof(mac)) != -1){
         memcpy(config.oal_config.network.mac, mac, sizeof(config.oal_config.network.mac));
     }
@@ -47,6 +47,7 @@ void config_init(void)
     config.daemon = -1;
     
     dao_read_create_config_file(config.configfile, &config);
+
 }
 
 /** Accessor for the current configuration
@@ -84,7 +85,7 @@ int8_t config_save_batch(exec_cmd cmd, uint8_t type,s_config *config)
     printf_debug(" config_save_batch\n");
 
 #if DAO_XML == 1
-     dao_conf_save_batch(cmd,type,config);
+     dao_conf_save_batch(EX_NETWORK_CMD,NULL,config);
         
 #elif DAO_JSON == 1
     

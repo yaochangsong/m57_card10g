@@ -7,6 +7,14 @@ struct lcd_code_convert_st convert_code_t[] ={
     {EX_NETWORK_CMD,  EX_NETWORK_GW,   SCREEN_COMMON_DATA1, SCREEN_GATEWAY_ADDR,        NULL},
     {EX_NETWORK_CMD,  EX_NETWORK_PORT, SCREEN_COMMON_DATA1, SCREEN_PORT,                NULL},
     {EX_MID_FREQ_CMD, EX_MUTE_SW,      -1,                  SCREEN_CHANNEL_NOISE_EN,    NULL},
+
+    {EX_MID_FREQ_CMD, EX_RF_MID_BW,      -1,                SCREEN_CHANNEL_BW,    NULL},
+    {EX_MID_FREQ_CMD, EX_RF_GAIN_MODE,      -1,                  SCREEN_CHANNEL_MODE,    NULL},
+    {EX_MID_FREQ_CMD, EX_RF_MODE_CODE,      -1,                  SCREEN_CHANNEL_DECODE_TYPE,    NULL},
+    {EX_MID_FREQ_CMD, EX_RF_MID_FREQ ,      -1,                  SCREEN_CHANNEL_FRQ,    NULL},
+    {EX_MID_FREQ_CMD, EX_RF_MGC_GAIN ,      -1,                  SCREEN_CHANNEL_MGC,    NULL},
+
+
 #endif
 };
 

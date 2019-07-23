@@ -93,6 +93,15 @@ enum {
     EX_RF_AGC_BW,                 /*AGC 带宽设置*/
 };
 
+/* network paramters */
+enum {
+    EX_NETWORK_IP,               /* IP地址 */
+    EX_NETWORK_MASK,
+    EX_NETWORK_GW,
+    EX_NETWORK_PORT,
+};
+
+
 struct sem_st{
     sem_t   notify_deal;
     sem_t   kernel_sysn;

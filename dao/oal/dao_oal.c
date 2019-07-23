@@ -17,18 +17,9 @@
 
 #include "config.h"
 
-
-
-
-
 mxml_node_t *whole_root;
 spectrum spectrum_array;
 spectrum_single spectrum_sing;
-
-
-
-
-
 
 /* 
    功能:               将各个变量写入或修改到XML文件里
@@ -59,9 +50,14 @@ void *write_config_file_single(char *file,const char *parent_element,const char 
 
 	node =mxmlNewElement(parent_node, element);
 
-	if(string != NULL) mxmlNewText(node, 0, string);//写字符串
+	if(string == NULL)  
+    {
+       char buf[32];
+       sprintf(buf,"%d",val);
+       mxmlNewText(node, 0, buf);//写字符串
+    }
 
-	else   mxmlNewInteger(node, val); //写整型数组
+    else mxmlNewText(node, 0, string);//写字符串
 
 	printf_debug("%s\n", file);
 	fp = fopen(file, "w");
@@ -101,6 +97,7 @@ int val,char series)
 #if DAO_XML == 1
 
 	FILE *fp;
+    char buff[32];
 	mxml_node_t *parent_node,*node,*seed_node,*s_node;
 	printf_debug("create singular xml config file\n");
 
@@ -120,12 +117,14 @@ int val,char series)
 	{
 		if(node != NULL)  mxmlDelete(node);  //找到该元素，删除修改
 		node =mxmlNewElement(parent_node, element);
-
-		mxmlNewInteger(node, val);
+        sprintf(buff,"%d",val);
+        mxmlNewText(node, 0, buff);
 	}
 	else if(series == ARRAY_PARENT)  
 	{
 		if(node == NULL)  node = mxmlNewElement(parent_node, element);
+
+        
 
 		seed_node = mxmlFindElement(node, parent_node, seed_element,NULL, NULL,MXML_DESCEND);
 
@@ -133,16 +132,30 @@ int val,char series)
 
 		seed_node =mxmlNewElement(node, seed_element);
 
-		mxmlNewInteger(seed_node, val);
+		sprintf(buff,"%d",val);
+        mxmlNewText(seed_node, 0, buff);
 	}
 	else if(series == ARRAY_ARRAY)  
 	{
 
 		if(node == NULL)  node =  mxmlNewElement(parent_node, element);
 
-		s_node =  mxmlNewElement(node, seed_array);
+        //s_node = mxmlFindElement(node, parent_node, seed_array,NULL, NULL,MXML_DESCEND);
 
-		mxmlElementSetAttr(s_node,seed_name,seed_value);
+		//if(s_node == NULL) s_node =  mxmlNewElement(node, seed_array);
+
+        //if(s_node == NULL)  mxmlElementSetAttr(s_node,seed_name,seed_value);
+
+		//else s_node = mxmlFindElement(node, parent_node, seed_array, seed_name, seed_value,MXML_DESCEND);
+
+        s_node = mxmlFindElement(node, parent_node, seed_array, seed_name, seed_value,MXML_DESCEND);
+
+        if(s_node == NULL)
+        {
+         
+           s_node =  mxmlNewElement(node, seed_array);
+           mxmlElementSetAttr(s_node,seed_name,seed_value);
+        }
 
 
 		seed_node = mxmlFindElement(s_node, node, seed_element,NULL, NULL,MXML_DESCEND);
@@ -151,7 +164,8 @@ int val,char series)
 
 		seed_node =mxmlNewElement(s_node, seed_element);
 
-		mxmlNewInteger(seed_node, val);
+		sprintf(buff,"%d",val);
+        mxmlNewText(seed_node, 0, buff);
 	}
 
 
@@ -273,7 +287,7 @@ void *write_struc_config_file_single(spectrum_single          spectrum_fre)
 */
 
 
-void *write_struc_config_file_array(spectrum         spectrum_fre)
+void *write_struc_config_file_array(spectrum          spectrum_fre)
 {
 #if DAO_XML == 1
 
@@ -363,9 +377,11 @@ const char *read_config_file_single(const char *parent_element,const char *eleme
     //printf_debug("load xml config file\n");
 
 
-    parent_node= mxmlFindElement(whole_root, whole_root, parent_element, NULL, NULL, MXML_DESCEND);
+    parent_node = mxmlFindElement(whole_root, whole_root, parent_element, NULL, NULL, MXML_DESCEND);
 
+    if(parent_node == NULL) return NULL; 
     node= mxmlFindElement(parent_node, whole_root, element, NULL, NULL, MXML_DESCEND);
+    if(node == NULL) return NULL;
 
     const char *string = mxmlGetText(node, NULL);
 
@@ -398,8 +414,10 @@ const char *read_config_file_array(const char *array,const char *name,const char
 
 
     parent_node = mxmlFindElement(whole_root, whole_root, array, name,value, MXML_DESCEND);
+    if(parent_node == NULL) return NULL;
 
     node = mxmlFindElement(parent_node,whole_root, element,NULL, NULL,MXML_DESCEND);
+    if(node == NULL) return NULL;
 
     const char *string = mxmlGetText(node, NULL);
 
@@ -472,7 +490,7 @@ static void *dao_load_default_config_file(char *file)
     node = mxmlNewElement(network, "ipaddress");
     mxmlNewText(node, 0, "192.168.2.112");
     node = mxmlNewElement(network, "port");
-    mxmlNewText(node, 0, "1234");
+    mxmlNewText(node, 0, "1325");
 
     /*中频参数*/
     char p[10]={0};
@@ -645,8 +663,6 @@ static void *dao_load_root(void *root)
 }
 
 
-
-
 void dao_read_create_config_file(char *file, void *root_config)
 {
     void *root;
@@ -662,10 +678,51 @@ void dao_read_create_config_file(char *file, void *root_config)
         
     fre_config = (s_config*)root_config;
 
-    //memcpy(fre_config->oal_config.network.mac,read_config_file_single("network","port"),6);
+    fre_config->oal_config.network.gateway = atoi(read_config_file_single("network","gateway")) ;
+    printf_debug("读取............................gateway = %d\n",fre_config->oal_config.network.gateway);
+
+    fre_config->oal_config.network.netmask = atoi(read_config_file_single("network","netmask")) ;
+    printf_debug("读取............................netmask = %d\n",fre_config->oal_config.network.netmask);
+
+    fre_config->oal_config.network.ipaddress = atoi(read_config_file_single("network","ipaddress")) ;
+    printf_debug("读取............................ipaddress = %d\n",fre_config->oal_config.network.ipaddress);
+        
 
     fre_config->oal_config.network.port = atoi(read_config_file_single("network","port")) ;
     printf_debug("读取............................port = %d\n",fre_config->oal_config.network.port);
+    
+
+    //memcpy(fre_config->oal_config.network.mac,read_config_file_single("network","port"),6);
+
+    fre_config->oal_config.enable.bit_en = atoi(read_config_file_single("dataOutPutEn","enable")) ;
+    printf_debug("读取............................enable = %d\n",fre_config->oal_config.enable.bit_en);
+
+    fre_config->oal_config.enable.sub_id = atoi(read_config_file_single("dataOutPutEn","subChannel")) ;
+    printf_debug("读取............................subChannel = %d\n",fre_config->oal_config.enable.sub_id);
+
+    fre_config->oal_config.enable.psd_en = atoi(read_config_file_single("dataOutPutEn","psdEnable")) ;
+    printf_debug("读取............................psdEnable = %d\n",fre_config->oal_config.enable.psd_en);
+
+    fre_config->oal_config.enable.audio_en = atoi(read_config_file_single("dataOutPutEn","audioEnable")) ;
+    printf_debug("读取............................audioEnable = %d\n",fre_config->oal_config.enable.audio_en);
+
+    fre_config->oal_config.enable.iq_en = atoi(read_config_file_single("dataOutPutEn","IQEnable")) ;
+    printf_debug("读取............................IQEnable = %d\n",fre_config->oal_config.enable.iq_en);
+
+    fre_config->oal_config.enable.spec_analy_en = atoi(read_config_file_single("dataOutPutEn","spectrumAnalysisEn")) ;
+    printf_debug("读取............................spectrumAnalysisEn = %d\n",fre_config->oal_config.enable.spec_analy_en);
+
+    fre_config->oal_config.enable.direction_en = atoi(read_config_file_single("dataOutPutEn","directionEn")) ;
+    printf_debug("读取............................directionEn = %d\n",fre_config->oal_config.enable.direction_en);
+
+
+
+
+
+    
+    
+
+    
 
     fre_config->oal_config.multi_freq_point_param[0].cid  = atoi(read_config_file_array("channel","index","0","cid")) ;
     printf_debug("读取............................cid = %d\n",fre_config->oal_config.multi_freq_point_param[0].cid);
@@ -713,13 +770,10 @@ void dao_read_create_config_file(char *file, void *root_config)
     fre_config->oal_config.rf_para->attenuation = atoi(read_config_file_single("radiofrequency","rfAttenuation")) ;
     printf_debug("读取............................rfAttenuation = %d\n",fre_config->oal_config.rf_para->attenuation);
 
-
-
-    
-
-    
-
     fclose(fp);
+    //xulitest();
+    //write_config_file_array(file,"channel","index","0","mediumfrequency","centerFreq","freqPoint","index","0",1111111,ARRAY_ARRAY);
+    //write_config_file_single(file,"network","ipaddress",NULL,9999);
 
     }else{
 
@@ -732,5 +786,6 @@ void dao_read_create_config_file(char *file, void *root_config)
     root_config = dao_load_root(root);
     printf_debug("1\n");
 }
+
 
 

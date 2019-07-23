@@ -41,7 +41,7 @@ static inline void  executor_fregment_scan(uint32_t fregment_num,uint8_t ch, wor
     struct poal_config *poal_config = &(config_get_config()->oal_config);
 
     uint64_t c_freq, s_freq, e_freq, m_freq;
-    uint32_t scan_bw, left_band;
+    uint32_t scan_bw, left_band, fftsize;
     uint32_t scan_count, i;
     uint8_t is_remainder = 0;
 
@@ -55,6 +55,7 @@ static inline void  executor_fregment_scan(uint32_t fregment_num,uint8_t ch, wor
     s_freq = poal_config->multi_freq_fregment_para[ch].fregment[fregment_num].start_freq;
     e_freq = poal_config->multi_freq_fregment_para[ch].fregment[fregment_num].end_freq;
     scan_bw = poal_config->rf_para[ch].mid_bw;
+    fftsize= poal_config->multi_freq_fregment_para[ch].fregment[fregment_num].fft_size;
     
     if(e_freq < s_freq || scan_bw <= 0){
         printf_err("frequency error,c_freq=%llu, scan_bw=%u\n", c_freq, scan_bw);
@@ -70,6 +71,9 @@ static inline void  executor_fregment_scan(uint32_t fregment_num,uint8_t ch, wor
     }
     printf_info("e_freq=%llu, s_freq=%llu\n", e_freq, s_freq);
     printf_info("scan_bw =%u,scan_count=%d, is_remainder=%d\n", scan_bw, scan_count, is_remainder);
+    executor_set_command(EX_RF_FREQ_CMD,  EX_RF_MID_BW, ch, &scan_bw);
+    executor_set_command(EX_MID_FREQ_CMD, EX_BANDWITH,  ch, &scan_bw);
+    executor_set_command(EX_MID_FREQ_CMD, EX_FFT_SIZE,  ch, &fftsize);
     /* 
            Step 2: 根据扫描带宽， 从开始频率到截止频率循环扫描
    */
@@ -91,10 +95,9 @@ static inline void  executor_fregment_scan(uint32_t fregment_num,uint8_t ch, wor
         header_param.fft_sn = i;
         header_param.total_fft = scan_count + is_remainder;
         header_param.m_freq = m_freq;
-        header_param.fft_size = poal_config->multi_freq_fregment_para[ch].fregment[fregment_num].fft_size;
+        header_param.fft_size = fftsize;
         header_param.freq_resolution = poal_config->multi_freq_fregment_para[ch].fregment[fregment_num].freq_resolution;
         executor_set_command(EX_RF_FREQ_CMD, EX_RF_MID_FREQ, ch, &m_freq);
-        executor_set_command(EX_MID_FREQ_CMD, EX_BANDWITH, ch, &m_freq);
         executor_set_command(EX_WORK_MODE_CMD, mode, ch, &header_param);
         io_set_enable_command(PSD_MODE_ENABLE, ch, header_param.fft_size);
         executor_wait_kernel_deal();
@@ -463,6 +466,64 @@ int8_t executor_get_command(exec_cmd cmd, uint8_t type, uint8_t ch,  void *data)
 
 }
 
+int8_t executor_set_enable_command(uint8_t ch)
+{
+    struct poal_config *poal_config = &(config_get_config()->oal_config);
+    int i;
+    
+    printf_debug("bit_en[%x]\n", poal_config->enable.bit_en);
+    if(poal_config->enable.bit_en == 0){
+        printf_info("all Work disabled, waite thread stop...\n");
+    }else{
+        printf_debug("akt_assamble work_mode[%d]\n", poal_config->work_mode);
+        printf_debug("bit_en=%x,psd_en=%d, audio_en=%d,iq_en=%d\n", poal_config->enable.bit_en, 
+            poal_config->enable.psd_en,poal_config->enable.audio_en,poal_config->enable.iq_en);
+        switch (poal_config->work_mode)
+        {
+            case OAL_FIXED_FREQ_ANYS_MODE:
+            {
+                printf_debug("freq_point_cnt=%d\n", poal_config->multi_freq_point_param[ch].freq_point_cnt);
+                executor_set_command(EX_RF_FREQ_CMD, EX_RF_ATTENUATION, ch, &poal_config->rf_para[ch].attenuation);
+                executor_set_command(EX_RF_FREQ_CMD, EX_RF_MGC_GAIN, ch, &poal_config->rf_para[ch].mgc_gain_value);
+                executor_set_command(EX_RF_FREQ_CMD, EX_RF_MID_FREQ, ch, &poal_config->rf_para[ch].mid_freq);
+                executor_set_command(EX_RF_FREQ_CMD, EX_RF_MID_BW, ch, &poal_config->rf_para[ch].mid_bw);
+                executor_set_command(EX_MID_FREQ_CMD, EX_BANDWITH, ch, &poal_config->rf_para[ch].mid_bw);
+                executor_set_command(EX_MID_FREQ_CMD, EX_CHANNEL_SELECT, ch, &ch);
+                executor_set_command(EX_MID_FREQ_CMD, EX_SMOOTH_TIME, ch, &poal_config->multi_freq_point_param[ch].smooth_time);
+                break;
+            }
+            case OAL_FAST_SCAN_MODE:
+            {
+                executor_set_command(EX_RF_FREQ_CMD, EX_RF_ATTENUATION, ch, &poal_config->rf_para[ch].attenuation);
+                executor_set_command(EX_RF_FREQ_CMD, EX_RF_MID_FREQ, ch, &poal_config->rf_para[ch].mid_freq);
+                executor_set_command(EX_RF_FREQ_CMD, EX_RF_MID_BW, ch, &poal_config->rf_para[ch].mid_bw);
+                /* 中频带宽和射频带宽一直 */
+                executor_set_command(EX_MID_FREQ_CMD, EX_BANDWITH, ch, &poal_config->rf_para[ch].mid_bw);
+                executor_set_command(EX_MID_FREQ_CMD, EX_CHANNEL_SELECT, ch, &ch);
+                executor_set_command(EX_MID_FREQ_CMD, EX_SMOOTH_TIME, ch, &poal_config->multi_freq_fregment_para[ch].smooth_time);
+                break;
+            }
+            case OAL_MULTI_ZONE_SCAN_MODE:
+            {
+                executor_set_command(EX_RF_FREQ_CMD, EX_RF_ATTENUATION, ch, &poal_config->rf_para[ch].attenuation);
+                executor_set_command(EX_RF_FREQ_CMD, EX_RF_MGC_GAIN, ch, &poal_config->rf_para[ch].mgc_gain_value);
+                executor_set_command(EX_MID_FREQ_CMD, EX_SMOOTH_TIME, ch, &poal_config->multi_freq_fregment_para[ch].smooth_time);
+                executor_set_command(EX_MID_FREQ_CMD, EX_CHANNEL_SELECT, ch, &ch);
+                break;
+            }
+            case OAL_MULTI_POINT_SCAN_MODE:
+                executor_set_command(EX_RF_FREQ_CMD, EX_RF_ATTENUATION, ch, &poal_config->rf_para[ch].attenuation);
+                executor_set_command(EX_RF_FREQ_CMD, EX_RF_MGC_GAIN, ch, &poal_config->rf_para[ch].mgc_gain_value);
+                executor_set_command(EX_MID_FREQ_CMD, EX_SMOOTH_TIME, ch, &poal_config->multi_freq_fregment_para[ch].smooth_time);
+                executor_set_command(EX_MID_FREQ_CMD, EX_CHANNEL_SELECT, ch, &ch);
+                break;
+            default:
+                return -1;
+        }
+    }
+    executor_set_command(EX_ENABLE_CMD, 0, ch, NULL);
+    return 0;
+}
 
 void executor_init(void)
 {

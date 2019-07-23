@@ -621,6 +621,14 @@ typedef struct _SUB_SIGNAL_ENABLE_PARAM{
 #define check_radio_channel(ch)   (ch > MAX_RADIO_CHANNEL_NUM ? 1 : 0) 
 #define check_sub_channel(sub_ch) (sub_ch > MAX_SIGNAL_CHANNEL_NUM ? 1 : 0) 
 
+#define check_valid_channel(data)  do {                       \
+            if(check_radio_channel(data)){                  \
+                err_code = RET_CODE_PARAMTER_ERR;           \
+                goto set_exit;                              \
+            }                                               \
+            pakt_config->cid = data;                        \
+            ch = poal_config->cid = pakt_config->cid;       \
+}while(0)
 
 struct akt_protocal_param{
     uint8_t cid;

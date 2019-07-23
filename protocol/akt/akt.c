@@ -287,66 +287,6 @@ static int akt_work_mode_set(struct akt_protocal_param *akt_config)
     return 0;
 }
 
-static int akt_executor_set_enable_command(uint8_t ch)
-{
-    struct akt_protocal_param *pakt_config = &akt_config;
-    struct poal_config *poal_config = &(config_get_config()->oal_config);
-    int i;
-    
-    printf_debug("bit_en[%x]\n", poal_config->enable.bit_en);
-    if(poal_config->enable.bit_en == 0){
-        printf_info("all Work disabled, waite thread stop...\n");
-    }else{
-        printf_debug("akt_assamble work_mode[%d]\n", poal_config->work_mode);
-        printf_debug("bit_en=%x,psd_en=%d, audio_en=%d,iq_en=%d\n", poal_config->enable.bit_en, 
-            poal_config->enable.psd_en,poal_config->enable.audio_en,poal_config->enable.iq_en);
-        poal_config->assamble_kernel_response_data = akt_assamble_kernel_header_response_data;
-        switch (poal_config->work_mode)
-        {
-            case OAL_FIXED_FREQ_ANYS_MODE:
-            {
-                printf_debug("freq_point_cnt=%d\n", poal_config->multi_freq_point_param[ch].freq_point_cnt);
-                executor_set_command(EX_RF_FREQ_CMD, EX_RF_ATTENUATION, ch, &poal_config->rf_para[ch].attenuation);
-                executor_set_command(EX_RF_FREQ_CMD, EX_RF_MGC_GAIN, ch, &poal_config->rf_para[ch].mgc_gain_value);
-                executor_set_command(EX_RF_FREQ_CMD, EX_RF_MID_FREQ, ch, &poal_config->rf_para[ch].mid_freq);
-                executor_set_command(EX_RF_FREQ_CMD, EX_RF_MID_BW, ch, &poal_config->rf_para[ch].mid_bw);
-                executor_set_command(EX_MID_FREQ_CMD, EX_BANDWITH, ch, &poal_config->rf_para[ch].mid_bw);
-                executor_set_command(EX_MID_FREQ_CMD, EX_CHANNEL_SELECT, ch, &ch);
-                executor_set_command(EX_MID_FREQ_CMD, EX_SMOOTH_TIME, ch, &poal_config->multi_freq_point_param[ch].smooth_time);
-                break;
-            }
-            case OAL_FAST_SCAN_MODE:
-            {
-                executor_set_command(EX_RF_FREQ_CMD, EX_RF_ATTENUATION, ch, &poal_config->rf_para[ch].attenuation);
-                executor_set_command(EX_RF_FREQ_CMD, EX_RF_MID_FREQ, ch, &poal_config->rf_para[ch].mid_freq);
-                executor_set_command(EX_RF_FREQ_CMD, EX_RF_MID_BW, ch, &poal_config->rf_para[ch].mid_bw);
-                /* 中频带宽和射频带宽一直 */
-                executor_set_command(EX_MID_FREQ_CMD, EX_BANDWITH, ch, &poal_config->rf_para[ch].mid_bw);
-                executor_set_command(EX_MID_FREQ_CMD, EX_CHANNEL_SELECT, ch, &ch);
-                executor_set_command(EX_MID_FREQ_CMD, EX_SMOOTH_TIME, ch, &poal_config->multi_freq_fregment_para[ch].smooth_time);
-                break;
-            }
-            case OAL_MULTI_ZONE_SCAN_MODE:
-            {
-                executor_set_command(EX_RF_FREQ_CMD, EX_RF_ATTENUATION, ch, &poal_config->rf_para[ch].attenuation);
-                executor_set_command(EX_RF_FREQ_CMD, EX_RF_MGC_GAIN, ch, &poal_config->rf_para[ch].mgc_gain_value);
-                executor_set_command(EX_MID_FREQ_CMD, EX_SMOOTH_TIME, ch, &poal_config->multi_freq_fregment_para[ch].smooth_time);
-                executor_set_command(EX_MID_FREQ_CMD, EX_CHANNEL_SELECT, ch, &ch);
-                break;
-            }
-            case OAL_MULTI_POINT_SCAN_MODE:
-                executor_set_command(EX_RF_FREQ_CMD, EX_RF_ATTENUATION, ch, &poal_config->rf_para[ch].attenuation);
-                executor_set_command(EX_RF_FREQ_CMD, EX_RF_MGC_GAIN, ch, &poal_config->rf_para[ch].mgc_gain_value);
-                executor_set_command(EX_MID_FREQ_CMD, EX_SMOOTH_TIME, ch, &poal_config->multi_freq_fregment_para[ch].smooth_time);
-                executor_set_command(EX_MID_FREQ_CMD, EX_CHANNEL_SELECT, ch, &ch);
-                break;
-            default:
-                return -1;
-        }
-    }
-    executor_set_command(EX_ENABLE_CMD, 0, ch, NULL);
-    return 0;
-}
 
 static int akt_execute_set_command(void)
 {
@@ -364,43 +304,34 @@ static int akt_execute_set_command(void)
         case OUTPUT_ENABLE_PARAM:
         {
             printf_info("enable[cid:%x en:%x]\n", header->buf[0], header->buf[1]);
+            check_valid_channel(header->buf[0]);
             memcpy(&(pakt_config->enable), header->buf, sizeof(OUTPUT_ENABLE_PARAM_ST));
-            ch = poal_config->cid = pakt_config->enable.cid;
             if(check_radio_channel(pakt_config->enable.cid)){
                 err_code = RET_CODE_PARAMTER_ERR;
                 goto set_exit;
             }
             if(pakt_config->enable.output_en){
                akt_convert_oal_config(ch, DIRECTION_MULTI_FREQ_ZONE_CMD);
+               poal_config->assamble_kernel_response_data = akt_assamble_kernel_header_response_data;
             }   
             if(akt_convert_oal_config(ch, OUTPUT_ENABLE_PARAM) == -1){
                 err_code = RET_CODE_PARAMTER_NOT_SET;
                 goto set_exit;
             }
-            akt_executor_set_enable_command(ch);
+            executor_set_enable_command(ch);
             break;
         }
         case DIRECTION_FREQ_POINT_REQ_CMD:
         {
-            pakt_config->cid = header->buf[0];
-            if(check_radio_channel(pakt_config->cid)){
-                err_code = RET_CODE_PARAMTER_ERR;
-                goto set_exit;
-            }
-            ch = poal_config->cid = pakt_config->cid;
+            check_valid_channel(header->buf[0]);
             memcpy(&(pakt_config->fft[ch]), header->buf, sizeof(DIRECTION_FFT_PARAM));
             break;
         }
         case DIRECTION_MULTI_FREQ_ZONE_CMD:
         {
             
-            pakt_config->cid = header->buf[0];
-            if(check_radio_channel(pakt_config->cid)){
-                err_code = RET_CODE_PARAMTER_ERR;
-                goto set_exit;
-            }
-            ch = poal_config->cid = pakt_config->cid;
-            printf_debug("cid:%d\n", ch);
+            check_valid_channel(header->buf[0]);
+            printf_info("cid:%d\n", ch);
             memcpy(&pakt_config->multi_freq_zone[ch], header->buf, sizeof(DIRECTION_MULTI_FREQ_ZONE_PARAM));
             akt_work_mode_set(pakt_config);
             if(akt_convert_oal_config(ch, DIRECTION_MULTI_FREQ_ZONE_CMD) == -1){
@@ -412,12 +343,7 @@ static int akt_execute_set_command(void)
         }
         case MULTI_FREQ_DECODE_CMD:
         {
-            pakt_config->cid = header->buf[0];
-            if(check_radio_channel(pakt_config->cid)){
-                err_code = RET_CODE_PARAMTER_ERR;
-                goto set_exit;
-            }
-            ch = poal_config->cid = pakt_config->cid;
+            check_valid_channel(header->buf[0]);
             memcpy(&(pakt_config->decode_param[pakt_config->cid]), header->buf, sizeof(MULTI_FREQ_DECODE_PARAM));
             if(akt_convert_oal_config(ch, MULTI_FREQ_DECODE_CMD) == -1){
                 err_code = RET_CODE_PARAMTER_NOT_SET;
@@ -427,12 +353,7 @@ static int akt_execute_set_command(void)
         }
         case DIRECTION_SMOOTH_CMD:
         {
-            pakt_config->cid = header->buf[0];
-            if(check_radio_channel(pakt_config->cid)){
-                err_code = RET_CODE_PARAMTER_ERR;
-                goto set_exit;
-            }
-            ch = poal_config->cid = pakt_config->cid;
+            check_valid_channel(header->buf[0]);
             memcpy(&(pakt_config->smooth[pakt_config->cid]), header->buf, sizeof(DIRECTION_SMOOTH_PARAM));
             if(poal_config->work_mode == OAL_FAST_SCAN_MODE || poal_config->work_mode == OAL_MULTI_POINT_SCAN_MODE){
                 poal_config->multi_freq_point_param[ch].smooth_time = pakt_config->smooth[ch].smooth;
@@ -461,15 +382,8 @@ static int akt_execute_set_command(void)
         case SNIFFER_DATA_REPORT_PARAM:
         {
             SNIFFER_DATA_REPORT_ST net_para;
-
-            net_para.cid = header->buf[0];
-            poal_config->cid = net_para.cid;
-            printf_debug("net_para.cid=%d\n", net_para.cid);
-            if(check_radio_channel(net_para.cid)){
-                err_code = RET_CODE_PARAMTER_ERR;
-                goto set_exit;
-            }
-            ch = poal_config->cid;
+            check_valid_channel(header->buf[0]);
+            net_para.cid = ch;
             memcpy(&net_para, header->buf, sizeof(SNIFFER_DATA_REPORT_ST));
             
             struct in_addr ipdata;
@@ -481,23 +395,13 @@ static int akt_execute_set_command(void)
         }
         case AUDIO_SAMPLE_RATE:
         {
-            poal_config->cid = header->buf[0];
-            if(check_radio_channel(poal_config->cid)){
-                err_code = RET_CODE_PARAMTER_ERR;
-                goto set_exit;
-            }
-            ch = poal_config->cid;
+            check_valid_channel(header->buf[0]);
             poal_config->multi_freq_point_param[ch].audio_sample_rate = *((uint32_t *)(header->buf+1));
             executor_set_command(EX_MID_FREQ_CMD, EX_AUDIO_SAMPLE_RATE, ch, &poal_config->multi_freq_point_param[ch].audio_sample_rate);
         }
         case MID_FREQ_BANDWIDTH_CMD:
         {
-            poal_config->cid = header->buf[0];
-            if(check_radio_channel(poal_config->cid)){
-                err_code = RET_CODE_PARAMTER_ERR;
-                goto set_exit;
-            }
-            ch = poal_config->cid;
+            check_valid_channel(header->buf[0]);
             memcpy(&(pakt_config->mid_freq_bandwidth[ch]), header->buf, sizeof(DIRECTION_MID_FREQ_BANDWIDTH_PARAM));
             poal_config->rf_para[ch].mid_bw = *((uint32_t *)(header->buf+1));
             printf_info("bandwidth:%u\n", poal_config->rf_para[ch].mid_bw);
@@ -505,54 +409,29 @@ static int akt_execute_set_command(void)
             break;
         }
         case RF_ATTENUATION_CMD:
-            poal_config->cid = header->buf[0];
-            if(check_radio_channel(poal_config->cid)){
-                err_code = RET_CODE_PARAMTER_ERR;
-                goto set_exit;
-            }
-            ch = poal_config->cid;
+            check_valid_channel(header->buf[0]);
             poal_config->rf_para[ch].attenuation = header->buf[1];
             executor_set_command(EX_RF_FREQ_CMD, EX_RF_ATTENUATION, ch, &poal_config->rf_para[ch].attenuation);
             break;
         case RF_WORK_MODE_CMD:
-            poal_config->cid = header->buf[0];
-            if(check_radio_channel(poal_config->cid)){
-                err_code = RET_CODE_PARAMTER_ERR;
-                goto set_exit;
-            }
-            ch = poal_config->cid;
+            check_valid_channel(header->buf[0]);
             poal_config->rf_para[ch].rf_mode_code = header->buf[1];
             executor_set_command(EX_RF_FREQ_CMD, EX_RF_MODE_CODE, ch, &poal_config->rf_para[ch].rf_mode_code);
             break;
         case RF_GAIN_MODE_CMD:
-             poal_config->cid = header->buf[0];
-            if(check_radio_channel(poal_config->cid)){
-                err_code = RET_CODE_PARAMTER_ERR;
-                goto set_exit;
-            }
-            ch = poal_config->cid;
+            check_valid_channel(header->buf[0]);
             poal_config->rf_para[ch].gain_ctrl_method = header->buf[1];
             executor_set_command(EX_RF_FREQ_CMD, EX_RF_GAIN_MODE, ch, &poal_config->rf_para[ch].gain_ctrl_method);
             break;
         case MID_FREQ_ATTENUATION_CMD:
-            poal_config->cid = header->buf[0];
-            if(check_radio_channel(poal_config->cid)){
-                err_code = RET_CODE_PARAMTER_ERR;
-                goto set_exit;
-            }
-            ch = poal_config->cid;
+            check_valid_channel(header->buf[0]);
             poal_config->rf_para[ch].mgc_gain_value = header->buf[1];
             executor_set_command(EX_RF_FREQ_CMD, EX_RF_MGC_GAIN, ch, &poal_config->rf_para[ch].mgc_gain_value);
             break;
         case QUIET_NOISE_SWITCH_CMD:
             break;
         case SAMPLE_CONTROL_FFT_CMD:
-            poal_config->cid = header->buf[0];
-            if(check_radio_channel(poal_config->cid)){
-                err_code = RET_CODE_PARAMTER_ERR;
-                goto set_exit;
-            }
-            ch = poal_config->cid;
+            check_valid_channel(header->buf[0]);
             memcpy(&(pakt_config->fft[ch]), header->buf, sizeof(DIRECTION_FFT_PARAM));
             if(akt_convert_oal_config(ch, header->code) == -1){
                 err_code = RET_CODE_PARAMTER_ERR;
@@ -564,14 +443,12 @@ static int akt_execute_set_command(void)
         {           
             struct io_decode_param_st decode_param;
             uint8_t sub_ch;
-            if(check_radio_channel(header->buf[0]) || check_sub_channel(header->buf[1])){
+            sub_ch = *(uint16_t *)(header->buf+1);
+            check_valid_channel(header->buf[0]);
+            if(check_sub_channel(sub_ch)){
                 err_code = RET_CODE_PARAMTER_ERR;
                 goto set_exit;
             }
-            poal_config->cid = header->buf[0];
-            sub_ch = *(uint16_t *)(header->buf+1);
-            ch = poal_config->cid;
-            
             memcpy(&(pakt_config->sub_channel[sub_ch]), header->buf, sizeof(SUB_SIGNAL_PARAM));
             if(akt_convert_oal_config(ch, header->code) == -1){
                 err_code = RET_CODE_PARAMTER_ERR;
@@ -593,12 +470,12 @@ static int akt_execute_set_command(void)
         case SUB_SIGNAL_OUTPUT_ENABLE_CMD:
         {
             uint8_t sub_ch;
-            if(check_radio_channel(header->buf[0]) || check_sub_channel(header->buf[1])){
+            check_valid_channel(header->buf[0]);
+            sub_ch = *(uint16_t *)(header->buf+1);
+            if(check_sub_channel(sub_ch)){
                 err_code = RET_CODE_PARAMTER_ERR;
                 goto set_exit;
             }
-            ch = header->buf[0];
-            sub_ch = *(uint16_t *)(header->buf+1);
             memcpy(&(pakt_config->sub_channel_enable[sub_ch]), header->buf, sizeof(SUB_SIGNAL_ENABLE_PARAM));
             if(akt_convert_oal_config(sub_ch, SUB_SIGNAL_OUTPUT_ENABLE_CMD) == -1){
                 err_code = RET_CODE_PARAMTER_NOT_SET;

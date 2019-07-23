@@ -114,6 +114,7 @@ static inline void  executor_points_scan(uint8_t ch, work_mode mode)
     struct kernel_header_param header_param;
     struct multi_freq_point_para_st *point;
     time_t s_time;
+    struct io_decode_param_st decode_param;
 
     point = &poal_config->multi_freq_point_param[ch];
     points_count = point->freq_point_cnt;
@@ -137,18 +138,18 @@ static inline void  executor_points_scan(uint8_t ch, work_mode mode)
         executor_set_command(EX_RF_FREQ_CMD,  EX_RF_MID_BW,   ch, &point->points[i].bandwidth);
         executor_set_command(EX_RF_FREQ_CMD,  EX_RF_MID_FREQ, ch, &point->points[i].center_freq);
         executor_set_command(EX_MID_FREQ_CMD, EX_MID_FREQ,    ch, &point->points[i].center_freq);
+        executor_set_command(EX_MID_FREQ_CMD, EX_FFT_SIZE, ch, &point->points[i].fft_size);
         executor_set_command(EX_WORK_MODE_CMD,mode, ch, &header_param);
 
         if(poal_config->enable.audio_en || poal_config->enable.iq_en){
+            decode_param.center_freq = point->points[i].center_freq;
+            decode_param.cid = ch;
+            decode_param.d_bandwidth = point->points[i].bandwidth;
+            decode_param.d_method = point->points[i].d_method;
+            executor_set_command(EX_MID_FREQ_CMD, EX_DEC_BW, ch, &decode_param); 
             io_set_enable_command(AUDIO_MODE_ENABLE, ch, point->points[i].fft_size);
         }else{
             io_set_enable_command(AUDIO_MODE_DISABLE, ch, point->points[i].fft_size);
-        }
-        if(poal_config->enable.psd_en){
-            executor_set_command(EX_MID_FREQ_CMD, EX_FFT_SIZE, ch, &point->points[i].fft_size);
-            executor_set_command(EX_MID_FREQ_CMD, EX_DEC_BW, ch, &point->points[i].bandwidth); 
-        }else{
-            io_set_enable_command(PSD_MODE_DISABLE, ch, point->points[i].fft_size);
         }
         s_time = time(NULL);
         do{
@@ -281,7 +282,7 @@ static int8_t executor_set_kernel_command(uint8_t type, uint8_t ch, void *data)
         case EX_DEC_METHOD:
         case EX_DEC_BW:
         {
-            io_set_dq_param();
+            io_set_dq_param(data);
             break;
         }
         case EX_SMOOTH_TIME:

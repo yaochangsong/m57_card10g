@@ -93,10 +93,9 @@ void io_set_calibrate_val(uint32_t ch, uint32_t  factor)
 #endif
 }
 
-void io_set_dq_param(void)
+void io_set_dq_param(void *pdata)
 {
-    struct poal_config *poal_config = &(config_get_config()->oal_config);
-    
+    struct io_decode_param_st *dec_para = (struct io_decode_param_st *)pdata;
     uint64_t tmp_freq;
     uint32_t bandwidth;
     uint64_t fix_value1 = (0x100000000ULL);
@@ -114,10 +113,9 @@ void io_set_dq_param(void)
     freq_factor = (uint32_t)tmp_freq;
 
     //banwidth 
-    ch = poal_config->cid;
-    sub_ch = 0;
-    bandwidth = poal_config->multi_freq_point_param[ch].points[sub_ch].d_bandwith;
-    d_method = poal_config->multi_freq_point_param[ch].points[sub_ch].d_method;
+    ch = dec_para->cid;
+    bandwidth = dec_para->d_bandwidth;
+    d_method = dec_para->d_method;
 
     io_compute_extract_factor_by_fftsize(bandwidth,&band_factor, &filter_factor);
     printf_info("ch:%d, sub_ch:%d,bandwidth=%u,d_method=%d, band_factor=%u, filter_factor=%u\n",ch, sub_ch, bandwidth, d_method, band_factor, filter_factor);
@@ -129,8 +127,8 @@ void io_set_dq_param(void)
 
     FIXED_FREQ_ANYS_D_PARAM_ST dq;
     dq.bandwidth = bandwidth;
-    dq.center_freq = poal_config->multi_freq_point_param[ch].points[sub_ch].center_freq;
-    dq.d_method = poal_config->multi_freq_point_param[ch].points[sub_ch].d_method;
+    dq.center_freq = dec_para->center_freq;
+    dq.d_method = dec_para->d_method;
     
 #ifdef PLAT_FORM_ARCH_ARM
     ioctl(io_ctrl_fd,IOCTL_RUN_DEC_PARAM,&dq);
@@ -145,13 +143,14 @@ void io_set_dq_param(void)
 #endif 
 }
 
+
 void io_set_dma_DQ_out_en(uint8_t ch, uint8_t outputen,uint32_t trans_len,uint8_t continious)
 {
     //for 8 channel device only one sub channel 
     uint16_t sub_ch = 0;
     //for iq and dq dma .for 512 fixed length ,continious mode
     printf_info("dq output enable, ch:%d, en:%x\n", ch, outputen);
-    if((outputen&(D_OUT_MASK|IQ_OUT_MASK)) > 0){
+    if((outputen&(IO_D_OUT_MASK_ENABLE|IO_IQ_OUT_MASK_ENABLE)) > 0){
         uint8_t convert_buf[512] = {0};
         memcpy(convert_buf,(uint8_t *)(&ch),sizeof(uint8_t));
         memcpy(convert_buf+1,(uint8_t *)(&sub_ch),sizeof(uint16_t));
@@ -235,7 +234,7 @@ static void io_set_dma_SPECTRUM_out_en(uint8_t cid, uint8_t outputen,uint32_t tr
 {
     uint8_t ch = cid;
     printf_info("SPECTRUM out enable: ch[%d]output en[outputen:%x]\n",cid, outputen);
-    if((outputen&SPECTRUM_MASK) > 0){
+    if((outputen&IO_SPECTRUM_ENABLE) > 0){
         io_dma_dev_enable(ch,continuous);
         io_dma_dev_trans_len(ch,trans_len);
         }
@@ -300,9 +299,7 @@ int8_t io_set_enable_command(uint8_t type, uint8_t ch, uint32_t fftsize)
     {
         case PSD_MODE_ENABLE:
         {
-            uint8_t outputen;
-            outputen = poal_config->enable.bit_en;
-            io_set_dma_SPECTRUM_out_en(ch, outputen,fftsize*2,0);
+            io_set_dma_SPECTRUM_out_en(ch, IO_SPECTRUM_ENABLE,fftsize*2,0);
             break;
         }
         case PSD_MODE_DISABLE:
@@ -311,11 +308,19 @@ int8_t io_set_enable_command(uint8_t type, uint8_t ch, uint32_t fftsize)
             break;
         }
         case AUDIO_MODE_ENABLE:
+        {
+            if(fftsize == 0)
+                io_set_dma_DQ_out_en(ch, IO_D_OUT_MASK_ENABLE, 512, 0);
+            else
+                io_set_dma_DQ_out_en(ch, IO_D_OUT_MASK_ENABLE, fftsize, 0);
+            break;
+        }
         case IQ_MODE_ENABLE:
         {
-            uint8_t outputen;
-            outputen = poal_config->enable.bit_en;
-            io_set_dma_DQ_out_en(ch, outputen, 512, 0);
+            if(fftsize == 0)
+                io_set_dma_DQ_out_en(ch, IO_IQ_OUT_MASK_ENABLE, 512, 0);
+            else
+                io_set_dma_DQ_out_en(ch, IO_IQ_OUT_MASK_ENABLE, fftsize, 0);
             break;
         }
         case AUDIO_MODE_DISABLE:

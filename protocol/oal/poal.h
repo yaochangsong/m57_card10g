@@ -4,6 +4,7 @@
 #include "config.h"
 
 #define MAX_RADIO_CHANNEL_NUM 8
+#define MAX_SIGNAL_CHANNEL_NUM (16)
 #define MAX_SIG_CHANNLE 128
 
 #if PROTOCAL_XNRP != 0
@@ -96,7 +97,7 @@ struct sub_channel_freq_para_st{
     float audio_sample_rate;
     uint8_t frame_drop_cnt;
     uint16_t sub_channel_num;
-    struct freq_points_st  sub_ch[MAX_SIG_CHANNLE];
+    struct freq_points_st  sub_ch[MAX_SIGNAL_CHANNEL_NUM];
 }__attribute__ ((packed));
 
 /* 频段参数 */
@@ -156,6 +157,7 @@ struct poal_config{
     struct output_en_st enable;
     struct multi_freq_point_para_st  multi_freq_point_param[MAX_RADIO_CHANNEL_NUM];
     struct sub_channel_freq_para_st sub_channel_para[MAX_RADIO_CHANNEL_NUM];
+    struct output_en_st sub_ch_enable;
     struct multi_freq_fregment_para_st  multi_freq_fregment_para[MAX_RADIO_CHANNEL_NUM];
     struct rf_para_st rf_para[MAX_RADIO_CHANNEL_NUM];
     struct network_st network;

@@ -603,17 +603,36 @@ typedef struct _DIRECTION_MID_FREQ_BANDWIDTH_PARAM{
     uint32_t bandwidth;
 }__attribute__ ((packed)) DIRECTION_MID_FREQ_BANDWIDTH_PARAM;
 
+typedef struct _SUB_SIGNAL_PARAM{
+    uint8_t cid;
+    uint16_t signal_ch;
+    uint64_t freq;
+    uint8_t decode_method_id;
+    uint32_t bandwidth;
+}__attribute__ ((packed)) SUB_SIGNAL_PARAM;
+
+typedef struct _SUB_SIGNAL_ENABLE_PARAM{
+    uint8_t cid;
+    uint16_t signal_ch;
+    uint8_t en;
+}__attribute__ ((packed)) SUB_SIGNAL_ENABLE_PARAM;
+
 /*************************************************************************/
-#define check_radio_channel(ch)  (ch > MAX_RADIO_CHANNEL_NUM ? 1 : 0) 
+#define check_radio_channel(ch)   (ch > MAX_RADIO_CHANNEL_NUM ? 1 : 0) 
+#define check_sub_channel(sub_ch) (sub_ch > MAX_SIGNAL_CHANNEL_NUM ? 1 : 0) 
+
 
 struct akt_protocal_param{
     uint8_t cid;
+    uint8_t sub_cid;
     OUTPUT_ENABLE_PARAM_ST enable;
     DIRECTION_MULTI_FREQ_ZONE_PARAM multi_freq_zone[MAX_RADIO_CHANNEL_NUM];
     MULTI_FREQ_DECODE_PARAM decode_param[MAX_RADIO_CHANNEL_NUM];
     DIRECTION_FFT_PARAM fft[MAX_RADIO_CHANNEL_NUM];
     DIRECTION_SMOOTH_PARAM smooth[MAX_RADIO_CHANNEL_NUM];
     DIRECTION_MID_FREQ_BANDWIDTH_PARAM  mid_freq_bandwidth[MAX_RADIO_CHANNEL_NUM];
+    SUB_SIGNAL_PARAM sub_channel[MAX_SIGNAL_CHANNEL_NUM];
+    SUB_SIGNAL_ENABLE_PARAM sub_channel_enable[MAX_SIGNAL_CHANNEL_NUM];
 }__attribute__ ((packed));
 
 struct response_get_data{

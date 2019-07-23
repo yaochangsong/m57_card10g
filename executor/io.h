@@ -139,6 +139,21 @@ struct  band_table_t{
     uint32_t band;
 }__attribute__ ((packed)); 
 
+struct io_decode_param_st{
+    uint8_t  cid;
+    uint8_t  sub_ch;
+    uint8_t  d_method;
+    uint32_t d_bandwidth;  
+    uint64_t center_freq;
+};
+
+typedef enum _io_work_enable {
+    IO_SPECTRUM_ENABLE = 0x01,
+    IO_D_OUT_MASK_ENABLE = 0x02,
+    IO_IQ_OUT_MASK_ENABLE = 0x04,
+    IO_ANGLE_MASK_ENABLE = 0x08,
+}io_work_enable;
+
 
 extern void io_init(void);
 extern int8_t io_set_enable_command(uint8_t type, uint8_t ch, uint32_t fftsize);

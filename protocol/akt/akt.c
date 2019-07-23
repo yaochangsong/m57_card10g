@@ -70,10 +70,21 @@ static int akt_convert_oal_config(uint8_t ch, uint8_t cmd)
                 printf_info("ch:%d,center_freq:%u\n", ch, poal_config->multi_freq_point_param[ch].points[i].center_freq);
             }
             break;
+       case SUB_SIGNAL_PARAM_CMD:
+       {
+            struct sub_channel_freq_para_st *sub_channel_array;
+            sub_channel_array = &poal_config->sub_channel_para[ch];
+            sub_channel_array->cid = ch;
+            sub_channel_array->sub_ch[ch].index = pakt_config->sub_cid;
+            sub_channel_array->sub_ch[ch].center_freq = pakt_config->sub_channel[ch].freq;
+            sub_channel_array->sub_ch[ch].d_method = pakt_config->sub_channel[ch].decode_method_id;
+            sub_channel_array->sub_ch[ch].d_bandwith = pakt_config->sub_channel[ch].bandwidth;
+       }
+            break;
        case OUTPUT_ENABLE_PARAM:
                 /* 使能位转换 */
             poal_config->enable.cid = pakt_config->enable.cid;
-            poal_config->enable.sub_id = -1; /* not support in akt protocal */
+            poal_config->enable.sub_id = -1;
             poal_config->enable.psd_en = convert_enable_mode(pakt_config->enable.output_en, SPECTRUM_MASK);
             poal_config->enable.audio_en = convert_enable_mode(pakt_config->enable.output_en, D_OUT_MASK);
             poal_config->enable.iq_en = convert_enable_mode(pakt_config->enable.output_en, IQ_OUT_MASK);
@@ -82,6 +93,16 @@ static int akt_convert_oal_config(uint8_t ch, uint8_t cmd)
             printf_info("bit_en=%x,psd_en=%d, audio_en=%d,iq_en=%d\n", poal_config->enable.bit_en, 
                         poal_config->enable.psd_en,poal_config->enable.audio_en,poal_config->enable.iq_en);
             printf_info("work_mode=%d\n", poal_config->work_mode);
+            break;
+        case SUB_SIGNAL_OUTPUT_ENABLE_CMD:
+            poal_config->sub_ch_enable.cid = pakt_config->sub_channel_enable[ch].cid;
+            poal_config->sub_ch_enable.sub_id = pakt_config->sub_channel_enable[ch].signal_ch;
+            poal_config->sub_ch_enable.psd_en = convert_enable_mode(pakt_config->sub_channel_enable[ch].en, SPECTRUM_MASK);
+            poal_config->sub_ch_enable.audio_en = convert_enable_mode(pakt_config->sub_channel_enable[ch].en, D_OUT_MASK);
+            poal_config->sub_ch_enable.iq_en = convert_enable_mode(pakt_config->sub_channel_enable[ch].en, IQ_OUT_MASK);
+            INTERNEL_ENABLE_BIT_SET(poal_config->sub_ch_enable.bit_en,poal_config->sub_ch_enable);
+            printf_info("sub_ch bit_en=%x, sub_ch psd_en=%d, sub_ch audio_en=%d,sub_ch iq_en=%d\n", poal_config->sub_ch_enable.bit_en, 
+            poal_config->sub_ch_enable.psd_en,poal_config->sub_ch_enable.audio_en,poal_config->sub_ch_enable.iq_en);
             break;
         case DIRECTION_MULTI_FREQ_ZONE_CMD: /* 多频段扫描参数 */
         {
@@ -342,7 +363,7 @@ static int akt_execute_set_command(void)
     {
         case OUTPUT_ENABLE_PARAM:
         {
-            printf_debug("enable[cid:%x en:%x]\n", header->buf[0], header->buf[1]);
+            printf_info("enable[cid:%x en:%x]\n", header->buf[0], header->buf[1]);
             memcpy(&(pakt_config->enable), header->buf, sizeof(OUTPUT_ENABLE_PARAM_ST));
             ch = poal_config->cid = pakt_config->enable.cid;
             if(check_radio_channel(pakt_config->enable.cid)){
@@ -540,9 +561,52 @@ static int akt_execute_set_command(void)
             executor_set_command(EX_MID_FREQ_CMD, EX_FFT_SIZE, ch, &pakt_config->fft[ch].fft_size);
             break;
         case SUB_SIGNAL_PARAM_CMD:
+        {           
+            struct io_decode_param_st decode_param;
+            uint8_t sub_ch;
+            if(check_radio_channel(header->buf[0]) || check_sub_channel(header->buf[1])){
+                err_code = RET_CODE_PARAMTER_ERR;
+                goto set_exit;
+            }
+            poal_config->cid = header->buf[0];
+            sub_ch = *(uint16_t *)(header->buf+1);
+            ch = poal_config->cid;
+            
+            memcpy(&(pakt_config->sub_channel[sub_ch]), header->buf, sizeof(SUB_SIGNAL_PARAM));
+            if(akt_convert_oal_config(ch, header->code) == -1){
+                err_code = RET_CODE_PARAMTER_ERR;
+                goto set_exit;
+            }
+            decode_param.cid = ch;
+            //decode_param.sub_ch = sub_ch;
+            decode_param.d_bandwidth = pakt_config->sub_channel[sub_ch].bandwidth;
+            decode_param.d_method = pakt_config->sub_channel[sub_ch].decode_method_id;
+            decode_param.center_freq = pakt_config->sub_channel[sub_ch].freq;
+            printf_info("ch:%d, sub_ch=%d, d_bandwidth:%llu,d_method:%d, center_freq:%llu", ch, sub_ch, decode_param.d_bandwidth, decode_param.d_method, decode_param.center_freq);
+            executor_set_command(EX_MID_FREQ_CMD, EX_DEC_BW, ch, &decode_param);
+            io_set_enable_command(AUDIO_MODE_DISABLE, ch, 0);
+            
+            if(poal_config->sub_ch_enable.audio_en || poal_config->sub_ch_enable.iq_en)
+                io_set_enable_command(AUDIO_MODE_ENABLE, ch, 32768);
             break;
+        }
         case SUB_SIGNAL_OUTPUT_ENABLE_CMD:
         {
+            uint8_t sub_ch;
+            if(check_radio_channel(header->buf[0]) || check_sub_channel(header->buf[1])){
+                err_code = RET_CODE_PARAMTER_ERR;
+                goto set_exit;
+            }
+            ch = header->buf[0];
+            sub_ch = *(uint16_t *)(header->buf+1);
+            memcpy(&(pakt_config->sub_channel_enable[sub_ch]), header->buf, sizeof(SUB_SIGNAL_ENABLE_PARAM));
+            if(akt_convert_oal_config(sub_ch, SUB_SIGNAL_OUTPUT_ENABLE_CMD) == -1){
+                err_code = RET_CODE_PARAMTER_NOT_SET;
+                goto set_exit;
+            }
+            io_set_enable_command(AUDIO_MODE_DISABLE, ch, 0);
+            if(poal_config->sub_ch_enable.audio_en || poal_config->sub_ch_enable.iq_en)
+                io_set_enable_command(AUDIO_MODE_ENABLE, ch, 32768);
             break;
         }
         default:

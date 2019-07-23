@@ -155,7 +155,7 @@ int tcp_active_send_all_client(uint8_t *data, int len)
 {
     struct net_tcp_client *cl_list, *list_tmp;
     list_for_each_entry_safe(cl_list, list_tmp, &g_srv->clients, list){
-            printf_debug("Find ipaddree on list:%s， port=%d\n",  cl_list->get_peer_addr(cl_list), cl_list->get_peer_port(cl_list));
+            printf_debug("Find ipaddree on list:%s, port=%d\n",  cl_list->get_peer_addr(cl_list), cl_list->get_peer_port(cl_list));
             ustream_write(cl_list->us, data, len, true);
     }
 }

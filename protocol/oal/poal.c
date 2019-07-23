@@ -16,7 +16,23 @@
 
 int poal_send_active_to_all_client(uint8_t *data, int len)
 {
-    tcp_active_send_all_client(data, len);
+    int error_code = 0;
+    int send_len = 0;
+    uint8_t send_buf[MAX_SEND_DATA_LEN];
+
+    send_len = poal_assamble_send_active_data(send_buf, data, len);
+    if(send_len > MAX_SEND_DATA_LEN){
+        printf_err("%d is too long\n", send_len);
+        return -1;
+    }
+    if(send_len <= 0){
+        printf_err("%d len error\n", send_len);
+        return -1;
+    }
+    
+    tcp_active_send_all_client(send_buf, send_len);
+    
+    return 0;
 }
 
 int poal_send_response(struct net_tcp_client *cl, uint8_t *data, int len)

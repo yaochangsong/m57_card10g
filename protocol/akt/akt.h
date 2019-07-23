@@ -617,6 +617,14 @@ typedef struct _SUB_SIGNAL_ENABLE_PARAM{
     uint8_t en;
 }__attribute__ ((packed)) SUB_SIGNAL_ENABLE_PARAM;
 
+typedef struct _DEVICE_SIGNAL_PARAM_ST{
+    uint8_t cid;
+    uint64_t mid_freq;
+    uint64_t bandwith;
+    uint32_t level;
+    uint8_t status;  /* 0: online 1: offline */
+}__attribute__ ((packed)) DEVICE_SIGNAL_PARAM_ST;
+
 /*************************************************************************/
 #define check_radio_channel(ch)   (ch > MAX_RADIO_CHANNEL_NUM ? 1 : 0) 
 #define check_sub_channel(sub_ch) (sub_ch > MAX_SIGNAL_CHANNEL_NUM ? 1 : 0) 

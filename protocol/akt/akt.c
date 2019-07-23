@@ -789,6 +789,34 @@ int akt_assamble_response_data(uint8_t **buf, int err_code)
     return len;
 }
 
+int8_t  akt_assamble_send_active_data(uint8_t *send_buf, uint8_t *payload, uint32_t payload_len)
+{
+    struct response_get_data *response_data;
+    int len = 0;
+    int header_len=0;
+
+    if(send_buf == NULL || payload == NULL || payload_len == 0){
+        return -1;
+    }
+    header_len = sizeof(PDU_CFG_RSP_HEADER_ST);
+    printf_info("header_len:%d\n", header_len);
+    response_data = (struct response_get_data *)send_buf;
+    response_data->header.start_flag = AKT_START_FLAG; 
+    response_data->header.receiver_id = 0;
+    memcpy(response_data->payload_data, payload, payload_len);
+    memset(response_data->header.usr_id, 0, sizeof(response_data->header.usr_id));
+    response_data->header.len = payload_len;
+    response_data->header.crc = crc16_caculate((uint8_t *)response_data->payload_data, payload_len);
+    response_data->header.operation = SET_CMD_RSP;
+    response_data->header.code = NOTIFY_SIGNALl_STATUS;
+    response_data->end_flag = AKT_END_FLAG;
+    len = header_len + response_data->header.len;
+    memcpy(send_buf+len, (uint8_t *)&response_data->end_flag, sizeof(response_data->end_flag));
+    len +=  sizeof(response_data->end_flag);
+    return len;
+}
+
+
 /******************************************************************************
 * FUNCTION:
 *     akt_assamble_error_response_data

@@ -103,8 +103,8 @@ enum {
 
 
 struct sem_st{
-    sem_t   notify_deal;
-    sem_t   kernel_sysn;
+    sem_t   notify_deal;        /* 开启或关闭使能后，通知线程处理相关逻辑 */
+    sem_t   kernel_sysn;        /* 频谱分析时，内核处理完数据后，异步消息通知应用层 */
 };
 
 /* 扫描模式下，需要向内核发送的工作模式参数信息，内核用作发送到客户端头信息 */

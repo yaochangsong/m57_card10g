@@ -21,6 +21,26 @@ pthread_mutex_t set_cmd_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 struct sem_st work_sem;
 
+static void executor_send_data_to_clent_active(void *data)
+{
+    printf_note("send data to client\n");
+    struct kernel_header_param *send_param;
+    uint8_t *send_data = NULL;
+    uint32_t send_data_len = 0;
+    send_param = (struct kernel_header_param *)data;
+    printf_note("ch=%d,bandwidth=%u,m_freq=%llu\n", send_param->ch, send_param->bandwidth, send_param->m_freq);
+#if PROTOCAL_ATE != 0
+    DEVICE_SIGNAL_PARAM_ST notify_param;
+    notify_param.bandwith = send_param->bandwidth;
+    notify_param.mid_freq = send_param->m_freq;
+    notify_param.cid = send_param->ch;
+    notify_param.status = 0;
+    send_data = (uint8_t *)&notify_param;
+    send_data_len = sizeof(DEVICE_SIGNAL_PARAM_ST);
+#endif
+    poal_send_active_to_all_client(send_data, send_data_len);
+}
+
 static inline int8_t executor_wait_kernel_deal(void)
 {
     struct timespec ts;
@@ -143,7 +163,9 @@ static inline void  executor_points_scan(uint8_t ch, work_mode mode)
         executor_set_command(EX_MID_FREQ_CMD, EX_MID_FREQ,    ch, &point->points[i].center_freq);
         executor_set_command(EX_MID_FREQ_CMD, EX_FFT_SIZE, ch, &point->points[i].fft_size);
         executor_set_command(EX_WORK_MODE_CMD,mode, ch, &header_param);
-
+        /* notify client that some paramter has changed */
+        poal_config->send_active((void *)&header_param);
+        
         if(poal_config->enable.audio_en || poal_config->enable.iq_en){
             decode_param.center_freq = point->points[i].center_freq;
             decode_param.cid = ch;
@@ -177,6 +199,8 @@ void executor_work_mode_thread(void *arg)
     uint8_t ch = poal_config->enable.cid;
     uint8_t sub_ch = poal_config->enable.sub_id;
     uint32_t j;
+
+    poal_config->send_active = executor_send_data_to_clent_active;    /* send active funcition callback */
     
     while(1)
     {

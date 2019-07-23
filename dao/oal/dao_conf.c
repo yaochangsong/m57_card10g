@@ -189,25 +189,28 @@ void dao_conf_save_batch(exec_cmd cmd, uint8_t type, s_config *config)
                 break;
         case EX_NETWORK_CMD:
             {
-                write_config_file_single(XMLFILENAME,"network","mac",&config->oal_config.network.mac,0);
+                //write_config_file_single(XMLFILENAME,"network","mac",&config->oal_config.network.mac,0);
                 struct in_addr netpara;
                 const char *ipstr=NULL;
                 netpara.s_addr=config->oal_config.network.gateway;
                 
                 ipstr= inet_ntoa(netpara);
+                printf_debug("----------gateway=%s\n", ipstr);
                 write_config_file_single(XMLFILENAME,"network","gateway",ipstr,0);
 
                 
-                memcpy(netpara.s_addr,0,sizeof(netpara.s_addr));
+               // memcpy(netpara.s_addr,0,sizeof(netpara.s_addr));
                 ipstr=NULL;
                 netpara.s_addr=config->oal_config.network.netmask;
                 ipstr= inet_ntoa(netpara);
+                printf_debug("----------netmask=%s", ipstr);
                 write_config_file_single(XMLFILENAME,"network","netmask",ipstr,0);
 
-                memcpy(netpara.s_addr,0,sizeof(netpara.s_addr));
+                //memcpy(netpara.s_addr,0,sizeof(netpara.s_addr));
                 ipstr=NULL;
                 netpara.s_addr=config->oal_config.network.ipaddress;
                 ipstr= inet_ntoa(netpara);
+                printf_debug("----------ipaddress=%s", ipstr);
                 write_config_file_single(XMLFILENAME,"network","ipaddress",ipstr,0);
                 write_config_file_single(XMLFILENAME,"network","port",NULL,(int)config->oal_config.network.port);
                 break;

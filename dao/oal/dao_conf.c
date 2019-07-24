@@ -189,7 +189,16 @@ void dao_conf_save_batch(exec_cmd cmd, uint8_t type, s_config *config)
                 break;
         case EX_NETWORK_CMD:
             {
-                write_config_file_single(XMLFILENAME,"network","mac",config->oal_config.network.mac,0);
+                char temp[30];
+
+                sprintf(temp,"%02x:%02x:%02x:%02x:%02x:%02x\n", config->oal_config.network.mac[0],config->oal_config.network.mac[1],
+                config->oal_config.network.mac[2],config->oal_config.network.mac[3],config->oal_config.network.mac[4],
+                config->oal_config.network.mac[5]);
+
+
+                printf_debug(" config->oal_config.network.mac -----------%s\n",temp);
+                write_config_file_single(XMLFILENAME,"network","mac",temp,0);
+                
                 struct in_addr netpara;
                 const char *ipstr=NULL;
                 netpara.s_addr=config->oal_config.network.gateway;

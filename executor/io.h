@@ -154,6 +154,17 @@ typedef enum _io_work_enable {
     IO_ANGLE_MASK_ENABLE = 0x08,
 }io_work_enable;
 
+typedef enum _io_dq_method_code{
+    IO_DQ_MODE_AM = 0x00,
+    IO_DQ_MODE_FM = 0x01,
+    IO_DQ_MODE_WFM = 0x01,
+    IO_DQ_MODE_LSB = 0x02,
+    IO_DQ_MODE_USB = 0x02,
+    IO_DQ_MODE_CW = 0x03,
+    IO_DQ_MODE_IQ = 0x07,
+}io_dq_method_code;
+
+
 
 extern void io_init(void);
 extern int8_t io_set_enable_command(uint8_t type, uint8_t ch, uint32_t fftsize);

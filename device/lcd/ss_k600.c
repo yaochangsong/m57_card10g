@@ -246,8 +246,8 @@ int8_t k600_send_data_to_user(uint8_t *pdata, int32_t total_len)
             case SCREEN_IPADDR3:
             case SCREEN_IPADDR4:
             {
-                static uint32_t ipaddr;
-                if(config_read_by_cmd(EX_NETWORK_CMD, EX_NETWORK_IP, 0, &ipaddr) != -1){
+                uint32_t ipaddr;
+                if(config_read_by_cmd(EX_NETWORK_CMD, EX_NETWORK_IP, 0, &ipaddr) != 0){
                     return -1;
                 }
                 printf_debug("data_cmd=%x, datanum=%d, pdata=%d[%x], pdata2=%d\n", data_cmd,ptr->datanum,  ptr->data[0],ptr->data[0], ptr->data[1]);
@@ -255,7 +255,8 @@ int8_t k600_send_data_to_user(uint8_t *pdata, int32_t total_len)
                 ip.s_addr = ipaddr;
                 ipstr= inet_ntoa(ip);
                 printf_info("ipstr=%s ipaddr=%x\n", ipstr,  ip.s_addr);
-                config_refresh_from_data(EX_NETWORK_CMD, EX_NETWORK_IP, 0, &ipaddr);
+                config_refresh_data(EX_NETWORK_CMD, EX_NETWORK_IP, 0, &ipaddr);
+                executor_set_command(EX_NETWORK_CMD, EX_NETWORK_IP, 0, NULL);
             }
             break;
             case SCREEN_NETMASK_ADDR1:

@@ -110,7 +110,7 @@ int8_t config_save_batch(exec_cmd cmd, uint8_t type,s_config *config)
 *        0：成功
 ******************************************************************************/
 
-int8_t config_refresh_from_data(exec_cmd cmd, uint8_t type, uint8_t ch, void *data)
+int8_t config_refresh_data(exec_cmd cmd, uint8_t type, uint8_t ch, void *data)
 {
     printf_info(" config_load_from_data\n");
 
@@ -145,7 +145,7 @@ int8_t config_refresh_from_data(exec_cmd cmd, uint8_t type, uint8_t ch, void *da
                     break;
                 default:
                     printf_err("not surpport type\n");
-                    break;
+                    return -1;
             }
             break;
         }
@@ -170,7 +170,7 @@ int8_t config_refresh_from_data(exec_cmd cmd, uint8_t type, uint8_t ch, void *da
                     break;
                 default:
                     printf_err("not surpport type\n");
-                    break;
+                    return -1;
             }
             break;
         }
@@ -196,7 +196,7 @@ int8_t config_refresh_from_data(exec_cmd cmd, uint8_t type, uint8_t ch, void *da
                     break;
                 default:
                     printf_err("not surpport type\n");
-                    break;
+                    return -1;
             }
             break;
 
@@ -242,7 +242,7 @@ int8_t config_read_by_cmd(exec_cmd cmd, uint8_t type, uint8_t ch, void *data)
                     break;
                 default:
                     printf_err("not surpport type\n");
-                    break;
+                    return -1;
             }
             break;
         }
@@ -267,7 +267,7 @@ int8_t config_read_by_cmd(exec_cmd cmd, uint8_t type, uint8_t ch, void *data)
                     break;
                 default:
                     printf_err("not surpport type\n");
-                    break;
+                    return -1;
             }
             break;
         }
@@ -293,7 +293,7 @@ int8_t config_read_by_cmd(exec_cmd cmd, uint8_t type, uint8_t ch, void *data)
                     break;
                 default:
                     printf_err("not surpport type\n");
-                    break;
+                    return -1;
             }
             break;
 

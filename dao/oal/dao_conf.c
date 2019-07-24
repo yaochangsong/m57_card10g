@@ -83,9 +83,10 @@ void dao_conf_save_batch(exec_cmd cmd, uint8_t type, s_config *config)
             /*差频率分辨率*/
             break;
         case EX_RF_FREQ_CMD:/*射频参数命令*/
+            printf_debug("EX_RF_FREQ_CMD\n");
             if(type==EX_RF_MID_FREQ)  /* 射频中心频率 */
             {
-               printf_debug("Unsupported parameter modification");
+               printf_debug("Unsupported parameter modification\n");
                // write_config_file_array(XMLFILENAME,"channel","index",temp,"radiofrequency","decMethodId","freqPoint","index",signalnum,config->oal_config->multi_freq_point_param->points->d_method,ARRAY_ARRAY);
                // write_config_file_array(XMLFILENAME,"channel","index",temp,"radiofrequency","midBw",NULL,NULL,NULL,config->oal_config->rf_para->mid_bw,ARRAY_PARENT);
              
@@ -189,7 +190,16 @@ void dao_conf_save_batch(exec_cmd cmd, uint8_t type, s_config *config)
                 break;
         case EX_NETWORK_CMD:
             {
-                write_config_file_single(XMLFILENAME,"network","mac",config->oal_config.network.mac,0);
+                char temp[30];
+
+                sprintf(temp,"%02x:%02x:%02x:%02x:%02x:%02x\n", config->oal_config.network.mac[0],config->oal_config.network.mac[1],
+                config->oal_config.network.mac[2],config->oal_config.network.mac[3],config->oal_config.network.mac[4],
+                config->oal_config.network.mac[5]);
+
+
+                printf_debug(" config->oal_config.network.mac -----------%s\n",temp);
+                write_config_file_single(XMLFILENAME,"network","mac",temp,0);
+                
                 struct in_addr netpara;
                 const char *ipstr=NULL;
                 netpara.s_addr=config->oal_config.network.gateway;
@@ -217,7 +227,7 @@ void dao_conf_save_batch(exec_cmd cmd, uint8_t type, s_config *config)
 
             break;
     }  
-    printf_debug("save parse data\n");
+    printf_debug("save parse data over\n");
 }
 
 

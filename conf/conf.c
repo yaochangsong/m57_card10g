@@ -82,7 +82,7 @@ int8_t config_parse_data(exec_cmd cmd, uint8_t type, void *data)
 
 int8_t config_save_batch(exec_cmd cmd, uint8_t type,s_config *config)
 {
-    printf_debug(" config_save_batch\n");
+    printf_info(" config_save_batch\n");
 
 #if DAO_XML == 1
      dao_conf_save_batch(EX_NETWORK_CMD,NULL,config);
@@ -92,10 +92,220 @@ int8_t config_save_batch(exec_cmd cmd, uint8_t type,s_config *config)
 #else
     #error "NOT SUPPORT DAO FORMAT"
 #endif
-        return NULL;
-
     return 0;
 }
+
+/******************************************************************************
+* FUNCTION:
+*     config_refresh_from_data
+*
+* DESCRIPTION:
+*     根据命令和参数保存数据到config结构体; 中频参数默认保存到频点为1的参数
+* PARAMETERS
+*     cmd:  保存参数对应类型命令; 见executor.h定义
+*     type:  子类型 见executor.h定义
+*     data:   数据
+* RETURNS
+*       -1:  失败
+*        0：成功
+******************************************************************************/
+
+int8_t config_refresh_from_data(exec_cmd cmd, uint8_t type, uint8_t ch, void *data)
+{
+    printf_info(" config_load_from_data\n");
+
+    struct poal_config *poal_config = &(config_get_config()->oal_config);
+
+    if(data ==NULL)
+        return -1;
+    
+     switch(cmd)
+     {
+        case EX_MID_FREQ_CMD:
+        {
+            switch(type)
+            {
+                case EX_MUTE_SW:
+                    if(*(uint8_t *)data > 1){
+                        return -1;
+                    }
+                    poal_config->multi_freq_point_param[ch].points[0].noise_en = *(uint8_t *)data;
+                    break;
+                case EX_MUTE_THRE:
+                    poal_config->multi_freq_point_param[ch].points[0].noise_thrh = *(uint8_t *)data;
+                    break;
+                case EX_DEC_METHOD:
+                    poal_config->multi_freq_point_param[ch].points[0].d_method = *(uint8_t *)data;
+                    break;
+                case EX_DEC_BW:
+                    poal_config->multi_freq_point_param[ch].points[0].d_bandwith = *(uint32_t *)data;
+                    break;
+                case EX_AUDIO_SAMPLE_RATE:
+                    poal_config->multi_freq_point_param[ch].audio_sample_rate = *(float *)data;
+                    break;
+                default:
+                    printf_err("not surpport type\n");
+                    break;
+            }
+            break;
+        }
+        case EX_RF_FREQ_CMD:
+        {
+            switch(type)
+            {
+                case EX_RF_MID_FREQ:
+                    poal_config->rf_para[ch].mid_freq = *(uint64_t *)data;
+                    break;
+                case EX_RF_MID_BW:
+                    poal_config->rf_para[ch].mid_bw = *(uint32_t *)data;
+                    break;
+                case EX_RF_MODE_CODE:
+                    poal_config->rf_para[ch].rf_mode_code = *(uint8_t *)data;
+                    break;
+                case EX_RF_GAIN_MODE:
+                    poal_config->rf_para[ch].gain_ctrl_method = *(uint8_t *)data;
+                    break;
+                case EX_RF_MGC_GAIN:
+                    poal_config->rf_para[ch].mgc_gain_value = *(float *)data;
+                    break;
+                default:
+                    printf_err("not surpport type\n");
+                    break;
+            }
+            break;
+        }
+        case EX_ENABLE_CMD:
+        {
+            break;
+        }
+        case EX_NETWORK_CMD:
+        {
+            switch(type)
+            {
+                case EX_NETWORK_IP:
+                    poal_config->network.ipaddress = *(uint32_t *)data;
+                    break;
+                case EX_NETWORK_MASK:
+                    poal_config->network.netmask = *(uint32_t *)data;
+                    break;
+                case EX_NETWORK_GW:
+                    poal_config->network.gateway = *(uint32_t *)data;
+                    break;
+                case EX_NETWORK_PORT:
+                    poal_config->network.port = *(uint16_t *)data;
+                    break;
+                default:
+                    printf_err("not surpport type\n");
+                    break;
+            }
+            break;
+
+        }
+        default:
+            printf_err("invalid set data[%d]\n", cmd);
+            return -1;
+     }
+     
+    config_save_batch(cmd, type, config_get_config());
+    return 0;
+}
+
+
+int8_t config_read_by_cmd(exec_cmd cmd, uint8_t type, uint8_t ch, void *data)
+{
+    printf_info("config_read_by_cmd\n");
+    struct poal_config *poal_config = &(config_get_config()->oal_config);
+    
+    if(data == NULL){
+        return -1;
+    }
+     switch(cmd)
+     {
+        case EX_MID_FREQ_CMD:
+        {
+            switch(type)
+            {
+                case EX_MUTE_SW:
+                    data = (void *)&poal_config->multi_freq_point_param[ch].points[0].noise_en;
+                    break;
+                case EX_MUTE_THRE:
+                     data = (void *)&poal_config->multi_freq_point_param[ch].points[0].noise_thrh;
+                    break;
+                case EX_DEC_METHOD:
+                     data = (void *)&poal_config->multi_freq_point_param[ch].points[0].d_method;
+                    break;
+                case EX_DEC_BW:
+                     data = (void *)&poal_config->multi_freq_point_param[ch].points[0].d_bandwith;
+                    break;
+                case EX_AUDIO_SAMPLE_RATE:
+                     data = (void *)&poal_config->multi_freq_point_param[ch].audio_sample_rate;
+                    break;
+                default:
+                    printf_err("not surpport type\n");
+                    break;
+            }
+            break;
+        }
+        case EX_RF_FREQ_CMD:
+        {
+            switch(type)
+            {
+                case EX_RF_MID_FREQ:
+                    data = (void *)&poal_config->rf_para[ch].mid_freq;
+                    break;
+                case EX_RF_MID_BW:
+                    data = (void *)&poal_config->rf_para[ch].mid_bw;
+                    break;
+                case EX_RF_MODE_CODE:
+                    data = (void *)&poal_config->rf_para[ch].rf_mode_code;
+                    break;
+                case EX_RF_GAIN_MODE:
+                    data = (void *)&poal_config->rf_para[ch].gain_ctrl_method;
+                    break;
+                case EX_RF_MGC_GAIN:
+                    data = (void *)&poal_config->rf_para[ch].mgc_gain_value;
+                    break;
+                default:
+                    printf_err("not surpport type\n");
+                    break;
+            }
+            break;
+        }
+        case EX_ENABLE_CMD:
+        {
+            break;
+        }
+        case EX_NETWORK_CMD:
+        {
+            switch(type)
+            {
+                case EX_NETWORK_IP:
+                    data = (void *)&poal_config->network.ipaddress;
+                    break;
+                case EX_NETWORK_MASK:
+                    data = (void *)&poal_config->network.netmask;
+                    break;
+                case EX_NETWORK_GW:
+                    data = (void *)&poal_config->network.gateway;
+                    break;
+                case EX_NETWORK_PORT:
+                    data = (void *)&poal_config->network.port;
+                    break;
+                default:
+                    printf_err("not surpport type\n");
+                    break;
+            }
+            break;
+
+        }
+        default:
+            printf_err("invalid set data[%d]\n", cmd);
+            return -1;
+     }
+     
+    return 0;
+}
+
 
 
 

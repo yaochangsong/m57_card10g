@@ -14,6 +14,46 @@ static SCREEN_BW_PARA_ST bw_data[] = {
     {SCREEN_BW_10, 150000},
 };
 
+int8_t k600_decode_method_convert_to_standard(uint8_t method)
+{
+    uint8_t d_method;
+    
+    if(method == SCREEN_DECODE_AM){
+        d_method = IO_DQ_MODE_AM;
+    }else if(method == SCREEN_DECODE_FM || method == SCREEN_DECODE_WFM) {
+        d_method = IO_DQ_MODE_FM;
+    }else if(method == SCREEN_DECODE_LSB || method == SCREEN_DECODE_USB) {
+        d_method = IO_DQ_MODE_LSB;
+    }else if(method == SCREEN_DECODE_CW) {
+        d_method = IO_DQ_MODE_CW;
+    }else{
+        printf_err("decode method not support:%d\n",method);
+        return -1;
+    }
+    return d_method;
+}
+
+int8_t k600_decode_method_convert_from_standard(uint8_t method)
+{
+    uint8_t d_method;
+    
+    if(method == IO_DQ_MODE_AM){
+        d_method = SCREEN_DECODE_AM;
+    }else if(method == IO_DQ_MODE_FM || method == IO_DQ_MODE_WFM) {
+        d_method = SCREEN_DECODE_FM;
+    }else if(method == IO_DQ_MODE_LSB || method == IO_DQ_MODE_USB) {
+        d_method = SCREEN_DECODE_LSB;
+    }else if(method == IO_DQ_MODE_CW) {
+        d_method = SCREEN_DECODE_CW;
+    }else{
+        printf_err("decode method not support:%d\n",method);
+        return -1;
+    }
+    return d_method;
+}
+
+
+
 static int k600_receive_read_act(uint16_t addr, uint8_t short_len)
 {
     SCREEN_SEND_CONTROL_ST *send_package;
@@ -206,9 +246,17 @@ int8_t k600_send_data_to_user(uint8_t *pdata, int32_t total_len)
             case SCREEN_IPADDR3:
             case SCREEN_IPADDR4:
             {
-                printf_info("data_cmd=%x, datanum=%d, pdata=%d[%x], pdata2=%d\n", data_cmd,ptr->datanum,  ptr->data[0],ptr->data[0], ptr->data[1]);
+                static uint32_t ipaddr;
+                if(config_read_by_cmd(EX_NETWORK_CMD, EX_NETWORK_IP, 0, &ipaddr) != -1){
+                    return -1;
+                }
+                printf_debug("data_cmd=%x, datanum=%d, pdata=%d[%x], pdata2=%d\n", data_cmd,ptr->datanum,  ptr->data[0],ptr->data[0], ptr->data[1]);
+                memcpy((uint8_t *)(&ipaddr) + data_cmd - SCREEN_IPADDR1, &(ptr->data[0]), ptr->datanum);
+                ip.s_addr = ipaddr;
+                ipstr= inet_ntoa(ip);
+                printf_info("ipstr=%s ipaddr=%x\n", ipstr,  ip.s_addr);
+                config_refresh_from_data(EX_NETWORK_CMD, EX_NETWORK_IP, 0, &ipaddr);
             }
-
             break;
             case SCREEN_NETMASK_ADDR1:
             case SCREEN_NETMASK_ADDR2:
@@ -525,6 +573,9 @@ int8_t k600_receive_write_data_from_user(uint8_t data_type, uint8_t data_cmd, vo
                     uint16_t _data = 0;
                     printf_debug("%d\n",*(uint8_t *)pdata);
                     _data = COMPOSE_16BYTE_BY_8BIT(*(uint8_t *)pdata, 0);
+                    if(data_cmd == SCREEN_CHANNEL_DECODE_TYPE){
+                        _data = k600_decode_method_convert_from_standard(_data);
+                    }
                     k600_receive_write_act(COMPOSE_16BYTE_BY_8BIT(data_type, data_cmd), &_data, 1);
                 }
                     break;

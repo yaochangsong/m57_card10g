@@ -70,6 +70,12 @@ PLAT_FORM_ARCH_ARM
 #define DAO_JSON  0
 #define DAO_XML   1
 
+/* local or remote control support, if not set, default use remote control */
+#define CONTROL_MODE_SUPPORT 0
+/* lcd support */
+#define UART_LCD_SUPPORT 0
+
+
 
 
 

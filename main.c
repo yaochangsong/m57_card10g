@@ -46,6 +46,9 @@ int main(int argc, char **argv)
     executor_init();
     uloop_init();
     uart_init();
+#if (UART_LCD_SUPPORT == 1)
+    init_lcd();
+#endif
     spi_init();
     if(server_init() == -1){
         printf_err("server init fail!\n");

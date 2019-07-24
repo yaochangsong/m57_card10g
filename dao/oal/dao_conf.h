@@ -6,7 +6,7 @@
 #define XMLFILENAME DEFAULT_CONFIGFILE
 
 #define MAX_SIG_CHANNLE 8
-void dao_conf_save_batch(exec_cmd cmd, uint8_t type, s_config *config);
+//void dao_conf_save_batch(exec_cmd cmd, uint8_t type, s_config *config);
 
 /*1      中频参数*/
 

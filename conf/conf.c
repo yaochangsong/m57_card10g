@@ -65,6 +65,19 @@ int8_t config_parse_data(exec_cmd cmd, uint8_t type, void *data)
     return 0;
 }
 
+/*本控 or 远控 查看接口*/
+ctrl_mode_param config_get_control_mode(void)
+{
+#if  (CONTROL_MODE_SUPPORT == 1)
+    if(config.oal_config->ctrl_para.remote_local == CTRL_MODE_LOCAL){
+        return CTRL_MODE_LOCAL;
+    }else{
+        return CTRL_MODE_REMOTE;
+    }
+#endif
+    return CTRL_MODE_REMOTE;
+}
+
 /******************************************************************************
 * FUNCTION:
 *     config_save_batch
@@ -201,6 +214,18 @@ int8_t config_refresh_data(exec_cmd cmd, uint8_t type, uint8_t ch, void *data)
             break;
 
         }
+        case EX_CTRL_CMD:
+        {
+             switch(type)
+             {
+                case EX_CTRL_LOCAL_REMOTE:
+                    break;
+                default:
+                    printf_err("not surpport type\n");
+                    return -1;
+             }
+        }
+            break;
         default:
             printf_err("invalid set data[%d]\n", cmd);
             return -1;
@@ -296,7 +321,17 @@ int8_t config_read_by_cmd(exec_cmd cmd, uint8_t type, uint8_t ch, void *data)
                     return -1;
             }
             break;
-
+        }
+        case EX_CTRL_CMD:
+        {
+             switch(type)
+             {
+                case EX_CTRL_LOCAL_REMOTE:
+                    break;
+                default:
+                    printf_err("not surpport type\n");
+                    return -1;
+             }
         }
         default:
             printf_err("invalid set data[%d]\n", cmd);

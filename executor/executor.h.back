@@ -26,8 +26,40 @@ typedef enum {
     EX_CTRL_CMD,               /*控制参数命令*/
 }exec_cmd;
 
-/* executor: mid frequency paramter */
+/* executor: RF paramter */
+enum  ex_rf_cmd{
+    EX_RF_MODE_CODE=1,              /* 模式码 0x00：低失真 0x01：常规 0x02：低噪声 */
+    EX_RF_MID_FREQ,               /* 射频中心频率 */
+    EX_RF_MID_BW,                 /*中频带宽*/
+    EX_RF_GAIN_MODE,              /*增益模式*/
+    EX_RF_MGC_GAIN,               /*MGC 增益值*/
+    EX_RF_AGC_CTRL_TIME,          /*AGC 控制时间*/
+    EX_RF_AGC_OUTPUT_AMP,         /*AGC 中频输出幅度*/
+    EX_RF_ANTENNA_SELECT,         /*天线选择*/
+    EX_RF_ATTENUATION,            /*射频衰减*/
+    EX_RF_STATUS_TEMPERAT,        /*射频温度*/
+    EX_RF_AGC_FREQUENCY,          /*AGC 频率设置*/
+    EX_RF_AGC_BW,                 /*AGC 带宽设置*/
+};
+
+/* network paramters */
 enum {
+    EX_NETWORK_IP,               /* IP地址 */
+    EX_NETWORK_MASK,
+    EX_NETWORK_GW,
+    EX_NETWORK_PORT,
+};
+
+/* control paramters */
+enum {
+    EX_CTRL_LOCAL_REMOTE,        /* 本控远控 */
+    EX_CTRL_CALIBRATION,         /* 校准控制 */
+    EX_CTRL_TIMESET,             /* 时间设置 */
+};
+
+
+/* executor: mid frequency paramter */
+typedef enum {
     EX_MUTE_SW=11,                /*静噪开关*/
     EX_MUTE_THRE=12,              /*静噪门限*/
     EX_MID_FREQ=13,               /*中心频率*/
@@ -41,7 +73,7 @@ enum {
     EX_FFT_SIZE=21,              /*FFT 点数*/
     EX_FRAME_DROP_CNT=22,        /*丢帧次数*/
     EX_CHANNEL_SELECT=23,        /*通道选择*/
-};
+}ex_mid_freq_cmd;
 
 /* executor: work mode  */
 typedef enum {
@@ -78,36 +110,7 @@ enum {
     EX_FPGA_TEMPERATURE=76        /*fpga 温度*/
 };
 
-/* executor: RF paramter */
-enum {
-    EX_RF_MID_FREQ,               /* 射频中心频率 */
-    EX_RF_MID_BW,                 /*中频带宽*/
-    EX_RF_MODE_CODE,              /*模式码 0x00：低失真 0x01：常规 0x02：低噪声*/
-    EX_RF_GAIN_MODE,              /*增益模式*/
-    EX_RF_MGC_GAIN,               /*MGC 增益值*/
-    EX_RF_AGC_CTRL_TIME,          /*AGC 控制时间*/
-    EX_RF_AGC_OUTPUT_AMP,         /*AGC 中频输出幅度*/
-    EX_RF_ANTENNA_SELECT,         /*天线选择*/
-    EX_RF_ATTENUATION,            /*射频衰减*/
-    EX_RF_STATUS_TEMPERAT,         /*射频温度*/
-    EX_RF_AGC_FREQUENCY,          /*AGC 频率设置*/
-    EX_RF_AGC_BW,                 /*AGC 带宽设置*/
-};
 
-/* network paramters */
-enum {
-    EX_NETWORK_IP,               /* IP地址 */
-    EX_NETWORK_MASK,
-    EX_NETWORK_GW,
-    EX_NETWORK_PORT,
-};
-
-/* control paramters */
-enum {
-    EX_CTRL_LOCAL_REMOTE,        /* 本控远控 */
-    EX_CTRL_CALIBRATION,         /* 校准控制 */
-    EX_CTRL_TIMESET,             /* 时间设置 */
-};
 
 struct sem_st{
     sem_t   notify_deal;        /* 开启或关闭使能后，通知线程处理相关逻辑 */

@@ -322,6 +322,10 @@ static int akt_execute_set_command(void)
     int ch = -1;
 
     err_code = RET_CODE_SUCCSESS;
+    if(config_get_control_mode() == CTRL_MODE_LOCAL){
+        err_code = RET_CODE_LOCAL_CTRL_MODE;
+        goto set_exit;
+    }
     printf_info("set bussiness code[%x]\n", header->code);
     switch (header->code)
     {

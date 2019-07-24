@@ -44,6 +44,12 @@ enum {
     SPEC_ANALY_EN_BIT_OFFSET    = 0x03,
     DIRECTION_EN_BIT_OFFSET     = 0x04,
 };
+
+typedef enum _ctrl_mode_param {	
+    CTRL_MODE_LOCAL   = 0,
+    CTRL_MODE_REMOTE  = 1,
+}ctrl_mode_param;
+
     
 #define INTERNEL_ENABLE_BIT_SET(en, s) \
     (en=(s.psd_en<<PSD_EN_BIT_OFFSET|s.audio_en<<AUDIO_EN_BIT_OFFSET|s.iq_en<<IQ_EN_BIT_OFFSET|s.spec_analy_en<<SPEC_ANALY_EN_BIT_OFFSET|s.direction_en<<DIRECTION_EN_BIT_OFFSET))
@@ -152,6 +158,11 @@ struct network_st{
     uint16_t port;
 }__attribute__ ((packed));
 
+/* 控制参数 */
+struct control_st{
+    uint8_t remote_local;               /* 本控 or 远控 */
+}__attribute__ ((packed));
+
 
 struct poal_config{
     uint8_t cid;
@@ -163,6 +174,7 @@ struct poal_config{
     struct multi_freq_fregment_para_st  multi_freq_fregment_para[MAX_RADIO_CHANNEL_NUM];
     struct rf_para_st rf_para[MAX_RADIO_CHANNEL_NUM];
     struct network_st network;
+    struct control_st ctrl_para;
     bool (*assamble_kernel_response_data)(char *, uint8_t, void *);
     void (*send_active)(void *);
 }__attribute__ ((packed));

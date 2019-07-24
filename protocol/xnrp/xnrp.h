@@ -31,7 +31,8 @@ typedef enum {
     RET_CODE_INVALID_MODULE   = 5,
     RET_CODE_INTERNAL_ERR     = 6,
     RET_CODE_PARAMTER_NOT_SET = 7,
-    RET_CODE_PARAMTER_TOO_LONG= 8
+    RET_CODE_PARAMTER_TOO_LONG= 8,
+    RET_CODE_LOCAL_CTRL_MODE  = 9,
 } x_return_code;
 
 /* method code */

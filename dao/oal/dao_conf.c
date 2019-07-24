@@ -83,9 +83,10 @@ void dao_conf_save_batch(exec_cmd cmd, uint8_t type, s_config *config)
             /*差频率分辨率*/
             break;
         case EX_RF_FREQ_CMD:/*射频参数命令*/
+            printf_debug("EX_RF_FREQ_CMD\n");
             if(type==EX_RF_MID_FREQ)  /* 射频中心频率 */
             {
-               printf_debug("Unsupported parameter modification");
+               printf_debug("Unsupported parameter modification\n");
                // write_config_file_array(XMLFILENAME,"channel","index",temp,"radiofrequency","decMethodId","freqPoint","index",signalnum,config->oal_config->multi_freq_point_param->points->d_method,ARRAY_ARRAY);
                // write_config_file_array(XMLFILENAME,"channel","index",temp,"radiofrequency","midBw",NULL,NULL,NULL,config->oal_config->rf_para->mid_bw,ARRAY_PARENT);
              
@@ -226,7 +227,7 @@ void dao_conf_save_batch(exec_cmd cmd, uint8_t type, s_config *config)
 
             break;
     }  
-    printf_debug("save parse data\n");
+    printf_debug("save parse data over\n");
 }
 
 

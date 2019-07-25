@@ -264,6 +264,17 @@ int8_t k600_send_data_to_user(uint8_t *pdata, int32_t total_len)
             case SCREEN_NETMASK_ADDR3:
             case SCREEN_NETMASK_ADDR4:
             {
+                uint32_t subnetmask;
+                if(config_read_by_cmd(EX_NETWORK_CMD, EX_NETWORK_MASK, 0, &subnetmask) != 0){
+                    return -1;
+                }
+                printf_debug("data_cmd=%x, datanum=%d, pdata=%d[%x], pdata2=%d\n", data_cmd,ptr->datanum,  ptr->data[0],ptr->data[0], ptr->data[1]);
+                memcpy((uint8_t *)(&subnetmask) + data_cmd - SCREEN_NETMASK_ADDR1, &(ptr->data[0]), ptr->datanum);
+                ip.s_addr = subnetmask;
+                ipstr= inet_ntoa(ip);
+                printf_info("subnetmaskstr=%s subnetmask=%x\n", ipstr,  ip.s_addr);
+                config_refresh_data(EX_NETWORK_CMD, EX_NETWORK_MASK, 0, &subnetmask);
+                executor_set_command(EX_NETWORK_CMD, EX_NETWORK_MASK, 0, NULL);
 
             }
             break;
@@ -272,12 +283,32 @@ int8_t k600_send_data_to_user(uint8_t *pdata, int32_t total_len)
             case SCREEN_GATEWAY_ADDR3:
             case SCREEN_GATEWAY_ADDR4:
             {
+                uint32_t gateway;
+                if(config_read_by_cmd(EX_NETWORK_CMD,  EX_NETWORK_GW, 0, &gateway) != 0){
+                    return -1;
+                }
+                printf_debug("data_cmd=%x, datanum=%d, pdata=%d[%x], pdata2=%d\n", data_cmd,ptr->datanum,  ptr->data[0],ptr->data[0], ptr->data[1]);
+                memcpy((uint8_t *)(&gateway) + data_cmd - SCREEN_GATEWAY_ADDR1, &(ptr->data[0]), ptr->datanum);
+                ip.s_addr = gateway;
+                ipstr= inet_ntoa(ip);
+                printf_info("gatewaystr=%s gateway=%x\n", ipstr,  ip.s_addr);
+                config_refresh_data(EX_NETWORK_CMD,  EX_NETWORK_GW, 0, &gateway);
+                executor_set_command(EX_NETWORK_CMD,  EX_NETWORK_GW, 0, NULL);
 
             }
             break;
             case SCREEN_PORT:
             {   
-
+                uint32_t PORTT;
+                if(config_read_by_cmd(EX_NETWORK_CMD,  EX_NETWORK_PORT, 0, &PORTT) != 0){
+                    return -1;
+                }
+                printf_debug("data_cmd=%x, datanum=%d, pdata=%d[%x], pdata2=%d\n", data_cmd,ptr->datanum,  ptr->data[0],ptr->data[0], ptr->data[1]);
+                ip.s_addr = PORTT;
+                ipstr= inet_ntoa(ip);
+                printf_info("PORTTstr=%s PORTT=%x\n", ipstr,  ip.s_addr);
+                config_refresh_data(EX_NETWORK_CMD,  EX_NETWORK_PORT, 0, &PORTT);
+                executor_set_command(EX_NETWORK_CMD,  EX_NETWORK_PORT, 0, NULL);
             }
         }
     }

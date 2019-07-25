@@ -424,9 +424,11 @@ static int akt_execute_set_command(void)
         }
         case AUDIO_SAMPLE_RATE:
         {
+            uint32_t rate;
             check_valid_channel(header->buf[0]);
-            poal_config->multi_freq_point_param[ch].audio_sample_rate = *((uint32_t *)(header->buf+1));
-            executor_set_command(EX_MID_FREQ_CMD, EX_AUDIO_SAMPLE_RATE, ch, &poal_config->multi_freq_point_param[ch].audio_sample_rate);
+            poal_config->multi_freq_point_param[ch].audio_sample_rate = *((float *)(header->buf+1));
+            rate = (uint32_t)poal_config->multi_freq_point_param[ch].audio_sample_rate;
+            executor_set_command(EX_MID_FREQ_CMD, EX_AUDIO_SAMPLE_RATE, ch, &rate);
         }
         case MID_FREQ_BANDWIDTH_CMD:
         {

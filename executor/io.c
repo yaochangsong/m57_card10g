@@ -272,7 +272,7 @@ int8_t io_set_para_command(uint8_t type, uint8_t ch, void *data)
         {
             SUB_AUDIO_PARAM paudio;
             paudio.cid= ch;
-            paudio.sample_rate = (uint32_t)*(float *)data;
+            paudio.sample_rate = *(uint32_t *)data;
             printf_info("set audio sample, ch:%d rate:%u\n", paudio.cid, paudio.sample_rate);
             io_set_common_param(9, &paudio,sizeof(SUB_AUDIO_PARAM));
             break;

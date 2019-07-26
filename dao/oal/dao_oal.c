@@ -36,6 +36,7 @@ void *write_config_file_single(char *file,const char *parent_element,const char 
 #if DAO_XML == 1
     printf_debug("开始写入\n");
 	FILE *fp;
+    char buf[32];
 	mxml_node_t *parent_node,*node;
 	printf_debug("create singular xml config file\n");
 
@@ -50,18 +51,31 @@ void *write_config_file_single(char *file,const char *parent_element,const char 
 
 	node = mxmlFindElement(parent_node, whole_root, element, NULL, NULL,MXML_DESCEND);
 
-	if(node != NULL)  mxmlDelete(node); //找到该元素，删除修改
-
-	node =mxmlNewElement(parent_node, element);
-
-	if(string == NULL)  
+    if(node != NULL)  
     {
-       char buf[32];
-       sprintf(buf,"%d",val);
-       mxmlNewText(node, 0, buf);//写字符串
+        if(string == NULL)  
+        {
+            sprintf(buf,"%d",val);
+            mxmlSetText(node, 0, buf);//写字符串
+        }
+        else mxmlSetText(node, 0, string);//写字符串
+    }//mxmlDelete(node); //找到该元素，删除修改
+    else
+    {
+        node =mxmlNewElement(parent_node, element);
+        if(string == NULL)  
+        {
+            sprintf(buf,"%d",val);
+            mxmlNewText(node, 0, buf);//写字符串
+        }
+        else mxmlNewText(node, 0, string);//写字符串
     }
 
-    else mxmlNewText(node, 0, string);//写字符串
+    
+
+	
+
+	
 
 	printf_debug("%s\n", file);
 	fp = fopen(file, "w");
@@ -125,10 +139,17 @@ int val,char series)
 
 	if(series == ARRAY)
 	{
-		if(node != NULL)  mxmlDelete(node);  //找到该元素，删除修改
-		node =mxmlNewElement(parent_node, element);
-        sprintf(buff,"%d",val);
-        mxmlNewText(node, 0, buff);
+        if(node != NULL)   
+        {
+            sprintf(buff,"%d",val);
+            mxmlSetText(node, 0, buff);//写字符串
+        }
+        else
+        {
+            node =mxmlNewElement(parent_node, element);
+            sprintf(buff,"%d",val);
+            mxmlNewText(node, 0, buff);//写字符串
+        }
 	}
 	else if(series == ARRAY_PARENT)  
 	{
@@ -138,12 +159,17 @@ int val,char series)
 
 		seed_node = mxmlFindElement(node, parent_node, seed_element,NULL, NULL,MXML_DESCEND);
 
-		if(seed_node != NULL)  mxmlDelete(seed_node);  //找到该元素，删除修改
-
-		seed_node =mxmlNewElement(node, seed_element);
-
-		sprintf(buff,"%d",val);
-        mxmlNewText(seed_node, 0, buff);
+        if(seed_node != NULL)   
+        {
+            sprintf(buff,"%d",val);
+            mxmlSetText(seed_node, 0, buff);//写字符串
+        }
+        else
+        {
+            seed_node =mxmlNewElement(node, seed_element);
+		    sprintf(buff,"%d",val);
+            mxmlNewText(seed_node, 0, buff);
+        }
 	}
 	else if(series == ARRAY_ARRAY)  
 	{
@@ -170,12 +196,17 @@ int val,char series)
 
 		seed_node = mxmlFindElement(s_node, node, seed_element,NULL, NULL,MXML_DESCEND);
 
-		if(seed_node != NULL)  mxmlDelete(seed_node);  //找到该元素，删除修改
-
-		seed_node =mxmlNewElement(s_node, seed_element);
-
-		sprintf(buff,"%d",val);
-        mxmlNewText(seed_node, 0, buff);
+        if(seed_node != NULL)   
+        {
+            sprintf(buff,"%d",val);
+            mxmlSetText(seed_node, 0, buff);//写字符串
+        }
+        else
+        {
+          seed_node =mxmlNewElement(s_node, seed_element);
+		  sprintf(buff,"%d",val);
+          mxmlNewText(seed_node, 0, buff);
+        }
 	}
 
 
@@ -690,21 +721,15 @@ void read_config(void *root_config)
         printf_debug("读取失败\n");
         return NULL;
     }
-    struct sockaddr_in saddr;
-    
-    saddr.sin_addr.s_addr=inet_addr(read_config_file_single("network","gateway"));
-    fre_config->oal_config.network.gateway = saddr.sin_addr.s_addr;
-    printf_debug("读取............................gateway = %p\n",fre_config->oal_config.network.gateway);
 
+    fre_config->oal_config.network.gateway = atoi(read_config_file_single("network","gateway")) ;
+    printf_debug("读取............................gateway = %d\n",fre_config->oal_config.network.gateway);
 
-    saddr.sin_addr.s_addr=inet_addr(read_config_file_single("network","netmask"));
-    fre_config->oal_config.network.netmask = saddr.sin_addr.s_addr;
-    printf_debug("读取............................netmask = %p\n",fre_config->oal_config.network.netmask);
+    fre_config->oal_config.network.netmask = atoi(read_config_file_single("network","netmask")) ;
+    printf_debug("读取............................netmask = %d\n",fre_config->oal_config.network.netmask);
 
-    
-    saddr.sin_addr.s_addr=inet_addr(read_config_file_single("network","ipaddress"));
-    fre_config->oal_config.network.ipaddress = saddr.sin_addr.s_addr;
-    printf_debug("读取............................ipaddress = %p\n",fre_config->oal_config.network.ipaddress);
+    fre_config->oal_config.network.ipaddress = atoi(read_config_file_single("network","ipaddress")) ;
+    printf_debug("读取............................ipaddress = %d\n",fre_config->oal_config.network.ipaddress);
         
 
     fre_config->oal_config.network.port = atoi(read_config_file_single("network","port")) ;
@@ -789,8 +814,9 @@ void dao_read_create_config_file(char *file, void *root_config)
     if(fp != NULL){
     whole_root = mxmlLoadFile(NULL, fp, MXML_TEXT_CALLBACK);
     read_config(root_config);
-    //write_config_file_array(file,"channel","index","0","mediumfrequency","centerFreq","freqPoint","index","0",1111111,ARRAY_ARRAY);
-    //write_config_file_single(file,"network","ipaddress",NULL,9999);
+    printf_debug("测试开始\n");
+    write_config_file_array(file,"channel","index","0","mediumfrequency","centerFreq","freqPoint","index","0",333333,ARRAY_ARRAY);
+    write_config_file_single(file,"network","ipaddress",NULL,2222222);
     fclose(fp);
     }else{
     

@@ -722,14 +722,22 @@ void read_config(void *root_config)
         return NULL;
     }
 
-    fre_config->oal_config.network.gateway = atoi(read_config_file_single("network","gateway")) ;
-    printf_debug("读取............................gateway = %d\n",fre_config->oal_config.network.gateway);
+     struct sockaddr_in saddr;
+     
+     saddr.sin_addr.s_addr=inet_addr(read_config_file_single("network","gateway"));
+     fre_config->oal_config.network.gateway = saddr.sin_addr.s_addr;
+     printf_debug("读取............................gateway = %p\n",fre_config->oal_config.network.gateway);
+     
+     
+     saddr.sin_addr.s_addr=inet_addr(read_config_file_single("network","netmask"));
+     fre_config->oal_config.network.netmask = saddr.sin_addr.s_addr;
+     printf_debug("读取............................netmask = %p\n",fre_config->oal_config.network.netmask);
+     
+     
+     saddr.sin_addr.s_addr=inet_addr(read_config_file_single("network","ipaddress"));
+     fre_config->oal_config.network.ipaddress = saddr.sin_addr.s_addr;
+     printf_debug("读取............................ipaddress = %p\n",fre_config->oal_config.network.ipaddress);
 
-    fre_config->oal_config.network.netmask = atoi(read_config_file_single("network","netmask")) ;
-    printf_debug("读取............................netmask = %d\n",fre_config->oal_config.network.netmask);
-
-    fre_config->oal_config.network.ipaddress = atoi(read_config_file_single("network","ipaddress")) ;
-    printf_debug("读取............................ipaddress = %d\n",fre_config->oal_config.network.ipaddress);
         
 
     fre_config->oal_config.network.port = atoi(read_config_file_single("network","port")) ;
@@ -815,8 +823,8 @@ void dao_read_create_config_file(char *file, void *root_config)
     whole_root = mxmlLoadFile(NULL, fp, MXML_TEXT_CALLBACK);
     read_config(root_config);
     printf_debug("测试开始\n");
-    write_config_file_array(file,"channel","index","0","mediumfrequency","centerFreq","freqPoint","index","0",333333,ARRAY_ARRAY);
-    write_config_file_single(file,"network","ipaddress",NULL,2222222);
+   // write_config_file_array(file,"channel","index","0","mediumfrequency","centerFreq","freqPoint","index","0",333333,ARRAY_ARRAY);
+   // write_config_file_single(file,"network","ipaddress",NULL,2222222);
     fclose(fp);
     }else{
     

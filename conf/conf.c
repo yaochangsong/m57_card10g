@@ -98,7 +98,7 @@ int8_t config_save_batch(exec_cmd cmd, uint8_t type,s_config *config)
     printf_info(" config_save_batch\n");
 
 #if DAO_XML == 1
-     dao_conf_save_batch(EX_NETWORK_CMD,NULL,config);
+     dao_conf_save_batch(cmd,type,config);
         
 #elif DAO_JSON == 1
     

@@ -7,7 +7,6 @@
 
 #define XMLFILENAME DEFAULT_CONFIGFILE
 
-#define MAX_SIG_CHANNLE 8
 
 
 
@@ -81,7 +80,7 @@ struct dao_Rf_Input_attenuation{
 /*射频带宽设置*/
 struct dao_Rf_bandwidth_setting{
     uint8_t channel;
-    uint32_t rfInputAttenuation;
+    uint32_t rfBandwidth;
 }__attribute__ ((packed));
 
 

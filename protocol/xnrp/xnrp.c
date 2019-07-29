@@ -62,9 +62,8 @@ static int xnrp_execute_set_command(void)
             {
                 case B_CODE_WK_MODE_MULTI_FRQ_POINT:
                 {
-                    struct xnrp_multi_frequency_point frqp;
-                    config_parse_data(header->payload, header->payload_len, &frqp);
-                    config_save_batch(header->class_code, header->business_code,&frqp);
+                    xnrp_xml_parse_data(header->class_code, header->business_code, header->payload, header->payload_len);
+                    config_save_batch(EX_WORK_MODE_CMD, EX_MULTI_POINT_SCAN_MODE, config_get_config());
                     break;
                 }
                 case B_CODE_WK_MODE_SUB_CH_DEC:

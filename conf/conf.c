@@ -59,11 +59,6 @@ s_config *config_get_config(void)
 }
 
 
-int8_t config_parse_data(exec_cmd cmd, uint8_t type, void *data)
-{
-    printf_debug("start to config parse data\n");
-    return 0;
-}
 
 /*本控 or 远控 查看接口*/
 ctrl_mode_param config_get_control_mode(void)
@@ -110,7 +105,7 @@ int8_t config_save_batch(exec_cmd cmd, uint8_t type,s_config *config)
 
 /******************************************************************************
 * FUNCTION:
-*     config_refresh_from_data
+*     config_write_data
 *
 * DESCRIPTION:
 *     根据命令和参数保存数据到config结构体; 中频参数默认保存到频点为1的参数
@@ -123,7 +118,7 @@ int8_t config_save_batch(exec_cmd cmd, uint8_t type,s_config *config)
 *        0：成功
 ******************************************************************************/
 
-int8_t config_refresh_data(exec_cmd cmd, uint8_t type, uint8_t ch, void *data)
+int8_t config_write_data(exec_cmd cmd, uint8_t type, uint8_t ch, void *data)
 {
     printf_info(" config_load_from_data\n");
 

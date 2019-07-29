@@ -255,7 +255,7 @@ int8_t k600_send_data_to_user(uint8_t *pdata, int32_t total_len)
                 ip.s_addr = ipaddr;
                 ipstr= inet_ntoa(ip);
                 printf_info("ipstr=%s ipaddr=%x\n", ipstr,  ip.s_addr);
-                config_refresh_data(EX_NETWORK_CMD, EX_NETWORK_IP, 0, &ipaddr);
+                config_write_data(EX_NETWORK_CMD, EX_NETWORK_IP, 0, &ipaddr);
                 executor_set_command(EX_NETWORK_CMD, EX_NETWORK_IP, 0, NULL);
             }
             break;
@@ -273,7 +273,7 @@ int8_t k600_send_data_to_user(uint8_t *pdata, int32_t total_len)
                 ip.s_addr = subnetmask;
                 ipstr= inet_ntoa(ip);
                 printf_info("subnetmaskstr=%s subnetmask=%x\n", ipstr,  ip.s_addr);
-                config_refresh_data(EX_NETWORK_CMD, EX_NETWORK_MASK, 0, &subnetmask);
+                config_write_data(EX_NETWORK_CMD, EX_NETWORK_MASK, 0, &subnetmask);
                 executor_set_command(EX_NETWORK_CMD, EX_NETWORK_MASK, 0, NULL);
 
             }
@@ -292,7 +292,7 @@ int8_t k600_send_data_to_user(uint8_t *pdata, int32_t total_len)
                 ip.s_addr = gateway;
                 ipstr= inet_ntoa(ip);
                 printf_info("gatewaystr=%s gateway=%x\n", ipstr,  ip.s_addr);
-                config_refresh_data(EX_NETWORK_CMD,  EX_NETWORK_GW, 0, &gateway);
+                config_write_data(EX_NETWORK_CMD,  EX_NETWORK_GW, 0, &gateway);
                 executor_set_command(EX_NETWORK_CMD,  EX_NETWORK_GW, 0, NULL);
 
             }
@@ -307,7 +307,7 @@ int8_t k600_send_data_to_user(uint8_t *pdata, int32_t total_len)
                 ip.s_addr = PORTT;
                 ipstr= inet_ntoa(ip);
                 printf_info("PORTTstr=%s PORTT=%x\n", ipstr,  ip.s_addr);
-                config_refresh_data(EX_NETWORK_CMD,  EX_NETWORK_PORT, 0, &PORTT);
+                config_write_data(EX_NETWORK_CMD,  EX_NETWORK_PORT, 0, &PORTT);
                 executor_set_command(EX_NETWORK_CMD,  EX_NETWORK_PORT, 0, NULL);
             }
         }

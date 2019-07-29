@@ -53,6 +53,8 @@
 #include "device/lcd/ss_k600.h"
 #include "device/lcd/lcd.h"
 
+
+
 /*define*/
 /*Support PlatForm Arch: 
 PLAT_FORM_ARCH_X86, (For debug)

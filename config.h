@@ -52,6 +52,8 @@
 
 #include "device/lcd/ss_k600.h"
 #include "device/lcd/lcd.h"
+#include "dao/oal/dao_conf.h"
+
 
 
 

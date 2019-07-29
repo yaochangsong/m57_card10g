@@ -228,7 +228,7 @@ void dao_conf_save_batch(exec_cmd cmd, uint8_t type, s_config *config)
     }  
     printf_debug("save parse data over\n");
 }
-int safe_atoi(char *str)
+int safe_atoi(const char *str)
 {
     if(str==NULL)
     {
@@ -247,7 +247,7 @@ int safe_atoi(char *str)
 
 }
 
-float safe_atof(char *str)
+float safe_atof(const char *str)
 {
     if(str==NULL)
     {
@@ -402,7 +402,7 @@ void* dao_conf_parse_batch(uint8_t classcode, uint8_t methodcode, char *data)
                     node=mxmlFindElement(tree,tree,"channel", NULL, NULL, MXML_DESCEND);
                     Rfbdsetting.channel=(uint8_t)safe_atoi(mxmlGetText(node, NULL));
                     node=mxmlFindElement(tree,tree,"rfBandwidth", NULL, NULL, MXML_DESCEND);
-                    Rfbdsetting.rfInputAttenuation=(int8_t)safe_atoi(mxmlGetText(node, NULL));
+                    Rfbdsetting.rfBandwidth=(int8_t)safe_atoi(mxmlGetText(node, NULL));
                     return (void*)&Rfbdsetting;
                 }else{
                     printf_warn("In rf parameter, there is no such parameter");

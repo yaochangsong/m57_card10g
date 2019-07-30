@@ -75,7 +75,7 @@ static void io_set_common_param(uint8_t type, uint8_t *buf,uint32_t buf_len)
 
 void io_set_smooth_factor(uint32_t factor)
 {
-    printf_info("set smooth_factor: factor=%d\n",factor);
+    printf_note("[**REGISTER**]Set Smooth factor: factor=%d[0x%x]\n",factor, factor);
 #ifdef PLAT_FORM_ARCH_ARM
     //smooth mode
     ioctl(io_ctrl_fd,IOCTL_SMOOTH_CH0,0x10000);
@@ -87,7 +87,7 @@ void io_set_smooth_factor(uint32_t factor)
 
 void io_set_calibrate_val(uint32_t ch, uint32_t  factor)
 {
-    printf_debug("factor = %08x,%d\n",factor,factor);
+    printf_note("[**REGISTER**][ch=%d]Set Calibrate Val factor=%u[0x%x]\n",ch, factor,factor);
 #ifdef PLAT_FORM_ARCH_ARM
     ioctl(io_ctrl_fd,IOCTL_CALIBRATE_CH0,&factor);
 #endif
@@ -138,7 +138,9 @@ void io_set_dq_param(void *pdata)
     memcpy(convert_buf+3,(uint8_t *)(&freq_factor),sizeof(uint32_t));
     memcpy(convert_buf+3+sizeof(uint32_t),(uint8_t *)(&band_factor),sizeof(uint32_t));
     memcpy(convert_buf+3+2*sizeof(uint32_t),(uint8_t *)(&d_method),sizeof(uint32_t));
-
+    printf_note("[**REGISTER**]ch=%d, sub_ch=%d, d_freq_factor=%u[0x%x]\n", ch, sub_ch, freq_factor, freq_factor);
+    printf_note("[**REGISTER**]ch=%d, sub_ch=%d, d_method=%u[0x%x]\n", ch, sub_ch,d_method, d_method);
+    printf_note("[**REGISTER**]ch=%d, sub_ch=%d, d_band_factor=%u[0x%x]\n", ch, sub_ch, band_factor, band_factor);
     io_set_common_param(3,convert_buf,sizeof(uint32_t)*3+3);
 #endif 
 }
@@ -225,6 +227,7 @@ void io_set_fft_size(uint32_t ch, uint32_t fft_size)
     if(io_ctrl_fd<=0){
         return;
     }
+    printf_note("[**REGISTER**][ch:%d]Set FFT Size=%u, factor=%u[0x%x]\n", ch, fft_size,factor, factor);
     ioctl(io_ctrl_fd,IOCTL_FFT_SIZE_CH0,factor);
 #endif
 }
@@ -265,7 +268,7 @@ int8_t io_set_para_command(uint8_t type, uint8_t ch, void *data)
     switch(type)
     {
         case EX_CHANNEL_SELECT:
-            printf_debug("select ch:%d\n", *(uint8_t *)data);
+            printf_note("[**REGISTER**]Set Channel Select, ch=%d\n", *(uint8_t *)data);
             io_set_common_param(7, data,sizeof(uint8_t));
             break;
         case EX_AUDIO_SAMPLE_RATE:
@@ -273,7 +276,7 @@ int8_t io_set_para_command(uint8_t type, uint8_t ch, void *data)
             SUB_AUDIO_PARAM paudio;
             paudio.cid= ch;
             paudio.sample_rate = *(uint32_t *)data;
-            printf_info("set audio sample, ch:%d rate:%u\n", paudio.cid, paudio.sample_rate);
+            printf_note("[**REGISTER**]Set Audio Sample Rate, ch=%d, rate:%u[0x%x]\n", paudio.cid, paudio.sample_rate, paudio.sample_rate);
             io_set_common_param(9, &paudio,sizeof(SUB_AUDIO_PARAM));
             break;
         }

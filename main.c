@@ -49,8 +49,6 @@ int main(int argc, char **argv)
 #if (UART_LCD_SUPPORT == 1)
     init_lcd();
 #endif
-    uint8_t buf[]={0x5A,0xA5,0x06,0x83,0x00,0x0D,0x01,0x30,0x12};
-    lcd_scanf(buf, sizeof(buf));
     spi_init();
     if(server_init() == -1){
         printf_err("server init fail!\n");

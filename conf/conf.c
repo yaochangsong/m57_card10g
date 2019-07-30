@@ -246,19 +246,19 @@ int8_t config_read_by_cmd(exec_cmd cmd, uint8_t type, uint8_t ch, void *data)
             switch(type)
             {
                 case EX_MUTE_SW:
-                    data = (void *)&poal_config->multi_freq_point_param[ch].points[0].noise_en;
+                    *(int8_t *)data = poal_config->multi_freq_point_param[ch].points[0].noise_en;
                     break;
                 case EX_MUTE_THRE:
-                     data = (void *)&poal_config->multi_freq_point_param[ch].points[0].noise_thrh;
+                     *(int8_t *)data = poal_config->multi_freq_point_param[ch].points[0].noise_thrh;
                     break;
                 case EX_DEC_METHOD:
-                     data = (void *)&poal_config->multi_freq_point_param[ch].points[0].d_method;
+                     *(int8_t *)data = poal_config->multi_freq_point_param[ch].points[0].d_method;
                     break;
                 case EX_DEC_BW:
-                     data = (void *)&poal_config->multi_freq_point_param[ch].points[0].d_bandwith;
+                     *(int32_t *)data = poal_config->multi_freq_point_param[ch].points[0].d_bandwith;
                     break;
                 case EX_AUDIO_SAMPLE_RATE:
-                     data = (void *)&poal_config->multi_freq_point_param[ch].audio_sample_rate;
+                     *(float *)data = poal_config->multi_freq_point_param[ch].audio_sample_rate;
                     break;
                 default:
                     printf_err("not surpport type\n");
@@ -271,19 +271,19 @@ int8_t config_read_by_cmd(exec_cmd cmd, uint8_t type, uint8_t ch, void *data)
             switch(type)
             {
                 case EX_RF_MID_FREQ:
-                    data = (void *)&poal_config->rf_para[ch].mid_freq;
+                    *(int64_t *)data = poal_config->rf_para[ch].mid_freq;
                     break;
                 case EX_RF_MID_BW:
-                    data = (void *)&poal_config->rf_para[ch].mid_bw;
+                    *(int32_t *)data = poal_config->rf_para[ch].mid_bw;
                     break;
                 case EX_RF_MODE_CODE:
-                    data = (void *)&poal_config->rf_para[ch].rf_mode_code;
+                    *(int8_t *)data = poal_config->rf_para[ch].rf_mode_code;
                     break;
                 case EX_RF_GAIN_MODE:
-                    data = (void *)&poal_config->rf_para[ch].gain_ctrl_method;
+                    *(int8_t *)data = poal_config->rf_para[ch].gain_ctrl_method;
                     break;
                 case EX_RF_MGC_GAIN:
-                    data = (void *)&poal_config->rf_para[ch].mgc_gain_value;
+                    *(int8_t *)data = poal_config->rf_para[ch].mgc_gain_value;
                     break;
                 default:
                     printf_err("not surpport type\n");
@@ -300,16 +300,16 @@ int8_t config_read_by_cmd(exec_cmd cmd, uint8_t type, uint8_t ch, void *data)
             switch(type)
             {
                 case EX_NETWORK_IP:
-                    data = (void *)&poal_config->network.ipaddress;
+                    *(int32_t *)data = poal_config->network.ipaddress;
                     break;
                 case EX_NETWORK_MASK:
-                    data = (void *)&poal_config->network.netmask;
+                    *(int32_t *)data = poal_config->network.netmask;
                     break;
                 case EX_NETWORK_GW:
-                    data = (void *)&poal_config->network.gateway;
+                    *(int32_t *)data = poal_config->network.gateway;
                     break;
                 case EX_NETWORK_PORT:
-                    data = (void *)&poal_config->network.port;
+                    *(int16_t *)data = poal_config->network.port;
                     break;
                 default:
                     printf_err("not surpport type\n");

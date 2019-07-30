@@ -179,7 +179,11 @@ long uart0_send_data(uint8_t *buf, uint32_t len)
 
 long uart1_send_data(uint8_t *buf, uint32_t len)
 {
+#if defined(PLAT_FORM_ARCH_ARM)
     return write(uart[1].fd.fd,buf,len);
+#else
+    return 0;
+#endif
 }
 
 static void uart1_read_cb(struct uloop_fd *fd, unsigned int events)

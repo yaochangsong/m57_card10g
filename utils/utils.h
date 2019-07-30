@@ -7,7 +7,8 @@
 #define ARRAY_SIZE(array) (sizeof(array)/sizeof(array[0]))
 
 
-char *safe_strdup(const char *s);
-
+extern char *safe_strdup(const char *s);
+extern uint16_t crc16_caculate(uint8_t *pchMsg, uint16_t wDataLen);
+extern int get_mac(char * mac, int len_limit);
 #endif
 

@@ -108,8 +108,7 @@ static int k600_receive_write_act(uint16_t addr, void *data, uint8_t short_len)
     }
     printfd("\n");
 
-
-   // send_data_by_serial(driver->serial_fd[SERIAL_SCREEN_INDEX], send_buf, send_package->len + 3);
+    send_data_by_serial(send_buf, send_package->len + 3);
     return 0;
 }
 

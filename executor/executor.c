@@ -60,7 +60,7 @@ static inline void  executor_fregment_scan(uint32_t fregment_num,uint8_t ch, wor
 {
     struct poal_config *poal_config = &(config_get_config()->oal_config);
 
-    uint64_t c_freq, s_freq, e_freq, m_freq;
+    uint64_t c_freq=0, s_freq=0, e_freq=0, m_freq=0;
     uint32_t scan_bw, left_band, fftsize;
     uint32_t scan_count, i;
     uint8_t is_remainder = 0;
@@ -447,7 +447,7 @@ int8_t executor_set_command(exec_cmd cmd, uint8_t type, uint8_t ch,  void *data)
         }
         case EX_WORK_MODE_CMD:
         {
-            char *pbuf;
+            char *pbuf= NULL;
             printf_info("set work mode[%d]\n", type);
             poal_config->assamble_kernel_response_data(pbuf, type, data);
             io_set_work_mode_command((void *)pbuf);

@@ -26,7 +26,7 @@ SUB_LIB_DIRS := $(foreach n,$(SUB_LIBS),$(dir $(n)))
 INCLUDE_DIR = -I.
 
 LDFLAGS = $(SUB_LIBS)
-CFLAGS = -Wall $(INCLUDE_DIR)
+CFLAGS = -Wall -Wno-unused-function  -Wno-unused-variable -Wno-discarded-qualifiers $(INCLUDE_DIR)
 
 MAKE := make
 

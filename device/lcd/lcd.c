@@ -1,7 +1,7 @@
 #include "config.h"
 
 struct lcd_code_convert_st convert_code_t[] ={
-#ifdef LCD_TYPE == DWIN_K600_SERIAL_SCREEN
+#if LCD_TYPE == DWIN_K600_SERIAL_SCREEN
     {EX_NETWORK_CMD,  EX_NETWORK_IP,   SCREEN_COMMON_DATA1, SCREEN_IPADDR,              NULL},
     {EX_NETWORK_CMD,  EX_NETWORK_MASK, SCREEN_COMMON_DATA1, SCREEN_NETMASK_ADDR,        NULL},
     {EX_NETWORK_CMD,  EX_NETWORK_GW,   SCREEN_COMMON_DATA1, SCREEN_GATEWAY_ADDR,        NULL},
@@ -45,6 +45,7 @@ struct lcd_code_convert_st *lcd_code_convert(exec_cmd cmd, uint8_t type, uint8_t
          printf_note("[%d %d]lcd code not found\n", cmd, type);
         return NULL;
     }
+    return NULL;
 }
 
 
@@ -63,7 +64,7 @@ struct lcd_code_convert_st *lcd_code_convert(exec_cmd cmd, uint8_t type, uint8_t
 ******************************************************************************/
 int8_t lcd_scanf(uint8_t *data, int32_t len)
 {
-#ifdef LCD_TYPE == DWIN_K600_SERIAL_SCREEN
+#if LCD_TYPE == DWIN_K600_SERIAL_SCREEN
     k600_send_data_to_user(data, len);
 #endif
     return 0;
@@ -94,7 +95,7 @@ int8_t lcd_printf(uint8_t cmd, uint8_t type, void *data, uint8_t *arg)
     if(code == NULL){
         return -1;
     }
-#ifdef LCD_TYPE == DWIN_K600_SERIAL_SCREEN
+#if LCD_TYPE == DWIN_K600_SERIAL_SCREEN
     printf_debug("lcd_cmd:%d, lcd_type=%d\n", code->lcd_cmd , code->lcd_type);
     k600_receive_write_data_from_user(code->lcd_cmd , code->lcd_type, data);
 #endif

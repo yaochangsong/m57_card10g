@@ -170,5 +170,10 @@ extern void io_init(void);
 extern int8_t io_set_enable_command(uint8_t type, uint8_t ch, uint32_t fftsize);
 extern int8_t io_set_work_mode_command(void *data);
 extern int8_t io_set_para_command(uint8_t type, uint8_t ch, void *data);
+extern int16_t io_get_adc_temperature(void);
+extern void io_set_dq_param(void *pdata);
+extern void io_set_smooth_factor(uint32_t factor);
+extern void io_set_fft_size(uint32_t ch, uint32_t fft_size);
+extern uint8_t  io_set_network_to_interfaces(void *netinfo);
 
 #endif

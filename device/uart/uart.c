@@ -200,19 +200,22 @@ void uart_init(void)
     printf_info("uart init\n");
     
 #if defined(PLAT_FORM_ARCH_ARM)
+    #if 0
     uart[0].fd.fd = uart_init_dev("/dev/ttyPS0");
         if(uart[0].fd.fd <=0 ){
         printf_err("/dev/ttyPS0 serial init failed\n");
     }
+    uart[0].fd.cb = uart0_read_cb;
+    uloop_fd_add(&uart[0].fd, ULOOP_READ);
+    #endif
 
     uart[1].fd.fd = uart_init_dev("/dev/ttyPS1");
         if(uart[1].fd.fd <=0 ){
         printf_err("/dev/ttyPS1 serial init failed\n");
     }
-    uart[0].fd.cb = uart0_read_cb;
+    
     uart[1].fd.cb = uart1_read_cb;
     
-    uloop_fd_add(&uart[0].fd, ULOOP_READ);
     uloop_fd_add(&uart[1].fd, ULOOP_READ);
 #endif
 }

@@ -324,7 +324,7 @@ int xnrp_assamble_response_data(uint8_t **buf,          int err_code)
     memcpy(response_header->device_id, header->device_id, sizeof(response_header->device_id));
     response_header->time_stamp = time(NULL);
     response_header->msg_id = msg_id_counter++;
-    response_header->check_sum = 0;
+    response_header->check_sum = crc16_caculate((uint8_t *)response_header->payload, response_header->payload_len);
 
     len = sizeof(struct xnrp_header) - sizeof(response_header->payload) + response_header->payload_len;
    

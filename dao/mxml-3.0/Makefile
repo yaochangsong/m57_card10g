@@ -275,27 +275,27 @@ libmxml.1.dylib:	$(LIBOBJS)
 testmxml:	libmxml.a testmxml.o
 	echo Linking $@...
 	$(CC) $(LDFLAGS) -o $@ testmxml.o libmxml.a $(LIBS)
-	@echo Testing library...
-	./testmxml test.xml temp1s.xml >temp1.xml
-	./testmxml temp1.xml temp2s.xml >temp2.xml
-	@if cmp temp1.xml temp2.xml; then \
-		echo Stdio file test passed!; \
-		$(RM) temp2.xml temp2s.xml; \
-	else \
-		echo Stdio file test failed!; \
-	fi
-	@if cmp temp1.xml temp1s.xml; then \
-		echo String test passed!; \
-		$(RM) temp1.xml temp1s.xml; \
-	else \
-		echo String test failed!; \
-	fi
-	@if cmp test.xml test.xmlfd; then \
-		echo File descriptor test passed!; \
-		$(RM) test.xmlfd; \
-	else \
-		echo File descriptor test failed!; \
-	fi
+	#@echo Testing library...
+	#./testmxml test.xml temp1s.xml >temp1.xml
+	#./testmxml temp1.xml temp2s.xml >temp2.xml
+	#@if cmp temp1.xml temp2.xml; then \
+#		echo Stdio file test passed!; \
+#		$(RM) temp2.xml temp2s.xml; \
+#	else \
+#		echo Stdio file test failed!; \
+#	fi
+	#@if cmp temp1.xml temp1s.xml; then \
+#		echo String test passed!; \
+#		$(RM) temp1.xml temp1s.xml; \
+#	else \
+#		echo String test failed!; \
+#	fi
+	#@if cmp test.xml test.xmlfd; then \
+#		echo File descriptor test passed!; \
+#		$(RM) test.xmlfd; \
+#	else \
+#		echo File descriptor test failed!; \
+#	fi
 
 testmxml-vg:	$(LIBOBJS) testmxml.o
 	echo Linking $@...

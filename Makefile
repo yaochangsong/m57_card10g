@@ -13,10 +13,10 @@
 #  Initial revision.
 #*****************************************************************************
 
-CC=gcc
-#arm-linux-gnueabihf-gcc
+export CC=gcc
+#export CC=arm-linux-gnueabihf-gcc
 
-SOURCE_DIR = log net protocol/http protocol/akt protocol/xnrp protocol/oal dao/oal conf
+SOURCE_DIR = log net protocol/http protocol/akt protocol/xnrp protocol/oal dao/oal conf executor utils device device/audio device/lcd device/rf device/uart
 SUB_LIBS := dao/mxml-3.0/libmxml.a dao/json/libjson.a libubox/libubox.a
 
 ALL_C_FILES := $(foreach n,$(SOURCE_DIR),$(n)/*.c)
@@ -26,7 +26,7 @@ SUB_LIB_DIRS := $(foreach n,$(SUB_LIBS),$(dir $(n)))
 INCLUDE_DIR = -I.
 
 LDFLAGS = $(SUB_LIBS)
-CFLAGS = -Wall $(INCLUDE_DIR)
+CFLAGS = -Wall -Wno-unused-function  -Wno-unused-variable -Wno-discarded-qualifiers $(INCLUDE_DIR)
 
 MAKE := make
 

@@ -4,9 +4,9 @@
 
 /** Defaults configuration values */
 #ifdef PLAT_FORM_ARCH_X86
-#define DEFAULT_CONFIGFILE "/etc/spectrum.xml"
+#define DEFAULT_CONFIGFILE "spectrum.xml"
 #else
-#define DEFAULT_CONFIGFILE "~/spectrum.xml"
+#define DEFAULT_CONFIGFILE "/etc/spectrum.xml"
 #endif
 
 /**
@@ -21,7 +21,9 @@ extern pthread_mutex_t config_mutex;
 typedef struct {
     char *configfile;       /**< @brief name of the config file */
     int daemon;             /**< @brief if daemon > 0, use daemon mode */
+    struct poal_config oal_config;
 } s_config;
+
 
 
 /** @brief Initialise the conf system */
@@ -29,16 +31,24 @@ void config_init(void);
 
 
 #define LOCK_CONFIG() do { \
-	debug(LOG_DEBUG, "Locking config"); \
+	printf_debug("Locking config"); \
 	pthread_mutex_lock(&config_mutex); \
-	debug(LOG_DEBUG, "Config locked"); \
+	printf_debug("Config locked"); \
 } while (0)
 
 #define UNLOCK_CONFIG() do { \
-	debug(LOG_DEBUG, "Unlocking config"); \
+	printf_debug("Unlocking config"); \
 	pthread_mutex_unlock(&config_mutex); \
-	debug(LOG_DEBUG, "Config unlocked"); \
+	printf_debug("Config unlocked"); \
 } while (0)
 
+extern s_config *config_get_config(void);
+
+extern int8_t config_save_batch(exec_cmd cmd, uint8_t type,s_config *config);
+extern int8_t config_read_by_cmd(exec_cmd cmd, uint8_t type, uint8_t ch, void *data);
+extern int8_t config_write_data(exec_cmd cmd, uint8_t type, uint8_t ch, void *data);
+
+
 #endif
+
 

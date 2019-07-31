@@ -17,8 +17,6 @@
 struct xnrp_header xnrp_data;
 struct xnrp_header xnrp_response_data;
 
-uint8_t  xnrp_response_payload_data[MAX_SEND_DATA_LEN];
-
 
 static uint8_t *xnrp_strstr(const uint8_t *s1, const uint8_t *s2, int len)   
 {  
@@ -60,6 +58,21 @@ static int xnrp_execute_set_command(void)
         }
         case CLASS_CODE_WORK_MODE:
         {
+            switch (header->business_code)
+            {
+                case B_CODE_WK_MODE_MULTI_FRQ_POINT:
+                {
+                    xnrp_xml_parse_data(header->class_code, header->business_code, header->payload, header->payload_len);
+                    config_save_batch(EX_WORK_MODE_CMD, EX_MULTI_POINT_SCAN_MODE, config_get_config());
+                    break;
+                }
+                case B_CODE_WK_MODE_SUB_CH_DEC:
+                    break;
+                case B_CODE_WK_MODE_MULTI_FRQ_FREGMENT:
+                    break;
+                default:
+                    printf_err("invalid bussiness code[%d]", header->business_code);
+            }
             break;
         }
         case CLASS_CODE_MID_FRQ:
@@ -102,10 +115,10 @@ static int xnrp_execute_set_command(void)
 static int xnrp_execute_get_command(void)
 {
     struct xnrp_header *header;
+    struct xnrp_header *resp_header;
     int err_code;
-    uint8_t *resp_payload;
-    resp_payload = &xnrp_response_payload_data;
     header = &xnrp_data;
+    resp_header = &xnrp_response_data;
 
     err_code = RET_CODE_SUCCSESS;
     
@@ -113,13 +126,14 @@ static int xnrp_execute_get_command(void)
     {
         case CLASS_CODE_REGISTER:
         {
-            break;
+            printf_debug("register\n");
         }
         case CLASS_CODE_NET:
         {
             struct xnrp_net_paramter value;
             value.ipaddress.s_addr = htonl(1255577);
-            memcpy(resp_payload, &value, sizeof(struct xnrp_net_paramter));
+            memcpy(resp_header->payload, &value, sizeof(struct xnrp_net_paramter));
+            resp_header->payload_len = sizeof(struct xnrp_net_paramter);
             break;
         }
         case CLASS_CODE_WORK_MODE:
@@ -163,14 +177,13 @@ static int xnrp_execute_get_command(void)
 }
 
 
-static int xnrp_execute_method(void)
+bool xnrp_execute_method(int *code)
 {
     struct xnrp_header *header;
     int err_code;
     header = &xnrp_data;
 
     err_code = RET_CODE_SUCCSESS;
-    
     switch (header->method_code)
     {
         case METHOD_SET_COMMAND:
@@ -195,11 +208,17 @@ static int xnrp_execute_method(void)
             err_code = RET_CODE_PARAMTER_ERR;
             break;
     }
-    return err_code;
+    *code = err_code;
+     printf_debug("error code[%d]\n", *code);
+    if(err_code == RET_CODE_SUCCSESS)
+        return true;
+    else
+        return false;
+
 }
 
 
-static bool xnrp_parse_header(const uint8_t *data, int len, uint8_t **payload, int *err_code)
+bool xnrp_parse_header(const uint8_t *data, int len, uint8_t **payload, int *err_code)
 {
     uint8_t *val;
     struct xnrp_header *header;
@@ -214,7 +233,7 @@ static bool xnrp_parse_header(const uint8_t *data, int len, uint8_t **payload, i
         return false;
     }
     printf_debug("parse_header[%c %c %c %c][%x,%x,%x,%x]\n", data[0], data[1], data[2], data[3],data[0], data[1], data[2], data[3]);
-    val = xnrp_strstr(data, XNRP_HEADER_START, len);
+    val = xnrp_strstr(data, (uint8_t *)XNRP_HEADER_START, len);
     if (!val){
         printf_debug("parse_header error\n");
         *err_code = RET_CODE_FORMAT_ERR;
@@ -249,7 +268,7 @@ static bool xnrp_parse_header(const uint8_t *data, int len, uint8_t **payload, i
     return true;
 }
 
-static bool xnrp_parse_data(const uint8_t *payload)
+bool xnrp_parse_data(const uint8_t *payload, int *code)
 {
     uint8_t i;
     struct xnrp_header *header;
@@ -267,59 +286,49 @@ static bool xnrp_parse_data(const uint8_t *payload)
         printfd("%x ", payload[i]);
     printfd("\n");
 
+    if(header->payload_len > MAX_RECEIVE_DATA_LEN){
+        *code = RET_CODE_PARAMTER_TOO_LONG;
+        return false;
+    }
+/*    
     header->payload = calloc(1, header->payload_len);
     if (!header->payload){
+        *code = RET_CODE_INTERNAL_ERR;
         printf_err("calloc failed\n");
         return false;
     }
-
+*/    
     memcpy(header->payload, payload, header->payload_len);
 
     return true;
 }
 
-bool xnrp_handle_request(uint8_t *data, int len, int *code)
-{
-    uint8_t *payload = NULL;
-    
-    printf_info("len[%d] %d\n", len, sizeof(struct xnrp_header));
-    printf_info("Prepare to handle xnrp protocol data\n");
-    if(xnrp_parse_header(data, len, &payload, code) == false){
-        return false;
-    }
-    if(payload != NULL){
-        if(xnrp_parse_data(payload) == false){
-            *code = RET_CODE_INTERNAL_ERR;
-            return false;
-        }
-    }
-
-    if(xnrp_execute_method() != RET_CODE_SUCCSESS){
-        return false;
-    }
-    return true;
-}
-
-int xnrp_assamble_response_data(uint8_t *buf,          int err_code)
+int xnrp_assamble_response_data(uint8_t **buf,          int err_code)
 {
     struct xnrp_header *header, *response_header;
     header = &xnrp_data;
     response_header = &xnrp_response_data;
     int len = 0;
     static uint16_t msg_id_counter = 0;
+    
+    printf_info("Prepare to assamble response xnrp data\n");
 
+    *buf = response_header;
     memcpy(response_header->start_flag, XNRP_HEADER_START, sizeof(response_header->start_flag)); 
     response_header->version = XNRP_HEADER_VERSION;
     response_header->method_code = METHOD_RESPONSE_COMMAND;
+    response_header->error_code = err_code;
     response_header->class_code = header->class_code;
     response_header->business_code = header->business_code;
     memcpy(response_header->client_id, header->client_id, sizeof(response_header->client_id));
     memcpy(response_header->device_id, header->device_id, sizeof(response_header->device_id));
     response_header->time_stamp = time(NULL);
     response_header->msg_id = msg_id_counter++;
-    response_header->check_sum = 0;
-    
-    printf_info("Prepare to assamble response xnrp data\n");
+    response_header->check_sum = crc16_caculate((uint8_t *)response_header->payload, response_header->payload_len);
+
+    len = sizeof(struct xnrp_header) - sizeof(response_header->payload) + response_header->payload_len;
+   
     return len;
 }
+
 

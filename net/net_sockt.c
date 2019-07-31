@@ -15,10 +15,11 @@
 
 #include "config.h"
 
+struct net_tcp_server *g_srv;
 
 static inline void tcp_ustream_read_cb(struct ustream *s, int bytes)
 {
-    char str[MAX_RECEIVE_DATA_LEN];
+    uint8_t str[MAX_RECEIVE_DATA_LEN];
     int len;
     struct net_tcp_client *cl = container_of(s, struct net_tcp_client, sfd.stream);
 
@@ -28,7 +29,6 @@ static inline void tcp_ustream_read_cb(struct ustream *s, int bytes)
     len =ustream_read(s, str, MAX_RECEIVE_DATA_LEN);
     if (!str || !len)
         return;
-   // printf("str = %s[%d]\n", str, len);
     poal_handle_request(cl, str,  len);
 }
 
@@ -120,7 +120,6 @@ static void tcp_accept_cb(struct uloop_fd *fd, unsigned int events)
     memcpy(&cl->peer_addr, &addr, sizeof(addr));
     printf_debug("connect: %s", inet_ntoa(cl->peer_addr.sin_addr));
    
-#if 1
     cl->us = &cl->sfd.stream;
     cl->us->notify_read = tcp_ustream_read_cb;
     cl->us->notify_write = tcp_ustream_write_cb;
@@ -130,8 +129,7 @@ static void tcp_accept_cb(struct uloop_fd *fd, unsigned int events)
     ustream_fd_init(&cl->sfd, sfd);
 
     cl->timeout.cb = tcp_keepalive_cb;
-    uloop_timeout_set(&cl->timeout, 3 * 1000);
-    printf_debug("[%d]tcp_accept_cb\n", __LINE__);
+    uloop_timeout_set(&cl->timeout, 30 * 1000);
 
     list_add(&cl->list, &srv->clients);
     cl->srv = srv;
@@ -145,18 +143,22 @@ static void tcp_accept_cb(struct uloop_fd *fd, unsigned int events)
     cl->get_peer_addr = tcp_get_peer_addr;
     cl->get_peer_port = tcp_get_peer_port;
     printf_info("New connection from: %s:%d\n", cl->get_peer_addr(cl), cl->get_peer_port(cl));
-    //char buf[]={0x11,0x12,0x11,0x12,0x11,0x12,0xaa,0x55,0x11,0x12,0x11,0x12,0x11,0x12,0xaa,0x55};
-    //cl->chunk_printf(cl, buf);
-   // cl->chunk_send(cl, buf, sizeof(buf));
-    //ustream_write(cl->us, buf, sizeof(buf), true);
-   //cl->chunk_printf(cl, buf);
-#endif
+
     return;
 err:
     close(sfd);
 
 }
 
+
+int tcp_active_send_all_client(uint8_t *data, int len)
+{
+    struct net_tcp_client *cl_list, *list_tmp;
+    list_for_each_entry_safe(cl_list, list_tmp, &g_srv->clients, list){
+            printf_debug("Find ipaddree on list:%s, port=%d\n",  cl_list->get_peer_addr(cl_list), cl_list->get_peer_port(cl_list));
+            ustream_write(cl_list->us, data, len, true);
+    }
+}
 
 struct net_tcp_server *tcp_server_new(const char *host, int port)
 {
@@ -167,7 +169,7 @@ struct net_tcp_server *tcp_server_new(const char *host, int port)
     sock = usock(USOCK_TCP | USOCK_SERVER | USOCK_IPV4ONLY, host, usock_port(port));
     if (sock < 0) {
         uh_log_err("usock");
-        return sock;
+        return NULL;
     }
     printf_debug("sock=%d\n", sock);
     srv = calloc(1, sizeof(struct net_tcp_server));
@@ -182,8 +184,7 @@ struct net_tcp_server *tcp_server_new(const char *host, int port)
     uloop_fd_add(&srv->fd, ULOOP_READ);
     
     INIT_LIST_HEAD(&srv->clients);
-    //srv->free = uh_server_free;
-
+    g_srv = srv;
 
     return srv;
     

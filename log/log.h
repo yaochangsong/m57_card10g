@@ -41,6 +41,9 @@
 
 
 #define printfd ULOG_DEBUG
+#define printfi ULOG_INFO
+#define printfe ULOG_ERR
+
 
 #define printf_debug(fmt, ...)   ULOG_DEBUG("[DEBUG][%s,%4d]"fmt, __func__, __LINE__, ##__VA_ARGS__)
 #define printf_info(fmt, ...)    ULOG_INFO("[INFO][%s,%4d]"fmt, __func__, __LINE__, ##__VA_ARGS__)

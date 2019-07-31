@@ -234,7 +234,7 @@ int safe_atoi(const char *str)
     {
 
         printf_warn("Some of the parameter node values you input are null\n");
-        return 0;
+        return NULL;
 
     }else{
         // printf_debug("str=%s",str);
@@ -268,6 +268,8 @@ float safe_atof(const char *str)
 
 void* dao_conf_parse_batch(uint8_t classcode, uint8_t methodcode, char *data)
 {
+    printf_debug("====start dao_conf_parse_batch\n");
+
     mxml_node_t *tree;
     mxml_node_t *node;
     mxml_node_t *group;
@@ -288,7 +290,7 @@ void* dao_conf_parse_batch(uint8_t classcode, uint8_t methodcode, char *data)
     static struct  dao_Rf_bandwidth_setting Rfbdsetting;
     /*工作模式*/
     static struct  multi_freq_point_para_st multifrepoint;
-    static struct sub_channel_freq_para_st  subchanelpara;
+    static struct dao_sub_channel_freq_para_st  subchanelpara;
     static struct multi_freq_fregment_para_st  freqfergmentpara;
     /*网络参数*/
     //struct network_st netpara;
@@ -315,12 +317,11 @@ void* dao_conf_parse_batch(uint8_t classcode, uint8_t methodcode, char *data)
         case CLASS_CODE_MID_FRQ:/*中频参数命令*/
            {
                 if(methodcode==B_CODE_MID_FRQ_DEC_METHOD){/*解调方式参数*/
-                    node=mxmlFindElement(tree,tree,"channel", NULL, NULL, MXML_DESCEND);
+                    node=mxmlFindElement(tree,tree,"channel", NULL, NULL, MXML_DESCEND); 
                     demodulationway.channel=(uint8_t)safe_atoi(mxmlGetText(node, NULL));
                     node=mxmlFindElement(tree,tree,"decMethodId", NULL, NULL, MXML_DESCEND);
                     demodulationway.decMethodId=(uint8_t)safe_atoi(mxmlGetText(node, NULL)); 
                     return (void*)&demodulationway;
-                    break;
                 }else if(methodcode==B_CODE_MID_FRQ_MUTE_SW){/*静噪开关设置*/
 
                     node=mxmlFindElement(tree,tree,"channel", NULL, NULL, MXML_DESCEND);
@@ -330,7 +331,6 @@ void* dao_conf_parse_batch(uint8_t classcode, uint8_t methodcode, char *data)
                     node=mxmlFindElement(tree,tree,"muteSwitch", NULL, NULL, MXML_DESCEND);
                     muteswitch.muteSwitch=(bool)safe_atoi(mxmlGetText(node, NULL));
                     return (void*)&muteswitch;
-                    break;
                 }else if(methodcode==B_CODE_MID_FRQ_MUTE_THRE){/*静噪门限设置*/
                     node=mxmlFindElement(tree,tree,"channel", NULL, NULL, MXML_DESCEND);
                     noisethreshold.channel=(uint8_t)safe_atoi(mxmlGetText(node, NULL));
@@ -339,7 +339,6 @@ void* dao_conf_parse_batch(uint8_t classcode, uint8_t methodcode, char *data)
                     node=mxmlFindElement(tree,tree,"muteThreshold", NULL, NULL, MXML_DESCEND);
                     noisethreshold.muteThreshold=(int8_t)safe_atoi(mxmlGetText(node, NULL));
                     return (void*)&noisethreshold;
-                    break; 
                 }else if(methodcode==B_CODE_MID_FRQ_AU_SAMPLE_RATE){/*音频采样率设置参数*/
                     node=mxmlFindElement(tree,tree,"channel", NULL, NULL, MXML_DESCEND);
                     audiosamprate.channel=(uint8_t)safe_atoi(mxmlGetText(node, NULL));
@@ -348,12 +347,12 @@ void* dao_conf_parse_batch(uint8_t classcode, uint8_t methodcode, char *data)
                     node=mxmlFindElement(tree,tree,"audioSampleRate", NULL, NULL, MXML_DESCEND);
                     audiosamprate.audioSampleRate=(float)safe_atoi(mxmlGetText(node, NULL));
                     return (void*)&audiosamprate;
-                    break;
                 }else {
                     printf_warn("In middle frequency parameter, there is no such parameter");
-                    break;
+                    
 
                  }
+                break;
             }
 
         case CLASS_CODE_RF:/*射频参数命令*/
@@ -388,7 +387,7 @@ void* dao_conf_parse_batch(uint8_t classcode, uint8_t methodcode, char *data)
 
                 }else if(methodcode==B_CODE_RF_FRQ_OUTPUT_ATTENUATION){
                     node=mxmlFindElement(tree,tree,"channel", NULL, NULL, MXML_DESCEND);
-                    Rfoutputattenuation.channel=(uint8_t)safe_atoi(mxmlGetText(node, NULL));
+                    Rfoutputattenuation.channel=(uint8_t)safe_atoi(mxmlGetText(node, NULL));;
                     node=mxmlFindElement(tree,tree,"rfOutputAttenuation", NULL, NULL, MXML_DESCEND);
                     Rfoutputattenuation.rfOutputAttenuation=(int8_t)safe_atoi(mxmlGetText(node, NULL));
                     return (void*)&Rfoutputattenuation;
@@ -402,13 +401,14 @@ void* dao_conf_parse_batch(uint8_t classcode, uint8_t methodcode, char *data)
                     node=mxmlFindElement(tree,tree,"channel", NULL, NULL, MXML_DESCEND);
                     Rfbdsetting.channel=(uint8_t)safe_atoi(mxmlGetText(node, NULL));
                     node=mxmlFindElement(tree,tree,"rfBandwidth", NULL, NULL, MXML_DESCEND);
-                    Rfbdsetting.rfBandwidth=(int8_t)safe_atoi(mxmlGetText(node, NULL));
+                    Rfbdsetting.rfBandwidth=(uint32_t)safe_atoi(mxmlGetText(node, NULL));
                     return (void*)&Rfbdsetting;
                 }else{
-                    printf_warn("In rf parameter, there is no such parameter");
-                    break;
-                
+                    printf_warn("In rf parameter, there is no such parameter\n");
+                   
                 }
+                 break;
+                
 
             }
 
@@ -420,7 +420,7 @@ void* dao_conf_parse_batch(uint8_t classcode, uint8_t methodcode, char *data)
                 
                 char *p=mactemp;
 
-                char buff[8];
+                char buff[20]={0};
                 int j=0,k=0;
                 char * str;      
     
@@ -490,11 +490,12 @@ void* dao_conf_parse_batch(uint8_t classcode, uint8_t methodcode, char *data)
                     printf_debug("解析网络参数over\n");
                     return(void *) &netpara;
 
-                }else {
+                }else{
                     printf_warn("There is no such parameter in the network parameter\n");
+                   
 
                 }
-              
+               break;
             }
 
         case CLASS_CODE_WORK_MODE:
@@ -526,7 +527,7 @@ void* dao_conf_parse_batch(uint8_t classcode, uint8_t methodcode, char *data)
                            {
                                if(safe_atoi(mxmlElementGetAttr(node,"index"))==i)
                                 { 
-                                    multifrepoint.points[j].index=(uint8_t)i-1;
+                                    multifrepoint.points[j].index=(uint8_t)i;
                                     group=mxmlFindElement(node,tree,"centerFreq",NULL, NULL, MXML_DESCEND);
                                     multifrepoint.points[j].center_freq=(uint64_t)safe_atoi(mxmlGetText(group, NULL));
                                     group=mxmlFindElement(node,tree,"bandwith",NULL, NULL, MXML_DESCEND);
@@ -585,7 +586,7 @@ void* dao_conf_parse_batch(uint8_t classcode, uint8_t methodcode, char *data)
                     {
                         if(safe_atoi(mxmlElementGetAttr(node,"index"))==j)
                         {
-                            subchanelpara.sub_ch[i].index=(uint8_t)(j-1);
+                            subchanelpara.sub_ch[i].index=(uint8_t)j;
                             group=mxmlFindElement(node,tree,"centerFreq",NULL, NULL, MXML_DESCEND);
                             subchanelpara.sub_ch[i].center_freq=(uint64_t)safe_atoi(mxmlGetText(group, NULL));
                             group=mxmlFindElement(node,tree,"decBandwidth",NULL, NULL, MXML_DESCEND);
@@ -606,18 +607,15 @@ void* dao_conf_parse_batch(uint8_t classcode, uint8_t methodcode, char *data)
                 
                 printf_debug("channel=%d\n",subchanelpara.cid);
                 printf_debug("audioSampleRate=%f\n",subchanelpara.audio_sample_rate);
-                printf_debug("frame_drop_cnt=%d\n",subchanelpara.frame_drop_cnt);
                 printf_debug("sub_channel_num=%d\n",subchanelpara.sub_channel_num);
-                printf_debug("bandwidth=%d\n",subchanelpara.sub_ch[0].bandwidth);
                 printf_debug("center_freq=%d\n",subchanelpara.sub_ch[0].center_freq);
                 printf_debug("d_bandwith=%d\n",subchanelpara.sub_ch[0].d_bandwith);
                 printf_debug("d_method=%d\n",subchanelpara.sub_ch[0].d_method);       
                 printf_debug("fft_size=%d\n",subchanelpara.sub_ch[0].fft_size);
-                printf_debug("freq_resolution=%f\n",subchanelpara.sub_ch[0].freq_resolution);
                 printf_debug("index=%d\n",subchanelpara.sub_ch[0].index);
                 printf_debug("noise_en=%d\n",subchanelpara.sub_ch[0].noise_en);
                 printf_debug("noise_thrh=%d\n",subchanelpara.sub_ch[0].noise_thrh);
-                   return (void *)&subchanelpara;
+                return (void *)&subchanelpara;
             }else if(methodcode==B_CODE_WK_MODE_MULTI_FRQ_FREGMENT){
 
                 i=0;
@@ -640,7 +638,7 @@ void* dao_conf_parse_batch(uint8_t classcode, uint8_t methodcode, char *data)
                      {
                          if(safe_atoi(mxmlElementGetAttr(node,"index"))==j)
                          {
-                             freqfergmentpara.fregment[i].index=(uint8_t)j-1;
+                             freqfergmentpara.fregment[i].index=(uint8_t)j;
                              group=mxmlFindElement(node,tree,"startFrequency",NULL, NULL, MXML_DESCEND);
                              freqfergmentpara.fregment[i].start_freq=(uint64_t)safe_atoi(mxmlGetText(group, NULL));
                              group=mxmlFindElement(node,tree,"endFrequency",NULL, NULL, MXML_DESCEND);
@@ -659,8 +657,9 @@ void* dao_conf_parse_batch(uint8_t classcode, uint8_t methodcode, char *data)
                  return &freqfergmentpara;
             }else{
                 printf_warn("There is no such parameter in the center frequency parameter\n");
-            }
                 
+            }
+            break;    
          }
            
         case CLASS_CODE_CONTROL:
@@ -700,7 +699,6 @@ void* dao_conf_parse_batch(uint8_t classcode, uint8_t methodcode, char *data)
                     Localremotecontr.ctrlMode=(uint8_t)safe_atoi(mxmlGetText(node , NULL));
                     return (void*)&Localremotecontr;
                 }else if(methodcode==B_CODE_CONTROL_CONTR_CHANNEL_POWER){
-                   // printf_debug("==================================================.\n"); 
                     j=0;
                     for (node = mxmlFindElement(tree, tree,"channelNode",NULL, NULL,MXML_DESCEND );
                          node != NULL;
@@ -708,24 +706,17 @@ void* dao_conf_parse_batch(uint8_t classcode, uint8_t methodcode, char *data)
                         {
                             for(i=0;i<MAX_SIGNAL_CHANNEL_NUM;i++)
                             {
-                              //  printf_debug("==================================================i=%d\n",i); 
                                 if(safe_atoi(mxmlElementGetAttr(node,"index"))==i)
                                 {
-                                    printf_debug("==============================atoi============i=%d,\n",i); 
-                                    //printf_debug("atoi(mxmlElementGetAttr(node,"index"))=%d\n",atoi(mxmlElementGetAttr(node,"index"))); 
-                                    channelpowercontrol[j].channelNode.channel=(uint8_t)(i-1);
-                                    //printf_debug("==============================1111111\n"); 
+                                    channelpowercontrol[j].channelNode.channel=(uint8_t)i;
                                     group = mxmlFindElement(node, tree,"enable",NULL, NULL,MXML_DESCEND);
-                                    //printf_debug("==============================222222\n"); 
                                     channelpowercontrol[j].channelNode.enable=(bool)safe_atoi(mxmlGetText(group, NULL));
-                                    //printf_debug("==============================33333333\n");
                                     j++;
                                 }
                             }
 
 
                         }
-                        printf_debug("==================================================.\n"); 
                      for(i=0;i<2;i++)
                      {
                         printf_debug("channelpowercontrol[%d].channelNode.channel=%d\n",i,channelpowercontrol[i].channelNode.channel);
@@ -743,8 +734,9 @@ void* dao_conf_parse_batch(uint8_t classcode, uint8_t methodcode, char *data)
 
                 }else{
                     printf_warn("There are no such parameters in the control parameters.\n"); 
-                    return NULL;
+                  
                 }
+                 break;
             }
         case CLASS_CODE_STATUS:
             {
@@ -759,17 +751,15 @@ void* dao_conf_parse_batch(uint8_t classcode, uint8_t methodcode, char *data)
                     Epbasicinfor.softVersion.uboot=mxmlGetText(group, NULL);
                     group= mxmlFindElement(node, tree,"fpga",NULL, NULL,MXML_DESCEND );
                     Epbasicinfor.softVersion.fpga=mxmlGetText(group, NULL);
-                    // printf_debug("==================111111111\n");
-                    
+
                     node = mxmlFindElement(tree, tree,"diskInfo",NULL, NULL,MXML_DESCEND );
                     group = mxmlFindElement(node, tree,"diskNum",NULL, NULL,MXML_DESCEND );
                     Epbasicinfor.diskInfo.diskNum=(uint16_t)safe_atoi (mxmlGetText(group, NULL));
                     group = mxmlFindElement(node, tree,"diskNode",NULL, NULL,MXML_DESCEND );
                     child= mxmlFindElement(group, tree,"totalSpace",NULL, NULL,MXML_DESCEND );
-                    Epbasicinfor.diskInfo.diskNum=(uint16_t)safe_atoi (mxmlGetText(child, NULL));
+                    Epbasicinfor.diskInfo.diskNode.totalSpace=(uint32_t)safe_atoi (mxmlGetText(child, NULL));
                     child= mxmlFindElement(group, tree,"freeSpace",NULL, NULL,MXML_DESCEND );
-                    Epbasicinfor.diskInfo.diskNum=(uint16_t)safe_atoi (mxmlGetText(child, NULL));
-                   //  printf_debug("==================222222222\n");
+                    Epbasicinfor.diskInfo.diskNode.freeSpace=(uint32_t)safe_atoi (mxmlGetText(child, NULL));
                     
                     node = mxmlFindElement(tree, tree,"clkInfo",NULL, NULL,MXML_DESCEND );
                     group = mxmlFindElement(node, tree,"inout",NULL, NULL,MXML_DESCEND );
@@ -777,13 +767,12 @@ void* dao_conf_parse_batch(uint8_t classcode, uint8_t methodcode, char *data)
                     group = mxmlFindElement(node, tree,"status",NULL, NULL,MXML_DESCEND );
                     Epbasicinfor.clkInfo.status=(uint16_t)safe_atoi(mxmlGetText(group, NULL)); 
                     group = mxmlFindElement(node, tree,"frequency",NULL, NULL,MXML_DESCEND );
-                    Epbasicinfor.clkInfo.frequency=mxmlGetText(group, NULL);//频率是字符串
-                   // printf_debug("==================333333333333\n");
+                    Epbasicinfor.clkInfo.frequency=(uint32_t)safe_atoi(mxmlGetText(group, NULL));
+
 
                     node = mxmlFindElement(tree, tree,"adInfo",NULL, NULL,MXML_DESCEND );
                     group = mxmlFindElement(node, tree,"status",NULL, NULL,MXML_DESCEND );
                     Epbasicinfor.adInfo.status=(uint8_t)safe_atoi(mxmlGetText(group, NULL)); 
-                    //printf_debug("==================4444444444444\n");
 
                     node = mxmlFindElement(tree, tree,"rfInfo",NULL, NULL,MXML_DESCEND );
                     group = mxmlFindElement(node, tree,"rfnum",NULL, NULL,MXML_DESCEND );
@@ -792,16 +781,14 @@ void* dao_conf_parse_batch(uint8_t classcode, uint8_t methodcode, char *data)
                     child = mxmlFindElement(group, tree,"status",NULL, NULL,MXML_DESCEND );
                     Epbasicinfor.rfInfo.rfnode.status=(uint8_t)safe_atoi(mxmlGetText(child, NULL));
                     child = mxmlFindElement(group, tree,"temprature",NULL, NULL,MXML_DESCEND );
-                    Epbasicinfor.rfInfo.rfnode.temprature=mxmlGetText(child, NULL);
-                    //printf_debug("==================5555555555555\n");
+                    Epbasicinfor.rfInfo.rfnode.temprature=(uint16_t)safe_atoi(mxmlGetText(child, NULL));
 
 
                     node = mxmlFindElement(tree, tree,"fpgaInfo",NULL, NULL,MXML_DESCEND );
-                    // printf_debug("==================5555555555555\n");
+
                     group = mxmlFindElement(node, tree,"temprature",NULL, NULL,MXML_DESCEND );
-                     //printf_debug("==================5555555555555\n");
-                    Epbasicinfor.fpgaInfo.temprature=mxmlGetText(group, NULL); 
-                    // printf_debug("======================================%s\n",Epbasicinfor.softVersion.app);
+
+                    Epbasicinfor.fpgaInfo.temprature=(uint16_t)safe_atoi(mxmlGetText(group, NULL)); 
 
                     return (void *)&Epbasicinfor;
                 }else if(methodcode==B_CODE_STATE_CHANNEL_STATUS_QUERY){
@@ -817,7 +804,7 @@ void* dao_conf_parse_batch(uint8_t classcode, uint8_t methodcode, char *data)
                             {
                                 if(safe_atoi(mxmlElementGetAttr(node,"index"))==i){
 
-                                    channelstatus.channelNode[j].channel=(uint8_t)(i-1);
+                                    channelstatus.channelNode[j].channel=(uint8_t)i;
                                     group = mxmlFindElement(node, tree,"channelStatus",NULL, NULL,MXML_DESCEND);
                                     channelstatus.channelNode[j].channelStatus=(uint8_t)safe_atoi(mxmlGetText(group , NULL));
                                     group = mxmlFindElement(node, tree,"channelSignal",NULL, NULL,MXML_DESCEND);
@@ -839,9 +826,9 @@ void* dao_conf_parse_batch(uint8_t classcode, uint8_t methodcode, char *data)
                     storagestate.diskNum=(uint8_t)safe_atoi(mxmlGetText(node, NULL));
                     node = mxmlFindElement(tree, tree,"diskNode",NULL, NULL,MXML_DESCEND);
                     group = mxmlFindElement(node, tree,"totalSpace",NULL, NULL,MXML_DESCEND);
-                    storagestate.diskNode.totalSpace=(int8_t)safe_atoi(mxmlGetText(group, NULL));
+                    storagestate.diskNode.totalSpace=(uint32_t)safe_atoi(mxmlGetText(group, NULL));
                     group = mxmlFindElement(node, tree,"freeSpace",NULL, NULL,MXML_DESCEND);
-                    storagestate.diskNode.freeSpace=(uint8_t)safe_atoi(mxmlGetText(group, NULL));
+                    storagestate.diskNode.freeSpace=(uint32_t)safe_atoi(mxmlGetText(group, NULL));
                     return (void *)&storagestate;
                 }else if(methodcode==B_CODE_STATE_GET_SOFTWARE_VERSION){
                     node = mxmlFindElement(tree, tree,"softVersion",NULL, NULL,MXML_DESCEND );
@@ -857,8 +844,10 @@ void* dao_conf_parse_batch(uint8_t classcode, uint8_t methodcode, char *data)
                }else{
 
                     printf_warn("This parameter does not exist in the device information\n");
+                    
 
                }
+               break;
             }
 
         default:
@@ -869,6 +858,7 @@ void* dao_conf_parse_batch(uint8_t classcode, uint8_t methodcode, char *data)
     printf_debug("save parse data over\n");
     return NULL;
 }
+
 
 
 

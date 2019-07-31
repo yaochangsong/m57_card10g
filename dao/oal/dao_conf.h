@@ -4,6 +4,8 @@
 #include "config.h"
 
 #define MAX_SIG_CHANNLE 128
+#define MAX_SIGNAL_CHANNEL_NUM (16)
+
 
 #define XMLFILENAME DEFAULT_CONFIGFILE
 
@@ -131,8 +133,8 @@ struct dao_channel_power_control{
 /*时间控制*/
 
 struct dao_time_control{
-    char* timeStamp;
-    char* timeZone;
+    const char* timeStamp;
+    const char* timeZone;
 }__attribute__ ((packed));
 
 /*状态参数*/
@@ -141,15 +143,15 @@ struct dao_time_control{
 
 
 struct dao_soft_version{
-    char* app;
-    char* kernel;
-    char* uboot;
-    char* fpga;
+   const  char* app;
+   const  char* kernel;
+   const  char* uboot;
+   const  char* fpga;
 }__attribute__ ((packed));           //
 
 struct dao_disk_Node{
-    char* totalSpace;
-    char* freeSpace;
+    uint32_t totalSpace;
+    uint32_t freeSpace;
 }__attribute__ ((packed));
 
 struct dao_disk_Info{
@@ -160,7 +162,7 @@ struct dao_disk_Info{
 struct dao_clk_Info{
     uint8_t inout;
     uint8_t  status;
-    char* frequency;
+    uint32_t frequency;
 }__attribute__ ((packed)); 
 
 struct dao_ad_Info{
@@ -170,7 +172,7 @@ struct dao_ad_Info{
 
 struct dao_rf_node{
     uint8_t status;
-    char*   temprature;      
+    uint16_t   temprature;      
 }__attribute__ ((packed));    
 
 struct dao_rf_Info{
@@ -180,7 +182,7 @@ struct dao_rf_Info{
 
 
 struct dao_fpga_Info{
-    char* temprature;
+    uint16_t temprature;
 }__attribute__ ((packed));
 
 
@@ -214,19 +216,44 @@ struct dao_Check_power_status{
 
 
 struct dao_Query_storage_state{
-    char* diskNum;
+    uint16_t diskNum;
     struct dao_disk_Node diskNode;
 }__attribute__ ((packed));  
 
 
 struct dao_software_version_infor{
-    char* app;
-    char* kernel;
-    char* uboot;
-    char* fpga;
+    const char* app;
+    const char* kernel;
+    const char* uboot;
+    const  char* fpga;
 
 }__attribute__ ((packed));  
 
 
+/* 子通道解调参数 */
+
+struct dao_freq_points_st{
+    int16_t index;
+    uint64_t center_freq; /* rf */
+    uint32_t d_bandwith;
+    volatile uint32_t fft_size;
+    uint8_t d_method;
+    uint8_t  noise_en;
+    int8_t noise_thrh;
+}__attribute__ ((packed));
+
+
+
+struct dao_sub_channel_freq_para_st{
+    uint8_t cid;
+    float audio_sample_rate;
+    uint16_t sub_channel_num;
+    struct dao_freq_points_st  sub_ch[MAX_SIGNAL_CHANNEL_NUM];
+}__attribute__ ((packed));
+
+
+
+
 #endif
+
 

@@ -70,7 +70,7 @@ static inline void  executor_fregment_scan(uint32_t fregment_num,uint8_t ch, wor
 
     /* 
         Step 1: 扫描次数计算
-        扫描次数 = (截止频率 - 开始频率 )/中频扫描带宽，这里中频扫描带宽认为和射频带宽一样 ;
+        扫描次数 = (截止频率 - 开始频�?)/中频扫描带宽，这里中频扫描带宽认为和射频带宽一�?;
     */
     s_freq = poal_config->multi_freq_fregment_para[ch].fregment[fregment_num].start_freq;
     e_freq = poal_config->multi_freq_fregment_para[ch].fregment[fregment_num].end_freq;
@@ -85,7 +85,7 @@ static inline void  executor_fregment_scan(uint32_t fregment_num,uint8_t ch, wor
     c_freq = (e_freq - s_freq);
     scan_count = c_freq /scan_bw;
 
-    /* 扫描次数不是整数倍, 需要向上取整 */
+    /* 扫描次数不是整数�? 需要向上取�?*/
     if(c_freq % scan_bw){
         is_remainder = 1;
     }
@@ -95,7 +95,7 @@ static inline void  executor_fregment_scan(uint32_t fregment_num,uint8_t ch, wor
     executor_set_command(EX_MID_FREQ_CMD, EX_BANDWITH,  ch, &scan_bw);
     executor_set_command(EX_MID_FREQ_CMD, EX_FFT_SIZE,  ch, &fftsize);
     /* 
-           Step 2: 根据扫描带宽， 从开始频率到截止频率循环扫描
+           Step 2: 根据扫描带宽�?从开始频率到截止频率循环扫描
    */
     for(i = 0; i < scan_count + is_remainder; i++){
         printf_info("Bandwidth Scan [%d]......\n", i);
@@ -521,7 +521,7 @@ int8_t executor_set_enable_command(uint8_t ch)
                 executor_set_command(EX_RF_FREQ_CMD, EX_RF_ATTENUATION, ch, &poal_config->rf_para[ch].attenuation);
                 executor_set_command(EX_RF_FREQ_CMD, EX_RF_MID_FREQ, ch, &poal_config->rf_para[ch].mid_freq);
                 executor_set_command(EX_RF_FREQ_CMD, EX_RF_MID_BW, ch, &poal_config->rf_para[ch].mid_bw);
-                /* 中频带宽和射频带宽一直 */
+                /* 中频带宽和射频带宽一�?*/
                 executor_set_command(EX_MID_FREQ_CMD, EX_BANDWITH, ch, &poal_config->rf_para[ch].mid_bw);
                 executor_set_command(EX_MID_FREQ_CMD, EX_CHANNEL_SELECT, ch, &ch);
                 executor_set_command(EX_MID_FREQ_CMD, EX_SMOOTH_TIME, ch, &poal_config->multi_freq_fregment_para[ch].smooth_time);
@@ -552,7 +552,7 @@ int8_t executor_set_enable_command(uint8_t ch)
 void executor_init(void)
 {
     int ret, i;
-    pthread_t work_id;
+    pthread_t work_id, work_id_iio;
     io_init();
     /* set default network */
     executor_set_command(EX_NETWORK_CMD, 0, 0, NULL);
@@ -567,6 +567,11 @@ void executor_init(void)
     if(ret!=0)
         perror("pthread cread work_id");
     pthread_detach(work_id);
+    
+    ret=pthread_create(&work_id_iio,NULL,(void *)adrv_9009_iio_work_thread, NULL);
+    if(ret!=0)
+        perror("pthread cread work_id");
+    pthread_detach(work_id_iio);
 }
 
 

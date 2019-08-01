@@ -567,11 +567,12 @@ void executor_init(void)
     if(ret!=0)
         perror("pthread cread work_id");
     pthread_detach(work_id);
-    
+    /*
     ret=pthread_create(&work_id_iio,NULL,(void *)adrv_9009_iio_work_thread, NULL);
     if(ret!=0)
         perror("pthread cread work_id");
     pthread_detach(work_id_iio);
+    */
 }
 
 

@@ -934,16 +934,19 @@ void spi_close(void)
 }
 
 
-int8_t spi_init(void)
+int8_t rf_init(void)
 {
     int ret = -1;
     printf_debug("spi init!\n");
+#ifdef RF_ADRV9009_IIO
+    adrv9009_iio_init();
+#else
     #if defined(PLAT_FORM_ARCH_ARM)
     pthread_mutex_init(&mut,NULL);
     spi_fd_init();
     ret = spi_dev_init();
     #endif
-    
+#endif
     return ret;
 }
 

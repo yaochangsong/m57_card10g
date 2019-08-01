@@ -83,3 +83,48 @@ uint16_t crc16_caculate(uint8_t *pchMsg, uint16_t wDataLen) {
     return wCRC;
 }
 
+int write_file_in_int16(void *pdata, unsigned int data_len, char *filename)
+{
+    
+    FILE *file;
+    int16_t *pdata_offset;
+
+    pdata_offset = (int16_t *)pdata;
+
+    file = fopen(filename, "w+b");
+    if(!file){
+        printf("Open file error!\n");
+        return -1;
+    }
+
+    fwrite(pdata_offset,sizeof(int16_t),data_len,file);
+
+    fclose(file);
+
+    return 0;
+}
+
+int read_file(void *pdata, unsigned int data_len, char *filename)
+{
+        
+    FILE *file;
+    unsigned int *pdata_offset;
+
+    if(pdata == NULL){
+        return -1;
+    }
+
+    file = fopen(filename, "r");
+    if(!file){
+        printf("Open file error!\n");
+        return -1;
+    }
+
+    fread(pdata,1,data_len,file);
+
+    fclose(file);
+
+    return 0;
+}
+
+

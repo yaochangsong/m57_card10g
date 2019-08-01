@@ -1,6 +1,7 @@
 #ifndef RF_H
 #define RF_H
 
+#define  RF_ADRV9009_IIO   1
 
 #define GPIO_BASE_OFFSET              960
 #define SPI_CONTROL_NUM               8
@@ -119,7 +120,7 @@ typedef struct _RF_FREQ_STATS{
 
 
 
-extern    int8_t   spi_init(void);                                                      //射频初始化
+extern    int8_t   rf_init(void);                                                      //射频初始化
 extern    uint8_t  rf_set_interface(uint8_t cmd,uint8_t ch,void *data);                 //射频设置接口
 extern    uint8_t  rf_read_interface(uint8_t cmd,uint8_t ch,void *data);                //射频查询接口
 

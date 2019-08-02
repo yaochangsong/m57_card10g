@@ -143,6 +143,8 @@ struct kernel_header_param{
     printf_debug("Set command unlocked\n"); \
 } while (0)
 
+#define executor_wait_user_deal specturm_rx_work_deal
+
 extern struct sem_st work_sem;
 extern void executor_init(void);
 extern int8_t executor_set_command(exec_cmd cmd, uint8_t type, uint8_t ch,  void *data);

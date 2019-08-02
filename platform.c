@@ -50,6 +50,7 @@ int main(int argc, char **argv)
 #endif
     rf_init();
     executor_init();
+    spectrum_init();
     if(server_init() == -1){
         printf_err("server init fail!\n");
         goto done;

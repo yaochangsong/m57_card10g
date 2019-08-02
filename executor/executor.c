@@ -41,6 +41,7 @@ static void executor_send_data_to_clent_active(void *data)
     poal_send_active_to_all_client(send_data, send_data_len);
 }
 
+
 static inline int8_t executor_wait_kernel_deal(void)
 {
     struct timespec ts;
@@ -56,7 +57,7 @@ static inline int8_t executor_wait_kernel_deal(void)
     return 0;
 }
 
-static inline void  executor_fregment_scan(uint32_t fregment_num,uint8_t ch, work_mode mode)
+static  void  executor_fregment_scan(uint32_t fregment_num,uint8_t ch, work_mode mode)
 {
     struct poal_config *poal_config = &(config_get_config()->oal_config);
 
@@ -120,7 +121,11 @@ static inline void  executor_fregment_scan(uint32_t fregment_num,uint8_t ch, wor
         executor_set_command(EX_RF_FREQ_CMD, EX_RF_MID_FREQ, ch, &m_freq);
         executor_set_command(EX_WORK_MODE_CMD, mode, ch, &header_param);
         io_set_enable_command(PSD_MODE_ENABLE, ch, header_param.fft_size);
+#if (KERNEL_IOCTL_EN == 1)
         executor_wait_kernel_deal();
+#else
+        executor_wait_user_deal();
+#endif
         if(poal_config->enable.bit_reset == true){
             printf_info("receive reset task sigal\n");
             break;
@@ -204,6 +209,7 @@ void executor_work_mode_thread(void *arg)
     
     while(1)
     {
+        
 loop:   printf_info("######wait to deal work######\n");
         sem_wait(&work_sem.notify_deal);
         ch = poal_config->enable.cid;

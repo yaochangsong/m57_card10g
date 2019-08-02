@@ -417,7 +417,7 @@ static int akt_execute_set_command(void)
             
             struct in_addr ipdata;
             char *ipstr=NULL;
-            ipdata.s_addr = ntohl(net_para.ipaddr);
+            ipdata.s_addr = net_para.ipaddr;
             ipstr= inet_ntoa(ipdata);
             printf_info("ipstr=%s  ipaddr=%x, port=%d, type=%d\n", ipstr,  ipdata.s_addr, ntohs(net_para.port), net_para.type);
             break;
@@ -524,7 +524,7 @@ static int akt_execute_set_command(void)
     }
 set_exit:
     memcpy(akt_set_response_data.payload_data, &err_code, sizeof(err_code));
-    akt_set_response_data.header.len = sizeof(err_code);
+    akt_set_response_data.header.len = sizeof(err_code)+1;
     akt_set_response_data.header.operation = SET_CMD_RSP;
     if(ch != -1){
         akt_set_response_data.cid = (uint8_t)ch;
@@ -783,26 +783,28 @@ int akt_assamble_response_data(uint8_t **buf, int err_code)
 
     req_header = &akt_header;
     response_data = &akt_get_response_data;
-    response_data->header.code = req_header->code;
     
     header_len = sizeof(PDU_CFG_RSP_HEADER_ST);
     if(req_header->operation == SET_CMD_REQ){
         header_len += 1; /*结构体struct response_set_data cid长度*/
         response_data = &akt_set_response_data;
+        response_data->header.code = req_header->code;
     }else if(req_header->operation == NET_CTRL_CMD){
         /* hearbeat response code */
         if(req_header->code == HEART_BEAT_MSG_REQ){
             printf_info("response heartbeat code\n");
+            req_header->operation = req_header->operation;
             response_data->header.code = HEART_BEAT_MSG_RSP;
         }
+    }else{
+        response_data->header.code = req_header->code;
     }
-    
     *buf = response_data;
 
     response_data->header.start_flag = AKT_START_FLAG; 
     memcpy(response_data->header.usr_id, req_header->usr_id, sizeof(req_header->usr_id));
     response_data->header.receiver_id = 0;
-    response_data->header.crc = crc16_caculate((uint8_t *)response_data->payload_data, response_data->header.len);
+    response_data->header.crc = htons(crc16_caculate((uint8_t *)response_data->payload_data, response_data->header.len));
     printf_debug("crc:%04x\n", response_data->header.crc);
     response_data->end_flag = AKT_END_FLAG;
     

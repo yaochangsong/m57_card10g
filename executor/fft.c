@@ -1159,7 +1159,9 @@ void testfrequency(int threshordnum,short *iqdata,int fftsize,int datalen)
     int bd; 下发门限；
     short *data;所要传入的iq数据
     int fftize;  所要做的fft大小，
-    int datalen;  单位：32byte;数据长度；
+    int datalen;  IQ数据长度的2倍；
+               eg:比如数据IQIQ排列，
+               IQIQ的datalen等于4；
 返回值：
       无返回值；
 

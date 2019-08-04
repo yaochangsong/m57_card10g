@@ -36,14 +36,23 @@ typedef struct {
 }fft_state;
 
 extern fft_state fftstate;
+typedef struct {
+   int signalsnumber;//找到的信号个数
+   int centfeqpoint[SIGNALNUM];  //上报中心频点，中心频点的集合 
+   int bandwidth[SIGNALNUM];     //带宽
+   float arvcentfreq[SIGNALNUM]; //中心频点功率值
+}fft_result;
 
 
 
-void initfftspace(void);
+void init_fft(void);
 void freethememory(void);
-void DetectionIQDataSpectrum(int bd,short *data,int fftsize ,int datalen);
-void getfftdata(float *data);
+void IQdata_handle(int bd,short *data,int fftsize ,int datalen);
+void get_fftdata(float *data);
+fft_result get_fft_result(void);
+
 void xulitest(void);
+
 
 
 #endif

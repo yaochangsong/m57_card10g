@@ -27,7 +27,6 @@
 #define NETWORK_EHTHERNET_POINT       "eth0"
 #endif
 
-
 typedef enum _IOCTL_CMD {
     ENABLE_DISABLE = 0x1,
     TRANSLEN = 0x2,

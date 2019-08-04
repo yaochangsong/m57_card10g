@@ -46,6 +46,7 @@
 
 #include "executor/executor.h"
 #include "executor/io.h"
+#include "executor/spectrum.h"
 
 
 #include "device/uart/uart.h"
@@ -81,6 +82,9 @@ PLAT_FORM_ARCH_ARM
 #define CONTROL_MODE_SUPPORT 0
 /* lcd support */
 #define UART_LCD_SUPPORT 0
+
+#define KERNEL_IOCTL_EN 0
+
 
 
 

@@ -840,9 +840,13 @@ uint8_t rf_set_interface(uint8_t cmd,uint8_t ch,void *data){
         case EX_RF_AGC_FREQUENCY :{
             rf_freq = *((uint64_t *)data);
             printf_debug("rf_set_interface %d rf_freq=%lld\n",EX_RF_AGC_FREQUENCY,rf_freq);
-            #if defined(PLAT_FORM_ARCH_ARM)
+#if defined(PLAT_FORM_ARCH_ARM)
+            #if (RF_ADRV9009_IIO == 1)
+            ret =adrv9009_iio_set_freq(rf_freq);
+            #else
             ret = send_freq_set_cmd(ch,rf_freq);//设置射频频率
             #endif
+#endif
             break; 
         }
         case EX_RF_AGC_BW :{

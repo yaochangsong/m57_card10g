@@ -127,4 +127,13 @@ int read_file(void *pdata, unsigned int data_len, char *filename)
     return 0;
 }
 
+void safe_free(void *p)
+{
+    if (p) {
+        free(p);
+        p = NULL;
+    }
+}
+
+
 

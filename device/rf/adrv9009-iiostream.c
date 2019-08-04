@@ -65,7 +65,7 @@ static struct iio_buffer  *txbuf = NULL;
 static bool stop;
 
 /* cleanup and exit */
-static void shutdown()
+static void iio_shutdown(void)
 {
 	printf("* Destroying buffers\n");
 #if (ADRV_9009_IIO_TX_EN == 1)
@@ -94,7 +94,7 @@ static void handle_sig(int sig)
 
 /* check return value of attr_write function */
 static void errchk(int v, const char* what) {
-	 if (v < 0) { fprintf(stderr, "Error %d writing to channel \"%s\"\nvalue may not be supported.\n", v, what); shutdown(); }
+	 if (v < 0) { fprintf(stderr, "Error %d writing to channel \"%s\"\nvalue may not be supported.\n", v, what); iio_shutdown(); }
 }
 
 /* write attribute: long long int */
@@ -261,18 +261,49 @@ void adrv9009_iio_init(void)
 	rxbuf = iio_device_create_buffer(rx, 1024*1024, false);
 	if (!rxbuf) {
 		perror("Could not create RX buffer");
-		shutdown();
+		iio_shutdown();
 	}
 #endif
 #if (ADRV_9009_IIO_TX_EN == 1)
 	txbuf = iio_device_create_buffer(tx, 1024*1024, false);
 	if (!txbuf) {
 		perror("Could not create TX buffer");
-		shutdown();
+		iio_shutdown();
 	}
 #endif
 
 }
+
+int16_t adrv9009_iio_set_freq(long long freq)
+{
+	struct stream_cfg trxcfg;
+	trxcfg.lo_hz = freq;
+	printf_info("* Configuring ADRV9009 for streaming\n");
+	ASSERT(cfg_adrv9009_streaming_ch(ctx, &trxcfg,RX, 0) && "TRX device not found");
+	return 0;
+}
+
+int16_t * iio_read_rx_data(ssize_t *rsize)
+{
+	ssize_t nbytes_rx, nbytes_tx;
+	printf_info("* iio_read_rx_data\n");
+	nbytes_rx = iio_buffer_refill(rxbuf);
+	if (nbytes_rx < 0) { printf("Error refilling buf %d\n",(int) nbytes_rx); iio_shutdown(); }
+	*rsize = nbytes_rx;
+	return (int16_t *)iio_buffer_first(rxbuf, rx0_i);
+}
+
+ssize_t iio_get_rx_buf_size(void)
+{
+	ssize_t nbytes_rx;
+	printf_info("* iio_read_rx_buffer size and refill rxbuf data \n");
+	nbytes_rx = iio_buffer_refill(rxbuf);
+	if (nbytes_rx < 0) { printf("Error refilling buf %d\n",(int) nbytes_rx); iio_shutdown(); }
+	return nbytes_rx;
+}
+
+
+
 
 /* simple configuration and streaming */
 void adrv_9009_iio_work_thread(void *arg)
@@ -339,14 +370,14 @@ void adrv_9009_iio_work_thread(void *arg)
 	rxbuf = iio_device_create_buffer(rx, 1024*1024, false);
 	if (!rxbuf) {
 		perror("Could not create RX buffer");
-		shutdown();
+		iio_shutdown();
 	}
 #endif
 #if (ADRV_9009_IIO_TX_EN == 1)
 	txbuf = iio_device_create_buffer(tx, 1024*1024, false);
 	if (!txbuf) {
 		perror("Could not create TX buffer");
-		shutdown();
+		iio_shutdown();
 	}
 #endif
 
@@ -363,7 +394,7 @@ void adrv_9009_iio_work_thread(void *arg)
 #if (ADRV_9009_IIO_RX_EN == 1)
 		// Refill RX buffer
 		nbytes_rx = iio_buffer_refill(rxbuf);
-		if (nbytes_rx < 0) { printf("Error refilling buf %d\n",(int) nbytes_rx); shutdown(); }
+		if (nbytes_rx < 0) { printf("Error refilling buf %d\n",(int) nbytes_rx); iio_shutdown(); }
 
 		// READ: Get pointers to RX buf and read IQ from RX buf port 0
 		p_inc = iio_buffer_step(rxbuf);
@@ -397,7 +428,7 @@ void adrv_9009_iio_work_thread(void *arg)
 #if (ADRV_9009_IIO_TX_EN == 1)
 				// Schedule TX buffer
 		nbytes_tx = iio_buffer_push(txbuf);
-		if (nbytes_tx < 0) { printf("Error pushing buf %d\n", (int) nbytes_tx); shutdown(); }
+		if (nbytes_tx < 0) { printf("Error pushing buf %d\n", (int) nbytes_tx); iio_shutdown(); }
 
 		// WRITE: Get pointers to TX buf and write IQ to TX buf port 0
 		p_inc = iio_buffer_step(txbuf);
@@ -415,7 +446,7 @@ void adrv_9009_iio_work_thread(void *arg)
 #endif
 	}
 
-	shutdown();
+	iio_shutdown();
 
 	return 0;
 }

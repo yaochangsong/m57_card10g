@@ -41,12 +41,9 @@ extern fft_state fftstate;
 
 void initfftspace(void);
 void freethememory(void);
-
 void DetectionIQDataSpectrum(int bd,short *data,int fftsize ,int datalen);
+void getfftdata(float *data);
 void xulitest(void);
-
-
-
 
 
 #endif

@@ -776,7 +776,7 @@ void wavrtranstxt(const char* filename,int trancount)
     rewind(ifp);
   
 	//filelength=2*N;
-	filelength=trancount*2;
+	filelength=trancount;
     while(  filelength >0)
     {
          fread(inputdata,sizeof(short),W,ifp);
@@ -956,7 +956,7 @@ void hannwindow(int num,float *w)               //汉宁窗
 
 *********************************************************************************/
 
-void init_fft(void)
+void fft_init(void)
 {
 	fftdata.maxsamlpe=(float*)malloc(sizeof(float)*(N/INTERVALNUMTOW));
 	fftdata.zuobiao=(int*)malloc(sizeof(int)*(N/INTERVALNUMTOW ));
@@ -1001,7 +1001,7 @@ void init_fft(void)
 	fftstate.maxcentfrequency=0;
 	fftstate.interval=0;	
 }
-void free_memory(void)
+void fft_exit(void)
 {
 	
 	SAFE_FREE(fftdata.maxsamlpe);
@@ -1060,7 +1060,7 @@ void testfrequency(int threshordnum,short *iqdata,int fftsize,int datalen)
 	int q=0;	
 	for(int i=0;i<2*fftsize;i+=2)
 	{
-		if(i<2*datalen)
+		if(i<datalen)
 		{
 			fftdata.x[j++].Real=(*wavdatafp);	
 			fftdata.x[q++].Imag =(*wandateimage);
@@ -1082,7 +1082,7 @@ void testfrequency(int threshordnum,short *iqdata,int fftsize,int datalen)
 	int q=0; 
 	for(int i=0;i<(2*N);i+=2)
 	{
-		if(i<2*datalen)
+		if(i<datalen)
 		{
 			fftdata.x[j++].Real=(*wavdatafp);	
 			fftdata.x[q++].Imag =(*wandateimage);
@@ -1165,7 +1165,7 @@ void testfrequency(int threshordnum,short *iqdata,int fftsize,int datalen)
 
 *********************************************************************************/
 
-void iqdata_handle(int bd,short *data,int fftsize ,int datalen)
+void fft_iqdata_handle(int bd,short *data,int fftsize ,int datalen)
 {
 	if(data==NULL)
 	{
@@ -1189,7 +1189,7 @@ void iqdata_handle(int bd,short *data,int fftsize ,int datalen)
 *********************************************************************************/
 
 
-void get_fftdata(float *data)
+void fft_get_data(float *data)
 {
     
     memcpy(data,fftdata.mozhi,sizeof(float)*N);
@@ -1206,7 +1206,7 @@ void get_fftdata(float *data)
 
 *********************************************************************************/
 
-fft_result *get_fft_result(void)
+fft_result *fft_get_result(void)
 {
     fftresult.signalsnumber=fftstate.cenfrepointnum;
     memcpy(fftresult.centfeqpoint,fftstate.centfeqpoint,sizeof(int)*SIGNALNUM);
@@ -1220,7 +1220,7 @@ void xulitestfft(void)
 	double costtime;
 	clock_t start,end;
 	start=clock();
-	init_fft();
+	fft_init();
     short *data=(short*)malloc(sizeof(short)*2*N);
     memset(data,0,sizeof(short)*2*N );
     
@@ -1230,9 +1230,9 @@ void xulitestfft(void)
 
     Verificationfloat("rawdata.txt",data,1024*1024);
 	//testfrequency("50miq.wav",10,NULL,fftsize,1024*1024);
-	iqdata_handle(6,data,8*1024 ,8*1024);//下发门限，iq数据，fft大小，下发数据长度
+	fft_iqdata_handle(6,data,8*1024 ,16*1024);//下发门限，iq数据，fft大小，下发数据长度
      printf_debug("\n\n=====================tempytest===============================\n");
-    temp=get_fft_result();
+    temp=fft_get_result();
     printf_debug("temp.signalsnumber=%d\n",temp->signalsnumber);
 
 	for(int i=0;i<temp->signalsnumber;i++)
@@ -1244,7 +1244,7 @@ void xulitestfft(void)
 		
 	}
 
-	free_memory(); 
+	fft_exit(); 
 	end=clock();
 	costtime=(end-start)/CLOCKS_PER_SEC;
 	printf_debug("costtime=%.20lf\n",costtime);

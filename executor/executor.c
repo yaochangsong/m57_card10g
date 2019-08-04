@@ -21,13 +21,14 @@ pthread_mutex_t set_cmd_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 struct sem_st work_sem;
 
-static void executor_send_data_to_clent_active(void *data)
+
+static void executor_send_config_data_to_clent(void *data)
 {
     printf_note("send data to client\n");
-    struct kernel_header_param *send_param;
+    struct spectrum_header_param *send_param;
     uint8_t *send_data = NULL;
     uint32_t send_data_len = 0;
-    send_param = (struct kernel_header_param *)data;
+    send_param = (struct spectrum_header_param *)data;
     printf_note("ch=%d,bandwidth=%u,m_freq=%llu\n", send_param->ch, send_param->bandwidth, send_param->m_freq);
 #if PROTOCAL_ATE != 0
     DEVICE_SIGNAL_PARAM_ST notify_param;
@@ -40,7 +41,6 @@ static void executor_send_data_to_clent_active(void *data)
 #endif
     poal_send_active_to_all_client(send_data, send_data_len);
 }
-
 
 static inline int8_t executor_wait_kernel_deal(void)
 {
@@ -65,9 +65,11 @@ static  void  executor_fregment_scan(uint32_t fregment_num,uint8_t ch, work_mode
     uint32_t scan_bw, left_band, fftsize;
     uint32_t scan_count, i;
     uint8_t is_remainder = 0;
+    uint8_t *header_buf;
+    uint32_t header_len = 0;
 
     /* we need assamble pakege for kernel */
-    struct kernel_header_param header_param;
+    struct spectrum_header_param header_param;
 
     /* 
         Step 1: 扫描次数计算
@@ -119,12 +121,13 @@ static  void  executor_fregment_scan(uint32_t fregment_num,uint8_t ch, work_mode
         header_param.fft_size = fftsize;
         header_param.freq_resolution = poal_config->multi_freq_fregment_para[ch].fregment[fregment_num].freq_resolution;
         executor_set_command(EX_RF_FREQ_CMD, EX_RF_MID_FREQ, ch, &m_freq);
-        executor_set_command(EX_WORK_MODE_CMD, mode, ch, &header_param);
         io_set_enable_command(PSD_MODE_ENABLE, ch, header_param.fft_size);
 #if (KERNEL_IOCTL_EN == 1)
+        executor_set_command(EX_WORK_MODE_CMD, mode, ch, &header_param);
         executor_wait_kernel_deal();
 #else
-        executor_wait_user_deal();
+        printf_info("spectrum_wait_user_deal..\n");
+        spectrum_wait_user_deal(&header_param);
 #endif
         if(poal_config->enable.bit_reset == true){
             printf_info("receive reset task sigal\n");
@@ -139,7 +142,7 @@ static inline void  executor_points_scan(uint8_t ch, work_mode mode)
     struct poal_config *poal_config = &(config_get_config()->oal_config);
     uint32_t points_count, i;
     uint64_t c_freq, s_freq, e_freq, m_freq;
-    struct kernel_header_param header_param;
+    struct spectrum_header_param header_param;
     struct multi_freq_point_para_st *point;
     time_t s_time;
     struct io_decode_param_st decode_param;
@@ -205,7 +208,7 @@ void executor_work_mode_thread(void *arg)
     uint8_t sub_ch = poal_config->enable.sub_id;
     uint32_t j;
 
-    poal_config->send_active = executor_send_data_to_clent_active;    /* send active funcition callback */
+    
     
     while(1)
     {
@@ -225,6 +228,8 @@ loop:   printf_info("######wait to deal work######\n");
                      poal_config->enable.iq_en == 0 ? "IQ Stop" : "IQ Start");
         poal_config->enable.bit_reset = false;
         printf_note("-------------------------------------\n");
+        poal_config->assamble_response_data = executor_assamble_header_response_data_cb;
+        poal_config->send_active = executor_send_data_to_clent_cb;
         if(poal_config->work_mode == OAL_FAST_SCAN_MODE){
             printf_note("            FastScan             \n");
         }else if(poal_config->work_mode == OAL_MULTI_ZONE_SCAN_MODE){
@@ -455,7 +460,7 @@ int8_t executor_set_command(exec_cmd cmd, uint8_t type, uint8_t ch,  void *data)
         {
             char *pbuf= NULL;
             printf_info("set work mode[%d]\n", type);
-            poal_config->assamble_kernel_response_data(pbuf, type, data);
+            poal_config->assamble_response_data(pbuf, data);
             io_set_work_mode_command((void *)pbuf);
             break;
         }

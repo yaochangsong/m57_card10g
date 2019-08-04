@@ -1,4 +1,5 @@
 #include "config.h"
+#include "fft.h"
 
 struct spectrum_t _spectrum;
 
@@ -23,7 +24,7 @@ bool specturm_work_write_enable(bool enable)
 }
 
 
-int8_t specturm_rx_work_deal(void)
+static int32_t specturm_rx_read(void)
 {
     ssize_t nbytes_rx = 0;
     int16_t *iqdata;
@@ -43,20 +44,23 @@ int8_t specturm_rx_work_deal(void)
     printfi("\n");
 
     if(write_file_cnter++ < 3){
-        sprintf(strbuf, "/run/wav%d", write_file_cnter);
-        printfi("write iq data to:[len=%d]%s\n", nbytes_rx/2, strbuf);
-        write_file_in_int16((void*)(iqdata), nbytes_rx/2, strbuf);
+        //sprintf(strbuf, "/run/wav%d", write_file_cnter);
+        //printfi("write iq data to:[len=%d]%s\n", nbytes_rx/2, strbuf);
+       // write_file_in_int16((void*)(iqdata), nbytes_rx/2, strbuf);
     }
-    if(ps->is_deal == false){
-        memcpy(ps->payload, iqdata, nbytes_rx);
-        pthread_cond_signal(&spectrum_cond);
-    }
-    printf_info("[is_deal=%d]assamble data..\n", ps->is_deal);
-    printf_info("send data..\n");
-    //assamble_data
-    //send_data
+   // ps->iq_payload = calloc(1, nbytes_rx);
+    //if (!ps->iq_payload){
+    //    printf_err("calloc failed\n");
+    //    return;
+    //}
+    memcpy(ps->iq_payload, iqdata, nbytes_rx);
 
-    return 0;
+    //if(ps->is_deal == false){
+    //    memcpy(ps->iq_payload, iqdata, nbytes_rx);
+    //    pthread_cond_signal(&spectrum_cond);
+   // }
+    printf_info("end rx read:%d\n", nbytes_rx);
+    return nbytes_rx;
 }
 
 void specturm_analysis_deal(void *arg)
@@ -81,8 +85,75 @@ void specturm_analysis_deal(void *arg)
     }
 }
 
+static void spectrum_send_fft_data(uint8_t *header, uint32_t header_len)
+{
+    struct spectrum_t *ps;
+    uint8_t *fft_sendbuf= NULL, *pbuf;
+    ps = &_spectrum;
+
+    fft_sendbuf = calloc(1, header_len+ ps->fft_len);
+    if (!fft_sendbuf){
+        printf_err("calloc failed\n");
+        return;
+    }
+    pbuf = fft_sendbuf;
+    printf_info("header_len+ ps->fft_len=%d\n", header_len+ ps->fft_len);
+    memcpy(fft_sendbuf, header, header_len);
+    memcpy(fft_sendbuf + header_len, ps->fft_payload, ps->fft_len);
+    
+    printf_info("send fft data..\n");
+    udp_send_data(fft_sendbuf, header_len+ps->fft_len);
+    printf_info("send over\n");
+    safe_free(pbuf);
+    printf_info("end send_fft_data\n");
+}
+
+void spectrum_wait_user_deal( struct spectrum_header_param *param)
+{
+    struct poal_config *poal_config = &(config_get_config()->oal_config);
+    struct spectrum_t *ps;
+    uint8_t *header_buf;
+    uint32_t header_len = 0;
+    ps = &_spectrum;
+    
+    ps->iq_len = specturm_rx_read();
+    TIME_ELAPSED(fft_iqdata_handle(6, ps->iq_payload, 8*1024, ps->iq_len/2));
+    ps->fft_payload = calloc(1, 8*1024);
+    if (!ps->fft_payload){
+        printf_err("calloc failed\n");
+        return;
+    }
+    ps->fft_len = fft_get_data(ps->fft_payload);
+    printf_debug("ps->fft_len=%d\n", ps->fft_len);
+    header_len = poal_config->assamble_response_data(header_buf, (void *)param);
+     printf_debug("header_buf[0]=%x, header_len=%d\n", header_buf[0], header_len);
+    spectrum_send_fft_data(header_buf,header_len);
+    printf_debug("end send fft\n");
+    safe_free(ps->fft_payload);
+}
+
+void spectrum_get_fft_result(uint8_t *header, uint32_t header_len)
+{
+    struct poal_config *poal_config = &(config_get_config()->oal_config);
+    uint8_t *sendbuf= NULL;
+    //fft_result *result;
+    //result = fft_get_result();
+}
+
+
 void spectrum_init(void)
 {
+    struct spectrum_t *ps;
+
+    fft_init();
+    printf_info("fft_init\n");
+    ps = &_spectrum;
+    ps->iq_payload = calloc(1, iio_get_rx_buf_size());
+    if (!ps->iq_payload){
+        printf_err("calloc failed\n");
+        return;
+    }
+#if 0
     int ret, i;
     pthread_t work_id;
     struct spectrum_t *ps;
@@ -91,8 +162,8 @@ void spectrum_init(void)
     pthread_mutex_init(&spectrum_cond_mutex,NULL);  
 
     ps = &_spectrum;
-    ps->payload = calloc(1, iio_get_rx_buf_size());
-    if (!ps->payload){
+    ps->iq_payload = calloc(1, iio_get_rx_buf_size());
+    if (!ps->iq_payload){
         printf_err("calloc failed\n");
         return;
     }
@@ -102,6 +173,6 @@ void spectrum_init(void)
         perror("pthread cread work_id");
     pthread_detach(work_id);
 
-
+#endif
 }
 

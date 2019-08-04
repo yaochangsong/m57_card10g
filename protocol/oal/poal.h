@@ -175,12 +175,11 @@ struct poal_config{
     struct rf_para_st rf_para[MAX_RADIO_CHANNEL_NUM];
     struct network_st network;
     struct control_st ctrl_para;
-    bool (*assamble_kernel_response_data)(char *, uint8_t, void *);
+    uint32_t (*assamble_response_data)(char *, void *);
     void (*send_active)(void *);
 }__attribute__ ((packed));
 
 
 int poal_handle_request(struct net_tcp_client *cl, uint8_t *data, int len);
 int poal_udp_handle_request(struct net_udp_client *cl, uint8_t *data, int len);
-
 #endif

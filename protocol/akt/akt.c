@@ -340,8 +340,7 @@ static int akt_execute_set_command(void)
             }
             if(pakt_config->enable.output_en){
                akt_convert_oal_config(ch, DIRECTION_MULTI_FREQ_ZONE_CMD);
-               poal_config->assamble_kernel_response_data = akt_assamble_kernel_header_response_data;
-               config_save_batch(EX_WORK_MODE_CMD, EX_FIXED_FREQ_ANYS_MODE, config_get_config());
+               //config_save_batch(EX_WORK_MODE_CMD, EX_FIXED_FREQ_ANYS_MODE, config_get_config());
             }   
             if(akt_convert_oal_config(ch, OUTPUT_ENABLE_PARAM) == -1){
                 err_code = RET_CODE_PARAMTER_NOT_SET;
@@ -411,6 +410,7 @@ static int akt_execute_set_command(void)
         case SNIFFER_DATA_REPORT_PARAM:
         {
             SNIFFER_DATA_REPORT_ST net_para;
+            struct sockaddr_in client;
             check_valid_channel(header->buf[0]);
             net_para.cid = ch;
             memcpy(&net_para, header->buf, sizeof(SNIFFER_DATA_REPORT_ST));
@@ -420,6 +420,9 @@ static int akt_execute_set_command(void)
             ipdata.s_addr = net_para.ipaddr;
             ipstr= inet_ntoa(ipdata);
             printf_info("ipstr=%s  ipaddr=%x, port=%d, type=%d\n", ipstr,  ipdata.s_addr, ntohs(net_para.port), net_para.type);
+            client.sin_port = net_para.port;//ntohs(net_para.port);
+            client.sin_addr.s_addr = ipdata.s_addr;
+            udp_add_client(&client);
             break;
         }
         case AUDIO_SAMPLE_RATE:
@@ -783,7 +786,6 @@ int akt_assamble_response_data(uint8_t **buf, int err_code)
 
     req_header = &akt_header;
     response_data = &akt_get_response_data;
-    
     header_len = sizeof(PDU_CFG_RSP_HEADER_ST);
     if(req_header->operation == SET_CMD_REQ){
         header_len += 1; /*结构体struct response_set_data cid长度*/
@@ -891,48 +893,57 @@ int akt_assamble_error_response_data(uint8_t **buf, int err_code)
     return len;
 }
 
-bool akt_assamble_kernel_header_response_data(char *pbuf, work_mode wmode, void *config)
+uint32_t akt_assamble_spectrum_header_response_data(char *pbuf, void *config)
 {
     struct poal_config *poal_config = &(config_get_config()->oal_config);
     DATUM_SPECTRUM_HEADER_ST *ext_hdr = NULL;
     static char param_buf[sizeof(DATUM_PDU_HEADER_ST)+sizeof(DATUM_SPECTRUM_HEADER_ST)];
-    
+    printf_debug("akt_assamble_spectrum_header_response_data\n");
     ext_hdr = (DATUM_SPECTRUM_HEADER_ST*)(&param_buf + sizeof(DATUM_PDU_HEADER_ST));
     ext_hdr->dev_id = akt_get_device_id();
     
-    ext_hdr->work_mode = wmode;
+    ext_hdr->work_mode =  poal_config->work_mode;
     ext_hdr->gain_mode = poal_config->rf_para[poal_config->cid].gain_ctrl_method;
     ext_hdr->gain = poal_config->rf_para[poal_config->cid].mgc_gain_value;
     ext_hdr->duration = 0;   
     ext_hdr->datum_type = 0;
-    printf_info("assamble kernel header[mode: %d]\n", wmode);
-    switch (wmode)
-    {  
-        case EX_FIXED_FREQ_ANYS_MODE:
-        case EX_FAST_SCAN_MODE:
-        case EX_MULTI_ZONE_SCAN_MODE:
-        case EX_MULTI_POINT_SCAN_MODE:
-        {
-            struct kernel_header_param *header_param;
-            header_param = (struct kernel_header_param *)config;
-            ext_hdr->cid = header_param->ch;
-            ext_hdr->center_freq = header_param->m_freq;
-            ext_hdr->sn = header_param->fft_sn;
-            ext_hdr->datum_total = header_param->total_fft;
-            ext_hdr->bandwidth = header_param->bandwidth;
-            ext_hdr->start_freq = header_param->s_freq;
-            ext_hdr->cutoff_freq = header_param->e_freq;
-            ext_hdr->sample_rate = 0;
-            ext_hdr->fft_len = header_param->fft_size;
-            ext_hdr->freq_resolution = header_param->freq_resolution;
-            break;
-        }
-        default:
-            printf_err("Not support Work Mode\n");
-    }
+
+    struct spectrum_header_param *header_param;
+    header_param = (struct spectrum_header_param *)config;
+    ext_hdr->cid = header_param->ch;
+    ext_hdr->center_freq = header_param->m_freq;
+    ext_hdr->sn = header_param->fft_sn;
+    ext_hdr->datum_total = header_param->total_fft;
+    ext_hdr->bandwidth = header_param->bandwidth;
+    ext_hdr->start_freq = header_param->s_freq;
+    ext_hdr->cutoff_freq = header_param->e_freq;
+    ext_hdr->sample_rate = 0;
+    ext_hdr->fft_len = header_param->fft_size;
+    ext_hdr->freq_resolution = header_param->freq_resolution;
     pbuf = &param_buf;
-    return true;
+    return sizeof(DATUM_SPECTRUM_HEADER_ST);
 }
+
+uint32_t akt_assamble_pdu_header_response_data(char *head_buf, void *config)
+{
+    DATUM_PDU_HEADER_ST *package_header;
+    static unsigned short seq_num[MAX_RADIO_CHANNEL_NUM] = {0};
+    struct spectrum_header_param *header_param;
+    header_param = (struct spectrum_header_param *)config;
+    printf_debug("akt_assamble_pdu_header_response_data\n");
+    akt_assamble_spectrum_header_response_data(head_buf, config);
+    
+    package_header = (DATUM_PDU_HEADER_ST*)head_buf;
+    package_header->syn_flag = AKT_START_FLAG;
+    package_header->type = SPECTRUM_DATUM_FLOAT;
+    package_header->toa = time(NULL);
+    package_header->seqnum = seq_num[header_param->ch]++;
+    package_header->ex_type = SPECTRUM_DATUM;
+    package_header->ex_len = sizeof(DATUM_SPECTRUM_HEADER_ST);
+    package_header->data_len = header_param->data_len;
+    return sizeof(DATUM_PDU_HEADER_ST)+sizeof(DATUM_SPECTRUM_HEADER_ST);
+}
+
 
 
 

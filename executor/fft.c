@@ -98,6 +98,8 @@ struct fft_state fftstate;*/
 
 
 fft_state fftstate;
+fft_result fftresult;
+
 
 
 /*static int cenfrepointnum=0;
@@ -1018,7 +1020,7 @@ void free_memory(void)
 	
 }
 //int testfrequency(const char* filename,int threshordnum,int fftlen,short *iqdata)
-int testfrequency(int threshordnum,short *iqdata,int fftsize,int datalen)
+void testfrequency(int threshordnum,short *iqdata,int fftsize,int datalen)
 {
     N=fftsize;
 	fftstate.interval=0;	
@@ -1163,7 +1165,7 @@ int testfrequency(int threshordnum,short *iqdata,int fftsize,int datalen)
 
 *********************************************************************************/
 
-void IQdata_handle(int bd,short *data,int fftsize ,int datalen)
+void iqdata_handle(int bd,short *data,int fftsize ,int datalen)
 {
 	if(data==NULL)
 	{
@@ -1204,14 +1206,13 @@ void get_fftdata(float *data)
 
 *********************************************************************************/
 
-fft_result get_fft_result(void)
+fft_result *get_fft_result(void)
 {
-    fft_result temp;
-    temp.signalsnumber=fftstate.cenfrepointnum;
-    memcpy(temp.centfeqpoint,fftstate.centfeqpoint,sizeof(int)*SIGNALNUM);
-    memcpy(temp.bandwidth,fftstate.bandwidth,sizeof(int)*SIGNALNUM);
-    memcpy(temp.arvcentfreq,fftstate.arvcentfreq,sizeof(float)*SIGNALNUM);
-    return temp;
+    fftresult.signalsnumber=fftstate.cenfrepointnum;
+    memcpy(fftresult.centfeqpoint,fftstate.centfeqpoint,sizeof(int)*SIGNALNUM);
+    memcpy(fftresult.bandwidth,fftstate.bandwidth,sizeof(int)*SIGNALNUM);
+    memcpy(fftresult.arvcentfreq,fftstate.arvcentfreq,sizeof(float)*SIGNALNUM);
+    return &fftresult;
 }
 
 void xulitestfft(void)
@@ -1225,21 +1226,21 @@ void xulitestfft(void)
     
 	int fftsize=8*1024;
     int i=0;
-    fft_result temp;
+    fft_result *temp;
 
     Verificationfloat("rawdata.txt",data,1024*1024);
 	//testfrequency("50miq.wav",10,NULL,fftsize,1024*1024);
-	IQdata_handle(6,data,8*1024 ,8*1024);//下发门限，iq数据，fft大小，下发数据长度
+	iqdata_handle(6,data,8*1024 ,8*1024);//下发门限，iq数据，fft大小，下发数据长度
      printf_debug("\n\n=====================tempytest===============================\n");
     temp=get_fft_result();
-    printf_debug("temp.signalsnumber=%d\n",temp.signalsnumber);
+    printf_debug("temp.signalsnumber=%d\n",temp->signalsnumber);
 
-	for(int i=0;i<temp.signalsnumber;i++)
+	for(int i=0;i<temp->signalsnumber;i++)
 	{
 		
 		
 		printf_warn("temp.centfeqpoint[%d]=%d,temp.bandwidth[%d]=%d,temp[%d]=%f\n\n",
-		i,temp.centfeqpoint[i],i,temp.bandwidth[i],i,temp.arvcentfreq[i]);
+		i,temp->centfeqpoint[i],i,temp->bandwidth[i],i,temp->arvcentfreq[i]);
 		
 	}
 

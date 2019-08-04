@@ -59,6 +59,7 @@ typedef struct _ReDefTranData
 	int     bandwidth;
 	float   arvcentfreq;
 }ComplexDataType;
+
 struct fft_data{
 	
 	float *maxsamlpe;
@@ -1236,34 +1237,44 @@ void  modechoice(int fftsize)
 		
 	}
 }
+/********************************************************************************
 
+函数功能：通过传入的iq数据，计算所输入信号的中心频率，带宽和中心频点
+函数的输入：
+int bd; 下发门限；
+short *data;所要传入的iq数据
+int fftize;  所要做的fft大小，
+int datalen;  单位：32byte;数据长度；
+返回值：
+      无返回值；
+
+*********************************************************************************/
 
 void DetectionIQDataSpectrum(int bd,short *data,int fftsize ,int datalen)
 {
-	double costtime;
-	clock_t start,end;
-	start=clock();
-    int i=0;
 	if(data==NULL)
 	{
 		printf_warn("\n\nThe IQ data you entered is empty, please enter again！\n\n");
 		return ;
 	}
-	modechoice(fftsize);
-	N=fftsize;
-	initfftspace();
+    
 	testfrequency(bd,data,fftsize,datalen);//iq数据，下发门限，fft大小，下发数据长度
-	freethememory(); 
-	end=clock();
 	
-	costtime=(end-start)/CLOCKS_PER_SEC;
-	printf_debug("costtime=%.20lf\n",costtime);
+}
+
+void getfftdata(float *data)
+{
+    
+    memcpy(data,fftdata.mozhi,sizeof(float)*N);
+
 }
 void xulitestfft(void)
 {
 	double costtime;
 	clock_t start,end;
 	start=clock();
+
+    
 	initfftspace();
     short *data=(short*)malloc(sizeof(short)*2*N);
     memset(data,0,sizeof(short)*2*N );
@@ -1271,9 +1282,11 @@ void xulitestfft(void)
 	int fftsize=8*1024;
     int i=0;
 	modechoice(fftsize);
+
+    
     Verificationfloat("rawdata.txt",data,1024*1024);
 	//testfrequency("50miq.wav",10,NULL,fftsize,1024*1024);
-	DetectionIQDataSpectrum(6,data,8*1024 ,8*1024);//iq数据，下发门限，fft大小，下发数据长度
+	DetectionIQDataSpectrum(6,data,8*1024 ,8*1024);//下发门限，iq数据，fft大小，下发数据长度
     
 	freethememory(); 
 	end=clock();

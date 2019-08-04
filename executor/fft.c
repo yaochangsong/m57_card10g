@@ -944,7 +944,17 @@ void hannwindow(int num,float *w)               //汉宁窗
 	memcpy(w,ret,sizeof(float)*N);
 	free(ret);
 }
-void initfftspace(void)
+/********************************************************************************
+
+函数功能：在处理IQ数据之前的初始化操作
+输入：
+        无
+返回值：
+      无返回值；
+
+*********************************************************************************/
+
+void init_fft(void)
 {
 	fftdata.maxsamlpe=(float*)malloc(sizeof(float)*(N/INTERVALNUMTOW));
 	fftdata.zuobiao=(int*)malloc(sizeof(int)*(N/INTERVALNUMTOW ));
@@ -989,7 +999,7 @@ void initfftspace(void)
 	fftstate.maxcentfrequency=0;
 	fftstate.interval=0;	
 }
-void freethememory(void)
+void free_memory(void)
 {
 	
 	SAFE_FREE(fftdata.maxsamlpe);
@@ -1129,128 +1139,31 @@ int testfrequency(int threshordnum,short *iqdata,int fftsize,int datalen)
 		}
 	}
 	fftstate.cenfrepointnum=num;
-	printf_debug("*********************最终数据****************************\n");
+	printf_debug("\n\n*********************最终数据****************************\n");
 	for(int i=0;i<fftstate.cenfrepointnum;i++)
 	{
 		
 		
-		printf_warn("fftstate.centfeqpoint[%d]=%d,fftstate.bandwidth[%d]=%d,maxcentfrequency[%d]=%f\n",
+		printf_warn("fftstate.centfeqpoint[%d]=%d,fftstate.bandwidth[%d]=%d,maxcentfrequency[%d]=%f\n\n",
 		i,fftstate.centfeqpoint[i],i,fftstate.bandwidth[i],i,fftstate.arvcentfreq[i]);
 		
 	}
 
 }
-void  modechoice(int fftsize)
-{
-	if(fftsize!=256&&fftsize!=512&&fftsize!=1024&&fftsize!=2048&&fftsize!=4096&&fftsize!=8192
-		&&fftsize!=16384&&fftsize!=32768&&fftsize!=131072&&fftsize!=262144&&fftsize!=524288&&fftsize!=1048576)
-	{
-		fftsize=256*1024;
-	}
-	switch(fftsize)
-	{
-		case 256:
-				N=256;
-				INTERVALNUM=20;
-				//SHIELDPOINTS=10;
-				//INTERVALNUMTOW=2;
-				break;
-		
-		case 512:
-				N=512;
-				INTERVALNUM=40;
-				//SHIELDPOINTS=30;
-		
-
-				break;
-		
-		case 1024:
-				N=1024;
-				INTERVALNUM=60;
-				//SHIELDPOINTS=100;
-		
-
-				break;
-		
-		case 2048:
-				N=2048;
-				INTERVALNUM=80;
-				//SHIELDPOINTS=200;
-
-				break;
-		
-		
-		case 4096:
-				N=4096;
-				INTERVALNUM=100;
-				//SHIELDPOINTS=300;
-
-				break;
-		case 8192:
-				N=8192;
-				INTERVALNUM=190;
-				//SHIELDPOINTS=400;
-				break;
-		
-		
-		case 16384:
-		        
-				N=16384;
-				INTERVALNUM=300;
-				//SHIELDPOINTS=5000;
-				break;
-				
-		case 32768:
-				N=32768;
-				INTERVALNUM=500;
-				//SHIELDPOINTS=2000;
-				break;
-				
-		case 65536:
-				N=65536;
-				INTERVALNUM=1000;
-				//SHIELDPOINTS=2000;
-				break;
-		case 131072:
-				N=131072;
-				INTERVALNUM=5000;
-				//SHIELDPOINTS=5000;	
-				break;
-		case 262144:
-				N=262144;
-				INTERVALNUM=10000;
-				//SHIELDPOINTS=10000;	
-				break;
-
-		case 524288:
-				N=524288;
-				INTERVALNUM=15000;
-				//SHIELDPOINTS=100000;
-				break;
-		
-		case 1048576:
-				INTERVALNUM=30000;
-				//SHIELDPOINTS=1000;
-				break;
-		default:
-		break;
-		
-	}
-}
 /********************************************************************************
 
 函数功能：通过传入的iq数据，计算所输入信号的中心频率，带宽和中心频点
-函数的输入：
-int bd; 下发门限；
-short *data;所要传入的iq数据
-int fftize;  所要做的fft大小，
-int datalen;  单位：32byte;数据长度；
+输入：
+    int bd; 下发门限；
+    short *data;所要传入的iq数据
+    int fftize;  所要做的fft大小，
+    int datalen;  单位：32byte;数据长度；
 返回值：
       无返回值；
 
 *********************************************************************************/
 
-void DetectionIQDataSpectrum(int bd,short *data,int fftsize ,int datalen)
+void IQdata_handle(int bd,short *data,int fftsize ,int datalen)
 {
 	if(data==NULL)
 	{
@@ -1262,33 +1175,75 @@ void DetectionIQDataSpectrum(int bd,short *data,int fftsize ,int datalen)
 	
 }
 
-void getfftdata(float *data)
+/********************************************************************************
+
+函数功能：获取频谱数据
+输入：
+     float *data；
+     data是获取到的频谱数据
+返回值：
+      无返回值；
+
+*********************************************************************************/
+
+
+void get_fftdata(float *data)
 {
     
     memcpy(data,fftdata.mozhi,sizeof(float)*N);
 
 }
+/********************************************************************************
+
+函数功能：获取找到的信号的信息
+输入：
+        无
+返回值：
+      返回类型fft_result；
+      找到的信号的具体信息的结构体
+
+*********************************************************************************/
+
+fft_result get_fft_result(void)
+{
+    fft_result temp;
+    temp.signalsnumber=fftstate.cenfrepointnum;
+    memcpy(temp.centfeqpoint,fftstate.centfeqpoint,sizeof(int)*SIGNALNUM);
+    memcpy(temp.bandwidth,fftstate.bandwidth,sizeof(int)*SIGNALNUM);
+    memcpy(temp.arvcentfreq,fftstate.arvcentfreq,sizeof(float)*SIGNALNUM);
+    return temp;
+}
+
 void xulitestfft(void)
 {
 	double costtime;
 	clock_t start,end;
 	start=clock();
-
-    
-	initfftspace();
+	init_fft();
     short *data=(short*)malloc(sizeof(short)*2*N);
     memset(data,0,sizeof(short)*2*N );
     
 	int fftsize=8*1024;
     int i=0;
-	modechoice(fftsize);
+    fft_result temp;
 
-    
     Verificationfloat("rawdata.txt",data,1024*1024);
 	//testfrequency("50miq.wav",10,NULL,fftsize,1024*1024);
-	DetectionIQDataSpectrum(6,data,8*1024 ,8*1024);//下发门限，iq数据，fft大小，下发数据长度
-    
-	freethememory(); 
+	IQdata_handle(6,data,8*1024 ,8*1024);//下发门限，iq数据，fft大小，下发数据长度
+     printf_debug("\n\n=====================tempytest===============================\n");
+    temp=get_fft_result();
+    printf_debug("temp.signalsnumber=%d\n",temp.signalsnumber);
+
+	for(int i=0;i<temp.signalsnumber;i++)
+	{
+		
+		
+		printf_warn("temp.centfeqpoint[%d]=%d,temp.bandwidth[%d]=%d,temp[%d]=%f\n\n",
+		i,temp.centfeqpoint[i],i,temp.bandwidth[i],i,temp.arvcentfreq[i]);
+		
+	}
+
+	free_memory(); 
 	end=clock();
 	costtime=(end-start)/CLOCKS_PER_SEC;
 	printf_debug("costtime=%.20lf\n",costtime);

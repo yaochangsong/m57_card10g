@@ -14,7 +14,6 @@ static unsigned int N=1024*1024;
 
 #define   SMOOTHPOINT         128//滑动平均滤波计算平均值时所取的点数
 #define   TRANNUM      1024      //每次传1K的点
-#define   PORT        8000
 #define  FILTER_A      0.01
 static unsigned int INTERVALNUM=10000;
 static unsigned int SHIELDPOINTS=20000;
@@ -47,9 +46,10 @@ typedef struct {
 
 void init_fft(void);
 void freethememory(void);
-void IQdata_handle(int bd,short *data,int fftsize ,int datalen);
+void iqdata_handle(int bd,short *data,int fftsize ,int datalen);
 void get_fftdata(float *data);
-fft_result get_fft_result(void);
+fft_result *get_fft_result(void);
+
 
 void xulitest(void);
 

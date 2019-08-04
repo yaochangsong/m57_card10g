@@ -44,11 +44,12 @@ typedef struct {
 
 
 
-void init_fft(void);
-void freethememory(void);
-void iqdata_handle(int bd,short *data,int fftsize ,int datalen);
-void get_fftdata(float *data);
-fft_result *get_fft_result(void);
+
+void fft_init(void);
+void fft_exit(void);
+void fft_iqdata_handle(int bd,short *data,int fftsize ,int datalen);
+void fft_get_data(float *data);
+fft_result *fft_get_result(void);
 
 
 void xulitest(void);

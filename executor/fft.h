@@ -12,7 +12,7 @@ static unsigned int N=1024*1024;
 #define  SIGNALNUM        2000//输入信号数
 #define  THRESHOLD         135//128.999176/门限
 
-#define   SMOOTHPOINT         128//滑动平均滤波计算平均值时所取的点数
+#define   SMOOTHPOINT         64//滑动平均滤波计算平均值时所取的点数
 #define   TRANNUM      1024      //每次传1K的点
 #define  FILTER_A      0.01
 static unsigned int INTERVALNUM=10000;

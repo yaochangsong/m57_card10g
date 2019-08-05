@@ -1249,7 +1249,7 @@ void xulitestfft(void)
 
 	fft_exit(); 
 	end=clock();
-	costtime=(end-start)/CLOCKS_PER_SEC;
+	costtime=(double)(end-start)/CLOCKS_PER_SEC;
 	printf_debug("costtime=%.20lf\n",costtime);
 	return ;
 	

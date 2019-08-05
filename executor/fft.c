@@ -1107,10 +1107,10 @@ void testfrequency(int threshordnum,short *iqdata,int fftsize,int datalen)
 	Cfft(fftdata.x, N, fftdata.y);            // 1快速傅里叶变换  
 	CfftAbs(fftdata.y,N,fftdata.mozhi);	// 2 计算20log10(abs),存进模值里
 	Rfftshift(fftdata.mozhi, N);
-	writefileArr("mozhi0801.txt",fftdata.mozhi, N);
+	//writefileArr("mozhi0801.txt",fftdata.mozhi, N);
     
 	smooth(fftdata.mozhi,N,fftdata.smoothdata);
-    writefileArr("smoothdata0801.txt",fftdata.smoothdata, N);
+    //writefileArr("smoothdata0801.txt",fftdata.smoothdata, N);
     
 	findBottomnoise(fftdata.smoothdata,threshordnum,&fftstate.Bottomnoise,&fftstate.Threshold);   //计算底噪
 	

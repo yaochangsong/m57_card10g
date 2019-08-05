@@ -1191,10 +1191,10 @@ void fft_iqdata_handle(int bd,short *data,int fftsize ,int datalen)
 *********************************************************************************/
 
 
-unsigned int fft_get_data(float *data)
+unsigned int fft_get_data(float **data)
 {
-    
-    memcpy(data,fftdata.mozhi,sizeof(float)*N);
+    *data = fftdata.mozhi;
+    //memcpy(data,fftdata.mozhi,sizeof(float)*N);
     return N;
 
 }

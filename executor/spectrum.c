@@ -24,37 +24,28 @@ bool specturm_work_write_enable(bool enable)
 }
 
 
-static int32_t specturm_rx_read(void)
+static int32_t specturm_rx_iq_read(int16_t **iq_payload)
 {
     ssize_t nbytes_rx = 0;
     int16_t *iqdata;
-    struct spectrum_t *ps;
     int i;
     char strbuf[128];
     static int write_file_cnter = 0;
-    
-    ps = &_spectrum;
+   
     
     iqdata = specturm_rx_read_data(&nbytes_rx);
-    
+    *iq_payload = iqdata;
     printf_info("iio read data len:[%d]\n", nbytes_rx);
     for(i = 0; i< 10; i++){
         printfi("%d ",*(int16_t*)(iqdata+i));
     }
     printfi("\n");
 
-    if(write_file_cnter++ < 3){
-        //sprintf(strbuf, "/run/wav%d", write_file_cnter);
-        //printfi("write iq data to:[len=%d]%s\n", nbytes_rx/2, strbuf);
-       // write_file_in_int16((void*)(iqdata), nbytes_rx/2, strbuf);
+    if(write_file_cnter++ < 0){
+        sprintf(strbuf, "/run/wav%d", write_file_cnter);
+        printfi("write iq data to:[len=%d]%s\n", nbytes_rx/2, strbuf);
+        write_file_in_int16((void*)(iqdata), nbytes_rx/2, strbuf);
     }
-   // ps->iq_payload = calloc(1, nbytes_rx);
-    //if (!ps->iq_payload){
-    //    printf_err("calloc failed\n");
-    //    return;
-    //}
-    memcpy(ps->iq_payload, iqdata, nbytes_rx);
-
     //if(ps->is_deal == false){
     //    memcpy(ps->iq_payload, iqdata, nbytes_rx);
     //    pthread_cond_signal(&spectrum_cond);
@@ -85,24 +76,27 @@ void specturm_analysis_deal(void *arg)
     }
 }
 
-static void spectrum_send_fft_data(uint8_t *header, uint32_t header_len)
+static void spectrum_send_fft_data(float *fft_data, uint32_t fft_data_len, void *param)
 {
-    struct spectrum_t *ps;
-    uint8_t *fft_sendbuf= NULL, *pbuf;
-    ps = &_spectrum;
+    struct poal_config *poal_config = &(config_get_config()->oal_config);
+    uint8_t *fft_sendbuf, *pbuf;
+    uint8_t *header_buf;
+    uint32_t header_len = 0;
 
-    fft_sendbuf = calloc(1, header_len+ ps->fft_len);
+    header_len = poal_config->assamble_response_data(header_buf, (void *)param);
+    printf_debug("header_buf[0]=%x, header_len=%d\n", header_buf[0], header_len);
+
+    fft_sendbuf = (uint8_t *)malloc(header_len+ fft_data_len);
     if (!fft_sendbuf){
         printf_err("calloc failed\n");
         return;
     }
     pbuf = fft_sendbuf;
-    printf_info("header_len+ ps->fft_len=%d\n", header_len+ ps->fft_len);
-    memcpy(fft_sendbuf, header, header_len);
-    memcpy(fft_sendbuf + header_len, ps->fft_payload, ps->fft_len);
+    printf_info("malloc ok header_len:%d,fft_len=%d, len=%d\n",header_len,fft_data_len, header_len+ fft_data_len);
+    memcpy(fft_sendbuf, header_buf, header_len);
+    memcpy(fft_sendbuf + header_len, fft_data, fft_data_len);
     
-    printf_info("send fft data..\n");
-    udp_send_data(fft_sendbuf, header_len+ps->fft_len);
+    udp_send_data(fft_sendbuf, header_len + fft_data_len);
     printf_info("send over\n");
     safe_free(pbuf);
     printf_info("end send_fft_data\n");
@@ -110,26 +104,16 @@ static void spectrum_send_fft_data(uint8_t *header, uint32_t header_len)
 
 void spectrum_wait_user_deal( struct spectrum_header_param *param)
 {
-    struct poal_config *poal_config = &(config_get_config()->oal_config);
     struct spectrum_t *ps;
-    uint8_t *header_buf;
-    uint32_t header_len = 0;
+
     ps = &_spectrum;
     
-    ps->iq_len = specturm_rx_read();
+    ps->iq_len = specturm_rx_iq_read(&ps->iq_payload);
+    printf_debug("ps->iq_payload[0]=%d\n", ps->iq_payload[0]);
     TIME_ELAPSED(fft_iqdata_handle(6, ps->iq_payload, 8*1024, ps->iq_len/2));
-    ps->fft_payload = calloc(1, 8*1024);
-    if (!ps->fft_payload){
-        printf_err("calloc failed\n");
-        return;
-    }
-    ps->fft_len = fft_get_data(ps->fft_payload);
-    printf_debug("ps->fft_len=%d\n", ps->fft_len);
-    header_len = poal_config->assamble_response_data(header_buf, (void *)param);
-     printf_debug("header_buf[0]=%x, header_len=%d\n", header_buf[0], header_len);
-    spectrum_send_fft_data(header_buf,header_len);
-    printf_debug("end send fft\n");
-    safe_free(ps->fft_payload);
+    ps->fft_len = fft_get_data(&ps->fft_payload);
+    printf_debug("ps->fft_len=%d, ps->fft_payload=%f\n", ps->fft_len, ps->fft_payload[0]);
+    spectrum_send_fft_data(ps->fft_payload, ps->fft_len, param);
 }
 
 void spectrum_get_fft_result(uint8_t *header, uint32_t header_len)
@@ -144,11 +128,14 @@ void spectrum_get_fft_result(uint8_t *header, uint32_t header_len)
 void spectrum_init(void)
 {
     struct spectrum_t *ps;
+    ssize_t nbytes_rx = 0;
 
     fft_init();
     printf_info("fft_init\n");
     ps = &_spectrum;
-    ps->iq_payload = calloc(1, iio_get_rx_buf_size());
+    nbytes_rx = iio_get_rx_buf_size();
+    printf_info("init rx read:%d\n", nbytes_rx);
+    ps->iq_payload = (int16_t*)malloc(nbytes_rx);
     if (!ps->iq_payload){
         printf_err("calloc failed\n");
         return;

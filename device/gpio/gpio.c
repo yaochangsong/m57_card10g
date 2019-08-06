@@ -36,256 +36,255 @@ int set_gpio(int spidev_index,char val){
 
 void control_rf(cmd_gpio cmd)
 {
-	switch(cmd)
-	{
-		case U9_RFC_OUT1:
-		set_gpio(SEC_42422_V1,1);
-		set_gpio(SEC_42422_LS,1);
-		break;
-		
-		case U9_RFC_OUT2:
-		set_gpio(SEC_42422_V1,1);
-		set_gpio(SEC_42422_LS,0);
-		break;
-		
-		case U7_RF1_11:
-		set_gpio(SEC_L_42442_V1,1);
-		set_gpio(SEC_L_42442_V2,0);
-		break;
-		
-		case U7_RF1_12:
-		set_gpio(SEC_L_42442_V1,0);
-		set_gpio(SEC_L_42442_V2,1);
-		break;
-		
-		case U7_RF1_13:
-		set_gpio(SEC_L_42442_V1,1);
-		set_gpio(SEC_L_42442_V2,1);
-		break;
-		
-		case U7_RF1_14:
-		set_gpio(SEC_L_42442_V1,0);
-		set_gpio(SEC_L_42442_V2,0);
-		break;
-		
-		case U5_RF1_1:
-		set_gpio(PRI_L_42442_V1,1);
-		set_gpio(PRI_L_42442_V2,0);
-		break;
-		
-		case U5_RF1_2:
-		set_gpio(PRI_L_42442_V1,0);
-		set_gpio(PRI_L_42442_V2,1);
-		break;
-		
-		case U5_RF1_3:
-		set_gpio(PRI_L_42442_V1,1);
-		set_gpio(PRI_L_42442_V2,1);
-		break;
-		
-		case U5_RF1_4:
-		set_gpio(PRI_L_42442_V1,0);
-		set_gpio(PRI_L_42442_V2,0);
-		break;
-		
-		case U1_RFC_IN1:
-		set_gpio(PRI_42422_V1,1);
-		set_gpio(PRI_42422_LS,1);
-		break;
-		
-		case U1_RFC_IN2:
-		set_gpio(PRI_42422_V1,1);
-		set_gpio(PRI_42422_LS,0);
-		break;
-		
-		case U6_RF2_1:
-		set_gpio(PRI_H_42442_V1,1);
-		set_gpio(PRI_H_42442_V2,0);
-		break;
-		
-		case U6_RF2_2:
-		set_gpio(PRI_H_42442_V1,0);
-		set_gpio(PRI_H_42442_V2,1);
-		break;
-		
-		case U6_RF2_3:
-		set_gpio(PRI_H_42442_V1,1);
-		set_gpio(PRI_H_42442_V2,1);
-		break;
-		
-		case U6_RF2_4:
-		set_gpio(PRI_H_42442_V1,0);
-		set_gpio(PRI_H_42442_V2,0);
-		break;
-		
-		case U8_RF2_11:
-		set_gpio(SEC_H_42442_V1,1);
-		set_gpio(SEC_H_42442_V2,0);
-		break;
-		
-		case U8_RF2_12:
-		set_gpio(SEC_H_42442_V1,0);
-		set_gpio(SEC_H_42442_V2,1);
-		break;
-		
-		case U8_RF2_13:
-		set_gpio(SEC_H_42442_V1,1);
-		set_gpio(SEC_H_42442_V2,1);
-		break;
-		
-		case U8_RF2_14:
-		set_gpio(SEC_H_42442_V1,0);
-		set_gpio(SEC_H_42442_V2,0);
-		break;
-		
-		case U10_0_DB:
-		set_gpio(SEC_624A_D0,1);
-		set_gpio(SEC_624A_D1,1);
-		set_gpio(SEC_624A_D2,1);
-		set_gpio(SEC_624A_D3,1);
-		set_gpio(SEC_624A_D4,1);
-		set_gpio(SEC_624A_D5,1);
-		break;
-		
-        case U10_0_5_DB:
-		set_gpio(SEC_624A_D0,0);
-		set_gpio(SEC_624A_D1,1);
-		set_gpio(SEC_624A_D2,1);
-		set_gpio(SEC_624A_D3,1);
-		set_gpio(SEC_624A_D4,1);
-		set_gpio(SEC_624A_D5,1);
-		break;
-		
-		case U10_1_DB:
-		set_gpio(SEC_624A_D0,1);
-		set_gpio(SEC_624A_D1,0);
-		set_gpio(SEC_624A_D2,1);
-		set_gpio(SEC_624A_D3,1);
-		set_gpio(SEC_624A_D4,1);
-		set_gpio(SEC_624A_D5,1);
-		break;
-		
-		case U10_2_DB:
-		set_gpio(SEC_624A_D0,1);
-		set_gpio(SEC_624A_D1,1);
-		set_gpio(SEC_624A_D2,0);
-		set_gpio(SEC_624A_D3,1);
-		set_gpio(SEC_624A_D4,1);
-		set_gpio(SEC_624A_D5,1);
-		break;
-		
-		case U10_4_DB:
-		set_gpio(SEC_624A_D0,1);
-		set_gpio(SEC_624A_D1,1);
-		set_gpio(SEC_624A_D2,1);
-		set_gpio(SEC_624A_D3,0);
-		set_gpio(SEC_624A_D4,1);
-		set_gpio(SEC_624A_D5,1);
-		break;
-		
-		case U10_8_DB:
-		set_gpio(SEC_624A_D0,1);
-		set_gpio(SEC_624A_D1,1);
-		set_gpio(SEC_624A_D2,1);
-		set_gpio(SEC_624A_D3,1);
-		set_gpio(SEC_624A_D4,0);
-		set_gpio(SEC_624A_D5,1);
-		break;
-		
-		case U10_16_DB:
-		set_gpio(SEC_624A_D0,1);
-		set_gpio(SEC_624A_D1,1);
-		set_gpio(SEC_624A_D2,1);
-		set_gpio(SEC_624A_D3,1);
-		set_gpio(SEC_624A_D4,1);
-		set_gpio(SEC_624A_D5,0);
-		break;
-		
-		case U10_31_5_DB:
-		set_gpio(SEC_624A_D0,0);
-		set_gpio(SEC_624A_D1,0);
-		set_gpio(SEC_624A_D2,0);
-		set_gpio(SEC_624A_D3,0);
-		set_gpio(SEC_624A_D4,0);
-		set_gpio(SEC_624A_D5,0);
-		break;
-		
-		case U2_0_DB:
-		set_gpio(PRI_624A_D0,0);
-		set_gpio(PRI_624A_D1,1);
-		set_gpio(PRI_624A_D2,1);
-		set_gpio(PRI_624A_D3,1);
-		set_gpio(PRI_624A_D4,1);
-		set_gpio(PRI_624A_D5,1);
-		break;
-		
-		case U2_0_5_DB:
-		set_gpio(PRI_624A_D0,1);
-		set_gpio(PRI_624A_D1,0);
-		set_gpio(PRI_624A_D2,1);
-		set_gpio(PRI_624A_D3,1);
-		set_gpio(PRI_624A_D4,1);
-		set_gpio(PRI_624A_D5,1);
-		break;
-		
-		case U2_1_DB:
-		set_gpio(PRI_624A_D0,1);
-		set_gpio(PRI_624A_D1,0);
-		set_gpio(PRI_624A_D2,1);
-		set_gpio(PRI_624A_D3,1);
-		set_gpio(PRI_624A_D4,1);
-		set_gpio(PRI_624A_D5,1);
-		break;
-		
-		case U2_2_DB:
-		set_gpio(PRI_624A_D0,1);
-		set_gpio(PRI_624A_D1,1);
-		set_gpio(PRI_624A_D2,0);
-		set_gpio(PRI_624A_D3,1);
-		set_gpio(PRI_624A_D4,1);
-		set_gpio(PRI_624A_D5,1);
-		break;
-		
-		case U2_4_DB:
-		set_gpio(PRI_624A_D0,1);
-		set_gpio(PRI_624A_D1,1);
-		set_gpio(PRI_624A_D2,1);
-		set_gpio(PRI_624A_D3,0);
-		set_gpio(PRI_624A_D4,1);
-		set_gpio(PRI_624A_D5,1);
-		break;
-		
-		case U2_8_DB:
-		set_gpio(PRI_624A_D0,1);
-		set_gpio(PRI_624A_D1,1);
-		set_gpio(PRI_624A_D2,1);
-		set_gpio(PRI_624A_D3,1);
-		set_gpio(PRI_624A_D4,0);
-		set_gpio(PRI_624A_D5,1);
-		break;
-		
-		case U2_16_DB:
-		set_gpio(PRI_624A_D0,1);
-		set_gpio(PRI_624A_D1,1);
-		set_gpio(PRI_624A_D2,1);
-		set_gpio(PRI_624A_D3,1);
-		set_gpio(PRI_624A_D4,1);
-		set_gpio(PRI_624A_D5,0);
-		break;
-		
-		case U2_31_5_DB:
-		set_gpio(PRI_624A_D0,0);
-		set_gpio(PRI_624A_D1,0);
-		set_gpio(PRI_624A_D2,0);
-		set_gpio(PRI_624A_D3,0);
-		set_gpio(PRI_624A_D4,0);
-		set_gpio(PRI_624A_D5,0);
-		break;
+    switch(cmd)
+    {
+        case U9_RFC_OUT1:
+        set_gpio(SEC_42422_V1,1);
+        set_gpio(SEC_42422_LS,1);
+        break;
 
-		default :
-		break;
-	}
-	
+        case U9_RFC_OUT2:
+        set_gpio(SEC_42422_V1,1);
+        set_gpio(SEC_42422_LS,0);
+        break;
+
+        case U7_RF1_11:
+        set_gpio(SEC_L_42442_V1,1);
+        set_gpio(SEC_L_42442_V2,0);
+        break;
+
+        case U7_RF1_12:
+        set_gpio(SEC_L_42442_V1,0);
+        set_gpio(SEC_L_42442_V2,1);
+        break;
+
+        case U7_RF1_13:
+        set_gpio(SEC_L_42442_V1,1);
+        set_gpio(SEC_L_42442_V2,1);
+        break;
+
+        case U7_RF1_14:
+        set_gpio(SEC_L_42442_V1,0);
+        set_gpio(SEC_L_42442_V2,0);
+        break;
+
+        case U5_RF1_1:
+        set_gpio(PRI_L_42442_V1,1);
+        set_gpio(PRI_L_42442_V2,0);
+        break;
+
+        case U5_RF1_2:
+        set_gpio(PRI_L_42442_V1,0);
+        set_gpio(PRI_L_42442_V2,1);
+        break;
+
+        case U5_RF1_3:
+        set_gpio(PRI_L_42442_V1,1);
+        set_gpio(PRI_L_42442_V2,1);
+        break;
+
+        case U5_RF1_4:
+        set_gpio(PRI_L_42442_V1,0);
+        set_gpio(PRI_L_42442_V2,0);
+        break;
+
+        case U1_RFC_IN1:
+        set_gpio(PRI_42422_V1,1);
+        set_gpio(PRI_42422_LS,1);
+        break;
+
+        case U1_RFC_IN2:
+        set_gpio(PRI_42422_V1,1);
+        set_gpio(PRI_42422_LS,0);
+        break;
+
+        case U6_RF2_1:
+        set_gpio(PRI_H_42442_V1,1);
+        set_gpio(PRI_H_42442_V2,0);
+        break;
+
+        case U6_RF2_2:
+        set_gpio(PRI_H_42442_V1,0);
+        set_gpio(PRI_H_42442_V2,1);
+        break;
+
+        case U6_RF2_3:
+        set_gpio(PRI_H_42442_V1,1);
+        set_gpio(PRI_H_42442_V2,1);
+        break;
+
+        case U6_RF2_4:
+        set_gpio(PRI_H_42442_V1,0);
+        set_gpio(PRI_H_42442_V2,0);
+        break;
+
+        case U8_RF2_11:
+        set_gpio(SEC_H_42442_V1,1);
+        set_gpio(SEC_H_42442_V2,0);
+        break;
+
+        case U8_RF2_12:
+        set_gpio(SEC_H_42442_V1,0);
+        set_gpio(SEC_H_42442_V2,1);
+        break;
+
+        case U8_RF2_13:
+        set_gpio(SEC_H_42442_V1,1);
+        set_gpio(SEC_H_42442_V2,1);
+        break;
+
+        case U8_RF2_14:
+        set_gpio(SEC_H_42442_V1,0);
+        set_gpio(SEC_H_42442_V2,0);
+        break;
+
+        case U10_0_DB:
+        set_gpio(SEC_624A_D0,1);
+        set_gpio(SEC_624A_D1,1);
+        set_gpio(SEC_624A_D2,1);
+        set_gpio(SEC_624A_D3,1);
+        set_gpio(SEC_624A_D4,1);
+        set_gpio(SEC_624A_D5,1);
+        break;
+
+        case U10_0_5_DB:
+        set_gpio(SEC_624A_D0,0);
+        set_gpio(SEC_624A_D1,1);
+        set_gpio(SEC_624A_D2,1);
+        set_gpio(SEC_624A_D3,1);
+        set_gpio(SEC_624A_D4,1);
+        set_gpio(SEC_624A_D5,1);
+        break;
+
+        case U10_1_DB:
+        set_gpio(SEC_624A_D0,1);
+        set_gpio(SEC_624A_D1,0);
+        set_gpio(SEC_624A_D2,1);
+        set_gpio(SEC_624A_D3,1);
+        set_gpio(SEC_624A_D4,1);
+        set_gpio(SEC_624A_D5,1);
+        break;
+
+        case U10_2_DB:
+        set_gpio(SEC_624A_D0,1);
+        set_gpio(SEC_624A_D1,1);
+        set_gpio(SEC_624A_D2,0);
+        set_gpio(SEC_624A_D3,1);
+        set_gpio(SEC_624A_D4,1);
+        set_gpio(SEC_624A_D5,1);
+        break;
+
+        case U10_4_DB:
+        set_gpio(SEC_624A_D0,1);
+        set_gpio(SEC_624A_D1,1);
+        set_gpio(SEC_624A_D2,1);
+        set_gpio(SEC_624A_D3,0);
+        set_gpio(SEC_624A_D4,1);
+        set_gpio(SEC_624A_D5,1);
+        break;
+
+        case U10_8_DB:
+        set_gpio(SEC_624A_D0,1);
+        set_gpio(SEC_624A_D1,1);
+        set_gpio(SEC_624A_D2,1);
+        set_gpio(SEC_624A_D3,1);
+        set_gpio(SEC_624A_D4,0);
+        set_gpio(SEC_624A_D5,1);
+        break;
+
+        case U10_16_DB:
+        set_gpio(SEC_624A_D0,1);
+        set_gpio(SEC_624A_D1,1);
+        set_gpio(SEC_624A_D2,1);
+        set_gpio(SEC_624A_D3,1);
+        set_gpio(SEC_624A_D4,1);
+        set_gpio(SEC_624A_D5,0);
+        break;
+
+        case U10_31_5_DB:
+        set_gpio(SEC_624A_D0,0);
+        set_gpio(SEC_624A_D1,0);
+        set_gpio(SEC_624A_D2,0);
+        set_gpio(SEC_624A_D3,0);
+        set_gpio(SEC_624A_D4,0);
+        set_gpio(SEC_624A_D5,0);
+        break;
+
+        case U2_0_DB:
+        set_gpio(PRI_624A_D0,0);
+        set_gpio(PRI_624A_D1,1);
+        set_gpio(PRI_624A_D2,1);
+        set_gpio(PRI_624A_D3,1);
+        set_gpio(PRI_624A_D4,1);
+        set_gpio(PRI_624A_D5,1);
+        break;
+
+        case U2_0_5_DB:
+        set_gpio(PRI_624A_D0,1);
+        set_gpio(PRI_624A_D1,0);
+        set_gpio(PRI_624A_D2,1);
+        set_gpio(PRI_624A_D3,1);
+        set_gpio(PRI_624A_D4,1);
+        set_gpio(PRI_624A_D5,1);
+        break;
+
+        case U2_1_DB:
+        set_gpio(PRI_624A_D0,1);
+        set_gpio(PRI_624A_D1,0);
+        set_gpio(PRI_624A_D2,1);
+        set_gpio(PRI_624A_D3,1);
+        set_gpio(PRI_624A_D4,1);
+        set_gpio(PRI_624A_D5,1);
+        break;
+
+        case U2_2_DB:
+        set_gpio(PRI_624A_D0,1);
+        set_gpio(PRI_624A_D1,1);
+        set_gpio(PRI_624A_D2,0);
+        set_gpio(PRI_624A_D3,1);
+        set_gpio(PRI_624A_D4,1);
+        set_gpio(PRI_624A_D5,1);
+        break;
+
+        case U2_4_DB:
+        set_gpio(PRI_624A_D0,1);
+        set_gpio(PRI_624A_D1,1);
+        set_gpio(PRI_624A_D2,1);
+        set_gpio(PRI_624A_D3,0);
+        set_gpio(PRI_624A_D4,1);
+        set_gpio(PRI_624A_D5,1);
+        break;
+
+        case U2_8_DB:
+        set_gpio(PRI_624A_D0,1);
+        set_gpio(PRI_624A_D1,1);
+        set_gpio(PRI_624A_D2,1);
+        set_gpio(PRI_624A_D3,1);
+        set_gpio(PRI_624A_D4,0);
+        set_gpio(PRI_624A_D5,1);
+        break;
+
+        case U2_16_DB:
+        set_gpio(PRI_624A_D0,1);
+        set_gpio(PRI_624A_D1,1);
+        set_gpio(PRI_624A_D2,1);
+        set_gpio(PRI_624A_D3,1);
+        set_gpio(PRI_624A_D4,1);
+        set_gpio(PRI_624A_D5,0);
+        break;
+
+        case U2_31_5_DB:
+        set_gpio(PRI_624A_D0,0);
+        set_gpio(PRI_624A_D1,0);
+        set_gpio(PRI_624A_D2,0);
+        set_gpio(PRI_624A_D3,0);
+        set_gpio(PRI_624A_D4,0);
+        set_gpio(PRI_624A_D5,0);
+        break;
+
+        default :
+        break;
+    }	
 }
 
 int set_gpio_low(int fd){
@@ -339,10 +338,10 @@ int init_gpio(int spidev_index){
 
 void init_control_gpio()
 {
-	int i;
-	for(i=0;i<24;i++)  //初始化24个IO口
+    int i;
+    for(i=0;i<24;i++)  //初始化24个IO口
     {
-	  init_gpio(i);	  
+        init_gpio(i);	  
     }	
 }
 

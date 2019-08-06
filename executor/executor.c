@@ -70,7 +70,6 @@ static  void  executor_fregment_scan(uint32_t fregment_num,uint8_t ch, work_mode
 
     /* we need assamble pakege for kernel */
     struct spectrum_header_param header_param;
-
     /* 
         Step 1: 扫描次数计算
         扫描次数 = (截止频率 - 开始频�?)/中频扫描带宽，这里中频扫描带宽认为和射频带宽一�?;
@@ -92,7 +91,7 @@ static  void  executor_fregment_scan(uint32_t fregment_num,uint8_t ch, work_mode
     if(c_freq % scan_bw){
         is_remainder = 1;
     }
-    printf_info("e_freq=%llu, s_freq=%llu\n", e_freq, s_freq);
+    printf_info("e_freq=%llu, s_freq=%llu, fftsize=%u\n", e_freq, s_freq, fftsize);
     printf_info("scan_bw =%u,scan_count=%d, is_remainder=%d\n", scan_bw, scan_count, is_remainder);
     executor_set_command(EX_RF_FREQ_CMD,  EX_RF_MID_BW, ch, &scan_bw);
     executor_set_command(EX_MID_FREQ_CMD, EX_BANDWITH,  ch, &scan_bw);
@@ -374,63 +373,6 @@ static int8_t executor_get_rf_command(uint8_t type, uint8_t ch, void *data)
     return 0;
 }
 
-static int8_t executor_set_rf_command(uint8_t type, uint8_t ch, void *data)
-{
-    switch(type)
-     {
-        case EX_RF_MODE_CODE:
-        {
-            printf_info("set rf bw: ch: %d, rf_mode_code:%d\n", ch, *(uint8_t *)data);
-            rf_set_interface(type, ch, data);
-            break;
-        }
-        case EX_RF_GAIN_MODE:
-        {
-            printf_info("set rf bw: ch: %d, gain_ctrl_method:%d\n", ch, *(uint8_t *)data);
-            rf_set_interface(type, ch, data);
-            break;
-        }
-        case EX_RF_MGC_GAIN:
-        {
-            rf_set_interface(type, ch, data);
-            printf_info("set mgc gain: ch: %d, mgc_gain_value:%d\n", ch, *(int8_t *)data);
-            
-            break;
-        }
-        case EX_RF_AGC_CTRL_TIME:
-        {
-            break;
-        }
-        case EX_RF_AGC_OUTPUT_AMP:
-        {
-            break;
-        }
-        case EX_RF_MID_FREQ:
-        {
-            break;
-        }
-        case EX_RF_MID_BW:
-        {
-            printf_info("set rf bw: ch: %d, bw:%u\n", ch, *(uint32_t *)data);
-            break;
-        }
-        case EX_RF_ANTENNA_SELECT:
-        {
-            rf_set_interface(type, ch, data);
-            break;
-        }
-        case EX_RF_ATTENUATION:
-        {
-            rf_set_interface(type, ch, data);
-            printf_info("set rf bw: ch: %d, attenuation:%d\n", ch, *(uint8_t *)data);
-            break;
-        }
-        default:
-            printf_err("not support type[%d]\n", type);
-     }
-    return 0;
-}
-
 
 int8_t executor_set_command(exec_cmd cmd, uint8_t type, uint8_t ch,  void *data)
 {
@@ -445,7 +387,8 @@ int8_t executor_set_command(exec_cmd cmd, uint8_t type, uint8_t ch,  void *data)
         }
         case EX_RF_FREQ_CMD:
         {
-            executor_set_rf_command(type,ch, data);
+            rf_set_interface(type, ch, data);
+            //executor_set_rf_command(type,ch, data);
             break;
         }
         case EX_ENABLE_CMD:
@@ -487,7 +430,8 @@ int8_t executor_get_command(exec_cmd cmd, uint8_t type, uint8_t ch,  void *data)
         }
         case EX_RF_FREQ_CMD:
         {
-            executor_get_rf_command(type, ch, data);
+            rf_read_interface(type, ch, data);
+            //executor_get_rf_command(type, ch, data);
             break;
         }
         case EX_NETWORK_CMD:

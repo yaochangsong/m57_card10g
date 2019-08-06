@@ -795,6 +795,10 @@ uint8_t rf_set_interface(uint8_t cmd,uint8_t ch,void *data){
 
     switch(cmd){
         case EX_RF_MID_FREQ :{
+            printf_debug("set mid freq %llu\n",*(uint64_t*)data);
+#ifdef RF_ADRV9009_IIO
+            adrv9009_iio_set_freq(*(uint64_t*)data);
+#endif
             break; 
         }
         case EX_RF_MID_BW :{

@@ -520,6 +520,14 @@ static int akt_execute_set_command(void)
                 io_set_enable_command(AUDIO_MODE_ENABLE, ch, 32768);
             break;
         }
+        case SPCTRUM_PARAM_SET_CMD:
+        {
+            uint64_t freq_hz;
+            freq_hz = *(uint64_t *)(header->buf);
+            printf_debug("spctrum freq hz=%lluHz\n", freq_hz);
+            executor_set_command(EX_RF_FREQ_CMD, EX_RF_MID_FREQ, ch, &freq_hz);
+            break;
+        }
         default:
           printf_err("not support class code[%x]\n",header->code);
           err_code = RET_CODE_PARAMTER_ERR;
@@ -788,7 +796,7 @@ int akt_assamble_response_data(uint8_t **buf, int err_code)
     response_data = &akt_get_response_data;
     header_len = sizeof(PDU_CFG_RSP_HEADER_ST);
     if(req_header->operation == SET_CMD_REQ){
-        header_len += 1; /*结构体struct response_set_data cid长度*/
+        //header_len += 1; /*结构体struct response_set_data cid长度*/
         response_data = &akt_set_response_data;
         response_data->header.code = req_header->code;
     }else if(req_header->operation == NET_CTRL_CMD){
@@ -920,6 +928,22 @@ uint32_t akt_assamble_spectrum_header_response_data(char *pbuf, void *config)
     ext_hdr->sample_rate = 0;
     ext_hdr->fft_len = header_param->fft_size;
     ext_hdr->freq_resolution = header_param->freq_resolution;
+    ext_hdr->frag_total_num = 1;
+    ext_hdr->frag_cur_num = 0;
+    ext_hdr->frag_data_len = (int32_t)((float)(ext_hdr->fft_len*2*100)/BAND_FACTOR);
+    printfi("--%d, %d, %d. %f, %f\n", (int32_t)((float)(ext_hdr->fft_len*2*100)/BAND_FACTOR), ext_hdr->frag_data_len, ((float)(ext_hdr->fft_len*2*100)/BAND_FACTOR), (float)(ext_hdr->fft_len)*2*100, BAND_FACTOR);
+#if 1
+    printfi("-----------------------------assamble_spectrum_header-----------------------------------\n");
+    printfi("dev_id[%d], cid[%d], work_mode[%d], gain_mode[%d]\n", 
+        ext_hdr->dev_id, ext_hdr->cid, ext_hdr->work_mode, ext_hdr->gain_mode);
+    printfi("gain[%d], duration[%llu], start_freq[%llu], cutoff_freq[%llu], center_freq[%llu]\n",
+         ext_hdr->gain, ext_hdr->duration, ext_hdr->start_freq, ext_hdr->cutoff_freq, ext_hdr->center_freq);
+    printfi("bandwidth[%u], sample_rate[%u], freq_resolution[%f], fft_len[%d], datum_total=%d\n",
+        ext_hdr->bandwidth,ext_hdr->sample_rate,ext_hdr->freq_resolution,ext_hdr->fft_len,ext_hdr->datum_total);
+    printfi("sn[%d], datum_type[%d],frag_data_len[%d]\n", 
+        ext_hdr->sn,ext_hdr->datum_type,ext_hdr->frag_data_len);
+    printfi("----------------------------------------------------------------------------------------\n");
+#endif
     pbuf = &param_buf;
     return sizeof(DATUM_SPECTRUM_HEADER_ST);
 }
@@ -941,6 +965,10 @@ uint32_t akt_assamble_pdu_header_response_data(char *head_buf, void *config)
     package_header->ex_type = SPECTRUM_DATUM;
     package_header->ex_len = sizeof(DATUM_SPECTRUM_HEADER_ST);
     package_header->data_len = header_param->data_len;
+    printfi("-----------------------------assamble_pdu_header----------------------------------------\n");
+    printfi("seqnum[%d], data_len[%d]\n",  package_header->seqnum, package_header->data_len);
+    printfi("----------------------------------------------------------------------------------------\n");
+    
     return sizeof(DATUM_PDU_HEADER_ST)+sizeof(DATUM_SPECTRUM_HEADER_ST);
 }
 

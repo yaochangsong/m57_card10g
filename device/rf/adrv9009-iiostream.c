@@ -216,7 +216,7 @@ void adrv9009_iio_init(void)
 	//signal(SIGINT, handle_sig);
 
 	// TRX stream config
-	trxcfg.lo_hz = GHZ(2.5);
+	trxcfg.lo_hz = GHZ(1);
 
 	printf_info("* Acquiring IIO context\n");
 	ASSERT((ctx = iio_create_default_context()) && "No context");
@@ -279,7 +279,7 @@ int16_t adrv9009_iio_set_freq(long long freq)
 	struct stream_cfg trxcfg;
 	trxcfg.lo_hz = freq;
 	printf_info("* Configuring ADRV9009 for streaming\n");
-	ASSERT(cfg_adrv9009_streaming_ch(ctx, &trxcfg,RX, 0) && "TRX device not found");
+	//ASSERT(cfg_adrv9009_streaming_ch(ctx, &trxcfg,RX, 0) && "TRX device not found");
 	return 0;
 }
 

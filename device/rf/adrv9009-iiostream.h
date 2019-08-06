@@ -6,7 +6,9 @@
 
 extern void adrv_9009_iio_work_thread(void *arg);
 extern void adrv9009_iio_init(void);
-extern int16_t * iio_read_rx_data(ssize_t *rsize);
+extern int16_t *iio_read_rx0_data(ssize_t *rsize);
+extern int16_t *iio_read_rx1_data(ssize_t *rsize);
+
 
 
 #endif

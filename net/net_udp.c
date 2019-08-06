@@ -17,6 +17,16 @@ static inline int udp_get_peer_port(struct net_udp_client *cl)
     return ntohs(cl->peer_addr.sin_port);
 }
 
+static void udp_free(struct net_udp_client *cl)
+{
+    printf_debug("udp_free\n");
+    if (cl) {
+        printf_debug("close\n");
+        list_del(&cl->list);
+        cl->srv->nclients--;
+        free(cl);
+    }
+}
 
 int udp_send_data_to_client(struct net_udp_client *client, uint8_t *data, uint32_t data_len)
 {    
@@ -26,7 +36,6 @@ int udp_send_data_to_client(struct net_udp_client *client, uint8_t *data, uint32
     sendto(client->srv->fd.fd, data, data_len, 0, (struct sockaddr *)&client->peer_addr, sizeof(struct sockaddr));
     return 0;
 }
-
 
 void udp_add_client(struct sockaddr_in *addr)
 {
@@ -63,29 +72,25 @@ int udp_send_data(uint8_t  *data, uint32_t data_len)
 {
     struct net_udp_server *srv = get_udp_server();
     struct net_udp_client *cl_list, *list_tmp;
-    
+    int ret = 0;
     list_for_each_entry_safe(cl_list, list_tmp, &srv->clients, list){
         printf_debug("get list:%s，port=%d\n",  cl_list->get_peer_addr(cl_list), cl_list->get_peer_port(cl_list));
-        udp_send_data_to_client(cl_list, data, data_len);
+        if(tcp_find_client(cl_list->peer_addr)){ /* client is connectting */
+            udp_send_data_to_client(cl_list, data, data_len);
+        }
+        else{/* client is unconnect */
+            printf_info("**Tcp Client is Exit!! Stop Send Data And free udp Clinet**\n");
+            udp_free(cl_list);
+            ret = -1;
+        } 
     }
+    return ret;
 }
 
 
 static void udp_ustream_write_cb(struct ustream *s, int bytes)
 {
      printf_debug("tcp_ustream_write_cb[%d]bytes\n",bytes);
-}
-
-static void udp_free(struct net_udp_client *cl)
-{
-    printf_debug("udp_free\n");
-    if (cl) {
-       // close(cl->sfd.fd.fd);
-        printf_debug("close\n");
-        list_del(&cl->list);
-        cl->srv->nclients--;
-        free(cl);
-    }
 }
 
 static void udp_read_cb(struct uloop_fd *fd, unsigned int events)

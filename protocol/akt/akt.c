@@ -523,9 +523,40 @@ static int akt_execute_set_command(void)
         case SPCTRUM_PARAM_SET_CMD:
         {
             uint64_t freq_hz;
+            int i;
+            FFT_SIGNAL_RESPINSE_ST resp_result;
+            fft_result *fft_result;
             freq_hz = *(uint64_t *)(header->buf);
             printf_debug("spctrum freq hz=%lluHz\n", freq_hz);
             executor_set_command(EX_RF_FREQ_CMD, EX_RF_MID_FREQ, ch, &freq_hz);
+            fft_result = spectrum_rw_fft_result(NULL);
+            if(fft_result == NULL){
+                err_code = RET_CODE_INTERNAL_ERR;
+                goto set_exit;
+            }
+            resp_result.signal_num = fft_result->signalsnumber;
+            for(i = 0; i < resp_result.signal_num; i++){
+                resp_result.signal_array[i].center_freq = fft_result->centfeqpoint[i];
+                resp_result.signal_array[i].bandwidth = fft_result->bandwidth[i];
+                resp_result.signal_array[i].power_level = fft_result->arvcentfreq[i];
+            }
+            resp_result.temperature = 50;
+            resp_result.humidity = 40;
+            memcpy(akt_set_response_data.payload_data, &resp_result, sizeof(FFT_SIGNAL_RESPINSE_ST));
+            akt_set_response_data.header.len = sizeof(FFT_SIGNAL_RESPINSE_ST); 
+            akt_set_response_data.header.operation = SET_CMD_RSP;
+            return err_code;
+        }
+        case SPCTRUM_CTRL_EN_CMD:
+        {
+            bool enable;
+            enable =  (bool)(*(uint8_t *)(header->buf[0]) & 0x01);
+            printf_debug("Spctrum Ctrl  %s\n", enable == false ? "Enable" : "Disable");
+            poal_config->enable.spec_analy_en = !enable;
+            INTERNEL_ENABLE_BIT_SET(poal_config->enable.bit_en,poal_config->enable);
+            printf_info("sub_ch bit_en=%x, spec_analy_en=%d\n", 
+            poal_config->sub_ch_enable.bit_en, poal_config->enable.spec_analy_en);
+            executor_set_enable_command(0);
             break;
         }
         default:
@@ -535,11 +566,12 @@ static int akt_execute_set_command(void)
     }
 set_exit:
     memcpy(akt_set_response_data.payload_data, &err_code, sizeof(err_code));
-    akt_set_response_data.header.len = sizeof(err_code)+1;
     akt_set_response_data.header.operation = SET_CMD_RSP;
     if(ch != -1){
         akt_set_response_data.cid = (uint8_t)ch;
+        akt_set_response_data.header.len = sizeof(err_code)+1;  /* data+ch */
     }else{
+        akt_set_response_data.header.len = sizeof(err_code);  /* data */
         akt_set_response_data.cid = 0;
     }
     printf_debug("set cid=%d\n", akt_set_response_data.cid);
@@ -930,8 +962,8 @@ uint32_t akt_assamble_spectrum_header_response_data(char *pbuf, void *config)
     ext_hdr->freq_resolution = header_param->freq_resolution;
     ext_hdr->frag_total_num = 1;
     ext_hdr->frag_cur_num = 0;
-    ext_hdr->frag_data_len = (int32_t)((float)(ext_hdr->fft_len*2*100)/BAND_FACTOR);
-    printfi("--%d, %d, %d. %f, %f\n", (int32_t)((float)(ext_hdr->fft_len*2*100)/BAND_FACTOR), ext_hdr->frag_data_len, ((float)(ext_hdr->fft_len*2*100)/BAND_FACTOR), (float)(ext_hdr->fft_len)*2*100, BAND_FACTOR);
+    ext_hdr->frag_data_len = (int16_t)((float)(ext_hdr->fft_len*2)/BAND_FACTOR);
+    printfi("--%d, %d, %d. %f, %f\n", (int16_t)((float)(ext_hdr->fft_len*2)/BAND_FACTOR), ext_hdr->frag_data_len, ((float)(ext_hdr->fft_len*2*100)/BAND_FACTOR), (float)(ext_hdr->fft_len)*2*100, BAND_FACTOR);
 #if 1
     printfi("-----------------------------assamble_spectrum_header-----------------------------------\n");
     printfi("dev_id[%d], cid[%d], work_mode[%d], gain_mode[%d]\n", 

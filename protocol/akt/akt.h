@@ -629,6 +629,21 @@ typedef struct _DEVICE_SIGNAL_PARAM_ST{
     uint8_t status;  /* 0: online 1: offline */
 }__attribute__ ((packed)) DEVICE_SIGNAL_PARAM_ST;
 
+typedef struct _FFT_SIGNAL_RESULT{
+    uint64_t center_freq;
+    uint64_t bandwidth;
+    float power_level;
+}__attribute__ ((packed)) FFT_SIGNAL_RESULT_ST;
+
+typedef struct _FFT_SIGNAL_RESPINSE{
+    uint16_t signal_num;
+    float temperature;
+    float humidity;
+    FFT_SIGNAL_RESULT_ST signal_array[MAX_SIGNAL_CHANNEL_NUM];
+}__attribute__ ((packed)) FFT_SIGNAL_RESPINSE_ST;
+
+
+
 /*************************************************************************/
 #define check_radio_channel(ch)   (ch > MAX_RADIO_CHANNEL_NUM ? 1 : 0) 
 #define check_sub_channel(sub_ch) (sub_ch > MAX_SIGNAL_CHANNEL_NUM ? 1 : 0) 

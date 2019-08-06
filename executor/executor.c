@@ -248,7 +248,7 @@ loop:   printf_info("######wait to deal work######\n");
                 case OAL_MULTI_ZONE_SCAN_MODE:
                 {   
                     printf_info("scan segment count: %d\n", poal_config->multi_freq_fregment_para[ch].freq_segment_cnt);
-                    if(poal_config->enable.psd_en){
+                    if(poal_config->enable.psd_en || poal_config->enable.spec_analy_en){
                         for(j = 0; j < poal_config->multi_freq_fregment_para[ch].freq_segment_cnt; j++){
                             printf_info("Segment Scan [%d]\n", j);
                             executor_fregment_scan(j, ch, poal_config->work_mode);

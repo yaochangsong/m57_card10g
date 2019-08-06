@@ -127,6 +127,30 @@ int read_file(void *pdata, unsigned int data_len, char *filename)
     return 0;
 }
 
+void* safe_malloc(size_t size) {
+
+    void* result = malloc(size);
+    if (result == NULL) {
+        fprintf(stderr, "safe_malloc: Memory full. Couldn't allocate %lu bytes.\n",
+                (unsigned long)size);
+        exit(EXIT_FAILURE);
+    }
+    /* This is all the debug-help we can do easily */
+    for (size_t i = 0; i < size; ++i)
+        ((char*)result)[i] = 'N';
+    
+    return result;
+}
+
+void* safe_calloc(size_t n, size_t size) {
+    void* result = calloc(n, size);
+    if (result == NULL) {
+        fprintf(stderr, "safe_calloc: Memory full. Couldn't allocate %lu bytes.\n",
+                (unsigned long)(n * size));
+    }
+    return result;
+}
+
 void safe_free(void *p)
 {
     if (p) {

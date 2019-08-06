@@ -114,7 +114,7 @@ struct sem_st{
     sem_t   kernel_sysn;        /* 频谱分析时，内核处理完数据后，异步消息通知应用层 */
 };
 
-/* 扫描模式下，需要向内核发送的工作模式参数信息，内核用作发送到客户端头信息 */
+/* 数据帧头部分变量参数结构体，数据上报时，内核用作发送到客户端 */
 struct spectrum_header_param{
     uint32_t bandwidth;
     uint32_t fft_size;

@@ -47,6 +47,7 @@
 #include "executor/executor.h"
 #include "executor/io.h"
 #include "executor/spectrum.h"
+#include "executor/fft.h"
 
 
 #include "device/uart/uart.h"

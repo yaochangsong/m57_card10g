@@ -334,11 +334,10 @@ int init_gpio(int spidev_index){
     return 0;
 }
 
-void init_control_gpio()
+void init_control_gpio() //初始化24个IO口
 {
     int i;
-    for(i=0;i<24;i++)  //初始化24个IO口
-    {
+    for(i=0;i<24;i++) { 
         init_gpio(i);	  
     }	
 }

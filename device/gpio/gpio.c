@@ -20,13 +20,11 @@ int set_gpio(int spidev_index,char val){
     return -1;
     }
 
-    if(val == 1)
-    {
+    if(val == 1){
         write(fd,"1", 2);
         printf("higt\n");
     }
-    else 
-    {
+    else {
         write(fd,"0", 2);
         printf("low\n");		
     }

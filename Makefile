@@ -41,7 +41,7 @@ $(target): $(objs)
 	for dir in $(SUB_LIB_DIRS); \
 	do $(MAKE) -C $$dir all || exit 1; \
 	done
-	$(CC) $(CFLAGS) $^ -o $@ $(LDFLAGS)  -lpthread
+	$(CC) $(CFLAGS) $^ -o $@ $(LDFLAGS)  -lpthread -lm
 	
 %.o:%c
 	$(CC) $(CFLAGS) -c $<

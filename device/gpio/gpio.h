@@ -37,36 +37,35 @@
 #define SEC_42422_V1     23
 
 typedef enum {
- HPF1 = 1,       //50-75M
- HPF2,	
- HPF3,
- HPF4,
- HPF5,
- HPF6,
- HPF7,
- HPF8,
- HPF9,
- HPF10
+     HPF1 = 1,       //50-75M
+     HPF2,	
+     HPF3,
+     HPF4,
+     HPF5,
+     HPF6,
+     HPF7,
+     HPF8,
+     HPF9,
+     HPF10
 }Channel_Rf;
 
 typedef enum {
-
- U10_0_DB,
- U10_0_5_DB,
- U10_1_DB,
- U10_2_DB,
- U10_4_DB,
- U10_8_DB,
- U10_16_DB,
- U10_31_5_DB,
- U2_0_DB,
- U2_0_5_DB,
- U2_1_DB,
- U2_2_DB,
- U2_4_DB,
- U2_8_DB,
- U2_16_DB,
- U2_31_5_DB
+     U10_0_DB,
+     U10_0_5_DB,
+     U10_1_DB,
+     U10_2_DB,
+     U10_4_DB,
+     U10_8_DB,
+     U10_16_DB,
+     U10_31_5_DB,
+     U2_0_DB,
+     U2_0_5_DB,
+     U2_1_DB,
+     U2_2_DB,
+     U2_4_DB,
+     U2_8_DB,
+     U2_16_DB,
+     U2_31_5_DB
 }Attenuation_Rf;
 
 int gpio_init(int spidev_index);

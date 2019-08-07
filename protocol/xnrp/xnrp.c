@@ -13,6 +13,8 @@
 *  Initial revision.
 ******************************************************************************/
 #include "config.h"
+#include "xnrp-xml.h"
+
 
 struct xnrp_header xnrp_data;
 struct xnrp_header xnrp_response_data;
@@ -38,12 +40,18 @@ static uint8_t *xnrp_strstr(const uint8_t *s1, const uint8_t *s2, int len)
         return s1;   
 } 
 
-static int xnrp_execute_set_command(void)
+
+//static int xnrp_execute_set_command(void)
+int xnrp_execute_set_command(void)
+
 {
+    printf_debug("xnrp_execute_set_command()\n");
     struct xnrp_header *header;
+    //struct xnrp_header xnrp_data;
+    //xnrp_data.class_code=CLASS_CODE_NET;
+  //  xnrp_data.business_code=B_CODE_ALL_NET;
     int err_code;
     header = &xnrp_data;
-
     err_code = RET_CODE_SUCCSESS;
     
     switch (header->class_code)
@@ -54,6 +62,17 @@ static int xnrp_execute_set_command(void)
         }
         case CLASS_CODE_NET:
         {
+            switch (header->business_code)
+            {
+                case B_CODE_ALL_NET:
+                {
+                    xnrp_xml_parse_data(header->class_code, header->business_code, header->payload, header->payload_len);
+                    config_save_batch(EX_NETWORK_CMD, NULL, config_get_config());
+                    break;
+                }
+                default:
+                    printf_err("invalid bussiness code[%d]", header->business_code);
+            }
             break;
         }
         case CLASS_CODE_WORK_MODE:
@@ -67,8 +86,10 @@ static int xnrp_execute_set_command(void)
                     break;
                 }
                 case B_CODE_WK_MODE_SUB_CH_DEC:
+                    xnrp_xml_parse_data(header->class_code, header->business_code, header->payload, header->payload_len);
                     break;
                 case B_CODE_WK_MODE_MULTI_FRQ_FREGMENT:
+                    xnrp_xml_parse_data(header->class_code, header->business_code, header->payload, header->payload_len);
                     break;
                 default:
                     printf_err("invalid bussiness code[%d]", header->business_code);
@@ -77,14 +98,126 @@ static int xnrp_execute_set_command(void)
         }
         case CLASS_CODE_MID_FRQ:
         {
+            switch(header->business_code)
+            {
+                case B_CODE_MID_FRQ_DEC_METHOD:
+                {
+                    xnrp_xml_parse_data(header->class_code, header->business_code, header->payload, header->payload_len);
+                    config_save_batch(EX_MID_FREQ_CMD, EX_DEC_BW, config_get_config());
+                    break;
+
+                }
+                case B_CODE_MID_FRQ_MUTE_SW:
+                {
+                    xnrp_xml_parse_data(header->class_code, header->business_code, header->payload, header->payload_len);
+                    config_save_batch(EX_MID_FREQ_CMD, EX_MUTE_SW, config_get_config());
+                    break;
+
+
+                }
+                case B_CODE_MID_FRQ_MUTE_THRE:
+                {
+                    xnrp_xml_parse_data(header->class_code, header->business_code, header->payload, header->payload_len);
+                    config_save_batch(EX_MID_FREQ_CMD, EX_MUTE_THRE, config_get_config());
+                    break;
+
+                }
+                case B_CODE_MID_FRQ_AU_SAMPLE_RATE:
+                {
+                    xnrp_xml_parse_data(header->class_code, header->business_code, header->payload, header->payload_len);
+                    break;
+                }
+                default :
+                  printf_err("invalid bussiness code[%d]", header->business_code);
+
+            }
             break;
         }
         case CLASS_CODE_RF:
         {
+            switch(header->business_code)
+            {
+                case B_CODE_RF_FRQ_PARA:
+                {
+                    xnrp_xml_parse_data(header->class_code, header->business_code, header->payload, header->payload_len);
+                    config_save_batch(EX_RF_FREQ_CMD, EX_RF_MODE_CODE, config_get_config());
+                    config_save_batch(EX_RF_FREQ_CMD, EX_RF_GAIN_MODE, config_get_config());
+                    config_save_batch(EX_RF_FREQ_CMD, EX_RF_AGC_CTRL_TIME, config_get_config());
+                    config_save_batch(EX_RF_FREQ_CMD, EX_RF_AGC_OUTPUT_AMP, config_get_config());
+                    config_save_batch(EX_RF_FREQ_CMD, EX_RF_MID_BW, config_get_config());
+                    break;
+
+                }
+                case B_CODE_RF_FRQ_ANTENASELEC:
+                {
+                    xnrp_xml_parse_data(header->class_code, header->business_code, header->payload, header->payload_len);
+                    //config_save_batch(EX_RF_FREQ_CMD, EX_MUTE_SW, config_get_config());//没有这个选项
+                    break;
+
+
+                }
+                case B_CODE_RF_FRQ_OUTPUT_ATTENUATION:
+                {
+                    xnrp_xml_parse_data(header->class_code, header->business_code, header->payload, header->payload_len);
+                    //config_save_batch(EX_RF_FREQ_CMD, EX_RF_ATTENUATION, config_get_config());//xml没有
+                    break;
+
+                }
+                case B_CODE_RF_FRQ_INTPUT_ATTENUATION:
+                {
+                    xnrp_xml_parse_data(header->class_code, header->business_code, header->payload, header->payload_len);
+                    //config_save_batch(EX_RF_FREQ_CMD, EX_RF_ATTENUATION, config_get_config());//xml没有
+                    break;
+                }
+                case B_CODE_RF_FRQ_INTPUT_BANDWIDTH:
+                {
+                    xnrp_xml_parse_data(header->class_code, header->business_code, header->payload, header->payload_len);
+                    config_save_batch(EX_RF_FREQ_CMD, EX_RF_MID_BW, config_get_config());
+                    break;
+                }
+
+                default :
+                  printf_err("invalid bussiness code[%d]", header->business_code);
+
+            }
             break;
         }
         case CLASS_CODE_CONTROL:
         {
+            switch(header->business_code)
+            {
+                case B_CODE_CONTROL_CONTR_DATA_OUTPUT_ENABLE:
+                {
+                    xnrp_xml_parse_data(header->class_code, header->business_code, header->payload, header->payload_len);
+                    config_save_batch(EX_RF_FREQ_CMD, PSD_MODE_ENABLE, config_get_config());
+                    config_save_batch(EX_RF_FREQ_CMD, AUDIO_MODE_ENABLE, config_get_config());
+                    config_save_batch(EX_RF_FREQ_CMD, IQ_MODE_ENABLE, config_get_config());
+                    config_save_batch(EX_RF_FREQ_CMD, SPCTRUM_MODE_ANALYSIS_ENABLE, config_get_config());
+                    config_save_batch(EX_RF_FREQ_CMD, DIRECTION_MODE_ENABLE, config_get_config());
+                    break;
+                }
+                case B_CODE_CONTROL_CONTR_CALIBRATION_CONTR:
+                {
+                    xnrp_xml_parse_data(header->class_code, header->business_code, header->payload, header->payload_len);
+                    break;
+                }
+                case B_CODE_CONTROL_CONTR_LOCAL_REMOTE:
+                {
+                    xnrp_xml_parse_data(header->class_code, header->business_code, header->payload, header->payload_len);
+                    break;
+                }
+                case B_CODE_CONTROL_CONTR_CHANNEL_POWER:
+                {
+                    xnrp_xml_parse_data(header->class_code, header->business_code, header->payload, header->payload_len);
+                    break;
+                }
+                case B_CODE_CONTROL_CONTR_TIME_CONTR:
+                {
+                    xnrp_xml_parse_data(header->class_code, header->business_code, header->payload, header->payload_len);
+                    break;
+                }
+
+            }
             break;
         }
         case CLASS_CODE_STATUS:
@@ -112,71 +245,6 @@ static int xnrp_execute_set_command(void)
     return err_code;
 }
 
-static int xnrp_execute_get_command(void)
-{
-    struct xnrp_header *header;
-    struct xnrp_header *resp_header;
-    int err_code;
-    header = &xnrp_data;
-    resp_header = &xnrp_response_data;
-
-    err_code = RET_CODE_SUCCSESS;
-    
-    switch (header->class_code)
-    {
-        case CLASS_CODE_REGISTER:
-        {
-            printf_debug("register\n");
-        }
-        case CLASS_CODE_NET:
-        {
-            struct xnrp_net_paramter value;
-            value.ipaddress.s_addr = htonl(1255577);
-            memcpy(resp_header->payload, &value, sizeof(struct xnrp_net_paramter));
-            resp_header->payload_len = sizeof(struct xnrp_net_paramter);
-            break;
-        }
-        case CLASS_CODE_WORK_MODE:
-        {
-            break;
-        }
-        case CLASS_CODE_MID_FRQ:
-        {
-            break;
-        }
-        case CLASS_CODE_RF:
-        {
-            break;
-        }
-        case CLASS_CODE_CONTROL:
-        {
-            break;
-        }
-        case CLASS_CODE_STATUS:
-        {
-            break;
-        }
-        case CLASS_CODE_JOURNAL:
-        {
-            break;
-        }
-        case CLASS_CODE_FILE:
-        {
-            break;
-        }
-        case CLASS_CODE_HEARTBEAT:
-        {
-            break;
-        }
-        default:
-            printf_err("error class code[%d]\n",header->class_code);
-            err_code = RET_CODE_PARAMTER_ERR;
-            break;
-    }
-    return err_code;
-}
-
-
 bool xnrp_execute_method(int *code)
 {
     struct xnrp_header *header;
@@ -193,7 +261,7 @@ bool xnrp_execute_method(int *code)
         }
         case METHOD_GET_COMMAND:
         {
-            err_code = xnrp_execute_get_command();
+            err_code = xnrp_xml_execute_get_command(header->class_code,header->business_code,header->payload,header->payload_len);
             break;
         }
         case METHOD_RESPONSE_COMMAND:
@@ -220,6 +288,8 @@ bool xnrp_execute_method(int *code)
 
 bool xnrp_parse_header(const uint8_t *data, int len, uint8_t **payload, int *err_code)
 {
+
+    printf_debug("=================================xnrp_parse_header\n");
     uint8_t *val;
     struct xnrp_header *header;
     header = &xnrp_data;

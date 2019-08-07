@@ -427,9 +427,17 @@ void* dao_conf_parse_batch(uint8_t classcode, uint8_t methodcode, char *data)
     
                 if(methodcode==B_CODE_ALL_NET)
                 {
+                     printf_debug("调试1\n");
                 
                     node=mxmlFindElement(tree,tree,"mac", NULL, NULL, MXML_DESCEND);
+                    printf_debug("调试2\n");
+                    if( mxmlGetText(node, NULL)==NULL)
+                    {
+                        printf_warn("The XML you want to parse is empty, please check your Settings or XML file\n");
+                        break;
+                    }
                     sprintf(temp,"%s",mxmlGetText(node, NULL));
+                    printf_debug("调试4\n");
                     for(i=0;i<30;i++)
                     {
                         if(temp[i]!=':')
@@ -443,7 +451,7 @@ void* dao_conf_parse_batch(uint8_t classcode, uint8_t methodcode, char *data)
                     {
                        buff[0] = mactemp[k++];
                        buff[1] = mactemp[k++];
-                       printf_debug("buff :%s\n",buff);
+                       //printf_debug("buff :%s\n",buff);
 
                        netpara.mac[i] = strtol(buff, NULL, 16);
         
@@ -462,7 +470,7 @@ void* dao_conf_parse_batch(uint8_t classcode, uint8_t methodcode, char *data)
                     j=0;k=0;
                     
                     node=mxmlFindElement(tree,tree,"gateway", NULL, NULL, MXML_DESCEND);
-                    printf_debug("解析gatewaysssssssssssssss = %s\n",mxmlGetText(node, NULL));
+                    printf_debug("解析gateway = %s\n",mxmlGetText(node, NULL));
 
                     
                         

@@ -1,12 +1,5 @@
-
-
-#include <stdio.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include <string.h>
-#include <errno.h>
-#include <fcntl.h>
-#include <signal.h>
+#ifndef __GPIO_H
+#define __GPIO_H
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -43,49 +36,41 @@
 #define SEC_H_42442_V2   22
 #define SEC_42422_V1     23
 
+typedef enum {
+ HPF1 = 1,       //50-75M
+ HPF2,	
+ HPF3,
+ HPF4,
+ HPF5,
+ HPF6,
+ HPF7,
+ HPF8,
+ HPF9,
+ HPF10
+}Channel_Rf;
 
 typedef enum {
-    U9_RFC_OUT1 = 1,
-    U9_RFC_OUT2,	
-    U7_RF1_11,
-    U7_RF1_12,
-    U7_RF1_13,
-    U7_RF1_14,
-    U5_RF1_1,
-    U5_RF1_2,
-    U5_RF1_3,
-    U5_RF1_4,
-    U1_RFC_IN1,
-    U1_RFC_IN2,
-    U6_RF2_1,
-    U6_RF2_2,
-    U6_RF2_3,
-    U6_RF2_4,
-    U8_RF2_11,
-    U8_RF2_12,
-    U8_RF2_13,
-    U8_RF2_14,
 
-    U10_0_DB,
-    U10_0_5_DB,
-    U10_1_DB,
-    U10_2_DB,
-    U10_4_DB,
-    U10_8_DB,
-    U10_16_DB,
-    U10_31_5_DB,
+ U10_0_DB,
+ U10_0_5_DB,
+ U10_1_DB,
+ U10_2_DB,
+ U10_4_DB,
+ U10_8_DB,
+ U10_16_DB,
+ U10_31_5_DB,
+ U2_0_DB,
+ U2_0_5_DB,
+ U2_1_DB,
+ U2_2_DB,
+ U2_4_DB,
+ U2_8_DB,
+ U2_16_DB,
+ U2_31_5_DB
+}Attenuation_Rf;
 
-    U2_0_DB,
-    U2_0_5_DB,
-    U2_1_DB,
-    U2_2_DB,
-    U2_4_DB,
-    U2_8_DB,
-    U2_16_DB,
-    U2_31_5_DB,
-}cmd_gpio;
-
-int init_gpio(int spidev_index);
+int gpio_init(int spidev_index);
 int set_gpio(int spidev_index,char val);
 void init_control_gpio();
-void control_rf(cmd_gpio cmd);
+void control_rf(Channel_Rf channel_val,Attenuation_Rf attenuation_val);
+#endif

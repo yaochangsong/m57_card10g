@@ -7,7 +7,7 @@
 
 #define SPECTRUM_START_FLAG 0x7E7E
 
-struct spectrum_t{
+struct spectrum_st{
     long long freq_hz; 
     long long bw_hz;
     uint32_t level;

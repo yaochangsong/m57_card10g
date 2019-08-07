@@ -688,7 +688,7 @@ extern bool akt_parse_header(const uint8_t *data, int len, uint8_t **payload, in
 extern bool akt_parse_data(const uint8_t *payload, int *code);
 extern bool akt_execute_method(int *code);
 extern int akt_assamble_response_data(uint8_t **buf, int err_code);
-extern uint32_t akt_assamble_pdu_header_response_data(char *head_buf, void *config);
-extern uint32_t akt_assamble_spectrum_header_response_data(char *pbuf, void *config);
+extern uint8_t *akt_assamble_data_extend_frame_header_data(uint32_t *len, void *config);
+extern uint8_t *akt_assamble_data_frame_header_data(uint32_t *len, void *config);
 #endif
 

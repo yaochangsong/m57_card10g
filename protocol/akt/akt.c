@@ -933,12 +933,21 @@ int akt_assamble_error_response_data(uint8_t **buf, int err_code)
     return len;
 }
 
-uint32_t akt_assamble_spectrum_header_response_data(char *pbuf, void *config)
+/******************************************************************************
+* FUNCTION:
+*     akt_assamble_data_frame_header_data
+*
+* DESCRIPTION:
+*     assamble data(FFT/IQ...) frame header
+* PARAMETERS
+* RETURNS
+******************************************************************************/
+uint8_t * akt_assamble_data_frame_header_data(uint32_t *len, void *config)
 {
     struct poal_config *poal_config = &(config_get_config()->oal_config);
     DATUM_SPECTRUM_HEADER_ST *ext_hdr = NULL;
-    static char param_buf[sizeof(DATUM_PDU_HEADER_ST)+sizeof(DATUM_SPECTRUM_HEADER_ST)];
-    printf_debug("akt_assamble_spectrum_header_response_data\n");
+    static uint8_t param_buf[sizeof(DATUM_PDU_HEADER_ST)+sizeof(DATUM_SPECTRUM_HEADER_ST)];
+    printf_debug("akt_assamble_data_frame_header_data\n");
     ext_hdr = (DATUM_SPECTRUM_HEADER_ST*)(&param_buf + sizeof(DATUM_PDU_HEADER_ST));
     ext_hdr->dev_id = akt_get_device_id();
     
@@ -963,7 +972,6 @@ uint32_t akt_assamble_spectrum_header_response_data(char *pbuf, void *config)
     ext_hdr->frag_total_num = 1;
     ext_hdr->frag_cur_num = 0;
     ext_hdr->frag_data_len = (int16_t)((float)(ext_hdr->fft_len*2)/BAND_FACTOR);
-    printfi("--%d, %d, %d. %f, %f\n", (int16_t)((float)(ext_hdr->fft_len*2)/BAND_FACTOR), ext_hdr->frag_data_len, ((float)(ext_hdr->fft_len*2*100)/BAND_FACTOR), (float)(ext_hdr->fft_len)*2*100, BAND_FACTOR);
 #if 1
     printfi("-----------------------------assamble_spectrum_header-----------------------------------\n");
     printfi("dev_id[%d], cid[%d], work_mode[%d], gain_mode[%d]\n", 
@@ -976,19 +984,30 @@ uint32_t akt_assamble_spectrum_header_response_data(char *pbuf, void *config)
         ext_hdr->sn,ext_hdr->datum_type,ext_hdr->frag_data_len);
     printfi("----------------------------------------------------------------------------------------\n");
 #endif
-    pbuf = &param_buf;
-    return sizeof(DATUM_SPECTRUM_HEADER_ST);
+    *len = sizeof(DATUM_SPECTRUM_HEADER_ST);
+    return &param_buf;
 }
 
-uint32_t akt_assamble_pdu_header_response_data(char *head_buf, void *config)
+/******************************************************************************
+* FUNCTION:
+*     akt_assamble_data_extend_frame_header_data
+*
+* DESCRIPTION:
+*     assamble data(FFT/IQ...)extend frame header
+* PARAMETERS: 
+*       @len: return total header len(data header+extend data header)
+* RETURNS
+******************************************************************************/
+uint8_t *akt_assamble_data_extend_frame_header_data(uint32_t *len, void *config)
 {
     DATUM_PDU_HEADER_ST *package_header;
     static unsigned short seq_num[MAX_RADIO_CHANNEL_NUM] = {0};
     struct spectrum_header_param *header_param;
+    uint8_t *head_buf;
+    uint32_t data_header_len;
+        
     header_param = (struct spectrum_header_param *)config;
-    printf_debug("akt_assamble_pdu_header_response_data\n");
-    akt_assamble_spectrum_header_response_data(head_buf, config);
-    
+    head_buf = akt_assamble_data_frame_header_data(&data_header_len, config);
     package_header = (DATUM_PDU_HEADER_ST*)head_buf;
     package_header->syn_flag = AKT_START_FLAG;
     package_header->type = SPECTRUM_DATUM_FLOAT;
@@ -1000,8 +1019,8 @@ uint32_t akt_assamble_pdu_header_response_data(char *head_buf, void *config)
     printfi("-----------------------------assamble_pdu_header----------------------------------------\n");
     printfi("seqnum[%d], data_len[%d]\n",  package_header->seqnum, package_header->data_len);
     printfi("----------------------------------------------------------------------------------------\n");
-    
-    return sizeof(DATUM_PDU_HEADER_ST)+sizeof(DATUM_SPECTRUM_HEADER_ST);
+    *len = sizeof(DATUM_PDU_HEADER_ST) + data_header_len;
+    return head_buf;
 }
 
 

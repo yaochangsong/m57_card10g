@@ -48,9 +48,9 @@ typedef struct {
 void fft_init(void);
 void fft_exit(void);
 void fft_iqdata_handle(int bd,short *data,int fftsize ,int datalen);
-unsigned int fft_get_data(float **data);
+//unsigned int fft_get_data(float **data);
 fft_result *fft_get_result(void);
-
+float *fft_get_data(uint32_t *len);
 
 void xulitest(void);
 

@@ -175,7 +175,7 @@ struct poal_config{
     struct rf_para_st rf_para[MAX_RADIO_CHANNEL_NUM];
     struct network_st network;
     struct control_st ctrl_para;
-    uint32_t (*assamble_response_data)(char *, void *);
+    uint8_t (*assamble_response_data)(uint32_t *, void *);
     void (*send_active)(void *);
 }__attribute__ ((packed));
 

@@ -402,8 +402,9 @@ int8_t executor_set_command(exec_cmd cmd, uint8_t type, uint8_t ch,  void *data)
         case EX_WORK_MODE_CMD:
         {
             char *pbuf= NULL;
+            uint32_t len;
             printf_info("set work mode[%d]\n", type);
-            poal_config->assamble_response_data(pbuf, data);
+            pbuf = poal_config->assamble_response_data(&len, data);
             io_set_work_mode_command((void *)pbuf);
             break;
         }

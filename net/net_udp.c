@@ -75,7 +75,8 @@ int udp_send_data(uint8_t  *data, uint32_t data_len)
     int ret = 0;
     list_for_each_entry_safe(cl_list, list_tmp, &srv->clients, list){
         printf_debug("get list:%s，port=%d\n",  cl_list->get_peer_addr(cl_list), cl_list->get_peer_port(cl_list));
-        if(tcp_find_client(cl_list->peer_addr)){ /* client is connectting */
+        if(tcp_find_client(&cl_list->peer_addr)){ /* client is connectting */
+            printf_debug("send data to %s:%d\n",  cl_list->get_peer_addr(cl_list), cl_list->get_peer_port(cl_list));
             udp_send_data_to_client(cl_list, data, data_len);
         }
         else{/* client is unconnect */

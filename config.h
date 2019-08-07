@@ -35,6 +35,8 @@
 #include "protocol/http/client.h"
 #include "protocol/akt/akt.h"
 #include "protocol/xnrp/xnrp.h"
+#include "protocol/xnrp/xnrp-xml.h"
+
 #include "protocol/oal/poal.h"
 
 #include "net/net_socket.h"
@@ -53,6 +55,7 @@
 #include "device/lcd/ss_k600.h"
 #include "device/lcd/lcd.h"
 #include "dao/oal/dao_conf.h"
+
 
 
 

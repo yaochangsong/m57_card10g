@@ -204,6 +204,7 @@ void spectrum_init(void)
     fft_init();
     printf_info("fft_init\n");
     LOCK_SP_DATA();
+    ps = &_spectrum;
     ps->is_wait_deal = false;/* fft data not vaild to deal */
     UNLOCK_SP_DATA();
 #if 0

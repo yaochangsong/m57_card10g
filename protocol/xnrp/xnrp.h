@@ -130,8 +130,6 @@ struct xnrp_net_paramter {
     uint16_t port;
 }__attribute__ ((packed));
 
-extern struct xnrp_header xnrp_data;
-extern struct xnrp_header xnrp_response_data;
 
 
 

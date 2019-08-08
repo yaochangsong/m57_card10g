@@ -47,6 +47,9 @@ int main(int argc, char **argv)
     uloop_init();
     uart_init();
     gpio_init_control();
+    char channel;
+    channel = atoi(argv[1]);
+    gpio_control_rf(channel,U10_0_DB,U2_0_DB);
 #if (UART_LCD_SUPPORT == 1)
     init_lcd();
 #endif

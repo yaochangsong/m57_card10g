@@ -67,28 +67,28 @@ static bool stop;
 /* cleanup and exit */
 static void iio_shutdown(void)
 {
-	printf("* Destroying buffers\n");
+	printf_info("* Destroying buffers\n");
 #if (ADRV_9009_IIO_TX_EN == 1)
 	if (txbuf) { iio_buffer_destroy(txbuf); }
-	printf("* Disabling streaming channels\n");
+	printf_info("* Disabling streaming channels\n");
 	if (tx0_i) { iio_channel_disable(tx0_i); }
 	if (tx0_q) { iio_channel_disable(tx0_q); }
 #endif
 
 #if (ADRV_9009_IIO_RX_EN == 1)
 	if (rxbuf) { iio_buffer_destroy(rxbuf); }
-	printf("* Disabling streaming channels\n");
+	printf_info("* Disabling streaming channels\n");
 	if (rx0_i) { iio_channel_disable(rx0_i); }
 	if (rx0_q) { iio_channel_disable(rx0_q); }
 #endif
-	printf("* Destroying context\n");
+	printf_info("* Destroying context\n");
 	if (ctx) { iio_context_destroy(ctx); }
 	exit(0);
 }
 
 static void handle_sig(int sig)
 {
-	printf("Waiting for process to finish...\n");
+	printf_info("Waiting for process to finish...\n");
 	stop = true;
 }
 
@@ -193,7 +193,7 @@ bool cfg_adrv9009_streaming_ch(struct iio_context *ctx, struct stream_cfg *cfg, 
 	rd_ch_lli(chn, "sampling_frequency");
 
 	// Configure LO channel
-	printf("* Acquiring ADRV9009 TRX lo channel\n");
+	printf_info("* Acquiring ADRV9009 TRX lo channel\n");
 	if (!get_lo_chan(ctx, &chn)) { return false; }
 	wr_ch_lli(chn, "frequency", cfg->lo_hz);
 	return true;
@@ -236,7 +236,7 @@ void adrv9009_iio_init(void)
 	ASSERT(cfg_adrv9009_streaming_ch(ctx, &trxcfg,RX, 0) && "TRX device not found");
 #endif
 
-	printf("* Initializing ADRV9009 IIO streaming channels\n");
+	printf_info("* Initializing ADRV9009 IIO streaming channels\n");
 #if (ADRV_9009_IIO_RX_EN == 1)
 	ASSERT(get_adrv9009_stream_ch(ctx, RX, rx, 0, 'i', &rx0_i) && "RX chan i not found");
 	ASSERT(get_adrv9009_stream_ch(ctx, RX, rx, 0, 'q', &rx0_q) && "RX chan q not found");
@@ -246,7 +246,7 @@ void adrv9009_iio_init(void)
 	ASSERT(get_adrv9009_stream_ch(ctx, TX, tx, 1, 0, &tx0_q) && "TX chan q not found");
 #endif
 
-	printf("* Enabling IIO streaming channels\n");
+	printf_info("* Enabling IIO streaming channels\n");
 #if (ADRV_9009_IIO_RX_EN == 1)
 	iio_channel_enable(rx0_i);
 	iio_channel_enable(rx0_q);
@@ -256,7 +256,7 @@ void adrv9009_iio_init(void)
 	iio_channel_enable(tx0_q);
 #endif
 
-	printf("* Creating non-cyclic IIO buffers with 1 MiS\n");
+	printf_info("* Creating non-cyclic IIO buffers with 1 MiS\n");
 #if (ADRV_9009_IIO_RX_EN == 1)
 	rxbuf = iio_device_create_buffer(rx, 1024*1024, false);
 	if (!rxbuf) {
@@ -299,7 +299,7 @@ ssize_t iio_get_rx_buf_size(void)
 	ssize_t nbytes_rx;
 	printf_info("* iio_read_rx_buffer size and refill rxbuf data \n");
 	nbytes_rx = iio_buffer_refill(rxbuf);
-	if (nbytes_rx < 0) { printf("Error refilling buf %d\n",(int) nbytes_rx); iio_shutdown(); }
+	if (nbytes_rx < 0) { printf_info("Error refilling buf %d\n",(int) nbytes_rx); iio_shutdown(); }
 	return nbytes_rx;
 }
 

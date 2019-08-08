@@ -18,9 +18,7 @@
 static void usage(const char *prog)
 {
     fprintf(stderr, "Usage: %s [option]\n"
-        "          -p port  # Default port is 8080\n"
-        "          -s       # SSl on\n"
-        "          -v       # verbose\n", prog);
+        "          -d debug_level  # [3(LOG_ERR),4(LOG_WARNING),5(LOG_NOTICE),6(LOG_INFO),7(LOG_DEBUG),-1(OFF)]\n", prog);
     exit(1);
 }
 
@@ -40,9 +38,27 @@ static void usage(const char *prog)
 ******************************************************************************/
 int main(int argc, char **argv)
 {
-    log_init(log_debug);
+    int debug_level = -1;
+    int opt;
+    while ((opt = getopt(argc, argv, "d:")) != -1) {
+        switch (opt)
+        {
+        case 'd':
+            printf("optarg=%s\n", optarg);
+            debug_level = atoi(optarg);
+            if((debug_level > log_debug) ||
+              ((debug_level != log_off) && (debug_level < log_err))){
+                printf("NOT SUPPORT DEBUG LEVEL:%d\n", debug_level);
+                usage(argv[0]);
+                exit(-1);
+            }
+            break;
+        default: /* '?' */
+            usage(argv[0]);
+        }
+    }
+    log_init(debug_level);
     printf_note("VERSION:%s\n",SPCTRUM_VERSION_STRING);
-    
     config_init();
     uloop_init();
 #if (UART_SUPPORT == 1)

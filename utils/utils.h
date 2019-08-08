@@ -16,7 +16,11 @@
         printf("[%s(%d)]Elapsed Time: SecTime = %lds, UsecTime = %ldus!\n", __FUNCTION__, __LINE__, secTime, usecTime); \
 }while(0)
 
-
+#define FLOAT_TO_SHORT(f, s, n)  do{                            \
+       float *_tf = f; signed short *_ts = s; int _n = n;       \ 
+                         while(_n>0){                           \
+                     *_ts++ = (signed short)*_tf++; _n--;              \
+    }}while(0)
 
 extern char *safe_strdup(const char *s);
 extern uint16_t crc16_caculate(uint8_t *pchMsg, uint16_t wDataLen);

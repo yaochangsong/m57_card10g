@@ -137,7 +137,7 @@ void* safe_malloc(size_t size) {
     }
     /* This is all the debug-help we can do easily */
     for (size_t i = 0; i < size; ++i)
-        ((char*)result)[i] = 'N';
+        ((char*)result)[i] = 0;
     
     return result;
 }

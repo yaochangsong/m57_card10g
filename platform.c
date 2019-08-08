@@ -42,9 +42,11 @@ int main(int argc, char **argv)
 {
     log_init(log_info);
     printf_note("VERSION:%s\n",SPCTRUM_VERSION_STRING);
+    
     config_init();
     uloop_init();
     uart_init();
+    gpio_init_control();
 #if (UART_LCD_SUPPORT == 1)
     init_lcd();
 #endif

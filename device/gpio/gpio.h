@@ -26,8 +26,8 @@
 #define SEC_42422_LS     18
 #define PRI_42422_LS     19
 #define PRI_42422_V1     20
-#define SEC_H_42442_V1   21
-#define SEC_H_42442_V2   22
+#define SEC_H_42442_V2   21
+#define SEC_H_42442_V1   22
 #define SEC_42422_V1     23
 
 typedef enum {
@@ -38,9 +38,7 @@ typedef enum {
      HPF5,
      HPF6,
      HPF7,
-     HPF8,
-     HPF9,
-     HPF10
+     HPF8
 }Channel_Rf;
 
 typedef enum {
@@ -52,6 +50,10 @@ typedef enum {
      U10_8_DB,
      U10_16_DB,
      U10_31_5_DB,
+
+}Attenuation1_Rf;
+
+typedef enum {
      U2_0_DB,
      U2_0_5_DB,
      U2_1_DB,
@@ -60,10 +62,10 @@ typedef enum {
      U2_8_DB,
      U2_16_DB,
      U2_31_5_DB
-}Attenuation_Rf;
+}Attenuation2_Rf;
 
 int gpio_init(int spidev_index);
 int gpio_set(int spidev_index,char val);
 void gpio_init_control();
-void gpio_control_rf(Channel_Rf channel_val,Attenuation_Rf attenuation_val);
+void gpio_control_rf(Channel_Rf channel_val,Attenuation1_Rf attenuation1_val,Attenuation2_Rf attenuation2_val);
 #endif

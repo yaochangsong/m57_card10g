@@ -6,7 +6,7 @@
 #ifdef PLAT_FORM_ARCH_X86
 #define DEFAULT_CONFIGFILE "spectrum.xml"
 #else
-#define DEFAULT_CONFIGFILE "/etc/spectrum.xml"
+#define DEFAULT_CONFIGFILE "spectrum.xml"
 #endif
 
 /**

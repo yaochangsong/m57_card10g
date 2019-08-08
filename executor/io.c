@@ -400,7 +400,7 @@ int32_t io_set_assamble_kernel_header_response_data(void *data){
     return ret;
 }
 
-#define do_system(cmd)   // system(cmd)
+#define do_system(cmd)   system(cmd)
 
 uint8_t  io_set_network_to_interfaces(void *netinfo)
 {
@@ -409,7 +409,7 @@ uint8_t  io_set_network_to_interfaces(void *netinfo)
     #ifdef PLAT_FORM_ARCH_X86
     #define NETWORK_INTERFACES_FILE_PATH  "./etc/network/interfaces"
     #else
-    #define NETWORK_INTERFACES_FILE_PATH  "./etc/network/interfaces"
+    #define NETWORK_INTERFACES_FILE_PATH  "/etc/network/interfaces"
     #endif
     
     struct in_addr ip_sin_addr, mask_sin_addr, gw_sin_addr;
@@ -465,7 +465,7 @@ uint8_t  io_set_network_to_interfaces(void *netinfo)
     
     sprintf(cmd, "/etc/init.d/networking restart");
     printf_debug("%s\n", cmd);
-    //system(cmd);
+    do_system(cmd);
     return ret;
     
 }
@@ -481,7 +481,7 @@ static void io_asyn_signal_handler(int signum)
 void io_init(void)
 {
     printf_info("io init!\n");
-#ifdef PLAT_FORM_ARCH_ARM
+#ifdef KERNEL_IOCTL_EN
     int Oflags;
     
     if (io_ctrl_fd > 0) {

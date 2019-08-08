@@ -91,8 +91,8 @@ static  void  executor_fregment_scan(uint32_t fregment_num,uint8_t ch, work_mode
     if(c_freq % scan_bw){
         is_remainder = 1;
     }
-    printf_info("e_freq=%llu, s_freq=%llu, fftsize=%u\n", e_freq, s_freq, fftsize);
-    printf_info("scan_bw =%u,scan_count=%d, is_remainder=%d\n", scan_bw, scan_count, is_remainder);
+    printf_debug("e_freq=%llu, s_freq=%llu, fftsize=%u\n", e_freq, s_freq, fftsize);
+    printf_debug("scan_bw =%u,scan_count=%d, is_remainder=%d\n", scan_bw, scan_count, is_remainder);
     executor_set_command(EX_RF_FREQ_CMD,  EX_RF_MID_BW, ch, &scan_bw);
     executor_set_command(EX_MID_FREQ_CMD, EX_BANDWITH,  ch, &scan_bw);
     executor_set_command(EX_MID_FREQ_CMD, EX_FFT_SIZE,  ch, &fftsize);
@@ -100,7 +100,7 @@ static  void  executor_fregment_scan(uint32_t fregment_num,uint8_t ch, work_mode
            Step 2: 根据扫描带宽�?从开始频率到截止频率循环扫描
    */
     for(i = 0; i < scan_count + is_remainder; i++){
-        printf_info("Bandwidth Scan [%d][%u]......\n", i, scan_bw);
+        printf_debug("Bandwidth Scan [%d][%u]......\n", i, scan_bw);
         if(i < scan_count){
             /* 计算扫描中心频率 */
             m_freq = s_freq + i * scan_bw + scan_bw/2;
@@ -125,7 +125,7 @@ static  void  executor_fregment_scan(uint32_t fregment_num,uint8_t ch, work_mode
         executor_set_command(EX_WORK_MODE_CMD, mode, ch, &header_param);
         executor_wait_kernel_deal();
 #else
-        printf_info("spectrum_wait_user_deal..\n");
+        printf_debug("spectrum_wait_user_deal..\n");
         spectrum_wait_user_deal(&header_param);
 #endif
         if(poal_config->enable.bit_reset == true){
@@ -403,7 +403,7 @@ int8_t executor_set_command(exec_cmd cmd, uint8_t type, uint8_t ch,  void *data)
         {
             char *pbuf= NULL;
             uint32_t len;
-            printf_info("set work mode[%d]\n", type);
+            printf_debug("set work mode[%d]\n", type);
             pbuf = poal_config->assamble_response_data(&len, data);
             io_set_work_mode_command((void *)pbuf);
             break;

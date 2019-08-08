@@ -133,13 +133,11 @@ struct spectrum_header_param{
 
 /*  define the command setting lock */
 #define LOCK_SET_COMMAND() do { \
-    printf_debug("Locking set command\n"); \
     pthread_mutex_lock(&set_cmd_mutex); \
     printf_debug("Set command locked\n"); \
 } while (0)
 
 #define UNLOCK_SET_COMMAND() do { \
-    printf_debug("Unlocking set command\n"); \
     pthread_mutex_unlock(&set_cmd_mutex); \
     printf_debug("Set command unlocked\n"); \
 } while (0)

@@ -40,16 +40,15 @@ static void usage(const char *prog)
 ******************************************************************************/
 int main(int argc, char **argv)
 {
-    log_init(log_info);
+    log_init(log_debug);
     printf_note("VERSION:%s\n",SPCTRUM_VERSION_STRING);
     
     config_init();
     uloop_init();
+#if (UART_SUPPORT == 1)
     uart_init();
+#endif
     gpio_init_control();
-    char channel;
-    channel = atoi(argv[1]);
-    gpio_control_rf(channel,U10_0_DB,U2_0_DB);
 #if (UART_LCD_SUPPORT == 1)
     init_lcd();
 #endif

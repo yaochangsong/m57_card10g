@@ -12,19 +12,21 @@ struct spectrum_st{
     uint32_t level;
     int16_t *iq_payload;   /* IQ data */
     uint32_t iq_len;
-    float *fft_payload;         /* FFT data */
-    int16_t *fft_short_payload;         /* FFT data */
-    float *fft_payload_back;    /* FFT data back */
+    float *fft_float_payload;         /* FFT float data */
+    int16_t *fft_short_payload;       /* FFT short data */
+    int16_t *fft_short_payload_back;  /* FFT short data back */
     uint32_t fft_len;
     uint32_t fft_len_back;
     volatile bool is_wait_deal;
 };
 
 #define LOCK_SP_RESULT() do { \
+    printf_debug("lock sp result\n");\
     pthread_mutex_lock(&spectrum_result_mutex); \
 } while (0)
 
 #define UNLOCK_SP_RESULT() do { \
+    printf_debug("unlock sp result\n");\
     pthread_mutex_unlock(&spectrum_result_mutex); \
 } while (0)
 

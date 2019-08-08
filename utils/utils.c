@@ -159,5 +159,24 @@ void safe_free(void *p)
     }
 }
 
+int32_t inline diff_time(void)
+{
+    static struct timeval oldTime; 
+    struct timeval newTime; 
+    int32_t _t_ms, ntime_ms; 
+    
+    gettimeofday(&newTime, NULL);
+    _t_ms = (newTime.tv_sec - oldTime.tv_sec)*1000 + (newTime.tv_usec - oldTime.tv_usec)/1000; 
+    printf_debug("_t_ms=%d ms!\n", _t_ms);
+    if(_t_ms > 0)
+        ntime_ms = _t_ms; 
+    else 
+        ntime_ms = 0; 
+    memcpy(&oldTime, &newTime, sizeof(struct timeval)); 
+    printf_debug("Diff time = %u ms!\n", ntime_ms); 
+    return ntime_ms;
+}
+
+
 
 

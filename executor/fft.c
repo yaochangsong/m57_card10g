@@ -185,7 +185,7 @@ bool Cfft(complexType  *inVec, int  const vecLen, complexType  *outVec)
 	}*/
 
 	// 计算快速傅里叶变换对（变地址后端outVec蝶形运算）
-	long i = 0, j = 0, k = 0, m = 0;
+	uint64_t i = 0, j = 0, k = 0, m = 0;
 	complexType up, down, product;
 	int size_x = vecLen;
 	for (i = 0; i< log(size_x) / log(2); i++) /*一级蝶形运算 stage */
@@ -267,10 +267,10 @@ void  Coutput(const complexType x[], int size_x)         //输出傅里叶变换
 	printf("The result are as follows：\n");
 	for (i = 0; i<size_x; i++)
 	{
-		printf("%4d  %8.8lf ", i, x[i].Real);
-		if (x[i].Imag >= 0.0001)printf(" +%8.488fj\n", x[i].Imag);
-		else if (fabs(x[i].Imag)<0.0001) printf("\n");
-		else printf("  %8.8fj\n", x[i].Imag);
+		printfd("%4d  %8.8lf ", i, x[i].Real);
+		if (x[i].Imag >= 0.0001)printfd(" +%8.488fj\n", x[i].Imag);
+		else if (fabs(x[i].Imag)<0.0001) printfd("\n");
+		else printfd("  %8.8fj\n", x[i].Imag);
 	}
 }
 /*函数名：Routput
@@ -284,7 +284,7 @@ void  Routput(const mathDouble x[], int size_x)         //输出傅里叶变换�
 	printf_debug("The result are as follows：\n");
 	for (i = 0; i<size_x; i++)
 	{
-		printf("%4d  %8.8lf\n", i, x[i]);
+		printfd("%4d  %8.8lf\n", i, x[i]);
 	}
 }
 
@@ -679,7 +679,7 @@ void  calculatecenterfrequency(float *fftdata,int fftnum)
 	for(int i=0;i<fftstate.cenfrepointnum;i++)
 	{
 		
-		printf_warn("arvcentfreq[%d]=%lf\n",i,fftstate.arvcentfreq[i]);
+		printf_debug("arvcentfreq[%d]=%lf\n",i,fftstate.arvcentfreq[i]);
 	}
 }
 
@@ -925,7 +925,7 @@ void spline(int *x,float *y,int num ,float *PartialDerivative)
 
 	if((x==NULL)|(y==NULL)|(num<3))
 	{
-		printf_warn("构造失败，已知点数太少");
+		printf_debug("构造失败，已知点数太少");
 		
 	}
 	PartialDerivative2(x,y,num,PartialDerivative);
@@ -1020,7 +1020,7 @@ void fft_exit(void)
 	
 }
 //int testfrequency(const char* filename,int threshordnum,int fftlen,short *iqdata)
-void testfrequency(int threshordnum,short *iqdata,int fftsize,int datalen)
+void testfrequency(int threshordnum,short *iqdata,int32_t fftsize,int datalen)
 {
     N=fftsize;
 	fftstate.interval=0;	
@@ -1041,7 +1041,6 @@ void testfrequency(int threshordnum,short *iqdata,int fftsize,int datalen)
 	memset(fftdata.yy,0,sizeof(float)*N );
 	memset(fftdata.z,0,sizeof(float)*N );
 	memset(fftdata.hann,0,sizeof(float)*N );
-	
 	memset(fftstate.y,0,sizeof(int)*SIGNALNUM );
 	memset(fftstate.z,0,sizeof(int)*SIGNALNUM );
 	memset(fftstate.centfeqpoint,0,sizeof(int)*SIGNALNUM );
@@ -1053,7 +1052,6 @@ void testfrequency(int threshordnum,short *iqdata,int fftsize,int datalen)
 	fftstate.Bottomnoise=0;
 	fftstate.maxcentfrequency=0;
 	hannwindow(N,fftdata.hann);
-    
 	wavdatafp=iqdata;
 	wandateimage=iqdata+1;
 	int j=0;
@@ -1097,7 +1095,6 @@ void testfrequency(int threshordnum,short *iqdata,int fftsize,int datalen)
 	}*/
 
 	
-	
 	for(int i=0;i<N;i++)
 	{
 		fftdata.x[i].Real=fftdata.x[i].Real*fftdata.hann[i];
@@ -1108,16 +1105,12 @@ void testfrequency(int threshordnum,short *iqdata,int fftsize,int datalen)
 	CfftAbs(fftdata.y,N,fftdata.mozhi);	// 2 计算20log10(abs),存进模值里
 	Rfftshift(fftdata.mozhi, N);
 	//writefileArr("mozhi0801.txt",fftdata.mozhi, N);
-    
 	smooth(fftdata.mozhi,N,fftdata.smoothdata);
     //writefileArr("smoothdata0801.txt",fftdata.smoothdata, N);
     
 	findBottomnoise(fftdata.smoothdata,threshordnum,&fftstate.Bottomnoise,&fftstate.Threshold);   //计算底噪
-	
 	findCentfreqpoint(fftdata.smoothdata,N, fftstate.centfeqpoint,&fftstate.Threshold ,&fftstate.cenfrepointnum,fftstate.y,fftstate.z,&fftstate.Centerpoint);
-	
 	calculatecenterfrequency(fftdata.smoothdata,N);                   //5 计算中心频率
-	
 	calculatebandwidth(fftdata.smoothdata,N);  
 	//6 计算带宽
 	int num1=0;
@@ -1126,7 +1119,7 @@ void testfrequency(int threshordnum,short *iqdata,int fftsize,int datalen)
 	int num=0;
 	for(int i=0;i<fftstate.cenfrepointnum;i++)
 	{
-	    printf("fftstate.centfeqpoint[i]=%d,fftstate.bandwidth[]=%d,fftstate.arvcentfreq[i]=%dm\n",fftstate.centfeqpoint[i],
+	    printf_debug("fftstate.centfeqpoint[i]=%d,fftstate.bandwidth[]=%d,fftstate.arvcentfreq[i]=%dm\n",fftstate.centfeqpoint[i],
                                                                                                         fftstate.bandwidth[i],
                                                                                                         fftstate.centfeqpoint[i]);
 		if((fftstate.arvcentfreq[i]>0 )&&(fftstate.bandwidth[i]>0)&&fftstate.bandwidth[i]<N)
@@ -1146,7 +1139,7 @@ void testfrequency(int threshordnum,short *iqdata,int fftsize,int datalen)
 	{
 		
 		
-		printf_warn("fftstate.centfeqpoint[%d]=%d,fftstate.bandwidth[%d]=%d,maxcentfrequency[%d]=%f\n\n",
+		printf_debug("fftstate.centfeqpoint[%d]=%d,fftstate.bandwidth[%d]=%d,maxcentfrequency[%d]=%f\n\n",
 		i,fftstate.centfeqpoint[i],i,fftstate.bandwidth[i],i,fftstate.arvcentfreq[i]);
 		
 	}
@@ -1174,7 +1167,6 @@ void fft_iqdata_handle(int bd,short *data,int fftsize ,int datalen)
 		printf_warn("\n\nThe IQ data you entered is empty, please enter again！\n\n");
 		return ;
 	}
-    
 	testfrequency(bd,data,fftsize,datalen);//iq数据，下发门限，fft大小，下发数据长度
 	
 }
@@ -1242,7 +1234,7 @@ void xulitestfft(void)
 	{
 		
 		
-		printf_warn("temp.centfeqpoint[%d]=%d,temp.bandwidth[%d]=%d,temp[%d]=%f\n\n",
+		printf_debug("temp.centfeqpoint[%d]=%d,temp.bandwidth[%d]=%d,temp[%d]=%f\n\n",
 		i,temp->centfeqpoint[i],i,temp->bandwidth[i],i,temp->arvcentfreq[i]);
 		
 	}

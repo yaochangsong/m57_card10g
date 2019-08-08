@@ -630,7 +630,7 @@ static void *dao_load_default_config_file(char *file)
     powerstate = mxmlNewElement(statusPara, "powerstate");
     /*状态参数下softVersion的子节点*/
     node = mxmlNewElement(softVersion, "app");
-    mxmlNewText(node, 0, "v1.0-20190702-134310");
+    mxmlNewText(node, 0, SPCTRUM_VERSION_STRING);
     node = mxmlNewElement(softVersion, "kernel");
     mxmlNewText(node, 0, "v1.0-20190702-134310");
     node = mxmlNewElement(softVersion, "uboot");

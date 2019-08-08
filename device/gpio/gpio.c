@@ -18,11 +18,11 @@ int gpio_set(int spidev_index,char val){
 
     if(val == 1){
         write(valuefd,"1", 2);
-        printf("higt\n");
+       // printf("higt\n");
     }
     else {
         write(valuefd,"0", 2);
-        printf("low\n");		
+       // printf("low\n");		
     }
     close(valuefd);
     return 0;
@@ -71,9 +71,9 @@ void gpio_rf_channel(Channel_Rf channel_val)
         gpio_set(PRI_42422_LS,1);		
         gpio_set(PRI_L_42442_V1,1);
         gpio_set(PRI_L_42442_V2,0);	
-        gpio_set(SEC_L_42442_V1,1);
+        gpio_set(SEC_L_42442_V1,0);
         gpio_set(SEC_L_42442_V2,0);
-        gpio_set(SEC_42422_V1,1);
+        gpio_set(SEC_42422_V1,0);
         gpio_set(SEC_42422_LS,1);
         break;
 
@@ -82,9 +82,9 @@ void gpio_rf_channel(Channel_Rf channel_val)
         gpio_set(PRI_42422_LS,1);		
         gpio_set(PRI_L_42442_V1,0);
         gpio_set(PRI_L_42442_V2,1);	
-        gpio_set(SEC_L_42442_V1,0);
+        gpio_set(SEC_L_42442_V1,1);
         gpio_set(SEC_L_42442_V2,1);	
-        gpio_set(SEC_42422_V1,1);
+        gpio_set(SEC_42422_V1,0);
         gpio_set(SEC_42422_LS,1);
         break;
 
@@ -93,9 +93,9 @@ void gpio_rf_channel(Channel_Rf channel_val)
         gpio_set(PRI_42422_LS,1);	
         gpio_set(PRI_L_42442_V1,1);
         gpio_set(PRI_L_42442_V2,1);
-        gpio_set(SEC_L_42442_V1,1);
+        gpio_set(SEC_L_42442_V1,0);
         gpio_set(SEC_L_42442_V2,1);	
-        gpio_set(SEC_42422_V1,1);
+        gpio_set(SEC_42422_V1,0);
         gpio_set(SEC_42422_LS,1);		
         break;
 
@@ -104,10 +104,11 @@ void gpio_rf_channel(Channel_Rf channel_val)
         gpio_set(PRI_42422_LS,1);	
         gpio_set(PRI_L_42442_V1,0);
         gpio_set(PRI_L_42442_V2,0);
-        gpio_set(SEC_L_42442_V1,0);
+        gpio_set(SEC_L_42442_V1,1);
         gpio_set(SEC_L_42442_V2,0);
-        gpio_set(SEC_42422_V1,1);
-        gpio_set(SEC_42422_LS,1);		
+        gpio_set(SEC_42422_V1,0);
+        gpio_set(SEC_42422_LS,1);	
+
         break;
 
         case HPF5:
@@ -115,10 +116,10 @@ void gpio_rf_channel(Channel_Rf channel_val)
         gpio_set(PRI_42422_LS,0);	
         gpio_set(PRI_H_42442_V1,1);
         gpio_set(PRI_H_42442_V2,0);
-        gpio_set(SEC_H_42442_V1,1);
+        gpio_set(SEC_H_42442_V1,0);
         gpio_set(SEC_H_42442_V2,0);
         gpio_set(SEC_42422_V1,1);
-        gpio_set(SEC_42422_LS,0);
+        gpio_set(SEC_42422_LS,1);
         break;
 
         case HPF6:
@@ -126,10 +127,10 @@ void gpio_rf_channel(Channel_Rf channel_val)
         gpio_set(PRI_42422_LS,0);	
         gpio_set(PRI_H_42442_V1,0);
         gpio_set(PRI_H_42442_V2,1);
-        gpio_set(SEC_H_42442_V1,0);
+        gpio_set(SEC_H_42442_V1,1);
         gpio_set(SEC_H_42442_V2,1);
         gpio_set(SEC_42422_V1,1);
-        gpio_set(SEC_42422_LS,0);
+        gpio_set(SEC_42422_LS,1);
         break;
 
         case HPF7:
@@ -137,10 +138,10 @@ void gpio_rf_channel(Channel_Rf channel_val)
         gpio_set(PRI_42422_LS,0);	
         gpio_set(PRI_H_42442_V1,1);
         gpio_set(PRI_H_42442_V2,1);
-        gpio_set(SEC_H_42442_V1,1);
+        gpio_set(SEC_H_42442_V1,0);
         gpio_set(SEC_H_42442_V2,1);
         gpio_set(SEC_42422_V1,1);
-        gpio_set(SEC_42422_LS,0);
+        gpio_set(SEC_42422_LS,1);
         break;
 
         case HPF8:
@@ -148,10 +149,10 @@ void gpio_rf_channel(Channel_Rf channel_val)
         gpio_set(PRI_42422_LS,0);	
         gpio_set(PRI_H_42442_V1,0);
         gpio_set(PRI_H_42442_V2,0);
-        gpio_set(SEC_H_42442_V1,0);
+        gpio_set(SEC_H_42442_V1,1);
         gpio_set(SEC_H_42442_V2,0);
         gpio_set(SEC_42422_V1,1);
-        gpio_set(SEC_42422_LS,0);
+        gpio_set(SEC_42422_LS,1);
         break;
         default :
         break;
@@ -159,7 +160,7 @@ void gpio_rf_channel(Channel_Rf channel_val)
 
 }
 
-void gpio_rf_attenuation(Attenuation_Rf attenuation_val)
+void gpio_rf_1attenuation(Attenuation1_Rf attenuation_val)
 {
     switch(attenuation_val)
     {
@@ -234,7 +235,16 @@ void gpio_rf_attenuation(Attenuation_Rf attenuation_val)
         gpio_set(SEC_624A_D4,0);
         gpio_set(SEC_624A_D5,0);
         break;
+        default :
+        break;	
+    }	
+}
 
+
+void gpio_rf_2attenuation(Attenuation2_Rf attenuation_val)
+{
+    switch(attenuation_val)
+    {
         case U2_0_DB:
         gpio_set(PRI_624A_D0,0);
         gpio_set(PRI_624A_D1,1);
@@ -312,11 +322,12 @@ void gpio_rf_attenuation(Attenuation_Rf attenuation_val)
     }	
 }
 
-void gpio_control_rf(Channel_Rf channel_val,Attenuation_Rf attenuation_val)
+void gpio_control_rf(Channel_Rf channel_val,Attenuation1_Rf attenuation1_val,Attenuation2_Rf attenuation2_val)
 {
-  gpio_rf_channel(channel_val);
-  gpio_rf_attenuation(attenuation_val); 
-  printf_info("channel : %d, attenuation : %d\n",channel_val,attenuation_val);
+   gpio_rf_channel(channel_val);
+   gpio_rf_1attenuation(attenuation1_val); 
+   gpio_rf_2attenuation(attenuation2_val); 
+   printf_info("channel : %d, attenuation : %d\n",channel_val,attenuation1_val);
 }
 
 

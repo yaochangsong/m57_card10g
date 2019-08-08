@@ -92,7 +92,7 @@ void specturm_analysis_deal(void *arg)
     }
 }
 
-static void spectrum_send_fft_data(float *fft_data, uint32_t fft_data_len, void *param)
+static void spectrum_send_fft_data(void *fft_data, size_t fft_data_len, void *param)
 {
     struct poal_config *poal_config = &(config_get_config()->oal_config);
     uint8_t *fft_sendbuf, *pbuf;
@@ -111,7 +111,16 @@ static void spectrum_send_fft_data(float *fft_data, uint32_t fft_data_len, void 
     printf_debug("malloc ok header_len:%d,fft_len=%d, len=%d\n",header_len,fft_data_len, header_len+ fft_data_len);
     memcpy(fft_sendbuf, header_buf, header_len);
     memcpy(fft_sendbuf + header_len, fft_data, fft_data_len);
-    
+    printfd("header:\n");
+    for(int i = 0; i< 20; i++)
+            printfd("%x ", *(fft_sendbuf+i));
+    printfd("\ndata:\n");
+    for(int i = 0; i< 20; i++)
+        printfd("%x ", *(fft_sendbuf + header_len+i));
+    printfd("\n");
+    for(int i = 0; i< 20; i++)
+        printfd("%x ", *((int16_t *)(fft_data)+i));
+    printfd("\n");
     udp_send_data(fft_sendbuf, header_len + fft_data_len);
     safe_free(pbuf);
 }
@@ -123,12 +132,15 @@ void spectrum_wait_user_deal( struct spectrum_header_param *param)
     ps = &_spectrum;
     
     ps->iq_len = specturm_rx_iq_read(&ps->iq_payload);
-    printf_debug("ps->iq_payload[0]=%d\n", ps->iq_payload[0]);
-    TIME_ELAPSED(fft_iqdata_handle(6, ps->iq_payload, 8*1024, ps->iq_len/2));
+    printf_debug("ps->iq_payload[0]=%d, %d,param->fft_size=%d, ps->iq_len=%d\n", ps->iq_payload[0],ps->iq_payload[1], param->fft_size, ps->iq_len);
+    TIME_ELAPSED(fft_iqdata_handle(6, ps->iq_payload, param->fft_size, ps->iq_len/2)); //param->fft_size
     ps->fft_payload = fft_get_data(&ps->fft_len);
+    ps->fft_short_payload = safe_malloc(ps->fft_len*sizeof(int16_t));
+    FLOAT_TO_SHORT(ps->fft_payload, ps->fft_short_payload, ps->fft_len);
     spectrum_rw_fft_result(fft_get_result());
-    printf_debug("ps->fft_len=%d, ps->fft_payload=%f,%f\n", ps->fft_len, ps->fft_payload[0],ps->fft_payload[1]);
-    param->data_len = ps->fft_len*sizeof(float); /* fill  header data len */
+    printf_debug("ps->fft_len=%d,fft_size=%d, ps->fft_payload=%d,%d, %f, %f\n", ps->fft_len, param->fft_size, 
+        ps->fft_short_payload[0],ps->fft_short_payload[1], ps->fft_payload[0], ps->fft_payload[1]);
+    param->data_len = ps->fft_len*sizeof(int16_t); /* fill  header data len */
     LOCK_SP_DATA();
     if(ps->is_wait_deal == false){
         printf_debug("safe_malloc[%d]\n", ps->fft_len*sizeof(float));
@@ -138,7 +150,9 @@ void spectrum_wait_user_deal( struct spectrum_header_param *param)
         ps->is_wait_deal = true;
     }
     UNLOCK_SP_DATA();
-    spectrum_send_fft_data(ps->fft_payload, ps->fft_len*sizeof(float), param);
+    spectrum_send_fft_data((int16_t *)ps->fft_short_payload, ps->fft_len*sizeof(int16_t), param);
+    safe_free(ps->fft_short_payload);
+    //spectrum_send_fft_data(ps->fft_payload, ps->fft_len*sizeof(float), param);
 }
 
 /* function: read or write fft result 

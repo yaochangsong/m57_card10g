@@ -148,12 +148,12 @@ struct spectrum_header_param{
 #if (PROTOCAL_ATE == 1)
     #if (KERNEL_IOCTL_EN == 1)
     /* use kernel space to deal data(fft, iq) and send to client */
-    #define executor_assamble_header_response_data_cb  akt_assamble_data_frame_header_data
+    #define executor_assamble_header_response_data_cb  akt_assamble_data_extend_frame_header_data
     /* use user space to send basic config parameter (TCP) */
     #define executor_send_data_to_clent_cb             executor_send_config_data_to_clent
     #else  
     /* use user space to deal data(fft, iq) and send to client */
-    #define executor_assamble_header_response_data_cb  akt_assamble_data_extend_frame_header_data
+    #define executor_assamble_header_response_data_cb  akt_assamble_data_frame_header_data
     /* */
     #define executor_send_data_to_clent_cb              executor_send_config_data_to_clent
     #endif

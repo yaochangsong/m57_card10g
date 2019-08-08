@@ -100,7 +100,7 @@ static  void  executor_fregment_scan(uint32_t fregment_num,uint8_t ch, work_mode
            Step 2: 根据扫描带宽�?从开始频率到截止频率循环扫描
    */
     for(i = 0; i < scan_count + is_remainder; i++){
-        printf_info("Bandwidth Scan [%d]......\n", i);
+        printf_info("Bandwidth Scan [%d][%u]......\n", i, scan_bw);
         if(i < scan_count){
             /* 计算扫描中心频率 */
             m_freq = s_freq + i * scan_bw + scan_bw/2;

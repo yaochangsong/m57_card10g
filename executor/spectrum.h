@@ -3,7 +3,6 @@
 #include "fft.h"
 
 #define specturm_rx0_read_data iio_read_rx0_data
-#define specturm_rx1_read_data iio_read_rx1_data
 
 #define SPECTRUM_START_FLAG 0x7E7E
 
@@ -14,6 +13,7 @@ struct spectrum_st{
     int16_t *iq_payload;   /* IQ data */
     uint32_t iq_len;
     float *fft_payload;         /* FFT data */
+    int16_t *fft_short_payload;         /* FFT data */
     float *fft_payload_back;    /* FFT data back */
     uint32_t fft_len;
     uint32_t fft_len_back;

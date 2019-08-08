@@ -316,6 +316,7 @@ void gpio_control_rf(Channel_Rf channel_val,Attenuation_Rf attenuation_val)
 {
   gpio_rf_channel(channel_val);
   gpio_rf_attenuation(attenuation_val); 
+  printf_info("channel : %d, attenuation : %d\n",channel_val,attenuation_val);
 }
 
 

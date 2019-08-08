@@ -1,13 +1,7 @@
 #ifndef __GPIO_H
 #define __GPIO_H
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include <string.h>
-#include <errno.h>
-#include <fcntl.h>
-#include <signal.h>
+#include "config.h"
 
 #define GPIO_BASE_OFFSET 960
 
@@ -69,7 +63,7 @@ typedef enum {
 }Attenuation_Rf;
 
 int gpio_init(int spidev_index);
-int set_gpio(int spidev_index,char val);
-void init_control_gpio();
-void control_rf(Channel_Rf channel_val,Attenuation_Rf attenuation_val);
+int gpio_set(int spidev_index,char val);
+void gpio_init_control();
+void gpio_control_rf(Channel_Rf channel_val,Attenuation_Rf attenuation_val);
 #endif

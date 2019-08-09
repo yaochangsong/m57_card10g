@@ -72,19 +72,18 @@ typedef enum {
 }rf_channel;    //射频通道
 
 typedef enum {
-     U10_0_DB,
+     U10_0_DB = 0,
      U10_0_5_DB,
      U10_1_DB,
      U10_2_DB,
      U10_4_DB,
      U10_8_DB,
      U10_16_DB,
-     U10_31_5_DB,
-
+     U10_31_5_DB
 }rf_pre_reduce;      //前级衰减
 
 typedef enum {
-     U2_0_DB,
+     U2_0_DB = 0,
      U2_0_5_DB,
      U2_1_DB,
      U2_2_DB,

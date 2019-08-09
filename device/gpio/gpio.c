@@ -99,18 +99,18 @@ int count_pre_pos_channel(uint8_t rf_channel_value)
 
 
 int  rf_db_select(){
-  int i;
-  struct poal_config *poal_config = &(config_get_config()->oal_config);
-  
-  db_attenuation = poal_config->rf_para->attenuation;
+    int i;
+    struct poal_config *poal_config = &(config_get_config()->oal_config);
 
-  for(i = 0;i<64;i++){
-   if((db_attenuation > db_array[i]) && (db_attenuation < db_array[i+1])){
-      db_attenuation = db_array[i];
-      return 0;
+    db_attenuation = poal_config->rf_para->attenuation;
+
+    for(i = 0;i<64;i++){
+        if((db_attenuation > db_array[i]) && (db_attenuation < db_array[i+1])){
+            db_attenuation = db_array[i];
+            return 0;
+        }
     }
-  }
-  return 1;
+    return 1;
 }
 
 

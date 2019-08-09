@@ -564,7 +564,7 @@ void findcomplexcentfrequencypoint(float *data,float* maxaverage,float* minavera
 	}
 	
 }
-void  findCentfreqpoint(float *data, int pointnum,int * centfeqpoint,float *Threshold ,int * cenfrepointnum,int *y,int *z,int  *Centerpoint)//大于阈值的第一个 z小于阈值的第一个数 ,计算中心频点
+signalnum_flag  findCentfreqpoint(float *data, int pointnum,int * centfeqpoint,float *Threshold ,int * cenfrepointnum,int *y,int *z,int  *Centerpoint)//大于阈值的第一个 z小于阈值的第一个数 ,计算中心频点
 {
 	printf_debug("findCentfreqpoint \n");
 	int *h;	
@@ -576,6 +576,7 @@ void  findCentfreqpoint(float *data, int pointnum,int * centfeqpoint,float *Thre
 	int j =0,x=0;
 	//int centpointnum1;
 	int flag=0;
+    signalnum_flag signalflg;
 	
 	printf_debug("data[0]=%lf   data[1]=%lf\n,",data[0],data[1]);
 	
@@ -599,6 +600,13 @@ void  findCentfreqpoint(float *data, int pointnum,int * centfeqpoint,float *Thre
 				//printf("z[i]=%d,  i=%d ",z[j],i);
 				//printf_debug("q[0] =%d\n",q[0]);	
 		}
+        if(*cenfrepointnum>SIGNALNUM)
+        {
+            printf_err("Your threshold may be a little low, please re-issue the threshold\n");
+            signalflg=SIGNALNUM_ABNORMAL;
+            return signalflg ;
+
+        }
 	}
     printf_debug("*=================Threshold=%f",*Threshold);
 	printf_debug("find centfeqpoint n=%d\n",*cenfrepointnum);
@@ -654,6 +662,8 @@ void  findCentfreqpoint(float *data, int pointnum,int * centfeqpoint,float *Thre
 	//*Centerpoint=y[maxzuobiao]+(z[axzuobiao]-y[maxzuobiao])/2;
   //  printf("*Centerpoint=%d",*Centerpoint);
 	printf_debug(" findCentfreqpointover\n");
+    signalflg=SIGNALNUM_NORMAL;
+    return  signalflg;
 }
 void  calculatecenterfrequency(float *fftdata,int fftnum)
 {
@@ -676,11 +686,11 @@ void  calculatecenterfrequency(float *fftdata,int fftnum)
 	{
 		fftstate.arvcentfreq[i]=fftdata[fftstate.centfeqpoint[i]];	
 	}
-	for(int i=0;i<fftstate.cenfrepointnum;i++)
+	/*for(int i=0;i<fftstate.cenfrepointnum;i++)
 	{
 		
 		printf_debug("arvcentfreq[%d]=%lf\n",i,fftstate.arvcentfreq[i]);
-	}
+	}*/
 }
 
 //原始数据  原始数据个数 平均后的中频频率 第一个点的集合      第二个点的集合    平均后的中心频率
@@ -719,7 +729,7 @@ void  calculatebandwidth(float *fftdata,int fftnum )
 		//threedbpoint=maxz-5;
         threedbpoint = fftstate.arvcentfreq[i]-4;
 		
-		printf_debug("调试信息 maxz : %f fftstate.Bottomnoise:%f threedbpoint:%f\n",maxz,fftstate.Bottomnoise,threedbpoint);
+		//printf_debug("调试信息 maxz : %f fftstate.Bottomnoise:%f threedbpoint:%f\n",maxz,fftstate.Bottomnoise,threedbpoint);
 		for(j=fftstate.y[i];j<fftstate.z[i];j++)
 		{
 		
@@ -750,7 +760,7 @@ void  calculatebandwidth(float *fftdata,int fftnum )
 		if(endpoint[i]>firstpoint[i]&&firstpoint[i]>0&&endpoint[i]<N)
 		{
 			fftstate.bandwidth[i]=endpoint[i]-firstpoint[i];
-			printf_debug(" bandwidth=%d,endpoint=%d,firstpoint=%d\n",fftstate.bandwidth[i],endpoint[i],firstpoint[i]);
+			//printf_debug(" bandwidth=%d,endpoint=%d,firstpoint=%d\n",fftstate.bandwidth[i],endpoint[i],firstpoint[i]);
 			
 		}
 
@@ -1020,8 +1030,9 @@ void fft_exit(void)
 	
 }
 //int testfrequency(const char* filename,int threshordnum,int fftlen,short *iqdata)
-void testfrequency(int threshordnum,short *iqdata,int32_t fftsize,int datalen)
+int testfrequency(int threshordnum,short *iqdata,int32_t fftsize,int datalen)
 {
+    signalnum_flag signalflg=0;
     N=fftsize;
 	fftstate.interval=0;	
 	fftstate.interval=INTERVALNUM;
@@ -1109,8 +1120,17 @@ void testfrequency(int threshordnum,short *iqdata,int32_t fftsize,int datalen)
     //writefileArr("smoothdata0801.txt",fftdata.smoothdata, N);
     
 	findBottomnoise(fftdata.smoothdata,threshordnum,&fftstate.Bottomnoise,&fftstate.Threshold);   //计算底噪
-	findCentfreqpoint(fftdata.smoothdata,N, fftstate.centfeqpoint,&fftstate.Threshold ,&fftstate.cenfrepointnum,fftstate.y,fftstate.z,&fftstate.Centerpoint);
-	calculatecenterfrequency(fftdata.smoothdata,N);                   //5 计算中心频率
+
+    
+
+    signalflg=findCentfreqpoint(fftdata.smoothdata,N, fftstate.centfeqpoint,&fftstate.Threshold ,&fftstate.cenfrepointnum,fftstate.y,fftstate.z,&fftstate.Centerpoint);
+    
+    if(signalflg==SIGNALNUM_ABNORMAL)
+    {
+       return 0; 
+    }
+
+   	calculatecenterfrequency(fftdata.smoothdata,N);                   //5 计算中心频率
 	calculatebandwidth(fftdata.smoothdata,N);  
 	//6 计算带宽
 	int num1=0;
@@ -1119,9 +1139,9 @@ void testfrequency(int threshordnum,short *iqdata,int32_t fftsize,int datalen)
 	int num=0;
 	for(int i=0;i<fftstate.cenfrepointnum;i++)
 	{
-	    printf_debug("fftstate.centfeqpoint[i]=%d,fftstate.bandwidth[]=%d,fftstate.arvcentfreq[i]=%dm\n",fftstate.centfeqpoint[i],
-                                                                                                        fftstate.bandwidth[i],
-                                                                                                        fftstate.centfeqpoint[i]);
+	    //printf_debug("fftstate.centfeqpoint[i]=%d,fftstate.bandwidth[]=%d,fftstate.arvcentfreq[i]=%dm\n",fftstate.centfeqpoint[i],
+                                                                                                    //    fftstate.bandwidth[i],
+                                                                                                      //  fftstate.centfeqpoint[i]);
 		if((fftstate.arvcentfreq[i]>0 )&&(fftstate.bandwidth[i]>0)&&fftstate.bandwidth[i]<N)
 		{
 			
@@ -1219,7 +1239,7 @@ void xulitestfft(void)
     short *data=(short*)malloc(sizeof(short)*2*N);
     memset(data,0,sizeof(short)*2*N );
     
-	int fftsize=8*1024;
+	int fftsize=1024*1024;
     int i=0;
     fft_result *temp;
 

@@ -42,13 +42,15 @@ typedef struct {
    float arvcentfreq[SIGNALNUM]; //中心频点功率值
 }fft_result;
 
-
-
+typedef enum _signalnum_flag{
+    SIGNALNUM_NORMAL        = 0x01,
+    SIGNALNUM_ABNORMAL      = 0x02,
+}signalnum_flag;    
 
 void fft_init(void);
 void fft_exit(void);
 void fft_iqdata_handle(int bd,short *data,int fftsize ,int datalen);
-//unsigned int fft_get_data(float **data);
+float *fft_get_data(uint32_t *len);
 fft_result *fft_get_result(void);
 float *fft_get_data(uint32_t *len);
 

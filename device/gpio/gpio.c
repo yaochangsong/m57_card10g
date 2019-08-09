@@ -1,7 +1,34 @@
 
-#include "gpio.h"
+#include "config.h"
 
 
+static RF_CHANNEL_SN rf_bw_data[]= {
+    {HPF1,RF_START_0M,RF_END_80M},
+    {HPF2,RF_START_0M,RF_END_160M},
+    {HPF3,RF_START_145M,RF_END_320M},
+    {HPF4,RF_START_145M,RF_END_630M},
+    {HPF5,RF_START_650M,RF_END_1325M},
+    {HPF6,RF_START_1150M,RF_END_2750M},
+    {HPF7,RF_START_2100M,RF_END_3800M},
+    {HPF8,RF_START_2700M,RF_END_6000M}
+};
+
+
+void gpio_select_rf_channel(uint32_t mid_freq)  //射频通道选择
+{
+    int i = 0;
+    if((mid_freq - BAND_WITH_100M) < 0){
+        gpio_control_rf(HPF2,U10_0_DB,U2_0_DB);  //2通道  0 - 160M
+    }
+    else{
+        uint32_t mid_freq_val = mid_freq - BAND_WITH_100M;
+        for(i=0;i<ARRAY_SIZE(rf_bw_data);i++){
+            if((mid_freq_val < rf_bw_data[i].S_FREQ_RF) && (mid_freq_val > rf_bw_data[i].E_FREQ_RF)){
+                gpio_control_rf(rf_bw_data[i].INDEX_RF,U10_0_DB,U2_0_DB);
+            }
+        }
+    }
+}
 
 int gpio_set(int spidev_index,char val){
     char  spi_offset_num[5];
@@ -62,7 +89,8 @@ int gpio_init(int spidev_index){
     return 0;
 }
 
-void gpio_rf_channel(Channel_Rf channel_val)
+
+void gpio_rf_channel(rf_channel channel_val)
 {
     switch(channel_val)
     {	
@@ -160,9 +188,9 @@ void gpio_rf_channel(Channel_Rf channel_val)
 
 }
 
-void gpio_rf_1attenuation(Attenuation1_Rf attenuation_val)
+void gpio_rf_pre_reduce(rf_pre_reduce pre_reduce_val)
 {
-    switch(attenuation_val)
+    switch(pre_reduce_val)
     {
         case U10_0_DB:
         gpio_set(SEC_624A_D0,1);
@@ -241,9 +269,9 @@ void gpio_rf_1attenuation(Attenuation1_Rf attenuation_val)
 }
 
 
-void gpio_rf_2attenuation(Attenuation2_Rf attenuation_val)
+void gpio_rf_pos_reduce(rf_pos_reduce pos_reduce_val)
 {
-    switch(attenuation_val)
+    switch(pos_reduce_val)
     {
         case U2_0_DB:
         gpio_set(PRI_624A_D0,0);
@@ -322,15 +350,13 @@ void gpio_rf_2attenuation(Attenuation2_Rf attenuation_val)
     }	
 }
 
-void gpio_control_rf(Channel_Rf channel_val,Attenuation1_Rf attenuation1_val,Attenuation2_Rf attenuation2_val)
+void gpio_control_rf(rf_channel channel_val,rf_pre_reduce pre_reduce_val,rf_pos_reduce pos_reduce_val)
 {
    gpio_rf_channel(channel_val);
-   gpio_rf_1attenuation(attenuation1_val); 
-   gpio_rf_2attenuation(attenuation2_val); 
-   printf_info("channel : %d, attenuation : %d\n",channel_val,attenuation1_val);
+   gpio_rf_pre_reduce(pre_reduce_val); 
+   gpio_rf_pos_reduce(pos_reduce_val); 
+   printf_info("channel : %d, attenuation : %d\n",channel_val,pre_reduce_val);
 }
-
-
 
 
 void gpio_init_control() //初始化24个IO口

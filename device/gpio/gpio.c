@@ -18,7 +18,7 @@ void gpio_select_rf_channel(uint64_t mid_freq)  //射频通道选择
 {
     int i = 0;
     int found = 0;
-    int rf_channel_value = 0;
+    static uint8_t rf_channel_value = 0;
     if((int64_t)(mid_freq - BAND_WITH_100M) < 0){
         printf_warn("middle freq is less than band, set defaut gpio ctrl pin:2\n");
         gpio_control_rf(HPF2,U10_0_DB,U2_0_DB);  //2通道  0 - 160M
@@ -27,10 +27,10 @@ void gpio_select_rf_channel(uint64_t mid_freq)  //射频通道选择
     else{
         uint64_t mid_freq_val = mid_freq - BAND_WITH_100M;
         for(i=0;i<ARRAY_SIZE(rf_bw_data);i++){
-            printf_note("freq=%llu, s_freq=%llu, end_freq=%llu\n", mid_freq_val, rf_bw_data[i].S_FREQ_RF, rf_bw_data[i].E_FREQ_RF);
-            if((mid_freq_val > rf_bw_data[i].S_FREQ_RF) && (mid_freq_val < rf_bw_data[i].E_FREQ_RF)){
-                if(rf_channel_value != rf_bw_data[i].INDEX_RF){   //扫频范围有变化
-                    rf_channel_value = rf_bw_data[i].INDEX_RF;    //选择新的通道
+            printf_note("freq=%llu, s_freq=%llu, end_freq=%llu\n", mid_freq_val, rf_bw_data[i].s_freq_rf, rf_bw_data[i].e_freq_rf);
+            if((mid_freq_val > rf_bw_data[i].s_freq_rf) && (mid_freq_val < rf_bw_data[i].e_freq_rf)){
+                if(rf_channel_value != rf_bw_data[i].index_rf){   //扫频范围有变化
+                    rf_channel_value = rf_bw_data[i].index_rf;    //选择新的通道
                     gpio_control_rf(rf_channel_value,U10_0_DB,U2_0_DB);
                 }
                 found++;

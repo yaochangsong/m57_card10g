@@ -13,6 +13,106 @@ static RF_CHANNEL_SN rf_bw_data[]= {
     {HPF8,RF_START_2700M,RF_END_6000M}
 };
 
+float pre[8] ={0,0.5,1,2,4,8,16,31.5};
+float pos[8] ={0,0.5,1,2,4,8,16,31.5};
+
+float db_value;
+float db_array[64];
+int   db_arrange[64];
+
+int db_attenuation; //信号衰减DB值
+
+
+void rf_db_arrange()
+{
+    
+    int i = 0,j=0;
+   for(i=0;i<64;i++)
+   {
+       
+       if((int)db_array[i] != (int)db_array[i+1])
+       {
+            db_arrange[j++] = (int)db_array[i];
+            //printf("------------val[%d]:%d\n",i,(int)val[i]);
+            //printf("------------abc[%d]:%d\n",j,(int)abc[1]);
+       }
+   }
+}
+void BubbleSort(float a[],int n)
+{
+    int i,j;
+    float temp;
+    for(i=0;i<n-1;i++)        //比较的趟数
+        for(j=0;j<n-1-i;j++)  //每趟比较的次数
+        {
+            //由小到大排序
+            if(a[j]>a[j+1])  //a[j]<a[j+1]由大到小排序
+            {
+                temp=a[j];
+                a[j]=a[j+1];
+                a[j+1]=temp;
+            }
+        }
+}
+int rf_db_attenuation_init()
+{
+    int i,j,k;
+   for(i=0;i<8;i++)
+   {
+       for(j=0;j<8;j++)
+       {
+            db_value = pre[i] + pos[j];
+            db_array[k++] = db_value;
+       }
+   }
+   BubbleSort(db_array,64);
+   rf_db_arrange();
+}
+
+
+
+int count_pre_pos_channel(uint8_t rf_channel_value)
+{
+   int flag;
+   flag = rf_db_select();
+
+   if(flag == 0){
+       int i,j;
+       for(i=0;i<8;i++)
+       {
+           for(j=0;j<8;j++)
+           {
+               if(db_attenuation == (int)(pre[i] + pos[j]))
+                {
+                  gpio_control_rf(rf_channel_value,i,j);
+                  return;
+                }
+           }
+       }
+   }
+   else{
+   gpio_control_rf(rf_channel_value,U10_0_5_DB,U2_31_5_DB); //默认衰减31.5DB
+   }
+    
+
+}
+
+
+int  rf_db_select(){
+  int i;
+  struct poal_config *poal_config = &(config_get_config()->oal_config);
+  
+  db_attenuation = poal_config->rf_para->attenuation;
+
+  for(i = 0;i<64;i++){
+   if((db_attenuation > db_array[i]) && (db_attenuation < db_array[i+1])){
+      db_attenuation = db_array[i];
+      return 0;
+    }
+  }
+  return 1;
+}
+
 
 void gpio_select_rf_channel(uint64_t mid_freq)  //射频通道选择
 {
@@ -23,7 +123,7 @@ void gpio_select_rf_channel(uint64_t mid_freq)  //射频通道选择
         printf_warn("middle freq is less than band, set defaut gpio ctrl pin:2\n");
         if(rf_channel_value != HPF2){
             rf_channel_value = HPF2;
-            gpio_control_rf(rf_channel_value,U10_0_DB,U2_0_DB);  //2通道  0 - 160M
+            count_pre_pos_channel(rf_channel_value);  //2通道  0 - 160M
         }
         return;
     }
@@ -34,7 +134,7 @@ void gpio_select_rf_channel(uint64_t mid_freq)  //射频通道选择
             if((mid_freq_val > rf_bw_data[i].s_freq_rf) && (mid_freq_val < rf_bw_data[i].e_freq_rf)){
                 if(rf_channel_value != rf_bw_data[i].index_rf){   //扫频范围有变化
                     rf_channel_value = rf_bw_data[i].index_rf;    //选择新的通道
-                    gpio_control_rf(rf_channel_value,U10_0_DB,U2_0_DB);
+                    count_pre_pos_channel(rf_channel_value);
                 }
                 found++;
             }
@@ -56,7 +156,7 @@ int gpio_set(int spidev_index,char val){
 
     valuefd = open(spi_gpio_value, O_WRONLY);
     if (valuefd < 0){
-        printf("Cannot open GPIO value\n");
+        printf("Cannot open GPIO value\n"); 
         return -1;
     }
 
@@ -153,7 +253,6 @@ void gpio_rf_channel(rf_channel channel_val)
         gpio_set(SEC_L_42442_V2,0);
         gpio_set(SEC_42422_V1,0);
         gpio_set(SEC_42422_LS,1);	
-
         break;
 
         case HPF5:
@@ -383,5 +482,6 @@ void gpio_init_control() //初始化24个IO口
 	for(i=0;i<24;i++) {
 	  gpio_init(i);	  
     }	
+    rf_db_attenuation_init();
 }
 

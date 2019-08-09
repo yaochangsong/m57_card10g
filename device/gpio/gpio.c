@@ -21,7 +21,10 @@ void gpio_select_rf_channel(uint64_t mid_freq)  //射频通道选择
     static uint8_t rf_channel_value = 0;
     if((int64_t)(mid_freq - BAND_WITH_100M) < 0){
         printf_warn("middle freq is less than band, set defaut gpio ctrl pin:2\n");
-        gpio_control_rf(HPF2,U10_0_DB,U2_0_DB);  //2通道  0 - 160M
+        if(rf_channel_value != HPF2){
+            rf_channel_value = HPF2;
+            gpio_control_rf(rf_channel_value,U10_0_DB,U2_0_DB);  //2通道  0 - 160M
+        }
         return;
     }
     else{

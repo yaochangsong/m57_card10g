@@ -46,17 +46,17 @@
 #define  RF_END_80M (80000000ULL)
 #define  RF_END_160M (160000000ULL)
 #define  RF_END_320M (320000000ULL)
-#define  RF_END_630M (630000000ULL)
+#define  RF_END_630M (630000000ULL)  //#define  RF_END_630M (800000000ULL)
 #define  RF_END_1325M (1325000000ULL)
 #define  RF_END_2750M (2750000000ULL)
 #define  RF_END_3800M (3800000000ULL)
 #define  RF_END_6000M (6000000000ULL)
 
 typedef struct  {
-     uint8_t  INDEX_RF;
-     uint64_t S_FREQ_RF;
-     uint64_t E_FREQ_RF;
-     uint32_t BW_RF;
+     uint8_t  index_rf;
+     uint64_t s_freq_rf;
+     uint64_t e_freq_rf;
+     uint32_t bw_rf;
 }__attribute__ ((packed)) RF_CHANNEL_SN;   
 
 

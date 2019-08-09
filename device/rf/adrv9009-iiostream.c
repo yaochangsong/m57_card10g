@@ -278,8 +278,11 @@ int16_t adrv9009_iio_set_freq(long long freq)
 {
 	struct stream_cfg trxcfg;
 	trxcfg.lo_hz = freq;
-	printf_info("* Configuring ADRV9009 for streaming\n");
+	printf_info("* Acquiring ADRV9009 RX streaming devices\n");
+	//ASSERT(get_adrv9009_stream_dev(ctx, RX, &rx) && "No rx dev found");
+	//printf_info("* Configuring ADRV9009 for streaming\n");
 	//ASSERT(cfg_adrv9009_streaming_ch(ctx, &trxcfg,RX, 0) && "TRX device not found");
+
 	return 0;
 }
 
@@ -305,7 +308,7 @@ ssize_t iio_get_rx_buf_size(void)
 
 
 
-
+#if 0
 /* simple configuration and streaming */
 void adrv_9009_iio_work_thread(void *arg)
 {
@@ -453,4 +456,4 @@ void adrv_9009_iio_work_thread(void *arg)
 
 	return 0;
 }
-
+#endif

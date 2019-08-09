@@ -76,7 +76,11 @@ static  void  executor_fregment_scan(uint32_t fregment_num,uint8_t ch, work_mode
     */
     s_freq = poal_config->multi_freq_fregment_para[ch].fregment[fregment_num].start_freq;
     e_freq = poal_config->multi_freq_fregment_para[ch].fregment[fregment_num].end_freq;
+#if (RF_ADRV9009_IIO == 1)
+    scan_bw = BAND_WITH_200M;
+#else
     scan_bw = poal_config->rf_para[ch].mid_bw;
+#endif
     fftsize= poal_config->multi_freq_fregment_para[ch].fregment[fregment_num].fft_size;
     
     if(e_freq < s_freq || scan_bw <= 0){
@@ -107,7 +111,7 @@ static  void  executor_fregment_scan(uint32_t fregment_num,uint8_t ch, work_mode
         }
         else{
             /* 若不是整数，需计算剩余带宽中心频率 */
-            left_band = e_freq - s_freq + i * scan_bw;
+            left_band = e_freq - s_freq - i * scan_bw;
             m_freq = s_freq + i * scan_bw + left_band/2;
         }
         header_param.ch = ch;

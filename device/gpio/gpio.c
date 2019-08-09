@@ -14,19 +14,29 @@ static RF_CHANNEL_SN rf_bw_data[]= {
 };
 
 
-void gpio_select_rf_channel(uint32_t mid_freq)  //射频通道选择
+void gpio_select_rf_channel(uint64_t mid_freq)  //射频通道选择
 {
     int i = 0;
-    if((mid_freq - BAND_WITH_100M) < 0){
+    int found = 0;
+    if((int64_t)(mid_freq - BAND_WITH_100M) < 0){
+        printf_warn("middle freq is less than band, set defaut gpio ctrl pin:2\n");
         gpio_control_rf(HPF2,U10_0_DB,U2_0_DB);  //2通道  0 - 160M
+        return;
     }
     else{
-        uint32_t mid_freq_val = mid_freq - BAND_WITH_100M;
+        uint64_t mid_freq_val = mid_freq - BAND_WITH_100M;
         for(i=0;i<ARRAY_SIZE(rf_bw_data);i++){
-            if((mid_freq_val < rf_bw_data[i].S_FREQ_RF) && (mid_freq_val > rf_bw_data[i].E_FREQ_RF)){
+            printf_note("freq=%llu, s_freq=%llu, end_freq=%llu\n", mid_freq_val, rf_bw_data[i].S_FREQ_RF, rf_bw_data[i].E_FREQ_RF);
+            if((mid_freq_val > rf_bw_data[i].S_FREQ_RF) && (mid_freq_val < rf_bw_data[i].E_FREQ_RF)){
                 gpio_control_rf(rf_bw_data[i].INDEX_RF,U10_0_DB,U2_0_DB);
+                found++;
             }
         }
+    }
+    printf_debug("rf channel found=%d\n", found);
+    if(found == 0){
+        printf_warn("not find, set defaut gpio ctrl pin:2\n");
+        gpio_control_rf(HPF2,U10_0_DB,U2_0_DB);
     }
 }
 

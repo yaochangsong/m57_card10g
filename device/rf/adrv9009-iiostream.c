@@ -274,15 +274,18 @@ void adrv9009_iio_init(void)
 
 }
 
-int16_t adrv9009_iio_set_freq(long long freq)
+int16_t adrv9009_iio_set_freq(uint64_t freq_hz)
 {
-	struct stream_cfg trxcfg;
-	trxcfg.lo_hz = freq;
-	printf_info("* Acquiring ADRV9009 RX streaming devices\n");
-	//ASSERT(get_adrv9009_stream_dev(ctx, RX, &rx) && "No rx dev found");
-	//printf_info("* Configuring ADRV9009 for streaming\n");
-	//ASSERT(cfg_adrv9009_streaming_ch(ctx, &trxcfg,RX, 0) && "TRX device not found");
-
+	static uint64_t s_freq_hz = 0;
+	if(s_freq_hz == freq_hz){
+		return 0;
+	}
+	s_freq_hz = freq_hz;
+	printf_note("* Setting ADRV9009 RX freq:%llu\n", freq_hz);
+	
+	struct iio_channel *chn = NULL;
+	if (!get_lo_chan(ctx, &chn)) { return -1; }
+	wr_ch_lli(chn, "frequency", freq_hz);
 	return 0;
 }
 
@@ -306,154 +309,3 @@ ssize_t iio_get_rx_buf_size(void)
 	return nbytes_rx;
 }
 
-
-
-#if 0
-/* simple configuration and streaming */
-void adrv_9009_iio_work_thread(void *arg)
-{
-	int write_file_cnter = 0;
-	char strbuf[128];
-	// Streaming devices
-	struct iio_device *tx;
-	struct iio_device *rx;
-
-	// RX and TX sample counters
-	size_t nrx = 0;
-	size_t ntx = 0;
-
-	// Stream configuration
-	struct stream_cfg trxcfg;
-
-	// Listen to ctrl+c and ASSERT
-	signal(SIGINT, handle_sig);
-
-	// TRX stream config
-	trxcfg.lo_hz = GHZ(2.5);
-
-	printf_info("* Acquiring IIO context\n");
-	ASSERT((ctx = iio_create_default_context()) && "No context");
-	ASSERT(iio_context_get_devices_count(ctx) > 0 && "No devices");
-
-	
-#if (ADRV_9009_IIO_TX_EN == 1)
-	printf_info("* Acquiring ADRV9009 TX streaming devices\n");
-	ASSERT(get_adrv9009_stream_dev(ctx, TX, &tx) && "No tx dev found");
-	printf_info("* Configuring ADRV9009 for streaming\n");
-	ASSERT(cfg_adrv9009_streaming_ch(ctx, &trxcfg,TX, 0) && "TRX device not found");
-#endif
-#if (ADRV_9009_IIO_RX_EN == 1)
-	printf_info("* Acquiring ADRV9009 RX streaming devices\n");
-	ASSERT(get_adrv9009_stream_dev(ctx, RX, &rx) && "No rx dev found");
-	printf_info("* Configuring ADRV9009 for streaming\n");
-	ASSERT(cfg_adrv9009_streaming_ch(ctx, &trxcfg,RX, 0) && "TRX device not found");
-#endif
-
-	printf("* Initializing ADRV9009 IIO streaming channels\n");
-#if (ADRV_9009_IIO_RX_EN == 1)
-	ASSERT(get_adrv9009_stream_ch(ctx, RX, rx, 0, 'i', &rx0_i) && "RX chan i not found");
-	ASSERT(get_adrv9009_stream_ch(ctx, RX, rx, 0, 'q', &rx0_q) && "RX chan q not found");
-    ASSERT(get_adrv9009_stream_ch(ctx, RX, rx, 1, 'i', &rx0_i) && "RX chan i not found");
-	ASSERT(get_adrv9009_stream_ch(ctx, RX, rx, 1, 'q', &rx0_q) && "RX chan q not found");
-#endif
-#if (ADRV_9009_IIO_TX_EN == 1)
-	ASSERT(get_adrv9009_stream_ch(ctx, TX, tx, 0, 0, &tx0_i) && "TX chan i not found");
-	ASSERT(get_adrv9009_stream_ch(ctx, TX, tx, 1, 0, &tx0_q) && "TX chan q not found");
-#endif
-
-	printf("* Enabling IIO streaming channels\n");
-#if (ADRV_9009_IIO_RX_EN == 1)
-	iio_channel_enable(rx0_i);
-	iio_channel_enable(rx0_q);
-#endif
-#if (ADRV_9009_IIO_TX_EN == 1)
-	iio_channel_enable(tx0_i);
-	iio_channel_enable(tx0_q);
-#endif
-
-	printf("* Creating non-cyclic IIO buffers with 1 MiS\n");
-#if (ADRV_9009_IIO_RX_EN == 1)
-	rxbuf = iio_device_create_buffer(rx, 1024*1024, false);
-	if (!rxbuf) {
-		perror("Could not create RX buffer");
-		iio_shutdown();
-	}
-#endif
-#if (ADRV_9009_IIO_TX_EN == 1)
-	txbuf = iio_device_create_buffer(tx, 1024*1024, false);
-	if (!txbuf) {
-		perror("Could not create TX buffer");
-		iio_shutdown();
-	}
-#endif
-
-	printf("* Starting IO streaming (press CTRL+C to cancel)\n");
-	while (!stop)
-	{
-		ssize_t nbytes_rx, nbytes_tx;
-		char *p_dat, *p_end;
-		ptrdiff_t p_inc;
-		int i;
-		int16_t *iqdata;
-		
-
-#if (ADRV_9009_IIO_RX_EN == 1)
-		// Refill RX buffer
-		nbytes_rx = iio_buffer_refill(rxbuf);
-		if (nbytes_rx < 0) { printf("Error refilling buf %d\n",(int) nbytes_rx); iio_shutdown(); }
-
-		// READ: Get pointers to RX buf and read IQ from RX buf port 0
-		p_inc = iio_buffer_step(rxbuf);
-		p_end = iio_buffer_end(rxbuf);
-		printf("p_first=%p, p_end=%p\n", iio_buffer_first(rxbuf, rx0_i), p_end);
-		for (p_dat = iio_buffer_first(rxbuf, rx0_i); p_dat < p_end; p_dat += p_inc) {
-			// Example: swap I and Q
-			const int16_t i = ((int16_t*)p_dat)[0]; // Real (I)
-			const int16_t q = ((int16_t*)p_dat)[1]; // Imag (Q)
-			((int16_t*)p_dat)[0] = q;
-			((int16_t*)p_dat)[1] = i;
-		}
-		// Sample counter increment and status output
-		//nrx += nbytes_rx / iio_device_get_sample_size(rx);
-		//iio_buffer_get_data(rxbuf);
-		iqdata = (int16_t *)iio_buffer_first(rxbuf, rx0_i);
-		printf("get_sample_size=%d, nbytes_rx=%d, q=%d, i=%d\n", iio_device_get_sample_size(rx), nbytes_rx, ((int16_t*)p_dat)[0], ((int16_t*)p_dat)[1]);
-		printfi("IQ data:");
-		for(i = 0; i< 10; i++){
-			printfi("%d ",*(int16_t*)(iqdata+i));
-		}
-		printfi("\nIQ data End\n");
-		//printf("\tRX %8.2f MSmp, ((int16_t*)p_dat)[0]=%d\n", nrx/1e6, ((int16_t*)p_dat)[0]);
-		if(write_file_cnter++ < 3){
-			sprintf(strbuf, "/run/wav%d", write_file_cnter);
-			printf("write iq data to:[len=%d]%s\n", nbytes_rx/2, strbuf);
-			write_file_in_int16((void*)(iqdata), nbytes_rx/2, strbuf);
-		}
-        	
-#endif
-#if (ADRV_9009_IIO_TX_EN == 1)
-				// Schedule TX buffer
-		nbytes_tx = iio_buffer_push(txbuf);
-		if (nbytes_tx < 0) { printf("Error pushing buf %d\n", (int) nbytes_tx); iio_shutdown(); }
-
-		// WRITE: Get pointers to TX buf and write IQ to TX buf port 0
-		p_inc = iio_buffer_step(txbuf);
-		p_end = iio_buffer_end(txbuf);
-		for (p_dat = iio_buffer_first(txbuf, tx0_i); p_dat < p_end; p_dat += p_inc) {
-			// Example: fill with zeros
-			// 14-bit sample needs to be MSB alligned so shift by 2
-			// https://wiki.analog.com/resources/eval/user-guides/ad-fmcomms2-ebz/software/basic_iq_datafiles#binary_format
-			((int16_t*)p_dat)[0] = 0 << 2; // Real (I)
-			((int16_t*)p_dat)[1] = 0 << 2; // Imag (Q)
-		}
-		// Sample counter increment and status output
-		ntx += nbytes_tx / iio_device_get_sample_size(tx);
-		printf("\tTX %8.2f MSmp\n", nrx/1e6, ntx/1e6);
-#endif
-	}
-
-	iio_shutdown();
-
-	return 0;
-}
-#endif

@@ -16,7 +16,6 @@ static RF_CHANNEL_SN rf_bw_data[]= {
 float pre[8] ={0,0.5,1,2,4,8,16,31.5};
 float pos[8] ={0,0.5,1,2,4,8,16,31.5};
 
-float db_value;
 float db_array[64];
 int   db_arrange[64];
 
@@ -58,8 +57,7 @@ int rf_db_attenuation_init()
    {
        for(j=0;j<8;j++)
        {
-            db_value = pre[i] + pos[j];
-            db_array[k++] = db_value;
+            db_array[k++] = pre[i] + pos[j];
        }
    }
    BubbleSort(db_array,64);
@@ -77,20 +75,21 @@ int  rf_db_select(uint8_t db_attenuation){
     return 0;
 }
 
-int count_pre_pos_rf(uint8_t attenuation_val)
+int count_pre_pos_rf(uint8_t attenuation_val)   //衰减DB值
 {
    uint8_t attenuation;
    attenuation = rf_db_select(attenuation_val);
 
    if(attenuation > 0){
-       uint8_t i,j;
-       for(i=0;i<8;i++)
+       uint8_t pre,pos;
+       for(pre=0;pre<8;pre++)
        {
-           for(j=0;j<8;j++)
+           for(pos=0;pos<8;pos++)
            {
-               if(attenuation == (uint8_t)(pre[i] + pos[j]))
+               if(attenuation == (uint8_t)(pre[pre] + pos[pos]))
                 {
-                  gpio_attenuation_rf(i,j);
+                  gpio_attenuation_rf(pre,pos);
+                  printf_note("pre :%d pos :%d\n",pre,pos);
                   return;
                 }
            }

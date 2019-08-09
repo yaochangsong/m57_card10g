@@ -54,9 +54,9 @@
 
 typedef struct  {
      uint8_t  INDEX_RF;
-     uint32_t BW_RF;
      uint64_t S_FREQ_RF;
      uint64_t E_FREQ_RF;
+     uint32_t BW_RF;
 }__attribute__ ((packed)) RF_CHANNEL_SN;   
 
 

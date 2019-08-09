@@ -97,7 +97,9 @@ int  gpio_init(int spidev_index);
 int  gpio_set(int spidev_index,char val);
 void gpio_init_control();
 
-void gpio_control_rf(rf_channel channel_val,rf_pre_reduce pre_reduce_val,rf_pos_reduce pos_reduce_val);
+void gpio_control_rf(rf_channel channel_val);
+void gpio_attenuation_rf(rf_pre_reduce pre_reduce_val,rf_pos_reduce pos_reduce_val);
 void gpio_select_rf_channel(uint64_t mid_freq);                                       //射频通道选择
+int  count_pre_pos_rf(uint8_t db_attenuation);
 
 #endif

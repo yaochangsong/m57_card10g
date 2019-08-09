@@ -1,7 +1,7 @@
 #ifndef __GPIO_H
 #define __GPIO_H
 
-#include "config.h"
+//#include "config.h"
 
 #define GPIO_BASE_OFFSET 960
 
@@ -30,6 +30,35 @@
 #define SEC_H_42442_V1   22
 #define SEC_42422_V1     23
 
+#define  BAND_WITH_100M (100000000ULL)
+
+#define  RF_START_0M (000000000ULL)
+//#define  RF_START_0M (000000000ULL)
+#define  RF_START_145M (145000000ULL)
+//#define  RF_START_145M (145000000ULL)
+#define  RF_START_650M (650000000ULL)
+#define  RF_START_1150M (1150000000ULL)
+#define  RF_START_2100M (2100000000ULL)
+#define  RF_START_2700M (2700000000ULL)
+
+
+#define  RF_END_80M (80000000ULL)
+#define  RF_END_160M (160000000ULL)
+#define  RF_END_320M (320000000ULL)
+#define  RF_END_630M (630000000ULL)
+#define  RF_END_1325M (1325000000ULL)
+#define  RF_END_2750M (2750000000ULL)
+#define  RF_END_3800M (3800000000ULL)
+#define  RF_END_6000M (6000000000ULL)
+
+typedef struct  {
+     uint8_t  INDEX_RF;
+     uint16_t S_FREQ_RF;
+     uint16_t E_FREQ_RF;
+     uint16_t BW_RF;
+}__attribute__ ((packed)) RF_CHANNEL_SN;   
+
+
 typedef enum {
      HPF1 = 1,       //50-75M
      HPF2,	
@@ -39,7 +68,7 @@ typedef enum {
      HPF6,
      HPF7,
      HPF8
-}Channel_Rf;
+}rf_channel;    //射频通道
 
 typedef enum {
      U10_0_DB,
@@ -51,7 +80,7 @@ typedef enum {
      U10_16_DB,
      U10_31_5_DB,
 
-}Attenuation1_Rf;
+}rf_pre_reduce;      //前级衰减
 
 typedef enum {
      U2_0_DB,
@@ -62,10 +91,12 @@ typedef enum {
      U2_8_DB,
      U2_16_DB,
      U2_31_5_DB
-}Attenuation2_Rf;
+}rf_pos_reduce;      //后级衰减
 
-int gpio_init(int spidev_index);
-int gpio_set(int spidev_index,char val);
+int  gpio_init(int spidev_index);
+int  gpio_set(int spidev_index,char val);
 void gpio_init_control();
-void gpio_control_rf(Channel_Rf channel_val,Attenuation1_Rf attenuation1_val,Attenuation2_Rf attenuation2_val);
+void gpio_control_rf(rf_channel channel_val,rf_pre_reduce pre_reduce_val,rf_pos_reduce pos_reduce_val);
+void gpio_select_rf_channel(uint32_t mid_freq);                                       //射频通道选择
+
 #endif

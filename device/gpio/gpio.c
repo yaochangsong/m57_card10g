@@ -22,7 +22,7 @@ float db_arrange[64];
 void rf_db_arrange()       //剔除衰减库里重复的元素
 {
    int i = 0,j=0;
-   for(i=0;i<64;i++){
+   for(i=0;i<ARRAY_SIZE(db_array);i++){
        if(db_array[i] != db_array[i+1]){
             db_arrange[j++] = db_array[i];
        }
@@ -48,8 +48,8 @@ void BubbleSort(float a[],int n)   //将数从小到大排序
 int rf_db_attenuation_init()        //生成衰减库
 {
    uint8_t i,j,k = 0;
-   for(i=0;i<8;i++){
-       for(j=0;j<8;j++){
+   for(i=0;i<ARRAY_SIZE(pre_buf);i++){
+       for(j=0;j<ARRAY_SIZE(pos_buf);j++){
             db_array[k++] = pre_buf[i] + pos_buf[j];
        }
    }
@@ -59,7 +59,7 @@ int rf_db_attenuation_init()        //生成衰减库
 
 float  rf_db_select(float db_attenuation){     //找出衰减库里DB值值
     uint8_t i;
-    for(i = 0;i<64;i++){
+    for(i = 0;i<ARRAY_SIZE(db_arrange);i++){
         if(db_attenuation == db_arrange[i+1]) {  //只要用户设置的衰减值等于后级DB值，就使用后级DB值，否则使用前级DB值
            db_attenuation = db_arrange[i+1];
            return db_attenuation;
@@ -72,14 +72,14 @@ float  rf_db_select(float db_attenuation){     //找出衰减库里DB值值
     return -1;
 }
 
-int count_pre_pos_rf(float attenuation_val)   //衰减DB值
+int gpio_select_rf_attenuation(float attenuation_val)   //衰减DB值
 {
      float attenuation;
      attenuation = rf_db_select(attenuation_val);
      if(attenuation != -1){
          uint8_t pre,pos;
-         for(pre=0;pre<8;pre++){
-             for(pos=0;pos<8;pos++){
+         for(pre=0;pre<ARRAY_SIZE(pre_buf);pre++){
+             for(pos=0;pos<ARRAY_SIZE(pos_buf);pos++){
                  if(attenuation == (pre_buf[pre] + pos_buf[pos])){
                     gpio_attenuation_rf(pre,pos);
                     printf_note("attenuation %f pre :%d pos :%d\n",attenuation,pre,pos);
@@ -457,7 +457,7 @@ void gpio_attenuation_rf(rf_pre_reduce pre_reduce_val,rf_pos_reduce pos_reduce_v
 {
    gpio_rf_pre_reduce(pre_reduce_val); 
    gpio_rf_pos_reduce(pos_reduce_val); 
-   printf_info("pre_reduce_val : %d, pos_reduce_val : %d\n",pre_reduce_val,pos_reduce_val);
+   //printf_info("pre_reduce_val : %d, pos_reduce_val : %d\n",pre_reduce_val,pos_reduce_val);
 }
 
 

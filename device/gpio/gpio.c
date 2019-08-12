@@ -21,15 +21,10 @@ int   db_arrange[64];
 
 void rf_db_arrange()       //剔除衰减库里重复的元素
 {
-    int i = 0,j=0;
-   for(i=0;i<64;i++)
-   {
-       
-       if((int)db_array[i] != (int)db_array[i+1])
-       {
+   int i = 0,j=0;
+   for(i=0;i<64;i++){
+       if((int)db_array[i] != (int)db_array[i+1]){
             db_arrange[j++] = (int)db_array[i];
-            //printf("------------val[%d]:%d\n",i,(int)val[i]);
-            //printf("------------abc[%d]:%d\n",j,(int)abc[1]);
        }
    }
 }
@@ -53,10 +48,8 @@ void BubbleSort(float a[],int n)   //将数从小到大排序
 int rf_db_attenuation_init()        //生成衰减库
 {
    uint8_t i,j,k = 0;
-   for(i=0;i<8;i++)
-   {
-       for(j=0;j<8;j++)
-       {
+   for(i=0;i<8;i++){
+       for(j=0;j<8;j++){
             db_array[k++] = pre_buf[i] + pos_buf[j];
        }
    }
@@ -67,13 +60,11 @@ int rf_db_attenuation_init()        //生成衰减库
 int  rf_db_select(uint8_t db_attenuation){     //找出衰减库里DB值值
     uint8_t i;
     for(i = 0;i<64;i++){
-        if(db_attenuation == db_arrange[i+1]) 
-        {
+        if(db_attenuation == db_arrange[i+1]) {
             db_attenuation = db_arrange[i+1];
             return db_attenuation;
         }
         else if((db_attenuation >= db_arrange[i]) && (db_attenuation < db_arrange[i+1])){
-            
            if(db_attenuation >= db_arrange[i]) db_attenuation = db_arrange[i];
            return db_attenuation;
         }
@@ -87,12 +78,9 @@ int count_pre_pos_rf(uint8_t attenuation_val)   //衰减DB值
      attenuation = rf_db_select(attenuation_val);
      if(attenuation != -1){
          uint8_t pre,pos;
-         for(pre=0;pre<8;pre++)
-         {
-             for(pos=0;pos<8;pos++)
-             {
-                 if(attenuation == (uint8_t)(pre_buf[pre] + pos_buf[pos]))
-                  {
+         for(pre=0;pre<8;pre++){
+             for(pos=0;pos<8;pos++){
+                 if(attenuation == (uint8_t)(pre_buf[pre] + pos_buf[pos])){
                     gpio_attenuation_rf(pre,pos);
                     printf_note("pre :%d pos :%d\n",pre,pos);
                     return 0;

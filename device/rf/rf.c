@@ -836,9 +836,10 @@ uint8_t rf_set_interface(uint8_t cmd,uint8_t ch,void *data){
         }
         case EX_RF_ATTENUATION :{
             rf_gain_value = *((uint8_t *)data);
-            printf_debug("[**RF**]ch=%d, rf_gain_value=%d\n",ch, rf_gain_value);
+            printf_note("[**RF**]ch=%d, rf_gain_value=%d\n",ch, rf_gain_value);
         #if defined(PLAT_FORM_ARCH_ARM)
             #if (RF_ADRV9009_IIO == 1)
+            gpio_select_rf_attenuation(rf_gain_value);
             #else
             ret = send_rf_attenuation_set_cmd(ch,rf_gain_value);//设置射频增益
             #endif

@@ -529,7 +529,7 @@ static int akt_execute_set_command(void)
             freq_hz = *(uint64_t *)(header->buf);
             printf_info("spctrum freq hz=%lluHz\n", freq_hz);
             executor_set_command(EX_RF_FREQ_CMD, EX_RF_MID_FREQ, ch, &freq_hz);
-            fft_result = spectrum_rw_fft_result(NULL);
+            fft_result = spectrum_rw_fft_result(NULL, 0,0,0);
             if(fft_result == NULL){
                 err_code = RET_CODE_INTERNAL_ERR;
                 goto set_exit;
@@ -564,6 +564,8 @@ static int akt_execute_set_command(void)
             executor_set_enable_command(0);
             break;
         }
+        case SYSTEM_TIME_SET_REQ:
+            break;
         default:
           printf_err("not support class code[%x]\n",header->code);
           err_code = RET_CODE_PARAMTER_ERR;
@@ -600,25 +602,25 @@ static int akt_execute_get_command(void)
             uint64_t freq_hz;
             int i;
             FFT_SIGNAL_RESPINSE_ST resp_result;
-            fft_result *fft_result;
+            struct spectrum_fft_result_st *fft_result;
             self_check.clk_status = 1;
             self_check.ad_status = 0;
             self_check.pfga_temperature = io_get_adc_temperature();
             printf_info("pfga_temperature=%d\n", self_check.pfga_temperature);
             
-            fft_result = spectrum_rw_fft_result(NULL);
+            fft_result = spectrum_rw_fft_result(NULL, 0, 0, 0);
             if(fft_result == NULL){
                 err_code = RET_CODE_INTERNAL_ERR;
                 printf_info("error fft_result\n");
                 return -1;
             }
-            resp_result.signal_num = fft_result->signalsnumber;
-            printf_note("#########Find FFT Parameter[%d]:###############\n",resp_result.signal_num);
+            resp_result.signal_num = fft_result->result_num;
+            printf_warn("#########Find FFT Parameter[%d]:###############\n",resp_result.signal_num);
             for(i = 0; i < resp_result.signal_num; i++){
-                resp_result.signal_array[i].center_freq = fft_result->centfeqpoint[i];
-                resp_result.signal_array[i].bandwidth = fft_result->bandwidth[i];
-                resp_result.signal_array[i].power_level = fft_result->arvcentfreq[i];
-                printf_note("[%d]center_freq=%lluHz, bandwidth=%llu, power_level=%f\n", i,
+                resp_result.signal_array[i].center_freq = fft_result->mid_freq_hz[i];
+                resp_result.signal_array[i].bandwidth = fft_result->bw_hz[i];
+                resp_result.signal_array[i].power_level = fft_result->level[i];
+                printf_warn("[%d]center_freq=%lluHz, bandwidth=%llu, power_level=%f\n", i,
                     resp_result.signal_array[i].center_freq,
                     resp_result.signal_array[i].bandwidth,
                     resp_result.signal_array[i].power_level);

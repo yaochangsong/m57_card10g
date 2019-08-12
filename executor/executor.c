@@ -130,7 +130,9 @@ static  void  executor_fregment_scan(uint32_t fregment_num,uint8_t ch, work_mode
         executor_wait_kernel_deal();
 #else
         printf_debug("spectrum_wait_user_deal..\n");
-        spectrum_wait_user_deal(&header_param);
+        if(get_spectrum_debug() == false){
+            spectrum_wait_user_deal(&header_param);
+        }
 #endif
         if(poal_config->enable.bit_reset == true){
             printf_info("receive reset task sigal\n");
@@ -469,7 +471,7 @@ int8_t executor_set_enable_command(uint8_t ch)
                 printf_debug("freq_point_cnt=%d\n", poal_config->multi_freq_point_param[ch].freq_point_cnt);
                 executor_set_command(EX_RF_FREQ_CMD, EX_RF_ATTENUATION, ch, &poal_config->rf_para[ch].attenuation);
                 executor_set_command(EX_RF_FREQ_CMD, EX_RF_MGC_GAIN, ch, &poal_config->rf_para[ch].mgc_gain_value);
-                executor_set_command(EX_RF_FREQ_CMD, EX_RF_MID_FREQ, ch, &poal_config->rf_para[ch].mid_freq);
+                //executor_set_command(EX_RF_FREQ_CMD, EX_RF_MID_FREQ, ch, &poal_config->rf_para[ch].mid_freq);
                 executor_set_command(EX_RF_FREQ_CMD, EX_RF_MID_BW, ch, &poal_config->rf_para[ch].mid_bw);
                 executor_set_command(EX_MID_FREQ_CMD, EX_BANDWITH, ch, &poal_config->rf_para[ch].mid_bw);
                 executor_set_command(EX_MID_FREQ_CMD, EX_CHANNEL_SELECT, ch, &ch);
@@ -479,7 +481,7 @@ int8_t executor_set_enable_command(uint8_t ch)
             case OAL_FAST_SCAN_MODE:
             {
                 executor_set_command(EX_RF_FREQ_CMD, EX_RF_ATTENUATION, ch, &poal_config->rf_para[ch].attenuation);
-                executor_set_command(EX_RF_FREQ_CMD, EX_RF_MID_FREQ, ch, &poal_config->rf_para[ch].mid_freq);
+                //executor_set_command(EX_RF_FREQ_CMD, EX_RF_MID_FREQ, ch, &poal_config->rf_para[ch].mid_freq);
                 executor_set_command(EX_RF_FREQ_CMD, EX_RF_MID_BW, ch, &poal_config->rf_para[ch].mid_bw);
                 /* 中频带宽和射频带宽一�?*/
                 executor_set_command(EX_MID_FREQ_CMD, EX_BANDWITH, ch, &poal_config->rf_para[ch].mid_bw);
@@ -513,6 +515,7 @@ void executor_init(void)
 {
     int ret, i;
     pthread_t work_id, work_id_iio;
+    struct poal_config *poal_config = &(config_get_config()->oal_config);
     io_init();
     /* set default network */
     executor_set_command(EX_NETWORK_CMD, 0, 0, NULL);
@@ -520,6 +523,7 @@ void executor_init(void)
     for(i = 0; i<MAX_RADIO_CHANNEL_NUM ; i++){
         io_set_enable_command(PSD_MODE_DISABLE, i, 0);
         io_set_enable_command(AUDIO_MODE_DISABLE, i, 0);
+        executor_set_command(EX_RF_FREQ_CMD, EX_RF_ATTENUATION, 0, &poal_config->rf_para[i].attenuation);
     }
     sem_init(&(work_sem.notify_deal), 0, 0);
     sem_init(&(work_sem.kernel_sysn), 0, 0);

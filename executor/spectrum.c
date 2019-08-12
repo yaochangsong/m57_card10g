@@ -44,7 +44,7 @@ static int32_t specturm_rx_iq_read(int16_t **iq_payload)
     }
     printfi("\n");
 
-    if(write_file_cnter++ < 1){
+    if(write_file_cnter++ == 10) {
         sprintf(strbuf, "/run/wav0_%d", write_file_cnter);
         printfi("write rx0 iq data to:[len=%d]%s\n", nbytes_rx/2, strbuf);
         write_file_in_int16((void*)(iqdata), nbytes_rx/2, strbuf);
@@ -105,16 +105,24 @@ static void spectrum_send_fft_data(void *fft_data, size_t fft_data_len, void *pa
 void spectrum_wait_user_deal( struct spectrum_header_param *param)
 {
     struct spectrum_st *ps;
+    float resolution;
+    uint32_t fft_size;
+
+    #define SPECTRUM_DEFAULT_FFT_SIZE (8*1024)
 
     ps = &_spectrum;
     ps->iq_len = specturm_rx_iq_read(&ps->iq_payload);
     printf_debug("ps->iq_payload[0]=%d, %d,param->fft_size=%d, ps->iq_len=%d\n", ps->iq_payload[0],ps->iq_payload[1], param->fft_size, ps->iq_len);
-   // TIME_ELAPSED(fft_iqdata_handle(6, ps->iq_payload, param->fft_size, ps->iq_len/2)); //param->fft_size
-    TIME_ELAPSED(fft_iqdata_handle(8, ps->iq_payload, 8*1024, 16*1024));
+    fft_size = SPECTRUM_DEFAULT_FFT_SIZE;
+    TIME_ELAPSED(fft_iqdata_handle(8, ps->iq_payload, fft_size, fft_size*2));
+    
     ps->fft_float_payload = fft_get_data(&ps->fft_len);
     ps->fft_short_payload = safe_malloc(ps->fft_len*sizeof(int16_t));
+    
     FLOAT_TO_SHORT(ps->fft_float_payload, ps->fft_short_payload, ps->fft_len);
-    spectrum_rw_fft_result(fft_get_result());
+    resolution = cal_resolution(param->bandwidth, fft_size);
+    spectrum_rw_fft_result(fft_get_result(), param->s_freq, resolution, fft_size);
+    printf_debug("resolution=%f, param->s_freq=%llu\n", resolution, param->s_freq);
     printf_debug("ps->fft_len=%d,fft_size=%d, ps->fft_payload=%d,%d, %f, %f\n", ps->fft_len, param->fft_size, 
         ps->fft_short_payload[0],ps->fft_short_payload[1], ps->fft_float_payload[0], ps->fft_float_payload[1]);
     param->data_len = ps->fft_len*sizeof(int16_t); /* fill  header data len */
@@ -136,26 +144,31 @@ void spectrum_wait_user_deal( struct spectrum_header_param *param)
     @result != NUL: write
     @ return fft result
 */
-void *spectrum_rw_fft_result(fft_result *result)
+void *spectrum_rw_fft_result(fft_result *result, uint64_t s_freq_hz, float freq_resolution, uint32_t fft_size)
 {
     int i;
-    static fft_result s_fft_result, *pfft = NULL;
+    static struct spectrum_fft_result_st s_fft_result, *pfft = NULL;
+    #define SIGNAL_ADD_FIXED_VALUE 10
+    
     LOCK_SP_RESULT();
     if(result == NULL){
         printf_info("read result\n");
         goto exit;
     }
+    
+    
     pfft = &s_fft_result;
-    pfft->signalsnumber = result->signalsnumber;
-    if(pfft->signalsnumber > SIGNALNUM){
-        printf_err("signals number error:%d\n", pfft->signalsnumber);
+    pfft->result_num = result->signalsnumber;
+    if(pfft->result_num > SIGNALNUM){
+        printf_err("signals number error:%d\n", pfft->result_num);
         pfft = NULL;
         goto exit;
     }
-    for(i = 0; i < pfft->signalsnumber; i++){
-        pfft->centfeqpoint[i] = result->centfeqpoint[i];
-        pfft->bandwidth[i] = result->bandwidth[i];
-        pfft->arvcentfreq[i] = result->arvcentfreq[i];
+    printf_info("s_freq_hz=%llu, freq_resolution=%f, fft_size=%u\n", s_freq_hz, freq_resolution, fft_size);
+    for(i = 0; i < pfft->result_num; i++){
+        pfft->mid_freq_hz[i] = s_freq_hz + result->centfeqpoint[i]*freq_resolution;
+        pfft->bw_hz[i] = result->bandwidth[i] * freq_resolution;
+        pfft->level[i] = result->arvcentfreq[i] - SIGNAL_ADD_FIXED_VALUE;
     }
 exit:
     UNLOCK_SP_RESULT();

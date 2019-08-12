@@ -18,7 +18,8 @@
 static void usage(const char *prog)
 {
     fprintf(stderr, "Usage: %s [option]\n"
-        "          -d debug_level  # [3(LOG_ERR),4(LOG_WARNING),5(LOG_NOTICE),6(LOG_INFO),7(LOG_DEBUG),-1(OFF)]\n", prog);
+        "          -d debug_level  # [3(LOG_ERR),4(LOG_WARNING),5(LOG_NOTICE),6(LOG_INFO),7(LOG_DEBUG),-1(OFF)]\n"
+        "          -s              # [(ADI IIO)specturm tool on; true or false,Default false]\n", prog);
     exit(1);
 }
 
@@ -36,11 +37,19 @@ static void usage(const char *prog)
 * RETURNS
 *     none
 ******************************************************************************/
+bool spectrum_debug = false;
+
+bool get_spectrum_debug(void)
+{
+    return spectrum_debug;
+}
+
+
 int main(int argc, char **argv)
 {
     int debug_level = -1;
     int opt;
-    while ((opt = getopt(argc, argv, "d:")) != -1) {
+    while ((opt = getopt(argc, argv, "d:s")) != -1) {
         switch (opt)
         {
         case 'd':
@@ -52,6 +61,10 @@ int main(int argc, char **argv)
                 usage(argv[0]);
                 exit(-1);
             }
+            break;
+        case 's':
+            spectrum_debug = true;
+            printf("spectrum_debug:%d\n", spectrum_debug);
             break;
         default: /* '?' */
             usage(argv[0]);
@@ -68,9 +81,11 @@ int main(int argc, char **argv)
 #if (UART_LCD_SUPPORT == 1)
     init_lcd();
 #endif
+if(spectrum_debug == false){
     rf_init();
-    executor_init();
     spectrum_init();
+}
+    executor_init();
     if(server_init() == -1){
         printf_err("server init fail!\n");
         goto done;

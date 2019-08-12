@@ -3,7 +3,7 @@
 
 #include "config.h"
 
-#define MAX_RADIO_CHANNEL_NUM 8
+#define MAX_RADIO_CHANNEL_NUM 1
 #define MAX_SIGNAL_CHANNEL_NUM (16)
 #define MAX_SIG_CHANNLE 128
 
@@ -161,6 +161,7 @@ struct network_st{
 /* 控制参数 */
 struct control_st{
     uint8_t remote_local;               /* 本控 or 远控 */
+    uint8_t fft_noise_threshold;        /* FFT 计算噪音门限 */
 }__attribute__ ((packed));
 
 

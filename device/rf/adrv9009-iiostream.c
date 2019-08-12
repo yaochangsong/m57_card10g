@@ -238,8 +238,8 @@ void adrv9009_iio_init(void)
 
 	printf_info("* Initializing ADRV9009 IIO streaming channels\n");
 #if (ADRV_9009_IIO_RX_EN == 1)
-	ASSERT(get_adrv9009_stream_ch(ctx, RX, rx, 0, 'i', &rx0_i) && "RX chan i not found");
-	ASSERT(get_adrv9009_stream_ch(ctx, RX, rx, 0, 'q', &rx0_q) && "RX chan q not found");
+	ASSERT(get_adrv9009_stream_ch(ctx, RX, rx, 1, 'i', &rx0_i) && "RX chan i not found");
+	ASSERT(get_adrv9009_stream_ch(ctx, RX, rx, 1, 'q', &rx0_q) && "RX chan q not found");
 #endif
 #if (ADRV_9009_IIO_TX_EN == 1)
 	ASSERT(get_adrv9009_stream_ch(ctx, TX, tx, 0, 0, &tx0_i) && "TX chan i not found");
@@ -277,6 +277,10 @@ void adrv9009_iio_init(void)
 int16_t adrv9009_iio_set_freq(uint64_t freq_hz)
 {
 	static uint64_t s_freq_hz = 0;
+	if(get_spectrum_debug() == true)
+	{
+		return 0;
+	}
 	if(s_freq_hz == freq_hz){
 		return 0;
 	}

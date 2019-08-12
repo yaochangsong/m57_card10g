@@ -6,6 +6,8 @@
 
 #define SPECTRUM_START_FLAG 0x7E7E
 
+#define cal_resolution(bw_hz, fft_size)  (bw_hz/fft_size)
+
 struct spectrum_st{
     long long freq_hz; 
     long long bw_hz;
@@ -18,6 +20,13 @@ struct spectrum_st{
     uint32_t fft_len;
     uint32_t fft_len_back;
     volatile bool is_wait_deal;
+};
+
+struct spectrum_fft_result_st{
+    uint32_t result_num;
+    long long mid_freq_hz[SIGNALNUM]; 
+    long long bw_hz[SIGNALNUM];
+    uint32_t level[SIGNALNUM];
 };
 
 #define LOCK_SP_RESULT() do { \
@@ -41,6 +50,6 @@ struct spectrum_st{
 extern bool specturm_work_write_enable(bool enable);
 extern void spectrum_init(void);
 extern void spectrum_wait_user_deal( struct spectrum_header_param *param);
-extern void *spectrum_rw_fft_result(fft_result *result);
+extern void *spectrum_rw_fft_result(fft_result *result, uint64_t s_freq_hz, float freq_resolution, uint32_t fft_size);
 extern int16_t *spectrum_get_fft_data(uint32_t *len);
 #endif

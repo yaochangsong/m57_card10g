@@ -100,5 +100,5 @@ void gpio_init_control();
 void gpio_control_rf(rf_channel channel_val);
 void gpio_attenuation_rf(rf_pre_reduce pre_reduce_val,rf_pos_reduce pos_reduce_val);
 void gpio_select_rf_channel(uint64_t mid_freq);                                       //射频通道选择
-int  count_pre_pos_rf(float attenuation_val);
+int  gpio_select_rf_attenuation(float attenuation_val);
 #endif

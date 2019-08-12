@@ -17,14 +17,14 @@ float pre_buf[8] ={0,0.5,1,2,4,8,16,31.5};
 float pos_buf[8] ={0,0.5,1,2,4,8,16,31.5};
 
 float db_array[64];
-int   db_arrange[64];
+float db_arrange[64];
 
 void rf_db_arrange()       //剔除衰减库里重复的元素
 {
    int i = 0,j=0;
    for(i=0;i<64;i++){
-       if((int)db_array[i] != (int)db_array[i+1]){
-            db_arrange[j++] = (int)db_array[i];
+       if(db_array[i] != db_array[i+1]){
+            db_arrange[j++] = db_array[i];
        }
    }
 }
@@ -57,7 +57,7 @@ int rf_db_attenuation_init()        //生成衰减库
    rf_db_arrange();
 }
 
-int  rf_db_select(uint8_t db_attenuation){     //找出衰减库里DB值值
+float  rf_db_select(float db_attenuation){     //找出衰减库里DB值值
     uint8_t i;
     for(i = 0;i<64;i++){
         if(db_attenuation == db_arrange[i+1]) {  //只要用户设置的衰减值等于后级DB值，就使用后级DB值，否则使用前级DB值
@@ -72,17 +72,17 @@ int  rf_db_select(uint8_t db_attenuation){     //找出衰减库里DB值值
     return -1;
 }
 
-int count_pre_pos_rf(uint8_t attenuation_val)   //衰减DB值
+int count_pre_pos_rf(float attenuation_val)   //衰减DB值
 {
-     uint8_t attenuation;
+     float attenuation;
      attenuation = rf_db_select(attenuation_val);
      if(attenuation != -1){
          uint8_t pre,pos;
          for(pre=0;pre<8;pre++){
              for(pos=0;pos<8;pos++){
-                 if(attenuation == (uint8_t)(pre_buf[pre] + pos_buf[pos])){
+                 if(attenuation == (pre_buf[pre] + pos_buf[pos])){
                     gpio_attenuation_rf(pre,pos);
-                    printf_note("pre :%d pos :%d\n",pre,pos);
+                    printf_note("attenuation %f pre :%d pos :%d\n",attenuation,pre,pos);
                     return 0;
                   }
              }

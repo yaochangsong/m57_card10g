@@ -902,7 +902,7 @@ void  fft_calculate_finaldata()
 		i,fftstate.centfeqpoint[i],i,fftstate.bandwidth[i],i,fftstate.arvcentfreq[i]);
 	}
 }
-int  fft_fuzzy_computing(int threshordnum,short *iqdata,int32_t fftsize,int datalen)
+signalnum_flag  fft_fuzzy_computing(int threshordnum,short *iqdata,int32_t fftsize,int datalen)
 {
     printf_debug("\n\n****************fft_fuzzy_computing******************************\n");
      printf_debug("iqdata=%d,iqdata[1]=%d",iqdata[87],iqdata[88]);
@@ -935,7 +935,7 @@ int  fft_fuzzy_computing(int threshordnum,short *iqdata,int32_t fftsize,int data
     signalflg=findCentfreqpoint(fftdata.smoothdata,fftsize, fftstate.centfeqpoint,&fftstate.Threshold ,&fftstate.cenfrepointnum,fftstate.y,fftstate.z,&fftstate.Centerpoint);
     if(signalflg==SIGNALNUM_ABNORMAL)
     {
-       return 0; 
+       return SIGNALNUM_ABNORMAL; 
     }
 	calculatecenterfrequency(fftdata.smoothdata,fftsize);                   //5 计算中心频率
 	calculatebandwidth(fftdata.smoothdata,fftsize);
@@ -1133,12 +1133,21 @@ fft_result *fft_get_result(void)
 
 int testfrequency(int threshordnum,short *iqdata,int32_t fftsize,int datalen)
 {
+    signalnum_flag signalflg=0;
     if(fftsize<=firstfftlen)
     {
-        fft_fuzzy_computing(threshordnum,iqdata,fftsize,fftsize);
+        signalflg=fft_fuzzy_computing(threshordnum,iqdata,fftsize,fftsize);
+        if(signalflg==SIGNALNUM_ABNORMAL)
+        {
+            return 0;
+        }
     }else if(fftsize>firstfftlen){
-     fft_fuzzy_computing(threshordnum,iqdata,firstfftlen,firstfftlen);
-     fft_Precise_calculation(threshordnum,iqdata,fftsize,datalen);
+    signalflg= fft_fuzzy_computing(threshordnum,iqdata,firstfftlen,firstfftlen);
+    if(signalflg==SIGNALNUM_ABNORMAL)
+    {
+        return 0;
+    }
+    fft_Precise_calculation(threshordnum,iqdata,fftsize,datalen);
   }
 }
 void xulitestfft(void)

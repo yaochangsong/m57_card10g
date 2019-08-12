@@ -9,7 +9,7 @@
 #define  MM_PI        (3.14159265358979323846264338327950288419716939937510)       // 圆周率atan(1)* 4
 //#define  N  256
 static unsigned int N=1024*1024;
-#define  SIGNALNUM        20000//输入信号数
+#define  SIGNALNUM        2000//输入信号数
 #define  THRESHOLD         135//128.999176/门限
 
 #define   SMOOTHPOINT         128//滑动平均滤波计算平均值时所取的点数
@@ -62,8 +62,6 @@ void xulitest(void);
 
 
 #endif
-
-
 
 
 

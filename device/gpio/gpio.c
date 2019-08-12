@@ -60,12 +60,12 @@ int rf_db_attenuation_init()        //生成衰减库
 int  rf_db_select(uint8_t db_attenuation){     //找出衰减库里DB值值
     uint8_t i;
     for(i = 0;i<64;i++){
-        if(db_attenuation == db_arrange[i+1]) {
-            db_attenuation = db_arrange[i+1];
-            return db_attenuation;
+        if(db_attenuation == db_arrange[i+1]) {  //只要用户设置的衰减值等于后级DB值，就使用后级DB值，否则使用前级DB值
+           db_attenuation = db_arrange[i+1];
+           return db_attenuation;
         }
         else if((db_attenuation >= db_arrange[i]) && (db_attenuation < db_arrange[i+1])){
-           if(db_attenuation >= db_arrange[i]) db_attenuation = db_arrange[i];
+           if(db_attenuation >= db_arrange[i]) db_attenuation = db_arrange[i]; //使用前级DB值
            return db_attenuation;
         }
     }

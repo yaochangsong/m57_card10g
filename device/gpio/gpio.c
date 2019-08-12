@@ -19,7 +19,7 @@ float pos_buf[8] ={0,0.5,1,2,4,8,16,31.5};
 float db_array[64];
 int   db_arrange[64];
 
-void rf_db_arrange()
+void rf_db_arrange()       //剔除衰减库里重复的元素
 {
     int i = 0,j=0;
    for(i=0;i<64;i++)
@@ -33,7 +33,7 @@ void rf_db_arrange()
        }
    }
 }
-void BubbleSort(float a[],int n)
+void BubbleSort(float a[],int n)   //将数从小到大排序
 {
     int i,j;
     float temp;
@@ -50,9 +50,9 @@ void BubbleSort(float a[],int n)
         }
 }
 
-int rf_db_attenuation_init()
+int rf_db_attenuation_init()        //生成衰减库
 {
-   uint8_t i,j,k;
+   uint8_t i,j,k = 0;
    for(i=0;i<8;i++)
    {
        for(j=0;j<8;j++)
@@ -64,40 +64,46 @@ int rf_db_attenuation_init()
    rf_db_arrange();
 }
 
-int  rf_db_select(uint8_t db_attenuation){
+int  rf_db_select(uint8_t db_attenuation){     //找出衰减库里DB值值
     uint8_t i;
     for(i = 0;i<64;i++){
-        if((db_attenuation > db_array[i]) && (db_attenuation < db_array[i+1])){
-            db_attenuation = db_array[i];
+        if(db_attenuation == db_arrange[i+1]) 
+        {
+            db_attenuation = db_arrange[i+1];
             return db_attenuation;
         }
+        else if((db_attenuation >= db_arrange[i]) && (db_attenuation < db_arrange[i+1])){
+            
+           if(db_attenuation >= db_arrange[i]) db_attenuation = db_arrange[i];
+           return db_attenuation;
+        }
     }
-    return 0;
+    return -1;
 }
 
 int count_pre_pos_rf(uint8_t attenuation_val)   //衰减DB值
 {
-   uint8_t attenuation;
-   attenuation = rf_db_select(attenuation_val);
-
-   if(attenuation > 0){
-       uint8_t pre,pos;
-       for(pre=0;pre<8;pre++)
-       {
-           for(pos=0;pos<8;pos++)
-           {
-               if(attenuation == (uint8_t)(pre_buf[pre] + pos_buf[pos]))
-                {
-                  gpio_attenuation_rf(pre,pos);
-                  printf_note("pre :%d pos :%d\n",pre,pos);
-                  return;
-                }
-           }
-       }
-   }
-   else{
-   gpio_attenuation_rf(U10_0_5_DB,U2_31_5_DB); //默认衰减31.5DB
-   }
+     uint8_t attenuation;
+     attenuation = rf_db_select(attenuation_val);
+     if(attenuation != -1){
+         uint8_t pre,pos;
+         for(pre=0;pre<8;pre++)
+         {
+             for(pos=0;pos<8;pos++)
+             {
+                 if(attenuation == (uint8_t)(pre_buf[pre] + pos_buf[pos]))
+                  {
+                    gpio_attenuation_rf(pre,pos);
+                    printf_note("pre :%d pos :%d\n",pre,pos);
+                    return 0;
+                  }
+             }
+         }
+     }
+     else{
+       gpio_attenuation_rf(U10_0_5_DB,U2_31_5_DB); //默认衰减31.5DB
+       printf_note("默认设置31.5DB\n"); //默认衰减31.5DB
+     }
 }
 
 

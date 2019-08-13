@@ -6,7 +6,7 @@
 
 #define SPECTRUM_START_FLAG 0x7E7E
 
-#define cal_resolution(bw_hz, fft_size)  (bw_hz/fft_size)
+#define calc_resolution(bw_hz, fft_size)  (bw_hz/fft_size)
 
 struct spectrum_st{
     long long freq_hz; 

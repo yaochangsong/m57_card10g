@@ -5,10 +5,6 @@ struct spectrum_st _spectrum;
 pthread_mutex_t spectrum_result_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t spectrum_data_mutex = PTHREAD_MUTEX_INITIALIZER;
 
-pthread_cond_t spectrum_cond = PTHREAD_COND_INITIALIZER;
-pthread_mutex_t spectrum_cond_mutex = PTHREAD_MUTEX_INITIALIZER;
-
-
 static  bool specturm_work_read_enable(void)
 {
     struct poal_config *poal_config = &(config_get_config()->oal_config);
@@ -25,7 +21,7 @@ bool specturm_work_write_enable(bool enable)
     return enable;
 }
 
-
+/* Read Rx Raw IQ data*/
 static int32_t specturm_rx_iq_read(int16_t **iq_payload)
 {
     ssize_t nbytes_rx = 0;
@@ -49,36 +45,10 @@ static int32_t specturm_rx_iq_read(int16_t **iq_payload)
         printfi("write rx0 iq data to:[len=%d]%s\n", nbytes_rx/2, strbuf);
         write_file_in_int16((void*)(iqdata), nbytes_rx/2, strbuf);
     }
-
-    //if(ps->is_deal == false){
-    //    memcpy(ps->iq_payload, iqdata, nbytes_rx);
-    //    pthread_cond_signal(&spectrum_cond);
-   // }
     return nbytes_rx;
 }
 
-void specturm_analysis_deal(void *arg)
-{
-    struct spectrum_st *ps;
-    ps = &_spectrum;
-
-    while(1){
-        printf_info("Wait to analysis spcturm......\n");
-        //ps->is_wait_deal = false;
-        /* Mutex must be locked for pthread_cond_timedwait... */
-        pthread_mutex_lock(&spectrum_cond_mutex);
-        /* Thread safe "sleep" */
-        pthread_cond_wait(&spectrum_cond, &spectrum_cond_mutex);
-        /* No longer needs to be locked */
-        pthread_mutex_unlock(&spectrum_cond_mutex);
-       // ps->is_wait_deal = true;
-        //fft_deal()
-        printf_info("start to deal iq data###################\n");
-        sleep(1);
-        printf_info("end  deal iq data###################\n");
-    }
-}
-
+/* Send FFT spectrum Data to Client (UDP)*/
 static void spectrum_send_fft_data(void *fft_data, size_t fft_data_len, void *param)
 {
     struct poal_config *poal_config = &(config_get_config()->oal_config);
@@ -102,6 +72,7 @@ static void spectrum_send_fft_data(void *fft_data, size_t fft_data_len, void *pa
     safe_free(pbuf);
 }
 
+/* We use this function to deal FFT spectrum in user space */
 void spectrum_wait_user_deal( struct spectrum_header_param *param)
 {
     struct spectrum_st *ps;
@@ -111,22 +82,39 @@ void spectrum_wait_user_deal( struct spectrum_header_param *param)
     #define SPECTRUM_DEFAULT_FFT_SIZE (8*1024)
 
     ps = &_spectrum;
+
+    /* Read Raw IQ data*/
     ps->iq_len = specturm_rx_iq_read(&ps->iq_payload);
     printf_debug("ps->iq_payload[0]=%d, %d,param->fft_size=%d, ps->iq_len=%d\n", ps->iq_payload[0],ps->iq_payload[1], param->fft_size, ps->iq_len);
+
     fft_size = SPECTRUM_DEFAULT_FFT_SIZE;
+    /* Start Convert IQ data to FFT, Noise threshold:8 */
     TIME_ELAPSED(fft_iqdata_handle(8, ps->iq_payload, fft_size, fft_size*2));
-    
+
+    /* get FFT float data*/
     ps->fft_float_payload = fft_get_data(&ps->fft_len);
+
+    /* Here we convert float to short integer processing */
     ps->fft_short_payload = safe_malloc(ps->fft_len*sizeof(int16_t));
-    
     FLOAT_TO_SHORT(ps->fft_float_payload, ps->fft_short_payload, ps->fft_len);
-    resolution = cal_resolution(param->bandwidth, fft_size);
+
+    /* Calculation resolution(Point bandwidth) by Total bandWidth& fft size */
+    resolution = calc_resolution(param->bandwidth, fft_size);
+    
+    /*  write fft result to buffer: middle point, bandwidth point, power level
+        fft_get_result(): GET FFT result
+    */
     spectrum_rw_fft_result(fft_get_result(), param->s_freq, resolution, fft_size);
     printf_debug("resolution=%f, param->s_freq=%llu\n", resolution, param->s_freq);
     printf_debug("ps->fft_len=%d,fft_size=%d, ps->fft_payload=%d,%d, %f, %f\n", ps->fft_len, param->fft_size, 
         ps->fft_short_payload[0],ps->fft_short_payload[1], ps->fft_float_payload[0], ps->fft_float_payload[1]);
-    param->data_len = ps->fft_len*sizeof(int16_t); /* fill  header data len */
+
+    /* fill header data len(byte) */
+    param->data_len = ps->fft_len*sizeof(int16_t); 
+    
     LOCK_SP_DATA();
+    /* To the circumstances: the client's active acquisition of FFT data; Here we user backup buffer to store fft data; 
+    when the scheduled task is processed[is_wait_deal=false],  we start filling in new fft data in back buffer [ps->fft_short_payload_back]*/
     if(ps->is_wait_deal == false){
         printf_debug("safe_malloc[%d]\n", ps->fft_len*sizeof(float));
         ps->fft_short_payload_back = safe_malloc(ps->fft_len*sizeof(int16_t));
@@ -135,6 +123,7 @@ void spectrum_wait_user_deal( struct spectrum_header_param *param)
         ps->is_wait_deal = true;
     }
     UNLOCK_SP_DATA();
+    /* Send FFT data to Client */
     //spectrum_send_fft_data((int16_t *)ps->fft_short_payload, ps->fft_len*sizeof(int16_t), param);
     safe_free(ps->fft_short_payload);
 }
@@ -208,26 +197,5 @@ void spectrum_init(void)
     ps = &_spectrum;
     ps->is_wait_deal = false;/* fft data not vaild to deal */
     UNLOCK_SP_DATA();
-#if 0
-    int ret, i;
-    pthread_t work_id;
-    struct spectrum_t *ps;
-
-    pthread_cond_init(&spectrum_cond,NULL); 
-    pthread_mutex_init(&spectrum_cond_mutex,NULL);  
-
-    ps = &_spectrum;
-    ps->iq_payload = calloc(1, iio_get_rx_buf_size());
-    if (!ps->iq_payload){
-        printf_err("calloc failed\n");
-        return;
-    }
-
-    ret=pthread_create(&work_id,NULL,(void *)specturm_analysis_deal, NULL);
-    if(ret!=0)
-        perror("pthread cread work_id");
-    pthread_detach(work_id);
-
-#endif
 }
 

@@ -240,7 +240,7 @@ void  CfftAbs(complexType *x, int n, float *amplitude) // 求模运算
 		//amplitude[i] = 20.0 * log10( qSqrt( g.real() * g.real() + g.imag() * g.imag() ) );
 		//实际幅值 计算*2/N (直流分量其实不需要*2)
 		//if(i !=0)
-		amplitude[i] = 10.0 * log10(x[i].Real*x[i].Real + x[i].Imag*x[i].Imag);   
+		amplitude[i] = 10.0 * log10(x[i].Real*x[i].Real + x[i].Imag*x[i].Imag)+CORRECTIONSIGNAL;   
 	}
 }
 
@@ -500,26 +500,26 @@ void  calculatecenterfrequency(float *fftdata,int fftnum)
 	printf_debug("calculatecenterfrequency\n");
 	int j=0;
 	printf_debug("cenfrepointnum=%d\n",fftstate.cenfrepointnum);
-	/*for(int i=0;i<fftstate.cenfrepointnum;i++)
-	{
-		float sum=0.0;
-
-		for(j=fftstate.centfeqpoint[i]-20;j<fftstate.centfeqpoint[i]+20;j++)
-		{
-			sum+=fftdata[j];
-		}
-		
-		fftstate.arvcentfreq[i]=sum/21;
-		
-	}*/
+    int max=0;
 	for(int i=0;i<fftstate.cenfrepointnum;i++)
 	{
-		fftstate.arvcentfreq[i]=fftdata[fftstate.centfeqpoint[i]];	
+		   // fftstate.arvcentfreq[i]=fftdata[fftstate.centfeqpoint[i]];	
+            for(j=fftstate.y[i];j<fftstate.z[i];j++)
+            {
+                if(max<fftdata[j])
+                {
+                    max=fftdata[j];
+                }
+
+            }
+            fftstate.arvcentfreq[i]=max;
+            max=0;
 	}
+
 }
 
 //原始数据  原始数据个数 平均后的中频频率 第一个点的集合      第二个点的集合    平均后的中心频率
-void  calculatebandwidth(float *fftdata,int fftnum )
+void  calculatebandwidth(float *fftdata,int fftnum ,float* temp)
 {	
 	int j=0;
 	int first=0;
@@ -529,26 +529,16 @@ void  calculatebandwidth(float *fftdata,int fftnum )
 	int flag=0;
 	float threedbpoint;
 	float maxvalue;
-	float minvalue;
 	float maxz;
 	
-	/*maxz=fftdata[0];
-	
-	for(int i=0;i<fftnum;i++)
-	{
-		
-		if(maxz<fftdata[i])
-		{
-			maxz=fftdata[i];
-		}
-	}*/
-	//printf_debug("maxz=%f\n,",maxz);
-	findcomplexcentfrequencypoint(fftdata,&maxvalue,&minvalue,fftnum);
+
+	//findcomplexcentfrequencypoint(fftdata,&maxvalue,&minvalue,fftnum);
 
 	//findcentfrequencyabsmaxmin(threedbpoint);
 	for(int i=0;i<fftstate.cenfrepointnum;i++)
 	{ 
-        threedbpoint = fftstate.arvcentfreq[i]-6;
+        threedbpoint = fftstate.arvcentfreq[i]-*temp;
+        fftstate.arvcentfreq[i]=fftstate.arvcentfreq[i]-CORRECTIONSIGNAL;
 		
             //printf_debug("调试信息 maxz : %f fftstate.Bottomnoise:%f threedbpoint:%f\n",maxz,fftstate.Bottomnoise,threedbpoint);
             for(j=fftstate.y[i];j<fftstate.z[i];j++)
@@ -575,14 +565,14 @@ void  calculatebandwidth(float *fftdata,int fftnum )
             }
         }
     }
-    printf_debug("threedbpoint=%f  minvalue=%f  \n",threedbpoint,minvalue);
+    printf_debug("threedbpoint=%f  \n",threedbpoint);
+    int max=0;
     for(int i=0;i<fftstate.cenfrepointnum;i++)
     {
         if(fftstate.endpoint[i]>fftstate.firstpoint[i]&&fftstate.firstpoint[i]>0&&fftstate.endpoint[i]<fftnum)
         {
             fftstate.bandwidth[i]=fftstate.endpoint[i]-fftstate.firstpoint[i];
             //printf_debug(" bandwidth=%d,endpoint=%d,firstpoint=%d\n",fftstate.bandwidth[i],endpoint[i],firstpoint[i]);
-
         }
 
     }
@@ -952,15 +942,19 @@ signalnum_flag  fft_fuzzy_computing(int threshordnum,short *iqdata,int32_t fftsi
 	Rfftshift(fftdata.mozhi, fftsize);
 	//writefileArr("firstmozhi.txt",fftdata.mozhi, fftsize);
 	smooth(fftdata.mozhi,fftsize,fftdata.smoothdata);
-  //  writefileArr("firstsmoothdata.txt",fftdata.smoothdata, fftsize);
-	findBottomnoise(fftdata.smoothdata,threshordnum,&fftstate.Bottomnoise,&fftstate.Threshold,fftsize);   //计算底噪
+   // writefileArr("firstsmoothdata.txt",fftdata.smoothdata, fftsize);
+    float minvalue;
+    float maxvalue;
+	findBottomnoiseprecise(fftdata.smoothdata,threshordnum,&fftstate.Bottomnoise,&fftstate.Threshold,fftsize,&maxvalue,&minvalue);   //计算底噪
     signalflg=findCentfreqpoint(fftdata.smoothdata,fftsize, fftstate.centfeqpoint,&fftstate.Threshold ,&fftstate.cenfrepointnum,fftstate.y,fftstate.z,&fftstate.Centerpoint);
     if(signalflg==SIGNALNUM_ABNORMAL)
     {
        return SIGNALNUM_ABNORMAL; 
     }
 	calculatecenterfrequency(fftdata.smoothdata,fftsize);                   //5 计算中心频率
-	calculatebandwidth(fftdata.smoothdata,fftsize);
+	float temp;
+    temp=(maxvalue-minvalue)/3;
+	calculatebandwidth(fftdata.smoothdata,fftsize,&temp);
     
     printf_debug("\n\n*********************模糊数据****************************\n");
     fft_calculate_finaldata();
@@ -987,9 +981,11 @@ int fft_Precise_calculation(int threshordnum,short *iqdata,int32_t fftsize,int d
     CfftAbs(fftdata.y,N,fftdata.mozhi);	// 2 计算20log10(abs),存进模值里
     Rfftshift(fftdata.mozhi, N);
     //  fft_reduce_gain_CfftAbs(fftdata.mozhi,fftdata.mozhi,N,firstfftlen);
-    //writefileArr("secondmozhi.txt",fftdata.mozhi, N);
+   // writefileArr("secondmozhi.txt",fftdata.mozhi, N);
     
     smooth(fftdata.mozhi,N,fftdata.smoothdata);
+
+   // writefileArr("secondsmoothdata.txt",fftdata.smoothdata, N);
     float minvalue;
     float maxvalue;
     findBottomnoiseprecise(fftdata.smoothdata,threshordnum,&fftstate.Bottomnoise,&fftstate.Threshold,N,&maxvalue,&minvalue);
@@ -1058,7 +1054,7 @@ int fft_Precise_calculation(int threshordnum,short *iqdata,int32_t fftsize,int d
            //printf_info("smoothdata[%d]=%f   ,",p,fftdata.smoothdata[p]);
 
              
-            fftstate.arvcentfreq[i]=max;      //计算中心频率
+            fftstate.arvcentfreq[i]=max-CORRECTIONSIGNAL;      //计算中心频率
             
 
             if((fftdata.smoothdata[p]<=impairment)&&(fftdata.smoothdata[p+1]>=impairment))//带宽阈值处
@@ -1205,8 +1201,8 @@ void xulitestfft(void)
     int fftsize=1024*1024;
     int i=0;
     fft_result *temp;
-   // Verificationfloat("rawdata0809.txt",data,2*1024*1024);
-    Verificationfloat("rawdata0813.txt",data,2*1024*1024);
+    Verificationfloat("rawdata0809.txt",data,2*1024*1024);
+    //Verificationfloat("rawdata0813.txt",data,2*1024*1024);
     fft_iqdata_handle(3,data,fftsize ,2*1024*1024);//下发门限，iq数据，fft大小，下发数据长度
     fft_exit(); 
     end=clock();

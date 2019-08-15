@@ -5,8 +5,9 @@
 #define specturm_rx0_read_data iio_read_rx0_data
 
 #define SPECTRUM_START_FLAG 0x7E7E
+#define SPECTRUM_DEFAULT_FFT_SIZE (128*1024)
 
-#define calc_resolution(bw_hz, fft_size)  (bw_hz/fft_size)
+#define calc_resolution(bw_hz, fft_size)  (1.2288*bw_hz/fft_size)
 
 struct spectrum_st{
     long long freq_hz; 

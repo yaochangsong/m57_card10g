@@ -79,8 +79,6 @@ void spectrum_wait_user_deal( struct spectrum_header_param *param)
     float resolution;
     uint32_t fft_size;
 
-    #define SPECTRUM_DEFAULT_FFT_SIZE (8*1024)
-
     ps = &_spectrum;
 
     /* Read Raw IQ data*/
@@ -137,8 +135,8 @@ void *spectrum_rw_fft_result(fft_result *result, uint64_t s_freq_hz, float freq_
 {
     int i;
     static struct spectrum_fft_result_st s_fft_result, *pfft = NULL;
-    #define SIGNAL_ADD_FIXED_VALUE 10
-    
+    #define SIGNAL_ADD_FIXED_VALUE 144
+    #define SINGLE_SIDE_BAND_POINT_RATE  (0.093098958333333)  /* (1-1/1.2288)/2 */
     LOCK_SP_RESULT();
     if(result == NULL){
         printf_info("read result\n");
@@ -155,7 +153,7 @@ void *spectrum_rw_fft_result(fft_result *result, uint64_t s_freq_hz, float freq_
     }
     printf_info("s_freq_hz=%llu, freq_resolution=%f, fft_size=%u\n", s_freq_hz, freq_resolution, fft_size);
     for(i = 0; i < pfft->result_num; i++){
-        pfft->mid_freq_hz[i] = s_freq_hz + result->centfeqpoint[i]*freq_resolution;
+        pfft->mid_freq_hz[i] = s_freq_hz + (result->centfeqpoint[i] - (SINGLE_SIDE_BAND_POINT_RATE*SPECTRUM_DEFAULT_FFT_SIZE))*freq_resolution;
         pfft->bw_hz[i] = result->bandwidth[i] * freq_resolution;
         pfft->level[i] = result->arvcentfreq[i] - SIGNAL_ADD_FIXED_VALUE;
     }

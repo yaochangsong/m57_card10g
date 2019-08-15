@@ -914,6 +914,25 @@ void  fft_reduce_gain_CfftAbs(float *fftdata,float *data,int size,int datalen)
     }
 
 }
+void fft_find_midpoint(float *data,int datalen)
+{
+    int i=0;
+    float max;
+    int zuobiao;
+    max=data[0];
+    for(i=0;i<datalen;i++)
+    {
+
+        if(max<data[i])
+        {
+
+           max=data[i];
+           zuobiao=i;
+
+        }
+    }
+    fftstate.maximum_x=zuobiao;
+}
 signalnum_flag  fft_fuzzy_computing(int threshordnum,short *iqdata,int32_t fftsize,int datalen)
 {
     N=fftsize;
@@ -959,6 +978,7 @@ signalnum_flag  fft_fuzzy_computing(int threshordnum,short *iqdata,int32_t fftsi
     
     printf_debug("\n\n*********************模糊数据****************************\n");
     fft_calculate_finaldata();
+    fft_find_midpoint(fftdata.smoothdata,fftsize);
 }
 int fft_Precise_calculation(int threshordnum,short *iqdata,int32_t fftsize,int datalen)
 {
@@ -977,11 +997,11 @@ int fft_Precise_calculation(int threshordnum,short *iqdata,int32_t fftsize,int d
     memset(fftstate.bandwidth   ,0,sizeof(float)*SIGNALNUM);
     fftstate.Threshold=0;
     fftstate.Bottomnoise=0;
+    fftstate.maximum_x=0;
     fft_read_iqdata(iqdata,fftsize,datalen);
     Cfft(fftdata.x, N, fftdata.y);            // 1快速傅里叶变换  
     CfftAbs(fftdata.y,N,fftdata.mozhi);	// 2 计算20log10(abs),存进模值里
     Rfftshift(fftdata.mozhi, N);
-    //  fft_reduce_gain_CfftAbs(fftdata.mozhi,fftdata.mozhi,N,firstfftlen);
    // writefileArr("secondmozhi.txt",fftdata.mozhi, N);
     smooth(fftdata.mozhi,N,fftdata.smoothdata);
     //writefileArr("secondsmoothdata.txt",fftdata.smoothdata, N);
@@ -1048,7 +1068,7 @@ int fft_Precise_calculation(int threshordnum,short *iqdata,int32_t fftsize,int d
                fftstate.maximum_x=p;
             }
         }
-         printf_debug("===fftstate.maximum_x=%d",fftstate.maximum_x);
+         printf_debug("=======================fftstate.maximum_x=%d",fftstate.maximum_x);
         impairment=max-(max-minvalue)/3;
         printf_debug("impairment=%f\n",impairment);
         for(int p=firsttemp;p<secondtemp;p++)
@@ -1210,6 +1230,9 @@ void xulitestfft(void)
     Verificationfloat("rawdata0809.txt",data,2*1024*1024);
     //Verificationfloat("rawdata0813.txt",data,2*1024*1024);
     fft_iqdata_handle(3,data,fftsize ,2*1024*1024);//下发门限，iq数据，fft大小，下发数据长度
+    
+    temp=fft_get_result();
+    printf_debug("temp=%d",temp->maximum_x);
     fft_exit(); 
     end=clock();
     costtime=(double)(end-start)/CLOCKS_PER_SEC;

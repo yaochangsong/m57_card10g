@@ -960,9 +960,9 @@ signalnum_flag  fft_fuzzy_computing(int threshordnum,short *iqdata,int32_t fftsi
 	Cfft(fftdata.x, fftsize, fftdata.y);            // 1快速傅里叶变换  
 	CfftAbs(fftdata.y,fftsize,fftdata.mozhi);	// 2 计算20log10(abs),存进模值里
 	Rfftshift(fftdata.mozhi, fftsize);
-	//writefileArr("firstmozhi.txt",fftdata.mozhi, fftsize);
+	writefileArr("firstmozhi.txt",fftdata.mozhi, fftsize);
 	smooth(fftdata.mozhi,fftsize,fftdata.smoothdata);
-   // writefileArr("firstsmoothdata.txt",fftdata.smoothdata, fftsize);
+    writefileArr("firstsmoothdata.txt",fftdata.smoothdata, fftsize);
     float minvalue;
     float maxvalue;
 	findBottomnoiseprecise(fftdata.smoothdata,threshordnum,&fftstate.Bottomnoise,&fftstate.Threshold,fftsize,&maxvalue,&minvalue);   //计算底噪
@@ -1002,9 +1002,9 @@ int fft_Precise_calculation(int threshordnum,short *iqdata,int32_t fftsize,int d
     Cfft(fftdata.x, N, fftdata.y);            // 1快速傅里叶变换  
     CfftAbs(fftdata.y,N,fftdata.mozhi);	// 2 计算20log10(abs),存进模值里
     Rfftshift(fftdata.mozhi, N);
-   // writefileArr("secondmozhi.txt",fftdata.mozhi, N);
+    writefileArr("secondmozhi.txt",fftdata.mozhi, N);
     smooth(fftdata.mozhi,N,fftdata.smoothdata);
-    //writefileArr("secondsmoothdata.txt",fftdata.smoothdata, N);
+    writefileArr("secondsmoothdata.txt",fftdata.smoothdata, N);
     float minvalue;
     float maxvalue;
     findBottomnoiseprecise(fftdata.smoothdata,threshordnum,&fftstate.Bottomnoise,&fftstate.Threshold,N,&maxvalue,&minvalue);
@@ -1027,12 +1027,12 @@ int fft_Precise_calculation(int threshordnum,short *iqdata,int32_t fftsize,int d
     for(i=0;i<fftstate.cenfrepointnum;i++)  /*计算信号个数*/
     {   
         impairment=0;
-        printf("fftstate.y[i]=%d,fftstate.z[i]=%d\n",fftstate.y[i],fftstate.z[i]);
+        printf("=================================fftstate.y[i]=%d,fftstate.z[i]=%d\n",fftstate.y[i],fftstate.z[i]);
         int temp;
         temp=(fftstate.z[i]*multiple-fftstate.y[i]*multiple)/2;
         printf_debug("temp=%d\n",temp);
-        //printf("fftstate.y[i]*multiple+temp=%d,fftstate.z[i]=%d\n",fftstate.y[i]*multiple+temp,fftstate.z[i]);
-        for(j=fftstate.y[i]*multiple+temp;j>=fftstate.z[i]*multiple;j--)
+        printf("fftstate.y[i]*multiple+temp=%d,fftstate.z[i]=%d\n",fftstate.y[i]*multiple+temp,fftstate.z[i]);
+        for(j=fftstate.z[i]*multiple;j<fftstate.y[i]*multiple-temp;j--)
         {
             if(fftdata.smoothdata[j]<fftstate.Threshold&&fftdata.smoothdata[j+1]>fftstate.Threshold)
             {
@@ -1052,7 +1052,7 @@ int fft_Precise_calculation(int threshordnum,short *iqdata,int32_t fftsize,int d
         
         fftstate.centfeqpoint[i]=(secondtemp-firsttemp)/2+firsttemp;//计算中心频点
 
-        printf_debug("firsttemp=%d  ,secondtemp=%d j=%d\n",firsttemp,secondtemp,j);
+        printf_debug("firsttemp=%d  ,secondtemp=%d \n",firsttemp,secondtemp);
 
         
         float max;
@@ -1068,8 +1068,8 @@ int fft_Precise_calculation(int threshordnum,short *iqdata,int32_t fftsize,int d
                fftstate.maximum_x=p;
             }
         }
-         printf_debug("=======================fftstate.maximum_x=%d",fftstate.maximum_x);
-        impairment=max-(max-minvalue)/3;
+       // impairment=max-(max-minvalue)/3;
+        impairment=max-6;
         printf_debug("impairment=%f\n",impairment);
         for(int p=firsttemp;p<secondtemp;p++)
         {
@@ -1081,7 +1081,6 @@ int fft_Precise_calculation(int threshordnum,short *iqdata,int32_t fftsize,int d
 
             if((fftdata.smoothdata[p]<=impairment)&&(fftdata.smoothdata[p+1]>=impairment))//带宽阈值处
             { 
-                //printf_info("===========================gello\n");
                 if(flag == 0)
                 {
                     firstpoint[i]=p+1;  //确定是第一个点
@@ -1224,12 +1223,12 @@ void xulitestfft(void)
     short *data=(short*)malloc(sizeof(short)*2*N);
     memset(data,0,sizeof(short)*2*N );
 
-    int fftsize=1024*1024;
+    int fftsize=512*1024;
     int i=0;
     fft_result *temp;
-    Verificationfloat("rawdata0809.txt",data,2*1024*1024);
-    //Verificationfloat("rawdata0813.txt",data,2*1024*1024);
-    fft_iqdata_handle(3,data,fftsize ,2*1024*1024);//下发门限，iq数据，fft大小，下发数据长度
+   // Verificationfloat("rawdata0809.txt",data,2*1024*1024);
+    Verificationfloat("rawdata0813.txt",data,1024*1024);
+    fft_iqdata_handle(3,data,fftsize ,1024*1024);//下发门限，iq数据，fft大小，下发数据长度
     
     temp=fft_get_result();
     printf_debug("temp=%d",temp->maximum_x);

@@ -85,13 +85,15 @@ void spectrum_wait_user_deal( struct spectrum_header_param *param)
     ps->iq_len = specturm_rx_iq_read(&ps->iq_payload);
     printf_debug("ps->iq_payload[0]=%d, %d,param->fft_size=%d, ps->iq_len=%d\n", ps->iq_payload[0],ps->iq_payload[1], param->fft_size, ps->iq_len);
 
-    fft_size = SPECTRUM_DEFAULT_FFT_SIZE;
+    fft_size =param->fft_size;
     /* Start Convert IQ data to FFT, Noise threshold:8 */
     TIME_ELAPSED(fft_iqdata_handle(8, ps->iq_payload, fft_size, fft_size*2));
 
+    
     /* get FFT float data*/
     ps->fft_float_payload = fft_get_data(&ps->fft_len);
-
+    ps->fft_len = fft_size;
+    
     /* Here we convert float to short integer processing */
     ps->fft_short_payload = safe_malloc(ps->fft_len*sizeof(int16_t));
     FLOAT_TO_SHORT(ps->fft_float_payload, ps->fft_short_payload, ps->fft_len);
@@ -122,7 +124,7 @@ void spectrum_wait_user_deal( struct spectrum_header_param *param)
     }
     UNLOCK_SP_DATA();
     /* Send FFT data to Client */
-    //spectrum_send_fft_data((int16_t *)ps->fft_short_payload, ps->fft_len*sizeof(int16_t), param);
+    spectrum_send_fft_data((int16_t *)ps->fft_short_payload, ps->fft_len*sizeof(int16_t), param);
     safe_free(ps->fft_short_payload);
 }
 
@@ -151,11 +153,12 @@ void *spectrum_rw_fft_result(fft_result *result, uint64_t s_freq_hz, float freq_
         pfft = NULL;
         goto exit;
     }
-    printf_info("s_freq_hz=%llu, freq_resolution=%f, fft_size=%u\n", s_freq_hz, freq_resolution, fft_size);
     for(i = 0; i < pfft->result_num; i++){
-        pfft->mid_freq_hz[i] = s_freq_hz + (result->centfeqpoint[i] - (SINGLE_SIDE_BAND_POINT_RATE*SPECTRUM_DEFAULT_FFT_SIZE))*freq_resolution;
+        pfft->mid_freq_hz[i] = s_freq_hz + (result->centfeqpoint[i] - (SINGLE_SIDE_BAND_POINT_RATE*fft_size))*freq_resolution;
         pfft->bw_hz[i] = result->bandwidth[i] * freq_resolution;
         pfft->level[i] = result->arvcentfreq[i] - SIGNAL_ADD_FIXED_VALUE;
+        printf_debug("s_freq_hz=%llu, freq_resolution=%f, fft_size=%u, %f\n", s_freq_hz, freq_resolution, fft_size, (SINGLE_SIDE_BAND_POINT_RATE*fft_size));
+        printf_debug("mid_freq_hz=%d, bw_hz=%d, level=%f\n", result->centfeqpoint[i], result->bandwidth[i], result->arvcentfreq[i]);
     }
 exit:
     UNLOCK_SP_RESULT();

@@ -27,7 +27,7 @@ struct spectrum_fft_result_st{
     uint32_t result_num;
     long long mid_freq_hz[SIGNALNUM]; 
     long long bw_hz[SIGNALNUM];
-    uint32_t level[SIGNALNUM];
+    float level[SIGNALNUM];
 };
 
 #define LOCK_SP_RESULT() do { \

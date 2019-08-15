@@ -29,8 +29,8 @@ typedef struct {
     int z[SIGNALNUM];
     int centfeqpoint[SIGNALNUM];      //上报中心频点，中心频点的集合
     // int maxcentfeqpoint;
+    int Centerpoint;
     float Threshold;
-    int Centerpoint;//取出的唯一一个中心频率点
     float Bottomnoise;       
     float maxcentfrequency;
     int interval;	
@@ -38,6 +38,7 @@ typedef struct {
     float arvcentfreq[SIGNALNUM];  //中心频点功率值
     int firstpoint[SIGNALNUM];
     int endpoint[SIGNALNUM];
+    int maximum_x;
 }fft_state;
 
 extern fft_state fftstate;
@@ -46,6 +47,8 @@ typedef struct {
    int centfeqpoint[SIGNALNUM];  //上报中心频点，中心频点的集合 
    int bandwidth[SIGNALNUM];     //带宽
    float arvcentfreq[SIGNALNUM]; //中心频点功率值
+   int  maximum_x;
+
 }fft_result;
 
 typedef enum _signalnum_flag{

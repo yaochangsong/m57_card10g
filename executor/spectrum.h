@@ -6,8 +6,11 @@
 
 #define SPECTRUM_START_FLAG 0x7E7E
 #define SPECTRUM_DEFAULT_FFT_SIZE (128*1024)
+#define SINGLE_SIDE_BAND_POINT_RATE  (0.093098958333333)  /* (1-1/1.2288)/2 */
 
 #define calc_resolution(bw_hz, fft_size)  (1.2288*bw_hz/fft_size)
+
+typedef int16_t fft_data_type;
 
 struct spectrum_st{
     long long freq_hz; 
@@ -16,8 +19,8 @@ struct spectrum_st{
     int16_t *iq_payload;   /* IQ data */
     uint32_t iq_len;
     float *fft_float_payload;         /* FFT float data */
-    int16_t *fft_short_payload;       /* FFT short data */
-    int16_t *fft_short_payload_back;  /* FFT short data back */
+    fft_data_type *fft_short_payload;       /* FFT short data */
+    fft_data_type *fft_short_payload_back;  /* FFT short data back */
     uint32_t fft_len;
     uint32_t fft_len_back;
     volatile bool is_wait_deal;

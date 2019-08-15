@@ -72,6 +72,25 @@ static void spectrum_send_fft_data(void *fft_data, size_t fft_data_len, void *pa
     safe_free(pbuf);
 }
 
+/* Before send client, we need to remove sideband signals data */
+fft_data_type *spectrum_fft_data_order(void *fft_data, uint32_t fft_data_len, uint32_t *result_fft_size)
+{
+    /* single sideband signal fft size */
+    uint32_t single_sideband_size = fft_data_len*SINGLE_SIDE_BAND_POINT_RATE;
+
+    /* odd number */
+    if(!EVEN(single_sideband_size)){
+        single_sideband_size++;
+    }
+
+    
+    *result_fft_size = fft_data_len - 2 * single_sideband_size;
+    printf_note("single_sideband_size=%u, %u\n",single_sideband_size, *result_fft_size);
+
+    return (fft_data_type *)((fft_data_type *)fft_data+single_sideband_size);
+}
+
+
 /* We use this function to deal FFT spectrum in user space */
 void spectrum_wait_user_deal( struct spectrum_header_param *param)
 {
@@ -95,7 +114,7 @@ void spectrum_wait_user_deal( struct spectrum_header_param *param)
     ps->fft_len = fft_size;
     
     /* Here we convert float to short integer processing */
-    ps->fft_short_payload = safe_malloc(ps->fft_len*sizeof(int16_t));
+    ps->fft_short_payload = (fft_data_type *)safe_malloc(ps->fft_len*sizeof(fft_data_type));
     FLOAT_TO_SHORT(ps->fft_float_payload, ps->fft_short_payload, ps->fft_len);
 
     /* Calculation resolution(Point bandwidth) by Total bandWidth& fft size */
@@ -109,22 +128,29 @@ void spectrum_wait_user_deal( struct spectrum_header_param *param)
     printf_debug("ps->fft_len=%d,fft_size=%d, ps->fft_payload=%d,%d, %f, %f\n", ps->fft_len, param->fft_size, 
         ps->fft_short_payload[0],ps->fft_short_payload[1], ps->fft_float_payload[0], ps->fft_float_payload[1]);
 
-    /* fill header data len(byte) */
-    param->data_len = ps->fft_len*sizeof(int16_t); 
-    
     LOCK_SP_DATA();
     /* To the circumstances: the client's active acquisition of FFT data; Here we user backup buffer to store fft data; 
     when the scheduled task is processed[is_wait_deal=false],  we start filling in new fft data in back buffer [ps->fft_short_payload_back]*/
     if(ps->is_wait_deal == false){
         printf_debug("safe_malloc[%d]\n", ps->fft_len*sizeof(float));
-        ps->fft_short_payload_back = safe_malloc(ps->fft_len*sizeof(int16_t));
+        ps->fft_short_payload_back = safe_malloc(ps->fft_len*sizeof(fft_data_type));
         FLOAT_TO_SHORT(ps->fft_float_payload, ps->fft_short_payload_back, ps->fft_len);
         ps->fft_len_back = ps->fft_len;
         ps->is_wait_deal = true;
     }
     UNLOCK_SP_DATA();
+    
+    uint32_t fft_order_len=0;
+    fft_data_type *fft_send_payload;
+        
+    fft_send_payload = spectrum_fft_data_order((void *)ps->fft_short_payload, ps->fft_len, &fft_order_len);
+    printf_note("fft order len[%u], ps->fft_len=%u\n", fft_order_len, ps->fft_len);
+    
+    /* fill header data len(byte) */
+    param->data_len = fft_order_len*sizeof(fft_data_type); 
+    
     /* Send FFT data to Client */
-    spectrum_send_fft_data((int16_t *)ps->fft_short_payload, ps->fft_len*sizeof(int16_t), param);
+    spectrum_send_fft_data((fft_data_type *)fft_send_payload, fft_order_len*sizeof(fft_data_type), param);
     safe_free(ps->fft_short_payload);
 }
 
@@ -138,7 +164,7 @@ void *spectrum_rw_fft_result(fft_result *result, uint64_t s_freq_hz, float freq_
     int i;
     static struct spectrum_fft_result_st s_fft_result, *pfft = NULL;
     #define SIGNAL_ADD_FIXED_VALUE 144
-    #define SINGLE_SIDE_BAND_POINT_RATE  (0.093098958333333)  /* (1-1/1.2288)/2 */
+    
     LOCK_SP_RESULT();
     if(result == NULL){
         printf_info("read result\n");
@@ -166,10 +192,10 @@ exit:
 }
 
 
-int16_t *spectrum_get_fft_data(uint32_t *len)
+fft_data_type *spectrum_get_fft_data(uint32_t *len)
 {
     struct spectrum_st *ps;
-    int16_t *data;
+    fft_data_type *data;
     ps = &_spectrum;
     
     LOCK_SP_DATA();

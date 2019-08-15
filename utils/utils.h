@@ -5,6 +5,8 @@
 /*向上取整*/
 #define DIV_ROUND_UP(n,d) (((n) + (d) - 1) / (d)) 
 #define ARRAY_SIZE(array) (sizeof(array)/sizeof(array[0]))
+#define EVEN(x) (((x)%2== 0) ? 1 : 0)
+
 
 #define TIME_ELAPSED(codeToTime) do{      \
         struct timeval beginTime, endTime; \

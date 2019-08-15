@@ -789,6 +789,13 @@ uint8_t rf_set_interface(uint8_t cmd,uint8_t ch,void *data){
 
     switch(cmd){
         case EX_RF_MID_FREQ :{
+            /* only set once when value changed */
+            static uint64_t old_freq = 0;
+            if(old_freq != *(uint64_t*)data){
+                old_freq = *(uint64_t*)data;
+            }else{
+                break;
+            }
             printf_note("[**RF**]ch=%d, middle_freq=%llu\n",ch, *(uint64_t*)data);
 #if (RF_ADRV9009_IIO == 1)
             gpio_select_rf_channel(*(uint64_t*)data);

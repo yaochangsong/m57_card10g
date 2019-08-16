@@ -960,9 +960,9 @@ signalnum_flag  fft_fuzzy_computing(int threshordnum,short *iqdata,int32_t fftsi
 	Cfft(fftdata.x, fftsize, fftdata.y);            // 1快速傅里叶变换  
 	CfftAbs(fftdata.y,fftsize,fftdata.mozhi);	// 2 计算20log10(abs),存进模值里
 	Rfftshift(fftdata.mozhi, fftsize);
-	writefileArr("firstmozhi.txt",fftdata.mozhi, fftsize);
+//	writefileArr("firstmozhi.txt",fftdata.mozhi, fftsize);
 	smooth(fftdata.mozhi,fftsize,fftdata.smoothdata);
-    writefileArr("firstsmoothdata.txt",fftdata.smoothdata, fftsize);
+  //  writefileArr("firstsmoothdata.txt",fftdata.smoothdata, fftsize);
     float minvalue;
     float maxvalue;
 	findBottomnoiseprecise(fftdata.smoothdata,threshordnum,&fftstate.Bottomnoise,&fftstate.Threshold,fftsize,&maxvalue,&minvalue);   //计算底噪
@@ -1002,9 +1002,9 @@ int fft_Precise_calculation(int threshordnum,short *iqdata,int32_t fftsize,int d
     Cfft(fftdata.x, N, fftdata.y);            // 1快速傅里叶变换  
     CfftAbs(fftdata.y,N,fftdata.mozhi);	// 2 计算20log10(abs),存进模值里
     Rfftshift(fftdata.mozhi, N);
-    writefileArr("secondmozhi.txt",fftdata.mozhi, N);
+//    writefileArr("secondmozhi.txt",fftdata.mozhi, N);
     smooth(fftdata.mozhi,N,fftdata.smoothdata);
-    writefileArr("secondsmoothdata.txt",fftdata.smoothdata, N);
+  //  writefileArr("secondsmoothdata.txt",fftdata.smoothdata, N);
     float minvalue;
     float maxvalue;
     findBottomnoiseprecise(fftdata.smoothdata,threshordnum,&fftstate.Bottomnoise,&fftstate.Threshold,N,&maxvalue,&minvalue);

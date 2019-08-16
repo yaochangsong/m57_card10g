@@ -1027,7 +1027,7 @@ int fft_Precise_calculation(int threshordnum,short *iqdata,int32_t fftsize,int d
     for(i=0;i<fftstate.cenfrepointnum;i++)  /*计算信号个数*/
     {   
         impairment=0;
-        printf("=================================fftstate.y[i]=%d,fftstate.z[i]=%d\n",fftstate.y[i],fftstate.z[i]);
+        //printf("=================================fftstate.y[i]=%d,fftstate.z[i]=%d\n",fftstate.y[i],fftstate.z[i]);
         int temp;
         temp=(fftstate.z[i]-fftstate.y[i])*multiple/2;
         printf_debug("temp=%d\n",temp);
@@ -1038,7 +1038,7 @@ int fft_Precise_calculation(int threshordnum,short *iqdata,int32_t fftsize,int d
             if(fftdata.smoothdata[j]<fftstate.Threshold&&fftdata.smoothdata[j+1]>fftstate.Threshold)
             {
                 firsttemp=j;
-                printf_debug("+++++++++++++++firsttemp=%d,j=%d\n",firsttemp,j);
+                //printf_debug("+++++++++++++++firsttemp=%d,j=%d\n",firsttemp,j);
             }
 
         }
@@ -1200,7 +1200,7 @@ int testfrequency(int threshordnum,short *iqdata,int32_t fftsize,int datalen)
     signalnum_flag signalflg=0;
     if(fftsize<=firstfftlen)
     {
-        signalflg=fft_fuzzy_computing(threshordnum,iqdata,fftsize,2*fftsize);
+        signalflg=fft_fuzzy_computing(threshordnum,iqdata,fftsize,datalen);
         if(signalflg==SIGNALNUM_ABNORMAL)
         {
             printf("\nToo many signal points is too big!\n");

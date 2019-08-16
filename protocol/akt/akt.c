@@ -467,10 +467,10 @@ static int akt_execute_set_command(void)
         case SAMPLE_CONTROL_FFT_CMD:
             check_valid_channel(header->buf[0]);
             memcpy(&(pakt_config->fft[ch]), header->buf, sizeof(DIRECTION_FFT_PARAM));
-            if(akt_convert_oal_config(ch, header->code) == -1){
-                err_code = RET_CODE_PARAMTER_ERR;
-                goto set_exit;
-            }
+            //if(akt_convert_oal_config(ch, header->code) == -1){
+            //    err_code = RET_CODE_PARAMTER_ERR;
+            //    goto set_exit;
+            //}
             executor_set_command(EX_MID_FREQ_CMD, EX_FFT_SIZE, ch, &pakt_config->fft[ch].fft_size);
             break;
         case SUB_SIGNAL_PARAM_CMD:

@@ -1029,18 +1029,20 @@ int fft_Precise_calculation(int threshordnum,short *iqdata,int32_t fftsize,int d
         impairment=0;
         printf("=================================fftstate.y[i]=%d,fftstate.z[i]=%d\n",fftstate.y[i],fftstate.z[i]);
         int temp;
-        temp=(fftstate.z[i]*multiple-fftstate.y[i]*multiple)/2;
+        temp=(fftstate.z[i]-fftstate.y[i])*multiple/2;
         printf_debug("temp=%d\n",temp);
-        printf("fftstate.y[i]*multiple+temp=%d,fftstate.z[i]=%d\n",fftstate.y[i]*multiple+temp,fftstate.z[i]);
-        for(j=fftstate.z[i]*multiple;j<fftstate.y[i]*multiple-temp;j--)
+        printf("+++++++++++++++fftstate.z[i]*multiple=%d,fftstate.y[i]*multiple-temp=%d\n",fftstate.z[i]*multiple,j<fftstate.y[i]*multiple-temp);
+        //for(j=fftstate.y[i]*multiple+temp;j>=fftstate.y[i]*multiple-temp;j--)
+        for(j=fftstate.z[i]*multiple;j>=fftstate.y[i]*multiple-temp;j--)
         {
             if(fftdata.smoothdata[j]<fftstate.Threshold&&fftdata.smoothdata[j+1]>fftstate.Threshold)
             {
                 firsttemp=j;
+                printf_debug("+++++++++++++++firsttemp=%d,j=%d\n",firsttemp,j);
             }
 
         }
-        for(j=fftstate.y[i]*multiple;j<=fftstate.z[i]*multiple+temp;j++)
+        for(j=fftstate.y[i]*multiple-temp;j<=fftstate.z[i]*multiple+temp;j++)
         {
 
           //  printf_debug("fftdata.smoothdata[%d]=%f,%f,%s\n",j,fftdata.smoothdata[j], fftstate.Threshold, fftdata.smoothdata[j]>fftstate.Threshold?"===OK==":"NOTOK");

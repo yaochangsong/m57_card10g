@@ -1200,7 +1200,7 @@ int testfrequency(int threshordnum,short *iqdata,int32_t fftsize,int datalen)
     signalnum_flag signalflg=0;
     if(fftsize<=firstfftlen)
     {
-        signalflg=fft_fuzzy_computing(threshordnum,iqdata,fftsize,2*fftsize);
+        signalflg=fft_fuzzy_computing(threshordnum,iqdata,fftsize,datalen);
         if(signalflg==SIGNALNUM_ABNORMAL)
         {
             printf("\nToo many signal points is too big!\n");

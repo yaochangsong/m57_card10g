@@ -520,37 +520,13 @@ static int akt_execute_set_command(void)
                 io_set_enable_command(AUDIO_MODE_ENABLE, ch, 32768);
             break;
         }
-        case SPCTRUM_PARAM_SET_CMD:
+        case SPCTRUM_PARAM_CMD:
         {
             uint64_t freq_hz;
-            int i;
-            FFT_SIGNAL_RESPINSE_ST resp_result;
-            fft_result *fft_result;
+            int i; 
             freq_hz = *(uint64_t *)(header->buf);
             printf_info("spctrum freq hz=%lluHz\n", freq_hz);
-            executor_set_command(EX_RF_FREQ_CMD, EX_RF_MID_FREQ, ch, &freq_hz);
-            fft_result = spectrum_rw_fft_result(NULL, 0,0,0);
-            if(fft_result == NULL){
-                err_code = RET_CODE_INTERNAL_ERR;
-                goto set_exit;
-            }
-            resp_result.signal_num = fft_result->signalsnumber;
-            printf_info("#########Find FFT Parameter:###############\n");
-            for(i = 0; i < resp_result.signal_num; i++){
-                resp_result.signal_array[i].center_freq = fft_result->centfeqpoint[i];
-                resp_result.signal_array[i].bandwidth = fft_result->bandwidth[i];
-                resp_result.signal_array[i].power_level = fft_result->arvcentfreq[i];
-                printf_info("[%d]center_freq=%lluHz, bandwidth=%llu, power_level=%f\n", i,
-                    resp_result.signal_array[i].center_freq,
-                    resp_result.signal_array[i].bandwidth,
-                    resp_result.signal_array[i].power_level);
-            }
-            resp_result.temperature = 50;
-            resp_result.humidity = 40;
-            memcpy(akt_set_response_data.payload_data, &resp_result, sizeof(FFT_SIGNAL_RESPINSE_ST));
-            akt_set_response_data.header.len = sizeof(FFT_SIGNAL_RESPINSE_ST); 
-            akt_set_response_data.header.operation = SET_CMD_RSP;
-            return err_code;
+            break;
         }
         case SPCTRUM_CTRL_EN_CMD:
         {
@@ -631,6 +607,35 @@ static int akt_execute_get_command(void)
             memcpy(akt_get_response_data.payload_data, &self_check, sizeof(DEVICE_SELF_CHECK_STATUS_RSP_ST));
             akt_get_response_data.header.len = sizeof(DEVICE_SELF_CHECK_STATUS_RSP_ST);
             break;
+        }
+        case SPCTRUM_PARAM_CMD:
+        {
+            int i;
+            FFT_SIGNAL_RESPINSE_ST resp_result;
+            struct spectrum_fft_result_st *fft_result;
+
+
+            fft_result = spectrum_rw_fft_result(NULL, 0, 0, 0);
+            if(fft_result == NULL){
+                err_code = RET_CODE_INTERNAL_ERR;
+                printf_info("error fft_result\n");
+                return -1;
+            }
+            resp_result.signal_num = fft_result->result_num;
+            printf_warn("#########Find FFT Parameter[%d]:###############\n",resp_result.signal_num);
+            for(i = 0; i < resp_result.signal_num; i++){
+                resp_result.signal_array[i].center_freq = fft_result->mid_freq_hz[i];
+                resp_result.signal_array[i].bandwidth = fft_result->bw_hz[i];
+                resp_result.signal_array[i].power_level = fft_result->level[i];
+                printf_warn("[%d]center_freq=%lluHz, bandwidth=%llu, power_level=%f\n", i,
+                    resp_result.signal_array[i].center_freq,
+                    resp_result.signal_array[i].bandwidth,
+                    resp_result.signal_array[i].power_level);
+            }
+            resp_result.temperature = 50;
+            resp_result.humidity = 40;
+            memcpy(akt_get_response_data.payload_data, &resp_result, sizeof(FFT_SIGNAL_RESPINSE_ST));
+            akt_get_response_data.header.len = sizeof(FFT_SIGNAL_RESPINSE_ST);
         }
         case SOFTWARE_VERSION_CMD:
             break;

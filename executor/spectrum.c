@@ -29,8 +29,11 @@ static int32_t specturm_rx_iq_read(int16_t **iq_payload)
     int i;
     char strbuf[128];
     static int write_file_cnter = 0;
-   
+   #if (RF_ADRV9009_IIO == 1)
     iqdata = iio_read_rx0_data(&nbytes_rx);
+   #else    
+    nbytes_rx = 0;
+   #endif
     *iq_payload = iqdata;
 
     printf_info("iio read data len:[%d]\n", nbytes_rx);
@@ -85,7 +88,6 @@ fft_data_type *spectrum_fft_data_order(void *fft_data, uint32_t fft_data_len, ui
 
     
     *result_fft_size = fft_data_len - 2 * single_sideband_size;
-    printf_note("single_sideband_size=%u, %u\n",single_sideband_size, *result_fft_size);
 
     return (fft_data_type *)((fft_data_type *)fft_data+single_sideband_size);
 }
@@ -144,7 +146,7 @@ void spectrum_wait_user_deal( struct spectrum_header_param *param)
     fft_data_type *fft_send_payload;
         
     fft_send_payload = spectrum_fft_data_order((void *)ps->fft_short_payload, ps->fft_len, &fft_order_len);
-    printf_note("fft order len[%u], ps->fft_len=%u\n", fft_order_len, ps->fft_len);
+    printf_debug("fft order len[%u], ps->fft_len=%u\n", fft_order_len, ps->fft_len);
     
     /* fill header data len(byte) */
     param->data_len = fft_order_len*sizeof(fft_data_type); 

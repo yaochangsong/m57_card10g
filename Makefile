@@ -17,6 +17,7 @@
 #export CC=arm-linux-gnueabihf-gcc
 
 SOURCE_DIR = log net protocol/http protocol/akt protocol/xnrp protocol/oal dao/oal conf executor utils device device/audio device/lcd device/rf device/uart device/gpio
+
 SUB_LIBS := dao/mxml-3.0/libmxml.a dao/json/libjson.a libubox/libubox.a
 
 ALL_C_FILES := $(foreach n,$(SOURCE_DIR),$(n)/*.c)
@@ -30,7 +31,13 @@ includedir_so=-I${prefix}/libiio/usr/include -I${prefix}/libxml2/usr/include/lib
 
 INCLUDE_DIR = -I. -I./ ${includedir_so} 
 
-LDFLAGS = $(SUB_LIBS)  ${libdir_so} -liio -lpthread  -lm -lxml2 -lz
+LDFLAGS = $(SUB_LIBS)  ${libdir_so}  -lpthread  -lm -lz
+
+ifeq ($(CC), gcc)
+else
+LDFLAGS += -liio -lxml2
+endif
+
 CFLAGS = -Wall -Wno-unused-function  -Wno-unused-variable -Wno-discarded-qualifiers $(INCLUDE_DIR)
 
 MAKE := make

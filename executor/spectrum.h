@@ -2,7 +2,11 @@
 #define _SPRCTRUM_H_H
 #include "fft.h"
 
+#if (RF_ADRV9009_IIO == 1)
 #define specturm_rx0_read_data iio_read_rx0_data
+#else
+#define specturm_rx0_read_data
+#endif
 
 #define SPECTRUM_START_FLAG 0x7E7E
 #define SPECTRUM_DEFAULT_FFT_SIZE (128*1024)

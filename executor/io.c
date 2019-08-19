@@ -400,7 +400,11 @@ int32_t io_set_assamble_kernel_header_response_data(void *data){
     return ret;
 }
 
+#ifdef PLAT_FORM_ARCH_ARM
 #define do_system(cmd)   system(cmd)
+#else
+#define do_system(cmd)
+#endif
 
 uint8_t  io_set_network_to_interfaces(void *netinfo)
 {

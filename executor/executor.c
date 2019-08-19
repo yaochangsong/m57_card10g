@@ -125,14 +125,18 @@ static  void  executor_fregment_scan(uint32_t fregment_num,uint8_t ch, work_mode
         header_param.freq_resolution = poal_config->multi_freq_fregment_para[ch].fregment[fregment_num].freq_resolution;
         executor_set_command(EX_RF_FREQ_CMD, EX_RF_MID_FREQ, ch, &m_freq);
         io_set_enable_command(PSD_MODE_ENABLE, ch, header_param.fft_size);
-#if (KERNEL_IOCTL_EN == 1)
+#ifdef PLAT_FORM_ARCH_ARM
+    #if (KERNEL_IOCTL_EN == 1)
         executor_set_command(EX_WORK_MODE_CMD, mode, ch, &header_param);
         executor_wait_kernel_deal();
-#else
+    #else
         printf_debug("spectrum_wait_user_deal..\n");
         if(get_spectrum_debug() == false){
             spectrum_wait_user_deal(&header_param);
         }
+    #endif
+#else
+    
 #endif
         if(poal_config->enable.bit_reset == true){
             printf_info("receive reset task sigal\n");

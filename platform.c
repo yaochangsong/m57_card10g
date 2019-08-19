@@ -77,7 +77,9 @@ int main(int argc, char **argv)
 #if (UART_SUPPORT == 1)
     uart_init();
 #endif
+#ifdef PLAT_FORM_ARCH_ARM
     gpio_init_control();
+#endif
 #if (UART_LCD_SUPPORT == 1)
     init_lcd();
 #endif

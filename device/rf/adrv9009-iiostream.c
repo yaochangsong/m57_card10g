@@ -22,6 +22,9 @@
 #include <signal.h>
 #include <stdio.h>
 #include "log/log.h"
+#include "rf.h"
+#if (RF_ADRV9009_IIO == 1)
+
 #include "adrv9009-iiostream.h"
 
 #ifdef __APPLE__
@@ -312,4 +315,5 @@ ssize_t iio_get_rx_buf_size(void)
 	if (nbytes_rx < 0) { printf_info("Error refilling buf %d\n",(int) nbytes_rx); iio_shutdown(); }
 	return nbytes_rx;
 }
+#endif
 

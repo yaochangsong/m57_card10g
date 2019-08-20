@@ -68,7 +68,7 @@
 PLAT_FORM_ARCH_X86, (For debug)
 PLAT_FORM_ARCH_ARM
 */
-#define PLAT_FORM_ARCH_X86   
+#define PLAT_FORM_ARCH_ARM   
 #define SPCTRUM_VERSION_STRING "1.0.0-"__DATE__"."__TIME__ /* application version */
 
 /*Protocal Support*/

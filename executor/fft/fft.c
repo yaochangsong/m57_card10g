@@ -358,7 +358,7 @@ void fft_fftw_calculate(short *iqdata,int32_t fftsize,int datalen,float *mozhi)
 
     }
     hannwindow(fftsize,hann);
-    writefileArr("hann.txt",hann,fftsize);
+    //writefileArr("hann.txt",hann,fftsize);
     
     wavdatafp=iqdata;
     wandateimage=iqdata+1;
@@ -384,17 +384,18 @@ void fft_fftw_calculate(short *iqdata,int32_t fftsize,int datalen,float *mozhi)
     
     end=clock();
     costtime=(double)(end-start)/CLOCKS_PER_SEC;
-    printf("======costtime=%.20lf\n",costtime);
+    printf_debug("======costtime=%.20lf\n",costtime);
     CfftAbs(out,fftsize,mozhi);
     Rfftshift(mozhi,fftsize);
-    
     fftwf_destroy_plan(p);
-    fftwf_cleanup();
+   // fftwf_cleanup();
     if(din!=NULL) fftwf_free(din);
     if(out!=NULL) fftwf_free(out);
     free(hann);
     return 0;
 }
+
+
 void smooth(float* fftdata,int fftdatanum,float *smoothdata)    //fft后数据的平滑处， 返回平滑滤波之后的值
 {
     float Sum1=0;

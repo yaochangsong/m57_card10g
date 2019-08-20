@@ -515,12 +515,26 @@ int8_t executor_set_enable_command(uint8_t ch)
     return 0;
 }
 
+void executor_timer_task1_cb(struct uloop_timeout *t)
+{
+    spectrum_send_fft_data_interval();
+    uloop_timeout_set(t, 2000);
+}
+void executor_timer_task_init(void)
+{
+    static  struct uloop_timeout task1_timeout;
+    printf_warn("executor_timer_task\n");
+    task1_timeout.cb = executor_timer_task1_cb;
+    uloop_timeout_set(&task1_timeout, 5000); /* 5000 ms */
+}
+
 void executor_init(void)
 {
     int ret, i;
     pthread_t work_id, work_id_iio;
     struct poal_config *poal_config = &(config_get_config()->oal_config);
     io_init();
+    executor_timer_task_init();
     /* set default network */
     executor_set_command(EX_NETWORK_CMD, 0, 0, NULL);
     /* shutdown all channel */
@@ -535,12 +549,6 @@ void executor_init(void)
     if(ret!=0)
         perror("pthread cread work_id");
     pthread_detach(work_id);
-    /*
-    ret=pthread_create(&work_id_iio,NULL,(void *)adrv_9009_iio_work_thread, NULL);
-    if(ret!=0)
-        perror("pthread cread work_id");
-    pthread_detach(work_id_iio);
-    */
 }
 
 

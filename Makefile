@@ -16,7 +16,7 @@
 #export CC=gcc
 #export CC=arm-linux-gnueabihf-gcc
 
-SOURCE_DIR = log net protocol/http protocol/akt protocol/xnrp protocol/oal dao/oal conf executor utils device device/audio device/lcd device/rf device/uart device/gpio
+SOURCE_DIR = log net protocol/http protocol/akt protocol/xnrp protocol/oal dao/oal conf executor executor/fft utils device device/audio device/lcd device/rf device/uart device/gpio
 
 SUB_LIBS := dao/mxml-3.0/libmxml.a dao/json/libjson.a libubox/libubox.a
 
@@ -28,17 +28,24 @@ prefix=$(top_dir)/tmp/sysroots-components/cortexa9hf-neon
 libdir_so=-L${prefix}/libiio/usr/lib -L${prefix}/libxml2/usr/lib -L${prefix}/zlib/usr/lib
 includedir_so=-I${prefix}/libiio/usr/include -I${prefix}/libxml2/usr/include/libxml2/libxml -I${prefix}/zlib/usr/include
 
+ifeq ($(CC), gcc)
+libdir_so += -L./executor/fft/libfftw3/x86/lib
+includedir_so += -I./executor/fft/libfftw3/x86/include
+else
+libdir_so += -L./executor/fft/libfftw3/arm/lib
+includedir_so += -I./executor/fft/libfftw3/arm/include
+endif
 
 INCLUDE_DIR = -I. -I./ ${includedir_so} 
 
-LDFLAGS = $(SUB_LIBS)  ${libdir_so}  -lpthread  -lm -lz
+LDFLAGS = $(SUB_LIBS)  ${libdir_so}  -lpthread  -lm -lz -lfftw3f
 
 ifeq ($(CC), gcc)
 else
 LDFLAGS += -liio -lxml2
 endif
 
-CFLAGS = -Wall -Wno-unused-function  -Wno-unused-variable -Wno-discarded-qualifiers $(INCLUDE_DIR)
+CFLAGS = -Wall -Wno-unused-function  -Wno-unused-variable -Wno-discarded-qualifiers $(INCLUDE_DIR) 
 
 MAKE := make
 

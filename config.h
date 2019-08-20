@@ -21,7 +21,7 @@
 #include <errno.h>
 #include <linux/spi/spidev.h>
 #include <time.h>
-
+#include <fftw3.h>
 
 
 #include "libubox/ulog.h"
@@ -47,7 +47,7 @@
 #include "executor/executor.h"
 #include "executor/io.h"
 #include "executor/spectrum.h"
-#include "executor/fft.h"
+#include "executor/fft/fft.h"
 
 
 #include "device/uart/uart.h"
@@ -88,9 +88,14 @@ PLAT_FORM_ARCH_ARM
 /* uart lcd support */
 #define UART_LCD_SUPPORT 0
 
-
-
 #define KERNEL_IOCTL_EN 0
+
+#ifdef PLAT_FORM_ARCH_ARM
+#define  RF_ADRV9009_IIO   1
+#else 
+#define  RF_ADRV9009_IIO   0
+#endif
+
 
 
 

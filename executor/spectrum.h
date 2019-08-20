@@ -1,6 +1,6 @@
 #ifndef _SPRCTRUM_H_H
 #define _SPRCTRUM_H_H
-#include "fft.h"
+#include "config.h"
 
 #if (RF_ADRV9009_IIO == 1)
 #define specturm_rx0_read_data iio_read_rx0_data

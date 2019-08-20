@@ -1,8 +1,6 @@
 #ifndef RF_H
 #define RF_H
 
-#define  RF_ADRV9009_IIO   1
-
 #define GPIO_BASE_OFFSET              960
 #define SPI_CONTROL_NUM               8
 #define MAX_GPIO_NUM                  64

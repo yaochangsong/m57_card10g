@@ -22,7 +22,7 @@
 #include <signal.h>
 #include <stdio.h>
 #include "log/log.h"
-#include "rf.h"
+#include "config.h"
 #if (RF_ADRV9009_IIO == 1)
 
 #include "adrv9009-iiostream.h"

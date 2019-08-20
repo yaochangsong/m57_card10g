@@ -20,7 +20,7 @@
 
 
 #define FLOAT_TO_SHORT(f, s, n)  do{                            \
-       float *_tf = f; signed short *_ts = s; int32_t _n = n;       \ 
+       float *_tf = f; signed short *_ts = s; int32_t _n = n;       \
                          while(_n>0){                           \
                      *_ts++ = (signed short)*_tf++; _n--;       \
     }}while(0)

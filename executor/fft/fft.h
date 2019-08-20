@@ -1,3 +1,5 @@
+
+
 #ifndef __FFT_H
 #define __FFT_H
 #include "config.h"
@@ -36,6 +38,7 @@ typedef struct {
     float arvcentfreq[SIGNALNUM];  //中心频点功率值
     int firstpoint[SIGNALNUM];
     int endpoint[SIGNALNUM];
+     int  maximum_x;
 }fft_state;
 
 extern fft_state fftstate;
@@ -44,6 +47,7 @@ typedef struct {
    int centfeqpoint[SIGNALNUM];  //上报中心频点，中心频点的集合 
    int bandwidth[SIGNALNUM];     //带宽
    float arvcentfreq[SIGNALNUM]; //中心频点功率值
+   int  maximum_x;
 }fft_result;
 
 typedef enum _signalnum_flag{
@@ -56,6 +60,8 @@ void fft_exit(void);
 void fft_iqdata_handle(int bd,short *data,int fftsize ,int datalen);
 float *fft_get_data(uint32_t *len);
 fft_result *fft_get_result(void);
+void fft_fftw_calculate(short *iqdata,int32_t fftsize,int datalen,float *mozhi);
+
 
 
 void xulitest(void);
@@ -63,4 +69,7 @@ void xulitest(void);
 
 
 #endif
+
+
+
 

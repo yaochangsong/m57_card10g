@@ -58,11 +58,11 @@ typedef struct _ReDefTranData
 struct fft_data{
 
     float *mozhi;
-    fftwf_complex *x;
-    fftwf_complex *y;
+    //fftwf_complex *x;
+   // fftwf_complex *y;
     float *smoothdata;
     short *wavdata;
-    float *hann;
+   // float *hann;
 	
 };
 struct fft_data fftdata;
@@ -342,47 +342,48 @@ void Verificationfloat(const char* filename, short* num, int rank)       //从�
 }
 
 
-void fft_fftw_calculate(short *iqdata,int32_t fftsize,int datalen)
+void fft_fftw_calculate(short *iqdata,int32_t fftsize,int datalen,float *mozhi)
 {
     int i;
     fftwf_plan p;
     short* wavdatafp;
     short* wandateimage;
-    //din  = (fftwf_complex*) fftwf_malloc(sizeof(fftwf_complex) * N);
-    // out = (fftwf_complex*) fftwf_malloc(sizeof(fftwf_complex) * N);
-    // float *mozhi=(float*)malloc(sizeof(float)*N);
- 
+    fftwf_complex *din = (fftwf_complex*) fftwf_malloc(sizeof(fftwf_complex) * fftsize);
+    fftwf_complex *out = (fftwf_complex*) fftwf_malloc(sizeof(fftwf_complex) * fftsize);
+    float *hann=(float*)malloc(sizeof(float)*fftsize);
+    memset(hann,0,sizeof(float)*fftsize );
+    if(din==NULL||out==NULL||hann==NULL)
+    {
+        printf_note("fft_fftw_calculate Memory allocation failed!!\n");
+
+    }
     wavdatafp=iqdata;
     wandateimage=iqdata+1;
     int j=0;
     int num=0;
     for(i=0; i<datalen; i+=2)
     {
-        fftdata.x[j++][0] = *wavdatafp;
-        fftdata.x[num++][1] = *wandateimage;
+        din[j++][0] = (*wavdatafp);
+        din[num++][1] = (*wandateimage);
         wavdatafp+=2;
         wandateimage+=2;
-        
     }
-    
     double costtime;
     clock_t start,end;
     start=clock();
     
-    p = fftwf_plan_dft_1d(fftsize,fftdata.x, fftdata.y, FFTW_FORWARD,FFTW_ESTIMATE);
+    p = fftwf_plan_dft_1d(fftsize,din, out, FFTW_FORWARD,FFTW_ESTIMATE);
     fftwf_execute(p);
     
     end=clock();
-
-    
     costtime=(double)(end-start)/CLOCKS_PER_SEC;
     printf("======costtime=%.20lf\n",costtime);
-    CfftAbs(fftdata.y,fftsize,fftdata.mozhi);
-    Rfftshift(fftdata.mozhi,fftsize);
+    CfftAbs(out,fftsize,mozhi);
+    Rfftshift(mozhi,fftsize);
     fftwf_destroy_plan(p);
     fftwf_cleanup();
-    //if(din!=NULL) fftwf_free(din);
-   //if(out!=NULL) fftwf_free(out);
+    if(din!=NULL) fftwf_free(din);
+    if(out!=NULL) fftwf_free(out);
     return 0;
 }
 void smooth(float* fftdata,int fftdatanum,float *smoothdata)    //fft后数据的平滑处， 返回平滑滤波之后的值
@@ -599,16 +600,14 @@ void  calculatebandwidth(float *fftdata,int fftnum ,float* temp)
                         j=fftstate.z[i]-((fftstate.z[i]-fftstate.y[i])/2);
                         flag=1;
                         continue;
-
+                    }
                 }
-
-            }
-            else if(fftdata[j]>=threedbpoint&&fftdata[j+1]<threedbpoint)
-            {
-                fftstate.endpoint[i]=j;
-                flag=0;
-                break;
-            }
+                else if(fftdata[j]>=threedbpoint&&fftdata[j+1]<threedbpoint)
+                {
+                    fftstate.endpoint[i]=j;
+                    flag=0;
+                    break;
+                }
         }
     }
     printf_debug("threedbpoint=%f  \n",threedbpoint);
@@ -834,16 +833,16 @@ void hannwindow(int num,float *w)               //汉宁窗
 void fft_init(void)
 {
     fftdata.mozhi=(float*)malloc(sizeof(float)*N );
-	fftdata.x  = (fftwf_complex*) fftwf_malloc(sizeof(fftwf_complex) * N);
-	fftdata.y = (fftwf_complex*) fftwf_malloc(sizeof(fftwf_complex) * N);
+	//fftdata.x  = (fftwf_complex*) fftwf_malloc(sizeof(fftwf_complex) * N);
+	//fftdata.y = (fftwf_complex*) fftwf_malloc(sizeof(fftwf_complex) * N);
     fftdata.smoothdata=(float*)malloc(sizeof(float)*N);
     fftdata.wavdata=(short*)malloc(sizeof(short)*(2*N)); 
-    fftdata.hann=(float*)malloc(sizeof(float)*N);
+    //fftdata.hann=(float*)malloc(sizeof(float)*N);
 
     memset(fftdata.mozhi,0,sizeof(float)*N );
     memset(fftdata.smoothdata,0,sizeof(float)*N );    
     memset(fftdata.wavdata,0,sizeof(short)*(2*N) );
-    memset(fftdata.hann,0,sizeof(float)*N );
+   // memset(fftdata.hann,0,sizeof(float)*N );
 
     memset(fftstate.y,0,sizeof(int)*SIGNALNUM );
     memset(fftstate.z,0,sizeof(int)*SIGNALNUM );
@@ -852,10 +851,10 @@ void fft_init(void)
     memset(fftstate.bandwidth,0,sizeof(float)*SIGNALNUM);
     memset(fftstate.firstpoint,0,sizeof(int)*SIGNALNUM);
     memset(fftstate.endpoint,0,sizeof(int)*SIGNALNUM);
-    if((fftdata.x==NULL)||(fftdata.y==NULL))
+   /* if((fftdata.x==NULL)||(fftdata.y==NULL))
     {
         printf("Error:insufficient available memory\n");
-    }
+    }*/
 
 
     fftstate.cenfrepointnum=0;
@@ -868,13 +867,13 @@ void fft_init(void)
 void fft_exit(void)
 {
     SAFE_FREE(fftdata.mozhi);
-    SAFE_FREE(fftdata.x);
-    SAFE_FREE(fftdata.y);
+    //SAFE_FREE(fftdata.x);
+    //SAFE_FREE(fftdata.y);
     SAFE_FREE(fftdata.smoothdata);
     SAFE_FREE(fftdata.wavdata);
-    SAFE_FREE(fftdata.hann);
-    if(fftdata.x!=NULL) fftwf_free(fftdata.x);
-    if(fftdata.y!=NULL) fftwf_free(fftdata.y);
+    //SAFE_FREE(fftdata.hann);
+   // if(fftdata.x!=NULL) fftwf_free(fftdata.x);
+   // if(fftdata.y!=NULL) fftwf_free(fftdata.y);
 }
 void fft_read_iqdata(short *iqdata,int32_t fftsize,int datalen,complexType *data)
 {
@@ -884,7 +883,7 @@ void fft_read_iqdata(short *iqdata,int32_t fftsize,int datalen,complexType *data
 	wandateimage=iqdata+1;
 	int j=0;
 	int q=0;
-    hannwindow(fftsize,fftdata.hann);/*hanning window*/
+    //hannwindow(fftsize,fftdata.hann);/*hanning window*/
 	for(int i=0;i<2*fftsize;i+=2)
 	{
 		if(i<datalen)
@@ -900,10 +899,10 @@ void fft_read_iqdata(short *iqdata,int32_t fftsize,int datalen,complexType *data
 			data[q++].Imag =0.0;	
 		}
 	}
-	for(int i=0;i<firstfftlen;i++)
+	for(int i=0;i<fftsize;i++)
 	{
-		data[i].Real=data[i].Real*fftdata.hann[i];
-		data[i].Imag=data[i].Imag*fftdata.hann[i];
+		//data[i].Real=data[i].Real*fftdata.hann[i];
+		//data[i].Imag=data[i].Imag*fftdata.hann[i];
 	}
 }
 void  fft_calculate_finaldata()
@@ -940,6 +939,26 @@ void  fft_reduce_gain_CfftAbs(float *fftdata,float *data,int size,int datalen)
     }
 
 }
+void fft_find_midpoint(float *data,int datalen)
+{
+    int i=0;
+    float max;
+    int zuobiao;
+    max=data[0];
+    for(i=0;i<datalen;i++)
+    {
+
+        if(max<data[i])
+        {
+
+           max=data[i];
+           zuobiao=i;
+
+        }
+    }
+    fftstate.maximum_x=zuobiao;
+}
+
 signalnum_flag  fft_fuzzy_computing(int threshordnum,short *iqdata,int32_t fftsize,int datalen)
 {
     printf_debug("\n\n****************fft_fuzzy_computing******************************\n");
@@ -947,23 +966,23 @@ signalnum_flag  fft_fuzzy_computing(int threshordnum,short *iqdata,int32_t fftsi
     memset(fftdata.mozhi,0,sizeof(float)*N );
 	memset(fftdata.smoothdata,0,sizeof(float)*N );
 	memset(fftdata.wavdata,0,sizeof(short)*(2*N) );
-	memset(fftdata.hann,0,sizeof(float)*N );
+	//memset(fftdata.hann,0,sizeof(float)*N );
 	memset(fftstate.y,0,sizeof(int)*SIGNALNUM );
 	memset(fftstate.z,0,sizeof(int)*SIGNALNUM );
 	memset(fftstate.centfeqpoint,0,sizeof(int)*SIGNALNUM );
     memset(fftstate.arvcentfreq,0,sizeof(float)*SIGNALNUM);
     memset(fftstate.bandwidth   ,0,sizeof(float)*SIGNALNUM);
-
     fftstate.cenfrepointnum=0;
     fftstate.Threshold=0;
     fftstate.Centerpoint=0;
     fftstate.Bottomnoise=0;
     fftstate.maxcentfrequency=0;
+    fftstate.maximum_x=0;
     signalnum_flag signalflg=0;
-    fft_fftw_calculate(iqdata,fftsize,datalen);
-   // writefileArr("firstmozhi.txt",fftdata.mozhi, fftsize);
+    fft_fftw_calculate(iqdata,fftsize,datalen,fftdata.mozhi);
+     writefileArr("firstmozhi.txt",fftdata.mozhi, fftsize);
     smooth(fftdata.mozhi,fftsize,fftdata.smoothdata);
-   // writefileArr("firstsmoothdata.txt",fftdata.smoothdata, fftsize);
+     writefileArr("firstsmoothdata.txt",fftdata.smoothdata, fftsize);
     float minvalue;
     float maxvalue;
     findBottomnoiseprecise(fftdata.smoothdata,threshordnum,&fftstate.Bottomnoise,&fftstate.Threshold,fftsize,&maxvalue,&minvalue);   //计算底噪
@@ -979,6 +998,7 @@ signalnum_flag  fft_fuzzy_computing(int threshordnum,short *iqdata,int32_t fftsi
     
     printf_debug("\n\n*********************模糊数据****************************\n");
     fft_calculate_finaldata();
+    fft_find_midpoint(fftdata.smoothdata,fftsize);
 }
 int fft_Precise_calculation(int threshordnum,short *iqdata,int32_t fftsize,int datalen)
 {
@@ -990,16 +1010,17 @@ int fft_Precise_calculation(int threshordnum,short *iqdata,int32_t fftsize,int d
     short* wandateimage;
     memset(fftdata.mozhi,0,sizeof(float)*N );
     memset(fftdata.wavdata,0,sizeof(short)*(2*N) );
-    memset(fftdata.hann,0,sizeof(float)*N);
+   //  memset(fftdata.hann,0,sizeof(float)*N);
     memset(fftstate.centfeqpoint,0,sizeof(int)*SIGNALNUM );
     memset(fftstate.arvcentfreq,0,sizeof(float)*SIGNALNUM);
     memset(fftstate.bandwidth   ,0,sizeof(float)*SIGNALNUM);
     fftstate.Threshold=0;
     fftstate.Bottomnoise=0;
-    fft_fftw_calculate(iqdata,fftsize,datalen);
-   // writefileArr("secondmozhi.txt",fftdata.mozhi, N);
+    fftstate.maximum_x=0;
+    fft_fftw_calculate(iqdata,fftsize,datalen,fftdata.mozhi);
+    writefileArr("secondmozhi.txt",fftdata.mozhi, N);
     smooth(fftdata.mozhi,N,fftdata.smoothdata);
-   // writefileArr("secondsmoothdata.txt",fftdata.smoothdata, N);
+    writefileArr("secondsmoothdata.txt",fftdata.smoothdata, N);
     float minvalue;
     float maxvalue;
     findBottomnoiseprecise(fftdata.smoothdata,threshordnum,&fftstate.Bottomnoise,&fftstate.Threshold,N,&maxvalue,&minvalue);
@@ -1057,6 +1078,7 @@ int fft_Precise_calculation(int threshordnum,short *iqdata,int32_t fftsize,int d
             if(max<fftdata.smoothdata[p])
             {
                max= fftdata.smoothdata[p];
+               fftstate.maximum_x=p;
             }
         }
         
@@ -1178,6 +1200,7 @@ float *fft_get_data(uint32_t *len)
 fft_result *fft_get_result(void)
 {
     fftresult.signalsnumber=fftstate.cenfrepointnum;
+    fftresult.maximum_x=fftstate.maximum_x;
     memcpy(fftresult.centfeqpoint,fftstate.centfeqpoint,sizeof(int)*SIGNALNUM);
     memcpy(fftresult.bandwidth,fftstate.bandwidth,sizeof(int)*SIGNALNUM);
     memcpy(fftresult.arvcentfreq,fftstate.arvcentfreq,sizeof(float)*SIGNALNUM);
@@ -1192,7 +1215,7 @@ int testfrequency(int threshordnum,short *iqdata,int32_t fftsize,int datalen)
         signalflg=fft_fuzzy_computing(threshordnum,iqdata,fftsize,datalen);
         if(signalflg==SIGNALNUM_ABNORMAL)
         {
-        printf_note("There are too many signals\n");
+            printf_note("There are too many signals\n");
             return 0;
         }
     }else if(fftsize>firstfftlen){
@@ -1205,6 +1228,7 @@ int testfrequency(int threshordnum,short *iqdata,int32_t fftsize,int datalen)
     fft_Precise_calculation(threshordnum,iqdata,fftsize,datalen);
   }
 }
+
 void xulitestfft(void)
 {
     double costtime;
@@ -1221,9 +1245,10 @@ void xulitestfft(void)
     //Verificationfloat("rawdata0813.txt",data,2*1024*1024);
   
 
-        fft_iqdata_handle(4,data,fftsize ,2*1024*1024);//下发门限，iq数据，fft大小，下发数据长度
+    fft_iqdata_handle(4,data,fftsize ,2*1024*1024);//下发门限，iq数据，fft大小，下发数据长度
  
-
+    temp=fft_get_result();
+    printf_debug("temp=%d",temp->maximum_x);
     fft_exit(); 
     end=clock();
     costtime=(double)(end-start)/CLOCKS_PER_SEC;
@@ -1231,7 +1256,6 @@ void xulitestfft(void)
     return ;
 	
 }
-
 
 
 

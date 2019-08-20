@@ -13,7 +13,7 @@
 #  Initial revision.
 #*****************************************************************************
 
-#export CC=gcc
+export CC=gcc
 #export CC=arm-linux-gnueabihf-gcc
 
 SOURCE_DIR = log net protocol/http protocol/akt protocol/xnrp protocol/oal dao/oal conf executor executor/fft utils device device/audio device/lcd device/rf device/uart device/gpio

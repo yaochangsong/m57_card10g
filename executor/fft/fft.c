@@ -357,6 +357,9 @@ void fft_fftw_calculate(short *iqdata,int32_t fftsize,int datalen,float *mozhi)
         printf_note("fft_fftw_calculate Memory allocation failed!!\n");
 
     }
+    hannwindow(fftsize,hann);
+    writefileArr("hann.txt",hann,fftsize);
+    
     wavdatafp=iqdata;
     wandateimage=iqdata+1;
     int j=0;
@@ -368,10 +371,14 @@ void fft_fftw_calculate(short *iqdata,int32_t fftsize,int datalen,float *mozhi)
         wavdatafp+=2;
         wandateimage+=2;
     }
+    for(i=0; i<fftsize; i++)
+    {
+        din[i][0] = (din[i][0])*(hann[i]);
+        din[i][1] = (din[i][1])*(hann[i]);
+    }
     double costtime;
     clock_t start,end;
     start=clock();
-    
     p = fftwf_plan_dft_1d(fftsize,din, out, FFTW_FORWARD,FFTW_ESTIMATE);
     fftwf_execute(p);
     
@@ -380,10 +387,12 @@ void fft_fftw_calculate(short *iqdata,int32_t fftsize,int datalen,float *mozhi)
     printf("======costtime=%.20lf\n",costtime);
     CfftAbs(out,fftsize,mozhi);
     Rfftshift(mozhi,fftsize);
+    
     fftwf_destroy_plan(p);
     fftwf_cleanup();
     if(din!=NULL) fftwf_free(din);
     if(out!=NULL) fftwf_free(out);
+    free(hann);
     return 0;
 }
 void smooth(float* fftdata,int fftdatanum,float *smoothdata)    //fft后数据的平滑处， 返回平滑滤波之后的值
@@ -659,8 +668,7 @@ void wavrtranstxt(const char* filename,int trancount)
 	fclose(ifp);
 	fclose(ttt);
 	printf_debug("over   ");
-	
-    
+
 }
 void Lowpassfiltering(float *data,int num)
 {
@@ -980,9 +988,9 @@ signalnum_flag  fft_fuzzy_computing(int threshordnum,short *iqdata,int32_t fftsi
     fftstate.maximum_x=0;
     signalnum_flag signalflg=0;
     fft_fftw_calculate(iqdata,fftsize,datalen,fftdata.mozhi);
-     writefileArr("firstmozhi.txt",fftdata.mozhi, fftsize);
+     //writefileArr("firstmozhihann.txt",fftdata.mozhi, fftsize);
     smooth(fftdata.mozhi,fftsize,fftdata.smoothdata);
-     writefileArr("firstsmoothdata.txt",fftdata.smoothdata, fftsize);
+     //writefileArr("firstsmoothdatahann.txt",fftdata.smoothdata, fftsize);
     float minvalue;
     float maxvalue;
     findBottomnoiseprecise(fftdata.smoothdata,threshordnum,&fftstate.Bottomnoise,&fftstate.Threshold,fftsize,&maxvalue,&minvalue);   //计算底噪
@@ -1018,9 +1026,9 @@ int fft_Precise_calculation(int threshordnum,short *iqdata,int32_t fftsize,int d
     fftstate.Bottomnoise=0;
     fftstate.maximum_x=0;
     fft_fftw_calculate(iqdata,fftsize,datalen,fftdata.mozhi);
-    writefileArr("secondmozhi.txt",fftdata.mozhi, N);
+   // writefileArr("secondmozhihann.txt",fftdata.mozhi, N);
     smooth(fftdata.mozhi,N,fftdata.smoothdata);
-    writefileArr("secondsmoothdata.txt",fftdata.smoothdata, N);
+   // writefileArr("secondsmoothdatahann.txt",fftdata.smoothdata, N);
     float minvalue;
     float maxvalue;
     findBottomnoiseprecise(fftdata.smoothdata,threshordnum,&fftstate.Bottomnoise,&fftstate.Threshold,N,&maxvalue,&minvalue);
@@ -1036,10 +1044,7 @@ int fft_Precise_calculation(int threshordnum,short *iqdata,int32_t fftsize,int d
     int flag=0;
     int multiple=0;
     multiple=fftsize/firstfftlen;
-    
     printf_debug("fftstate.cenfrepointnum=%d\n",fftstate.cenfrepointnum);
-
-
     float impairment=0;
     for(i=0;i<fftstate.cenfrepointnum;i++)  /*计算信号个数*/
     {   
@@ -1238,14 +1243,12 @@ void xulitestfft(void)
     short *data=(short*)malloc(sizeof(short)*2*N);
     memset(data,0,sizeof(short)*2*N );
 
-    int fftsize=1024*1024;
+    int fftsize=256*1024;
     int i=0;
     fft_result *temp;
-    Verificationfloat("rawdata0809.txt",data,2*1024*1024);
+    Verificationfloat("rawdata0820.txt",data,512*1024);
     //Verificationfloat("rawdata0813.txt",data,2*1024*1024);
-  
-
-    fft_iqdata_handle(4,data,fftsize ,2*1024*1024);//下发门限，iq数据，fft大小，下发数据长度
+    fft_iqdata_handle(0,data,fftsize,512*1024);//下发门限，iq数据，fft大小，下发数据长度
  
     temp=fft_get_result();
     printf_debug("temp=%d",temp->maximum_x);
@@ -1256,6 +1259,8 @@ void xulitestfft(void)
     return ;
 	
 }
+
+
 
 
 

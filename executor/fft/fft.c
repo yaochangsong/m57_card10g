@@ -341,6 +341,8 @@ void Verificationfloat(const char* filename, short* num, int rank)       //ä»Žæ–
 	fclose(fp);
 }
 
+pthread_mutex_t fft_data_mutex = PTHREAD_MUTEX_INITIALIZER;
+
 
 void fft_fftw_calculate(short *iqdata,int32_t fftsize,int datalen,float *mozhi)
 {
@@ -348,6 +350,7 @@ void fft_fftw_calculate(short *iqdata,int32_t fftsize,int datalen,float *mozhi)
     fftwf_plan p;
     short* wavdatafp;
     short* wandateimage;
+    pthread_mutex_lock(&fft_data_mutex);
     fftwf_complex *din = (fftwf_complex*) fftwf_malloc(sizeof(fftwf_complex) * fftsize);
     fftwf_complex *out = (fftwf_complex*) fftwf_malloc(sizeof(fftwf_complex) * fftsize);
     float *hann=(float*)malloc(sizeof(float)*fftsize);
@@ -392,6 +395,7 @@ void fft_fftw_calculate(short *iqdata,int32_t fftsize,int datalen,float *mozhi)
     if(din!=NULL) fftwf_free(din);
     if(out!=NULL) fftwf_free(out);
     free(hann);
+    pthread_mutex_unlock(&fft_data_mutex);
     return 0;
 }
 

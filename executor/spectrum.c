@@ -258,11 +258,11 @@ loop:
         ps = &_spectrum;
         /* Read Raw IQ data*/
         iq_len = specturm_rx_iq_read(&iq_payload);
-        if((iq_len == 0) && (iq_len < SPECTRUM_DEFAULT_FFT_SIZE*2)){
+        if((iq_len == 0) || (iq_len < SPECTRUM_DEFAULT_FFT_SIZE*2)){
             printf_err("error iq len[%u]\n", iq_len);
             goto loop;
         }
-        printf_note("ps->iq_payload[0]=%d, %d,param->fft_size=%d, ps->iq_len=%u\n", iq_payload[0],iq_payload[1], iq_len);
+        printf_note("ps->iq_payload[0]=%d, %d,ps->iq_len=%u\n", iq_payload[0],iq_payload[1], iq_len);
 
         fft_size = SPECTRUM_DEFAULT_FFT_SIZE;
         /* Start Convert IQ data to FFT */
@@ -287,7 +287,6 @@ loop:
 void spectrum_init(void)
 {
     struct spectrum_st *ps;
-    ssize_t nbytes_rx = 0;
     int ret, i;
     pthread_t work_id;
 

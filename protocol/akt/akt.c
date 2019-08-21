@@ -535,7 +535,7 @@ static int akt_execute_set_command(void)
             printf_debug("Spctrum Ctrl  %s\n", enable == false ? "Enable" : "Disable");
             poal_config->enable.spec_analy_en = !enable;
             INTERNEL_ENABLE_BIT_SET(poal_config->enable.bit_en,poal_config->enable);
-            printf_info("sub_ch bit_en=%x, spec_analy_en=%d\n", 
+            printf_warn("sub_ch bit_en=%x, spec_analy_en=%d\n", 
             poal_config->sub_ch_enable.bit_en, poal_config->enable.spec_analy_en);
             executor_set_enable_command(0);
             break;
@@ -596,10 +596,11 @@ static int akt_execute_get_command(void)
                 resp_result.signal_array[i].center_freq = fft_result->mid_freq_hz[i];
                 resp_result.signal_array[i].bandwidth = fft_result->bw_hz[i];
                 resp_result.signal_array[i].power_level = fft_result->level[i];
-                printf_warn("[%d]center_freq=%lluHz, bandwidth=%llu, power_level=%f\n", i,
+                printf_warn("[%d]center_freq=%lluHz, bandwidth=%llu, power_level=%f, peak:%d\n", i,
                     resp_result.signal_array[i].center_freq,
                     resp_result.signal_array[i].bandwidth,
-                    resp_result.signal_array[i].power_level);
+                    resp_result.signal_array[i].power_level,
+                    fft_result->peak_value);
             }
             resp_result.temperature = 50;
             resp_result.humidity = 40;

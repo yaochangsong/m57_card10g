@@ -126,7 +126,7 @@ void spectrum_wait_user_deal( struct spectrum_header_param *param)
     }
     printf_debug("ps->iq_payload[0]=%d, %d,param->fft_size=%d, ps->iq_len=%d\n", ps->iq_payload[0],ps->iq_payload[1], param->fft_size, ps->iq_len);
 
-    fft_size =param->fft_size;
+    fft_size = 8*1024;//param->fft_size;
     /* Start Convert IQ data to FFT, Noise threshold:8 */
     fft_float_data = (float *)safe_malloc(fft_size*4);
     ps->fft_float_payload = fft_float_data;
@@ -179,6 +179,7 @@ void *spectrum_rw_fft_result(fft_result *result, uint64_t s_freq_hz, float freq_
     }
     for(i = 0; i < pfft->result_num; i++){
         pfft->mid_freq_hz[i] = s_freq_hz + (result->centfeqpoint[i] - (SINGLE_SIDE_BAND_POINT_RATE*fft_size))*freq_resolution;
+        pfft->peak_value = s_freq_hz + (result->maximum_x - (SINGLE_SIDE_BAND_POINT_RATE*fft_size))*freq_resolution;
         pfft->bw_hz[i] = result->bandwidth[i] * freq_resolution;
         pfft->level[i] = result->arvcentfreq[i] - SIGNAL_ADD_FIXED_VALUE;
         printf_debug("s_freq_hz=%llu, freq_resolution=%f, fft_size=%u, %f\n", s_freq_hz, freq_resolution, fft_size, (SINGLE_SIDE_BAND_POINT_RATE*fft_size));

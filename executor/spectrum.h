@@ -35,6 +35,7 @@ struct spectrum_st{
 
 struct spectrum_fft_result_st{
     uint32_t result_num;
+    long long peak_value;
     long long mid_freq_hz[SIGNALNUM]; 
     long long bw_hz[SIGNALNUM];
     float level[SIGNALNUM];

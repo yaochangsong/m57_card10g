@@ -531,11 +531,11 @@ static int akt_execute_set_command(void)
         case SPCTRUM_CTRL_EN_CMD:
         {
             bool enable;
-            enable =  (bool)header->buf[0];
+            enable =  (bool)(*(uint8_t *)(header->buf[0]) & 0x01);
             printf_debug("Spctrum Ctrl  %s\n", enable == false ? "Enable" : "Disable");
             poal_config->enable.spec_analy_en = !enable;
             INTERNEL_ENABLE_BIT_SET(poal_config->enable.bit_en,poal_config->enable);
-            printf_warn("sub_ch bit_en=%x, spec_analy_en=%d\n", 
+            printf_info("sub_ch bit_en=%x, spec_analy_en=%d\n", 
             poal_config->sub_ch_enable.bit_en, poal_config->enable.spec_analy_en);
             executor_set_enable_command(0);
             break;
@@ -574,7 +574,10 @@ static int akt_execute_get_command(void)
     {
         case DEVICE_SELF_CHECK_CMD:
         {
+            #define AVG_FREQ_POINT  16  
             DEVICE_SELF_CHECK_STATUS_RSP_ST self_check;
+            static uint64_t center_freq_buf[AVG_FREQ_POINT], cnt = 0;
+            uint64_t avg_freq = 0;
             uint64_t freq_hz;
             int i;
             FFT_SIGNAL_RESPINSE_ST resp_result;
@@ -592,15 +595,26 @@ static int akt_execute_get_command(void)
             }
             resp_result.signal_num = fft_result->result_num;
             printf_warn("#########Find FFT Parameter[%d]:###############\n",resp_result.signal_num);
+            if(resp_result.signal_num > 1){
+                resp_result.signal_num = 1;
+            }
             for(i = 0; i < resp_result.signal_num; i++){
                 resp_result.signal_array[i].center_freq = fft_result->mid_freq_hz[i];
+                center_freq_buf[cnt++] = resp_result.signal_array[i].center_freq;
+                if(cnt >= AVG_FREQ_POINT){
+                    for(int i = 0; i< AVG_FREQ_POINT; i++){
+                        avg_freq +=  center_freq_buf[i];
+                    }
+                    printf_warn("After %d times filter: center freq:%llu\n", AVG_FREQ_POINT, avg_freq/AVG_FREQ_POINT);
+                    cnt = 0;
+                    avg_freq = 0;
+                }
                 resp_result.signal_array[i].bandwidth = fft_result->bw_hz[i];
                 resp_result.signal_array[i].power_level = fft_result->level[i];
-                printf_warn("[%d]center_freq=%lluHz, bandwidth=%llu, power_level=%f, peak:%d\n", i,
+                printf_warn("[%d]center_freq=%lluHz, bandwidth=%llu, power_level=%f\n", i,
                     resp_result.signal_array[i].center_freq,
                     resp_result.signal_array[i].bandwidth,
-                    resp_result.signal_array[i].power_level,
-                    fft_result->peak_value);
+                    resp_result.signal_array[i].power_level);
             }
             resp_result.temperature = 50;
             resp_result.humidity = 40;

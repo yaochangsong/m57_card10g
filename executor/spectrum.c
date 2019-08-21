@@ -126,7 +126,7 @@ void spectrum_wait_user_deal( struct spectrum_header_param *param)
     }
     printf_debug("ps->iq_payload[0]=%d, %d,param->fft_size=%d, ps->iq_len=%d\n", ps->iq_payload[0],ps->iq_payload[1], param->fft_size, ps->iq_len);
 
-    fft_size = 8*1024;//param->fft_size;
+    fft_size = param->fft_size;
     /* Start Convert IQ data to FFT, Noise threshold:8 */
     fft_float_data = (float *)safe_malloc(fft_size*4);
     ps->fft_float_payload = fft_float_data;

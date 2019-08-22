@@ -107,9 +107,8 @@ fft_data_type *spectrum_fft_data_order(void *fft_data, uint32_t fft_data_len, ui
     return (fft_data_type *)((fft_data_type *)fft_data+single_sideband_size);
 }
 
-
-/* We use this function to deal FFT spectrum in user space */
-void spectrum_wait_user_deal( struct spectrum_header_param *param)
+/* We use this function to deal FFT spectrum wave in user space */
+void spectrum_psd_user_deal(struct spectrum_header_param *param)
 {
     struct spectrum_st *ps;
     float resolution;
@@ -144,13 +143,24 @@ void spectrum_wait_user_deal( struct spectrum_header_param *param)
     FLOAT_TO_SHORT(ps->fft_float_payload, ps->fft_short_payload, ps->fft_len);
     /*refill header parameter*/
     memcpy(&ps->param, param, sizeof(struct spectrum_header_param));
-    
+
     ps->fft_data_ready = true;
-    /* notify thread can start to deal fft result */
-    pthread_cond_signal(&spectrum_analysis_cond);
+
     //printf_warn("fft data and header is ready, notify to handle \n");
     UNLOCK_SP_DATA();
     safe_free(fft_float_data);
+
+}
+
+/* after scan, notify thread start to analysis fft data */
+void spectrum_analysis_user_deal(struct spectrum_header_param *param)
+{
+    struct spectrum_st *ps;
+    ps = &_spectrum;
+     /*refill header parameter*/
+    memcpy(&ps->param, param, sizeof(struct spectrum_header_param));
+    /* notify thread can start to deal fft result */
+    pthread_cond_signal(&spectrum_analysis_cond);
 }
 
 /* function: read or write fft result 
@@ -218,7 +228,6 @@ int32_t spectrum_send_fft_data_interval(void)
     uint32_t fft_order_len=0;
     ps = &_spectrum;
     
-    printf_debug("time interval..%d\n", ps->fft_data_ready);
     LOCK_SP_DATA();
     if(ps->fft_data_ready == false){
         UNLOCK_SP_DATA();
@@ -233,10 +242,9 @@ int32_t spectrum_send_fft_data_interval(void)
     return (ps->fft_len*sizeof(fft_data_type));
 }
 
-void specturm_analysis_deal(void *arg)
+void specturm_analysis_deal_thread(void *arg)
 {
     struct spectrum_st *ps;
-    
     float resolution;
     uint32_t fft_size;
     uint32_t iq_len;
@@ -254,7 +262,6 @@ loop:
         pthread_cond_wait(&spectrum_analysis_cond, &spectrum_analysis_cond_mutex);
         /* No longer needs to be locked */
         pthread_mutex_unlock(&spectrum_analysis_cond_mutex);
-
         printf_note("start to read iq data and analysis specturm .\n");
         ps = &_spectrum;
         /* Read Raw IQ data*/
@@ -298,7 +305,7 @@ void spectrum_init(void)
     ps->fft_data_ready = false;/* fft data not vaild to deal */
     UNLOCK_SP_DATA();
 
-    ret=pthread_create(&work_id,NULL,(void *)specturm_analysis_deal, NULL);
+    ret=pthread_create(&work_id,NULL,(void *)specturm_analysis_deal_thread, NULL);
     if(ret!=0)
         perror("pthread cread work_id");
     pthread_detach(work_id);

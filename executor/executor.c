@@ -132,7 +132,12 @@ static  void  executor_fregment_scan(uint32_t fregment_num,uint8_t ch, work_mode
     #else
         printf_debug("spectrum_wait_user_deal..\n");
         if(get_spectrum_debug() == false){
-            spectrum_wait_user_deal(&header_param);
+            if(poal_config->enable.psd_en){
+                spectrum_psd_user_deal(&header_param);
+            }
+            if(poal_config->enable.spec_analy_en){
+                spectrum_analysis_user_deal(&header_param);
+            }
         }
     #endif
 #else
@@ -518,14 +523,14 @@ int8_t executor_set_enable_command(uint8_t ch)
 void executor_timer_task1_cb(struct uloop_timeout *t)
 {
     spectrum_send_fft_data_interval();
-    uloop_timeout_set(t, 2000);
+    uloop_timeout_set(t, 200);
 }
 void executor_timer_task_init(void)
 {
     static  struct uloop_timeout task1_timeout;
     printf_warn("executor_timer_task\n");
     task1_timeout.cb = executor_timer_task1_cb;
-    uloop_timeout_set(&task1_timeout, 5000); /* 5000 ms */
+    uloop_timeout_set(&task1_timeout, 2000); /* 5000 ms */
 }
 
 void executor_init(void)

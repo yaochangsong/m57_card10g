@@ -528,11 +528,11 @@ static int akt_execute_set_command(void)
             printf_info("spctrum freq hz=%lluHz\n", freq_hz);
             break;
         }
-        case SPCTRUM_CTRL_EN_CMD:
+        case SPCTRUM_ANALYSIS_CTRL_EN_CMD:
         {
             bool enable;
             enable =  (bool)header->buf[0];
-            printf_debug("Spctrum Ctrl  %s\n", enable == false ? "Enable" : "Disable");
+            printf_debug("Spctrum Analysis Ctrl  %s\n", enable == false ? "Enable" : "Disable");
             poal_config->enable.spec_analy_en = !enable;
             INTERNEL_ENABLE_BIT_SET(poal_config->enable.bit_en,poal_config->enable);
             printf_warn("sub_ch bit_en=%x, spec_analy_en=%d\n", 

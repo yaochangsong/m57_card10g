@@ -47,7 +47,7 @@ void config_init(void)
     printf_debug("config init\n");
     config.configfile = safe_strdup(DEFAULT_CONFIGFILE);
     config.daemon = -1;
-    
+    config.oal_config.work_mode = OAL_FAST_SCAN_MODE;
     dao_read_create_config_file(config.configfile, &config);
 
 }

@@ -158,7 +158,9 @@ void spectrum_analysis_user_deal(struct spectrum_header_param *param)
     struct spectrum_st *ps;
     ps = &_spectrum;
      /*refill header parameter*/
+    LOCK_SP_DATA();
     memcpy(&ps->param, param, sizeof(struct spectrum_header_param));
+    UNLOCK_SP_DATA();
     /* notify thread can start to deal fft result */
     pthread_cond_signal(&spectrum_analysis_cond);
 }

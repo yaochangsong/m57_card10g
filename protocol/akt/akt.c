@@ -196,8 +196,8 @@ static int akt_convert_oal_config(uint8_t ch, uint8_t cmd)
                         printf_info("freq_resolution:%f\n",fregment->fregment[sig_cnt].freq_resolution);
                     }
                     printf_info("ch:%d, bw=%u\n", ch, bw);
-                    printf_info("start_freq:%d\n", fregment->fregment[sig_cnt].start_freq);
-                    printf_info("end_freq:%d\n", fregment->fregment[sig_cnt].end_freq);
+                    printf_info("start_freq:%llu\n", fregment->fregment[sig_cnt].start_freq);
+                    printf_info("end_freq:%llu\n", fregment->fregment[sig_cnt].end_freq);
                     printf_info("step:%d\n", fregment->fregment[sig_cnt].step);
                     printf_info("fft_size:%d\n", fregment->fregment[sig_cnt].fft_size);
                     printf_info("freq_resolution:%f\n", fregment->fregment[sig_cnt].freq_resolution);
@@ -554,7 +554,7 @@ set_exit:
         akt_set_response_data.cid = (uint8_t)ch;
         akt_set_response_data.header.len = sizeof(err_code)+1;  /* data+ch */
     }else{
-        akt_set_response_data.header.len = sizeof(err_code);  /* data */
+        akt_set_response_data.header.len = sizeof(err_code)+1;  /* data+ch */
         akt_set_response_data.cid = 0;
     }
     printf_debug("set cid=%d\n", akt_set_response_data.cid);

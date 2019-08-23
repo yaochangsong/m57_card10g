@@ -639,7 +639,7 @@ typedef struct _FFT_SIGNAL_RESPINSE{
     uint16_t signal_num;
     float temperature;
     float humidity;
-    FFT_SIGNAL_RESULT_ST *signal_array;
+    FFT_SIGNAL_RESULT_ST signal_array[0];
 }__attribute__ ((packed)) FFT_SIGNAL_RESPINSE_ST;
 
 

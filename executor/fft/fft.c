@@ -512,7 +512,8 @@ signalnum_flag  findCentfreqpoint(float *data, int pointnum,int * centfeqpoint,f
         }
     }
     
-    SHIELDPOINTS=findpointmax/2;
+    //SHIELDPOINTS=findpointmax/2;
+    SHIELDPOINTS=findpointmax;
     printf_debug("\n\nSHIELDPOINTS=%d\n\n",SHIELDPOINTS);
 
 	for(int i=0;i<*cenfrepointnum;i++)
@@ -522,7 +523,7 @@ signalnum_flag  findCentfreqpoint(float *data, int pointnum,int * centfeqpoint,f
 		//a[i]=(z[i]-y[i])/2;
 		printf_debug("q[i] = %d p[i] = %d q[i]-p[i]=%d  i=%d    \n",q[i],p[i],(q[i]-p[i]),i);
 		//printf("a[i]=%d\n",a[i]);
-		if(((q[i]-p[i]))>SHIELDPOINTS)                     //修改1
+		if(((q[i]-p[i]))>=SHIELDPOINTS)                     //修改1
 		{
 			*h=q[i]-((q[i]-p[i])/2);	
 			h++;

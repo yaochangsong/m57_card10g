@@ -437,6 +437,7 @@ void smooth(float* fftdata,int fftdatanum,float *smoothdata)    //fft后数据�
         Sum1=0;
     }
 }
+
 void findcomplexcentfrequencypoint(float *data,float* maxaverage,float* minaverage,int datalen)  //找到信号中的最大值和最小值，求平均得到平均最大值和最小值，并选择计算寻找中心频点的方式
 {
 	*maxaverage=data[0];
@@ -707,13 +708,46 @@ void findBottomnoiseprecise(float *mozhi,int xiafamenxian,float *Bottomnoise,flo
     int sum=0;
     findcomplexcentfrequencypoint(mozhi,maxvalue,minvalue,datalen);
     *Bottomnoise=*minvalue+(*maxvalue-*minvalue)/3;
-    *Threshold=*Bottomnoise+xiafamenxian;
+    int i=0;
+    float max=mozhi[datalen/2-200];
+    for(i=(datalen/2-200);i<(datalen/2+200);i++)
+    {
+        //printf("i=%d,mozhi[i]=%f  ,",i,mozhi[i]);
+        if(max<mozhi[i])
+         {
+            max=mozhi[i];
+            printf_debug("中间值=======================%f,\n",max);
+            
+         }
+    }
+    if(*maxvalue>max)
+    {
+        *Threshold=max+xiafamenxian;
+    }else{
+
+        *Threshold=*Bottomnoise+xiafamenxian;
+    }
+
     printf_debug("minvalue=%f,\n",*minvalue);
-    printf_debug("maxvalue=%f,\n",*maxvalue);
+    printf_debug("中间值=%f,\n",*Threshold);
+    printf_warn("maxvalue-minvalue=%f,\n",*maxvalue-*minvalue);
     printf_debug("Bottomnoise=%f,",*Bottomnoise);
     printf_debug("Thresholdmenxian=%f\n",*Threshold);
 
 }
+void findBottomnoiseprecisenomax(float *mozhi,int xiafamenxian,float *Bottomnoise,float *Threshold,int datalen ,float *maxvalue,float *minvalue)
+{
+    int sum=0;
+    findcomplexcentfrequencypoint(mozhi,maxvalue,minvalue,datalen);
+    *Bottomnoise=*minvalue+(*maxvalue-*minvalue)/3;
+    *Threshold=*Bottomnoise+xiafamenxian;
+    printf_debug("minvalue=%f,\n",*minvalue);
+    printf_debug("中间值=%f,\n",*minvalue);
+    printf_debug("maxvalue=%f,\n",*maxvalue);
+    printf_debug("Bottomnoise=%f,",*Bottomnoise);
+    printf_debug("Thresholdmenxian=%f\n",*Threshold);
+}
+
 
 void findbaoluo(float *data,int num,float *max,int *maxzuobiao,int numsample,int interval )
 {
@@ -996,7 +1030,7 @@ signalnum_flag  fft_fuzzy_computing(int threshordnum,short *iqdata,int32_t fftsi
     fft_fftw_calculate(iqdata,fftsize,datalen,fftdata.mozhi);
      //writefileArr("firstmozhihann.txt",fftdata.mozhi, fftsize);
     smooth(fftdata.mozhi,fftsize,fftdata.smoothdata);
-     //writefileArr("firstsmoothdatahann.txt",fftdata.smoothdata, fftsize);
+    // writefileArr("firstsmoothdatahann.txt",fftdata.smoothdata, fftsize);
     float minvalue;
     float maxvalue;
     findBottomnoiseprecise(fftdata.smoothdata,threshordnum,&fftstate.Bottomnoise,&fftstate.Threshold,fftsize,&maxvalue,&minvalue);   //计算底噪
@@ -1032,12 +1066,12 @@ int fft_Precise_calculation(int threshordnum,short *iqdata,int32_t fftsize,int d
     fftstate.Bottomnoise=0;
     fftstate.maximum_x=0;
     fft_fftw_calculate(iqdata,fftsize,datalen,fftdata.mozhi);
-   // writefileArr("secondmozhihann.txt",fftdata.mozhi, N);
+    //writefileArr("secondmozhihann.txt",fftdata.mozhi, N);
     smooth(fftdata.mozhi,N,fftdata.smoothdata);
-   // writefileArr("secondsmoothdatahann.txt",fftdata.smoothdata, N);
+    //writefileArr("secondsmoothdatahann.txt",fftdata.smoothdata, N);
     float minvalue;
     float maxvalue;
-    findBottomnoiseprecise(fftdata.smoothdata,threshordnum,&fftstate.Bottomnoise,&fftstate.Threshold,N,&maxvalue,&minvalue);
+    findBottomnoiseprecisenomax(fftdata.smoothdata,threshordnum,&fftstate.Bottomnoise,&fftstate.Threshold,N,&maxvalue,&minvalue);
     printf_debug("minvalue=%f,maxvalue=%f\n",minvalue,maxvalue);
     int firstpoint[fftstate.cenfrepointnum];
     int endpoint[fftstate.cenfrepointnum]; 
@@ -1249,12 +1283,12 @@ void xulitestfft(void)
     short *data=(short*)malloc(sizeof(short)*2*N);
     memset(data,0,sizeof(short)*2*N );
 
-    int fftsize=256*1024;
+    int fftsize=1024*1024;
     int i=0;
     fft_result *temp;
-    Verificationfloat("rawdata0820.txt",data,512*1024);
+    Verificationfloat("rawdata0820.txt",data,2*1024*1024);
     //Verificationfloat("rawdata0813.txt",data,2*1024*1024);
-    fft_iqdata_handle(0,data,fftsize,512*1024);//下发门限，iq数据，fft大小，下发数据长度
+    fft_iqdata_handle(0,data,fftsize,2*1024*1024);//下发门限，iq数据，fft大小，下发数据长度
  
     temp=fft_get_result();
     printf_debug("temp=%d",temp->maximum_x);

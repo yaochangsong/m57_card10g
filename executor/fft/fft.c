@@ -360,7 +360,7 @@ void fft_fftw_calculate(short *iqdata,int32_t fftsize,int datalen,float *mozhi)
         printf_note("fft_fftw_calculate Memory allocation failed!!\n");
 
     }
-    hannwindow(fftsize,hann);
+  //  hannwindow(fftsize,hann);
     //writefileArr("hann.txt",hann,fftsize);
     
     wavdatafp=iqdata;
@@ -374,11 +374,11 @@ void fft_fftw_calculate(short *iqdata,int32_t fftsize,int datalen,float *mozhi)
         wavdatafp+=2;
         wandateimage+=2;
     }
-    for(i=0; i<fftsize; i++)
+    /*for(i=0; i<fftsize; i++)
     {
         din[i][0] = (din[i][0])*(hann[i]);
         din[i][1] = (din[i][1])*(hann[i]);
-    }
+    }*/
     double costtime;
     clock_t start,end;
     start=clock();
@@ -437,6 +437,53 @@ void smooth(float* fftdata,int fftdatanum,float *smoothdata)    //fft后数据�
         Sum1=0;
     }
 }
+void smooth2(float* fftdata,int fftdatanum,float *smoothdata)    //fft后数据的平滑处， 返回平滑滤波之后的值
+{
+    float Sum1=0;
+    for(int j=0;j<fftdatanum;j++)
+    {
+        if(j<SMOOTHPOINT/2)
+        {
+            for(int k=0;k<SMOOTHPOINT;k++)
+            {
+                Sum1+=fftdata[j+k];
+            }
+            smoothdata[j]=Sum1/SMOOTHPOINT;
+        }
+        else
+            if(j<fftdatanum -SMOOTHPOINT/2)
+            {
+                for(int k=0;k<((SMOOTHPOINT/2)+1);k++)
+                {
+                    if(k==0)
+                    {
+                        Sum1=fftdata[j];
+
+                    }else{
+
+                         Sum1+=(fftdata[j+k]+fftdata[j-k]);
+
+                    }
+
+                }
+                smoothdata[j]=Sum1/(SMOOTHPOINT+1);
+            }
+            else
+            {
+                for(int k=0;k<fftdatanum-j;k++)
+                {
+                    Sum1+=fftdata[j+k];
+                }
+                for(int k=0;k<(SMOOTHPOINT-fftdatanum+j);k++)
+                {
+                    Sum1+=fftdata[j-k];
+                }
+                smoothdata[j]=Sum1/SMOOTHPOINT;
+            }
+        Sum1=0;
+    }
+}
+
 
 void findcomplexcentfrequencypoint(float *data,float* maxaverage,float* minaverage,int datalen)  //找到信号中的最大值和最小值，求平均得到平均最大值和最小值，并选择计算寻找中心频点的方式
 {
@@ -599,7 +646,8 @@ void  calculatebandwidth(float *fftdata,int fftnum ,float* temp)
 	//findcentfrequencyabsmaxmin(threedbpoint);
 	for(int i=0;i<fftstate.cenfrepointnum;i++)
 	{ 
-        threedbpoint = fftstate.arvcentfreq[i]-*temp;
+        //threedbpoint = fftstate.arvcentfreq[i]-*temp;
+        threedbpoint = fftstate.arvcentfreq[i]-(fftstate.arvcentfreq[i]-fftstate.Threshold)*2/3;
         printf_debug("fftstate.arvcentfreq[i]=%f,*temp=%f",fftstate.arvcentfreq[i],*temp);
         fftstate.arvcentfreq[i]=fftstate.arvcentfreq[i]-CORRECTIONSIGNAL;
 		
@@ -1028,9 +1076,9 @@ signalnum_flag  fft_fuzzy_computing(int threshordnum,short *iqdata,int32_t fftsi
     fftstate.maximum_x=0;
     signalnum_flag signalflg=0;
     fft_fftw_calculate(iqdata,fftsize,datalen,fftdata.mozhi);
-     //writefileArr("firstmozhihann.txt",fftdata.mozhi, fftsize);
+     writefileArr("firstmozhihann.txt",fftdata.mozhi, fftsize);
     smooth(fftdata.mozhi,fftsize,fftdata.smoothdata);
-    // writefileArr("firstsmoothdatahann.txt",fftdata.smoothdata, fftsize);
+     writefileArr("firstsmoothdatahann.txt",fftdata.smoothdata, fftsize);
     float minvalue;
     float maxvalue;
     findBottomnoiseprecise(fftdata.smoothdata,threshordnum,&fftstate.Bottomnoise,&fftstate.Threshold,fftsize,&maxvalue,&minvalue);   //计算底噪
@@ -1041,7 +1089,9 @@ signalnum_flag  fft_fuzzy_computing(int threshordnum,short *iqdata,int32_t fftsi
     }
     calculatecenterfrequency(fftdata.smoothdata,fftsize);                   //5 计算中心频率
     float temp;
-    temp=(maxvalue-minvalue)/3;
+    //temp=(maxvalue-minvalue)/3;
+   // temp=(maxvalue-fftstate.Threshold)/3;
+    
     calculatebandwidth(fftdata.smoothdata,fftsize,&temp);
     
     printf_debug("\n\n*********************模糊数据****************************\n");
@@ -1066,9 +1116,9 @@ int fft_Precise_calculation(int threshordnum,short *iqdata,int32_t fftsize,int d
     fftstate.Bottomnoise=0;
     fftstate.maximum_x=0;
     fft_fftw_calculate(iqdata,fftsize,datalen,fftdata.mozhi);
-    //writefileArr("secondmozhihann.txt",fftdata.mozhi, N);
+    writefileArr("secondmozhihann.txt",fftdata.mozhi, N);
     smooth(fftdata.mozhi,N,fftdata.smoothdata);
-    //writefileArr("secondsmoothdatahann.txt",fftdata.smoothdata, N);
+    writefileArr("secondsmoothdatahann.txt",fftdata.smoothdata, N);
     float minvalue;
     float maxvalue;
     findBottomnoiseprecisenomax(fftdata.smoothdata,threshordnum,&fftstate.Bottomnoise,&fftstate.Threshold,N,&maxvalue,&minvalue);

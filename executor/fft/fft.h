@@ -20,7 +20,7 @@ static unsigned int N=1024*1024;
 static unsigned int INTERVALNUM=10000;
 static unsigned int SHIELDPOINTS=20000;
 static unsigned int  INTERVALNUMTOW=2;
-static unsigned int  firstfftlen=64*1024;
+static unsigned int  firstfftlen=128*1024;
 
 
 typedef struct {

@@ -1124,9 +1124,9 @@ int fft_Precise_calculation(int threshordnum,short *iqdata,int32_t fftsize,int d
     fftstate.Bottomnoise=0;
     fftstate.maximum_x=0;
     fft_fftw_calculate(iqdata,fftsize,datalen,fftdata.mozhi);
-    writefileArr("secondmozhihann.txt",fftdata.mozhi, N);
+    //writefileArr("secondmozhihann.txt",fftdata.mozhi, N);
     smooth(fftdata.mozhi,N,fftdata.smoothdata);
-    writefileArr("secondsmoothdatahann.txt",fftdata.smoothdata, N);
+   // writefileArr("secondsmoothdatahann.txt",fftdata.smoothdata, N);
 
 #ifdef PLAT_FORM_ARCH_X86
     //writefileArr("secondsmoothdatahann.txt",fftdata.smoothdata, fftsize);

@@ -263,6 +263,10 @@ loop:   printf_info("######wait to deal work######\n");
                 case OAL_MULTI_ZONE_SCAN_MODE:
                 {   
                     printf_info("scan segment count: %d\n", poal_config->multi_freq_fregment_para[ch].freq_segment_cnt);
+                    if(poal_config->multi_freq_fregment_para[ch].freq_segment_cnt == 0){
+                        sleep(1);
+                        goto loop;
+                    }
                     if(poal_config->enable.psd_en || poal_config->enable.spec_analy_en){
                         for(j = 0; j < poal_config->multi_freq_fregment_para[ch].freq_segment_cnt; j++){
                             printf_info("Segment Scan [%d]\n", j);
@@ -270,6 +274,7 @@ loop:   printf_info("######wait to deal work######\n");
                         }
                     }else{
                         io_set_enable_command(PSD_MODE_DISABLE, ch, 0);
+                        sleep(1);
                         goto loop;
                     }
                 }
@@ -283,6 +288,7 @@ loop:   printf_info("######wait to deal work######\n");
                     }else{
                         io_set_enable_command(PSD_MODE_DISABLE, ch, 0);
                         io_set_enable_command(AUDIO_MODE_DISABLE, ch, 0);
+                        sleep(1);
                         goto loop;
                     }
                 }

@@ -1076,9 +1076,17 @@ signalnum_flag  fft_fuzzy_computing(int threshordnum,short *iqdata,int32_t fftsi
     fftstate.maximum_x=0;
     signalnum_flag signalflg=0;
     fft_fftw_calculate(iqdata,fftsize,datalen,fftdata.mozhi);
-     writefileArr("firstmozhihann.txt",fftdata.mozhi, fftsize);
     smooth(fftdata.mozhi,fftsize,fftdata.smoothdata);
-     writefileArr("firstsmoothdatahann.txt",fftdata.smoothdata, fftsize);
+    
+#ifdef PLAT_FORM_ARCH_X86
+    //writefileArr("firstsmoothdatahann.txt",fftdata.smoothdata, fftsize);
+   // writefileArr("firstmozhihann.txt",fftdata.mozhi, fftsize);
+
+#else
+   // writefileArr("/run/firstsmoothdatahann.txt",fftdata.smoothdata, fftsize);
+   // writefileArr("/run/firstmozhihann.txt",fftdata.mozhi, fftsize);
+#endif
+        
     float minvalue;
     float maxvalue;
     findBottomnoiseprecise(fftdata.smoothdata,threshordnum,&fftstate.Bottomnoise,&fftstate.Threshold,fftsize,&maxvalue,&minvalue);   //计算底噪
@@ -1119,6 +1127,15 @@ int fft_Precise_calculation(int threshordnum,short *iqdata,int32_t fftsize,int d
     writefileArr("secondmozhihann.txt",fftdata.mozhi, N);
     smooth(fftdata.mozhi,N,fftdata.smoothdata);
     writefileArr("secondsmoothdatahann.txt",fftdata.smoothdata, N);
+
+#ifdef PLAT_FORM_ARCH_X86
+    //writefileArr("secondsmoothdatahann.txt",fftdata.smoothdata, fftsize);
+    //writefileArr("secondmozhihann.txt",fftdata.mozhi, fftsize);
+
+#else
+   // writefileArr("/run/secondsmoothdatahann.txt",fftdata.smoothdata, fftsize);
+   // writefileArr("/run/secondmozhihann.txt",fftdata.mozhi, fftsize);
+#endif
     float minvalue;
     float maxvalue;
     findBottomnoiseprecisenomax(fftdata.smoothdata,threshordnum,&fftstate.Bottomnoise,&fftstate.Threshold,N,&maxvalue,&minvalue);

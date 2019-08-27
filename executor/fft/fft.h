@@ -14,13 +14,13 @@ static unsigned int N=1024*1024;
 #define  CORRECTIONSIGNAL  (300)
 
 
-#define   SMOOTHPOINT        (128)//滑动平均滤波计算平均值时所取的点数
+#define   SMOOTHPOINT        (64)//滑动平均滤波计算平均值时所取的点数
 #define   TRANNUM     (1024)      //每次传1K的点
 #define  FILTER_A      (0.01)
 static unsigned int INTERVALNUM=10000;
 static unsigned int SHIELDPOINTS=20000;
 static unsigned int  INTERVALNUMTOW=2;
-static unsigned int  firstfftlen=8192;
+static unsigned int  firstfftlen=64*1024;
 
 
 typedef struct {

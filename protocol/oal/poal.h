@@ -3,7 +3,7 @@
 
 #include "config.h"
 
-#define MAX_RADIO_CHANNEL_NUM 8
+#define MAX_RADIO_CHANNEL_NUM 1
 #define MAX_SIGNAL_CHANNEL_NUM (16)
 #define MAX_SIG_CHANNLE 128
 
@@ -161,6 +161,7 @@ struct network_st{
 /* 控制参数 */
 struct control_st{
     uint8_t remote_local;               /* 本控 or 远控 */
+    uint8_t fft_noise_threshold;        /* FFT 计算噪音门限 */
 }__attribute__ ((packed));
 
 
@@ -237,12 +238,11 @@ struct poal_config{
     struct network_st network;
     struct control_st ctrl_para;
 	struct poal_status_infor status_para; 
-    bool (*assamble_kernel_response_data)(char *, uint8_t, void *);
+    uint8_t (*assamble_response_data)(uint32_t *, void *);
     void (*send_active)(void *);
 }__attribute__ ((packed));
 
 
 int poal_handle_request(struct net_tcp_client *cl, uint8_t *data, int len);
 int poal_udp_handle_request(struct net_udp_client *cl, uint8_t *data, int len);
-
 #endif

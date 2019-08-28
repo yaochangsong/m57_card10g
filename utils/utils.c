@@ -83,3 +83,100 @@ uint16_t crc16_caculate(uint8_t *pchMsg, uint16_t wDataLen) {
     return wCRC;
 }
 
+int write_file_in_int16(void *pdata, unsigned int data_len, char *filename)
+{
+    
+    FILE *file;
+    int16_t *pdata_offset;
+
+    pdata_offset = (int16_t *)pdata;
+
+    file = fopen(filename, "w+b");
+    if(!file){
+        printf("Open file error!\n");
+        return -1;
+    }
+
+    fwrite(pdata_offset,sizeof(int16_t),data_len,file);
+
+    fclose(file);
+
+    return 0;
+}
+
+int read_file(void *pdata, unsigned int data_len, char *filename)
+{
+        
+    FILE *file;
+    unsigned int *pdata_offset;
+
+    if(pdata == NULL){
+        return -1;
+    }
+
+    file = fopen(filename, "r");
+    if(!file){
+        printf("Open file error!\n");
+        return -1;
+    }
+
+    fread(pdata,1,data_len,file);
+
+    fclose(file);
+
+    return 0;
+}
+
+void* safe_malloc(size_t size) {
+
+    void* result = malloc(size);
+    if (result == NULL) {
+        fprintf(stderr, "safe_malloc: Memory full. Couldn't allocate %lu bytes.\n",
+                (unsigned long)size);
+        exit(EXIT_FAILURE);
+    }
+    /* This is all the debug-help we can do easily */
+    for (size_t i = 0; i < size; ++i)
+        ((char*)result)[i] = 0;
+    
+    return result;
+}
+
+void* safe_calloc(size_t n, size_t size) {
+    void* result = calloc(n, size);
+    if (result == NULL) {
+        fprintf(stderr, "safe_calloc: Memory full. Couldn't allocate %lu bytes.\n",
+                (unsigned long)(n * size));
+    }
+    return result;
+}
+
+void safe_free(void *p)
+{
+    if (p) {
+        free(p);
+        p = NULL;
+    }
+}
+
+int32_t inline diff_time(void)
+{
+    static struct timeval oldTime; 
+    struct timeval newTime; 
+    int32_t _t_ms, ntime_ms; 
+    
+    gettimeofday(&newTime, NULL);
+    _t_ms = (newTime.tv_sec - oldTime.tv_sec)*1000 + (newTime.tv_usec - oldTime.tv_usec)/1000; 
+    printf_debug("_t_ms=%d ms!\n", _t_ms);
+    if(_t_ms > 0)
+        ntime_ms = _t_ms; 
+    else 
+        ntime_ms = 0; 
+    memcpy(&oldTime, &newTime, sizeof(struct timeval)); 
+    printf_debug("Diff time = %u ms!\n", ntime_ms); 
+    return ntime_ms;
+}
+
+
+
+

@@ -21,7 +21,7 @@
 #include <errno.h>
 #include <linux/spi/spidev.h>
 #include <time.h>
-
+#include <fftw3.h>
 
 
 #include "libubox/ulog.h"
@@ -48,12 +48,18 @@
 
 #include "executor/executor.h"
 #include "executor/io.h"
+#include "executor/spectrum.h"
+#include "executor/fft/fft.h"
+
 
 #include "device/uart/uart.h"
 #include "device/rf/rf.h"
+#include "device/rf/adrv9009-iiostream.h"
+
 
 #include "device/lcd/ss_k600.h"
 #include "device/lcd/lcd.h"
+#include "device/gpio/gpio.h"
 #include "dao/oal/dao_conf.h"
 
 
@@ -65,7 +71,7 @@
 PLAT_FORM_ARCH_X86, (For debug)
 PLAT_FORM_ARCH_ARM
 */
-#define PLAT_FORM_ARCH_X86   
+#define PLAT_FORM_ARCH_ARM   
 #define SPCTRUM_VERSION_STRING "1.0.0-"__DATE__"."__TIME__ /* application version */
 
 /*Protocal Support*/
@@ -79,8 +85,21 @@ PLAT_FORM_ARCH_ARM
 
 /* local or remote control support, if not set, default use remote control */
 #define CONTROL_MODE_SUPPORT 0
-/* lcd support */
+
+/* uart support */
+#define UART_SUPPORT 0
+/* uart lcd support */
 #define UART_LCD_SUPPORT 0
+
+#define KERNEL_IOCTL_EN 0
+
+#ifdef PLAT_FORM_ARCH_ARM
+#define  RF_ADRV9009_IIO   1
+#else 
+#define  RF_ADRV9009_IIO   0
+#endif
+
+
 
 
 

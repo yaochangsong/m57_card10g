@@ -114,8 +114,8 @@ struct sem_st{
     sem_t   kernel_sysn;        /* 频谱分析时，内核处理完数据后，异步消息通知应用层 */
 };
 
-/* 扫描模式下，需要向内核发送的工作模式参数信息，内核用作发送到客户端头信息 */
-struct kernel_header_param{
+/* 数据帧头部分变量参数结构体，数据上报时，内核用作发送到客户端 */
+struct spectrum_header_param{
     uint32_t bandwidth;
     uint32_t fft_size;
     uint32_t fft_sn;
@@ -127,21 +127,39 @@ struct kernel_header_param{
     uint8_t ch;
     uint8_t datum_type;
     work_mode mode;
+    uint32_t data_len;
 };
 
 
 /*  define the command setting lock */
 #define LOCK_SET_COMMAND() do { \
-    printf_debug("Locking set command\n"); \
     pthread_mutex_lock(&set_cmd_mutex); \
     printf_debug("Set command locked\n"); \
 } while (0)
 
 #define UNLOCK_SET_COMMAND() do { \
-    printf_debug("Unlocking set command\n"); \
     pthread_mutex_unlock(&set_cmd_mutex); \
     printf_debug("Set command unlocked\n"); \
 } while (0)
+
+#include "config.h"
+#if (PROTOCAL_ATE == 1)
+    #if (KERNEL_IOCTL_EN == 1)
+    /* use kernel space to deal data(fft, iq) and send to client */
+    #define executor_assamble_header_response_data_cb  akt_assamble_data_extend_frame_header_data
+    /* use user space to send basic config parameter (TCP) */
+    #define executor_send_data_to_clent_cb             executor_send_config_data_to_clent
+    #else  
+    /* use user space to deal data(fft, iq) and send to client */
+    #define executor_assamble_header_response_data_cb  akt_assamble_data_frame_header_data
+    /* */
+    #define executor_send_data_to_clent_cb              executor_send_config_data_to_clent
+    #endif
+#else 
+#define executor_assamble_header_response_data_cb   
+#define executor_send_data_to_clent_cb              
+#endif
+
 
 extern struct sem_st work_sem;
 extern void executor_init(void);

@@ -176,6 +176,9 @@ typedef enum _BUSINESS_CODE{
     NOTIFY_SIGNALl_STATUS=0x1b,
     AUDIO_SAMPLE_RATE=0x1d,
     CONTRL_CHANNEL_POWER=0x1e,
+    SPCTRUM_PARAM_CMD=0x18,
+    SPCTRUM_ANALYSIS_CTRL_EN_CMD=0x19,
+    SPCTRUM_GET_RESULT_CMD=0x1a
 }BUSINESS_CODE;
 
 
@@ -516,6 +519,7 @@ typedef struct  _DATUM_DEMODULATE_HEADER{
     uint8_t pdata[0];
 }__attribute__ ((packed)) DATUM_DEMODULATE_HEADER_ST;
 
+
 typedef union  _RF_PARAMETERS{
     FIXED_FREQ_ANYS_B_PARAM_ST fixed_freq_ansy;
     FAST_SCAN_PARAM_ST fast_scan_anys;
@@ -625,6 +629,21 @@ typedef struct _DEVICE_SIGNAL_PARAM_ST{
     uint8_t status;  /* 0: online 1: offline */
 }__attribute__ ((packed)) DEVICE_SIGNAL_PARAM_ST;
 
+typedef struct _FFT_SIGNAL_RESULT{
+    uint64_t center_freq;
+    uint64_t bandwidth;
+    float power_level;
+}__attribute__ ((packed)) FFT_SIGNAL_RESULT_ST;
+
+typedef struct _FFT_SIGNAL_RESPINSE{
+    uint16_t signal_num;
+    float temperature;
+    float humidity;
+    FFT_SIGNAL_RESULT_ST signal_array[0];
+}__attribute__ ((packed)) FFT_SIGNAL_RESPINSE_ST;
+
+
+
 /*************************************************************************/
 #define check_radio_channel(ch)   (ch > MAX_RADIO_CHANNEL_NUM ? 1 : 0) 
 #define check_sub_channel(sub_ch) (sub_ch > MAX_SIGNAL_CHANNEL_NUM ? 1 : 0) 
@@ -669,5 +688,7 @@ extern bool akt_parse_header(const uint8_t *data, int len, uint8_t **payload, in
 extern bool akt_parse_data(const uint8_t *payload, int *code);
 extern bool akt_execute_method(int *code);
 extern int akt_assamble_response_data(uint8_t **buf, int err_code);
+extern uint8_t *akt_assamble_data_extend_frame_header_data(uint32_t *len, void *config);
+extern uint8_t *akt_assamble_data_frame_header_data(uint32_t *len, void *config);
 #endif
 

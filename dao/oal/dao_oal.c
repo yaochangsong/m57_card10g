@@ -528,13 +528,13 @@ static void *dao_load_default_config_file(char *file)
     node = mxmlNewElement(network, "mac");
     mxmlNewText(node, 0, "38:2c:4a:ba:57:1d");
     node = mxmlNewElement(network, "gateway");
-    mxmlNewText(node, 0, "192.168.2.1");
+    mxmlNewText(node, 0, "192.168.1.1");
     node = mxmlNewElement(network, "netmask");
     mxmlNewText(node, 0, "255.255.255.0");
     node = mxmlNewElement(network, "ipaddress");
-    mxmlNewText(node, 0, "192.168.2.112");
+    mxmlNewText(node, 0, "192.168.1.111");
     node = mxmlNewElement(network, "port");
-    mxmlNewText(node, 0, "1355");
+    mxmlNewText(node, 0, "1325");
 
     /*中频参数*/
     char p[10]={0};
@@ -630,7 +630,7 @@ static void *dao_load_default_config_file(char *file)
     powerstate = mxmlNewElement(statusPara, "powerstate");
     /*状态参数下softVersion的子节点*/
     node = mxmlNewElement(softVersion, "app");
-    mxmlNewText(node, 0, "v1.0-20190702-134310");
+    mxmlNewText(node, 0, SPCTRUM_VERSION_STRING);
     node = mxmlNewElement(softVersion, "kernel");
     mxmlNewText(node, 0, "v1.0-20190702-134310");
     node = mxmlNewElement(softVersion, "uboot");
@@ -820,24 +820,17 @@ void dao_read_create_config_file(char *file, void *root_config)
     /* read/write or create file */
     fp = fopen(file, "r");
     if(fp != NULL){
-    whole_root = mxmlLoadFile(NULL, fp, MXML_TEXT_CALLBACK);
-    read_config(root_config);
-    printf_debug("测试开始\n");
-   // write_config_file_array(file,"channel","index","0","mediumfrequency","centerFreq","freqPoint","index","0",333333,ARRAY_ARRAY);
-   // write_config_file_single(file,"network","ipaddress",NULL,2222222);
-    fclose(fp);
+        whole_root = mxmlLoadFile(NULL, fp, MXML_TEXT_CALLBACK);
+        read_config(root_config);
+        fclose(fp);
     }else{
-    
-    whole_root = mxmlNewXML("1.0");	
-    printf_debug("create new config file\n");
-    root = dao_load_default_config_file(file);
-    read_config(root_config);
+        whole_root = mxmlNewXML("1.0");	
+        printf_debug("create new config file\n");
+        root = dao_load_default_config_file(file);
+        read_config(root_config);
     
     }
-
-    printf_debug("1\n");
     root_config = dao_load_root(root);
-    printf_debug("1\n");
 }
 
 

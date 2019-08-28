@@ -28,6 +28,8 @@ struct net_udp_server {
 };
 
 extern struct net_udp_server *udp_server_new(const char *host, int port);
-
+extern int udp_send_data(uint8_t  *data, uint32_t data_len);
+extern int udp_send_data_to_client(struct net_udp_client *client, uint8_t *data, uint32_t data_len);
+extern void udp_add_client(struct sockaddr_in *addr);
 #endif
 

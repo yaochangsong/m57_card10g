@@ -160,6 +160,17 @@ int tcp_active_send_all_client(uint8_t *data, int len)
     }
 }
 
+bool tcp_find_client(struct sockaddr_in *addr)
+{
+    struct net_tcp_client *cl_list, *list_tmp;
+    list_for_each_entry_safe(cl_list, list_tmp, &g_srv->clients, list){
+        if(memcmp(&cl_list->peer_addr.sin_addr, &addr->sin_addr, sizeof(addr->sin_addr)) == 0){
+            return true;
+        }
+    }
+    return false;
+}
+
 struct net_tcp_server *tcp_server_new(const char *host, int port)
 {
     struct net_tcp_server *srv;

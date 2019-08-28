@@ -138,7 +138,7 @@ void spectrum_psd_user_deal(struct spectrum_header_param *param)
     }
     /* To the circumstances: the client's active acquisition of FFT data; Here we user backup buffer to store fft data; 
     when the scheduled task is processed[fft_data_ready=false],  we start filling in new fft data in back buffer [ps->fft_short_payload_back]*/
-    LOCK_SP_DATA();
+    //LOCK_SP_DATA();
     /* Here we convert float to short integer processing */
     FLOAT_TO_SHORT(ps->fft_float_payload, ps->fft_short_payload, ps->fft_len);
     /*refill header parameter*/
@@ -147,7 +147,10 @@ void spectrum_psd_user_deal(struct spectrum_header_param *param)
     ps->fft_data_ready = true;
 
     //printf_warn("fft data and header is ready, notify to handle \n");
-    UNLOCK_SP_DATA();
+    //UNLOCK_SP_DATA();
+    if(get_spectrum_demo()){
+        spectrum_send_fft_data_interval();
+    }
     safe_free(fft_float_data);
 
 }
@@ -230,9 +233,9 @@ int32_t spectrum_send_fft_data_interval(void)
     uint32_t fft_order_len=0;
     ps = &_spectrum;
     
-    LOCK_SP_DATA();
+   // LOCK_SP_DATA();
     if(ps->fft_data_ready == false){
-        UNLOCK_SP_DATA();
+        //UNLOCK_SP_DATA();
         return -1;
     }
     fft_send_payload = spectrum_fft_data_order((void *)ps->fft_short_payload, ps->fft_len, &fft_order_len);
@@ -240,7 +243,7 @@ int32_t spectrum_send_fft_data_interval(void)
 
     spectrum_send_fft_data((void *)fft_send_payload, ps->fft_len*sizeof(fft_data_type), &ps->param);
     ps->fft_data_ready = false;
-    UNLOCK_SP_DATA();
+   // UNLOCK_SP_DATA();
     return (ps->fft_len*sizeof(fft_data_type));
 }
 

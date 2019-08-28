@@ -535,8 +535,13 @@ void executor_timer_task_init(void)
 {
     static  struct uloop_timeout task1_timeout;
     printf_warn("executor_timer_task\n");
-    task1_timeout.cb = executor_timer_task1_cb;
-    uloop_timeout_set(&task1_timeout, 2000); /* 5000 ms */
+    if(!get_spectrum_demo()){
+        printf_note("timer task: fft data send opened:%d\n", get_spectrum_demo());
+        task1_timeout.cb = executor_timer_task1_cb;
+        uloop_timeout_set(&task1_timeout, 2000); /* 5000 ms */
+    }else{
+        printf_note("timer task: fft data send shutdown:%d\n", get_spectrum_demo());
+    }
 }
 
 void executor_init(void)

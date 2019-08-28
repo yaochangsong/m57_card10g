@@ -20,6 +20,7 @@ static void usage(const char *prog)
     fprintf(stderr, "Usage: %s [option]\n"
         "          -d debug_level  # [3(LOG_ERR),4(LOG_WARNING),5(LOG_NOTICE),6(LOG_INFO),7(LOG_DEBUG),-1(OFF)]\n"
         "          -m power level  # [fft power level threshold, 1,2,3...n]\n"
+        "          -e demo         # [true or false,Default false]\n"
         "          -s              # [(ADI IIO)specturm tool on; true or false,Default false]\n", prog);
     exit(1);
 }
@@ -52,11 +53,19 @@ uint32_t get_power_level_threshold(void)
     return power_level_threshold;
 }
 
+bool spectrum_demo = false;
+
+bool get_spectrum_demo(void)
+{
+    return spectrum_demo;
+}
+
+
 int main(int argc, char **argv)
 {
     int debug_level = -1;
     int opt;
-    while ((opt = getopt(argc, argv, "d:sm:")) != -1) {
+    while ((opt = getopt(argc, argv, "d:sm:e")) != -1) {
         switch (opt)
         {
         case 'd':
@@ -76,6 +85,10 @@ int main(int argc, char **argv)
         case 'm':
             printf("power level=%s\n", optarg);
             power_level_threshold = atoi(optarg);
+            break;
+        case 'e':
+            printf("spectrum demo true\n");
+            spectrum_demo = true;
             break;
         default: /* '?' */
             usage(argv[0]);

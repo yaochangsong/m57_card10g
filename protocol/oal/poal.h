@@ -165,6 +165,67 @@ struct control_st{
 }__attribute__ ((packed));
 
 
+/*状态参数*/
+
+/*4 获取设备基本信息*/
+
+
+struct poal_soft_version{
+   const  char* app;
+   const  char* kernel;
+   const  char* uboot;
+   const  char* fpga;
+}__attribute__ ((packed));           
+
+struct poal_disk_Node{
+    uint32_t totalSpace;
+    uint32_t freeSpace;
+}__attribute__ ((packed));
+
+struct poal_disk_Info{
+    uint16_t diskNum; //?
+    struct dao_disk_Node diskNode;
+}__attribute__ ((packed));     
+
+struct poal_clk_Info{
+    uint8_t inout;
+    uint8_t  status;
+    uint32_t frequency;
+}__attribute__ ((packed)); 
+
+struct poal_ad_Info{
+    uint8_t status;
+}__attribute__ ((packed)); 
+
+
+struct poal_rf_node{
+    uint8_t status;
+    uint16_t   temprature;      
+}__attribute__ ((packed));    
+
+struct poal_rf_Info{
+    uint8_t rfnum;
+    struct dao_rf_node  rfnode;//struct rf_node  rfnode[MAX_SIG_CHANNLE];
+}__attribute__ ((packed));  
+
+
+struct poal_fpga_Info{
+    uint16_t temprature;
+}__attribute__ ((packed));
+
+
+
+struct poal_status_infor{
+    struct poal_soft_version softVersion;
+    struct poal_disk_Info diskInfo;
+    struct poal_clk_Info  clkInfo;
+    struct poal_ad_Info   adInfo;  
+    struct poal_rf_Info   rfInfo;
+    struct poal_fpga_Info  fpgaInfo;
+    
+}__attribute__ ((packed));
+
+
 struct poal_config{
     uint8_t cid;
     volatile work_mode_type work_mode;
@@ -176,6 +237,7 @@ struct poal_config{
     struct rf_para_st rf_para[MAX_RADIO_CHANNEL_NUM];
     struct network_st network;
     struct control_st ctrl_para;
+	struct poal_status_infor status_para; 
     uint8_t (*assamble_response_data)(uint32_t *, void *);
     void (*send_active)(void *);
 }__attribute__ ((packed));

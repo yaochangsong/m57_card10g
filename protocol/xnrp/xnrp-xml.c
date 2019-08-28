@@ -1,5 +1,9 @@
 #include "config.h"
 
+
+
+
+
 int8_t xnrp_xml_parse_data(uint8_t classcode, uint8_t methodcode, void *data, uint32_t len)
 {
     struct poal_config *config = &(config_get_config()->oal_config);
@@ -31,6 +35,12 @@ int8_t xnrp_xml_parse_data(uint8_t classcode, uint8_t methodcode, void *data, ui
          case CLASS_CODE_MID_FRQ:/*中频参数命令*/
             {
                  if(methodcode==B_CODE_MID_FRQ_DEC_METHOD){/*解调方式参数*/
+                         if(dao_conf_parse_batch(classcode,methodcode,data)==NULL)
+                         {
+                           printf_warn("The XML you want to parse is empty, please check your Settings or XML file");
+                            return 0;
+
+                         }
                          demodulationway=(struct dao_demodulation_way *) dao_conf_parse_batch(classcode,methodcode,data);
                          struct multi_freq_point_para_st *point =  &config->multi_freq_point_param[demodulationway->channel];
                  
@@ -48,6 +58,13 @@ int8_t xnrp_xml_parse_data(uint8_t classcode, uint8_t methodcode, void *data, ui
 
                          
                  }else if(methodcode==B_CODE_MID_FRQ_MUTE_SW){/*静噪开关设置*/
+                         if(dao_conf_parse_batch(classcode,methodcode,data)==NULL)
+                         {
+                           printf_warn("The XML you want to parse is empty, please check your Settings or XML file\n");
+                            return 0;
+
+                         }
+
                          muteswitch=(struct dao_mute_switch *) dao_conf_parse_batch(classcode,methodcode,data);
                          struct multi_freq_point_para_st *multpoint =&config->multi_freq_point_param[muteswitch->channel];
                          struct sub_channel_freq_para_st *subchannelpoint =&config->sub_channel_para[muteswitch->channel];
@@ -79,6 +96,14 @@ int8_t xnrp_xml_parse_data(uint8_t classcode, uint8_t methodcode, void *data, ui
                                  
                         }
                 }else if(methodcode==B_CODE_MID_FRQ_MUTE_THRE){/*静噪门限设置*/
+
+                        if(dao_conf_parse_batch(classcode,methodcode,data)==NULL)
+                        {
+                          printf_warn("The XML you want to parse is empty, please check your Settings or XML file\n");
+                           return 0;
+                        
+                        }
+
                          noisethreshold=(struct dao_noise_threshold *) dao_conf_parse_batch(classcode,methodcode,data);
                          struct multi_freq_point_para_st *multpoint =&config->multi_freq_point_param[noisethreshold->channel];
                          struct sub_channel_freq_para_st *subchannelpoint =&config->sub_channel_para[noisethreshold->channel];
@@ -111,6 +136,12 @@ int8_t xnrp_xml_parse_data(uint8_t classcode, uint8_t methodcode, void *data, ui
 
                          }
                }else if(methodcode==B_CODE_MID_FRQ_AU_SAMPLE_RATE){/*音频采样率设置参数*/
+                     if(dao_conf_parse_batch(classcode,methodcode,data)==NULL)
+                     {
+                       printf_warn("The XML you want to parse is empty, please check your Settings or XML file\n");
+                        return 0;
+                     
+                     }
 
                      audio_samprate=(struct dao_audio_sampling_rate *) dao_conf_parse_batch(classcode,methodcode,data);
                      struct multi_freq_point_para_st *multpoint =&config->multi_freq_point_param[audio_samprate->channel];
@@ -153,6 +184,12 @@ int8_t xnrp_xml_parse_data(uint8_t classcode, uint8_t methodcode, void *data, ui
          case CLASS_CODE_RF:/*射频参数命令*/
              {
                  if(methodcode==B_CODE_RF_FRQ_PARA){
+                     if(dao_conf_parse_batch(classcode,methodcode,data)==NULL)
+                     {
+                       printf_warn("The XML you want to parse is empty, please check your Settings or XML file\n");
+                        return 0;
+                     
+                     }
 
                      RFpara=(struct dao_RF_parameters *) dao_conf_parse_batch(classcode,methodcode,data);
                      config->cid=RFpara->channel;
@@ -174,6 +211,13 @@ int8_t xnrp_xml_parse_data(uint8_t classcode, uint8_t methodcode, void *data, ui
                      printf_debug("===config.oal_config.rf_para[RFpara->channel].mgc_gain_value=%d\n",config->rf_para[RFpara->channel].mgc_gain_value);
                      printf_debug("===config.oal_config.rf_para[RFpara->channel].mid_bwd=%d",config->rf_para[RFpara->channel].mid_bw);
                  }else if(methodcode==B_CODE_RF_FRQ_ANTENASELEC){
+                     if(dao_conf_parse_batch(classcode,methodcode,data)==NULL)
+                     {
+                       printf_warn("The XML you want to parse is empty, please check your Settings or XML file\n");
+                        return 0;
+                     
+                     }
+
                      RFantennaselect=(struct dao_RF_antenna_selection *) dao_conf_parse_batch(classcode,methodcode,data);
                      config->cid=RFantennaselect->channel;
                      config->rf_para[RFantennaselect->channel].cid=RFantennaselect->channel;
@@ -193,7 +237,13 @@ int8_t xnrp_xml_parse_data(uint8_t classcode, uint8_t methodcode, void *data, ui
                      printf_debug("===config.oal_config.rf_para[RFpara->channel].mid_bwd=%d",config->rf_para[RFantennaselect->channel].mid_bw);
 
                  }else if(methodcode==B_CODE_RF_FRQ_OUTPUT_ATTENUATION){
+                     if(dao_conf_parse_batch(classcode,methodcode,data)==NULL)
+                     {
+                       printf_warn("The XML you want to parse is empty, please check your Settings or XML file\n");
+                        return 0;
                      
+                     }
+
                      Rfoutputattenuation=(struct dao_Rf_output_attenuation *) dao_conf_parse_batch(classcode,methodcode,data);
                      config->cid=Rfoutputattenuation->channel;
                      config->rf_para[Rfoutputattenuation->channel].cid=Rfoutputattenuation->channel;
@@ -204,6 +254,13 @@ int8_t xnrp_xml_parse_data(uint8_t classcode, uint8_t methodcode, void *data, ui
                  }else if(methodcode==B_CODE_RF_FRQ_INTPUT_ATTENUATION){
                     printf_warn("In rf parameter, there is no such parameter\n");
                  }else if(methodcode==B_CODE_RF_FRQ_INTPUT_BANDWIDTH){
+                     if(dao_conf_parse_batch(classcode,methodcode,data)==NULL)
+                     {
+                       printf_warn("The XML you want to parse is empty, please check your Settings or XML file\n");
+                        return 0;
+                     
+                     }
+
                      Rfbdsetting=(struct dao_Rf_bandwidth_setting *) dao_conf_parse_batch(classcode,methodcode,data);
                      config->cid=Rfbdsetting->channel;
                      config->rf_para[Rfbdsetting->channel].cid=Rfbdsetting->channel;
@@ -222,7 +279,12 @@ int8_t xnrp_xml_parse_data(uint8_t classcode, uint8_t methodcode, void *data, ui
             {
                 if(methodcode==B_CODE_ALL_NET)
                 {
-                    
+                     if(dao_conf_parse_batch(classcode,methodcode,data)==NULL)
+                     {
+                       printf_warn("The XML you want to parse is empty, please check your Settings or XML file\n");
+                        return 0;
+
+                     }
                      netpara =(struct network_st *) dao_conf_parse_batch(classcode,methodcode,data);
                      memcpy(config->network.mac,netpara->mac,6);
                      config->network.gateway=netpara->gateway;
@@ -257,11 +319,13 @@ int8_t xnrp_xml_parse_data(uint8_t classcode, uint8_t methodcode, void *data, ui
                 struct  multi_freq_point_para_st *multifrepoint;
                 if(methodcode==B_CODE_WK_MODE_MULTI_FRQ_POINT)
                 {
-                    printf_debug("B_CODE_WK_MODE_MULTI_FRQ_POINT\n");
+                    if(dao_conf_parse_batch(classcode,methodcode,data)==NULL)
+                    {
+                      printf_warn("The XML you want to parse is empty, please check your Settings or XML file\n");
+                       return 0;
                     
+                    }
                     multifrepoint =(struct multi_freq_point_para_st *) dao_conf_parse_batch(classcode,methodcode,data);
-                    printf_debug("===============config===============dao_conf_parse_batch over\n");
-                    
                     struct multi_freq_point_para_st *point=&config->multi_freq_point_param[multifrepoint->cid];
                     config->cid=multifrepoint->cid;
                     point->cid=multifrepoint->cid;
@@ -303,6 +367,13 @@ int8_t xnrp_xml_parse_data(uint8_t classcode, uint8_t methodcode, void *data, ui
 
 
                 }else if(methodcode==B_CODE_WK_MODE_SUB_CH_DEC){
+                    if(dao_conf_parse_batch(classcode,methodcode,data)==NULL)
+                    {
+                      printf_warn("The XML you want to parse is empty, please check your Settings or XML file\n");
+                       return 0;
+                    
+                    }
+
                     subchanelpara =(struct dao_sub_channel_freq_para_st *) dao_conf_parse_batch(classcode,methodcode,data);
                     struct sub_channel_freq_para_st *subchannelpoint =&config->sub_channel_para[subchanelpara->cid];
                     config->cid=subchanelpara->cid;
@@ -340,8 +411,13 @@ int8_t xnrp_xml_parse_data(uint8_t classcode, uint8_t methodcode, void *data, ui
 
 
                  }else if(methodcode==B_CODE_WK_MODE_MULTI_FRQ_FREGMENT){
+                    if(dao_conf_parse_batch(classcode,methodcode,data)==NULL)
+                    {
+                      printf_warn("The XML you want to parse is empty, please check your Settings or XML file\n");
+                       return 0;
+                    
+                    }
 
-                    printf_debug("++++++++++++++++++++++B_CODE_WK_MODE_MULTI_FRQ_FREGMENT+++++\n");
                     freqfergmentpara =(struct multi_freq_fregment_para_st *) dao_conf_parse_batch(classcode,methodcode,data);
                     struct multi_freq_fregment_para_st *point=&config->multi_freq_fregment_para[freqfergmentpara->cid];
                     config->cid=freqfergmentpara->cid;
@@ -388,6 +464,13 @@ int8_t xnrp_xml_parse_data(uint8_t classcode, uint8_t methodcode, void *data, ui
              {
                  if(methodcode == B_CODE_CONTROL_CONTR_DATA_OUTPUT_ENABLE)
                  {
+                     if(dao_conf_parse_batch(classcode,methodcode,data)==NULL)
+                     {
+                       printf_warn("The XML you want to parse is empty, please check your Settings or XML file\n");
+                        return 0;
+                     
+                     }
+
                      outputenablecontr =(struct dao_data_output_enable_control *) dao_conf_parse_batch(classcode,methodcode,data);
                      struct output_en_st *outputen=&config->enable;
                      struct output_en_st *suboutputen=&config->sub_ch_enable;
@@ -436,7 +519,13 @@ int8_t xnrp_xml_parse_data(uint8_t classcode, uint8_t methodcode, void *data, ui
                     
 
                  }else if(methodcode==B_CODE_CONTROL_CONTR_LOCAL_REMOTE){
-                    
+                     if(dao_conf_parse_batch(classcode,methodcode,data)==NULL)
+                     {
+                       printf_warn("The XML you want to parse is empty, please check your Settings or XML file\n");
+                        return 0;
+                     
+                     }
+
                     Localremotecontr =(struct dao_Local_remote_control *) dao_conf_parse_batch(classcode,methodcode,data);
                     config->ctrl_para.remote_local=Localremotecontr->ctrlMode;
                     printf_debug("config.oal_config.ctrl_para.remote_local)=%d\n",config->ctrl_para.remote_local);
@@ -464,6 +553,234 @@ int8_t xnrp_xml_parse_data(uint8_t classcode, uint8_t methodcode, void *data, ui
      }
      printf_debug("config_parse_data\n");
     return 0;
+}
+
+int xnrp_xml_execute_get_command(uint8_t classcode, uint8_t methodcode,uint8_t  *resp_header ,uint8_t len)
+{
+    printf_debug("========xnrp_execute_get_command\n");
+    mxml_node_t *xml;
+    mxml_node_t *root;    /* <?xml ... ?> */
+    mxml_node_t *child;   /* <data> */
+    mxml_node_t *node;   /* <node> */
+    mxml_node_t *group;  /* <group> */
+    char databuff[1000];
+    int err_code;
+
+    err_code = RET_CODE_SUCCSESS;
+    
+    switch (classcode)
+    {
+          printf_debug("========3\n");
+        case CLASS_CODE_REGISTER:
+        {
+            printf_debug("register\n");
+            break;
+        }
+        case CLASS_CODE_NET:
+        {
+             switch (methodcode)
+             {
+                 struct poal_config *config = &(config_get_config()->oal_config);
+                 
+                 char mactemp[30];
+                 sprintf(mactemp,"%02x:%02x:%02x:%02x:%02x:%02x\n", config->network.mac[0],config->network.mac[1],
+                 config->network.mac[2],config->network.mac[3],config->network.mac[4],config->network.mac[5]);
+                 printf_debug(" config->oal_config.network.mac -----------%s\n",mactemp);
+                 
+                 
+                 struct in_addr netpara;
+                 
+                 const char *ipstr=NULL;
+                 const char *ipstr2=NULL;
+                 const char *ipstr3=NULL;
+                 netpara.s_addr=config->network.gateway;
+                 ipstr= inet_ntoa(netpara);
+                 
+                 printf_debug("----------gateway=%s\n", ipstr);
+                 
+                 
+                 ipstr=NULL;
+                 netpara.s_addr=config->network.netmask;
+                 ipstr2= inet_ntoa(netpara);
+                 printf_debug("----------netmask=%s\n", ipstr2);
+                 
+                 ipstr=NULL;
+                 netpara.s_addr=config->network.ipaddress;
+                 ipstr3= inet_ntoa(netpara);
+                 printf_debug("----------ipaddress=%s\n", ipstr3);
+                 char buff[2]={0};
+                 
+                 sprintf(buff,"%d",config->network.port);
+                 
+                 xml = mxmlNewXML("1.0");
+                 root = mxmlNewElement(xml, "root");
+                 node= mxmlNewElement(root, "network");
+                 group = mxmlNewElement(node, "mac");
+                 mxmlNewText(node, 0, mactemp);
+                 group = mxmlNewElement(node, "gateway");
+                 mxmlNewText(node, 0, ipstr);
+                 group = mxmlNewElement(node, "netmask");
+                 mxmlNewText(node, 0, ipstr2);
+                 group = mxmlNewElement(node, "ipaddress");
+                 mxmlNewText(node, 0, ipstr3);
+                 group = mxmlNewElement(node, "port");
+                 mxmlNewText(node, 0, buff);
+                 
+                 
+                 mxmlSaveString (root,databuff,1000,NULL);
+                 memcpy(resp_header,databuff,strlen(databuff));
+                 len=strlen(databuff);
+                 printf_debug("+++++++++++++++++++++++++++++++resp_header->payload=%s\n",resp_header);
+                 printf_debug("strlen(databuff)=%d\n",strlen(databuff));
+                 printf_debug("resp_header->payload=%d\n",len);
+                 break;
+             }
+
+        }
+        case CLASS_CODE_WORK_MODE:
+        { 
+            break;
+        }
+        case CLASS_CODE_MID_FRQ:
+        {
+            break;
+        }
+        case CLASS_CODE_RF:
+        {
+            break;
+        }
+        case CLASS_CODE_CONTROL:
+        {
+            break;
+        }
+        case CLASS_CODE_STATUS:/*控制参数*/
+        {
+            char buff[MAX_RECEIVE_DATA_LEN]={0};
+            struct poal_config *config = &(config_get_config()->oal_config);
+            switch(methodcode)
+            {
+                case B_CODE_STATE_GET_EQUIP_BASIC_INFOR:
+                	{
+                        xml = mxmlNewXML("1.0");
+                        root = mxmlNewElement(xml, "root");
+                        node=mxmlNewElement(root,"softVersion");
+                        group = mxmlNewElement(node, "app");
+                        mxmlNewText(group, 0, config->status_para.softVersion.app);
+                        group = mxmlNewElement(node, "kernel");
+                        mxmlNewText(group, 0, config->status_para.softVersion.kernel);
+                        group = mxmlNewElement(node, "uboot");
+                        mxmlNewText(group, 0, config->status_para.softVersion.uboot);   
+                        group = mxmlNewElement(node, "fpga");
+                        mxmlNewText(group, 0, config->status_para.softVersion.fpga);
+
+
+                        node=mxmlNewElement(root,"diskInfo");
+                        sprintf(buff,"%d",config->status_para.diskInfo.diskNum);
+                        group = mxmlNewElement(node, "diskNum");
+                        mxmlNewText(group, 0, buff);
+                        sprintf(buff,"%d",config->status_para.diskInfo.diskNode.totalSpace);
+                        group = mxmlNewElement(node, "diskNode");
+                        child = mxmlNewElement(group, "totalSpace");
+                        mxmlNewText(child, 0, buff); 
+                        sprintf(buff,"%d",config->status_para.diskInfo.diskNode.freeSpace);
+                        child = mxmlNewElement(group, "freeSpace");
+                        mxmlNewText(child, 0, buff);
+
+                        node=mxmlNewElement(root,"clkInfo");
+                        sprintf(buff,"%d",config->status_para.clkInfo.inout);
+                        group = mxmlNewElement(node, "inout");
+                        mxmlNewText(group, 0, buff);
+                        sprintf(buff,"%d",config->status_para.clkInfo.status);
+                        group = mxmlNewElement(node, "status");
+                        mxmlNewText(group, 0, buff);
+                        sprintf(buff,"%d",config->status_para.clkInfo.frequency);
+                        group = mxmlNewElement(node, "frequency");
+                        mxmlNewText(group, 0, buff);   
+
+                        sprintf(buff,"%d",config->status_para.adInfo.status);
+                        node=mxmlNewElement(root,"adInfo");
+                        group = mxmlNewElement(node, "status");
+                        mxmlNewText(group, 0, buff);
+
+
+                        node=mxmlNewElement(root,"rfInfo");
+                        sprintf(buff,"%d",config->status_para.rfInfo.rfnum);
+                        group = mxmlNewElement(node, "rfnum");
+                        mxmlNewText(group, 0, buff);
+                        group = mxmlNewElement(node, "rfnode");
+                        sprintf(buff,"%d",config->status_para.rfInfo.rfnode.status);
+                        child = mxmlNewElement(group, "status");
+                        mxmlNewText(child, 0, buff);
+                        sprintf(buff,"%d",config->status_para.rfInfo.rfnode.temprature);
+                        child = mxmlNewElement(group, "temprature");
+                        mxmlNewText(child, 0, buff);
+
+                        node=mxmlNewElement(root,"fpgaInfo");
+                        sprintf(buff,"%d",config->status_para.fpgaInfo.temprature);
+                        group = mxmlNewElement(node, "temprature");
+                        mxmlNewText(group, 0, buff);
+
+
+
+
+
+                        mxmlSaveString (root,databuff,1000,NULL);
+                        memcpy(resp_header,databuff,strlen(databuff));
+                        len=strlen(databuff);
+                        printf_debug("+++++++++++++++++++++++++++++++resp_header->payload=%s\n",resp_header);
+                        printf_debug("strlen(databuff)=%d\n",strlen(databuff));
+                        printf_debug("resp_header->payload=%d\n",len);
+                        break;
+
+                    }
+                case B_CODE_STATE_CHANNEL_STATUS_QUERY:
+                    {
+                        break;
+
+                    }
+
+                case B_CODE_CONTROL_CONTR_LOCAL_REMOTE:
+                    {
+
+                        break;
+
+                    }
+                case B_CODE_CONTROL_CONTR_CHANNEL_POWER:
+                    {
+
+                        break;
+
+                    }
+                case B_CODE_CONTROL_CONTR_TIME_CONTR:
+                    {
+
+                        break;
+
+                    }
+                    printf_info("There is no such parameter in the state parameter!");
+                    break;
+                }
+
+             break;
+        }
+        case CLASS_CODE_JOURNAL:
+        {
+            break;
+        }
+        case CLASS_CODE_FILE:
+        {
+            break;
+        }
+        case CLASS_CODE_HEARTBEAT:
+        {
+            break;
+        }
+        default:
+            printf_err("error class code[%d]\n",classcode);
+            err_code = RET_CODE_PARAMTER_ERR;
+            break;
+    }
+    return err_code;
 }
 
 

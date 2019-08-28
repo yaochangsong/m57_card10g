@@ -60,6 +60,7 @@ $(target): $(objs)
 	for dir in $(SUB_LIB_DIRS); \
 	do $(MAKE) -C $$dir all || exit 1; \
 	done
+
 	$(CC) $(CFLAGS) $^ -o $@ $(LDFLAGS)  
 	
 %.o:%c

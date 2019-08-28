@@ -140,6 +140,8 @@ extern int xnrp_assamble_response_data(uint8_t **buf, int err_code);
 extern bool xnrp_parse_header(const uint8_t *data, int len, uint8_t **payload, int *err_code);
 extern bool xnrp_parse_data(const uint8_t *payload, int *code);
 extern bool xnrp_execute_method(int *code);
+int xnrp_execute_set_command(void);
+
 #endif
 
 

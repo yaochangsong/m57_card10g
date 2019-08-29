@@ -91,21 +91,50 @@ static void spectrum_send_fft_data(void *fft_data, size_t fft_data_len, void *pa
     safe_free(pbuf);
 }
 
-/* Before send client, we need to remove sideband signals data */
-fft_data_type *spectrum_fft_data_order(void *fft_data, uint32_t fft_data_len, uint32_t *result_fft_size)
-{
-    /* single sideband signal fft size */
-    uint32_t single_sideband_size = fft_data_len*SINGLE_SIDE_BAND_POINT_RATE;
 
+/* Before send client, we need to remove sideband signals data  and  extra bandwidth data */
+fft_data_type *spectrum_fft_data_order(struct spectrum_st *ps, uint32_t *result_fft_size)
+{
+    uint32_t extra_data_single_size = 0;
+    /*-- first step:  
+       remove sideband signals data
+   */
+    /* single sideband signal fft size */
+    uint32_t single_sideband_size = ps->fft_len*SINGLE_SIDE_BAND_POINT_RATE;
+    
     /* odd number */
     if(!EVEN(single_sideband_size)){
         single_sideband_size++;
     }
 
-    *result_fft_size = fft_data_len - 2 * single_sideband_size;
+    *result_fft_size = ps->fft_len - 2 * single_sideband_size;
 
-    return (fft_data_type *)((fft_data_type *)fft_data+single_sideband_size);
+    /*-- second step:  
+       If the remaining bandwidth is less than the actual working bandwidth,
+       we need to remove the extra data. 
+    */
+    /* the left extra data bw range: (mFq-BW/2, mFq-ScanBW/2);   mFq is middle freqency;
+       the rigth extra data bw range: (mFq+BW/2, mFq+ScanBW/2); 
+          so, the single extra bw is: (BW-ScanBw)/2, It accounts for the working bandwidth ratio: 
+          (BW-ScanBw)/2/BW = (1-ScanBw/Bw)/2
+          There Bw is: RF_ADRV9009_BANDWITH, ScanBw is ps->param.bandwidth,
+           ScanBw must less than or equal to Bw
+    */
+   if(RF_ADRV9009_BANDWITH > ps->param.bandwidth){
+        extra_data_single_size = ((1-(float)ps->param.bandwidth/(float)RF_ADRV9009_BANDWITH)/2) * (*result_fft_size);
+        printf_info("bw:%u, m_freq:%llu,need to remove the single extra data: %f,%u,%u\n",ps->param.bandwidth, ps->param.m_freq, (1-(float)ps->param.bandwidth/(float)RF_ADRV9009_BANDWITH)/2, *result_fft_size, extra_data_single_size);
+        if(ps->fft_len <  extra_data_single_size *2){
+            *result_fft_size = 0;
+        }else{
+            *result_fft_size = *result_fft_size - extra_data_single_size *2;
+        }
+        printf_info("the remaining fftdata is: %u\n", *result_fft_size);
+    }
+   
+    /* Returning data requires removing sideband data and excess bandwidth data */
+    return (fft_data_type *)((fft_data_type *)ps->fft_short_payload + single_sideband_size + extra_data_single_size);
 }
+
 
 /* We use this function to deal FFT spectrum wave in user space */
 void spectrum_psd_user_deal(struct spectrum_header_param *param)
@@ -138,7 +167,7 @@ void spectrum_psd_user_deal(struct spectrum_header_param *param)
     }
     /* To the circumstances: the client's active acquisition of FFT data; Here we user backup buffer to store fft data; 
     when the scheduled task is processed[fft_data_ready=false],  we start filling in new fft data in back buffer [ps->fft_short_payload_back]*/
-    //LOCK_SP_DATA();
+    LOCK_SP_DATA();
     /* Here we convert float to short integer processing */
     FLOAT_TO_SHORT(ps->fft_float_payload, ps->fft_short_payload, ps->fft_len);
     /*refill header parameter*/
@@ -147,7 +176,7 @@ void spectrum_psd_user_deal(struct spectrum_header_param *param)
     ps->fft_data_ready = true;
 
     //printf_warn("fft data and header is ready, notify to handle \n");
-    //UNLOCK_SP_DATA();
+    UNLOCK_SP_DATA();
     if(get_spectrum_demo()){
         spectrum_send_fft_data_interval();
     }
@@ -233,17 +262,17 @@ int32_t spectrum_send_fft_data_interval(void)
     uint32_t fft_order_len=0;
     ps = &_spectrum;
     
-   // LOCK_SP_DATA();
+    LOCK_SP_DATA();
     if(ps->fft_data_ready == false){
-        //UNLOCK_SP_DATA();
+        UNLOCK_SP_DATA();
         return -1;
     }
-    fft_send_payload = spectrum_fft_data_order((void *)ps->fft_short_payload, ps->fft_len, &fft_order_len);
+    fft_send_payload = spectrum_fft_data_order(ps, &fft_order_len);
     printf_debug("fft order len[%u], ps->fft_len=%u\n", fft_order_len, ps->fft_len);
 
-    spectrum_send_fft_data((void *)fft_send_payload, ps->fft_len*sizeof(fft_data_type), &ps->param);
+    spectrum_send_fft_data((void *)fft_send_payload, fft_order_len*sizeof(fft_data_type), &ps->param);
     ps->fft_data_ready = false;
-   // UNLOCK_SP_DATA();
+    UNLOCK_SP_DATA();
     return (ps->fft_len*sizeof(fft_data_type));
 }
 

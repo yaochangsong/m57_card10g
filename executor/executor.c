@@ -77,7 +77,7 @@ static  void  executor_fregment_scan(uint32_t fregment_num,uint8_t ch, work_mode
     s_freq = poal_config->multi_freq_fregment_para[ch].fregment[fregment_num].start_freq;
     e_freq = poal_config->multi_freq_fregment_para[ch].fregment[fregment_num].end_freq;
 #if (RF_ADRV9009_IIO == 1)
-    scan_bw = BAND_WITH_200M;
+    scan_bw = RF_ADRV9009_BANDWITH;
 #else
     scan_bw = poal_config->rf_para[ch].mid_bw;
 #endif

@@ -1343,92 +1343,92 @@ int fft_Precise_calculation(int threshordnum,short *iqdata,int32_t fftsize,int d
         findBottomnoiseprecise(fftdata.smoothdata,threshordnum,&fftstate.Bottomnoise,&fftstate.Threshold,N,&maxvalue,&minvalue);
         /*窄带信号，即原始处理过程*/
         multiple=fftsize/firstfftlen;
-         printf_debug("fftstate.cenfrepointnum=%d\n",fftstate.cenfrepointnum);
-         float impairment=0;
-         for(i=0;i<fftstate.cenfrepointnum;i++)  /*计算信号个数*/
-         {   
-                 impairment=0;
-                 //printf("fftstate.y[i]=%d,fftstate.z[i]=%d\n",fftstate.y[i],fftstate.z[i]);
-                 int temp;
-                 temp=(fftstate.z[i]*multiple-fftstate.y[i]*multiple)/2;
-                // printf_debug("fftstate.y[i]*multiple+temp=%d,fftstate.z[i]=%d\n",fftstate.y[i]*multiple+temp,fftstate.z[i]);
-                 for(j=fftstate.z[i]*multiple;j>=fftstate.y[i]*multiple-temp;j--)
-                 {
-                     if(fftdata.mozhi[j]<maxvalue&&fftdata.mozhi[j+1]>maxvalue)
-                     {
-                         firsttemp=j;
-                     }
-        
-                 }
-                 for(j=fftstate.y[i]*multiple;j<=fftstate.z[i]*multiple+temp;j++)
-                 {
-                     if(fftdata.mozhi[j]>maxvalue&&fftdata.mozhi[j+1]<maxvalue)
-                     {
-                         secondtemp=j;
-                     }
-                 }
-                 fftstate.centfeqpoint[i]=(secondtemp-firsttemp)/2+firsttemp;//计算中心频点
-        
-                 printf_warn("firsttemp=%d  ,secondtemp=%d\n",firsttemp,secondtemp);
-        
-                 
-                 float max;
-                 int end;
-                 max=fftdata.mozhi[firsttemp];
-        
-        
-                 for(int p=firsttemp;p<secondtemp;p++)
-                 {
-                     if(max<fftdata.mozhi[p])
-                     {
-                        max= fftdata.mozhi[p];
-                        fftstate.maximum_x=p;
-                     }
-                 }
-                // impairment=max-(max-minvalue)/3;
-                 impairment=max-(max-maxvalue)*2/3;
-                 printf_warn("threedbvalue=%f,dbvalue=%f\n",impairment,(max-maxvalue)*2/3);
-                 for(int p=firsttemp;p<secondtemp;p++)
-                 {
-                    //printf_info("smoothdata[%d]=%f   ,",p,fftdata.smoothdata[p]);
-        
-                      
-                     fftstate.arvcentfreq[i]=max-CORRECTIONSIGNAL;      //计算中心频率
-                     
-        
-                     if((fftdata.mozhi[p]<=impairment)&&(fftdata.mozhi[p+1]>=impairment))//带宽阈值处
-                     { 
-                         //printf_info("===========================gello\n");
-                         if(flag == 0)
-                         {
-                             firstpoint[i]=p+1;  //确定是第一个点
-                             printf_debug("p=%d\n",p+1);
-                             flag=1;
-                             //continue;
-                         }
-        
-                     }
-                     //printf_debug("==================flag=%d\n",flag);
-                     if(flag==1)
-                     {
-                         if(fftdata.mozhi[p]>impairment&&fftdata.mozhi[p+1]<impairment)
-                         {
-        
-                             end=p;
-                            // printf_debug("end=%d\n",end);
-                         }
-                         if(p==secondtemp-1)
-                         {
-                             //printf_debug("============secondtemp=%d=========endpoint[%d]=%d\n",secondtemp,i,end);
-                             endpoint[i]=end;
-                             count++;
-                             flag=0;
-                         }
-                     }
-                     
-                 }
-             }
+        printf_debug("fftstate.cenfrepointnum=%d\n",fftstate.cenfrepointnum);
+        float impairment=0;
+        for(i=0;i<fftstate.cenfrepointnum;i++)  /*计算信号个数*/
+        {
+                impairment=0;
+                //printf("fftstate.y[i]=%d,fftstate.z[i]=%d\n",fftstate.y[i],fftstate.z[i]);
+                int temp;
+                temp=(fftstate.z[i]*multiple-fftstate.y[i]*multiple)/2;
+                printf_debug("fftstate.y[i]*multiple+temp=%d,fftstate.z[i]=%d\n",fftstate.y[i]*multiple+temp,fftstate.z[i]);
+                for(j=fftstate.z[i]*multiple;j>=fftstate.y[i]*multiple-temp;j--)
+                {
+                    if(fftdata.smoothdata[j]<fftstate.Threshold&&fftdata.smoothdata[j+1]>fftstate.Threshold)
+                    {
+                        firsttemp=j;
+                    }
 
+                }
+                for(j=fftstate.y[i]*multiple;j<=fftstate.z[i]*multiple+temp;j++)
+                {
+                    if(fftdata.smoothdata[j]>fftstate.Threshold&&fftdata.smoothdata[j+1]<fftstate.Threshold)
+                    {
+                        secondtemp=j;
+                    }
+                }
+                fftstate.centfeqpoint[i]=(secondtemp-firsttemp)/2+firsttemp;//计算中心频点
+
+                printf_debug("firsttemp=%d  ,secondtemp=%d\n",firsttemp,secondtemp);
+
+                
+                float max;
+                int end;
+                max=fftdata.smoothdata[firsttemp];
+
+
+                for(int p=firsttemp;p<secondtemp;p++)
+                {
+                    if(max<fftdata.smoothdata[p])
+                    {
+                       max= fftdata.smoothdata[p];
+                       fftstate.maximum_x=p;
+                    }
+                }
+                
+
+                impairment=max-(max-minvalue)/3;
+                printf_debug("impairment=%f\n",impairment);
+                for(int p=firsttemp;p<secondtemp;p++)
+                {
+                   //printf_info("smoothdata[%d]=%f   ,",p,fftdata.smoothdata[p]);
+
+                     
+                    fftstate.arvcentfreq[i]=max-CORRECTIONSIGNAL;      //计算中心频率
+                    
+
+                    if((fftdata.smoothdata[p]<=impairment)&&(fftdata.smoothdata[p+1]>=impairment))//带宽阈值处
+                    { 
+                        //printf_info("===========================gello\n");
+                        if(flag == 0)
+                        {
+                            firstpoint[i]=p+1;  //确定是第一个点
+                            printf_debug("p=%d\n",p+1);
+                            flag=1;
+                            //continue;
+                        }
+
+                    }
+                    //printf_debug("==================flag=%d\n",flag);
+                    if(flag==1)
+                    {
+                        if(fftdata.smoothdata[p]>impairment&&fftdata.smoothdata[p+1]<impairment)
+                        {
+
+                            end=p;
+                           // printf_debug("end=%d\n",end);
+                        }
+                        if(p==secondtemp-1)
+                        {
+                            //printf_debug("============secondtemp=%d=========endpoint[%d]=%d\n",secondtemp,i,end);
+                            endpoint[i]=end;
+                            count++;
+                            flag=0;
+                        }
+                    }
+                    
+                }
+        }
     }else{
         printf_debug("+++++++++++++++宽带信号+++++++++++++=\n");
         findBottomnoisenomax(fftdata.smoothdata,threshordnum,&fftstate.Bottomnoise,&fftstate.Threshold,N,&maxvalue,&minvalue);

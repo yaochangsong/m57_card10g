@@ -28,38 +28,40 @@ bool specturm_work_write_enable(bool enable)
 }
 
 /* Read Rx Raw IQ data*/
-static int32_t specturm_rx_iq_read(int16_t **iq_payload)
+static int16_t *specturm_rx_iq_read(int32_t *nbytes)
 {
     ssize_t nbytes_rx = 0;
-    int16_t *iqdata, *iq1data;
+    int16_t *iqdata, *p_iqdata_start;
     int i;
     char strbuf[128];
     static int write_file_cnter = 0;
+    
     LOCK_IQ_DATA();
    #if (RF_ADRV9009_IIO == 1)
     iqdata = iio_read_rx0_data(&nbytes_rx);
+    p_iqdata_start = iqdata;
    #else    
     nbytes_rx = 0;
     goto exit;
    #endif
-    *iq_payload = iqdata;
-
+    
+    if(write_file_cnter++ <10) {
+        sprintf(strbuf, "/run/wav_%d", write_file_cnter);
+        printfi("write rx0 iq data to:[len=%d]%s\n", nbytes_rx/2, strbuf);
+        write_file_in_int16((void*)(iqdata), nbytes_rx/2, strbuf);
+    }
     printf_info("iio read data len:[%d]\n", nbytes_rx);
     printf_info("rx0 iqdata:\n");
     for(i = 0; i< 10; i++){
         printfi("%d ",*(int16_t*)(iqdata+i));
     }
     printfi("\n");
-
-    if(write_file_cnter++ == 10) {
-        sprintf(strbuf, "/run/wav0_%d", write_file_cnter);
-        printfi("write rx0 iq data to:[len=%d]%s\n", nbytes_rx/2, strbuf);
-        write_file_in_int16((void*)(iqdata), nbytes_rx/2, strbuf);
-    }
 exit:
     UNLOCK_IQ_DATA();
-    return nbytes_rx;
+    *nbytes = nbytes_rx;
+    return p_iqdata_start;
 }
+
 
 
 /* Send FFT spectrum Data to Client (UDP)*/
@@ -147,7 +149,7 @@ void spectrum_psd_user_deal(struct spectrum_header_param *param)
     ps = &_spectrum;
 
     /* Read Raw IQ data*/
-    ps->iq_len = specturm_rx_iq_read(&ps->iq_payload);
+    ps->iq_payload = specturm_rx_iq_read(&ps->iq_len);
     if(ps->iq_len == 0){
         printf_err("IQ data is NULL\n");
         return;
@@ -254,6 +256,29 @@ fft_data_type *spectrum_get_fft_data(uint32_t *len)
     return data;
 }
 
+void spectrum_level_calibration(fft_data_type *fftdata, uint32_t fft_valid_len, uint32_t fft_size)
+{
+    int32_t cal_value = -4530;
+
+    if(fft_size == 512){
+        cal_value = -4400;
+    }else if(fft_size == 1024){
+        cal_value = -4480;
+    }else if(fft_size == 2048){
+        cal_value = -4530;
+    }else if(fft_size == 4096){
+        cal_value = -4590;
+    }else if(fft_size == 8192){
+        cal_value = -4650;
+    }else{
+        printf_warn("fft size is not set, set default calibration level!!\n");
+    }
+    printf_debug("cal_value:%d, fft size:%u,%u\n", cal_value, fft_size, fft_valid_len);
+    SSDATA_MUL_OFFSET(fftdata, 10, fft_valid_len);
+    SSDATA_CUT_OFFSET(fftdata, cal_value, fft_valid_len);
+
+}
+
 /* timer callback function, send spectrum to client every interval */
 int32_t spectrum_send_fft_data_interval(void)
 {
@@ -269,7 +294,7 @@ int32_t spectrum_send_fft_data_interval(void)
     }
     fft_send_payload = spectrum_fft_data_order(ps, &fft_order_len);
     printf_debug("fft order len[%u], ps->fft_len=%u\n", fft_order_len, ps->fft_len);
-
+    spectrum_level_calibration(fft_send_payload, fft_order_len, ps->param.fft_size);
     spectrum_send_fft_data((void *)fft_send_payload, fft_order_len*sizeof(fft_data_type), &ps->param);
     ps->fft_data_ready = false;
     UNLOCK_SP_DATA();
@@ -299,7 +324,7 @@ loop:
         printf_note("start to read iq data and analysis specturm .\n");
         ps = &_spectrum;
         /* Read Raw IQ data*/
-        iq_len = specturm_rx_iq_read(&iq_payload);
+        iq_payload = specturm_rx_iq_read(&iq_len);
         if((iq_len == 0) || (iq_len < SPECTRUM_DEFAULT_FFT_SIZE*2)){
             printf_err("error iq len[%u]\n", iq_len);
             goto loop;

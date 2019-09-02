@@ -101,8 +101,33 @@ static void spectrum_send_fft_data(void *fft_data, size_t fft_data_len, void *pa
 /* Before send client, we need to remove sideband signals data  and  extra bandwidth data */
 fft_data_type *spectrum_fft_data_order(struct spectrum_st *ps, uint32_t *result_fft_size)
 {
+    /*-- 1 step: when scan count >2 , need to exchange sn order */
+    static uint64_t mfreq[32] = {0}; 
+    static uint32_t mbw[32] = {0};
+
+    
+    if(ps->param.total_fft > sizeof(mfreq)/sizeof(uint64_t)){
+        printf_err("Requency range is too long:%d", ps->param.total_fft);
+        goto exit;
+    }
+    if(ps->param.total_fft >= 2){
+        mfreq[ps->param.fft_sn] = ps->param.m_freq;
+        mbw[ps->param.fft_sn] = ps->param.bandwidth;
+        if(ps->param.fft_sn >= 2){
+           ps->param.fft_sn -= 2;
+        }else{
+           ps->param.fft_sn += ps->param.total_fft - 2;
+        }
+        ps->param.m_freq = mfreq[ps->param.fft_sn]; 
+        ps->param.bandwidth = mbw[ps->param.fft_sn]; 
+
+        printf_warn("m_freq=%llu,param->total_fft=%u, sn=%u, bandwidth=%u\n", ps->param.m_freq, ps->param.total_fft, ps->param.fft_sn, ps->param.bandwidth);
+    }
+
+
+   
     uint32_t extra_data_single_size = 0;
-    /*-- first step:  
+    /*-- 2 step:  
        remove sideband signals data
    */
     /* single sideband signal fft size */
@@ -115,7 +140,7 @@ fft_data_type *spectrum_fft_data_order(struct spectrum_st *ps, uint32_t *result_
 
     *result_fft_size = ps->fft_len - 2 * single_sideband_size;
 
-    /*-- second step:  
+    /*-- 3 step:  
        If the remaining bandwidth is less than the actual working bandwidth,
        we need to remove the extra data. 
     */
@@ -126,7 +151,7 @@ fft_data_type *spectrum_fft_data_order(struct spectrum_st *ps, uint32_t *result_
           There Bw is: RF_ADRV9009_BANDWITH, ScanBw is ps->param.bandwidth,
            ScanBw must less than or equal to Bw
     */
-   if(RF_ADRV9009_BANDWITH > ps->param.bandwidth){
+   if((RF_ADRV9009_BANDWITH > ps->param.bandwidth) && (ps->param.bandwidth > 0)){
         extra_data_single_size = ((1-(float)ps->param.bandwidth/(float)RF_ADRV9009_BANDWITH)/2) * (*result_fft_size);
         printf_info("bw:%u, m_freq:%llu,need to remove the single extra data: %f,%u,%u\n",ps->param.bandwidth, ps->param.m_freq, (1-(float)ps->param.bandwidth/(float)RF_ADRV9009_BANDWITH)/2, *result_fft_size, extra_data_single_size);
         if(ps->fft_len <  extra_data_single_size *2){
@@ -137,29 +162,7 @@ fft_data_type *spectrum_fft_data_order(struct spectrum_st *ps, uint32_t *result_
         printf_info("the remaining fftdata is: %u\n", *result_fft_size);
     }
 
-    /*-- third step: Exchange sn order */
-    static uint64_t mfreq[32] = {0};
-    int index = 0, offset = 0;
 
-    printf_err("sn=%u\n", ps->param.fft_sn);
-
-    if(ps->param.total_fft > sizeof(mfreq)/sizeof(uint64_t)){
-        printf_err("Requency range is too long:%d", ps->param.total_fft);
-        goto exit:
-    }
-
-    if(ps->param.fft_sn == ps->param.total_fft - 1){
-        mfreq[ps->param.total_fft - 1] = ps->param.m_freq;
-        ps->param.fft_sn = 0;
-        ps->param.m_freq = mfreq[0];
-    }else{
-        index = ps->param.fft_sn;
-        //offset = ps->param.total_fft/2;
-        ps->param.fft_sn = index+1;
-        mfreq[index] = ps->param.m_freq;
-        ps->param.m_freq = mfreq[index+1];
-    }
-    printf_warn("m_freq=%llu,param->total_fft=%u, sn=%u\n", ps->param.m_freq, ps->param.total_fft, ps->param.fft_sn);
     /* Returning data requires removing sideband data and excess bandwidth data */
  exit:
     return (fft_data_type *)((fft_data_type *)ps->fft_short_payload + single_sideband_size + extra_data_single_size);

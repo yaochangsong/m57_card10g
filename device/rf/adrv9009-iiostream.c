@@ -93,6 +93,7 @@ static void handle_sig(int sig)
 {
 	printf_info("Waiting for process to finish...\n");
 	stop = true;
+	iio_shutdown();
 }
 
 /* check return value of attr_write function */
@@ -216,7 +217,7 @@ void adrv9009_iio_init(void)
 	struct stream_cfg trxcfg;
 
 	// Listen to ctrl+c and ASSERT
-	//signal(SIGINT, handle_sig);
+	signal(SIGINT, handle_sig);
 
 	// TRX stream config
 	trxcfg.lo_hz = GHZ(1);

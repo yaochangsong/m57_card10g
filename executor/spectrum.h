@@ -8,7 +8,7 @@
 #define specturm_rx0_read_data
 #endif
 
-#define fft_spectrum_iq_to_fft_handle fft_fftw_calculate
+#define fft_spectrum_iq_to_fft_handle fft_fftw_calculate_hann
 
 #define SPECTRUM_START_FLAG 0x7E7E
 #define SPECTRUM_DEFAULT_FFT_SIZE (512*1024)

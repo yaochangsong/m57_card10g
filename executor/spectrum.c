@@ -40,6 +40,10 @@ static int16_t *specturm_rx_iq_read(int32_t *nbytes)
    #if (RF_ADRV9009_IIO == 1)
     iqdata = iio_read_rx0_data(&nbytes_rx);
     p_iqdata_start = iqdata;
+    if(p_iqdata_start == NULL){
+        nbytes_rx = 0;
+        goto exit;
+    }
    #else    
     nbytes_rx = 0;
     goto exit;
@@ -132,8 +136,32 @@ fft_data_type *spectrum_fft_data_order(struct spectrum_st *ps, uint32_t *result_
         }
         printf_info("the remaining fftdata is: %u\n", *result_fft_size);
     }
-   
+
+    /*-- third step: Exchange sn order */
+    static uint64_t mfreq[32] = {0};
+    int index = 0, offset = 0;
+
+    printf_err("sn=%u\n", ps->param.fft_sn);
+
+    if(ps->param.total_fft > sizeof(mfreq)/sizeof(uint64_t)){
+        printf_err("Requency range is too long:%d", ps->param.total_fft);
+        goto exit:
+    }
+
+    if(ps->param.fft_sn == ps->param.total_fft - 1){
+        mfreq[ps->param.total_fft - 1] = ps->param.m_freq;
+        ps->param.fft_sn = 0;
+        ps->param.m_freq = mfreq[0];
+    }else{
+        index = ps->param.fft_sn;
+        //offset = ps->param.total_fft/2;
+        ps->param.fft_sn = index+1;
+        mfreq[index] = ps->param.m_freq;
+        ps->param.m_freq = mfreq[index+1];
+    }
+    printf_warn("m_freq=%llu,param->total_fft=%u, sn=%u\n", ps->param.m_freq, ps->param.total_fft, ps->param.fft_sn);
     /* Returning data requires removing sideband data and excess bandwidth data */
+ exit:
     return (fft_data_type *)((fft_data_type *)ps->fft_short_payload + single_sideband_size + extra_data_single_size);
 }
 
@@ -155,7 +183,7 @@ void spectrum_psd_user_deal(struct spectrum_header_param *param)
         return;
     }
     printf_debug("ps->iq_payload[0]=%d, %d,param->fft_size=%d, ps->iq_len=%d\n", ps->iq_payload[0],ps->iq_payload[1], param->fft_size, ps->iq_len);
-
+    
     fft_size = param->fft_size;
     /* Start Convert IQ data to FFT, Noise threshold:8 */
     fft_float_data = (float *)safe_malloc(fft_size*4);

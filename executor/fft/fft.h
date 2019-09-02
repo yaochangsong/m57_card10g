@@ -20,7 +20,10 @@ static unsigned int N=1024*1024;
 static unsigned int INTERVALNUM=10000;
 static unsigned int SHIELDPOINTS=20000;
 static unsigned int  INTERVALNUMTOW=2;
-static unsigned int  firstfftlen=128*1024;
+static unsigned int  firstfftlen=4*1024;
+static unsigned int  narrowbandlen=128*1024;
+
+
 
 
 typedef struct {
@@ -39,6 +42,8 @@ typedef struct {
     int firstpoint[SIGNALNUM];
     int endpoint[SIGNALNUM];
      int  maximum_x;
+     int x_right[SIGNALNUM];
+     int x_left[SIGNALNUM];
 }fft_state;
 
 extern fft_state fftstate;
@@ -61,6 +66,8 @@ void fft_iqdata_handle(int bd,short *data,int fftsize ,int datalen);
 float *fft_get_data(uint32_t *len);
 fft_result *fft_get_result(void);
 void fft_fftw_calculate(short *iqdata,int32_t fftsize,int datalen,float *mozhi);
+void fft_fftw_calculate_hann(short *iqdata,int32_t fftsize,int datalen,float *mozhi);
+
 
 
 

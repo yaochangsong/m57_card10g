@@ -532,10 +532,10 @@ static int akt_execute_set_command(void)
         {
             bool enable;
             enable =  (bool)header->buf[0];
-            printf_debug("Spctrum Analysis Ctrl  %s\n", enable == false ? "Enable" : "Disable");
+            printf_note("Spctrum Analysis Ctrl  %s\n", enable == false ? "Enable" : "Disable");
             poal_config->enable.spec_analy_en = !enable;
             INTERNEL_ENABLE_BIT_SET(poal_config->enable.bit_en,poal_config->enable);
-            printf_warn("sub_ch bit_en=%x, spec_analy_en=%d\n", 
+            printf_info("sub_ch bit_en=%x, spec_analy_en=%d\n", 
             poal_config->sub_ch_enable.bit_en, poal_config->enable.spec_analy_en);
             executor_set_enable_command(0);
             break;

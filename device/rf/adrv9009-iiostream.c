@@ -65,7 +65,7 @@ static struct iio_channel *tx0_q = NULL;
 static struct iio_buffer  *rxbuf = NULL;
 static struct iio_buffer  *txbuf = NULL;
 
-static bool stop;
+static bool stop = false;
 
 /* cleanup and exit */
 static void iio_shutdown(void)
@@ -93,6 +93,7 @@ static void handle_sig(int sig)
 {
 	printf_info("Waiting for process to finish...\n");
 	stop = true;
+	sleep(1);
 	iio_shutdown();
 }
 
@@ -218,6 +219,7 @@ void adrv9009_iio_init(void)
 
 	// Listen to ctrl+c and ASSERT
 	signal(SIGINT, handle_sig);
+	signal(SIGKILL, handle_sig);
 
 	// TRX stream config
 	trxcfg.lo_hz = GHZ(1);
@@ -288,6 +290,9 @@ int16_t adrv9009_iio_set_freq(uint64_t freq_hz)
 	if(s_freq_hz == freq_hz){
 		return 0;
 	}
+	if(stop == true){
+		return 0;
+	}
 	s_freq_hz = freq_hz;
 	printf_note("* Setting ADRV9009 RX freq:%llu\n", freq_hz);
 	
@@ -300,6 +305,9 @@ int16_t adrv9009_iio_set_freq(uint64_t freq_hz)
 int16_t *iio_read_rx0_data(ssize_t *rsize)
 {
 	ssize_t nbytes_rx;
+	if(stop == true){
+		return NULL;
+	}
 	printf_info("* iio_read_rx_data\n");
 	nbytes_rx = iio_buffer_refill(rxbuf);
 	if (nbytes_rx < 0) { printf("Error refilling buf %d\n",(int) nbytes_rx); iio_shutdown(); }
@@ -307,14 +315,5 @@ int16_t *iio_read_rx0_data(ssize_t *rsize)
 	return (int16_t *)iio_buffer_first(rxbuf, rx0_i);
 }
 
-
-ssize_t iio_get_rx_buf_size(void)
-{
-	ssize_t nbytes_rx;
-	printf_info("* iio_read_rx_buffer size and refill rxbuf data \n");
-	nbytes_rx = iio_buffer_refill(rxbuf);
-	if (nbytes_rx < 0) { printf_info("Error refilling buf %d\n",(int) nbytes_rx); iio_shutdown(); }
-	return nbytes_rx;
-}
 #endif
 

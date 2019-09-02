@@ -11,20 +11,13 @@ pthread_cond_t spectrum_analysis_cond = PTHREAD_COND_INITIALIZER;
 pthread_mutex_t spectrum_analysis_cond_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 
-static  bool specturm_work_read_enable(void)
+static inline  bool specturm_is_analysis_enable(void)
 {
     struct poal_config *poal_config = &(config_get_config()->oal_config);
-    if((poal_config->enable.psd_en == 1) || (poal_config->enable.spec_analy_en == 1))
+    if(poal_config->enable.spec_analy_en == 1)
         return true;
     else
         return false;
-}
-
-bool specturm_work_write_enable(bool enable)
-{
-    struct poal_config *poal_config = &(config_get_config()->oal_config);
-    poal_config->enable.spec_analy_en = (uint8_t)enable;
-    return enable;
 }
 
 /* Read Rx Raw IQ data*/
@@ -121,7 +114,7 @@ fft_data_type *spectrum_fft_data_order(struct spectrum_st *ps, uint32_t *result_
         ps->param.m_freq = mfreq[ps->param.fft_sn]; 
         ps->param.bandwidth = mbw[ps->param.fft_sn]; 
 
-        printf_warn("m_freq=%llu,param->total_fft=%u, sn=%u, bandwidth=%u\n", ps->param.m_freq, ps->param.total_fft, ps->param.fft_sn, ps->param.bandwidth);
+        printf_debug("m_freq=%llu,param->total_fft=%u, sn=%u, bandwidth=%u\n", ps->param.m_freq, ps->param.total_fft, ps->param.fft_sn, ps->param.bandwidth);
     }
 
 
@@ -352,7 +345,7 @@ loop:
         pthread_cond_wait(&spectrum_analysis_cond, &spectrum_analysis_cond_mutex);
         /* No longer needs to be locked */
         pthread_mutex_unlock(&spectrum_analysis_cond_mutex);
-        printf_note("start to read iq data and analysis specturm .\n");
+        printf_debug("start to read iq data and analysis specturm .\n");
         ps = &_spectrum;
         /* Read Raw IQ data*/
         iq_payload = specturm_rx_iq_read(&iq_len);

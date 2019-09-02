@@ -1007,9 +1007,7 @@ void findBottomnoiseprecise(float *mozhi,int xiafamenxian,float *Bottomnoise,flo
 
     printf_debug("minvalue=%f,\n",*minvalue);
     printf_warn("maxvalue-minvalue=%f,\n",*maxvalue-*minvalue);
-    printf_warn("hahhhaha,\n");
     printf_debug("Bottomnoise=%f,",*Bottomnoise);
-    printf_warn("hahhhaha,\n");
     printf_debug("Thresholdmenxian=%f\n",*Threshold);
 }
 void findbaoluo(float *data,int num,float *max,int *maxzuobiao,int numsample,int interval )

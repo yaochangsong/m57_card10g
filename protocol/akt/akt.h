@@ -89,7 +89,7 @@
 #define MAX_DIRECTION_FREQ_POINT_NUM (128)
 #define BAND_WITH_300K  (300000)
 #define BAND_WITH_15K  (15000)
-#define BAND_FACTOR    (1.25)
+#define BAND_FACTOR    1//(1.2288)//(1.25)
 
 #define MAX_FREQ_NUMBER 3200
 #define ANGLE_ASSERT_FLAG (0x55aa)

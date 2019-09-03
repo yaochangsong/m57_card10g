@@ -77,7 +77,7 @@ static  void  executor_fregment_scan(uint32_t fregment_num,uint8_t ch, work_mode
     s_freq = poal_config->multi_freq_fregment_para[ch].fregment[fregment_num].start_freq;
     e_freq = poal_config->multi_freq_fregment_para[ch].fregment[fregment_num].end_freq;
 #if (RF_ADRV9009_IIO == 1)
-    scan_bw = BAND_WITH_200M;
+    scan_bw = RF_ADRV9009_BANDWITH;
 #else
     scan_bw = poal_config->rf_para[ch].mid_bw;
 #endif
@@ -108,6 +108,7 @@ static  void  executor_fregment_scan(uint32_t fregment_num,uint8_t ch, work_mode
         if(i < scan_count){
             /* 计算扫描中心频率 */
             m_freq = s_freq + i * scan_bw + scan_bw/2;
+            left_band = scan_bw;
         }
         else{
             /* 若不是整数，需计算剩余带宽中心频率 */
@@ -117,7 +118,7 @@ static  void  executor_fregment_scan(uint32_t fregment_num,uint8_t ch, work_mode
         header_param.ch = ch;
         header_param.s_freq = s_freq;
         header_param.e_freq = e_freq;
-        header_param.bandwidth = scan_bw;
+        header_param.bandwidth = left_band;
         header_param.fft_sn = i;
         header_param.total_fft = scan_count + is_remainder;
         header_param.m_freq = m_freq;
@@ -144,6 +145,7 @@ static  void  executor_fregment_scan(uint32_t fregment_num,uint8_t ch, work_mode
     
 #endif
         if(poal_config->enable.bit_reset == true){
+            poal_config->enable.bit_reset = false;
             printf_info("receive reset task sigal\n");
             break;
         }
@@ -535,8 +537,13 @@ void executor_timer_task_init(void)
 {
     static  struct uloop_timeout task1_timeout;
     printf_warn("executor_timer_task\n");
-    task1_timeout.cb = executor_timer_task1_cb;
-    uloop_timeout_set(&task1_timeout, 2000); /* 5000 ms */
+    if(!get_spectrum_demo()){
+        printf_note("timer task: fft data send opened:%d\n", get_spectrum_demo());
+        task1_timeout.cb = executor_timer_task1_cb;
+        uloop_timeout_set(&task1_timeout, 2000); /* 5000 ms */
+    }else{
+        printf_note("timer task: fft data send shutdown:%d\n", get_spectrum_demo());
+    }
 }
 
 void executor_init(void)

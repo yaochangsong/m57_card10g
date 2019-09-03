@@ -25,6 +25,19 @@
                      *_ts++ = (signed short)*_tf++; _n--;       \
     }}while(0)
 
+#define SSDATA_CUT_OFFSET(data, offset, n)  do{                            \
+                    signed short *_data = data; int _n = n;              \
+                                      while(_n>0){                       \
+                                  *_data = *_data+offset; _n--; _data++; \
+                 }}while(0)
+
+#define SSDATA_MUL_OFFSET(data, offset, n)  do{                            \
+                  signed short *_data = data; int _n = n;              \
+                                    while(_n>0){                       \
+                                *_data = *_data*offset; _n--; _data++; \
+               }}while(0)
+
+
 extern char *safe_strdup(const char *s);
 extern uint16_t crc16_caculate(uint8_t *pchMsg, uint16_t wDataLen);
 extern int get_mac(char * mac, int len_limit);

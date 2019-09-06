@@ -14,7 +14,10 @@
 #define SPECTRUM_DEFAULT_FFT_SIZE (512*1024)
 #define SINGLE_SIDE_BAND_POINT_RATE  (0.093098958333333)  /* (1-1/1.2288)/2 */
 
+#define MHZ(x) ((long long)(x*1000000.0 + .5))
 #define calc_resolution(bw_hz, fft_size)  (1.2288*bw_hz/fft_size)
+
+#define middle_freq_filter(bw, mfreq)    ((bw/2) > (mfreq) ? (bw/2+MHZ(10)) : (mfreq))
 
 typedef int16_t fft_data_type;
 

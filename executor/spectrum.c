@@ -232,7 +232,7 @@ void *spectrum_rw_fft_result(fft_result *result, uint64_t s_freq_hz, float freq_
 {
     int i;
     static struct spectrum_fft_result_st s_fft_result, *pfft = NULL;
-    #define SIGNAL_ADD_FIXED_VALUE 144
+    #define SIGNAL_ADD_FIXED_VALUE 217
     
     LOCK_SP_RESULT();
     if(result == NULL){
@@ -282,18 +282,18 @@ fft_data_type *spectrum_get_fft_data(uint32_t *len)
 
 void spectrum_level_calibration(fft_data_type *fftdata, uint32_t fft_valid_len, uint32_t fft_size)
 {
-    int32_t cal_value = -4530;
+    int32_t cal_value = -4660;
 
     if(fft_size == 512){
-        cal_value = -4400;
+        cal_value = -4600;
     }else if(fft_size == 1024){
-        cal_value = -4480;
+        cal_value = -4610;
     }else if(fft_size == 2048){
-        cal_value = -4530;
+        cal_value = -4660;
     }else if(fft_size == 4096){
-        cal_value = -4590;
+        cal_value = -4700;
     }else if(fft_size == 8192){
-        cal_value = -4650;
+        cal_value = -4740;
     }else{
         printf_warn("fft size is not set, set default calibration level!!\n");
     }

@@ -293,6 +293,10 @@ int16_t adrv9009_iio_set_freq(uint64_t freq_hz)
 	if(stop == true){
 		return 0;
 	}
+	if(RF_ADRV9009_BANDWITH/2 > freq_hz){
+		printf_warn("* Middle Frequency is too small,When Setting ADRV9009 RX freq:%llu\n", freq_hz);
+		return -1;
+	}
 	s_freq_hz = freq_hz;
 	printf_note("* Setting ADRV9009 RX freq:%llu\n", freq_hz);
 	

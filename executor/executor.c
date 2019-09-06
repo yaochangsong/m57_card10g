@@ -124,10 +124,12 @@ static  void  executor_fregment_scan(uint32_t fregment_num,uint8_t ch, work_mode
         header_param.m_freq = m_freq;
         header_param.fft_size = fftsize;
         header_param.freq_resolution = poal_config->multi_freq_fregment_para[ch].fregment[fregment_num].freq_resolution;
+        /* 为避免在一定带宽下，中心频率过小导致起始频率<0，设置前需要对中频做判断 */
+        m_freq =  middle_freq_filter(scan_bw, m_freq);
         executor_set_command(EX_RF_FREQ_CMD, EX_RF_MID_FREQ, ch, &m_freq);
-        io_set_enable_command(PSD_MODE_ENABLE, ch, header_param.fft_size);
 #ifdef PLAT_FORM_ARCH_ARM
     #if (KERNEL_IOCTL_EN == 1)
+        io_set_enable_command(PSD_MODE_ENABLE, ch, header_param.fft_size);
         executor_set_command(EX_WORK_MODE_CMD, mode, ch, &header_param);
         executor_wait_kernel_deal();
     #else
@@ -150,7 +152,7 @@ static  void  executor_fregment_scan(uint32_t fregment_num,uint8_t ch, work_mode
             break;
         }
     }
-    printf_info("Exit fregment scan function\n");
+    printf_debug("Exit fregment scan function\n");
 }
 
 static inline void  executor_points_scan(uint8_t ch, work_mode mode)
@@ -264,14 +266,14 @@ loop:   printf_info("######wait to deal work######\n");
                 case OAL_FAST_SCAN_MODE:
                 case OAL_MULTI_ZONE_SCAN_MODE:
                 {   
-                    printf_info("scan segment count: %d\n", poal_config->multi_freq_fregment_para[ch].freq_segment_cnt);
+                    printf_debug("scan segment count: %d\n", poal_config->multi_freq_fregment_para[ch].freq_segment_cnt);
                     if(poal_config->multi_freq_fregment_para[ch].freq_segment_cnt == 0){
                         sleep(1);
                         goto loop;
                     }
                     if(poal_config->enable.psd_en || poal_config->enable.spec_analy_en){
                         for(j = 0; j < poal_config->multi_freq_fregment_para[ch].freq_segment_cnt; j++){
-                            printf_info("Segment Scan [%d]\n", j);
+                            printf_debug("Segment Scan [%d]\n", j);
                             executor_fregment_scan(j, ch, poal_config->work_mode);
                         }
                     }else{

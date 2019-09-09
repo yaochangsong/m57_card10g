@@ -1303,7 +1303,7 @@ signalnum_flag  fft_fuzzy_computing(int threshordnum,short *iqdata,int32_t fftsi
     printf_debug("===============================fftstate.cenfrepointnum=%d,",fftstate.cenfrepointnum);
     for(i=0;i<fftstate.cenfrepointnum;i++)
     {
-        if(fftstate.z[i]-fftstate.y[i]<(fftsize/15))
+        if(fftstate.z[i]-fftstate.y[i]<(fftsize/fftsize))
         {
             //窄带信号
             printf_debug("============窄带信号===============\n");
@@ -1374,8 +1374,8 @@ signalnum_flag  fft_fuzzy_computing(int threshordnum,short *iqdata,int32_t fftsi
             writefileArr("firstmozhihann.txt",fftdata.mozhi, fftsize);
         
 #else
-           // writefileArr("/run/firstsmoothdatahann.txt",fftdata.smoothdata, fftsize);
-           // writefileArr("/run/firstmozhihann.txt",fftdata.mozhi, fftsize);
+            writefileArr("/run/firstsmoothdatahann.txt",fftdata.smoothdata, fftsize);
+            writefileArr("/run/firstmozhihann.txt",fftdata.mozhi, fftsize);
 #endif
 
             calculatecenterfrequency(fftdata.mozhi,fftsize);                   //5 计算中心频率
@@ -1430,8 +1430,8 @@ int fft_Precise_calculation(int threshordnum,short *iqdata,int32_t fftsize,int d
     writefileArr("secondmozhihann.txt",fftdata.mozhi, fftsize);
 
 #else
-   // writefileArr("/run/secondsmoothdatahann.txt",fftdata.smoothdata, fftsize);
-   // writefileArr("/run/secondmozhihann.txt",fftdata.mozhi, fftsize);
+    writefileArr("/run/secondsmoothdatahann.txt",fftdata.smoothdata, fftsize);
+    writefileArr("/run/secondmozhihann.txt",fftdata.mozhi, fftsize);
 #endif
     float minvalue;
     float maxvalue;
@@ -1744,7 +1744,7 @@ void xulitestfft(void)
     int fftsize=1024*1024;
     int i=0;
     fft_result *temp;
-    Verificationfloat("rawdata0828.txt",data,2*1024*1024);
+    Verificationfloat("rawdata0905.txt",data,2*1024*1024);
     //Verificationfloat("rawdata0813.txt",data,2*1024*1024);
     fft_iqdata_handle(0,data,fftsize,2*1024*1024);//下发门限，iq数据，fft大小，下发数据长度
  

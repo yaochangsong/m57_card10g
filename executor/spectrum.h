@@ -17,7 +17,7 @@
 #define MHZ(x) ((long long)(x*1000000.0 + .5))
 #define calc_resolution(bw_hz, fft_size)  (1.2288*bw_hz/fft_size)
 
-#define middle_freq_filter(bw, mfreq)    ((bw/2) > (mfreq) ? (bw/2+MHZ(10)) : (mfreq))
+#define middle_freq_filter(bw, mfreq)    ((bw/2) >= (mfreq) ? (bw/2+MHZ(10)) : (mfreq))
 
 typedef int16_t fft_data_type;
 

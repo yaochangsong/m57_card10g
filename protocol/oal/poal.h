@@ -162,6 +162,7 @@ struct network_st{
 struct control_st{
     uint8_t remote_local;               /* 本控 or 远控 */
     uint8_t fft_noise_threshold;        /* FFT 计算噪音门限 */
+    uint32_t spectrum_time_interval;
 }__attribute__ ((packed));
 
 
@@ -225,6 +226,23 @@ struct poal_status_infor{
     
 }__attribute__ ((packed));
 
+struct calibration_specturm_info_st{
+    uint64_t start_freq[40];
+    uint64_t end_freq[40];
+    int power_level[40];
+};
+
+struct calibration_analysis_info_st{
+    uint64_t start_freq[40];
+    uint64_t end_freq[40];
+    int power_level[40];
+};
+
+struct calibration_info_st{
+    struct calibration_specturm_info_st specturm;
+    struct calibration_analysis_info_st analysis;
+};
+
 
 struct poal_config{
     uint8_t cid;
@@ -237,7 +255,8 @@ struct poal_config{
     struct rf_para_st rf_para[MAX_RADIO_CHANNEL_NUM];
     struct network_st network;
     struct control_st ctrl_para;
-	struct poal_status_infor status_para; 
+    struct poal_status_infor status_para; 
+    struct calibration_info_st cal_level;
     uint8_t (*assamble_response_data)(uint32_t *, void *);
     void (*send_active)(void *);
 }__attribute__ ((packed));

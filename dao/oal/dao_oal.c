@@ -764,6 +764,35 @@ void read_config(void *root_config)
     fre_config->oal_config.enable.direction_en = atoi(read_config_file_single("dataOutPutEn","directionEn")) ;
     printf_debug("读取............................directionEn = %d\n",fre_config->oal_config.enable.direction_en);
 
+    fre_config->oal_config.ctrl_para.spectrum_time_interval = atoi(read_config_file_single("controlPara","spectrum_time_interval")) ;
+    printf_debug("spectrum_timer_interval = %d\n",fre_config->oal_config.ctrl_para.spectrum_time_interval);
+
+    char indexvalue[32] = {0};
+    printf_debug("sizeof = %d\n", sizeof(fre_config->oal_config.cal_level.specturm.start_freq)/sizeof(uint64_t));
+    for(int i = 0; i<sizeof(fre_config->oal_config.cal_level.specturm.start_freq)/sizeof(uint64_t); i++){
+        sprintf(indexvalue, "%d", i);
+        fre_config->oal_config.cal_level.specturm.start_freq[i]  = atol(read_config_file_array("psd_power","index",indexvalue,"start_requency")) ;
+        fre_config->oal_config.cal_level.specturm.end_freq[i]  = atol(read_config_file_array("psd_power","index",indexvalue,"end_requency")) ;
+        fre_config->oal_config.cal_level.specturm.power_level[i]  = atoi(read_config_file_array("psd_power","index",indexvalue,"level")) ;
+
+        printf_debug("indexvalue=%s\n", indexvalue);
+
+        printf_debug("read calbration start_freq = %llu\n",fre_config->oal_config.cal_level.specturm.start_freq[i]);
+        printf_debug("read calbration end_freq = %llu\n",fre_config->oal_config.cal_level.specturm.end_freq[i]);
+        printf_debug("read calbration power_level = %d\n",fre_config->oal_config.cal_level.specturm.power_level[i]);
+    }
+
+    /*-----------------------------------------------*/
+    for(int i = 0; i<sizeof(fre_config->oal_config.cal_level.analysis.start_freq)/sizeof(uint64_t); i++){
+        sprintf(indexvalue, "%d", i);
+        fre_config->oal_config.cal_level.analysis.start_freq[i]  = atol(read_config_file_array("analysis_power","index",indexvalue,"start_requency")) ;
+        fre_config->oal_config.cal_level.analysis.end_freq[i]  = atol(read_config_file_array("analysis_power","index",indexvalue,"end_requency")) ;
+        fre_config->oal_config.cal_level.analysis.power_level[i]  = atoi(read_config_file_array("analysis_power","index",indexvalue,"level")) ;
+        printf_debug("analysis_power read calbration start_freq = %llu\n",fre_config->oal_config.cal_level.analysis.start_freq[i]);
+        printf_debug("analysis_power read calbration end_freq = %llu\n",fre_config->oal_config.cal_level.analysis.end_freq[i]);
+        printf_debug("analysis_power read calbration power_level = %d\n",fre_config->oal_config.cal_level.analysis.power_level[i]);
+    }
+
     fre_config->oal_config.multi_freq_point_param[0].cid  = atoi(read_config_file_array("channel","index","0","cid")) ;
     printf_debug("读取............................cid = %d\n",fre_config->oal_config.multi_freq_point_param[0].cid);
 

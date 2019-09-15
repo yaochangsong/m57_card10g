@@ -57,7 +57,7 @@ static inline int8_t executor_wait_kernel_deal(void)
     return 0;
 }
 
-static  void  executor_fregment_scan(uint32_t fregment_num,uint8_t ch, work_mode mode)
+static  int8_t  executor_fregment_scan(uint32_t fregment_num,uint8_t ch, work_mode mode)
 {
     struct poal_config *poal_config = &(config_get_config()->oal_config);
 
@@ -77,6 +77,14 @@ static  void  executor_fregment_scan(uint32_t fregment_num,uint8_t ch, work_mode
     s_freq = poal_config->multi_freq_fregment_para[ch].fregment[fregment_num].start_freq;
     e_freq = poal_config->multi_freq_fregment_para[ch].fregment[fregment_num].end_freq;
 #if (RF_ADRV9009_IIO == 1)
+    if((s_freq >= KU_FREQUENCY_START) && (s_freq <= KU_FREQUENCY_END)){
+        s_freq -= KU_FREQUENCY_OFFSET;
+    }
+    if((e_freq >= KU_FREQUENCY_START) && (e_freq <= KU_FREQUENCY_END)){
+        e_freq -= KU_FREQUENCY_OFFSET;
+    }
+#endif
+#if (RF_ADRV9009_IIO == 1)
     scan_bw = RF_ADRV9009_BANDWITH;
 #else
     scan_bw = poal_config->rf_para[ch].mid_bw;
@@ -85,7 +93,7 @@ static  void  executor_fregment_scan(uint32_t fregment_num,uint8_t ch, work_mode
     
     if(e_freq < s_freq || scan_bw <= 0){
         printf_err("frequency error,c_freq=%llu, scan_bw=%u\n", c_freq, scan_bw);
-        return;
+        return -1;
     }
     
     c_freq = (e_freq - s_freq);
@@ -95,6 +103,8 @@ static  void  executor_fregment_scan(uint32_t fregment_num,uint8_t ch, work_mode
     if(c_freq % scan_bw){
         is_remainder = 1;
     }
+    if((scan_count == 0) && (is_remainder == 0))
+        return -1;
     printf_debug("e_freq=%llu, s_freq=%llu, fftsize=%u\n", e_freq, s_freq, fftsize);
     printf_debug("scan_bw =%u,scan_count=%d, is_remainder=%d\n", scan_bw, scan_count, is_remainder);
     executor_set_command(EX_RF_FREQ_CMD,  EX_RF_MID_BW, ch, &scan_bw);
@@ -141,6 +151,8 @@ static  void  executor_fregment_scan(uint32_t fregment_num,uint8_t ch, work_mode
             if(poal_config->enable.spec_analy_en){
                 spectrum_analysis_user_deal(&header_param);
             }
+        }else{
+            usleep(500);
         }
     #endif
 #else
@@ -153,6 +165,7 @@ static  void  executor_fregment_scan(uint32_t fregment_num,uint8_t ch, work_mode
         }
     }
     printf_debug("Exit fregment scan function\n");
+    return 0;
 }
 
 static inline void  executor_points_scan(uint8_t ch, work_mode mode)
@@ -274,7 +287,10 @@ loop:   printf_info("######wait to deal work######\n");
                     if(poal_config->enable.psd_en || poal_config->enable.spec_analy_en){
                         for(j = 0; j < poal_config->multi_freq_fregment_para[ch].freq_segment_cnt; j++){
                             printf_debug("Segment Scan [%d]\n", j);
-                            executor_fregment_scan(j, ch, poal_config->work_mode);
+                            if(executor_fregment_scan(j, ch, poal_config->work_mode) == -1){
+                                sleep(1);
+                                goto loop;
+                            }
                         }
                     }else{
                         io_set_enable_command(PSD_MODE_DISABLE, ch, 0);
@@ -561,7 +577,7 @@ void executor_init(void)
     for(i = 0; i<MAX_RADIO_CHANNEL_NUM ; i++){
         io_set_enable_command(PSD_MODE_DISABLE, i, 0);
         io_set_enable_command(AUDIO_MODE_DISABLE, i, 0);
-        executor_set_command(EX_RF_FREQ_CMD, EX_RF_ATTENUATION, 0, &poal_config->rf_para[i].attenuation);
+        //executor_set_command(EX_RF_FREQ_CMD, EX_RF_ATTENUATION, 0, &poal_config->rf_para[i].attenuation);
     }
     sem_init(&(work_sem.notify_deal), 0, 0);
     sem_init(&(work_sem.kernel_sysn), 0, 0);

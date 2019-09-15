@@ -19,6 +19,11 @@
 
 #define middle_freq_filter(bw, mfreq)    ((bw/2) >= (mfreq) ? (bw/2+MHZ(10)) : (mfreq))
 
+#define KU_FREQUENCY_START   10700000000 //10.7G
+#define KU_FREQUENCY_END     12750000000 //12.75G
+#define KU_FREQUENCY_OFFSET  9750000000  //9.75G 
+
+
 typedef int16_t fft_data_type;
 
 struct spectrum_st{

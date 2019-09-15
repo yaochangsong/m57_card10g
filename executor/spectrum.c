@@ -223,6 +223,27 @@ void spectrum_analysis_user_deal(struct spectrum_header_param *param)
     pthread_cond_signal(&spectrum_analysis_cond);
 }
 
+int32_t spectrum_analysis_level_calibration(uint64_t m_freq)
+{
+    struct poal_config *poal_config = &(config_get_config()->oal_config);
+    int32_t cal_value = -196, found = 0;
+    int i;
+    
+    for(i = 0; i< sizeof(poal_config->cal_level.analysis.start_freq)/sizeof(uint64_t); i++){
+        if((m_freq >= poal_config->cal_level.analysis.start_freq[i]*1000) && (m_freq < poal_config->cal_level.analysis.end_freq[i]*1000)){
+            cal_value = poal_config->cal_level.analysis.power_level[i];
+            found = 1;
+            break;
+        }
+    }
+    if(found){
+        printf_warn("find the calibration level: %llu, %d\n", m_freq, cal_value);
+    }else{
+        printf_warn("Not find the calibration level, use default value: %d\n", cal_value);
+    }
+    return cal_value;
+}
+
 /* function: read or write fft result 
     @result =NULL : read
     @result != NUL: write
@@ -232,6 +253,8 @@ void *spectrum_rw_fft_result(fft_result *result, uint64_t s_freq_hz, float freq_
 {
     int i;
     static struct spectrum_fft_result_st s_fft_result, *pfft = NULL;
+    struct spectrum_st *ps;
+    ps = &_spectrum;
     #define SIGNAL_ADD_FIXED_VALUE 196//217
     
     LOCK_SP_RESULT();
@@ -251,8 +274,8 @@ void *spectrum_rw_fft_result(fft_result *result, uint64_t s_freq_hz, float freq_
         pfft->mid_freq_hz[i] = s_freq_hz + (result->centfeqpoint[i] - (SINGLE_SIDE_BAND_POINT_RATE*fft_size))*freq_resolution;
         pfft->peak_value = s_freq_hz + (result->maximum_x - (SINGLE_SIDE_BAND_POINT_RATE*fft_size))*freq_resolution;
         pfft->bw_hz[i] = result->bandwidth[i] * freq_resolution;
-        pfft->level[i] = result->arvcentfreq[i] - SIGNAL_ADD_FIXED_VALUE;
-        printf_debug("s_freq_hz=%llu, freq_resolution=%f, fft_size=%u, %f\n", s_freq_hz, freq_resolution, fft_size, (SINGLE_SIDE_BAND_POINT_RATE*fft_size));
+        pfft->level[i] = result->arvcentfreq[i] + spectrum_analysis_level_calibration(ps->param.m_freq);//spectrum_analysis_level_calibration(pfft->mid_freq_hz[i]);
+        printf_debug("m_freq=%llu,s_freq_hz=%llu, freq_resolution=%f, fft_size=%u, %f\n", ps->param.m_freq, s_freq_hz, freq_resolution, fft_size, (SINGLE_SIDE_BAND_POINT_RATE*fft_size));
         printf_debug("mid_freq_hz=%d, bw_hz=%d, level=%f\n", result->centfeqpoint[i], result->bandwidth[i], result->arvcentfreq[i]);
     }
 exit:
@@ -280,24 +303,39 @@ fft_data_type *spectrum_get_fft_data(uint32_t *len)
     return data;
 }
 
-void spectrum_level_calibration(fft_data_type *fftdata, uint32_t fft_valid_len, uint32_t fft_size)
+void spectrum_level_calibration(fft_data_type *fftdata, uint32_t fft_valid_len, uint32_t fft_size, uint64_t m_freq)
 {
-    int32_t cal_value = -4660;
-
+    struct poal_config *poal_config = &(config_get_config()->oal_config);
+    int32_t cal_value = -4660, found = 0;
+    int i;
+    
+    for(i = 0; i< sizeof(poal_config->cal_level.analysis.start_freq)/sizeof(uint64_t); i++){
+        if((m_freq >= poal_config->cal_level.specturm.start_freq[i]*1000) && (m_freq < poal_config->cal_level.specturm.end_freq[i]*1000)){
+            cal_value = poal_config->cal_level.specturm.power_level[i];
+            found = 1;
+            break;
+        }
+    }
+    if(found){
+        printf_warn("find the calibration level: %llu, %d\n", m_freq, cal_value);
+    }else{
+        printf_warn("Not find the calibration level, use default value: %d\n", cal_value);
+    }
+        
     if(fft_size == 512){
-        cal_value = -4600;
+        cal_value = cal_value - 20;
     }else if(fft_size == 1024){
-        cal_value = -4610;
+        cal_value = cal_value - 10;
     }else if(fft_size == 2048){
-        cal_value = -4660;
+        cal_value = cal_value;
     }else if(fft_size == 4096){
-        cal_value = -4700;
+        cal_value = cal_value + 10;
     }else if(fft_size == 8192){
-        cal_value = -4740;
+        cal_value = cal_value + 20;
     }else{
         printf_warn("fft size is not set, set default calibration level!!\n");
     }
-    printf_debug("cal_value:%d, fft size:%u,%u\n", cal_value, fft_size, fft_valid_len);
+    printf_warn("freq:[%llu], The final cal_value:%d, fft size:%u,%u\n", m_freq, cal_value, fft_size, fft_valid_len);
     SSDATA_MUL_OFFSET(fftdata, 10, fft_valid_len);
     SSDATA_CUT_OFFSET(fftdata, cal_value, fft_valid_len);
 
@@ -318,7 +356,7 @@ int32_t spectrum_send_fft_data_interval(void)
     }
     fft_send_payload = spectrum_fft_data_order(ps, &fft_order_len);
     printf_debug("fft order len[%u], ps->fft_len=%u\n", fft_order_len, ps->fft_len);
-    spectrum_level_calibration(fft_send_payload, fft_order_len, ps->param.fft_size);
+    spectrum_level_calibration(fft_send_payload, fft_order_len, ps->param.fft_size, ps->param.m_freq);
     spectrum_send_fft_data((void *)fft_send_payload, fft_order_len*sizeof(fft_data_type), &ps->param);
     ps->fft_data_ready = false;
     UNLOCK_SP_DATA();

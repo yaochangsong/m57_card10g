@@ -41,18 +41,20 @@ static int16_t *specturm_rx_iq_read(int32_t *nbytes)
     nbytes_rx = 0;
     goto exit;
    #endif
-    
+/*    
     if(write_file_cnter++ ==10) {
         sprintf(strbuf, "/run/wav_%d", write_file_cnter);
         printfi("write rx0 iq data to:[len=%d]%s\n", nbytes_rx/2, strbuf);
         write_file_in_int16((void*)(iqdata), nbytes_rx/2, strbuf);
     }
+*/     
     printf_info("iio read data len:[%d]\n", nbytes_rx);
     printf_info("rx0 iqdata:\n");
     for(i = 0; i< 10; i++){
         printfi("%d ",*(int16_t*)(iqdata+i));
     }
     printfi("\n");
+   
 exit:
     UNLOCK_IQ_DATA();
     *nbytes = nbytes_rx;
@@ -243,6 +245,8 @@ void spectrum_analysis_user_deal(struct spectrum_header_param *param)
     UNLOCK_SP_DATA();
     /* notify thread can start to deal fft result */
     pthread_cond_signal(&spectrum_analysis_cond);
+    /* to reduce cpu usage */
+    usleep(1000);
 }
 
 int32_t spectrum_analysis_level_calibration(uint64_t m_freq)

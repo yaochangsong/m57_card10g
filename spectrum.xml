@@ -6,7 +6,7 @@
     <mac>38:2c:4a:ba:57:1d</mac>
     <gateway>192.168.1.1</gateway>
     <netmask>255.255.255.0</netmask>
-    <ipaddress>192.168.1.114</ipaddress>
+    <ipaddress>192.168.1.117</ipaddress>
     <port>1325</port>
   </network>
   <controlPara>
@@ -26,7 +26,7 @@
   </controlPara>
   <statusPara>
     <softVersion>
-      <app>1.0.0-Sep 11 2019.02:26:08</app>
+      <app>1.0.0-Sep 16 2019.02:26:08</app>
       <kernel>v1.0-20190702-134310</kernel>
       <uboot>v1.0-20190702-134310</uboot>
     </softVersion>
@@ -65,27 +65,27 @@
     <psd_power index="0">
 	<start_requency>50000</start_requency>
 	<end_requency>70000</end_requency>
-	<level>-4420</level>
+	<level>-3950</level>
     </psd_power>
     <psd_power index="1">
 	<start_requency>70000</start_requency>
 	<end_requency>100000</end_requency>
-	<level>-4370</level>
+	<level>-3950</level>
     </psd_power>
     <psd_power index="2">
 	<start_requency>100000</start_requency>
 	<end_requency>120000</end_requency>
-	<level>-4420</level>
+	<level>-4050</level>
     </psd_power>
     <psd_power index="3">
 	<start_requency>120000</start_requency>
 	<end_requency>140000</end_requency>
-	<level>-4330</level>
+	<level>-4050</level>
     </psd_power>
     <psd_power index="4">
 	<start_requency>140000</start_requency>
 	<end_requency>160000</end_requency>
-	<level>-4360</level>
+	<level>-4050</level>
     </psd_power>
     <psd_power index="5">
 	<start_requency>160000</start_requency>
@@ -263,14 +263,14 @@
         <level>-0</level>
     </psd_power>
     <analysis_power index="0">
-	<start_requency>50000</start_requency>
+	<start_requency>20000</start_requency>
 	<end_requency>70000</end_requency>
-	<level>-196</level>
+	<level>-149</level>
     </analysis_power>
     <analysis_power index="1">
 	<start_requency>70000</start_requency>
 	<end_requency>100000</end_requency>
-	<level>-175</level>
+	<level>-149</level>
     </analysis_power>
     <analysis_power index="2">
 	<start_requency>100000</start_requency>
@@ -285,7 +285,7 @@
     <analysis_power index="4">
 	<start_requency>140000</start_requency>
 	<end_requency>160000</end_requency>
-	<level>-183</level>
+	<level>-162</level>
     </analysis_power>
     <analysis_power index="5">
 	<start_requency>160000</start_requency>

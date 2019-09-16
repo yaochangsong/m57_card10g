@@ -17,7 +17,8 @@
 #define MHZ(x) ((long long)(x*1000000.0 + .5))
 #define calc_resolution(bw_hz, fft_size)  (1.2288*bw_hz/fft_size)
 
-#define middle_freq_filter(bw, mfreq)    ((bw/2) >= (mfreq) ? (bw/2+MHZ(10)) : (mfreq))
+#define delta_bw  MHZ(10)
+#define middle_freq_resetting(bw, mfreq)    ((bw/2) >= (mfreq) ? (bw/2+delta_bw) : (mfreq))
 
 #define KU_FREQUENCY_START   10700000000 //10.7G
 #define KU_FREQUENCY_END     12750000000 //12.75G

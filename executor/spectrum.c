@@ -155,10 +155,30 @@ fft_data_type *spectrum_fft_data_order(struct spectrum_st *ps, uint32_t *result_
         printf_info("the remaining fftdata is: %u\n", *result_fft_size);
     }
 
+    /*-- 4 step: when middle frequency is less than BW/2 [100MHz], we need to resetting middle frequency
+               (see middle_freq_resetting function) ; when sending data, we need to restore the settings and remove 
+               the redundant data.
+                the left extra data:  (mf0 - bw0/2 - deltabw)* fftSize /BW; [mf0 - bw0/2 >= deltabw]
+                the right extra data: (BW + deltabw - mf0 - bw0/2) *fftSize / BW; [BW + deltabw >= mf0 + bw0/2]
+     */
+    uint32_t left_extra_single_size = 0, right_extra_single_size = 0;
+    if(ps->param.m_freq <= RF_ADRV9009_BANDWITH/2){
+        if(ps->param.m_freq - ps->param.bandwidth/2 >= delta_bw){
+            left_extra_single_size = (ps->param.m_freq - ps->param.bandwidth/2 - delta_bw) * (*result_fft_size) / RF_ADRV9009_BANDWITH;
+        }else{
+            left_extra_single_size = 0;
+        }
+        if(RF_ADRV9009_BANDWITH + delta_bw > ps->param.m_freq + ps->param.bandwidth/2){
+            right_extra_single_size = (RF_ADRV9009_BANDWITH + delta_bw - ps->param.m_freq - ps->param.bandwidth/2) * (*result_fft_size) / RF_ADRV9009_BANDWITH;
+        }else{
+            right_extra_single_size = 0;
+        }
+        *result_fft_size = *result_fft_size - right_extra_single_size;
+    }     
 
     /* Returning data requires removing sideband data and excess bandwidth data */
  exit:
-    return (fft_data_type *)((fft_data_type *)ps->fft_short_payload + single_sideband_size + extra_data_single_size);
+    return (fft_data_type *)((fft_data_type *)ps->fft_short_payload + single_sideband_size + extra_data_single_size + left_extra_single_size);
 }
 
 

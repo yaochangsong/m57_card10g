@@ -135,7 +135,7 @@ static  int8_t  executor_fregment_scan(uint32_t fregment_num,uint8_t ch, work_mo
         header_param.fft_size = fftsize;
         header_param.freq_resolution = poal_config->multi_freq_fregment_para[ch].fregment[fregment_num].freq_resolution;
         /* 为避免在一定带宽下，中心频率过小导致起始频率<0，设置前需要对中频做判断 */
-        m_freq =  middle_freq_filter(scan_bw, m_freq);
+        m_freq =  middle_freq_resetting(scan_bw, m_freq);
         executor_set_command(EX_RF_FREQ_CMD, EX_RF_MID_FREQ, ch, &m_freq);
 #ifdef PLAT_FORM_ARCH_ARM
     #if (KERNEL_IOCTL_EN == 1)

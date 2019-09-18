@@ -310,6 +310,7 @@ int16_t *iio_read_rx0_data(ssize_t *rsize)
 {
 	ssize_t nbytes_rx;
 	if(stop == true){
+		sleep(1);
 		return NULL;
 	}
 	printf_info("* iio_read_rx_data\n");

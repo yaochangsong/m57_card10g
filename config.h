@@ -93,6 +93,8 @@ PLAT_FORM_ARCH_ARM
 
 #define KERNEL_IOCTL_EN 0
 
+#define CALIBRATION_FILE_EN 1
+
 #ifdef PLAT_FORM_ARCH_ARM
 #define  RF_ADRV9009_IIO   1
 #else 

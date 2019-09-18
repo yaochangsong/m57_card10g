@@ -73,15 +73,15 @@ struct output_en_st{
 
 /* 频点参数 */
 struct freq_points_st{
-    int16_t index;
-    uint64_t center_freq; /* rf */
-    uint64_t bandwidth;   /* rf */
-    float freq_resolution;
-    volatile uint32_t fft_size;
     uint8_t d_method;
-    uint32_t d_bandwith;
     uint8_t  noise_en;
     int8_t noise_thrh;
+    int16_t index;
+    float freq_resolution;
+    volatile uint32_t fft_size;
+    uint32_t d_bandwith;
+    uint64_t center_freq; /* rf */
+    uint64_t bandwidth;   /* rf */
 }__attribute__ ((packed));
 
 
@@ -102,9 +102,9 @@ struct multi_freq_point_para_st{
 /* 子通道解调参数 */
 struct sub_channel_freq_para_st{
     uint8_t cid;
-    float audio_sample_rate;
     uint8_t frame_drop_cnt;
     uint16_t sub_channel_num;
+    float audio_sample_rate;
     struct freq_points_st  sub_ch[MAX_SIGNAL_CHANNEL_NUM];
 }__attribute__ ((packed));
 
@@ -131,16 +131,16 @@ struct multi_freq_fregment_para_st{
 /* 射频参数 */
 struct rf_para_st{
     uint8_t cid;
-    uint64_t mid_freq;              /* 中心频率 */
     uint8_t rf_mode_code;           /* 射频模式码; 0：低失真 1：常规 2：低噪声 */
     uint8_t gain_ctrl_method;       /* 增益方法; 0：手动控制（MGC） 1：自动控制（AGC）*/
     int8_t mgc_gain_value;          /* MGC 增益值; 单位 dB，精度 1dB*/
-    uint32_t agc_ctrl_time;         /* AGC 控制时间; 单位：10 微秒 快速：100 微秒  中速：1000 微秒 慢速：10000 微秒*/
     int8_t agc_mid_freq_out_level;  /* AGC 中频 输出幅度;单位，dBm 默认值：-10dBm*/
-    uint32_t mid_bw;                /* 射频中频带宽; 0~2^32 */
     uint8_t antennas_elect;         /* 天线选择 */
     int8_t  attenuation;            /* 射频衰减 ;  -100 至 120 单位 dB，精度 1dB*/
     int16_t temperature;            /* 射频温度 */
+    uint32_t agc_ctrl_time;         /* AGC 控制时间; 单位：10 微秒 快速：100 微秒  中速：1000 微秒 慢速：10000 微秒*/
+    uint32_t mid_bw;                /* 射频中频带宽; 0~2^32 */
+    uint64_t mid_freq;              /* 中心频率 */
 }__attribute__ ((packed));
 
 /* 控制参数 */
@@ -152,10 +152,10 @@ struct ctrl_st{
 /* 网络参数 */
 struct network_st{
     uint8_t mac[6];
+    uint16_t port;
     uint32_t ipaddress;
     uint32_t netmask;
     uint32_t gateway;
-    uint16_t port;
 }__attribute__ ((packed));
 
 /* 控制参数 */
@@ -227,15 +227,15 @@ struct poal_status_infor{
 }__attribute__ ((packed));
 
 struct calibration_specturm_info_st{
-    uint64_t start_freq[40];
-    uint64_t end_freq[40];
-    int power_level[40];
+    uint64_t start_freq[32];
+    uint64_t end_freq[32];
+    int power_level[32];
 }__attribute__ ((packed));
 
 struct calibration_analysis_info_st{
-    uint64_t start_freq[40];
-    uint64_t end_freq[40];
-    int power_level[40];
+    uint64_t start_freq[32];
+    uint64_t end_freq[32];
+    int power_level[32];
 }__attribute__ ((packed));
 
 struct calibration_info_st{

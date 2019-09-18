@@ -18,6 +18,8 @@
 #include "config.h"
 
 mxml_node_t *whole_root;
+mxml_node_t *calibration_root;
+
 spectrum spectrum_array;
 spectrum_single spectrum_sing;
 
@@ -450,7 +452,7 @@ const char *read_config_file_single(const char *parent_element,const char *eleme
    函数将返回数组元素变量值
 */
 
-const char *read_config_file_array(const char *array,const char *name,const char *value,const char *element)
+const char *read_config_file_array(mxml_node_t *root, const char *array,const char *name,const char *value,const char *element)
 {
 #if DAO_XML == 1
     printf_debug("开始读取array\n");
@@ -458,10 +460,10 @@ const char *read_config_file_array(const char *array,const char *name,const char
     mxml_node_t *parent_node,*node;
     //printf_debug("load xml config file\n");
 
-    parent_node = mxmlFindElement(whole_root, whole_root, array, name,value, MXML_DESCEND);
+    parent_node = mxmlFindElement(root, root, array, name,value, MXML_DESCEND);
     if(parent_node == NULL) return NULL;
 
-    node = mxmlFindElement(parent_node,whole_root, element,NULL, NULL,MXML_DESCEND);
+    node = mxmlFindElement(parent_node,root, element,NULL, NULL,MXML_DESCEND);
     if(node == NULL) return NULL;
 
     const char *string = mxmlGetText(node, NULL);
@@ -707,6 +709,42 @@ static void *dao_load_root(void *root)
 #endif
 }
 
+void read_calibration_file(void *config)
+{
+    s_config *sys_config;
+    struct calibration_info_st *cali_config;
+    char indexvalue[32] = {0};
+    mxml_node_t *root;
+    root = calibration_root;
+    sys_config = (s_config*)config;
+    
+    cali_config = &sys_config->oal_config.cal_level; 
+    printf_debug("sizeof = %d\n", sizeof(cali_config->specturm.start_freq)/sizeof(uint64_t));
+    for(int i = 0; i<sizeof(cali_config->specturm.start_freq)/sizeof(uint64_t); i++){
+        sprintf(indexvalue, "%d", i);
+        cali_config->specturm.start_freq[i]  = atol(read_config_file_array(root, "psd_power","index",indexvalue,"start_requency")) ;
+        cali_config->specturm.end_freq[i]  = atol(read_config_file_array(root,"psd_power","index",indexvalue,"end_requency")) ;
+        cali_config->specturm.power_level[i]  = atoi(read_config_file_array(root,"psd_power","index",indexvalue,"level")) ;
+
+        printf_debug("indexvalue=%s\n", indexvalue);
+
+        printf_debug("read calbration start_freq = %llu\n",cali_config->specturm.start_freq[i]);
+        printf_debug("read calbration end_freq = %llu\n",cali_config->specturm.end_freq[i]);
+        printf_debug("read calbration power_level = %d\n",cali_config->specturm.power_level[i]);
+    }
+
+    /*-----------------------------------------------*/
+    for(int i = 0; i<sizeof(cali_config->analysis.start_freq)/sizeof(uint64_t); i++){
+        sprintf(indexvalue, "%d", i);
+        cali_config->analysis.start_freq[i]  = atol(read_config_file_array(root,"analysis_power","index",indexvalue,"start_requency")) ;
+        cali_config->analysis.end_freq[i]  = atol(read_config_file_array(root,"analysis_power","index",indexvalue,"end_requency")) ;
+        cali_config->analysis.power_level[i]  = atoi(read_config_file_array(root,"analysis_power","index",indexvalue,"level")) ;
+        printf_debug("analysis_power read calbration start_freq = %llu\n",cali_config->analysis.start_freq[i]);
+        printf_debug("analysis_power read calbration end_freq = %llu\n",cali_config->analysis.end_freq[i]);
+        printf_debug("analysis_power read calbration power_level = %d\n",cali_config->analysis.power_level[i]);
+    }
+
+}
 
 void read_config(void *root_config)
 {
@@ -714,9 +752,12 @@ void read_config(void *root_config)
 
     s_config *fre_config;
 
+    mxml_node_t *root;
+    root = whole_root;
+
     fre_config = (s_config*)root_config;
 
-     if(whole_root == NULL)  
+     if(root == NULL)  
     {
         printf_debug("读取失败\n");
         return NULL;
@@ -766,58 +807,32 @@ void read_config(void *root_config)
 
     fre_config->oal_config.ctrl_para.spectrum_time_interval = atoi(read_config_file_single("controlPara","spectrum_time_interval")) ;
     printf_debug("spectrum_timer_interval = %d\n",fre_config->oal_config.ctrl_para.spectrum_time_interval);
-
-    char indexvalue[32] = {0};
-    printf_debug("sizeof = %d\n", sizeof(fre_config->oal_config.cal_level.specturm.start_freq)/sizeof(uint64_t));
-    for(int i = 0; i<sizeof(fre_config->oal_config.cal_level.specturm.start_freq)/sizeof(uint64_t); i++){
-        sprintf(indexvalue, "%d", i);
-        fre_config->oal_config.cal_level.specturm.start_freq[i]  = atol(read_config_file_array("psd_power","index",indexvalue,"start_requency")) ;
-        fre_config->oal_config.cal_level.specturm.end_freq[i]  = atol(read_config_file_array("psd_power","index",indexvalue,"end_requency")) ;
-        fre_config->oal_config.cal_level.specturm.power_level[i]  = atoi(read_config_file_array("psd_power","index",indexvalue,"level")) ;
-
-        printf_debug("indexvalue=%s\n", indexvalue);
-
-        printf_debug("read calbration start_freq = %llu\n",fre_config->oal_config.cal_level.specturm.start_freq[i]);
-        printf_debug("read calbration end_freq = %llu\n",fre_config->oal_config.cal_level.specturm.end_freq[i]);
-        printf_debug("read calbration power_level = %d\n",fre_config->oal_config.cal_level.specturm.power_level[i]);
-    }
-
-    /*-----------------------------------------------*/
-    for(int i = 0; i<sizeof(fre_config->oal_config.cal_level.analysis.start_freq)/sizeof(uint64_t); i++){
-        sprintf(indexvalue, "%d", i);
-        fre_config->oal_config.cal_level.analysis.start_freq[i]  = atol(read_config_file_array("analysis_power","index",indexvalue,"start_requency")) ;
-        fre_config->oal_config.cal_level.analysis.end_freq[i]  = atol(read_config_file_array("analysis_power","index",indexvalue,"end_requency")) ;
-        fre_config->oal_config.cal_level.analysis.power_level[i]  = atoi(read_config_file_array("analysis_power","index",indexvalue,"level")) ;
-        printf_debug("analysis_power read calbration start_freq = %llu\n",fre_config->oal_config.cal_level.analysis.start_freq[i]);
-        printf_debug("analysis_power read calbration end_freq = %llu\n",fre_config->oal_config.cal_level.analysis.end_freq[i]);
-        printf_debug("analysis_power read calbration power_level = %d\n",fre_config->oal_config.cal_level.analysis.power_level[i]);
-    }
-
-    fre_config->oal_config.multi_freq_point_param[0].cid  = atoi(read_config_file_array("channel","index","0","cid")) ;
+    
+    fre_config->oal_config.multi_freq_point_param[0].cid  = atoi(read_config_file_array(root,"channel","index","0","cid")) ;
     printf_debug("读取............................cid = %d\n",fre_config->oal_config.multi_freq_point_param[0].cid);
 
-    fre_config->oal_config.multi_freq_point_param[0].points[0].center_freq  = atoi(read_config_file_array("freqPoint","index","0","centerFreq"));
+    fre_config->oal_config.multi_freq_point_param[0].points[0].center_freq  = atoi(read_config_file_array(root,"freqPoint","index","0","centerFreq"));
     printf_debug("读取............................centerFreq = %d\n",fre_config->oal_config.multi_freq_point_param[0].points[0].center_freq);
 
-    fre_config->oal_config.multi_freq_point_param[0].points[0].bandwidth  = atoi(read_config_file_array("freqPoint","index","0","bandwith"));
+    fre_config->oal_config.multi_freq_point_param[0].points[0].bandwidth  = atoi(read_config_file_array(root,"freqPoint","index","0","bandwith"));
     printf_debug("读取............................bandwith = %d\n",fre_config->oal_config.multi_freq_point_param[0].points[0].bandwidth);
 
-    fre_config->oal_config.multi_freq_point_param[0].points[0].freq_resolution  = atof(read_config_file_array("freqPoint","index","0","freqResolution"));
+    fre_config->oal_config.multi_freq_point_param[0].points[0].freq_resolution  = atof(read_config_file_array(root,"freqPoint","index","0","freqResolution"));
     printf_debug("读取............................freqResolution = %f\n",fre_config->oal_config.multi_freq_point_param[0].points[0].freq_resolution);
 
-    fre_config->oal_config.multi_freq_point_param[0].points[0].fft_size  = atoi(read_config_file_array("freqPoint","index","0","fftSize"));
+    fre_config->oal_config.multi_freq_point_param[0].points[0].fft_size  = atoi(read_config_file_array(root,"freqPoint","index","0","fftSize"));
     printf_debug("读取............................fftSize = %d\n",fre_config->oal_config.multi_freq_point_param[0].points[0].fft_size);
 
-    fre_config->oal_config.multi_freq_point_param[0].points[0].d_method  = atoi(read_config_file_array("freqPoint","index","0","decMethodId"));
+    fre_config->oal_config.multi_freq_point_param[0].points[0].d_method  = atoi(read_config_file_array(root,"freqPoint","index","0","decMethodId"));
     printf_debug("读取............................decMethodId = %d\n",fre_config->oal_config.multi_freq_point_param[0].points[0].d_method);
 
-    fre_config->oal_config.multi_freq_point_param[0].points[0].d_bandwith  = atoi(read_config_file_array("freqPoint","index","0","decBandwidth"));
+    fre_config->oal_config.multi_freq_point_param[0].points[0].d_bandwith  = atoi(read_config_file_array(root,"freqPoint","index","0","decBandwidth"));
     printf_debug("读取............................decBandwidth = %d\n",fre_config->oal_config.multi_freq_point_param[0].points[0].d_bandwith);
 
-    fre_config->oal_config.multi_freq_point_param[0].points[0].noise_en  = atoi(read_config_file_array("freqPoint","index","0","muteSwitch"));
+    fre_config->oal_config.multi_freq_point_param[0].points[0].noise_en  = atoi(read_config_file_array(root,"freqPoint","index","0","muteSwitch"));
     printf_debug("读取............................muteSwitch = %d\n",fre_config->oal_config.multi_freq_point_param[0].points[0].noise_en);
 
-    fre_config->oal_config.multi_freq_point_param[0].points[0].noise_thrh  = atoi(read_config_file_array("freqPoint","index","0","muteThreshold"));
+    fre_config->oal_config.multi_freq_point_param[0].points[0].noise_thrh  = atoi(read_config_file_array(root,"freqPoint","index","0","muteThreshold"));
     printf_debug("读取............................muteThreshold = %d\n",fre_config->oal_config.multi_freq_point_param[0].points[0].noise_thrh);
 
 
@@ -862,5 +877,19 @@ void dao_read_create_config_file(char *file, void *root_config)
     root_config = dao_load_root(root);
 }
 
+void dao_read_calibration_file(char *file, void *config)
+{
+    void *root;
+    FILE *fp;
+    /* read/write or create file */
+    fp = fopen(file, "r");
+    if(fp != NULL){
+        calibration_root = mxmlLoadFile(NULL, fp, MXML_TEXT_CALLBACK);
+        read_calibration_file(config);
+        fclose(fp);
+    }else{
+        printf_err("The calibration file[%s] is not valid!!\n", file);
+    }
+}
 
 

@@ -5,8 +5,10 @@
 /** Defaults configuration values */
 #ifdef PLAT_FORM_ARCH_X86
 #define DEFAULT_CONFIGFILE "spectrum.xml"
+#define CALIBRATION_FILE   "calibration.xml"
 #else
 #define DEFAULT_CONFIGFILE "spectrum.xml"
+#define CALIBRATION_FILE   "calibration.xml"
 #endif
 
 /**
@@ -20,6 +22,7 @@ extern pthread_mutex_t config_mutex;
  */
 typedef struct {
     char *configfile;       /**< @brief name of the config file */
+    char *calibrationfile;
     int daemon;             /**< @brief if daemon > 0, use daemon mode */
     struct poal_config oal_config;
 } s_config;

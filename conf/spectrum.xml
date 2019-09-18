@@ -1,0 +1,499 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<root>
+  <version>1.0</version>
+  <network>
+    <mac>38:2c:4a:ba:57:1d</mac>
+    <gateway>192.168.1.1</gateway>
+    <netmask>255.255.255.0</netmask>
+    <ipaddress>192.168.1.110</ipaddress>
+    <port>1325</port>
+  </network>
+  <controlPara>
+    <ctrlMode>1</ctrlMode>
+    <calibration>1</calibration>
+    <timeSet>1</timeSet>
+    <spectrum_time_interval>200</spectrum_time_interval>
+    <dataOutPutEn>
+      <enable>1</enable>
+      <subChannel>-1</subChannel>
+      <psdEnable>0</psdEnable>
+      <audioEnable>1</audioEnable>
+      <IQEnable>0</IQEnable>
+      <spectrumAnalysisEn>0</spectrumAnalysisEn>
+      <directionEn>0</directionEn>
+    </dataOutPutEn>
+  </controlPara>
+  <statusPara>
+    <softVersion>
+      <app>1.0.0-Sep 17 2019.02:26:08</app>
+      <kernel>v1.0-20190702-134310</kernel>
+      <uboot>v1.0-20190702-134310</uboot>
+    </softVersion>
+    <diskInfo>
+      <diskNum>1</diskNum>
+      <diskNode>
+        <totalSpace>100000000</totalSpace>
+        <freeSpace>5665641</freeSpace>
+      </diskNode>
+    </diskInfo>
+    <clkInfo>
+      <inout>1</inout>
+    </clkInfo>
+    <adInfo>
+      <status>1</status>
+    </adInfo>
+    <fpgaInfo>
+      <temprature>67</temprature>
+    </fpgaInfo>
+    <powerstate>
+      <diskNum>1</diskNum>
+      <diskNode>
+        <totalSpace>100000000</totalSpace>
+        <freeSpace>5665641</freeSpace>
+      </diskNode>
+    </powerstate>
+  </statusPara>
+  <fileStorePara>
+    <iqDataStore>1</iqDataStore>
+    <iqDataBackTrace>1</iqDataBackTrace>
+    <fileQuery>1</fileQuery>
+    <fileDelete>1</fileDelete>
+    <fileStrategy>1</fileStrategy>
+  </fileStorePara>
+  <calibration>
+    <psd_power index="0">
+	<start_requency>50000</start_requency>
+	<end_requency>70000</end_requency>
+	<level>-3950</level>
+    </psd_power>
+    <psd_power index="1">
+	<start_requency>70000</start_requency>
+	<end_requency>100000</end_requency>
+	<level>-3950</level>
+    </psd_power>
+    <psd_power index="2">
+	<start_requency>100000</start_requency>
+	<end_requency>120000</end_requency>
+	<level>-4050</level>
+    </psd_power>
+    <psd_power index="3">
+	<start_requency>120000</start_requency>
+	<end_requency>140000</end_requency>
+	<level>-4050</level>
+    </psd_power>
+    <psd_power index="4">
+	<start_requency>140000</start_requency>
+	<end_requency>160000</end_requency>
+	<level>-4100</level>
+    </psd_power>
+    <psd_power index="5">
+	<start_requency>160000</start_requency>
+	<end_requency>200000</end_requency>
+	<level>-4380</level>
+    </psd_power>
+    <psd_power index="6">
+	<start_requency>200000</start_requency>
+	<end_requency>220000</end_requency>
+	<level>-4390</level>
+    </psd_power>
+    <psd_power index="7">
+	<start_requency>220000</start_requency>
+	<end_requency>750000</end_requency>
+	<level>-4390</level>
+    </psd_power>
+    <psd_power index="8">
+	<start_requency>750000</start_requency>
+	<end_requency>950000</end_requency>
+	<level>-4360</level>
+    </psd_power>
+    <psd_power index="9">
+	<start_requency>950000</start_requency>
+	<end_requency>1050000</end_requency>
+	<level>-4420</level>
+    </psd_power>
+    <psd_power index="10">
+	<start_requency>1050000</start_requency>
+	<end_requency>1150000</end_requency>
+	<level>-4390</level>
+    </psd_power>
+    <psd_power index="11">
+	<start_requency>1150000</start_requency>
+	<end_requency>1250000</end_requency>
+	<level>-4360</level>
+    </psd_power>
+    <psd_power index="12">
+	<start_requency>1250000</start_requency>
+	<end_requency>1350000</end_requency>
+	<level>-4390</level>
+    </psd_power>
+    <psd_power index="13">
+	<start_requency>1350000</start_requency>
+	<end_requency>1550000</end_requency>
+	<level>-4390</level>
+    </psd_power>
+    <psd_power index="14">
+	<start_requency>1550000</start_requency>
+	<end_requency>1750000</end_requency>
+	<level>-4350</level>
+    </psd_power>
+    <psd_power index="15">
+        <start_requency>1750000</start_requency>
+        <end_requency>1800000</end_requency>
+        <level>-4350</level>
+    </psd_power>
+
+    <psd_power index="16">
+        <start_requency>1800000</start_requency>
+        <end_requency>1850000</end_requency>
+        <level>-4360</level>
+    </psd_power>
+
+    <psd_power index="17">
+        <start_requency>1850000</start_requency>
+        <end_requency>1950000</end_requency>
+        <level>-4330</level>
+    </psd_power>
+
+
+    <psd_power index="18">
+        <start_requency>1950000</start_requency>
+        <end_requency>2150000</end_requency>
+        <level>-4350</level>
+    </psd_power>
+    <psd_power index="19">
+        <start_requency>2150000</start_requency>
+        <end_requency>2350000</end_requency>
+        <level>-4270</level>
+    </psd_power>
+    <psd_power index="20">
+        <start_requency>2350000</start_requency>
+        <end_requency>2550000</end_requency>
+        <level>-4620</level>
+    </psd_power>
+    <psd_power index="21">
+        <start_requency>2550000</start_requency>
+        <end_requency>2750000</end_requency>
+        <level>-4695</level>
+    </psd_power>
+    <psd_power index="22">
+        <start_requency>2750000</start_requency>
+        <end_requency>2950000</end_requency>
+        <level>-4595</level>
+    </psd_power>
+    <psd_power index="23">
+        <start_requency>2950000</start_requency>
+        <end_requency>3150000</end_requency>
+        <level>-4505</level>
+    </psd_power>
+    <psd_power index="24">
+        <start_requency>3150000</start_requency>
+        <end_requency>3200000</end_requency>
+        <level>-4245</level>
+    </psd_power>
+    <psd_power index="25">
+        <start_requency>3200000</start_requency>
+        <end_requency>3400000</end_requency>
+        <level>-4120</level>
+    </psd_power>
+    <psd_power index="26">
+        <start_requency>3400000</start_requency>
+        <end_requency>3600000</end_requency>
+        <level>-4200</level>
+    </psd_power>
+    <psd_power index="27">
+        <start_requency>3600000</start_requency>
+        <end_requency>3800000</end_requency>
+        <level>-4090</level>
+    </psd_power>
+    <psd_power index="28">
+        <start_requency>3800000</start_requency>
+        <end_requency>4000000</end_requency>
+        <level>-4200</level>
+    </psd_power>
+    <psd_power index="29">
+        <start_requency>4000000</start_requency>
+        <end_requency>4200000</end_requency>
+        <level>-4120</level>
+    </psd_power>
+    <psd_power index="30">
+        <start_requency>4200000</start_requency>
+        <end_requency>4400000</end_requency>
+        <level>-4060</level>
+    </psd_power>
+    <psd_power index="31">
+        <start_requency>4400000</start_requency>
+        <end_requency>4600000</end_requency>
+        <level>-4000</level>
+    </psd_power>
+    <psd_power index="32">
+        <start_requency>4600000</start_requency>
+        <end_requency>4800000</end_requency>
+        <level>-4010</level>
+    </psd_power>
+    <psd_power index="33">
+        <start_requency>4800000</start_requency>
+        <end_requency>5000000</end_requency>
+        <level>-4020</level>
+    </psd_power>
+    <psd_power index="34">
+        <start_requency>0</start_requency>
+        <end_requency>0</end_requency>
+        <level>-0</level>
+    </psd_power>
+    <psd_power index="35">
+        <start_requency>0</start_requency>
+        <end_requency>0</end_requency>
+        <level>-0</level>
+    </psd_power>
+    <psd_power index="36">
+        <start_requency>0</start_requency>
+        <end_requency>0</end_requency>
+        <level>-0</level>
+    </psd_power>
+    <psd_power index="37">
+        <start_requency>0</start_requency>
+        <end_requency>0</end_requency>
+        <level>-0</level>
+    </psd_power>
+    <psd_power index="38">
+        <start_requency>0</start_requency>
+        <end_requency>0</end_requency>
+        <level>-0</level>
+    </psd_power>
+    <psd_power index="39">
+        <start_requency>0</start_requency>
+        <end_requency>0</end_requency>
+        <level>-0</level>
+    </psd_power>
+
+    <analysis_power index="0">
+	<start_requency>20000</start_requency>
+	<end_requency>70000</end_requency>
+	<level>-149</level>
+    </analysis_power>
+    <analysis_power index="1">
+	<start_requency>70000</start_requency>
+	<end_requency>100000</end_requency>
+	<level>-149</level>
+    </analysis_power>
+    <analysis_power index="2">
+	<start_requency>100000</start_requency>
+	<end_requency>120000</end_requency>
+	<level>-196</level>
+    </analysis_power>
+    <analysis_power index="3">
+	<start_requency>120000</start_requency>
+	<end_requency>140000</end_requency>
+	<level>-196</level>
+    </analysis_power>
+    <analysis_power index="4">
+	<start_requency>140000</start_requency>
+	<end_requency>160000</end_requency>
+	<level>-166</level>
+    </analysis_power>
+    <analysis_power index="5">
+	<start_requency>160000</start_requency>
+	<end_requency>200000</end_requency>
+	<level>-196</level>
+    </analysis_power>
+    <analysis_power index="6">
+	<start_requency>200000</start_requency>
+	<end_requency>220000</end_requency>
+	<level>-196</level>
+    </analysis_power>
+    <analysis_power index="7">
+	<start_requency>220000</start_requency>
+	<end_requency>750000</end_requency>
+	<level>-196</level>
+    </analysis_power>
+    <analysis_power index="8">
+	<start_requency>750000</start_requency>
+	<end_requency>950000</end_requency>
+	<level>-193</level>
+    </analysis_power>
+    <analysis_power index="9">
+	<start_requency>950000</start_requency>
+	<end_requency>1050000</end_requency>
+	<level>-200</level>
+    </analysis_power>
+    <analysis_power index="10">
+	<start_requency>1050000</start_requency>
+	<end_requency>1150000</end_requency>
+	<level>-197</level>
+    </analysis_power>
+    <analysis_power index="11">
+	<start_requency>1150000</start_requency>
+	<end_requency>1250000</end_requency>
+	<level>-195</level>
+    </analysis_power>
+    <analysis_power index="12">
+	<start_requency>1250000</start_requency>
+	<end_requency>1350000</end_requency>
+	<level>-196</level>
+    </analysis_power>
+    <analysis_power index="13">
+	<start_requency>1350000</start_requency>
+	<end_requency>1550000</end_requency>
+	<level>-196</level>
+    </analysis_power>
+    <analysis_power index="14">
+	<start_requency>1550000</start_requency>
+	<end_requency>1750000</end_requency>
+	<level>-191</level>
+    </analysis_power>
+    <analysis_power index="15">
+        <start_requency>1750000</start_requency>
+        <end_requency>1800000</end_requency>
+        <level>-192</level>
+    </analysis_power>
+    <analysis_power index="16">
+        <start_requency>1800000</start_requency>
+        <end_requency>1850000</end_requency>
+        <level>-197</level>
+    </analysis_power>
+    <analysis_power index="17">
+        <start_requency>1850000</start_requency>
+        <end_requency>1950000</end_requency>
+        <level>-192</level>
+    </analysis_power>
+
+
+    <analysis_power index="18">
+        <start_requency>1950000</start_requency>
+        <end_requency>2150000</end_requency>
+        <level>-194</level>
+    </analysis_power>
+    <analysis_power index="19">
+        <start_requency>2150000</start_requency>
+        <end_requency>2350000</end_requency>
+        <level>-185</level>
+    </analysis_power>
+    <analysis_power index="20">
+        <start_requency>2350000</start_requency>
+        <end_requency>2550000</end_requency>
+        <level>-214</level>
+    </analysis_power>
+    <analysis_power index="21">
+        <start_requency>2550000</start_requency>
+        <end_requency>2750000</end_requency>
+        <level>-225</level>
+    </analysis_power>
+    <analysis_power index="22">
+        <start_requency>2750000</start_requency>
+        <end_requency>2950000</end_requency>
+        <level>-213</level>
+    </analysis_power>
+    <analysis_power index="23">
+        <start_requency>2950000</start_requency>
+        <end_requency>3150000</end_requency>
+        <level>-203</level>
+    </analysis_power>
+    <analysis_power index="24">
+        <start_requency>3150000</start_requency>
+        <end_requency>3200000</end_requency>
+        <level>-178</level>
+    </analysis_power>
+    <analysis_power index="25">
+        <start_requency>3200000</start_requency>
+        <end_requency>3400000</end_requency>
+        <level>-175</level>
+    </analysis_power>
+    <analysis_power index="26">
+        <start_requency>3400000</start_requency>
+        <end_requency>3600000</end_requency>
+        <level>-175</level>
+    </analysis_power>
+    <analysis_power index="27">
+        <start_requency>3600000</start_requency>
+        <end_requency>3800000</end_requency>
+        <level>-163</level>
+    </analysis_power>
+    <analysis_power index="28">
+        <start_requency>3800000</start_requency>
+        <end_requency>4000000</end_requency>
+        <level>-175</level>
+    </analysis_power>
+    <analysis_power index="29">
+        <start_requency>4000000</start_requency>
+        <end_requency>4200000</end_requency>
+        <level>-166</level>
+    </analysis_power>
+    <analysis_power index="30">
+        <start_requency>4200000</start_requency>
+        <end_requency>4400000</end_requency>
+        <level>-160</level>
+    </analysis_power>
+    <analysis_power index="31">
+        <start_requency>4400000</start_requency>
+        <end_requency>4600000</end_requency>
+        <level>-152</level>
+    </analysis_power>
+    <analysis_power index="32">
+        <start_requency>4600000</start_requency>
+        <end_requency>4800000</end_requency>
+        <level>-156</level>
+    </analysis_power>
+    <analysis_power index="33">
+        <start_requency>4800000</start_requency>
+        <end_requency>5000000</end_requency>
+        <level>-157</level>
+    </analysis_power>
+    <analysis_power index="34">
+        <start_requency>0</start_requency>
+        <end_requency>0</end_requency>
+        <level>-0</level>
+    </analysis_power>
+    <analysis_power index="35">
+        <start_requency>0</start_requency>
+        <end_requency>0</end_requency>
+        <level>-0</level>
+    </analysis_power>
+    <analysis_power index="36">
+        <start_requency>0</start_requency>
+        <end_requency>0</end_requency>
+        <level>-0</level>
+    </analysis_power>
+    <analysis_power index="37">
+        <start_requency>0</start_requency>
+        <end_requency>0</end_requency>
+        <level>-0</level>
+    </analysis_power>
+    <analysis_power index="38">
+        <start_requency>0</start_requency>
+        <end_requency>0</end_requency>
+        <level>-0</level>
+    </analysis_power>
+    <analysis_power index="39">
+        <start_requency>0</start_requency>
+        <end_requency>0</end_requency>
+        <level>-0</level>
+    </analysis_power>
+    
+  </calibration>
+  <channel index="0">
+    <cid>1</cid>
+    <mediumfrequency>
+      <freqPoint index="0">
+        <centerFreq>1000000</centerFreq>
+        <bandwith>1000</bandwith>
+        <freqResolution>20</freqResolution>
+        <fftSize>64</fftSize>
+        <decMethodId>1</decMethodId>
+        <decBandwidth>16</decBandwidth>
+        <muteSwitch>0</muteSwitch>
+        <muteThreshold>50</muteThreshold>
+      </freqPoint>
+    </mediumfrequency>
+    <radiofrequency>
+      <status>1</status>
+      <modeCode>0</modeCode>
+      <gainMode>0</gainMode>
+      <agcCtrlTime>10</agcCtrlTime>
+      <agcOutPutAmp>1</agcOutPutAmp>
+      <midBw>100</midBw>
+      <rfAttenuation>0</rfAttenuation>
+      <temprature>50</temprature>
+    </radiofrequency>
+  </channel>
+</root>

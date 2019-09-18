@@ -46,9 +46,14 @@ void config_init(void)
     printf_debug("mac:%x%x%x%x%x%x\n", mac[0],mac[1],mac[2],mac[3],mac[4],mac[5]);
     printf_debug("config init\n");
     config.configfile = safe_strdup(DEFAULT_CONFIGFILE);
+    config.calibrationfile = safe_strdup(CALIBRATION_FILE);
     config.daemon = -1;
     config.oal_config.work_mode = OAL_FAST_SCAN_MODE;
     dao_read_create_config_file(config.configfile, &config);
+    
+#if  (CALIBRATION_FILE_EN == 1)
+    dao_read_calibration_file(config.calibrationfile, &config);
+#endif
 
 }
 

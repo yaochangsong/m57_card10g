@@ -77,7 +77,7 @@ static void spectrum_send_fft_data(void *fft_data, size_t fft_data_len, void *pa
     hparam->data_len = fft_data_len; 
 
     header_buf = poal_config->assamble_response_data(&header_len, (void *)param);
-    printf_debug("header_buf=%x %x, header_len=%d\n", header_buf[0],header_buf[1], header_len);
+    printf_debug("header_buf=%x %x, header_len=%d, malloc len=%d\n", header_buf[0],header_buf[1], header_len, header_len+ fft_data_len);
 
     fft_sendbuf = (uint8_t *)safe_malloc(header_len+ fft_data_len);
     if (!fft_sendbuf){
@@ -134,6 +134,7 @@ fft_data_type *spectrum_fft_data_order(struct spectrum_st *ps, uint32_t *result_
     }
 
     *result_fft_size = ps->fft_len - 2 * single_sideband_size;
+    printf_debug("result_fft_size=%u\n", *result_fft_size); 
 
 
     /*-- 3 step: when middle frequency is less than BW/2 [100MHz], we need to resetting middle frequency
@@ -143,7 +144,7 @@ fft_data_type *spectrum_fft_data_order(struct spectrum_st *ps, uint32_t *result_
                 the right extra data: (BW + deltabw - mf0 - bw0/2) *fftSize / BW; [BW + deltabw >= mf0 + bw0/2]
      */
     uint32_t left_extra_single_size = 0, right_extra_single_size = 0;
-    if(ps->param.m_freq <= RF_ADRV9009_BANDWITH/2){
+    if((ps->param.m_freq <= RF_ADRV9009_BANDWITH/2) && (ps->param.m_freq > 0)){
         if(ps->param.m_freq - ps->param.bandwidth/2 >= delta_bw){
             left_extra_single_size = (ps->param.m_freq - ps->param.bandwidth/2 - delta_bw) * (*result_fft_size) / RF_ADRV9009_BANDWITH;
         }else{
@@ -154,7 +155,9 @@ fft_data_type *spectrum_fft_data_order(struct spectrum_st *ps, uint32_t *result_
         }else{
             right_extra_single_size = 0;
         }
-        *result_fft_size = *result_fft_size - right_extra_single_size - left_extra_single_size;
+        if(*result_fft_size > (right_extra_single_size + left_extra_single_size)){
+            *result_fft_size = *result_fft_size - right_extra_single_size - left_extra_single_size;
+        }
         printf_info("m_freq = %llu, bandwidth= %u, delta_bw=%llu, left=%u, right=%u,*result_fft_size=%u\n", ps->param.m_freq, ps->param.bandwidth, delta_bw, left_extra_single_size, right_extra_single_size,*result_fft_size);
     }else{
         /*-- 4 step:  

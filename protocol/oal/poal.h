@@ -158,11 +158,19 @@ struct network_st{
     uint16_t port;
 }__attribute__ ((packed));
 
+/* 频谱分析控制参数 */
+struct specturm_analysis_control_st{
+    uint32_t bandwidth_hz;        /* 频谱分析带宽*/
+    uint64_t frequency_hz;        /* 频谱分析频率点 */
+}__attribute__ ((packed));
+
+
 /* 控制参数 */
 struct control_st{
-    uint8_t remote_local;               /* 本控 or 远控 */
-    uint8_t fft_noise_threshold;        /* FFT 计算噪音门限 */
-    uint32_t spectrum_time_interval;
+    uint8_t remote_local;                                         /* 本控 or 远控 */
+    uint8_t fft_noise_threshold;                                  /* FFT 计算噪音门限 */
+    uint32_t spectrum_time_interval;                              /* 发送频谱时间间隔 */
+    struct specturm_analysis_control_st specturm_analysis_param;  /* 频谱分析控制参数 */
 }__attribute__ ((packed));
 
 

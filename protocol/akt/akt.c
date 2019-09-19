@@ -525,7 +525,8 @@ static int akt_execute_set_command(void)
             uint64_t freq_hz;
             int i; 
             freq_hz = *(uint64_t *)(header->buf);
-            printf_info("spctrum freq hz=%lluHz\n", freq_hz);
+            printf_debug("spctrum freq hz=%lluHz\n", freq_hz);
+            poal_config->ctrl_para.specturm_analysis_param.frequency_hz = freq_hz;
             break;
         }
         case SPCTRUM_ANALYSIS_CTRL_EN_CMD:

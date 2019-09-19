@@ -485,7 +485,8 @@ static void io_asyn_signal_handler(int signum)
 void io_init(void)
 {
     printf_info("io init!\n");
-#ifdef KERNEL_IOCTL_EN
+#if (KERNEL_IOCTL_EN == 1)
+
     int Oflags;
     
     if (io_ctrl_fd > 0) {

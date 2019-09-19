@@ -144,14 +144,14 @@ fft_data_type *spectrum_fft_data_order(struct spectrum_st *ps, uint32_t *result_
                 the right extra data: (BW + deltabw - mf0 - bw0/2) *fftSize / BW; [BW + deltabw >= mf0 + bw0/2]
      */
     uint32_t left_extra_single_size = 0, right_extra_single_size = 0;
-    if((ps->param.m_freq <= RF_ADRV9009_BANDWITH/2) && (ps->param.m_freq > 0)){
+    if((ps->param.m_freq <= RF_BANDWIDTH/2) && (ps->param.m_freq > 0)){
         if(ps->param.m_freq - ps->param.bandwidth/2 >= delta_bw){
-            left_extra_single_size = (ps->param.m_freq - ps->param.bandwidth/2 - delta_bw) * (*result_fft_size) / RF_ADRV9009_BANDWITH;
+            left_extra_single_size = (ps->param.m_freq - ps->param.bandwidth/2 - delta_bw) * (*result_fft_size) / RF_BANDWIDTH;
         }else{
             left_extra_single_size = 0;
         }
-        if(RF_ADRV9009_BANDWITH + delta_bw > ps->param.m_freq + ps->param.bandwidth/2){
-            right_extra_single_size = (RF_ADRV9009_BANDWITH + delta_bw - ps->param.m_freq - ps->param.bandwidth/2) * (*result_fft_size) / RF_ADRV9009_BANDWITH;
+        if(RF_BANDWIDTH + delta_bw > ps->param.m_freq + ps->param.bandwidth/2){
+            right_extra_single_size = (RF_BANDWIDTH + delta_bw - ps->param.m_freq - ps->param.bandwidth/2) * (*result_fft_size) / RF_BANDWIDTH;
         }else{
             right_extra_single_size = 0;
         }
@@ -168,12 +168,12 @@ fft_data_type *spectrum_fft_data_order(struct spectrum_st *ps, uint32_t *result_
            the rigth extra data bw range: (mFq+BW/2, mFq+ScanBW/2); 
               so, the single extra bw is: (BW-ScanBw)/2, It accounts for the working bandwidth ratio: 
               (BW-ScanBw)/2/BW = (1-ScanBw/Bw)/2
-              There Bw is: RF_ADRV9009_BANDWITH, ScanBw is ps->param.bandwidth,
+              There Bw is: RF_BANDWIDTH, ScanBw is ps->param.bandwidth,
                ScanBw must less than or equal to Bw
         */
-        if((RF_ADRV9009_BANDWITH > ps->param.bandwidth) && (ps->param.bandwidth > 0)){
-            extra_data_single_size = ((1-(float)ps->param.bandwidth/(float)RF_ADRV9009_BANDWITH)/2) * (*result_fft_size);
-            printf_info("bw:%u, m_freq:%llu,need to remove the single extra data: %f,%u,%u\n",ps->param.bandwidth, ps->param.m_freq, (1-(float)ps->param.bandwidth/(float)RF_ADRV9009_BANDWITH)/2, *result_fft_size, extra_data_single_size);
+        if((RF_BANDWIDTH > ps->param.bandwidth) && (ps->param.bandwidth > 0)){
+            extra_data_single_size = ((1-(float)ps->param.bandwidth/(float)RF_BANDWIDTH)/2) * (*result_fft_size);
+            printf_info("bw:%u, m_freq:%llu,need to remove the single extra data: %f,%u,%u\n",ps->param.bandwidth, ps->param.m_freq, (1-(float)ps->param.bandwidth/(float)RF_BANDWIDTH)/2, *result_fft_size, extra_data_single_size);
             if(ps->fft_len <  extra_data_single_size *2){
                 *result_fft_size = 0;
             }else{
@@ -395,8 +395,9 @@ int32_t spectrum_send_fft_data_interval(void)
 void specturm_analysis_deal_thread(void *arg)
 {
     struct spectrum_st *ps;
+    struct poal_config *poal_config = &(config_get_config()->oal_config);
     float resolution;
-    uint32_t fft_size;
+    uint64_t fft_size, bw_fft_size;
     uint32_t iq_len;
     int16_t *iq_payload; 
 loop:
@@ -422,26 +423,53 @@ loop:
         }
 
         fft_size = SPECTRUM_DEFAULT_FFT_SIZE;
+        
+        uint64_t s_freq;
+       
+        if(ps->param.m_freq <= RF_BANDWIDTH/2){
+            s_freq = delta_bw;
+        }else{
+            s_freq = ps->param.s_freq; //ps->param.m_freq - RF_BANDWIDTH/2;
+        }
+
+        if(poal_config->ctrl_para.specturm_analysis_param.frequency_hz < s_freq){
+            printf_err("analysis frequency[%llu] is small than start frequency[%llu]\n", poal_config->ctrl_para.specturm_analysis_param.frequency_hz,s_freq);
+            goto loop;
+        }
+        if(poal_config->ctrl_para.specturm_analysis_param.bandwidth_hz > RF_BANDWIDTH){
+            printf_err("bandwidth [%llu] is too big\n", poal_config->ctrl_para.specturm_analysis_param.bandwidth_hz);
+            goto loop;
+        }
         printf_note("ps->iq_payload[0]=%d, %d,ps->iq_len=%u\n", iq_payload[0],iq_payload[1], iq_len);
+        printf_note("analysis_bandwidth_hz:%u, analysis_frequency_hz:%llu,RF_BANDWIDTH=%u,m_freq=%llu,s_freq=%llu, diff middle freq=%d\n",
+            poal_config->ctrl_para.specturm_analysis_param.bandwidth_hz, 
+            poal_config->ctrl_para.specturm_analysis_param.frequency_hz,
+            RF_BANDWIDTH,
+            ps->param.m_freq,
+            s_freq, 
+            poal_config->ctrl_para.specturm_analysis_param.frequency_hz - s_freq);
+        printf_note("====s_freq=%llu, %llu\n", ps->param.s_freq, ps->param.m_freq - RF_BANDWIDTH/2);
+        
         /* Start Convert IQ data to FFT */
-        TIME_ELAPSED(fft_iqdata_handle(get_power_level_threshold(), iq_payload, fft_size, fft_size*2));
+        
+        TIME_ELAPSED(fft_iqdata_handle(get_power_level_threshold(), 
+                            iq_payload, fft_size, 
+                            fft_size*2,
+                            poal_config->ctrl_para.specturm_analysis_param.frequency_hz - s_freq,
+                            RF_BANDWIDTH,
+                            poal_config->ctrl_para.specturm_analysis_param.bandwidth_hz));
+        //TIME_ELAPSED(fft_iqdata_handle(get_power_level_threshold(), iq_payload, fft_size, fft_size*2));
 
         LOCK_SP_DATA();
         /* Calculation resolution(Point bandwidth) by Total bandWidth& fft size */
-        resolution = calc_resolution(RF_ADRV9009_BANDWITH, fft_size);
-        
+        resolution = calc_resolution(RF_BANDWIDTH, fft_size);
+        printf_note("ps->iq_payload[0]=%d, %d,ps->iq_len=%u\n", poal_config->ctrl_para.specturm_analysis_param.bandwidth_hz, RF_BANDWIDTH, bw_fft_size);
+        bw_fft_size = ((float)poal_config->ctrl_para.specturm_analysis_param.bandwidth_hz/(float)RF_BANDWIDTH) *fft_size ;
         /*  write fft result to buffer: middle point, bandwidth point, power level
             fft_get_result(): GET FFT result
         */
-        uint64_t s_freq;
-       
-        if(ps->param.m_freq <= RF_ADRV9009_BANDWITH/2){
-            s_freq = delta_bw;
-        }else{
-            s_freq = ps->param.m_freq - RF_ADRV9009_BANDWITH/2;
-        }
-        printf_note("refill fft result[s_freq:%llu,resolution:%f, fft_size:%u]\n",s_freq, resolution, fft_size);
-        spectrum_rw_fft_result(fft_get_result(), s_freq, resolution, fft_size);
+        printf_note("refill fft result[s_freq:%llu,resolution:%f, fft_size:%llu,bw_fft_size:%llu]\n",s_freq, resolution, fft_size,bw_fft_size);
+        spectrum_rw_fft_result(fft_get_result(), s_freq, resolution, bw_fft_size);
         printf_note("bandwidth=%u, m_freq=%llu, resolution=%f, param->s_freq=%llu\n", ps->param.bandwidth, ps->param.m_freq, resolution, s_freq);
         UNLOCK_SP_DATA();
         printf_note("specturm_analysis_deal over\n");

@@ -85,7 +85,7 @@ static  int8_t  executor_fregment_scan(uint32_t fregment_num,uint8_t ch, work_mo
     }
 #endif
 #if (RF_ADRV9009_IIO == 1)
-    scan_bw = RF_ADRV9009_BANDWITH;
+    scan_bw = RF_BANDWIDTH;
 #else
     scan_bw = poal_config->rf_para[ch].mid_bw;
 #endif
@@ -95,6 +95,8 @@ static  int8_t  executor_fregment_scan(uint32_t fregment_num,uint8_t ch, work_mo
         printf_err("frequency error,c_freq=%llu, scan_bw=%u\n", c_freq, scan_bw);
         return -1;
     }
+    /* 频谱分析带宽 */
+    poal_config->ctrl_para.specturm_analysis_param.bandwidth_hz = e_freq - s_freq;
     
     c_freq = (e_freq - s_freq);
     scan_count = c_freq /scan_bw;
@@ -143,7 +145,6 @@ static  int8_t  executor_fregment_scan(uint32_t fregment_num,uint8_t ch, work_mo
         executor_set_command(EX_WORK_MODE_CMD, mode, ch, &header_param);
         executor_wait_kernel_deal();
     #else
-        printf_debug("spectrum_wait_user_deal..\n");
         if(get_spectrum_debug() == false){
             if(poal_config->enable.psd_en){
                 spectrum_psd_user_deal(&header_param);

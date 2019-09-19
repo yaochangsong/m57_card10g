@@ -709,13 +709,11 @@ static void *dao_load_root(void *root)
 #endif
 }
 
-void read_calibration_file(void *config)
+void read_calibration_file(mxml_node_t *root, void *config)
 {
     s_config *sys_config;
     struct calibration_info_st *cali_config;
     char indexvalue[32] = {0};
-    mxml_node_t *root;
-    root = calibration_root;
     sys_config = (s_config*)config;
     
     cali_config = &sys_config->oal_config.cal_level; 
@@ -854,7 +852,7 @@ void read_config(void *root_config)
     fre_config->oal_config.rf_para->attenuation = atoi(read_config_file_single("radiofrequency","rfAttenuation")) ;
     printf_debug("读取............................rfAttenuation = %d\n",fre_config->oal_config.rf_para->attenuation);
 
-    
+    read_calibration_file(root, root_config);
 }
 
 void dao_read_create_config_file(char *file, void *root_config)
@@ -885,7 +883,7 @@ void dao_read_calibration_file(char *file, void *config)
     fp = fopen(file, "r");
     if(fp != NULL){
         calibration_root = mxmlLoadFile(NULL, fp, MXML_TEXT_CALLBACK);
-        read_calibration_file(config);
+        read_calibration_file(calibration_root, config);
         fclose(fp);
     }else{
         printf_err("The calibration file[%s] is not valid!!\n", file);

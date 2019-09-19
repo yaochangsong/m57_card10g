@@ -282,6 +282,7 @@ void *spectrum_rw_fft_result(fft_result *result, uint64_t s_freq_hz, float freq_
 {
     int i;
     static struct spectrum_fft_result_st s_fft_result, *pfft = NULL;
+    struct poal_config *poal_config = &(config_get_config()->oal_config);
     struct spectrum_st *ps;
     ps = &_spectrum;
     #define SIGNAL_ADD_FIXED_VALUE 196//217
@@ -298,6 +299,20 @@ void *spectrum_rw_fft_result(fft_result *result, uint64_t s_freq_hz, float freq_
         printf_err("signals number error:%d\n", pfft->result_num);
         pfft = NULL;
         goto exit;
+    }
+    uint64_t signal_start_freq = 0, signal_end_freq = 0;
+    for(i = 0; i < pfft->result_num; i++){
+        /* signal start frequency = signal middle frequency -  signal bandwidth/2 */
+        signal_start_freq = s_freq_hz + (result->centfeqpoint[i] - (SINGLE_SIDE_BAND_POINT_RATE*fft_size))*freq_resolution - result->bandwidth[i] * freq_resolution/2;
+        signal_end_freq = s_freq_hz + (result->centfeqpoint[i] - (SINGLE_SIDE_BAND_POINT_RATE*fft_size))*freq_resolution + result->bandwidth[i] * freq_resolution/2;
+        printf_debug("signal_start_freq=%llu, signal_end_freq=%llu, frequency_hz=%llu\n",signal_start_freq, signal_end_freq, poal_config->ctrl_para.specturm_analysis_param.frequency_hz);
+        /* Determine if the analysis point is within the signal range */
+        if((poal_config->ctrl_para.specturm_analysis_param.frequency_hz < signal_start_freq) || 
+           (poal_config->ctrl_para.specturm_analysis_param.frequency_hz > signal_end_freq)){
+                printf_warn("The analysis point[%llu] is NOT within the signal range[%llu, %llu]\n", poal_config->ctrl_para.specturm_analysis_param.frequency_hz, signal_start_freq, signal_end_freq);
+                pfft = NULL;
+                goto exit; 
+           }
     }
     for(i = 0; i < pfft->result_num; i++){
         pfft->mid_freq_hz[i] = s_freq_hz + (result->centfeqpoint[i] - (SINGLE_SIDE_BAND_POINT_RATE*fft_size))*freq_resolution;
@@ -437,17 +452,16 @@ loop:
             goto loop;
         }
         if(poal_config->ctrl_para.specturm_analysis_param.bandwidth_hz > RF_BANDWIDTH){
-            printf_err("bandwidth [%llu] is too big\n", poal_config->ctrl_para.specturm_analysis_param.bandwidth_hz);
+            printf_err("not surpport now,analysis bandwidth [%u] is too big\n", poal_config->ctrl_para.specturm_analysis_param.bandwidth_hz);
             goto loop;
         }
         printf_note("ps->iq_payload[0]=%d, %d,ps->iq_len=%u\n", iq_payload[0],iq_payload[1], iq_len);
-        printf_note("analysis_bandwidth_hz:%u, analysis_frequency_hz:%llu,RF_BANDWIDTH=%u,m_freq=%llu,s_freq=%llu, diff middle freq=%d\n",
+        printf_note("analysis_bandwidth_hz:%u, analysis_frequency_hz:%llu,RF_BANDWIDTH=%u,m_freq=%llu,s_freq=%llu\n",
             poal_config->ctrl_para.specturm_analysis_param.bandwidth_hz, 
             poal_config->ctrl_para.specturm_analysis_param.frequency_hz,
             RF_BANDWIDTH,
             ps->param.m_freq,
-            s_freq, 
-            poal_config->ctrl_para.specturm_analysis_param.frequency_hz - s_freq);
+            s_freq);
         printf_note("====s_freq=%llu, %llu\n", ps->param.s_freq, ps->param.m_freq - RF_BANDWIDTH/2);
         
         /* Start Convert IQ data to FFT */
@@ -455,7 +469,6 @@ loop:
         TIME_ELAPSED(fft_iqdata_handle(get_power_level_threshold(), 
                             iq_payload, fft_size, 
                             fft_size*2,
-                            poal_config->ctrl_para.specturm_analysis_param.frequency_hz - s_freq,
                             RF_BANDWIDTH,
                             poal_config->ctrl_para.specturm_analysis_param.bandwidth_hz));
         //TIME_ELAPSED(fft_iqdata_handle(get_power_level_threshold(), iq_payload, fft_size, fft_size*2));

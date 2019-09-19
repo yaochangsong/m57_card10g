@@ -1777,13 +1777,15 @@ int fft_Precise_calculation(int threshordnum,short *iqdata,int32_t fftsize,int d
 
 *********************************************************************************/
 
-void fft_iqdata_handle(int bd,short *data,int fftsize ,int datalen,uint32_t midpoint,uint32_t bigbw,uint32_t littlebw)
+void fft_iqdata_handle(int bd,short *data,int fftsize, int datalen, uint32_t bigbw,uint32_t littlebw)
 {
+    uint32_t midpoint;
     if(data==NULL)
     {
         printf_warn("\n\nThe IQ data you entered is empty, please enter again！\n\n");
         return ;
     }
+    midpoint = bigbw/2;
     printf_note("=================midpoint=%u, bigbw=%u,littlebw=%u=================\n", midpoint, bigbw,littlebw);
     testfrequency(bd,data,fftsize,datalen,midpoint,bigbw,littlebw);//iq数据，下发门限，fft大小，下发数据长度
 }
@@ -1862,7 +1864,7 @@ void xulitestfft(void)
     fft_result *temp;
     Verificationfloat("rawdata0905.txt",data,1024*1024);
     //Verificationfloat("rawdata0813.txt",data,2*1024*1024);
-    fft_iqdata_handle(0,data,fftsize,2*1024*1024,256*1024,512*1024,16*1024);//下发门限，iq数据，fft大小，下发数据长度
+    //fft_iqdata_handle(0,data,fftsize,2*1024*1024,256*1024,512*1024,16*1024);//下发门限，iq数据，fft大小，下发数据长度
  
     temp=fft_get_result();
     printf_debug("temp=%d",temp->maximum_x);

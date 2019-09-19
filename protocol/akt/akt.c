@@ -640,6 +640,7 @@ static int akt_execute_get_command(void)
             struct spectrum_fft_result_st *fft_result;
             static uint64_t center_freq_buf[AVG_FREQ_POINT], cnt = 0;
             uint64_t avg_freq = 0;
+            uint32_t result_num = 0;
 
 
             fft_result = (struct spectrum_fft_result_st *)spectrum_rw_fft_result(NULL, 0, 0, 0);
@@ -650,12 +651,13 @@ static int akt_execute_get_command(void)
             }
 
             printf_warn("#########Find FFT Parameter[%d]:###############\n",fft_result->result_num);
+            result_num = 1;
             if(fft_result->result_num > 1){
                 fft_result->result_num = 1;
             }
-            resp_result = (FFT_SIGNAL_RESPINSE_ST *)safe_malloc(sizeof(FFT_SIGNAL_RESPINSE_ST) + sizeof(FFT_SIGNAL_RESULT_ST)*fft_result->result_num);
+            resp_result = (FFT_SIGNAL_RESPINSE_ST *)safe_malloc(sizeof(FFT_SIGNAL_RESPINSE_ST) + sizeof(FFT_SIGNAL_RESULT_ST)*result_num);
             resp_result->signal_num = fft_result->result_num;
-            printf_warn("malloc size:%d\n",sizeof(FFT_SIGNAL_RESPINSE_ST) + sizeof(FFT_SIGNAL_RESULT_ST) * fft_result->result_num);
+            printf_debug("malloc size:%d\n",sizeof(FFT_SIGNAL_RESPINSE_ST) + sizeof(FFT_SIGNAL_RESULT_ST) * result_num);
             for(i = 0; i < resp_result->signal_num; i++){
                 resp_result->signal_array[i].center_freq = fft_result->mid_freq_hz[i];
                 resp_result->signal_array[i].bandwidth = fft_result->bw_hz[i];
@@ -677,10 +679,17 @@ static int akt_execute_get_command(void)
                     resp_result->signal_array[i].power_level,
                     fft_result->peak_value);
             }
+            /* not find signal */
+            if(resp_result->signal_num == 0){
+                resp_result->signal_array[0].center_freq = 0;
+                resp_result->signal_array[0].bandwidth = 0;
+                resp_result->signal_array[0].power_level = 0.0;
+                 printf_warn("No Signal Found!!!\n");
+            }
             resp_result->temperature = io_get_adc_temperature();
             resp_result->humidity = 40;
 
-            datalen = sizeof(FFT_SIGNAL_RESPINSE_ST) + sizeof(FFT_SIGNAL_RESULT_ST)*fft_result->result_num;
+            datalen = sizeof(FFT_SIGNAL_RESPINSE_ST) + sizeof(FFT_SIGNAL_RESULT_ST)*result_num;
             memcpy(akt_get_response_data.payload_data, resp_result, datalen);
             akt_get_response_data.header.len = datalen;
             safe_free(resp_result);

@@ -931,7 +931,7 @@ void  calculatebandwidth2(float *fftdata,int fftnum ,float* temp,float *maxvalue
             printf_debug("\nThe threshold is higher than 3db bandwidth\n");
         }
         //printf_debug("fftstate.arvcentfreq[i]=%f,*temp=%f",fftstate.arvcentfreq[i],*temp);
-        printf_warn("threedbpoint=%f,Threshold=%f,dbvalue=%f\n",threedbpoint,*maxvalue,dbvalue);
+        printf_info("threedbpoint=%f,Threshold=%f,dbvalue=%f\n",threedbpoint,*maxvalue,dbvalue);
         fftstate.arvcentfreq[i]=fftstate.arvcentfreq[i]-CORRECTIONSIGNAL;
         int endzuobiao;
         
@@ -1686,7 +1686,7 @@ int fft_Precise_calculation(int threshordnum,short *iqdata,int32_t fftsize,int d
                 }
                 fftstate.centfeqpoint[i]=(secondtemp-firsttemp)/2+firsttemp;//计算中心频点
 
-                printf_warn("firsttemp=%d  ,secondtemp=%d\n",firsttemp,secondtemp);
+                printf_info("firsttemp=%d  ,secondtemp=%d\n",firsttemp,secondtemp);
 
                 
                 float max;
@@ -1704,7 +1704,7 @@ int fft_Precise_calculation(int threshordnum,short *iqdata,int32_t fftsize,int d
                 }
                // impairment=max-(max-minvalue)/3;
                 impairment=max-(max-maxvalue)*2/3;
-                printf_warn("threedbvalue=%f,dbvalue=%f\n",impairment,(max-maxvalue)*2/3);
+                printf_info("threedbvalue=%f,dbvalue=%f\n",impairment,(max-maxvalue)*2/3);
                 for(int p=firsttemp;p<secondtemp;p++)
                 {
                    //printf_info("smoothdata[%d]=%f   ,",p,fftdata.smoothdata[p]);
@@ -1777,15 +1777,13 @@ int fft_Precise_calculation(int threshordnum,short *iqdata,int32_t fftsize,int d
 
 *********************************************************************************/
 
-void fft_iqdata_handle(int bd,short *data,int fftsize, int datalen, uint32_t bigbw,uint32_t littlebw)
+void fft_iqdata_handle(int bd,short *data,int fftsize, int datalen, uint32_t midpoint,uint32_t bigbw,uint32_t littlebw)
 {
-    uint32_t midpoint;
     if(data==NULL)
     {
         printf_warn("\n\nThe IQ data you entered is empty, please enter again！\n\n");
         return ;
     }
-    midpoint = bigbw/2;
     printf_note("=================midpoint=%u, bigbw=%u,littlebw=%u=================\n", midpoint, bigbw,littlebw);
     testfrequency(bd,data,fftsize,datalen,midpoint,bigbw,littlebw);//iq数据，下发门限，fft大小，下发数据长度
 }

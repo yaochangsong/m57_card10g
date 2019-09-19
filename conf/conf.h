@@ -34,15 +34,11 @@ void config_init(void);
 
 
 #define LOCK_CONFIG() do { \
-	printf_debug("Locking config"); \
 	pthread_mutex_lock(&config_mutex); \
-	printf_debug("Config locked"); \
 } while (0)
 
 #define UNLOCK_CONFIG() do { \
-	printf_debug("Unlocking config"); \
 	pthread_mutex_unlock(&config_mutex); \
-	printf_debug("Config unlocked"); \
 } while (0)
 
 extern s_config *config_get_config(void);

@@ -20,7 +20,7 @@ static unsigned int N=1024*1024;
 static unsigned int INTERVALNUM=10000;
 static unsigned int SHIELDPOINTS=20000;
 static unsigned int  INTERVALNUMTOW=2;
-static unsigned int  firstfftlen=4*1024;
+static unsigned int  firstfftlen=8*1024;
 static unsigned int  narrowbandlen=128*1024;
 
 
@@ -62,7 +62,7 @@ typedef enum _signalnum_flag{
 
 void fft_init(void);
 void fft_exit(void);
-void fft_iqdata_handle(int bd,short *data,int fftsize, int datalen, uint32_t midpoint,uint32_t bigbw,uint32_t littlebw);
+void fft_iqdata_handle(int bd,short *data,int fftsize, int datalen,uint32_t midpoint,uint32_t bigbw,uint32_t littlebw);
 float *fft_get_data(uint32_t *len);
 fft_result *fft_get_result(void);
 void fft_fftw_calculate(short *iqdata,int32_t fftsize,int datalen,float *mozhi);
@@ -76,6 +76,7 @@ void xulitest(void);
 
 
 #endif
+
 
 
 

@@ -55,6 +55,8 @@
 #include "device/uart/uart.h"
 #include "device/rf/rf.h"
 #include "device/rf/adrv9009-iiostream.h"
+#include "device/humidity/si7021.h" 
+
 
 
 #include "device/lcd/ss_k600.h"
@@ -97,9 +99,13 @@ PLAT_FORM_ARCH_ARM
 
 #ifdef PLAT_FORM_ARCH_ARM
 #define  RF_ADRV9009_IIO   1
+#define  AMBIENT_TEMP_HUMIDITY_SUPPORT 1
 #else 
 #define  RF_ADRV9009_IIO   0
+#define  AMBIENT_TEMP_HUMIDITY_SUPPORT 0
 #endif
+
+
 
 
 

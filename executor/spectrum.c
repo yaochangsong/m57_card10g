@@ -524,7 +524,6 @@ loop:
         LOCK_SP_DATA();
         /* Calculation resolution(Point bandwidth) by Total bandWidth& fft size */
         resolution = calc_resolution(RF_BANDWIDTH, fft_size);
-        printf_note("ps->iq_payload[0]=%d, %d,ps->iq_len=%u\n", analysis_bw, RF_BANDWIDTH, bw_fft_size);
         bw_fft_size = ((float)analysis_bw/(float)RF_BANDWIDTH) *fft_size ;
         /*  write fft result to buffer: middle point, bandwidth point, power level
             fft_get_result(): GET FFT result

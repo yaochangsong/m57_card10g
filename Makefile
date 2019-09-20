@@ -16,7 +16,7 @@
 #export CC=gcc
 #export CC=arm-linux-gnueabihf-gcc
 
-SOURCE_DIR = log net protocol/http protocol/akt protocol/xnrp protocol/oal dao/oal conf executor executor/fft utils device device/audio device/lcd device/rf device/uart device/gpio
+SOURCE_DIR = log net protocol/http protocol/akt protocol/xnrp protocol/oal dao/oal conf executor executor/fft utils device device/audio device/lcd device/rf device/uart device/gpio device/humidity
 
 SUB_LIBS := dao/mxml-3.0/libmxml.a dao/json/libjson.a libubox/libubox.a
 

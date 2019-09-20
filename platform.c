@@ -103,7 +103,11 @@ int main(int argc, char **argv)
 #endif
 #ifdef PLAT_FORM_ARCH_ARM
     gpio_init_control();
+   #if (AMBIENT_TEMP_HUMIDITY_SUPPORT == 1)
+    temp_humidity_init();
+   #endif 
 #endif
+
 #if (UART_LCD_SUPPORT == 1)
     init_lcd();
 #endif

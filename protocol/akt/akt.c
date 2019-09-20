@@ -686,9 +686,9 @@ static int akt_execute_get_command(void)
                 resp_result->signal_array[0].power_level = 0.0;
                  printf_warn("No Signal Found!!!\n");
             }
-            resp_result->temperature = io_get_adc_temperature();
-            resp_result->humidity = 40;
-
+            resp_result->temperature = io_get_ambient_temperature();
+            resp_result->humidity = io_get_ambient_humidity();
+            printf_warn("temperature:%0.2f℃, humidity:%0.2f%\n", resp_result->temperature, resp_result->humidity);
             datalen = sizeof(FFT_SIGNAL_RESPINSE_ST) + sizeof(FFT_SIGNAL_RESULT_ST)*result_num;
             memcpy(akt_get_response_data.payload_data, resp_result, datalen);
             akt_get_response_data.header.len = datalen;

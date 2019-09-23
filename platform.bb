@@ -20,8 +20,9 @@ do_compile() {
 do_install() {
 	     install -d ${D}${bindir}
          install -d ${D}${libdir}
+         install -d ${D}/etc/init.d/
 	     install -m 0755 platform ${D}${bindir}
-         install -m 0755 shell/platform.sh ${D}${bindir}
+         install -m 0755 shell/platform.sh ${D}/etc/init.d/
          install -m 0755 executor/fft/libfftw3/arm/lib/libfftw3f.so.3 ${D}${libdir}
 }
 INSANE_SKIP_${PN} = "ldflags"

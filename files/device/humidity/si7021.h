@@ -10,6 +10,9 @@
 /* Software Reset */
 #define SI7021CMD_RESET         0xFE
 
+#define NONE_EXISTENT_TEMP         (-1000)
+#define NONE_EXISTENT_HUMIDITY         (0)
+
 #define temp_humidity_init() si7021_init()
 
 extern void si7021_init(void);

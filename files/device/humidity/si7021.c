@@ -94,11 +94,13 @@ float si7021_read_temperature(void)
     uint16_t ushort_temp;
     float f_temp;
     
-    si7021_read_i2c_register(i2c_fd, 
+    if(si7021_read_i2c_register(i2c_fd, 
                             SI7021_I2C_SLAVE_ADDR, 
                             SI7021CMD_TEMP_HOLD,
                             temp, 2
-                            );
+                            ) == -1){
+        return NONE_EXISTENT_TEMP;
+    }
     ushort_temp = (temp[0]<<8)|temp[1];
     f_temp = (float)ushort_temp * 175.72/65535 - 46.85;
     
@@ -111,11 +113,13 @@ float si7021_read_humidity(void)
     uint16_t ushort_humidity;
     float f_humidity;
     
-    si7021_read_i2c_register(i2c_fd, 
+    if(si7021_read_i2c_register(i2c_fd, 
                             SI7021_I2C_SLAVE_ADDR, 
                             SI7021CMD_RH_HOLD,
                             humidity, 2
-                            );
+                            )){
+        return NONE_EXISTENT_HUMIDITY;
+    }
     ushort_humidity = (humidity[0]<<8)|humidity[1];
     f_humidity = (float)ushort_humidity * 125/65535 - 6;
 

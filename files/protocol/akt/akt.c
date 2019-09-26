@@ -681,10 +681,14 @@ static int akt_execute_get_command(void)
             }
             /* not find signal */
             if(resp_result->signal_num == 0){
-                resp_result->signal_array[0].center_freq = 0;
-                resp_result->signal_array[0].bandwidth = 0;
-                resp_result->signal_array[0].power_level = 0.0;
+                 resp_result->signal_array[0].center_freq = fft_result->mid_freq_hz[0];
+                 resp_result->signal_array[0].bandwidth = fft_result->bw_hz[0];
+                 resp_result->signal_array[0].power_level = fft_result->level[0];
                  printf_warn("No Signal Found!!!\n");
+                 printf_warn("center_freq=%lluHz, bandwidth=%llu, power_level=%f\n",
+                    resp_result->signal_array[0].center_freq,
+                    resp_result->signal_array[0].bandwidth,
+                    resp_result->signal_array[0].power_level);
             }
             resp_result->temperature = io_get_ambient_temperature();
             resp_result->humidity = io_get_ambient_humidity();

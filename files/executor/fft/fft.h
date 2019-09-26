@@ -10,7 +10,7 @@
 //#define  N  256
 static unsigned int N=1024*1024;
 #define  SIGNALNUM        (20000)//输入信号数
-#define  THRESHOLD         (135)//128.999176/门限
+#define  THRESHOLD         (12)//门限
 #define  CORRECTIONSIGNAL  (300)
 
 
@@ -53,6 +53,7 @@ typedef struct {
    int bandwidth[SIGNALNUM];     //带宽
    float arvcentfreq[SIGNALNUM]; //中心频点功率值
    int  maximum_x;
+   float Bottomnoise; 
 }fft_result;
 
 typedef enum _signalnum_flag{

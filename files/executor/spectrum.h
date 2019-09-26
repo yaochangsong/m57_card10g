@@ -20,12 +20,13 @@
 
 #define SPECTRUM_START_FLAG 0x7E7E
 #define SPECTRUM_DEFAULT_FFT_SIZE (512*1024)
+#define SIDE_BAND_RATE  (1.2288) 
 #define SINGLE_SIDE_BAND_POINT_RATE  (0.093098958333333)  /* (1-1/1.2288)/2 */
 
 
-#define calc_resolution(bw_hz, fft_size)  (1.2288*bw_hz/fft_size)
+#define calc_resolution(bw_hz, fft_size)  (SIDE_BAND_RATE*bw_hz/fft_size)
 
-#define delta_bw  MHZ(10)
+#define delta_bw  MHZ(30)
 #define middle_freq_resetting(bw, mfreq)    ((bw/2) >= (mfreq) ? (bw/2+delta_bw) : (mfreq))
 
 #define KU_FREQUENCY_START   10700000000 //10.7G

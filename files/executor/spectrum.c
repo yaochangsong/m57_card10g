@@ -300,11 +300,18 @@ void *spectrum_rw_fft_result(fft_result *result, uint64_t s_freq_hz, float freq_
         pfft = NULL;
         goto exit;
     }
+    if(pfft->result_num == 0){
+        pfft->mid_freq_hz[0] = result->centfeqpoint[0];
+        pfft->bw_hz[0] = result->bandwidth[0];
+        pfft->level[0] = result->arvcentfreq[0] + spectrum_analysis_level_calibration(ps->param.m_freq);
+        printf_err("pfft->level[0]:%f\n", pfft->level[0]);
+        goto exit;
+    }
     uint64_t signal_start_freq = 0, signal_end_freq = 0;
     for(i = 0; i < pfft->result_num; i++){
         /* signal start frequency = signal middle frequency -  signal bandwidth/2 */
-        signal_start_freq = s_freq_hz + (result->centfeqpoint[i] - (SINGLE_SIDE_BAND_POINT_RATE*fft_size))*freq_resolution - result->bandwidth[i] * freq_resolution/2;
-        signal_end_freq = s_freq_hz + (result->centfeqpoint[i] - (SINGLE_SIDE_BAND_POINT_RATE*fft_size))*freq_resolution + result->bandwidth[i] * freq_resolution/2;
+        signal_start_freq = s_freq_hz + result->centfeqpoint[i] *freq_resolution - result->bandwidth[i] * freq_resolution/2;
+        signal_end_freq = s_freq_hz + result->centfeqpoint[i]*freq_resolution + result->bandwidth[i] * freq_resolution/2;
         printf_debug("signal_start_freq=%llu, signal_end_freq=%llu, frequency_hz=%llu\n",signal_start_freq, signal_end_freq, poal_config->ctrl_para.specturm_analysis_param.frequency_hz);
         /* Determine if the analysis point is within the signal range */
         if((poal_config->ctrl_para.specturm_analysis_param.frequency_hz < signal_start_freq) || 
@@ -315,11 +322,11 @@ void *spectrum_rw_fft_result(fft_result *result, uint64_t s_freq_hz, float freq_
            }
     }
     for(i = 0; i < pfft->result_num; i++){
-        pfft->mid_freq_hz[i] = s_freq_hz + (result->centfeqpoint[i] - (SINGLE_SIDE_BAND_POINT_RATE*fft_size))*freq_resolution;
-        pfft->peak_value = s_freq_hz + (result->maximum_x - (SINGLE_SIDE_BAND_POINT_RATE*fft_size))*freq_resolution;
+        pfft->mid_freq_hz[i] = s_freq_hz + result->centfeqpoint[i]*freq_resolution;
+        pfft->peak_value = s_freq_hz + result->maximum_x*freq_resolution;
         pfft->bw_hz[i] = result->bandwidth[i] * freq_resolution;
         pfft->level[i] = result->arvcentfreq[i] + spectrum_analysis_level_calibration(ps->param.m_freq);//spectrum_analysis_level_calibration(pfft->mid_freq_hz[i]);
-        printf_debug("m_freq=%llu,s_freq_hz=%llu, freq_resolution=%f, fft_size=%u, %f\n", ps->param.m_freq, s_freq_hz, freq_resolution, fft_size, (SINGLE_SIDE_BAND_POINT_RATE*fft_size));
+        printf_debug("m_freq=%llu,s_freq_hz=%llu, freq_resolution=%f, fft_size=%u\n", ps->param.m_freq, s_freq_hz, freq_resolution, fft_size);
         printf_debug("mid_freq_hz=%d, bw_hz=%d, level=%f\n", result->centfeqpoint[i], result->bandwidth[i], result->arvcentfreq[i]);
     }
 exit:
@@ -413,18 +420,16 @@ static int8_t inline spectrum_get_offset_middle_freq(uint64_t m_freq, uint64_t s
 {
     if(m_freq <= RF_BANDWIDTH/2){
         if(s_freq > delta_bw){
-            *midd_freq_offset = s_freq - delta_bw + analysis_bw/2;
+            //*midd_freq_offset = s_freq - delta_bw + analysis_bw/2;
+            *midd_freq_offset = RF_BANDWIDTH/2+delta_bw - m_freq;
         }else{
-            if(analysis_bw/2 > delta_bw - s_freq){
-                *midd_freq_offset = analysis_bw/2 -(delta_bw - s_freq) ;
-            }else{
-                printf_err("analysis frequency[%llu] is not  NOT within the bandwidth range[%llu, %llu]\n");
-                return -1;
-            }
+            printf_err("analysis frequency[%llu] is not  NOT within the bandwidth range[%llu, %llu]\n");
+            return -1;
         }
         
     }else{
-        *midd_freq_offset = RF_BANDWIDTH/2;
+        *midd_freq_offset = 0;
+        //*midd_freq_offset = RF_BANDWIDTH/2;
     }
     return 0;
 }
@@ -519,7 +524,7 @@ loop:
                             iq_payload, fft_size, 
                             fft_size*2,
                             midd_freq_offset,
-                            RF_BANDWIDTH,
+                            RF_BANDWIDTH*SIDE_BAND_RATE,
                             analysis_bw));
         LOCK_SP_DATA();
         /* Calculation resolution(Point bandwidth) by Total bandWidth& fft size */

@@ -1043,13 +1043,23 @@ void findBottomnoisenomax(float *mozhi,int xiafamenxian,float *Bottomnoise,float
 {
     int sum=0;
     findcomplexcentfrequencypoint(mozhi,maxvalue,minvalue,datalen);
-    *Bottomnoise=*minvalue+(*maxvalue-*minvalue)/3;
+	if(((*maxvalue-*minvalue)/3)<THRESHOLD)
+	{
+		*Bottomnoise=*minvalue+THRESHOLD;
+		
+	}else{
+		
+		*Bottomnoise=*minvalue+(*maxvalue-*minvalue)/3;
+		
+	}
+   // *Bottomnoise=*minvalue+(*maxvalue-*minvalue)/3;
     *Threshold=*Bottomnoise+xiafamenxian;
     printf_debug("minvalue=%f,\n",*minvalue);
     printf_debug("maxvalue=%f,\n",*maxvalue);
-    printf_debug("Bottomnoise=%f,",*Bottomnoise);
+    printf_debug("Bottomnoise=%f,\n",*Bottomnoise);
     printf_debug("Thresholdmenxian=%f\n",*Threshold);
 }
+
 
 void findBottomnoiseprecise(float *mozhi,int xiafamenxian,float *Bottomnoise,float *Threshold,int datalen ,float *maxvalue,float *minvalue)
 {
@@ -1378,7 +1388,8 @@ signalnum_flag  fft_fuzzy_computing(int threshordnum,short *iqdata,int32_t fftsi
 	int actual_point;
 	int actual_midpoints;
 	actual_point=((float)littlebw/(float)bigbw)*fftsize/2;
-	actual_midpoints=((float)midpoint/(float)bigbw)*fftsize;
+	//actual_midpoints=((float)midpoint/(float)bigbw)*fftsize;
+    actual_midpoints=1.0/2.0*(float)fftsize-((float)midpoint/(float)bigbw)*fftsize;
     for(i=(actual_midpoints-actual_point);i<(actual_point+actual_midpoints);i++)
 	{
 		fftdata.cutoffdata[j++]=fftdata.smoothdata[i];
@@ -1529,7 +1540,8 @@ int fft_Precise_calculation(int threshordnum,short *iqdata,int32_t fftsize,int d
 	int actual_point;
 	int actual_midpoints;
     actual_point=((float)littlebw/(float)bigbw)*fftsize/2;
-	actual_midpoints=((float)midpoint/(float)bigbw)*fftsize;
+    actual_midpoints=1.0/2.0*(float)fftsize-((float)midpoint/(float)bigbw)*fftsize;
+	//actual_midpoints=((float)midpoint/(float)bigbw)*fftsize;
 	for(i=(actual_midpoints-actual_point);i<(actual_midpoints+actual_point);i++)
 	{
 		fftdata.cutoffdata[j++]=fftdata.smoothdata[i];
@@ -1821,12 +1833,22 @@ float *fft_get_data(uint32_t *len)
 fft_result *fft_get_result(void)
 {
     fftresult.signalsnumber=fftstate.cenfrepointnum;
-    fftresult.maximum_x=fftstate.maximum_x;
-    memcpy(fftresult.centfeqpoint,fftstate.centfeqpoint,sizeof(int)*SIGNALNUM);
-    memcpy(fftresult.bandwidth,fftstate.bandwidth,sizeof(int)*SIGNALNUM);
-    memcpy(fftresult.arvcentfreq,fftstate.arvcentfreq,sizeof(float)*SIGNALNUM);
+    if(fftresult.signalsnumber == 0){
+        fftresult.Bottomnoise=fftstate.Bottomnoise- CORRECTIONSIGNAL;   //底噪
+        fftresult.arvcentfreq[0] = fftstate.Bottomnoise - CORRECTIONSIGNAL;
+        fftresult.bandwidth[0] = 0;
+        fftresult.centfeqpoint[0] = 0;
+        printf_warn("fftresult.arvcentfreq[0]=%f,%f\n", fftresult.arvcentfreq[0],fftresult.Bottomnoise);
+    }else{
+        fftresult.maximum_x=fftstate.maximum_x;   //peak值
+    	fftresult.Bottomnoise=fftstate.Bottomnoise;   //底噪
+        memcpy(fftresult.centfeqpoint,fftstate.centfeqpoint,sizeof(int)*SIGNALNUM);
+        memcpy(fftresult.bandwidth,fftstate.bandwidth,sizeof(int)*SIGNALNUM);
+        memcpy(fftresult.arvcentfreq,fftstate.arvcentfreq,sizeof(float)*SIGNALNUM);
+    }
     return &fftresult;
 }
+
 int testfrequency(int threshordnum,short *iqdata,int32_t fftsize,int datalen,uint32_t midpoint,uint32_t bigbw,uint32_t littlebw)
 {
     signalnum_flag signalflg=0;

@@ -419,8 +419,7 @@ int32_t spectrum_send_fft_data_interval(void)
 static int8_t inline spectrum_get_offset_middle_freq(uint64_t m_freq, uint64_t s_freq, uint32_t analysis_bw, uint64_t *midd_freq_offset)
 {
     if(m_freq <= RF_BANDWIDTH/2){
-        if(s_freq > delta_bw){
-            //*midd_freq_offset = s_freq - delta_bw + analysis_bw/2;
+        if(s_freq >= delta_bw){
             *midd_freq_offset = RF_BANDWIDTH/2+delta_bw - m_freq;
         }else{
             printf_err("analysis frequency[%llu] is not  NOT within the bandwidth range[%llu, %llu]\n");
@@ -429,7 +428,6 @@ static int8_t inline spectrum_get_offset_middle_freq(uint64_t m_freq, uint64_t s
         
     }else{
         *midd_freq_offset = 0;
-        //*midd_freq_offset = RF_BANDWIDTH/2;
     }
     return 0;
 }

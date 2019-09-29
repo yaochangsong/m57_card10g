@@ -42,7 +42,14 @@ void udp_add_client(struct sockaddr_in *addr)
     struct net_udp_client *cl = NULL;
     struct net_udp_client *cl_list, *list_tmp;
     struct net_udp_server *srv = get_udp_server();
-    
+
+    list_for_each_entry_safe(cl_list, list_tmp, &srv->clients, list){
+        if(memcmp(&cl_list->peer_addr.sin_addr, &addr->sin_addr, sizeof(addr->sin_addr)) == 0){
+            printf_warn("Find ipaddress on list:%s:%d，delete it\n",  cl_list->get_peer_addr(cl_list), cl_list->get_peer_port(cl_list));
+            udp_free(cl_list);
+        }
+    }
+/*
     list_for_each_entry_safe(cl_list, list_tmp, &srv->clients, list){
         if(memcmp(&cl_list->peer_addr.sin_addr, &addr->sin_addr, sizeof(addr->sin_addr)) == 0 && 
             cl_list->get_peer_port(cl_list) == addr->sin_port){
@@ -50,7 +57,7 @@ void udp_add_client(struct sockaddr_in *addr)
             return;
         }
     }
-
+*/
     cl = calloc(1, sizeof(struct net_udp_client));
     if (!cl) {
         printf_err("calloc\n");

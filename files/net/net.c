@@ -64,7 +64,7 @@ int server_init(void)
 {
     struct poal_config *poal_config = &(config_get_config()->oal_config);
 
-#if (PROTOCAL_XNRP != 0) || (PROTOCAL_ATE != 0) 
+#if (defined SUPPORT_PROTOCAL_AKT) || (defined SUPPORT_PROTOCAL_XNRP) 
     struct net_tcp_server *tcpsrv = NULL;
     printf_info("tcp server init [port:%d]\n", poal_config->network.port);
     tcpsrv = tcp_server_new("0.0.0.0", poal_config->network.port);
@@ -77,7 +77,7 @@ int server_init(void)
     if (!udpsrv)
         return -1;
 #endif
-#if  PROTOCAL_HTTP != 0
+#ifdef  SUPPORT_PROTOCAL_HTTP
     struct uh_server *srv = NULL;
     printf_info("http server init[port:%d]\n", 8888);
     srv = uh_server_new("0.0.0.0", 8888);

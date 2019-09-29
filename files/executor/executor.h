@@ -143,7 +143,7 @@ struct spectrum_header_param{
 } while (0)
 
 #include "config.h"
-#if (PROTOCAL_ATE == 1)
+#ifdef SUPPORT_PROTOCAL_AKT
     #if (KERNEL_IOCTL_EN == 1)
     /* use kernel space to deal data(fft, iq) and send to client */
     #define executor_assamble_header_response_data_cb  akt_assamble_data_extend_frame_header_data

@@ -23,8 +23,6 @@
 #include <stdio.h>
 #include "log/log.h"
 #include "config.h"
-#if (RF_ADRV9009_IIO == 1)
-
 #include "adrv9009-iiostream.h"
 
 #ifdef __APPLE__
@@ -320,5 +318,4 @@ int16_t *iio_read_rx0_data(ssize_t *rsize)
 	return (int16_t *)iio_buffer_first(rxbuf, rx0_i);
 }
 
-#endif
 

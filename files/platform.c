@@ -98,17 +98,19 @@ int main(int argc, char **argv)
     printf_note("VERSION:%s\n",SPCTRUM_VERSION_STRING);
     config_init();
     uloop_init();
-#if (UART_SUPPORT == 1)
+#ifdef SUPPORT_UART
     uart_init();
 #endif
 #ifdef PLAT_FORM_ARCH_ARM
     gpio_init_control();
-   #if (AMBIENT_TEMP_HUMIDITY_SUPPORT == 1)
-    temp_humidity_init();
-   #endif 
 #endif
 
-#if (UART_LCD_SUPPORT == 1)
+#ifdef SUPPORT_AMBIENT_TEMP_HUMIDITY
+ temp_humidity_init();
+#endif 
+
+
+#ifdef SUPPORT_LCD
     init_lcd();
 #endif
 if(spectrum_debug == false){

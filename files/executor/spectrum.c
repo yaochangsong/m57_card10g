@@ -30,7 +30,7 @@ static int16_t *specturm_rx_iq_read(int32_t *nbytes)
     static int write_file_cnter = 0;
     
     LOCK_IQ_DATA();
-   #if (RF_ADRV9009_IIO == 1)
+   #ifdef SUPPORT_LIB_IIO
     iqdata = iio_read_rx0_data(&nbytes_rx);
     p_iqdata_start = iqdata;
     if(p_iqdata_start == NULL){

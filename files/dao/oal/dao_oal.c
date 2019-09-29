@@ -35,7 +35,7 @@ spectrum_single spectrum_sing;
 */
 void *write_config_file_single(char *file,const char *parent_element,const char *element,const char *string,int val)
 {
-#if DAO_XML == 1
+#ifdef SUPPORT_DAO_XML
     printf_debug("开始写入\n");
 	FILE *fp;
     char buf[32];
@@ -87,7 +87,7 @@ void *write_config_file_single(char *file,const char *parent_element,const char 
 	printf_debug("1\n");
     printf_debug("写入完成\n");
 	return (void *)whole_root;
-#elif DAO_JSON == 1
+#elif defined SUPPORT_DAO_JSON
 
 #else
     #error "NOT SUPPORT DAO FORMAT"
@@ -115,7 +115,7 @@ const char *name,const char *value,const char *element,const char *seed_element,
 const char *seed_array,const char *seed_name,const char *seed_value,
 int val,char series)
 {
-#if DAO_XML == 1
+#ifdef SUPPORT_DAO_XML
     printf_debug("开始写入\n");
 	FILE *fp;
     char buff[32];
@@ -220,7 +220,7 @@ int val,char series)
 	printf_debug("1\n");
     printf_debug("写入完成\n");
 	return (void *)whole_root;
-#elif DAO_JSON == 1
+#elif defined SUPPORT_DAO_JSON
 
 #else
     #error "NOT SUPPORT DAO FORMAT"
@@ -246,7 +246,7 @@ int val,char series)
 
 void *write_struc_config_file_single(spectrum_single          spectrum_fre)
 {
-#if DAO_XML == 1
+#ifdef SUPPORT_DAO_XML
     FILE *fp;
     mxml_node_t *parent_node,*node,*seed_node,*s_node;;
     printf_debug("create singular xml config file\n");
@@ -307,7 +307,7 @@ void *write_struc_config_file_single(spectrum_single          spectrum_fre)
 
     printf_debug("1\n");
     return (void *)whole_root;
-#elif DAO_JSON == 1
+#elif defined SUPPORT_DAO_JSON
 
 #else
     #error "NOT SUPPORT DAO FORMAT"
@@ -333,7 +333,7 @@ void *write_struc_config_file_single(spectrum_single          spectrum_fre)
 
 void *write_struc_config_file_array(spectrum          spectrum_fre)
 {
-#if DAO_XML == 1
+#ifdef SUPPORT_DAO_XML
 
     FILE *fp;
     mxml_node_t *parent_node,*node,*seed_node,*s_node;
@@ -395,7 +395,7 @@ void *write_struc_config_file_array(spectrum          spectrum_fre)
 
     printf_debug("1\n");
     return (void *)whole_root;
-#elif DAO_JSON == 1
+#elif defined SUPPORT_DAO_JSON
 
 #else
     #error "NOT SUPPORT DAO FORMAT"
@@ -416,7 +416,7 @@ void *write_struc_config_file_array(spectrum          spectrum_fre)
 
 const char *read_config_file_single(const char *parent_element,const char *element)
 { 
-#if DAO_XML == 1
+#ifdef SUPPORT_DAO_XML
     printf_debug("开始读取single\n");
 
     mxml_node_t *parent_node,*node;
@@ -433,7 +433,7 @@ const char *read_config_file_single(const char *parent_element,const char *eleme
     printf_debug("读取结束\n");
     return string;
     
-#elif DAO_JSON == 1
+#elif defined SUPPORT_DAO_JSON
 
 #else
     #error "NOT SUPPORT DAO FORMAT"
@@ -454,7 +454,7 @@ const char *read_config_file_single(const char *parent_element,const char *eleme
 
 const char *read_config_file_array(mxml_node_t *root, const char *array,const char *name,const char *value,const char *element)
 {
-#if DAO_XML == 1
+#ifdef SUPPORT_DAO_XML
     printf_debug("开始读取array\n");
 
     mxml_node_t *parent_node,*node;
@@ -469,7 +469,7 @@ const char *read_config_file_array(mxml_node_t *root, const char *array,const ch
     const char *string = mxmlGetText(node, NULL);
     printf_debug("读取结束\n");
     return string;
-#elif DAO_JSON == 1
+#elif defined SUPPORT_DAO_JSON
 
 #else
     #error "NOT SUPPORT DAO FORMAT"
@@ -482,7 +482,7 @@ const char *read_config_file_array(mxml_node_t *root, const char *array,const ch
 
 static void *dao_load_default_config_file(char *file)
 {
-#if DAO_XML == 1
+#ifdef SUPPORT_DAO_XML
     FILE *fp;
 
     mxml_node_t *root;    /* <?xml ... ?> */
@@ -685,7 +685,8 @@ static void *dao_load_default_config_file(char *file)
     mxmlSaveFile(root, fp, NULL);
     fclose(fp);
     return (void *)root;
-#elif DAO_JSON == 1
+#elif defined SUPPORT_DAO_JSON
+
 
 #else
 #error "NOT SUPPORT DAO FORMAT"
@@ -700,9 +701,9 @@ static void *dao_load_root(void *root)
     if(root == NULL){
         return NULL;
     }
-#if DAO_XML == 1
+#ifdef SUPPORT_DAO_XML 
 
-#elif DAO_JSON == 1
+#elif defined SUPPORT_DAO_JSON 
 
 #else
 #error "NOT SUPPORT DAO FORMAT"

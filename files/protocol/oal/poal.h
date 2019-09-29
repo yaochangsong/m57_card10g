@@ -7,14 +7,14 @@
 #define MAX_SIGNAL_CHANNEL_NUM (16)
 #define MAX_SIG_CHANNLE 128
 
-#if PROTOCAL_XNRP != 0
+#ifdef SUPPORT_PROTOCAL_XNRP
     #define poal_parse_header xnrp_parse_header
     #define poal_parse_data   xnrp_parse_data
     #define poal_execute_method xnrp_execute_method
     #define poal_assamble_response_data  xnrp_assamble_response_data
     #define poal_assamble_error_response_data xnrp_assamble_response_data
     #define poal_assamble_send_active_data 
-#elif PROTOCAL_ATE != 0
+#elif  defined SUPPORT_PROTOCAL_AKT
     #define poal_parse_header akt_parse_header
     #define poal_parse_data   akt_parse_data
     #define poal_execute_method akt_execute_method

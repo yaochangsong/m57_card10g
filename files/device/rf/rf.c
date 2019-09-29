@@ -797,7 +797,7 @@ uint8_t rf_set_interface(uint8_t cmd,uint8_t ch,void *data){
                 break;
             }
             printf_note("[**RF**]ch=%d, middle_freq=%llu\n",ch, *(uint64_t*)data);
-#if (RF_ADRV9009_IIO == 1)
+#ifdef SUPPORT_LIB_IIO
             gpio_select_rf_channel(*(uint64_t*)data);
             adrv9009_iio_set_freq(*(uint64_t*)data);
 #endif
@@ -810,7 +810,7 @@ uint8_t rf_set_interface(uint8_t cmd,uint8_t ch,void *data){
             noise_mode = *((uint8_t *)data);
             printf_debug("[**RF**]ch=%d, noise_mode=%d\n", ch, noise_mode);
         #if defined(PLAT_FORM_ARCH_ARM)
-            #if (RF_ADRV9009_IIO == 1)
+            #ifdef SUPPORT_LIB_IIO
             #else
             ret = send_noise_mode_set_cmd(ch,noise_mode);//设置射频接收模式
             #endif
@@ -825,7 +825,7 @@ uint8_t rf_set_interface(uint8_t cmd,uint8_t ch,void *data){
             mgc_gain_value = *((uint8_t *)data);
             printf_debug("[**RF**]ch=%d, mgc_gain_value=%d\n",ch, mgc_gain_value);
         #if defined(PLAT_FORM_ARCH_ARM)
-            #if (RF_ADRV9009_IIO == 1)
+            #ifdef SUPPORT_LIB_IIO
             #else
             ret = send_mid_freq_attenuation_set_cmd(ch,mgc_gain_value);//设置中频增益
             #endif
@@ -845,7 +845,7 @@ uint8_t rf_set_interface(uint8_t cmd,uint8_t ch,void *data){
             rf_gain_value = *((uint8_t *)data);
             printf_note("[**RF**]ch=%d, rf_gain_value=%d\n",ch, rf_gain_value);
         #if defined(PLAT_FORM_ARCH_ARM)
-            #if (RF_ADRV9009_IIO == 1)
+            #ifdef SUPPORT_LIB_IIO
             gpio_select_rf_attenuation(rf_gain_value);
             #else
             ret = send_rf_attenuation_set_cmd(ch,rf_gain_value);//设置射频增益
@@ -857,7 +857,7 @@ uint8_t rf_set_interface(uint8_t cmd,uint8_t ch,void *data){
             rf_freq = *((uint64_t *)data);
             printf_debug("[**RF**]ch=%d, agc_freq=%d\n",ch, rf_freq);
 #if defined(PLAT_FORM_ARCH_ARM)
-            #if (RF_ADRV9009_IIO == 1)
+            #ifdef SUPPORT_LIB_IIO
             ret =adrv9009_iio_set_freq(rf_freq);
             #else
             ret = send_freq_set_cmd(ch,rf_freq);//设置射频频率
@@ -869,7 +869,7 @@ uint8_t rf_set_interface(uint8_t cmd,uint8_t ch,void *data){
             rf_bw = *((uint32_t *)data);
             printf_debug("[**RF**]ch=%d, rf_bw=%d\n",ch, rf_bw);
         #if defined(PLAT_FORM_ARCH_ARM)
-            #if (RF_ADRV9009_IIO == 1)
+            #ifdef SUPPORT_LIB_IIO
             #else
             ret = send_rf_freq_bandwidth_set_cmd(ch,rf_bw);//设置射频带宽
             #endif
@@ -961,7 +961,7 @@ int8_t rf_init(void)
 {
     int ret = -1;
     printf_debug("spi init!\n");
-#if (RF_ADRV9009_IIO == 1)
+#ifdef SUPPORT_LIB_IIO
     adrv9009_iio_init();
 #else
     #if defined(PLAT_FORM_ARCH_ARM)

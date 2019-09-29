@@ -163,7 +163,7 @@ typedef enum _io_dq_method_code{
     IO_DQ_MODE_IQ = 0x07,
 }io_dq_method_code;
 
-#if (AMBIENT_TEMP_HUMIDITY_SUPPORT == 1)
+#ifdef SUPPORT_AMBIENT_TEMP_HUMIDITY
 #define io_get_ambient_temperature si7021_read_temperature
 #define io_get_ambient_humidity    si7021_read_humidity
 #else

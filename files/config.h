@@ -54,7 +54,7 @@
 
 #include "device/uart/uart.h"
 #include "device/rf/rf.h"
-#include "device/rf/adrv9009-iiostream.h"
+#include "device/rf/adrv9009/adrv9009-iiostream.h"
 #include "device/humidity/si7021.h" 
 
 
@@ -64,53 +64,10 @@
 #include "device/gpio/gpio.h"
 #include "dao/oal/dao_conf.h"
 
-
-
-
-
-/*define*/
-/*Support PlatForm Arch: 
-PLAT_FORM_ARCH_X86, (For debug)
-PLAT_FORM_ARCH_ARM
-*/
-#define PLAT_FORM_ARCH_ARM   
 #define SPCTRUM_VERSION_STRING "1.0.0-"__DATE__"."__TIME__ /* application version */
 
-/*Protocal Support*/
-#define PROTOCAL_HTTP  1
-#define PROTOCAL_XNRP  0
-#define PROTOCAL_ATE   1
-
-/*dao support*/
-#define DAO_JSON  0
-#define DAO_XML   1
-
-/* local or remote control support, if not set, default use remote control */
-#define CONTROL_MODE_SUPPORT 0
-
-/* uart support */
-#define UART_SUPPORT 0
-/* uart lcd support */
-#define UART_LCD_SUPPORT 0
 
 #define KERNEL_IOCTL_EN 0
 
 #define CALIBRATION_FILE_EN 0
-
-#ifdef PLAT_FORM_ARCH_ARM
-#define  RF_ADRV9009_IIO   1
-#define  AMBIENT_TEMP_HUMIDITY_SUPPORT 1
-#else 
-#define  RF_ADRV9009_IIO   0
-#define  AMBIENT_TEMP_HUMIDITY_SUPPORT 0
-#endif
-
-
-
-
-
-
-
-
-
 

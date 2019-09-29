@@ -69,8 +69,8 @@ s_config *config_get_config(void)
 /*本控 or 远控 查看接口*/
 ctrl_mode_param config_get_control_mode(void)
 {
-#if  (CONTROL_MODE_SUPPORT == 1)
-    if(config.oal_config->ctrl_para.remote_local == CTRL_MODE_LOCAL){
+#ifdef  SUPPORT_REMOTE_LOCAL_CTRL_EN
+    if(config.oal_config.ctrl_para.remote_local == CTRL_MODE_LOCAL){
         return CTRL_MODE_LOCAL;
     }else{
         return CTRL_MODE_REMOTE;
@@ -98,10 +98,10 @@ int8_t config_save_batch(exec_cmd cmd, uint8_t type,s_config *config)
 {
     printf_info(" config_save_batch\n");
 
-#if DAO_XML == 1
+#ifdef SUPPORT_DAO_XML
      dao_conf_save_batch(cmd,type,config);
         
-#elif DAO_JSON == 1
+#elif defined SUPPORT_DAO_JSON
     
 #else
     #error "NOT SUPPORT DAO FORMAT"

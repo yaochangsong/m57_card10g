@@ -30,7 +30,7 @@ static void executor_send_config_data_to_clent(void *data)
     uint32_t send_data_len = 0;
     send_param = (struct spectrum_header_param *)data;
     printf_note("ch=%d,bandwidth=%u,m_freq=%llu\n", send_param->ch, send_param->bandwidth, send_param->m_freq);
-#if PROTOCAL_ATE != 0
+#ifdef SUPPORT_PROTOCAL_AKT
     DEVICE_SIGNAL_PARAM_ST notify_param;
     notify_param.bandwith = send_param->bandwidth;
     notify_param.mid_freq = send_param->m_freq;
@@ -76,7 +76,7 @@ static  int8_t  executor_fregment_scan(uint32_t fregment_num,uint8_t ch, work_mo
     */
     s_freq = poal_config->multi_freq_fregment_para[ch].fregment[fregment_num].start_freq;
     e_freq = poal_config->multi_freq_fregment_para[ch].fregment[fregment_num].end_freq;
-#if (RF_ADRV9009_IIO == 1)
+#ifdef SUPPORT_PROJECT_SSA
     if((s_freq >= KU_FREQUENCY_START) && (s_freq <= KU_FREQUENCY_END)){
         s_freq -= KU_FREQUENCY_OFFSET;
     }
@@ -84,7 +84,7 @@ static  int8_t  executor_fregment_scan(uint32_t fregment_num,uint8_t ch, work_mo
         e_freq -= KU_FREQUENCY_OFFSET;
     }
 #endif
-#if (RF_ADRV9009_IIO == 1)
+#ifdef SUPPORT_PROJECT_SSA
     scan_bw = RF_BANDWIDTH;
 #else
     scan_bw = poal_config->rf_para[ch].mid_bw;

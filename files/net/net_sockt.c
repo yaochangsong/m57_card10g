@@ -39,7 +39,8 @@ static void tcp_ustream_write_cb(struct ustream *s, int bytes)
 
 void tcp_free(struct net_tcp_client *cl)
 {
-    printf_debug("tcp_free\n");
+    printf_info("tcp_free:");
+    printf_info(": %s:%d\n", cl->get_peer_addr(cl), cl->get_peer_port(cl));
     if (cl) {
         uloop_timeout_cancel(&cl->timeout);
         ustream_free(&cl->sfd.stream);
@@ -142,7 +143,7 @@ static void tcp_accept_cb(struct uloop_fd *fd, unsigned int events)
 
     cl->get_peer_addr = tcp_get_peer_addr;
     cl->get_peer_port = tcp_get_peer_port;
-    printf_info("New connection from: %s:%d\n", cl->get_peer_addr(cl), cl->get_peer_port(cl));
+    printf_note("New connection from: %s:%d\n", cl->get_peer_addr(cl), cl->get_peer_port(cl));
 
     return;
 err:

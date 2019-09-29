@@ -19,7 +19,7 @@ static inline int udp_get_peer_port(struct net_udp_client *cl)
 
 static void udp_free(struct net_udp_client *cl)
 {
-    printf_debug("udp_free\n");
+    printf_note("udp_free\n");
     if (cl) {
         printf_debug("close\n");
         list_del(&cl->list);
@@ -44,8 +44,9 @@ void udp_add_client(struct sockaddr_in *addr)
     struct net_udp_server *srv = get_udp_server();
     
     list_for_each_entry_safe(cl_list, list_tmp, &srv->clients, list){
-        if(memcmp(&cl_list->peer_addr.sin_addr, &addr->sin_addr, sizeof(addr->sin_addr)) == 0){
-            printf_debug("Find ipaddress on list:%s，not need to add\n",  cl_list->get_peer_addr(cl_list));
+        if(memcmp(&cl_list->peer_addr.sin_addr, &addr->sin_addr, sizeof(addr->sin_addr)) == 0 && 
+            cl_list->get_peer_port(cl_list) == addr->sin_port){
+            printf_warn("Find ipaddress on list:%s:%d，not need to add\n",  cl_list->get_peer_addr(cl_list), cl_list->get_peer_port(cl_list));
             return;
         }
     }
@@ -64,7 +65,7 @@ void udp_add_client(struct sockaddr_in *addr)
     cl->srv = srv;
     cl->srv->nclients++;
 
-    printf_info("Add New UDP Client addr: %s:%d, total client: %d\n", cl->get_peer_addr(cl), cl->get_peer_port(cl), cl->srv->nclients);
+    printf_note("Add New UDP Client addr: %s:%d, total client: %d\n", cl->get_peer_addr(cl), cl->get_peer_port(cl), cl->srv->nclients);
 
 }
 
@@ -80,7 +81,7 @@ int udp_send_data(uint8_t  *data, uint32_t data_len)
             udp_send_data_to_client(cl_list, data, data_len);
         }
         else{/* client is unconnect */
-            printf_info("**Tcp Client is Exit!! Stop Send Data And free udp Clinet**\n");
+            printf_warn("**Tcp Client is Exit!! Stop Send Data And free udp Clinet**\n");
             udp_free(cl_list);
             ret = -1;
         } 
@@ -136,7 +137,7 @@ static void udp_read_cb(struct uloop_fd *fd, unsigned int events)
         list_add(&cl->list, &srv->clients);
         cl->srv = srv;
         cl->srv->nclients++;
-        printf_info("Receive New UDP data From: %s:%d\n", cl->get_peer_addr(cl), cl->get_peer_port(cl));
+        printf_note("Receive New UDP data From: %s:%d\n", cl->get_peer_addr(cl), cl->get_peer_port(cl));
     }
 udp_handle:
     if(cl != NULL)

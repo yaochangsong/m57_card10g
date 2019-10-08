@@ -13,7 +13,11 @@
 #define NONE_EXISTENT_TEMP         (-1000)
 #define NONE_EXISTENT_HUMIDITY         (0)
 
+#ifdef SUPPORT_TEMP_HUMIDITY_SI7021
 #define temp_humidity_init() si7021_init()
+#else 
+#define temp_humidity_init() 0
+#endif
 
 extern void si7021_init(void);
 extern float si7021_read_humidity(void);

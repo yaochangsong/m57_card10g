@@ -14,13 +14,13 @@
 #*****************************************************************************
 include make.settings
 
-export CC=arm-linux-gnueabihf-gcc
+#export CC=arm-linux-gnueabihf-gcc
 #compiler
 ifneq ($(findstring x86,$(SUPPORT_PLAT_FORM_ARCH)),)
 	CC=gcc
 	C_VAR += -DPLAT_FORM_ARCH_X86
 else ifneq ($(findstring arm,$(SUPPORT_PLAT_FORM_ARCH)),)
-	CC=arm-linux-gnueabihf-gcc
+#	CC=arm-linux-gnueabihf-gcc
 	C_VAR += -DPLAT_FORM_ARCH_ARM
 endif
 
@@ -54,6 +54,9 @@ endif
 ifneq ($(findstring y,$(SUPPORT_AMBIENT_TEMP_HUMIDITY)),)
 	SOURCE_DIR += device/humidity
 	C_VAR += -DSUPPORT_AMBIENT_TEMP_HUMIDITY
+endif
+ifneq ($(findstring y,$(SUPPORT_TEMP_HUMIDITY_SI7021)),)
+	C_VAR += -DSUPPORT_TEMP_HUMIDITY_SI7021
 endif
 
 #audio

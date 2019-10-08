@@ -681,6 +681,7 @@ static int akt_execute_get_command(void)
             }
             /* not find signal */
             if(resp_result->signal_num == 0){
+                 resp_result->signal_num = 1;
                  resp_result->signal_array[0].center_freq = fft_result->mid_freq_hz[0];
                  resp_result->signal_array[0].bandwidth = fft_result->bw_hz[0];
                  resp_result->signal_array[0].power_level = fft_result->level[0];
@@ -690,8 +691,8 @@ static int akt_execute_get_command(void)
                     resp_result->signal_array[0].bandwidth,
                     resp_result->signal_array[0].power_level);
             }
-            //resp_result->temperature = io_get_ambient_temperature();
-            //resp_result->humidity = io_get_ambient_humidity();
+            resp_result->temperature = io_get_ambient_temperature();
+            resp_result->humidity = io_get_ambient_humidity();
             printf_warn("temperature:%0.2f℃, humidity:%0.2f%\n", resp_result->temperature, resp_result->humidity);
             datalen = sizeof(FFT_SIGNAL_RESPINSE_ST) + sizeof(FFT_SIGNAL_RESULT_ST)*result_num;
             memcpy(akt_get_response_data.payload_data, resp_result, datalen);

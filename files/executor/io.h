@@ -164,11 +164,16 @@ typedef enum _io_dq_method_code{
 }io_dq_method_code;
 
 #ifdef SUPPORT_AMBIENT_TEMP_HUMIDITY
-#define io_get_ambient_temperature si7021_read_temperature
-#define io_get_ambient_humidity    si7021_read_humidity
+    #ifdef SUPPORT_TEMP_HUMIDITY_SI7021
+    #define io_get_ambient_temperature() si7021_read_temperature()
+    #define io_get_ambient_humidity()    si7021_read_humidity()
+    #else
+    #define io_get_ambient_temperature() 0
+    #define io_get_ambient_humidity()    0
+    #endif
 #else
-#define io_get_ambient_temperature 
-#define io_get_ambient_humidity    
+    #define io_get_ambient_temperature() 0
+    #define io_get_ambient_humidity()    0
 #endif
 
 extern void io_init(void);

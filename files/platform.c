@@ -106,7 +106,7 @@ int main(int argc, char **argv)
 #endif
 
 #ifdef SUPPORT_AMBIENT_TEMP_HUMIDITY
- temp_humidity_init();
+    temp_humidity_init();
 #endif 
 
 

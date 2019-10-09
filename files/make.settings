@@ -25,7 +25,7 @@ ifneq ($(findstring x86,$(SUPPORT_PLAT_FORM_ARCH)),)
 	#audio
 	SUPPORT_AUDIO=y
 	#rf
-	SUPPORT_RF=y
+	SUPPORT_RF=n
 	SUPPORT_RF_ADRV9009=n
 	#iio
 	SUPPORT_LIB_IIO=n

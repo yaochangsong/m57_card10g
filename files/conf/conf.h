@@ -3,9 +3,9 @@
 #include "config.h"
 
 /** Defaults configuration values */
-#ifdef PLAT_FORM_ARCH_X86
-#define DEFAULT_CONFIGFILE "spectrum.xml"
-#define CALIBRATION_FILE   "calibration.xml"
+#ifdef SUPPORT_PLATFORM_ARCH_ARM
+#define DEFAULT_CONFIGFILE "/spectrum.xml"
+#define CALIBRATION_FILE   "/calibration.xml"
 #else
 #define DEFAULT_CONFIGFILE "spectrum.xml"
 #define CALIBRATION_FILE   "calibration.xml"

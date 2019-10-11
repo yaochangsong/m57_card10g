@@ -355,7 +355,7 @@ int8_t io_set_enable_command(uint8_t type, uint8_t ch, uint32_t fftsize)
 int16_t io_get_adc_temperature(void)
 {
     float result=0; 
-#ifdef PLAT_FORM_ARCH_ARM
+#ifdef SUPPORT_PLATFORM_ARCH_ARM
     char  path[128], upset[20];  
     char value=0;  
     int fd = -1, offset;
@@ -400,7 +400,7 @@ int32_t io_set_assamble_kernel_header_response_data(void *data){
     return ret;
 }
 
-#ifdef PLAT_FORM_ARCH_ARM
+#ifdef SUPPORT_PLATFORM_ARCH_ARM
 #define do_system(cmd)   system(cmd)
 #else
 #define do_system(cmd)
@@ -410,10 +410,10 @@ uint8_t  io_set_network_to_interfaces(void *netinfo)
 {
 
         
-    #ifdef PLAT_FORM_ARCH_X86
-    #define NETWORK_INTERFACES_FILE_PATH  "./etc/network/interfaces"
-    #else
+    #ifdef SUPPORT_PLATFORM_ARCH_ARM
     #define NETWORK_INTERFACES_FILE_PATH  "/etc/network/interfaces"
+    #else
+    #define NETWORK_INTERFACES_FILE_PATH  "./etc/network/interfaces"
     #endif
     
     struct in_addr ip_sin_addr, mask_sin_addr, gw_sin_addr;

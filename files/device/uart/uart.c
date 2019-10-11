@@ -179,7 +179,7 @@ long uart0_send_data(uint8_t *buf, uint32_t len)
 
 long uart1_send_data(uint8_t *buf, uint32_t len)
 {
-#if defined(PLAT_FORM_ARCH_ARM)
+#if defined(SUPPORT_UART)
     return write(uart[1].fd.fd,buf,len);
 #else
     return 0;
@@ -203,7 +203,7 @@ void uart_init(void)
 {
     printf_info("uart init\n");
     
-#if defined(PLAT_FORM_ARCH_ARM)
+#if defined(SUPPORT_UART)
     #if 0
     uart[0].fd.fd = uart_init_dev("/dev/ttyPS0");
         if(uart[0].fd.fd <=0 ){

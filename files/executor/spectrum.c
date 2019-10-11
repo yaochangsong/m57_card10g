@@ -30,17 +30,12 @@ static int16_t *specturm_rx_iq_read(int32_t *nbytes)
     static int write_file_cnter = 0;
     
     LOCK_IQ_DATA();
-   #ifdef SUPPORT_LIB_IIO
-    iqdata = iio_read_rx0_data(&nbytes_rx);
+    iqdata = specturm_rx0_read_data(&nbytes_rx);
     p_iqdata_start = iqdata;
     if(p_iqdata_start == NULL){
         nbytes_rx = 0;
         goto exit;
     }
-   #else    
-    nbytes_rx = 0;
-    goto exit;
-   #endif
 /*    
     if(write_file_cnter++ ==10) {
         sprintf(strbuf, "/run/wav_%d", write_file_cnter);
@@ -230,7 +225,7 @@ void spectrum_psd_user_deal(struct spectrum_header_param *param)
 
     //printf_warn("fft data and header is ready, notify to handle \n");
     UNLOCK_SP_DATA();
-    if(get_spectrum_demo()){
+    if(is_spectrum_continuous_mode()){
         spectrum_send_fft_data_interval();
     }
     safe_free(fft_float_data);

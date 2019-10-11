@@ -21,10 +21,10 @@
 
 #define MAX_COMMON_PARAM_LEN 512
 
-#ifdef PLAT_FORM_ARCH_X86
-#define NETWORK_EHTHERNET_POINT       "eno1"
-#else
+#ifdef SUPPORT_PLATFORM_ARCH_ARM
 #define NETWORK_EHTHERNET_POINT       "eth0"
+#else
+#define NETWORK_EHTHERNET_POINT       "eno1"
 #endif
 
 typedef enum _IOCTL_CMD {

@@ -18,10 +18,10 @@ include make.settings
 #compiler
 ifneq ($(findstring x86,$(SUPPORT_PLAT_FORM_ARCH)),)
 	CC=gcc
-	C_VAR += -DPLAT_FORM_ARCH_X86
+	C_VAR += -DSUPPORT_PLATFORM_ARCH_X86
 else ifneq ($(findstring arm,$(SUPPORT_PLAT_FORM_ARCH)),)
 #	CC=arm-linux-gnueabihf-gcc
-	C_VAR += -DPLAT_FORM_ARCH_ARM
+	C_VAR += -DSUPPORT_PLATFORM_ARCH_ARM
 endif
 
 #protocal
@@ -121,7 +121,12 @@ LDFLAGS = $(SUB_LIBS)  ${libdir_so}  -lpthread  -lm -lz -lfftw3f
 
 ifeq ($(CC), gcc)
 else
-LDFLAGS += -liio -lxml2
+#libiio
+ifneq ($(findstring y,$(SUPPORT_LIB_IIO)),)
+	C_VAR += -DSUPPORT_LIB_IIO
+	LDFLAGS += -liio
+endif
+LDFLAGS += -lxml2
 endif
 
 CFLAGS = -Wall -Wno-unused-function  -Wno-unused-variable -Wno-discarded-qualifiers $(INCLUDE_DIR)  $(C_VAR)

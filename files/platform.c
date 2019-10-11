@@ -20,8 +20,8 @@ static void usage(const char *prog)
     fprintf(stderr, "Usage: %s [option]\n"
         "          -d debug_level  # [3(LOG_ERR),4(LOG_WARNING),5(LOG_NOTICE),6(LOG_INFO),7(LOG_DEBUG),-1(OFF)]\n"
         "          -m power level  # [fft power level threshold, 1,2,3...n]\n"
-        "          -e demo         # [true or false,Default false]\n"
-        "          -s              # [(ADI IIO)specturm tool on; true or false,Default false]\n", prog);
+        "          -c spectrum continuous mode # [true or false,Default false]\n"
+        "          -t ADI Tool     # [(ADI IIO)specturm tool on; true or false,Default false]\n", prog);
     exit(1);
 }
 
@@ -39,11 +39,11 @@ static void usage(const char *prog)
 * RETURNS
 *     none
 ******************************************************************************/
-bool spectrum_debug = false;
+bool spectrum_aditool_debug = false;
 
-bool get_spectrum_debug(void)
+bool is_spectrum_aditool_debug(void)
 {
-    return spectrum_debug;
+    return spectrum_aditool_debug;
 }
 
 uint32_t power_level_threshold = 0;
@@ -53,11 +53,11 @@ uint32_t get_power_level_threshold(void)
     return power_level_threshold;
 }
 
-bool spectrum_demo = false;
+bool spectrum_continuous_mode = false;
 
-bool get_spectrum_demo(void)
+bool is_spectrum_continuous_mode(void)
 {
-    return spectrum_demo;
+    return spectrum_continuous_mode;
 }
 
 
@@ -65,7 +65,7 @@ int main(int argc, char **argv)
 {
     int debug_level = -1;
     int opt;
-    while ((opt = getopt(argc, argv, "d:sm:e")) != -1) {
+    while ((opt = getopt(argc, argv, "d:tm:c")) != -1) {
         switch (opt)
         {
         case 'd':
@@ -78,17 +78,17 @@ int main(int argc, char **argv)
                 exit(-1);
             }
             break;
-        case 's':
-            spectrum_debug = true;
-            printf("spectrum_debug:%d\n", spectrum_debug);
+        case 't':
+            spectrum_aditool_debug = true;
+            printf("spectrum_aditool_debug:%d\n", spectrum_aditool_debug);
             break;
         case 'm':
             printf("power level=%s\n", optarg);
             power_level_threshold = atoi(optarg);
             break;
-        case 'e':
-            printf("spectrum demo true\n");
-            spectrum_demo = true;
+        case 'c':
+            printf("spectrum continuous_mode true\n");
+            spectrum_continuous_mode = true;
             break;
         default: /* '?' */
             usage(argv[0]);
@@ -101,7 +101,7 @@ int main(int argc, char **argv)
 #ifdef SUPPORT_UART
     uart_init();
 #endif
-#ifdef PLAT_FORM_ARCH_ARM
+#ifdef SUPPORT_PLATFORM_ARCH_ARM
     gpio_init_control();
 #endif
 
@@ -113,8 +113,10 @@ int main(int argc, char **argv)
 #ifdef SUPPORT_LCD
     init_lcd();
 #endif
-if(spectrum_debug == false){
+if(spectrum_aditool_debug == false){
+    #ifdef SUPPORT_RF
     rf_init();
+    #endif
     spectrum_init();
 }
     executor_init();

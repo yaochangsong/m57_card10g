@@ -139,13 +139,13 @@ static  int8_t  executor_fregment_scan(uint32_t fregment_num,uint8_t ch, work_mo
         /* 为避免在一定带宽下，中心频率过小导致起始频率<0，设置前需要对中频做判断 */
         m_freq =  middle_freq_resetting(scan_bw, m_freq);
         executor_set_command(EX_RF_FREQ_CMD, EX_RF_MID_FREQ, ch, &m_freq);
-#ifdef PLAT_FORM_ARCH_ARM
+#ifdef SUPPORT_PLATFORM_ARCH_ARM
     #if (KERNEL_IOCTL_EN == 1)
         io_set_enable_command(PSD_MODE_ENABLE, ch, header_param.fft_size);
         executor_set_command(EX_WORK_MODE_CMD, mode, ch, &header_param);
         executor_wait_kernel_deal();
     #else
-        if(get_spectrum_debug() == false){
+        if(is_spectrum_aditool_debug() == false){
             if(poal_config->enable.psd_en){
                 spectrum_psd_user_deal(&header_param);
             }
@@ -556,12 +556,12 @@ void executor_timer_task_init(void)
 {
     static  struct uloop_timeout task1_timeout;
     printf_warn("executor_timer_task\n");
-    if(!get_spectrum_demo()){
-        printf_note("timer task: fft data send opened:%d\n", get_spectrum_demo());
+    if(!is_spectrum_continuous_mode()){
+        printf_note("timer task: fft data send opened:%d\n", is_spectrum_continuous_mode());
         task1_timeout.cb = executor_timer_task1_cb;
         uloop_timeout_set(&task1_timeout, 2000); /* 5000 ms */
     }else{
-        printf_note("timer task: fft data send shutdown:%d\n", get_spectrum_demo());
+        printf_note("timer task: fft data send shutdown:%d\n", is_spectrum_continuous_mode());
     }
 }
 

@@ -281,7 +281,7 @@ void adrv9009_iio_init(void)
 int16_t adrv9009_iio_set_freq(uint64_t freq_hz)
 {
 	static uint64_t s_freq_hz = 0;
-	if(get_spectrum_debug() == true)
+	if(is_spectrum_aditool_debug() == true)
 	{
 		return 0;
 	}
@@ -304,7 +304,7 @@ int16_t adrv9009_iio_set_freq(uint64_t freq_hz)
 	return 0;
 }
 
-int16_t *iio_read_rx0_data(ssize_t *rsize)
+int16_t *adrv9009_iio_read_rx0_data(ssize_t *rsize)
 {
 	ssize_t nbytes_rx;
 	if(stop == true){

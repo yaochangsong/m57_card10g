@@ -4,19 +4,16 @@
 
 #define MHZ(x) ((long long)(x*1000000.0 + .5))
 
-#ifdef SUPPORT_LIB_IIO
-#define specturm_rx0_read_data iio_read_rx0_data
+#ifdef SUPPORT_RF_ADRV9009
+#define specturm_rx0_read_data adrv9009_iio_read_rx0_data
+#define RF_BANDWIDTH  RF_ADRV9009_BANDWITH
 #else
 #define specturm_rx0_read_data
+#define RF_BANDWIDTH  MHZ(20)
 #endif
 
 #define fft_spectrum_iq_to_fft_handle fft_fftw_calculate_hann
 
-#ifdef SUPPORT_LIB_IIO
-#define RF_BANDWIDTH  RF_ADRV9009_BANDWITH
-#else
-#define RF_BANDWIDTH  MHZ(20)
-#endif
 
 #define SPECTRUM_START_FLAG 0x7E7E
 #define SPECTRUM_DEFAULT_FFT_SIZE (512*1024)

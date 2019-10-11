@@ -1432,13 +1432,12 @@ signalnum_flag  fft_fuzzy_computing(int threshordnum,short *iqdata,int32_t fftsi
             fftstate.maximum_x=0;
             fft_fftw_calculate(iqdata,narrowbandlen,narrowbandlen*2,fftdata.mozhi);
             smooth2(fftdata.mozhi,narrowbandlen,fftdata.smoothdata);
-#ifdef PLAT_FORM_ARCH_X86
-            writefileArr("firstsmoothdatahann.txt",fftdata.smoothdata, narrowbandlen);
-            writefileArr("firstmozhihann.txt",fftdata.mozhi, narrowbandlen);
-
+#ifdef SUPPORT_PLATFORM_ARCH_ARM
+            // writefileArr("/run/firstsmoothdatahann.txt",fftdata.smoothdata, fftsize);
+            // writefileArr("/run/firstmozhihann.txt",fftdata.mozhi, fftsize);
 #else
-           // writefileArr("/run/firstsmoothdatahann.txt",fftdata.smoothdata, fftsize);
-           // writefileArr("/run/firstmozhihann.txt",fftdata.mozhi, fftsize);
+           writefileArr("firstsmoothdatahann.txt",fftdata.smoothdata, narrowbandlen);
+           writefileArr("firstmozhihann.txt",fftdata.mozhi, narrowbandlen);
 #endif
             fftstate.Threshold=0;
             fftstate.Bottomnoise=0;
@@ -1476,13 +1475,12 @@ signalnum_flag  fft_fuzzy_computing(int threshordnum,short *iqdata,int32_t fftsi
             fft_find_midpoint(fftdata.smoothdata,narrowbandlen);
         }else{
             printf_debug("============宽带信号===============\n");
-#ifdef PLAT_FORM_ARCH_X86
-            writefileArr("firstsmoothdatahann.txt",fftdata.cutoffdata, cutoffdatacount);
-            writefileArr("firstmozhihann.txt",fftdata.cutoffdataraw, cutoffdatacount);
-        
-#else
+#ifdef SUPPORT_PLATFORM_ARCH_ARM
             //writefileArr("/run/firstsmoothdatahann.txt",fftdata.smoothdata, fftsize);
             //writefileArr("/run/firstmozhihann.txt",fftdata.mozhi, fftsize);
+#else
+            writefileArr("firstsmoothdatahann.txt",fftdata.cutoffdata, cutoffdatacount);
+            writefileArr("firstmozhihann.txt",fftdata.cutoffdataraw, cutoffdatacount);
 #endif
 
             calculatecenterfrequency(fftdata.cutoffdataraw,cutoffdatacount);                   //5 计算中心频率
@@ -1551,13 +1549,12 @@ int fft_Precise_calculation(int threshordnum,short *iqdata,int32_t fftsize,int d
 
 
 	
-#ifdef PLAT_FORM_ARCH_X86
-    writefileArr("secondsmoothdatahann.txt",fftdata.cutoffdata, cutoffdatacount);
-    writefileArr("secondmozhihann.txt",fftdata.cutoffdataraw, cutoffdatacount);
-
-#else
+#ifdef SUPPORT_PLATFORM_ARCH_ARM
     //writefileArr("/run/secondsmoothdatahann.txt",fftdata.cutoffdata, cutoffdatacount);
     //writefileArr("/run/secondmozhihann.txt",fftdata.cutoffdataraw, cutoffdatacount);
+#else
+    writefileArr("secondsmoothdatahann.txt",fftdata.cutoffdata, cutoffdatacount);
+    writefileArr("secondmozhihann.txt",fftdata.cutoffdataraw, cutoffdatacount);
 #endif
     float minvalue;
     float maxvalue;

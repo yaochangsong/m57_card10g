@@ -16,8 +16,8 @@
 #define COMPOSE_32BYTE_BY_16BIT(high, low)   ((high << 16) | (low))
 #define INT_TO_CHAR(i, c1,c2,c3,c4)         (c1 = (i >> 24)&0xff, c2 = (i >> 16)&0xff, c3 = (i >> 8)&0xff,c4 = i&0xff)
 #define FLOAT_SET_3_PRESION(f) (( (float)( (int)( (f+0.0005)*1000 ) ) )/1000);
-
-#define  send_data_by_serial(buf, len)    uart1_send_data(buf, len)
+#ifdef SUPPORT_UART
+#define  send_data_by_serial(buf, len)    uart1_send_data(buf, len)#endif
 
 #define SCREEN_BUTTON_PRESS_DOWN 1
 

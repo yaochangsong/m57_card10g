@@ -34,7 +34,7 @@ static int si7021_read_i2c_register(int file,
     packets.msgs  = messages;  
     packets.nmsgs = 2;  
     if(ioctl(file, I2C_RDWR, &packets) < 0) {  
-        perror("Unable to send data");  
+        printf_err("Unable to send data");  
         ret = -1;
     }
 

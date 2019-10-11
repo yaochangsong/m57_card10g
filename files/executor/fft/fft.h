@@ -10,7 +10,7 @@
 //#define  N  256
 static unsigned int N=1024*1024;
 #define  SIGNALNUM        (20000)//输入信号数
-#define  THRESHOLD         (12)//门限
+#define  THRESHOLD         (7)//门限
 #define  CORRECTIONSIGNAL  (300)
 
 

@@ -90,7 +90,7 @@ struct fft_state fftstate;*/
 fft_state fftstate;
 fft_result fftresult;
 static int flagcheck=0;
-
+static float get_bottomnoise=0;
 
 
 /*static int cenfrepointnum=0;
@@ -1046,11 +1046,11 @@ void findBottomnoisenomax(float *mozhi,int xiafamenxian,float *Bottomnoise,float
 	if(((*maxvalue-*minvalue)/3)<THRESHOLD)
 	{
 		*Bottomnoise=*minvalue+THRESHOLD;
-		
+	     get_bottomnoise = *minvalue;	
 	}else{
 		
 		*Bottomnoise=*minvalue+(*maxvalue-*minvalue)/3;
-		
+        get_bottomnoise = *minvalue;		
 	}
    // *Bottomnoise=*minvalue+(*maxvalue-*minvalue)/3;
     *Threshold=*Bottomnoise+xiafamenxian;
@@ -1379,6 +1379,7 @@ signalnum_flag  fft_fuzzy_computing(int threshordnum,short *iqdata,int32_t fftsi
     fftstate.Bottomnoise=0;
     fftstate.maxcentfrequency=0;
     fftstate.maximum_x=0;
+    get_bottomnoise=0;
     signalnum_flag signalflg=0;
     fft_fftw_calculate(iqdata,fftsize,datalen,fftdata.mozhi);
     smooth2(fftdata.mozhi,fftsize,fftdata.smoothdata);
@@ -1831,14 +1832,14 @@ fft_result *fft_get_result(void)
 {
     fftresult.signalsnumber=fftstate.cenfrepointnum;
     if(fftresult.signalsnumber == 0){
-        fftresult.Bottomnoise=fftstate.Bottomnoise- CORRECTIONSIGNAL;   //底噪
-        fftresult.arvcentfreq[0] = fftstate.Bottomnoise - CORRECTIONSIGNAL;
+        fftresult.Bottomnoise=get_bottomnoise- CORRECTIONSIGNAL;   //底噪
+        fftresult.arvcentfreq[0] = CORRECTIONSIGNAL - fftstate.Bottomnoise;
         fftresult.bandwidth[0] = 0;
         fftresult.centfeqpoint[0] = 0;
-        printf_warn("fftresult.arvcentfreq[0]=%f,%f\n", fftresult.arvcentfreq[0],fftresult.Bottomnoise);
     }else{
         fftresult.maximum_x=fftstate.maximum_x;   //peak值
-    	fftresult.Bottomnoise=fftstate.Bottomnoise;   //底噪
+    	//fftresult.Bottomnoise=fftstate.Bottomnoise;   //底噪
+        fftresult.Bottomnoise=get_bottomnoise;
         memcpy(fftresult.centfeqpoint,fftstate.centfeqpoint,sizeof(int)*SIGNALNUM);
         memcpy(fftresult.bandwidth,fftstate.bandwidth,sizeof(int)*SIGNALNUM);
         memcpy(fftresult.arvcentfreq,fftstate.arvcentfreq,sizeof(float)*SIGNALNUM);

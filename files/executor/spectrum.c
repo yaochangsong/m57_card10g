@@ -91,6 +91,7 @@ static void spectrum_send_fft_data(void *fft_data, size_t fft_data_len, void *pa
 /* Before send client, we need to remove sideband signals data  and  extra bandwidth data */
 fft_data_type *spectrum_fft_data_order(struct spectrum_st *ps, uint32_t *result_fft_size)
 {
+#if 0
     /*-- 1 step: when scan count >2 , need to exchange sn order */
     static uint64_t mfreq[32] = {0}; 
     static uint32_t mbw[32] = {0};
@@ -114,7 +115,7 @@ fft_data_type *spectrum_fft_data_order(struct spectrum_st *ps, uint32_t *result_
         printf_debug("m_freq=%llu,param->total_fft=%u, sn=%u, bandwidth=%u\n", ps->param.m_freq, ps->param.total_fft, ps->param.fft_sn, ps->param.bandwidth);
     }
 
-
+#endif
    
     uint32_t extra_data_single_size = 0;
     /*-- 2 step:  
@@ -207,7 +208,6 @@ void spectrum_psd_user_deal(struct spectrum_header_param *param)
     fft_float_data = (float *)safe_malloc(fft_size*4);
     ps->fft_float_payload = fft_float_data;
     TIME_ELAPSED(fft_spectrum_iq_to_fft_handle(ps->iq_payload, fft_size, fft_size*2, ps->fft_float_payload));
-
     ps->fft_len = fft_size;
     if(ps->fft_len > sizeof(ps->fft_short_payload)){
         printf_err("fft size[%u] is too big\n", ps->fft_len);
@@ -298,8 +298,7 @@ void *spectrum_rw_fft_result(fft_result *result, uint64_t s_freq_hz, float freq_
     if(pfft->result_num == 0){
         pfft->mid_freq_hz[0] = result->centfeqpoint[0];
         pfft->bw_hz[0] = result->bandwidth[0];
-        pfft->level[0] = result->arvcentfreq[0] + spectrum_analysis_level_calibration(ps->param.m_freq);
-        printf_err("pfft->level[0]:%f\n", pfft->level[0]);
+        pfft->level[0] = result->arvcentfreq[0]; //+ spectrum_analysis_level_calibration(ps->param.m_freq);
         goto exit;
     }
     uint64_t signal_start_freq = 0, signal_end_freq = 0;

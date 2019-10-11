@@ -297,7 +297,6 @@ int16_t adrv9009_iio_set_freq(uint64_t freq_hz)
 	}
 	s_freq_hz = freq_hz;
 	printf_note("* Setting ADRV9009 RX freq:%llu\n", freq_hz);
-	
 	struct iio_channel *chn = NULL;
 	if (!get_lo_chan(ctx, &chn)) { return -1; }
 	wr_ch_lli(chn, "frequency", freq_hz);
@@ -312,6 +311,11 @@ int16_t *adrv9009_iio_read_rx0_data(ssize_t *rsize)
 		return NULL;
 	}
 	printf_info("* iio_read_rx_data\n");
+	/* It is very important to refill three times here, for some unknown reason...
+	   otherwise it will cause the order of IQ data to be disordered.
+	*/
+	iio_buffer_refill(rxbuf);
+	iio_buffer_refill(rxbuf);
 	nbytes_rx = iio_buffer_refill(rxbuf);
 	if (nbytes_rx < 0) { printf("Error refilling buf %d\n",(int) nbytes_rx); iio_shutdown(); }
 	*rsize = nbytes_rx;

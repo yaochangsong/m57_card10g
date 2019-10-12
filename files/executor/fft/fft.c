@@ -1770,25 +1770,27 @@ int fft_Precise_iqdata_calculation(int threshordnum,short *iqdata,int32_t fftsiz
     fft_calculate_finaldata();
 
 }
-int fft_iqdata_testfrequency(int threshordnum,short *iqdata,int32_t fftsize,int datalen)
+int fft_iqdata_testfrequency(int threshordnum,short *iqdata,int32_t fftsize,int datalen,uint32_t midpoint,uint32_t bigbw,uint32_t littlebw)
 {
+    signalnum_flag signalflg=0;
     if(fftsize<=firstfftlen)
     {
-       if(fft_fuzzy_iqdata_computing(threshordnum,iqdata,fftsize,datalen)==-1)
+        signalflg=fft_fuzzy_iqdata_computing(threshordnum,iqdata,fftsize,datalen,midpoint,bigbw,littlebw);
+        if(signalflg==SIGNALNUM_ABNORMAL)
         {
             printf_note("There are too many signals\n");
             return 0;
         }
     }else if(fftsize>firstfftlen){
-    if(fft_fuzzy_iqdata_computing(threshordnum,iqdata,firstfftlen,2*firstfftlen)==-1)
+    signalflg= fft_fuzzy_iqdata_computing(threshordnum,iqdata,firstfftlen,2*firstfftlen,midpoint,bigbw,littlebw);
+    if(signalflg==SIGNALNUM_ABNORMAL)
     {
         printf_note("There are too many signals\n");
         return 0;
     }
-    fft_Precise_iqdata_calculation(threshordnum,iqdata,fftsize,datalen);
+    fft_Precise_iqdata_calculation(threshordnum,iqdata,fftsize,datalen,midpoint,bigbw,littlebw);
   }
 }
-
 
 /********************************************************************************
 
@@ -1887,7 +1889,7 @@ int  fft_fuzzy_fftdata_handle(int threshordnum,float *fsdata,int datalen,uint32_
 
 
 
-	int i=0,j=0,cutoffdatacount=0,n=0;
+	int j=0,cutoffdatacount=0,n=0;
 	int actual_point;
 	int actual_midpoints;
 	actual_point=((float)fuzzybw/(float)bigbw)*datalen/2;
@@ -1987,10 +1989,10 @@ int  fft_fuzzy_fftdata_handle(int threshordnum,float *fsdata,int datalen,uint32_
             max=fftdata.cutoffdataraw[p];
             for(p=0;p<cutoffdatacount;p++)
             {
-                if(max<cutoffdatacount[p])
+                if(max<fftdata.cutoffdataraw[p])
                 {
                    // printf_debug("fftdata.mozhi[%d]=%f,",p,fftdata.mozhi[p]);
-                   max= cutoffdatacount[p];
+                   max= fftdata.cutoffdataraw[p];
                    fftstate.maximum_x=p;
                 }
             }
@@ -2049,7 +2051,7 @@ void fft_precise_fftdata_calculation(int threshordnum,float *fsdata,uint32_t dat
     smooth2(fsdata,N,fftdata.smoothdata);
 
 
-	int i=0,j=0,cutoffdatacount=0,n=0;
+	int j=0,cutoffdatacount=0,n=0;
 	int actual_point;
 	int actual_midpoints;
 	actual_point=((float)littlebw/(float)bigbw)*datalen/2;
@@ -2073,7 +2075,7 @@ void fft_precise_fftdata_calculation(int threshordnum,float *fsdata,uint32_t dat
     float minvalue;
     float maxvalue;
     
-    int j=0;int num=0;int num1=0;int p=0;int count=0;
+    int  num=0;int num1=0;int p=0;int count=0;
     int firsttemp=0;
     int secondtemp=0;
     int flag=0;
@@ -2332,7 +2334,7 @@ int  fft_fftdata_handle(int threshold,float *fuzzydata,uint32_t fuzzylen,float *
     }
    // fft_fftdata_testfrequency(bd,fuzzydata,fuzzylen,fuzzymidpoint,fuzzybw,bigdata,biglen,bigmidpoint,bigbw);//iq数据，下发门限，fft大小，下发数据长度 
    fft_fuzzy_fftdata_handle(threshold,fuzzydata,fuzzylen,midpointhz,signal_bw,total_bw);
-   fft_precise_fftdata_calculation(threshold,bigdata,biglen,midpointhz,signal_bw,total_bw);
+   fft_precise_fftdata_calculation(threshold,bigdata,biglen,midpointhz,signal_bw,total_bw,fuzzylen);
 
 }
 

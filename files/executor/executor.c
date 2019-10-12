@@ -146,12 +146,7 @@ static  int8_t  executor_fregment_scan(uint32_t fregment_num,uint8_t ch, work_mo
         executor_wait_kernel_deal();
     #else
         if(is_spectrum_aditool_debug() == false){
-            if(poal_config->enable.psd_en){
                 spectrum_psd_user_deal(&header_param);
-            }
-            if(poal_config->enable.spec_analy_en){
-                spectrum_analysis_user_deal(&header_param);
-            }
         }else{
             usleep(500);
         }

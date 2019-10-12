@@ -1,15 +1,39 @@
+/******************************************************************************
+*  Copyright 2019, Showay Technology Dev Co.,Ltd.
+*  ---------------------------------------------------------------------------
+*  Statement:
+*  ----------
+*  This software is protected by Copyright and the information contained
+*  herein is confidential. The software may not be copied and the information
+*  contained herein may not be used or disclosed except with the written
+*  permission of Showay Technology Dev Co.,Ltd. (C) 2019
+******************************************************************************/
+/*****************************************************************************     
+*  Rev 1.0   28 July 2019   yaochangsong
+*  Initial revision.
+*  Rev 2.0   11 Oct. 2019   yaochangsong
+*  add memory pool.
+******************************************************************************/
 #include "config.h"
 
 struct spectrum_st _spectrum;
+
+/*When the spectrum bandwidth is larger than the scan bandwidth, 
+in order to calculate the FFT result of the entire spectrum, 
+it is necessary to use the memory pool to store IQ and FFT intermediate data. 
+*/
+/* the memory pool to store IQ data */
+memory_pool_t *mp_iq_buffer_head;
+/* the memory pool to store FFT data: small & big */
+memory_pool_t *mp_fft_small_buffer_head; /* for 4K FFT */
+memory_pool_t *mp_fft_big_buffer_head;   /* for 128K FFT */
+
 
 pthread_mutex_t spectrum_result_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t spectrum_data_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t spectrum_iq_data_mutex = PTHREAD_MUTEX_INITIALIZER;
 
-
-pthread_cond_t spectrum_analysis_cond = PTHREAD_COND_INITIALIZER;
-pthread_mutex_t spectrum_analysis_cond_mutex = PTHREAD_MUTEX_INITIALIZER;
-
+struct sp_sem_nofity_st sp_sem;
 
 static inline  bool specturm_is_analysis_enable(void)
 {
@@ -19,6 +43,25 @@ static inline  bool specturm_is_analysis_enable(void)
     else
         return false;
 }
+
+static inline  bool specturm_is_psd_enable(void)
+{
+    struct poal_config *poal_config = &(config_get_config()->oal_config);
+    if(poal_config->enable.psd_en == 1)
+        return true;
+    else
+        return false;
+}
+
+static inline uint64_t spectrum_get_analysis_middle_freq(uint64_t sig_sfreq, uint32_t sig_bw)
+{
+    struct poal_config *poal_config = &(config_get_config()->oal_config);
+    if(poal_config->ctrl_para.specturm_analysis_param.frequency_hz == 0){
+        poal_config->ctrl_para.specturm_analysis_param.frequency_hz = sig_sfreq + sig_bw/2;
+    }
+    return poal_config->ctrl_para.specturm_analysis_param.frequency_hz;
+}
+
 
 /* Read Rx Raw IQ data*/
 static int16_t *specturm_rx_iq_read(int32_t *nbytes)
@@ -91,34 +134,9 @@ static void spectrum_send_fft_data(void *fft_data, size_t fft_data_len, void *pa
 /* Before send client, we need to remove sideband signals data  and  extra bandwidth data */
 fft_data_type *spectrum_fft_data_order(struct spectrum_st *ps, uint32_t *result_fft_size)
 {
-#if 0
-    /*-- 1 step: when scan count >2 , need to exchange sn order */
-    static uint64_t mfreq[32] = {0}; 
-    static uint32_t mbw[32] = {0};
-
-    
-    if(ps->param.total_fft > sizeof(mfreq)/sizeof(uint64_t)){
-        printf_err("Requency range is too long:%d", ps->param.total_fft);
-        goto exit;
-    }
-    if(ps->param.total_fft >= 2){
-        mfreq[ps->param.fft_sn] = ps->param.m_freq;
-        mbw[ps->param.fft_sn] = ps->param.bandwidth;
-        if(ps->param.fft_sn >= 2){
-           ps->param.fft_sn -= 2;
-        }else{
-           ps->param.fft_sn += ps->param.total_fft - 2;
-        }
-        ps->param.m_freq = mfreq[ps->param.fft_sn]; 
-        ps->param.bandwidth = mbw[ps->param.fft_sn]; 
-
-        printf_debug("m_freq=%llu,param->total_fft=%u, sn=%u, bandwidth=%u\n", ps->param.m_freq, ps->param.total_fft, ps->param.fft_sn, ps->param.bandwidth);
-    }
-
-#endif
    
     uint32_t extra_data_single_size = 0;
-    /*-- 2 step:  
+    /*-- 1 step:  
        remove sideband signals data
    */
     /* single sideband signal fft size */
@@ -133,7 +151,7 @@ fft_data_type *spectrum_fft_data_order(struct spectrum_st *ps, uint32_t *result_
     printf_debug("result_fft_size=%u\n", *result_fft_size); 
 
 
-    /*-- 3 step: when middle frequency is less than BW/2 [100MHz], we need to resetting middle frequency
+    /*-- 2 step: when middle frequency is less than BW/2 [100MHz], we need to resetting middle frequency
                (see middle_freq_resetting function) ; when sending data, we need to restore the settings and remove 
                the redundant data.
                 the left extra data:  (mf0 - bw0/2 - deltabw)* fftSize /BW; [mf0 - bw0/2 >= deltabw]
@@ -156,7 +174,7 @@ fft_data_type *spectrum_fft_data_order(struct spectrum_st *ps, uint32_t *result_
         }
         printf_info("m_freq = %llu, bandwidth= %u, delta_bw=%llu, left=%u, right=%u,*result_fft_size=%u\n", ps->param.m_freq, ps->param.bandwidth, delta_bw, left_extra_single_size, right_extra_single_size,*result_fft_size);
     }else{
-        /*-- 4 step:  
+        /*-- 3 step:  
            If the remaining bandwidth is less than the actual working bandwidth,
            we need to remove the extra data. 
         */
@@ -184,6 +202,43 @@ fft_data_type *spectrum_fft_data_order(struct spectrum_st *ps, uint32_t *result_
     return (fft_data_type *)((fft_data_type *)ps->fft_short_payload + single_sideband_size + extra_data_single_size + left_extra_single_size);
 }
 
+static int specturm_write_oneframe_iq_data_to_buffer(struct spectrum_header_param *param, void *data, size_t nbyte)
+{
+    static bool is_sysn_write= false;
+    memory_pool_t *iq_mpool = mp_iq_buffer_head;
+    struct spectrum_st *ps;
+    ps = &_spectrum;
+    static int old_fft_sn = -1;
+    
+    if(param->total_fft > memory_pool_get_count(iq_mpool)){
+        printf_err("One Frame FFT scan count is more than memory pool count!!!\n");
+        return -1;
+    }
+
+    if((0 == param->fft_sn) && (ps->iq_data_ready == false) && (old_fft_sn != param->fft_sn)){
+        is_sysn_write = true;
+    }
+    printf_debug("fft_sn=%u, total_fft=%u, %d, iq_data_ready=%d,is_sysn_write=%d\n", param->fft_sn, param->total_fft, memory_pool_get_count(iq_mpool), ps->iq_data_ready,is_sysn_write);
+    if((is_sysn_write == true) && (old_fft_sn != param->fft_sn)){
+        printf_note("sn:%d, total_fft=%d\n", param->fft_sn, param->total_fft);
+        memory_pool_write_value(memory_pool_alloc(iq_mpool), data, nbyte);
+        printf_note("use_count=%d\n", memory_pool_get_use_count(iq_mpool));
+        if(old_fft_sn != param->fft_sn){
+            old_fft_sn = param->fft_sn;
+        }
+        if(param->fft_sn == param->total_fft-1){
+            printf_info("write One frame IQ data ok\n");
+            ps->iq_data_ready = true;
+            is_sysn_write = false;
+            /* save spectrum perameter */
+            printf_note("iq_mpool step:%d\n", memory_pool_step(iq_mpool));
+            memory_pool_write_attr_value(iq_mpool, param, sizeof(struct spectrum_header_param));
+            old_fft_sn = -1;
+            return 0;
+        }
+    }
+    return -1;
+}
 
 /* We use this function to deal FFT spectrum wave in user space */
 void spectrum_psd_user_deal(struct spectrum_header_param *param)
@@ -203,48 +258,43 @@ void spectrum_psd_user_deal(struct spectrum_header_param *param)
     }
     printf_debug("ps->iq_payload[0]=%d, %d,param->fft_size=%d, ps->iq_len=%d\n", ps->iq_payload[0],ps->iq_payload[1], param->fft_size, ps->iq_len);
     
-    fft_size = param->fft_size;
-    /* Start Convert IQ data to FFT, Noise threshold:8 */
-    fft_float_data = (float *)safe_malloc(fft_size*4);
-    ps->fft_float_payload = fft_float_data;
-    TIME_ELAPSED(fft_spectrum_iq_to_fft_handle(ps->iq_payload, fft_size, fft_size*2, ps->fft_float_payload));
-    ps->fft_len = fft_size;
-    if(ps->fft_len > sizeof(ps->fft_short_payload)){
-        printf_err("fft size[%u] is too big\n", ps->fft_len);
-        return;
+    /* if spectrum analysis is enable, we start to save iq data(one frame) to memery pool; prepare to analysis spectrum */
+    if(specturm_is_analysis_enable()){
+        if(!specturm_write_oneframe_iq_data_to_buffer(param, ps->iq_payload, ps->iq_len)){
+            /* notify thread can start to conver iq to fft */
+            printf_note("##New Frame IQ Data Created, Notify to Deal##\n");
+            sem_post(&sp_sem.notify_iq_to_fft);
+        }
     }
-    /* To the circumstances: the client's active acquisition of FFT data; Here we user backup buffer to store fft data; 
-    when the scheduled task is processed[fft_data_ready=false],  we start filling in new fft data in back buffer [ps->fft_short_payload_back]*/
-    LOCK_SP_DATA();
-    /* Here we convert float to short integer processing */
-    FLOAT_TO_SHORT(ps->fft_float_payload, ps->fft_short_payload, ps->fft_len);
-    /*refill header parameter*/
-    memcpy(&ps->param, param, sizeof(struct spectrum_header_param));
 
-    ps->fft_data_ready = true;
+    if(specturm_is_psd_enable()){
+        fft_size = param->fft_size;
+        /* Start Convert IQ data to FFT, Noise threshold:8 */
+        fft_float_data = (float *)safe_malloc(fft_size*4);
+        ps->fft_float_payload = fft_float_data;
+        TIME_ELAPSED(fft_spectrum_iq_to_fft_handle(ps->iq_payload, fft_size, fft_size*2, ps->fft_float_payload));
+        ps->fft_len = fft_size;
+        if(ps->fft_len > sizeof(ps->fft_short_payload)){
+            printf_err("fft size[%u] is too big\n", ps->fft_len);
+            return;
+        }
+        /* To the circumstances: the client's active acquisition of FFT data; Here we user backup buffer to store fft data; 
+        when the scheduled task is processed[fft_data_ready=false],  we start filling in new fft data in back buffer [ps->fft_short_payload_back]*/
+        LOCK_SP_DATA();
+        /* Here we convert float to short integer processing */
+        FLOAT_TO_SHORT(ps->fft_float_payload, ps->fft_short_payload, ps->fft_len);
+        /*refill header parameter*/
+        memcpy(&ps->param, param, sizeof(struct spectrum_header_param));
 
-    //printf_warn("fft data and header is ready, notify to handle \n");
-    UNLOCK_SP_DATA();
-    if(is_spectrum_continuous_mode()){
-        spectrum_send_fft_data_interval();
+        ps->fft_data_ready = true;
+
+        //printf_warn("fft data and header is ready, notify to handle \n");
+        UNLOCK_SP_DATA();
+        if(is_spectrum_continuous_mode()){
+            spectrum_send_fft_data_interval();
+        }
+        safe_free(fft_float_data);
     }
-    safe_free(fft_float_data);
-
-}
-
-/* after scan, notify thread start to analysis fft data */
-void spectrum_analysis_user_deal(struct spectrum_header_param *param)
-{
-    struct spectrum_st *ps;
-    ps = &_spectrum;
-     /*refill header parameter*/
-    LOCK_SP_DATA();
-    memcpy(&ps->param, param, sizeof(struct spectrum_header_param));
-    UNLOCK_SP_DATA();
-    /* notify thread can start to deal fft result */
-    pthread_cond_signal(&spectrum_analysis_cond);
-    /* to reduce cpu usage */
-    usleep(1000);
 }
 
 int32_t spectrum_analysis_level_calibration(uint64_t m_freq)
@@ -409,129 +459,168 @@ int32_t spectrum_send_fft_data_interval(void)
 }
 
 
-/* Calculate the center frequency offset value (relative to the rf operating bandwidth) for spectrum analysis */
-static int8_t inline spectrum_get_offset_middle_freq(uint64_t m_freq, uint64_t s_freq, uint32_t analysis_bw, uint64_t *midd_freq_offset)
+/* load specturm analysis paramter */
+static int8_t inline spectrum_get_analysis_paramter(uint64_t s_freq, uint64_t e_freq,uint32_t *_analysis_bw, uint64_t *midd_freq_offset)
 {
-    if(m_freq <= RF_BANDWIDTH/2){
+    uint32_t analysis_bw;
+    uint64_t analysis_middle_freq;
+    struct poal_config *poal_config = &(config_get_config()->oal_config);
+    
+    analysis_bw = poal_config->ctrl_para.specturm_analysis_param.bandwidth_hz;
+    analysis_middle_freq =  spectrum_get_analysis_middle_freq(s_freq, analysis_bw);;
+    
+    if(analysis_middle_freq < s_freq || analysis_middle_freq > e_freq){
+        printf_err("analysis frequency[%llu] is not  NOT within the bandwidth range[%llu, %llu]\n", analysis_middle_freq, s_freq, e_freq);
+        return -1;
+    }
+    if(analysis_bw > RF_BANDWIDTH*SPECTRUM_MAX_SCAN_COUNT || analysis_bw == 0){
+        printf_err("analysis bandwidth [%u] not surpport!!\n", analysis_bw);
+        return -1;
+    }
+    
+    *_analysis_bw = analysis_bw;
+
+    /* Calculate the center frequency offset value (relative to the rf operating bandwidth) for spectrum analysis */
+    if(analysis_middle_freq <= RF_BANDWIDTH/2){
         if(s_freq >= delta_bw){
-            *midd_freq_offset = RF_BANDWIDTH/2+delta_bw - m_freq;
+            *midd_freq_offset = RF_BANDWIDTH/2+delta_bw - analysis_middle_freq;
         }else{
-            printf_err("analysis frequency[%llu] is not  NOT within the bandwidth range[%llu, %llu]\n");
+            printf_err("start frequency[%llu] is too small\n", s_freq);
             return -1;
         }
         
     }else{
         *midd_freq_offset = 0;
     }
+    
     return 0;
 }
 
-/* load specturm analysis paramter */
-static int8_t inline spectrum_load_analysis_parameter(uint32_t *_analysis_bw)
+
+static size_t spectrum_iq_convert_fft_store_mm_pool(memory_pool_t  *fftmpool, memory_pool_t  *iqmpool)
 {
-    uint32_t analysis_bw;
-    uint64_t analysis_freq;
-    struct poal_config *poal_config = &(config_get_config()->oal_config);
-    struct spectrum_st *ps;
-    ps = &_spectrum;
+    void *p_dat, *p_end;
+    size_t p_inc;
+    size_t fft_size = memory_pool_step(fftmpool)/4;
     
-    analysis_bw = poal_config->ctrl_para.specturm_analysis_param.bandwidth_hz;
-    if(poal_config->ctrl_para.specturm_analysis_param.frequency_hz == 0){
-        poal_config->ctrl_para.specturm_analysis_param.frequency_hz = ps->param.s_freq + analysis_bw/2;
+    
+    printf_note("GET FFT size: %d\n", fft_size);
+    
+    p_end = memory_pool_end(iqmpool);
+    p_inc = memory_pool_step(iqmpool);
+    
+    printf_note("pool_first=%p,pool_end =%p, pool_step=%p\n", 
+        memory_pool_first(iqmpool), memory_pool_end(iqmpool), memory_pool_step(iqmpool));
+    for (p_dat = memory_pool_first(iqmpool); p_dat < p_end; p_dat += p_inc) {
+        float *s_fft_mp = (float *)memory_pool_alloc(fftmpool);
+        TIME_ELAPSED(fft_spectrum_iq_to_fft_handle((int16_t *)p_dat, fft_size, fft_size*2, s_fft_mp));
+        for(int i = 0; i<10; i++)
+            printfd("%f ", *((float *)s_fft_mp+i));
+        printfd("\n");
     }
-    analysis_freq = poal_config->ctrl_para.specturm_analysis_param.frequency_hz;
-    
-    if(analysis_freq < ps->param.s_freq || analysis_freq > ps->param.e_freq){
-        printf_err("analysis frequency[%llu] is not  NOT within the bandwidth range[%llu, %llu]\n", analysis_freq, ps->param.s_freq, ps->param.e_freq);
-        return -1;
-    }
-    if(analysis_bw > RF_BANDWIDTH || analysis_bw == 0){
-        printf_err("analysis bandwidth [%u] not surpport!!\n", analysis_bw);
-        return -1;
-    }
-    
-    printf_note("analysis_bandwidth_hz:%u, analysis_frequency_hz:%llu,RF_BANDWIDTH=%u,m_freq=%llu\n",
-        analysis_bw, 
-        analysis_freq,
-        RF_BANDWIDTH,
-        ps->param.m_freq);
-    
-    *_analysis_bw = analysis_bw;
-    
-    return 0;
+    return (fft_size*memory_pool_get_use_count(fftmpool));
 }
 
+static int spectrum_data_write_file(memory_pool_t  *mpool, uint8_t data_type_len, int index)
+{
+    char strbuf[128];
+    void *p_dat, *p_end;
+    size_t p_inc;
 
+    p_end = memory_pool_end(mpool);
+    p_inc = memory_pool_step(mpool);
+
+    sprintf(strbuf, "/run/%s%d", data_type_len == sizeof(int16_t) ? "IQ":"FFT",  index);
+    printf_note("##start save iq:%s, %d, %d\n", strbuf, p_inc, memory_pool_get_use_count(mpool));
+    if(data_type_len == sizeof(int16_t)){  //int16
+        write_file_in_int16((void*)(memory_pool_first(mpool)), p_inc * memory_pool_get_use_count(mpool)/data_type_len, strbuf);
+    }
+    else if(data_type_len == sizeof(float)){ //float
+        write_file_in_float((void*)(memory_pool_first(mpool)), p_inc * memory_pool_get_use_count(mpool)/data_type_len, strbuf);
+    }
+    return 0;
+}
 
 void specturm_analysis_deal_thread(void *arg)
 {
+    memory_pool_t *iq_mpool = mp_iq_buffer_head;
+    memory_pool_t *fft_small_mpool = mp_fft_small_buffer_head;
+    memory_pool_t *fft_big_mpool = mp_fft_big_buffer_head;
+    int small_fft_size = 0, big_fft_size = 0;
     struct spectrum_st *ps;
+    struct spectrum_header_param *param;
     float resolution;
-    uint64_t fft_size, bw_fft_size;
-    uint32_t iq_len;
-    int16_t *iq_payload; 
-    uint64_t midd_freq_offset;
+    uint64_t analysis_midd_freq_offset, bw_fft_size;
     uint32_t analysis_bw; 
-    uint64_t analysis_freq;
+    uint32_t total_bw; 
+    ps = &_spectrum;
+
 loop:
     while(1){
-        printf_debug("prepare to read iq data and analysis specturm......\n");
-
-        /* Before start specturm analysis, we need to wait the center frequency to be set */
-        /*and also some other parameter[bandwidth,s_freq] to be set  */
+         /* wait to product iq data */
+        printf_note("###wait to analysis specturm###\n");
+        sem_wait(&sp_sem.notify_iq_to_fft);
+        /* Here we have get IQ data in memory pool (name: iq_mpool)*/
+        printf_note("###Save IQ data###\n");
+        spectrum_data_write_file(iq_mpool, sizeof(int16_t), 0);
         
-        /* Mutex must be locked for pthread_cond_timedwait... */
-        pthread_mutex_lock(&spectrum_analysis_cond_mutex);
-        /* Thread safe "sleep" */
-        pthread_cond_wait(&spectrum_analysis_cond, &spectrum_analysis_cond_mutex);
-        /* No longer needs to be locked */
-        pthread_mutex_unlock(&spectrum_analysis_cond_mutex);
-        printf_debug("start to read iq data and analysis specturm .\n");
-        ps = &_spectrum;
-        /* Read Raw IQ data*/
-        iq_payload = specturm_rx_iq_read(&iq_len);
-        if((iq_len == 0) || (iq_len < SPECTRUM_DEFAULT_FFT_SIZE*2)){
-            printf_err("error iq len[%u]\n", iq_len);
+        /* --1step IQ convert 4K(small) fft, and store fft data to small memory pool  */
+        printf_note("###STEP1: IQ Convert to Small FFT###\n");
+        small_fft_size = spectrum_iq_convert_fft_store_mm_pool(fft_small_mpool, iq_mpool);
+        printf_note("###Save FFT data###\n");
+        spectrum_data_write_file(fft_small_mpool, sizeof(float), 1);
+        
+        /* --2 step: IQ convet 128K(big) fft, and store fft data to big memory pool */
+        printf_note("###STEP2: IQ Convert to Big FFT###\n");
+        big_fft_size = spectrum_iq_convert_fft_store_mm_pool(fft_big_mpool, iq_mpool);
+        printf_note("###Save Big FFT data###\n");
+        spectrum_data_write_file(fft_big_mpool, sizeof(float), 2);
+        
+        /* save specturm perameter to big fft memory pool */
+        printf_note("###STEP3: Write FFT Attr to Pool###\n");
+        memory_pool_write_attr_value(fft_big_mpool, memory_pool_get_attr(iq_mpool), memory_pool_get_attr_len(iq_mpool));
+        /* now, we can refill IQ data to memory pool again */
+        memory_pool_free(iq_mpool);
+        ps->iq_data_ready = false;
+        printf_note("###IQ Deal Over,Free, Wait New IQ data###\n");
+
+        param = (struct spectrum_header_param *)memory_pool_get_attr(fft_big_mpool);
+        printf_note("s_freq=%llu, e_freq=%llu\n", param->s_freq, param->e_freq);
+
+        /* load specturm analysis paramter: analysis_bw, analysis_midd_freq_offset*/
+        if(spectrum_get_analysis_paramter(param->s_freq, param->e_freq, &analysis_bw, &analysis_midd_freq_offset) == -1){
             sleep(1);
             goto loop;
         }
-        printf_note("ps->iq_payload[0]=%d, %d,ps->iq_len=%u\n", iq_payload[0],iq_payload[1], iq_len);
+        
+        total_bw = RF_BANDWIDTH*memory_pool_get_use_count(fft_big_mpool);
+        printf_note("analysis_bw=%u, analysis_midd_freq_offset=%llu\n", analysis_bw, analysis_midd_freq_offset);
+        printf_note("small fft data len=%d, use_count=%d\n", small_fft_size, memory_pool_get_use_count(fft_small_mpool));
+        printf_note("big fft data len=%d, use_count=%d\n", big_fft_size, memory_pool_get_use_count(fft_big_mpool));
+        printf_note("work total bw=%u\n", total_bw);
+        printf_note("###STEP4: Start to analysis FFT data###\n");
+        
+        TIME_ELAPSED(fft_fftdata_handle(get_power_level_threshold(),                /* signal threshold */
+                    (float *)memory_pool_first(fft_small_mpool),                    /* small fft data */
+                    small_fft_size,                                                 /* small fft data len */
+                    (float *)memory_pool_first(fft_big_mpool),                      /* big fft data */
+                    big_fft_size,                                                   /* big fft data len */
+                    analysis_midd_freq_offset,                                      /* analysis signal middle frequency */
+                    analysis_bw,                                                    /* analysis signal bandwidth */
+                    total_bw*SIDE_BAND_RATE                                         /* total bw */
+                    ));                                                 
 
-        fft_size = SPECTRUM_DEFAULT_FFT_SIZE;
-
-        /* load specturm analysis paramter */
-        if(spectrum_load_analysis_parameter(&analysis_bw) == -1){
-            sleep(1);
-            goto loop;
-        }
-        /* Calculate the middle frequency offset value (relative to the rf operating bandwidth) for spectrum analysis */
-        if(spectrum_get_offset_middle_freq(ps->param.m_freq, ps->param.s_freq, analysis_bw, &midd_freq_offset) == -1){
-            sleep(1);
-            goto loop;
-        }
-        printf_note("midd_freq_offset = %llu\n", midd_freq_offset);
-
-        /* Start Convert IQ data to FFT */
-        TIME_ELAPSED(fft_iqdata_handle(get_power_level_threshold(), 
-                            iq_payload, fft_size, 
-                            fft_size*2,
-                            midd_freq_offset,
-                            RF_BANDWIDTH*SIDE_BAND_RATE,
-                            analysis_bw));
-        LOCK_SP_DATA();
-        /* Calculation resolution(Point bandwidth) by Total bandWidth& fft size */
-        resolution = calc_resolution(RF_BANDWIDTH, fft_size);
-        bw_fft_size = ((float)analysis_bw/(float)RF_BANDWIDTH) *fft_size ;
-        /*  write fft result to buffer: middle point, bandwidth point, power level
-            fft_get_result(): GET FFT result
-        */
-        printf_note("refill fft result[s_freq:%llu,resolution:%f, fft_size:%llu,bw_fft_size:%llu]\n",ps->param.s_freq, resolution, fft_size,bw_fft_size);
+        resolution = calc_resolution(total_bw, big_fft_size);
+        bw_fft_size = ((float)analysis_bw/(float)total_bw) *big_fft_size ;
+        printf_note("resolution=%f, bw_fft_size=%llu\n", resolution, bw_fft_size);
         spectrum_rw_fft_result(fft_get_result(), ps->param.s_freq, resolution, bw_fft_size);
-        printf_note("bandwidth=%u, m_freq=%llu, resolution=%f, param->s_freq=%llu\n", ps->param.bandwidth, ps->param.m_freq, resolution, ps->param.s_freq);
-        UNLOCK_SP_DATA();
-        printf_note("specturm_analysis_deal over\n");
+        
+        memory_pool_free(fft_small_mpool);
+        memory_pool_free(fft_big_mpool);
     }
+
 }
+
 
 
 void spectrum_init(void)
@@ -542,10 +631,20 @@ void spectrum_init(void)
 
     fft_init();
     printf_info("fft_init\n");
+
+    sem_init(&(sp_sem.notify_iq_to_fft), 0, 0);
+
     LOCK_SP_DATA();
     ps = &_spectrum;
     ps->fft_data_ready = false;/* fft data not vaild to deal */
+    ps->iq_data_ready = false;
     UNLOCK_SP_DATA();
+
+    /* create memory pool */
+    /* 128K fft, 1fft=4byte */
+    mp_iq_buffer_head = memory_pool_create(SPECTRUM_IQ_SIZE*4, SPECTRUM_MAX_SCAN_COUNT);
+    mp_fft_small_buffer_head = memory_pool_create(SPECTRUM_SMALL_FFT_SIZE*4, SPECTRUM_MAX_SCAN_COUNT);
+    mp_fft_big_buffer_head = memory_pool_create(SPECTRUM_BIG_FFT_SIZE*4, SPECTRUM_MAX_SCAN_COUNT);
 
     ret=pthread_create(&work_id,NULL,(void *)specturm_analysis_deal_thread, NULL);
     if(ret!=0)

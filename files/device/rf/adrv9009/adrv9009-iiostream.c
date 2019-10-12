@@ -296,7 +296,7 @@ int16_t adrv9009_iio_set_freq(uint64_t freq_hz)
 		return -1;
 	}
 	s_freq_hz = freq_hz;
-	printf_note("* Setting ADRV9009 RX freq:%llu\n", freq_hz);
+	printf_debug("* Setting ADRV9009 RX freq:%llu\n", freq_hz);
 	struct iio_channel *chn = NULL;
 	if (!get_lo_chan(ctx, &chn)) { return -1; }
 	wr_ch_lli(chn, "frequency", freq_hz);

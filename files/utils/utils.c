@@ -97,12 +97,34 @@ int write_file_in_int16(void *pdata, unsigned int data_len, char *filename)
         return -1;
     }
 
-    fwrite(pdata_offset,sizeof(int16_t),data_len,file);
+    fwrite((void *)pdata_offset,sizeof(int16_t),data_len,file);
 
     fclose(file);
 
     return 0;
 }
+
+int write_file_in_float(void *pdata, unsigned int data_len, char *filename)
+{
+    
+    FILE *file;
+    float *pdata_offset;
+
+    pdata_offset = (float *)pdata;
+
+    file = fopen(filename, "w+b");
+    if(!file){
+        printf("Open file error!\n");
+        return -1;
+    }
+
+    fwrite((void *)pdata_offset,sizeof(float),data_len,file);
+
+    fclose(file);
+
+    return 0;
+}
+
 
 int read_file(void *pdata, unsigned int data_len, char *filename)
 {

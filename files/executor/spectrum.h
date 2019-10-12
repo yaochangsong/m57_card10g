@@ -17,9 +17,14 @@
 
 #define SPECTRUM_START_FLAG 0x7E7E
 #define SPECTRUM_DEFAULT_FFT_SIZE (512*1024)
+#define SPECTRUM_MAX_SCAN_COUNT (150)
+
 #define SIDE_BAND_RATE  (1.2288) 
 #define SINGLE_SIDE_BAND_POINT_RATE  (0.093098958333333)  /* (1-1/1.2288)/2 */
 
+#define  SPECTRUM_IQ_SIZE   RF_ADRV9009_IQ_SIZE
+#define  SPECTRUM_SMALL_FFT_SIZE   (2048)
+#define  SPECTRUM_BIG_FFT_SIZE  RF_ADRV9009_IQ_SIZE
 
 #define calc_resolution(bw_hz, fft_size)  (SIDE_BAND_RATE*bw_hz/fft_size)
 
@@ -33,6 +38,9 @@
 
 typedef int16_t fft_data_type;
 
+struct sp_sem_nofity_st{
+    sem_t   notify_iq_to_fft;
+};
 struct spectrum_st{
     long long freq_hz; 
     long long bw_hz;
@@ -41,11 +49,10 @@ struct spectrum_st{
     uint32_t iq_len;
     float *fft_float_payload;         /* FFT float data */
     fft_data_type fft_short_payload[10*1024];       /* FFT short data */
-    //fft_data_type *fft_short_payload_back;  /* FFT short data back */
     uint32_t fft_len;
-    //uint32_t fft_len_back;
     struct spectrum_header_param param;
     volatile bool fft_data_ready;
+    volatile bool iq_data_ready;
 };
 
 struct spectrum_fft_result_st{

@@ -45,6 +45,7 @@
 #include "dao/mxml-3.0/mxml.h"
 #include "dao/oal/dao_oal.h"
 #include "utils/utils.h"
+#include "utils/mempool.h"
 
 #include "executor/executor.h"
 #include "executor/io.h"

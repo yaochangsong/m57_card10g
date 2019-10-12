@@ -113,13 +113,13 @@ int main(int argc, char **argv)
 #ifdef SUPPORT_LCD
     init_lcd();
 #endif
+    executor_init();
 if(spectrum_aditool_debug == false){
     #ifdef SUPPORT_RF
     rf_init();
     #endif
     spectrum_init();
 }
-    executor_init();
     if(server_init() == -1){
         printf_err("server init fail!\n");
         goto done;

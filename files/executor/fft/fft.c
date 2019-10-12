@@ -1851,7 +1851,7 @@ float *fft_get_data(uint32_t *len)
 
 *********************************************************************************/
 
-int  fft_fuzzy_fftdata_handle(int threshordnum,float *fsdata,int datalen,uint32_t fuzzymidpoint,uint32_t fuzzybw,uint32_t bigbw)
+int  fft_fuzzy_fftdata_handle(int threshordnum,float *fsdata,int datalen,uint32_t midpointhz,uint32_t fuzzybw,uint32_t bigbw)
 {
     printf_debug("\n\n****************频谱数据fft_fuzzy_fftdata_handle******************************\n");
 	printf_debug("fsdata[0]=%f,fsdata[1]=%f\n",fsdata[0],fsdata[1]);
@@ -1892,7 +1892,7 @@ int  fft_fuzzy_fftdata_handle(int threshordnum,float *fsdata,int datalen,uint32_
 	int actual_midpoints;
 	actual_point=((float)fuzzybw/(float)bigbw)*datalen/2;
 	//actual_midpoints=((float)midpoint/(float)bigbw)*fftsize;
-    actual_midpoints=1.0/2.0*(float)datalen-((float)fuzzybw/(float)bigbw)*datalen;
+    actual_midpoints=1.0/2.0*(float)datalen-((float)midpointhz/(float)bigbw)*datalen;
     for(i=(actual_midpoints-actual_point);i<(actual_point+actual_midpoints);i++)
 	{
 		fftdata.cutoffdata[j++]=fftdata.smoothdata[i];
@@ -1974,17 +1974,17 @@ int  fft_fuzzy_fftdata_handle(int threshordnum,float *fsdata,int datalen,uint32_
             printf_warn("\n============宽带信号===============\n");
 #ifdef PLAT_FORM_ARCH_X86
             writefileArr("firstsmoothdata0904.txt",fftdata.cutoffdata, cutoffdatacount);
-            writefileArr("firstmozhi0904.txt",fsdata, cutoffdatacount);
+            writefileArr("firstmozhi0904.txt",fftdata.cutoffdataraw, cutoffdatacount);
         
 #else
             writefileArr("/run/firstsmoothdatahann.txt",fftdata.cutoffdata, cutoffdatacount);
-            writefileArr("/run/firstmozhihann.txt",fsdata, cutoffdatacount);
+            writefileArr("/run/firstmozhihann.txt",fftdata.cutoffdataraw, cutoffdatacount);
 #endif
 
             calculatecenterfrequency(fftdata.cutoffdataraw,cutoffdatacount);                   //5 计算中心频率
             int p=0;
             float max;
-            max=fsdata[p];
+            max=fftdata.cutoffdataraw[p];
             for(p=0;p<cutoffdatacount;p++)
             {
                 if(max<cutoffdatacount[p])
@@ -1999,11 +1999,11 @@ int  fft_fuzzy_fftdata_handle(int threshordnum,float *fsdata,int datalen,uint32_
             temp=(max-maxvalue)*2/3;
             printf_debug("max=%f,tempdbvalue=%f\n",max,temp);
             
-            calculatebandwidth2(fsdata,cutoffdatacount,&temp,&maxvalue);
+            calculatebandwidth2(fftdata.cutoffdataraw,cutoffdatacount,&temp,&maxvalue);
             
             printf_debug("\n\n*********************模糊数据****************************\n");
             fft_calculate_finaldata();
-            fft_find_midpoint(fsdata,cutoffdatacount);
+            fft_find_midpoint(fftdata.cutoffdataraw,cutoffdatacount);
 			
         }
         
@@ -2054,7 +2054,7 @@ void fft_precise_fftdata_calculation(int threshordnum,float *fsdata,uint32_t dat
 	int actual_midpoints;
 	actual_point=((float)littlebw/(float)bigbw)*datalen/2;
 	//actual_midpoints=((float)midpoint/(float)bigbw)*fftsize;
-    actual_midpoints=1.0/2.0*(float)datalen-((float)littlebw/(float)bigbw)*datalen;
+    actual_midpoints=1.0/2.0*(float)datalen-((float)midpointhz/(float)bigbw)*datalen;
     for(i=(actual_midpoints-actual_point);i<(actual_point+actual_midpoints);i++)
 	{
 		fftdata.cutoffdata[j++]=fftdata.smoothdata[i];

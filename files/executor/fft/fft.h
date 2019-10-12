@@ -1,5 +1,6 @@
 
 
+
 #ifndef __FFT_H
 #define __FFT_H
 #include "config.h"
@@ -63,20 +64,37 @@ typedef enum _signalnum_flag{
 
 void fft_init(void);
 void fft_exit(void);
-void fft_iqdata_handle(int bd,short *data,int fftsize, int datalen,uint32_t midpoint,uint32_t bigbw,uint32_t littlebw);
 float *fft_get_data(uint32_t *len);
 fft_result *fft_get_result(void);
 void fft_fftw_calculate(short *iqdata,int32_t fftsize,int datalen,float *mozhi);
 void fft_fftw_calculate_hann(short *iqdata,int32_t fftsize,int datalen,float *mozhi);
+void fft_iqdata_handle(int bd,short *data,int fftsize, int datalen,uint32_t midpoint,uint32_t bigbw,uint32_t littlebw);
+/********************************************************************************
 
+函数功能：获取找到的信号的信息
+输入：
+        int threshold    门限
+        float *fuzzydata    粗检频谱数据
+        uint32_t fuzzylen    粗检频谱数据长度
+        float *bigdata    细检频谱数据
+        uint32_t biglen   细检频谱数据长度
+        uint32_t midpointhz    距离带宽中心的距离（单位：hz）
+        uint32_t signal_bw   要检测信号的带宽
+        uint32_t total_bw    总带宽
+返回值：
+      -1 异常
+      0 正常
 
+*********************************************************************************/
 
-
+int fft_fftdata_handle(int threshold,float *fuzzydata,uint32_t fuzzylen,float *bigdata,uint32_t biglen,uint32_t midpointhz,uint32_t signal_bw,uint32_t total_bw);
 void xulitest(void);
 
 
 
 #endif
+
+
 
 
 

@@ -91,6 +91,8 @@ fft_state fftstate;
 fft_result fftresult;
 static int flagcheck=0;
 static float get_bottomnoise=0;
+int fftdataflagcheck=0;
+
 
 
 /*static int cenfrepointnum=0;
@@ -1358,7 +1360,7 @@ void fft_find_midpoint(float *data,int datalen)
     fftstate.maximum_x=zuobiao;
 }
 
-signalnum_flag  fft_fuzzy_computing(int threshordnum,short *iqdata,int32_t fftsize,int datalen,uint32_t midpoint,uint32_t bigbw,uint32_t littlebw)
+signalnum_flag  fft_fuzzy_iqdata_computing(int threshordnum,short *iqdata,int32_t fftsize,int datalen,uint32_t midpoint,uint32_t bigbw,uint32_t littlebw)
 {
     printf_debug("\n\n****************fft_fuzzy_computing******************************\n");
      printf_debug("iqdata=%d,iqdata[1]=%d\n",iqdata[0],iqdata[1]);
@@ -1512,7 +1514,7 @@ signalnum_flag  fft_fuzzy_computing(int threshordnum,short *iqdata,int32_t fftsi
     }
 
 }
-int fft_Precise_calculation(int threshordnum,short *iqdata,int32_t fftsize,int datalen,uint32_t midpoint,uint32_t bigbw,uint32_t littlebw)
+int fft_Precise_iqdata_calculation(int threshordnum,short *iqdata,int32_t fftsize,int datalen,uint32_t midpoint,uint32_t bigbw,uint32_t littlebw)
 {
     printf_debug("\n\n****************fft_Precise_calculation******************************\n");
     printf_debug("iqdata=%d,iqdata[1]=%d",iqdata[0],iqdata[1]);
@@ -1546,10 +1548,7 @@ int fft_Precise_calculation(int threshordnum,short *iqdata,int32_t fftsize,int d
 		fftdata.cutoffdata[j++]=fftdata.smoothdata[i];
 		fftdata.cutoffdataraw[n++]=fftdata.mozhi[i];
 		cutoffdatacount++;
-	}
-
-
-	
+	}	
 #ifdef SUPPORT_PLATFORM_ARCH_ARM
     //writefileArr("/run/secondsmoothdatahann.txt",fftdata.cutoffdata, cutoffdatacount);
     //writefileArr("/run/secondmozhihann.txt",fftdata.cutoffdataraw, cutoffdatacount);
@@ -1771,6 +1770,25 @@ int fft_Precise_calculation(int threshordnum,short *iqdata,int32_t fftsize,int d
     fft_calculate_finaldata();
 
 }
+int fft_iqdata_testfrequency(int threshordnum,short *iqdata,int32_t fftsize,int datalen)
+{
+    if(fftsize<=firstfftlen)
+    {
+       if(fft_fuzzy_iqdata_computing(threshordnum,iqdata,fftsize,datalen)==-1)
+        {
+            printf_note("There are too many signals\n");
+            return 0;
+        }
+    }else if(fftsize>firstfftlen){
+    if(fft_fuzzy_iqdata_computing(threshordnum,iqdata,firstfftlen,2*firstfftlen)==-1)
+    {
+        printf_note("There are too many signals\n");
+        return 0;
+    }
+    fft_Precise_iqdata_calculation(threshordnum,iqdata,fftsize,datalen);
+  }
+}
+
 
 /********************************************************************************
 
@@ -1796,7 +1814,7 @@ void fft_iqdata_handle(int bd,short *data,int fftsize, int datalen,uint32_t midp
     }
     //midpoint = bigbw/2;
     printf_note("=================midpoint=%u, bigbw=%u,littlebw=%u=================\n", midpoint, bigbw,littlebw);
-    testfrequency(bd,data,fftsize,datalen,midpoint,bigbw,littlebw);//iq数据，下发门限，fft大小，下发数据长度
+    fft_iqdata_testfrequency(bd,data,fftsize,datalen,midpoint,bigbw,littlebw);//iq数据，下发门限，fft大小，下发数据长度
 }
 
 /********************************************************************************
@@ -1817,6 +1835,507 @@ float *fft_get_data(uint32_t *len)
     return fftdata.mozhi;
 
 }
+/********************************************************************************
+
+函数功能：通过传入的频谱数据，对所输入信号的中心频率，带宽和中心频点进行粗略的检验
+输入：
+    int threshordnum； 下发门限；
+    float *fsdata;频谱数据
+    int datalen; 频谱数据总长度
+
+返回值：
+   类型 int
+   返回值    0       检测信号正常
+   返回值   -1  检测信号门限太低，检测到的信号太多
+      
+
+*********************************************************************************/
+
+int  fft_fuzzy_fftdata_handle(int threshordnum,float *fsdata,int datalen,uint32_t fuzzymidpoint,uint32_t fuzzybw,uint32_t bigbw)
+{
+    printf_debug("\n\n****************频谱数据fft_fuzzy_fftdata_handle******************************\n");
+	printf_debug("fsdata[0]=%f,fsdata[1]=%f\n",fsdata[0],fsdata[1]);
+	
+
+	int i=0;
+	N=datalen;
+
+	printf_debug("datalen=%d,threshordnum=%d,N=%d\n",datalen,threshordnum,N);
+	
+	memset(fftdata.smoothdata,0,sizeof(float)*datalen );
+	//memset(fftdata.hann,0,sizeof(float)*N );
+	memset(fftstate.y,0,sizeof(int)*SIGNALNUM );
+	memset(fftstate.z,0,sizeof(int)*SIGNALNUM );
+	memset(fftstate.centfeqpoint,0,sizeof(int)*SIGNALNUM );
+    memset(fftstate.arvcentfreq,0,sizeof(float)*SIGNALNUM);
+    memset(fftstate.bandwidth   ,0,sizeof(float)*SIGNALNUM);
+	memset(fftdata.cutoffdata,0,sizeof(float)*N );
+	memset(fftdata.cutoffdataraw,0,sizeof(float)*N );
+    fftstate.cenfrepointnum=0;
+    fftstate.Threshold=0;
+    fftstate.Bottomnoise=0;
+    fftstate.maxcentfrequency=0;
+    fftstate.maximum_x=0;
+	fftdataflagcheck=0;
+	
+	for(i=0;i<datalen;i++)
+    {
+		fsdata[i]=fsdata[i]+CORRECTIONSIGNAL;
+
+	}
+    smooth2(fsdata,datalen,fftdata.smoothdata);
+
+
+
+	int i=0,j=0,cutoffdatacount=0,n=0;
+	int actual_point;
+	int actual_midpoints;
+	actual_point=((float)fuzzybw/(float)bigbw)*datalen/2;
+	//actual_midpoints=((float)midpoint/(float)bigbw)*fftsize;
+    actual_midpoints=1.0/2.0*(float)datalen-((float)fuzzybw/(float)bigbw)*datalen;
+    for(i=(actual_midpoints-actual_point);i<(actual_point+actual_midpoints);i++)
+	{
+		fftdata.cutoffdata[j++]=fftdata.smoothdata[i];
+		fftdata.cutoffdataraw[n++]=fsdata[i];
+		cutoffdatacount++;
+	}
+
+	
+    float minvalue;
+    float maxvalue;
+    findBottomnoisenomax(fftdata.cutoffdata,threshordnum,&fftstate.Bottomnoise,&fftstate.Threshold,cutoffdatacount,&maxvalue,&minvalue);
+	
+    if(findCentfreqpoint(fftdata.cutoffdata,cutoffdatacount, fftstate.centfeqpoint,&fftstate.Threshold ,&fftstate.cenfrepointnum,fftstate.y,fftstate.z,&maxvalue)==-1)
+    {
+       return -1; 
+    }
+    printf_debug("====fftstate.cenfrepointnum=%d,",fftstate.cenfrepointnum);
+    for(i=0;i<fftstate.cenfrepointnum;i++)
+    {
+        //if(fftstate.z[i]-fftstate.y[i]<(datalen/datalen))
+        if(0)
+        {
+            //窄带信号
+            printf_debug("============窄带信号===============\n");
+            printf_debug("窄带信号 fftstate.y[i]-fftstate.z[i]=%d\n",fftstate.z[i]-fftstate.y[i]);
+            memset(fftdata.smoothdata,0,sizeof(float)*narrowbandlen );
+            memset(fftstate.y,0,sizeof(int)*SIGNALNUM );
+            memset(fftstate.z,0,sizeof(int)*SIGNALNUM );
+            memset(fftstate.centfeqpoint,0,sizeof(int)*SIGNALNUM );
+            memset(fftstate.arvcentfreq,0,sizeof(float)*SIGNALNUM);
+            memset(fftstate.bandwidth   ,0,sizeof(float)*SIGNALNUM);
+            fftstate.cenfrepointnum=0;
+            fftstate.Threshold=0;
+            fftstate.Bottomnoise=0;
+            fftstate.maxcentfrequency=0;
+            fftstate.maximum_x=0;
+            smooth2(fsdata,narrowbandlen,fftdata.smoothdata);
+#ifdef PLAT_FORM_ARCH_X86
+            writefileArr("firstsmoothdata0904.txt",fftdata.smoothdata, narrowbandlen);
+            writefileArr("firstmozhi0904.txt",fsdata, narrowbandlen);
+#else
+           // writefileArr("/run/firstsmoothdatahann.txt",fftdata.smoothdata, fftsize);
+           // writefileArr("/run/firstmozhihann.txt",fftdata.mozhi, fftsize);
+#endif
+            fftstate.Threshold=0;
+            fftstate.Bottomnoise=0;
+            findBottomnoiseprecise(fftdata.smoothdata,threshordnum,&fftstate.Bottomnoise,&fftstate.Threshold,narrowbandlen,&maxvalue,&minvalue); 
+            if(findCentfreqpoint(fftdata.smoothdata,narrowbandlen, fftstate.centfeqpoint,&fftstate.Threshold ,&fftstate.cenfrepointnum,fftstate.y,fftstate.z,&maxvalue)==-1)
+            {
+               return -1; 
+            }
+            fftdataflagcheck=1;
+            calculatecenterfrequency(fsdata,narrowbandlen);                   //5 计算中心频率
+            int p=0;
+            float max;
+            max=fsdata[p];
+            for(p=0;p<narrowbandlen;p++)
+            {
+                if(max<fsdata[p])
+                {
+                   // printf_debug("fftdata.mozhi[%d]=%f,",p,fftdata.mozhi[p]);
+                   max= fsdata[p];
+                   fftstate.maximum_x=p;
+                }
+            }
+            
+            //float temp;
+            //temp=(max-maxvalue)*2/3;
+           // printf_debug("max=%f,tempdbvalue=%f\n",max,temp);
+           // calculatebandwidth2(fftdata.smoothdata,narrowbandlen,&temp,&maxvalue);
+           
+            float temp;
+            temp=(maxvalue-fftstate.Threshold)/3;
+            calculatebandwidth(fftdata.smoothdata,datalen,&temp);
+            printf_debug("\n\n*********************模糊数据****************************\n");
+            fft_calculate_finaldata();
+            fft_find_midpoint(fftdata.smoothdata,narrowbandlen);
+        }else{
+            printf_warn("\n============宽带信号===============\n");
+#ifdef PLAT_FORM_ARCH_X86
+            writefileArr("firstsmoothdata0904.txt",fftdata.cutoffdata, cutoffdatacount);
+            writefileArr("firstmozhi0904.txt",fsdata, cutoffdatacount);
+        
+#else
+            writefileArr("/run/firstsmoothdatahann.txt",fftdata.cutoffdata, cutoffdatacount);
+            writefileArr("/run/firstmozhihann.txt",fsdata, cutoffdatacount);
+#endif
+
+            calculatecenterfrequency(fftdata.cutoffdataraw,cutoffdatacount);                   //5 计算中心频率
+            int p=0;
+            float max;
+            max=fsdata[p];
+            for(p=0;p<cutoffdatacount;p++)
+            {
+                if(max<cutoffdatacount[p])
+                {
+                   // printf_debug("fftdata.mozhi[%d]=%f,",p,fftdata.mozhi[p]);
+                   max= cutoffdatacount[p];
+                   fftstate.maximum_x=p;
+                }
+            }
+            
+            float temp;
+            temp=(max-maxvalue)*2/3;
+            printf_debug("max=%f,tempdbvalue=%f\n",max,temp);
+            
+            calculatebandwidth2(fsdata,cutoffdatacount,&temp,&maxvalue);
+            
+            printf_debug("\n\n*********************模糊数据****************************\n");
+            fft_calculate_finaldata();
+            fft_find_midpoint(fsdata,cutoffdatacount);
+			
+        }
+        
+    }
+	return 0;
+}
+/********************************************************************************
+
+函数功能：通过传入的频谱数据，对所输入信号的中心频率，带宽和中心频点进行精确的检测
+输入：
+    int threshordnum； 下发门限；
+    float *fsdata;频谱数据
+    int datalen; 频谱数据总长度
+
+返回值：
+      无返回值；
+
+*********************************************************************************/
+
+void fft_precise_fftdata_calculation(int threshordnum,float *fsdata,uint32_t datalen,uint32_t midpointhz,uint32_t littlebw,uint32_t bigbw,uint32_t fuzzydatalen)
+{
+    printf_debug("\n\n****************频谱数据fft_Precise_calculation******************************\n");
+	firstfftlen=fuzzydatalen;
+	printf_debug("datalen=%d,fuzzydatalen=%d,",datalen,fuzzydatalen);
+    N=datalen;
+
+    memset(fftdata.smoothdata,0,sizeof(float)*N );
+    memset(fftstate.centfeqpoint,0,sizeof(int)*SIGNALNUM );
+    memset(fftstate.arvcentfreq,0,sizeof(float)*SIGNALNUM);
+    memset(fftstate.bandwidth   ,0,sizeof(float)*SIGNALNUM);
+	memset(fftdata.cutoffdata,0,sizeof(float)*N );
+	memset(fftdata.cutoffdataraw,0,sizeof(float)*N );
+    fftstate.Threshold=0;
+    fftstate.Bottomnoise=0;
+    fftstate.maximum_x=0;
+	int i=0;
+	for(i=0;i<datalen;i++)
+    {
+		fsdata[i]=fsdata[i]+CORRECTIONSIGNAL;
+
+	}
+
+    smooth2(fsdata,N,fftdata.smoothdata);
+
+
+	int i=0,j=0,cutoffdatacount=0,n=0;
+	int actual_point;
+	int actual_midpoints;
+	actual_point=((float)littlebw/(float)bigbw)*datalen/2;
+	//actual_midpoints=((float)midpoint/(float)bigbw)*fftsize;
+    actual_midpoints=1.0/2.0*(float)datalen-((float)littlebw/(float)bigbw)*datalen;
+    for(i=(actual_midpoints-actual_point);i<(actual_point+actual_midpoints);i++)
+	{
+		fftdata.cutoffdata[j++]=fftdata.smoothdata[i];
+		fftdata.cutoffdataraw[n++]=fsdata[i];
+		cutoffdatacount++;
+	}
+	
+#ifdef PLAT_FORM_ARCH_X86
+    writefileArr("secondsmoothdata0904.txt",fftdata.cutoffdata, cutoffdatacount);
+    writefileArr("secondmozhi0904.txt",fftdata.cutoffdataraw, cutoffdatacount);
+
+#else
+    writefileArr("/run/secondsmoothdatahann.txt",fftdata.cutoffdata, cutoffdatacount);
+    writefileArr("/run/secondmozhihann.txt",fftdata.cutoffdataraw, cutoffdatacount);
+#endif
+    float minvalue;
+    float maxvalue;
+    
+    int j=0;int num=0;int num1=0;int p=0;int count=0;
+    int firsttemp=0;
+    int secondtemp=0;
+    int flag=0;
+    int multiple=0;
+    int firstpoint[fftstate.cenfrepointnum];
+    int endpoint[fftstate.cenfrepointnum];
+    memset(firstpoint,0,sizeof(int)*fftstate.cenfrepointnum);
+    memset(endpoint,0,sizeof(int)*fftstate.cenfrepointnum);
+    
+    if(fftdataflagcheck==1)
+    {
+        printf_debug("+++++++++++++++窄带信号++++++++++++++\n");
+        findBottomnoiseprecise(fftdata.smoothdata,threshordnum,&fftstate.Bottomnoise,&fftstate.Threshold,N,&maxvalue,&minvalue);
+        /*窄带信号，即原始处理过程*/
+        multiple=datalen/narrowbandlen;
+        printf_debug("fftstate.cenfrepointnum=%d\n",fftstate.cenfrepointnum);
+        float impairment=0;
+        for(i=0;i<fftstate.cenfrepointnum;i++)  /*计算信号个数*/
+        {
+                impairment=0;
+                printf_warn("fftstate.y[i]=%d,fftstate.z[i]=%d\n",fftstate.y[i],fftstate.z[i]);
+                int temp;
+                temp=(fftstate.z[i]*multiple-fftstate.y[i]*multiple)/10;
+                printf_debug("第一个点范围fftstate.z[i]*multiple=%d,j>=fftstate.y[i]*multiple-temp=%d\n",fftstate.z[i]*multiple,j>=fftstate.y[i]*multiple-temp);
+				printf_debug("第二个点范围fftstate.y[i]*multiple=%d,fftstate.z[i]*multiple+temp=%d\n",fftstate.z[i]*multiple,j>=fftstate.y[i]*multiple-temp);
+	
+				
+                for(j=fftstate.z[i]*multiple;j>=fftstate.y[i]*multiple-temp;j--)
+                {
+                    
+                    if(fftdata.smoothdata[j]<fftstate.Threshold&&fftdata.smoothdata[j+1]>fftstate.Threshold)
+                    {
+                        firsttemp=j;
+                    }
+
+                }
+                for(j=fftstate.y[i]*multiple;j<=fftstate.z[i]*multiple+temp;j++)
+                {
+                    if(fftdata.smoothdata[j]>fftstate.Threshold&&fftdata.smoothdata[j+1]<fftstate.Threshold)
+                    {
+                        secondtemp=j;
+                    }
+                }
+                fftstate.centfeqpoint[i]=(secondtemp-firsttemp)/2+firsttemp;//计算中心频点
+
+                printf_debug("firsttemp=%d  ,secondtemp=%d\n",firsttemp,secondtemp);
+
+                
+                float max;
+                int end;
+                max=fftdata.smoothdata[firsttemp];
+
+
+                for(int p=firsttemp;p<secondtemp;p++)
+                {
+                    if(max<fftdata.smoothdata[p])
+                    {
+                       max= fftdata.smoothdata[p];
+                       fftstate.maximum_x=p;
+                    }
+                }
+                
+
+                impairment=max-(max-fftstate.Threshold)*2/3;
+                printf_debug("3db门限=%f,底噪门限=%f\n",impairment,fftstate.Threshold);
+                for(int p=firsttemp;p<secondtemp;p++)
+                {
+                   //printf_info("smoothdata[%d]=%f   ,",p,fftdata.smoothdata[p]);
+
+                     
+                    fftstate.arvcentfreq[i]=max-CORRECTIONSIGNAL;      //计算中心频率
+                    
+
+                    if((fftdata.smoothdata[p]<=impairment)&&(fftdata.smoothdata[p+1]>=impairment))//带宽阈值处
+                    { 
+                        
+                        if(flag == 0)
+                        {
+                            firstpoint[i]=p+1;  //确定是第一个点
+                            printf_debug("p=%d\n",p+1);
+                            flag=1;
+                            //continue;
+                        }
+
+                    }
+                    
+                    if(flag==1)
+                    {
+                        if(fftdata.smoothdata[p]>impairment&&fftdata.smoothdata[p+1]<impairment)
+                        {
+
+                            end=p;
+                           // printf_debug("end=%d\n",end);
+                        }
+                        if(p==secondtemp-1)
+                        {
+                            endpoint[i]=end;
+                            count++;
+                            flag=0;
+                        }
+                    }
+                    
+                }
+        }
+    }else{
+        printf_debug("+++++++++++++++宽带信号+++++++++++++=\n");
+        findBottomnoisenomax(fftdata.cutoffdata,threshordnum,&fftstate.Bottomnoise,&fftstate.Threshold,N,&maxvalue,&minvalue);
+        /*宽带信号，新增处理过程*/
+        multiple=datalen/firstfftlen;
+        printf_debug("fftstate.cenfrepointnum=%d\n",fftstate.cenfrepointnum);
+        float impairment=0;
+        for(i=0;i<fftstate.cenfrepointnum;i++)  /*计算信号个数*/
+        {   
+                impairment=0;
+                printf_warn("粗检范围fftstate.y[i]=%d,fftstate.z[i]=%d\n",fftstate.y[i],fftstate.z[i]);
+                int temp;
+                temp=(fftstate.z[i]*multiple-fftstate.y[i]*multiple)/10;
+                printf_debug("第一个点范围fftstate.z[i]*multiple=%d,j>=fftstate.y[i]*multiple-temp=%d\n",fftstate.z[i]*multiple,j=fftstate.y[i]*multiple-temp);
+				printf_debug("第二个点范围fftstate.y[i]*multiple=%d,fftstate.z[i]*multiple+temp=%d\n",fftstate.z[i]*multiple,j=fftstate.y[i]*multiple-temp);
+				printf_debug("倍数关系=%d,门限=%d\n",multiple,maxvalue);
+
+
+				
+				int t=0;
+				float smoothmax;
+				int smooth_max_zuobiao;
+				float mozhimax;
+				int mozhi_zuobiao;
+				smoothmax=fftdata.cutoffdata[0];
+				mozhimax=fftdata.cutoffdataraw[0];
+				for(t=0;t<cutoffdatacount;t++)
+				{
+					if(smoothmax<fftdata.cutoffdata[t])
+					{
+						smoothmax=fftdata.cutoffdata[t];
+						smooth_max_zuobiao=t;
+
+					}
+					if(mozhimax<fftdata.cutoffdataraw[t])
+					{
+						mozhimax=fftdata.cutoffdataraw[t];
+						mozhi_zuobiao=t;
+
+					}
+					
+				}
+				
+				printf_debug("smooth最大值=%f,smooth最大值坐标=%d\n",smoothmax,smooth_max_zuobiao);
+				printf_debug("mozhimax最大值=%f,mozhimax最大值坐标=%d\n",mozhimax,mozhi_zuobiao);
+
+
+				
+
+                for(j=fftstate.z[i]*multiple;j>=fftstate.y[i]*multiple-temp;j--)
+                {
+                    if(fftdata.cutoffdataraw[j]<maxvalue&&fftdata.cutoffdataraw[j+1]>maxvalue)
+                    {
+                        firsttemp=j;
+                    }
+
+                }
+                for(j=fftstate.y[i]*multiple;j<=fftstate.z[i]*multiple+temp;j++)
+                {
+                    if(fftdata.cutoffdataraw[j]>maxvalue&&fftdata.cutoffdataraw[j+1]<maxvalue)
+                    {
+                        secondtemp=j;
+                    }
+                }
+                fftstate.centfeqpoint[i]=(secondtemp-firsttemp)/2+firsttemp;//计算中心频点
+
+                printf_debug("firsttemp=%d  ,secondtemp=%d\n",firsttemp,secondtemp);
+
+                
+                float max;
+                int end;
+                max=fftdata.cutoffdataraw[firsttemp];
+
+
+                for(int p=firsttemp;p<secondtemp;p++)
+                {
+                    if(max<fftdata.cutoffdataraw[p])
+                    {
+                       max= fftdata.cutoffdataraw[p];
+                       fftstate.maximum_x=p;
+                    }
+                }
+               // impairment=max-(max-minvalue)/3;
+                impairment=max-(max-maxvalue)*2/3;
+                printf_debug("threedbvalue=%f,dbvalue=%f\n",impairment,(max-maxvalue)*2/3);
+				printf_debug("3db门限=%f,底噪门限=%f,db值=%f\n",impairment,fftstate.Threshold,(max-maxvalue)*2/3);
+                for(int p=firsttemp;p<secondtemp;p++)
+                {
+                   //printf_info("smoothdata[%d]=%f   ,",p,fftdata.smoothdata[p]);
+
+                     
+                   // fftstate.arvcentfreq[i]=max-CORRECTIONSIGNAL;      //计算中心频率
+                    fftstate.arvcentfreq[i]=max; 
+                    
+
+                    if((fftdata.cutoffdataraw[p]<=impairment)&&(fftdata.cutoffdataraw[p+1]>=impairment))//带宽阈值处
+                    { 
+                        if(flag == 0)
+                        {
+                            firstpoint[i]=p+1;  //确定是第一个点
+                            printf_debug("p=%d\n",p+1);
+                            flag=1;
+                            //continue;
+                        }
+
+                    }
+                    //printf_debug("==================flag=%d\n",flag);
+                    if(flag==1)
+                    {
+                        if(fftdata.cutoffdataraw[p]>impairment&&fftdata.cutoffdataraw[p+1]<impairment)
+                        {
+
+                            end=p;
+                           // printf_debug("end=%d\n",end);
+                        }
+                        if(p==secondtemp-1)
+                        {
+                            endpoint[i]=end;
+                            count++;
+                            flag=0;
+                        }
+                    }
+                    
+                }
+            }
+    }
+
+    fftstate.cenfrepointnum=count;
+    printf_debug("fftstate.cenfrepointnum=%d\n",fftstate.cenfrepointnum);
+    for( i=0;i<fftstate.cenfrepointnum;i++)
+    {
+        if(endpoint[i]>firstpoint[i]&&firstpoint[i]>0&&endpoint[i]<N)
+        {
+            fftstate.bandwidth[i]=endpoint[i]-firstpoint[i];   //计算带宽
+            printf_debug(" bandwidth=%d,endpoint=%d,firstpoint=%d\n",fftstate.bandwidth[i],endpoint[i],firstpoint[i]);
+        }
+    }
+
+    
+    printf_debug("\n\n*********************最终数据****************************\n");
+    fft_calculate_finaldata();
+
+}
+
+
+int  fft_fftdata_handle(int threshold,float *fuzzydata,uint32_t fuzzylen,float *bigdata,uint32_t biglen,uint32_t midpointhz,uint32_t signal_bw,uint32_t total_bw)
+{
+    if((fuzzydata==NULL)&&(bigdata==NULL))
+    {
+        printf_warn("\n\nThe IQ data you entered is empty, please enter again！\n\n");
+        return 0;
+    }
+   // fft_fftdata_testfrequency(bd,fuzzydata,fuzzylen,fuzzymidpoint,fuzzybw,bigdata,biglen,bigmidpoint,bigbw);//iq数据，下发门限，fft大小，下发数据长度 
+   fft_fuzzy_fftdata_handle(threshold,fuzzydata,fuzzylen,midpointhz,signal_bw,total_bw);
+   fft_precise_fftdata_calculation(threshold,bigdata,biglen,midpointhz,signal_bw,total_bw);
+
+}
+
 /********************************************************************************
 
 函数功能：获取找到的信号的信息
@@ -1847,29 +2366,7 @@ fft_result *fft_get_result(void)
     return &fftresult;
 }
 
-int testfrequency(int threshordnum,short *iqdata,int32_t fftsize,int datalen,uint32_t midpoint,uint32_t bigbw,uint32_t littlebw)
-{
-    signalnum_flag signalflg=0;
-    if(fftsize<=firstfftlen)
-    {
-        signalflg=fft_fuzzy_computing(threshordnum,iqdata,fftsize,datalen,midpoint,bigbw,littlebw);
-        if(signalflg==SIGNALNUM_ABNORMAL)
-        {
-            printf_note("There are too many signals\n");
-            return 0;
-        }
-    }else if(fftsize>firstfftlen){
-    signalflg= fft_fuzzy_computing(threshordnum,iqdata,firstfftlen,2*firstfftlen,midpoint,bigbw,littlebw);
-    if(signalflg==SIGNALNUM_ABNORMAL)
-    {
-        printf_note("There are too many signals\n");
-        return 0;
-    }
-    fft_Precise_calculation(threshordnum,iqdata,fftsize,datalen,midpoint,bigbw,littlebw);
-  }
-}
-
-void xulitestfft(void)
+void xulitest_iqdata_fft(void)
 {
     double costtime;
     clock_t start,end;
@@ -1894,6 +2391,9 @@ void xulitestfft(void)
     return ;
 	
 }
+
+
+
 
 
 

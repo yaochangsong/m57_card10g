@@ -53,11 +53,11 @@ static inline  bool specturm_is_psd_enable(void)
         return false;
 }
 
-static inline uint64_t spectrum_get_analysis_middle_freq(uint64_t sig_sfreq, uint32_t sig_bw)
+static inline uint64_t spectrum_get_analysis_middle_freq(uint64_t sig_sfreq)
 {
     struct poal_config *poal_config = &(config_get_config()->oal_config);
     if(poal_config->ctrl_para.specturm_analysis_param.frequency_hz == 0){
-        poal_config->ctrl_para.specturm_analysis_param.frequency_hz = sig_sfreq + sig_bw/2;
+        poal_config->ctrl_para.specturm_analysis_param.frequency_hz = sig_sfreq + poal_config->ctrl_para.specturm_analysis_param.bandwidth_hz/2;
     }
     return poal_config->ctrl_para.specturm_analysis_param.frequency_hz;
 }
@@ -327,10 +327,8 @@ void *spectrum_rw_fft_result(fft_result *result, uint64_t s_freq_hz, float freq_
 {
     int i;
     static struct spectrum_fft_result_st s_fft_result, *pfft = NULL;
+    uint64_t analysis_middle_freq;
     struct poal_config *poal_config = &(config_get_config()->oal_config);
-    struct spectrum_st *ps;
-    ps = &_spectrum;
-    #define SIGNAL_ADD_FIXED_VALUE 196//217
     
     LOCK_SP_RESULT();
     if(result == NULL){
@@ -369,9 +367,10 @@ void *spectrum_rw_fft_result(fft_result *result, uint64_t s_freq_hz, float freq_
         pfft->mid_freq_hz[i] = s_freq_hz + result->centfeqpoint[i]*freq_resolution;
         pfft->peak_value = s_freq_hz + result->maximum_x*freq_resolution;
         pfft->bw_hz[i] = result->bandwidth[i] * freq_resolution;
-        pfft->level[i] = result->arvcentfreq[i] + spectrum_analysis_level_calibration(ps->param.m_freq);//spectrum_analysis_level_calibration(pfft->mid_freq_hz[i]);
-        printf_debug("m_freq=%llu,s_freq_hz=%llu, freq_resolution=%f, fft_size=%u\n", ps->param.m_freq, s_freq_hz, freq_resolution, fft_size);
-        printf_debug("mid_freq_hz=%d, bw_hz=%d, level=%f\n", result->centfeqpoint[i], result->bandwidth[i], result->arvcentfreq[i]);
+        analysis_middle_freq =  spectrum_get_analysis_middle_freq(s_freq_hz);
+        pfft->level[i] = result->arvcentfreq[i] + spectrum_analysis_level_calibration(analysis_middle_freq);//spectrum_analysis_level_calibration(pfft->mid_freq_hz[i]);
+        printf_warn("m_freq=%llu,s_freq_hz=%llu, freq_resolution=%f, fft_size=%u\n", analysis_middle_freq, s_freq_hz, freq_resolution, fft_size);
+        printf_warn("mid_freq_hz=%d, bw_hz=%d, level=%f\n", result->centfeqpoint[i], result->bandwidth[i], result->arvcentfreq[i]);
     }
 exit:
     UNLOCK_SP_RESULT();
@@ -467,7 +466,7 @@ static int8_t inline spectrum_get_analysis_paramter(uint64_t s_freq, uint64_t e_
     struct poal_config *poal_config = &(config_get_config()->oal_config);
     
     analysis_bw = poal_config->ctrl_para.specturm_analysis_param.bandwidth_hz;
-    analysis_middle_freq =  spectrum_get_analysis_middle_freq(s_freq, analysis_bw);;
+    analysis_middle_freq =  spectrum_get_analysis_middle_freq(s_freq);;
     
     if(analysis_middle_freq < s_freq || analysis_middle_freq > e_freq){
         printf_err("analysis frequency[%llu] is not  NOT within the bandwidth range[%llu, %llu]\n", analysis_middle_freq, s_freq, e_freq);

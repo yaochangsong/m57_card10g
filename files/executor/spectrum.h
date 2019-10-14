@@ -24,7 +24,7 @@
 
 #define  SPECTRUM_IQ_SIZE   RF_ADRV9009_IQ_SIZE
 #define  SPECTRUM_SMALL_FFT_SIZE   (2048)
-#define  SPECTRUM_BIG_FFT_SIZE  RF_ADRV9009_IQ_SIZE
+#define  SPECTRUM_BIG_FFT_SIZE  RF_ADRV9009_IQ_SIZE/2
 
 #define calc_resolution(bw_hz, fft_size)  (SIDE_BAND_RATE*bw_hz/fft_size)
 

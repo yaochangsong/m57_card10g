@@ -8,7 +8,7 @@
 #define  ADRV_9009_BAND_WITH_200M (200000000ULL)
 
 #define RF_ADRV9009_BANDWITH ADRV_9009_BAND_WITH_200M
-#define RF_ADRV9009_IQ_SIZE  (128*1024)
+#define RF_ADRV9009_IQ_SIZE  (1024*1024)
 
 extern void adrv_9009_iio_work_thread(void *arg);
 extern void adrv9009_iio_init(void);

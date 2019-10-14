@@ -262,14 +262,14 @@ void adrv9009_iio_init(void)
 
 	printf_info("* Creating non-cyclic IIO buffers with 1 MiS\n");
 #if (ADRV_9009_IIO_RX_EN == 1)
-	rxbuf = iio_device_create_buffer(rx, 1024*1024, false);
+	rxbuf = iio_device_create_buffer(rx, RF_ADRV9009_IQ_SIZE, false);
 	if (!rxbuf) {
 		perror("Could not create RX0 buffer");
 		iio_shutdown();
 	}
 #endif
 #if (ADRV_9009_IIO_TX_EN == 1)
-	txbuf = iio_device_create_buffer(tx, 1024*1024, false);
+	txbuf = iio_device_create_buffer(tx, RF_ADRV9009_IQ_SIZE, false);
 	if (!txbuf) {
 		perror("Could not create TX buffer");
 		iio_shutdown();

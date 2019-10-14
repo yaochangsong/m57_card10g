@@ -25,8 +25,12 @@ it is necessary to use the memory pool to store IQ and FFT intermediate data.
 /* the memory pool to store IQ data */
 memory_pool_t *mp_iq_buffer_head;
 /* the memory pool to store FFT data: small & big */
-memory_pool_t *mp_fft_small_buffer_head; /* for 4K FFT */
-memory_pool_t *mp_fft_big_buffer_head;   /* for 128K FFT */
+memory_pool_t *mp_fft_small_buffer_head; /* for small FFT */
+memory_pool_t *mp_fft_small_buffer_rsb_head; /* for small remove side band FFT */
+
+memory_pool_t *mp_fft_big_buffer_head;   /* for bit FFT */
+memory_pool_t *mp_fft_big_buffer_rsb_head;   /* for remove side band FFT */
+
 
 
 pthread_mutex_t spectrum_result_mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -102,7 +106,7 @@ exit:
 
 
 /* Send FFT spectrum Data to Client (UDP)*/
-static void spectrum_send_fft_data(void *fft_data, size_t fft_data_len, void *param)
+static inline void spectrum_send_fft_data(void *fft_data, size_t fft_data_len, void *param)
 {
     struct poal_config *poal_config = &(config_get_config()->oal_config);
     uint8_t *fft_sendbuf, *pbuf;
@@ -129,7 +133,6 @@ static void spectrum_send_fft_data(void *fft_data, size_t fft_data_len, void *pa
     udp_send_data(fft_sendbuf, header_len + fft_data_len);
     safe_free(pbuf);
 }
-
 
 /* Before send client, we need to remove sideband signals data  and  extra bandwidth data */
 fft_data_type *spectrum_fft_data_order(struct spectrum_st *ps, uint32_t *result_fft_size)
@@ -495,6 +498,29 @@ static int8_t inline spectrum_get_analysis_paramter(uint64_t s_freq, uint64_t e_
     return 0;
 }
 
+static inline int8_t spectrum_sideband_deal_mm_pool(memory_pool_t  *fftmpool, memory_pool_t  *rsb_fftmpool)
+{   
+    uint32_t extra_data_single_size = 0;
+    void *p_dat, *p_end;
+    size_t p_inc, rsb_fft_size;
+    size_t fft_size = memory_pool_step(fftmpool)/4;
+
+    p_end = memory_pool_end(fftmpool);
+    p_inc = memory_pool_step(fftmpool);
+
+    extra_data_single_size = alignment_down(fft_size * SINGLE_SIDE_BAND_POINT_RATE, sizeof(float));
+    rsb_fft_size = fft_size-2 * extra_data_single_size;
+    if(rsb_fft_size > memory_pool_step(rsb_fftmpool)){
+        printf_err("remove side band size[%u] is bigger than raw fft size[%u]\n", rsb_fft_size, memory_pool_step(rsb_fftmpool));
+        return -1;
+    }
+    for (p_dat = memory_pool_first(fftmpool); p_dat < p_end; p_dat += p_inc) {
+        memcpy(memory_pool_alloc(rsb_fftmpool), p_dat+extra_data_single_size, rsb_fft_size);
+        memory_pool_set_pool_step(rsb_fftmpool, rsb_fft_size);
+    }
+    
+    return 0;
+}
 
 static size_t spectrum_iq_convert_fft_store_mm_pool(memory_pool_t  *fftmpool, memory_pool_t  *iqmpool)
 {
@@ -545,7 +571,10 @@ void specturm_analysis_deal_thread(void *arg)
     memory_pool_t *iq_mpool = mp_iq_buffer_head;
     memory_pool_t *fft_small_mpool = mp_fft_small_buffer_head;
     memory_pool_t *fft_big_mpool = mp_fft_big_buffer_head;
+    memory_pool_t *fft_small_rsb_mpool = mp_fft_small_buffer_rsb_head;
+    memory_pool_t *fft_big_rsb_mpool = mp_fft_big_buffer_rsb_head;
     int small_fft_size = 0, big_fft_size = 0;
+    uint32_t small_fft_rsb_size = 0, big_fft_rsb_size = 0;
     struct spectrum_st *ps;
     struct spectrum_header_param *param;
     float resolution;
@@ -567,13 +596,23 @@ loop:
         printf_note("###STEP1: IQ Convert to Small FFT###\n");
         small_fft_size = spectrum_iq_convert_fft_store_mm_pool(fft_small_mpool, iq_mpool);
         printf_note("###Save FFT data###\n");
-        spectrum_data_write_file(fft_small_mpool, sizeof(float), 1);
+        /* remove side band */
+        if(spectrum_sideband_deal_mm_pool(fft_small_mpool, fft_small_rsb_mpool) == -1){
+            sleep(1);
+            goto loop;
+        }
+        spectrum_data_write_file(fft_small_rsb_mpool, sizeof(float), 1);
         
         /* --2 step: IQ convet 128K(big) fft, and store fft data to big memory pool */
         printf_note("###STEP2: IQ Convert to Big FFT###\n");
         big_fft_size = spectrum_iq_convert_fft_store_mm_pool(fft_big_mpool, iq_mpool);
+        /* remove side band */
+        if(spectrum_sideband_deal_mm_pool(fft_big_mpool, fft_big_rsb_mpool) == -1){
+            sleep(1);
+            goto loop;
+        }
         printf_note("###Save Big FFT data###\n");
-        spectrum_data_write_file(fft_big_mpool, sizeof(float), 2);
+        spectrum_data_write_file(fft_big_rsb_mpool, sizeof(float), 2);
         
         /* save specturm perameter to big fft memory pool */
         printf_note("###STEP3: Write FFT Attr to Pool###\n");
@@ -593,29 +632,35 @@ loop:
         }
         
         total_bw = RF_BANDWIDTH*memory_pool_get_use_count(fft_big_mpool);
+        small_fft_rsb_size = memory_pool_step(fft_small_rsb_mpool);
+        big_fft_rsb_size = memory_pool_step(fft_big_rsb_mpool);
+        
         printf_note("analysis_bw=%u, analysis_midd_freq_offset=%llu\n", analysis_bw, analysis_midd_freq_offset);
         printf_note("small fft data len=%d, use_count=%d\n", small_fft_size, memory_pool_get_use_count(fft_small_mpool));
         printf_note("big fft data len=%d, use_count=%d\n", big_fft_size, memory_pool_get_use_count(fft_big_mpool));
         printf_note("work total bw=%u\n", total_bw);
+        printf_note("small_fft_rsb_size=%u, big_fft_rsb_size=%u\n", small_fft_rsb_size, big_fft_rsb_size);
         printf_note("###STEP4: Start to analysis FFT data###\n");
         
         TIME_ELAPSED(fft_fftdata_handle(get_power_level_threshold(),                /* signal threshold */
-                    (float *)memory_pool_first(fft_small_mpool),                    /* small fft data */
-                    small_fft_size,                                                 /* small fft data len */
-                    (float *)memory_pool_first(fft_big_mpool),                      /* big fft data */
-                    big_fft_size,                                                   /* big fft data len */
+                    (float *)memory_pool_first(fft_small_rsb_mpool),                /* remove side band small fft data */
+                    small_fft_rsb_size,                                             /* small fft data len */
+                    (float *)memory_pool_first(fft_big_rsb_mpool),                  /* remove side band big fft data */
+                    big_fft_rsb_size,                                               /* big fft data len */
                     analysis_midd_freq_offset,                                      /* analysis signal middle frequency */
                     analysis_bw,                                                    /* analysis signal bandwidth */
-                    total_bw*SIDE_BAND_RATE                                         /* total bw */
+                    total_bw                                                        /* total bw */
                     ));                                                 
 
         resolution = calc_resolution(total_bw, big_fft_size);
         bw_fft_size = ((float)analysis_bw/(float)total_bw) *big_fft_size ;
         printf_note("resolution=%f, bw_fft_size=%llu\n", resolution, bw_fft_size);
-        spectrum_rw_fft_result(fft_get_result(), ps->param.s_freq, resolution, bw_fft_size);
+        spectrum_rw_fft_result(fft_get_result(), param->s_freq, resolution, bw_fft_size);
         
         memory_pool_free(fft_small_mpool);
         memory_pool_free(fft_big_mpool);
+        memory_pool_free(fft_small_rsb_mpool);
+        memory_pool_free(fft_big_rsb_mpool);
     }
 
 }
@@ -644,6 +689,9 @@ void spectrum_init(void)
     mp_iq_buffer_head = memory_pool_create(SPECTRUM_IQ_SIZE*4, SPECTRUM_MAX_SCAN_COUNT);
     mp_fft_small_buffer_head = memory_pool_create(SPECTRUM_SMALL_FFT_SIZE*4, SPECTRUM_MAX_SCAN_COUNT);
     mp_fft_big_buffer_head = memory_pool_create(SPECTRUM_BIG_FFT_SIZE*4, SPECTRUM_MAX_SCAN_COUNT);
+
+    mp_fft_small_buffer_rsb_head = memory_pool_create(SPECTRUM_SMALL_FFT_SIZE*4, SPECTRUM_MAX_SCAN_COUNT);
+    mp_fft_big_buffer_rsb_head = memory_pool_create(SPECTRUM_BIG_FFT_SIZE*4, SPECTRUM_MAX_SCAN_COUNT);
 
     ret=pthread_create(&work_id,NULL,(void *)specturm_analysis_deal_thread, NULL);
     if(ret!=0)

@@ -6,6 +6,8 @@
 #define DIV_ROUND_UP(n,d) (((n) + (d) - 1) / (d)) 
 #define ARRAY_SIZE(array) (sizeof(array)/sizeof(array[0]))
 #define EVEN(x) (((x)%2== 0) ? 1 : 0)
+#define alignment_down(a, size) ((uint32_t)a/(uint32_t)size) //((uint32_t)a & (~((uint32_t)size-1)))
+#define alignment_up(a, size)   ((a+size-1) & (~ (size-1)))
 
 
 #define TIME_ELAPSED(codeToTime) do{      \

@@ -128,6 +128,10 @@ size_t  memory_pool_get_use_count(memory_pool_t *mp)
     return mp->used_count;
 }
 
+void memory_pool_set_pool_step(memory_pool_t *mp, size_t size)
+{
+    mp->block_size = size;
+}
 
 
 void memory_pool_read_int16_value(void *r_addr, void *data, size_t data_byte_len)

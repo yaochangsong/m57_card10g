@@ -17,7 +17,7 @@
         gettimeofday(&endTime, NULL);   \
         long secTime  = endTime.tv_sec - beginTime.tv_sec; \
         long usecTime = endTime.tv_usec - beginTime.tv_usec; \
-        printf_debug("Elapsed Time: SecTime = %lds, UsecTime = %ldus!\n", secTime, usecTime); \
+        printf_note("Elapsed Time: SecTime = %lds, UsecTime = %ldus!\n", secTime, usecTime); \
 }while(0)
 
 

@@ -275,7 +275,7 @@ void spectrum_psd_user_deal(struct spectrum_header_param *param)
         /* Start Convert IQ data to FFT, Noise threshold:8 */
         fft_float_data = (float *)safe_malloc(fft_size*4);
         ps->fft_float_payload = fft_float_data;
-        TIME_ELAPSED(fft_spectrum_iq_to_fft_handle(ps->iq_payload, fft_size, fft_size*2, ps->fft_float_payload));
+        fft_spectrum_iq_to_fft_handle(ps->iq_payload, fft_size, fft_size*2, ps->fft_float_payload);
         ps->fft_len = fft_size;
         if(ps->fft_len > sizeof(ps->fft_short_payload)){
             printf_err("fft size[%u] is too big\n", ps->fft_len);
@@ -509,7 +509,7 @@ static inline int8_t spectrum_sideband_deal_mm_pool(memory_pool_t  *fftmpool, me
     p_inc = memory_pool_step(fftmpool);
 
     extra_data_single_size = alignment_down(fft_size * SINGLE_SIDE_BAND_POINT_RATE, sizeof(float));
-    printf_note("##extra_data_single_size=%u, fft_size=%u\n", extra_data_single_size, fft_size);
+    printf_note("##extra_data_single_size=%u, fft_size=%u, pool_step=%u, use=%d\n", extra_data_single_size, fft_size, memory_pool_step(fftmpool), memory_pool_get_use_count(fftmpool));
     rsb_fft_size = fft_size-2 * extra_data_single_size;
     if(rsb_fft_size > memory_pool_step(rsb_fftmpool)/4){
         printf_err("remove side band size[%u] is bigger than raw fft size[%u]\n", rsb_fft_size, memory_pool_step(rsb_fftmpool));
@@ -517,10 +517,8 @@ static inline int8_t spectrum_sideband_deal_mm_pool(memory_pool_t  *fftmpool, me
     }
     for (p_dat = memory_pool_first(fftmpool); p_dat < p_end; p_dat += p_inc) {
         memory_pool_write_value(memory_pool_alloc(rsb_fftmpool), (uint8_t *)p_dat+extra_data_single_size*4, rsb_fft_size*4);
-        //memcpy(memory_pool_alloc(rsb_fftmpool), p_dat+extra_data_single_size, rsb_fft_size);
-        memory_pool_set_pool_step(rsb_fftmpool, rsb_fft_size*4);
     }
-    
+    memory_pool_set_pool_step(rsb_fftmpool, rsb_fft_size*4);
     return 0;
 }
 
@@ -536,15 +534,16 @@ static size_t spectrum_iq_convert_fft_store_mm_pool(memory_pool_t  *fftmpool, me
     p_end = memory_pool_end(iqmpool);
     p_inc = memory_pool_step(iqmpool);
     
-    printf_note("pool_first=%p,pool_end =%p, pool_step=%p\n", 
+    printf_info("pool_first=%p,pool_end =%p, pool_step=%p\n", 
         memory_pool_first(iqmpool), memory_pool_end(iqmpool), memory_pool_step(iqmpool));
     for (p_dat = memory_pool_first(iqmpool); p_dat < p_end; p_dat += p_inc) {
         float *s_fft_mp = (float *)memory_pool_alloc(fftmpool);
-        TIME_ELAPSED(fft_spectrum_iq_to_fft_handle((int16_t *)p_dat, fft_size, fft_size*2, s_fft_mp));
+        fft_spectrum_iq_to_fft_handle((int16_t *)p_dat, fft_size, fft_size*2, s_fft_mp);
         for(int i = 0; i<10; i++)
             printfd("%f ", *((float *)s_fft_mp+i));
         printfd("\n");
     }
+
     return (fft_size*memory_pool_get_use_count(fftmpool));
 }
 
@@ -558,7 +557,7 @@ static int spectrum_data_write_file(memory_pool_t  *mpool, uint8_t data_type_len
     p_inc = memory_pool_step(mpool);
 
     sprintf(strbuf, "/run/%s%d", data_type_len == sizeof(int16_t) ? "IQ":"FFT",  index);
-    printf_note("##start save iq:%s, %d, %d\n", strbuf, p_inc, memory_pool_get_use_count(mpool));
+    printf_info("##start save iq:%s, %d, %d\n", strbuf, p_inc, memory_pool_get_use_count(mpool));
     if(data_type_len == sizeof(int16_t)){  //int16
         write_file_in_int16((void*)(memory_pool_first(mpool)), p_inc * memory_pool_get_use_count(mpool)/data_type_len, strbuf);
     }
@@ -591,13 +590,13 @@ loop:
         printf_note("###wait to analysis specturm###\n");
         sem_wait(&sp_sem.notify_iq_to_fft);
         /* Here we have get IQ data in memory pool (name: iq_mpool)*/
-        printf_note("###Save IQ data###\n");
+        printf_info("###Save IQ data###\n");
         spectrum_data_write_file(iq_mpool, sizeof(int16_t), 0);
         
         /* --1step IQ convert 4K(small) fft, and store fft data to small memory pool  */
         printf_note("###STEP1: IQ Convert to Small FFT###\n");
         small_fft_size = spectrum_iq_convert_fft_store_mm_pool(fft_small_mpool, iq_mpool);
-        printf_note("###Save FFT data###\n");
+        printf_info("###Save FFT data###\n");
         /* remove side band */
         if(spectrum_sideband_deal_mm_pool(fft_small_mpool, fft_small_rsb_mpool) == -1){
             sleep(1);
@@ -613,19 +612,18 @@ loop:
             sleep(1);
             goto loop;
         }
-        printf_note("###Save Big FFT data###\n");
+        printf_info("###Save Big FFT data###\n");
         spectrum_data_write_file(fft_big_rsb_mpool, sizeof(float), 2);
         
         /* save specturm perameter to big fft memory pool */
         printf_note("###STEP3: Write FFT Attr to Pool###\n");
         memory_pool_write_attr_value(fft_big_mpool, memory_pool_get_attr(iq_mpool), memory_pool_get_attr_len(iq_mpool));
         /* now, we can refill IQ data to memory pool again */
-        memory_pool_free(iq_mpool);
-        ps->iq_data_ready = false;
+        
         printf_note("###IQ Deal Over,Free, Wait New IQ data###\n");
 
         param = (struct spectrum_header_param *)memory_pool_get_attr(fft_big_mpool);
-        printf_note("s_freq=%llu, e_freq=%llu\n", param->s_freq, param->e_freq);
+        printf_info("s_freq=%llu, e_freq=%llu\n", param->s_freq, param->e_freq);
 
         /* load specturm analysis paramter: analysis_bw, analysis_midd_freq_offset*/
         if(spectrum_get_analysis_paramter(param->s_freq, param->e_freq, &analysis_bw, &analysis_midd_freq_offset) == -1){
@@ -634,16 +632,21 @@ loop:
         }
         
         total_bw = RF_BANDWIDTH*memory_pool_get_use_count(fft_big_mpool);
-        small_fft_rsb_size = memory_pool_step(fft_small_rsb_mpool);
-        big_fft_rsb_size = memory_pool_step(fft_big_rsb_mpool);
+        small_fft_rsb_size = memory_pool_step(fft_small_rsb_mpool)*memory_pool_get_use_count(fft_small_rsb_mpool);
+        big_fft_rsb_size = memory_pool_step(fft_big_rsb_mpool)*memory_pool_get_use_count(fft_big_rsb_mpool);;
         
-        printf_note("analysis_bw=%u, analysis_midd_freq_offset=%llu\n", analysis_bw, analysis_midd_freq_offset);
+        printf_info("analysis_bw=%u, analysis_midd_freq_offset=%llu\n", analysis_bw, analysis_midd_freq_offset);
         printf_note("small fft data len=%d, use_count=%d\n", small_fft_size, memory_pool_get_use_count(fft_small_mpool));
         printf_note("big fft data len=%d, use_count=%d\n", big_fft_size, memory_pool_get_use_count(fft_big_mpool));
-        printf_note("work total bw=%u\n", total_bw);
-        printf_note("small_fft_rsb_size=%u, big_fft_rsb_size=%u\n", small_fft_rsb_size, big_fft_rsb_size);
-        printf_note("###STEP4: Start to analysis FFT data###\n");
+        printf_note("fft small mpool step =%u, big fft size step=%u\n", memory_pool_step(fft_small_mpool), memory_pool_step(fft_big_mpool));
         
+        printf_note("rsb small fft data len=%d, use_count=%d\n", small_fft_rsb_size, memory_pool_get_use_count(fft_small_rsb_mpool));
+        printf_note("rsb big fft data len=%d, use_count=%d\n", big_fft_rsb_size, memory_pool_get_use_count(fft_big_rsb_mpool));
+        printf_note("rsb fft small mpool step=%u, rsb big fft mpool step=%u\n", memory_pool_step(fft_small_rsb_mpool), memory_pool_step(fft_big_rsb_mpool));
+        
+        printf_info("work total bw=%u\n", total_bw);
+        printf_note("###STEP4: Start to analysis FFT data###\n");
+
         TIME_ELAPSED(fft_fftdata_handle(get_power_level_threshold(),                /* signal threshold */
                     (float *)memory_pool_first(fft_small_rsb_mpool),                /* remove side band small fft data */
                     small_fft_rsb_size,                                             /* small fft data len */
@@ -651,18 +654,20 @@ loop:
                     big_fft_rsb_size,                                               /* big fft data len */
                     analysis_midd_freq_offset,                                      /* analysis signal middle frequency */
                     analysis_bw,                                                    /* analysis signal bandwidth */
-                    total_bw                                                        /* total bw */
+                    total_bw*SIDE_BAND_RATE                                         /* total bw */
                     ));                                                 
 
         resolution = calc_resolution(total_bw, big_fft_size);
         bw_fft_size = ((float)analysis_bw/(float)total_bw) *big_fft_size ;
         printf_note("resolution=%f, bw_fft_size=%llu\n", resolution, bw_fft_size);
         spectrum_rw_fft_result(fft_get_result(), param->s_freq, resolution, bw_fft_size);
-        
+
         memory_pool_free(fft_small_mpool);
         memory_pool_free(fft_big_mpool);
         memory_pool_free(fft_small_rsb_mpool);
         memory_pool_free(fft_big_rsb_mpool);
+        memory_pool_free(iq_mpool);
+        ps->iq_data_ready = false;
     }
 
 }

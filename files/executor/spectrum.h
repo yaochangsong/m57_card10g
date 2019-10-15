@@ -23,7 +23,7 @@
 #define SINGLE_SIDE_BAND_POINT_RATE  (0.093098958333333)  /* (1-1/1.2288)/2 */
 
 #define  SPECTRUM_IQ_SIZE   RF_ADRV9009_IQ_SIZE
-#define  SPECTRUM_SMALL_FFT_SIZE   (2048)
+#define  SPECTRUM_SMALL_FFT_SIZE   (8196)
 #define  SPECTRUM_BIG_FFT_SIZE  RF_ADRV9009_IQ_SIZE/2
 
 #define calc_resolution(bw_hz, fft_size)  (SIDE_BAND_RATE*bw_hz/fft_size)

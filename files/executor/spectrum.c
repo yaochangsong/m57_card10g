@@ -657,8 +657,8 @@ loop:
                     total_bw                                                        /* total bw */
                     ));                                                 
 
-        resolution = calc_resolution(total_bw, big_fft_size);
-        bw_fft_size = ((float)analysis_bw/(float)total_bw) *big_fft_size ;
+        resolution = calc_resolution(total_bw, big_fft_rsb_size);
+        bw_fft_size = ((float)analysis_bw/(float)total_bw) *big_fft_rsb_size ;
         printf_note("resolution=%f, bw_fft_size=%llu\n", resolution, bw_fft_size);
         spectrum_rw_fft_result(fft_get_result(), param->s_freq, resolution, bw_fft_size);
 

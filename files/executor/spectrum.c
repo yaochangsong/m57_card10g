@@ -632,8 +632,8 @@ loop:
         }
         
         total_bw = RF_BANDWIDTH*memory_pool_get_use_count(fft_big_mpool);
-        small_fft_rsb_size = memory_pool_step(fft_small_rsb_mpool)*memory_pool_get_use_count(fft_small_rsb_mpool);
-        big_fft_rsb_size = memory_pool_step(fft_big_rsb_mpool)*memory_pool_get_use_count(fft_big_rsb_mpool);;
+        small_fft_rsb_size = memory_pool_step(fft_small_rsb_mpool)*memory_pool_get_use_count(fft_small_rsb_mpool)/4;
+        big_fft_rsb_size = memory_pool_step(fft_big_rsb_mpool)*memory_pool_get_use_count(fft_big_rsb_mpool)/4;
         
         printf_info("analysis_bw=%u, analysis_midd_freq_offset=%llu\n", analysis_bw, analysis_midd_freq_offset);
         printf_note("small fft data len=%d, use_count=%d\n", small_fft_size, memory_pool_get_use_count(fft_small_mpool));
@@ -654,7 +654,7 @@ loop:
                     big_fft_rsb_size,                                               /* big fft data len */
                     analysis_midd_freq_offset,                                      /* analysis signal middle frequency */
                     analysis_bw,                                                    /* analysis signal bandwidth */
-                    total_bw*SIDE_BAND_RATE                                         /* total bw */
+                    total_bw                                                        /* total bw */
                     ));                                                 
 
         resolution = calc_resolution(total_bw, big_fft_size);

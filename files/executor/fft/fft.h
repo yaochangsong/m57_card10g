@@ -9,7 +9,7 @@
 #define  W  (200)    //wav trans txt 数组大小
 #define  MM_PI        (3.14159265358979323846264338327950288419716939937510)       // 圆周率atan(1)* 4
 //#define  N  256
-static unsigned int N=1024*1024;
+static unsigned int N=16*1024*1024;
 #define  SIGNALNUM        (20000)//输入信号数
 #define  THRESHOLD         (7)//门限
 #define  CORRECTIONSIGNAL  (300)

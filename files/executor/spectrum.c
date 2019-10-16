@@ -508,7 +508,7 @@ static inline int8_t spectrum_sideband_deal_mm_pool(memory_pool_t  *fftmpool, me
     p_end = memory_pool_end(fftmpool);
     p_inc = memory_pool_step(fftmpool);
 
-    extra_data_single_size = alignment_down(fft_size * SINGLE_SIDE_BAND_POINT_RATE, sizeof(float));
+    extra_data_single_size = fft_size * SINGLE_SIDE_BAND_POINT_RATE;//alignment_down(fft_size * SINGLE_SIDE_BAND_POINT_RATE, sizeof(float));
     printf_note("##extra_data_single_size=%u, fft_size=%u, pool_step=%u, use=%d\n", extra_data_single_size, fft_size, memory_pool_step(fftmpool), memory_pool_get_use_count(fftmpool));
     rsb_fft_size = fft_size-2 * extra_data_single_size;
     if(rsb_fft_size > memory_pool_step(rsb_fftmpool)/4){
@@ -657,9 +657,9 @@ loop:
                     total_bw                                                        /* total bw */
                     ));                                                 
 
-        resolution = calc_resolution(total_bw, big_fft_rsb_size);
-        bw_fft_size = ((float)analysis_bw/(float)total_bw) *big_fft_rsb_size ;
-        printf_note("resolution=%f, bw_fft_size=%llu\n", resolution, bw_fft_size);
+        resolution = calc_resolution(total_bw, big_fft_size);
+        bw_fft_size = ((float)analysis_bw/(float)total_bw) *big_fft_size ;
+        printf_note("s_freq=%llu, resolution=%f, bw_fft_size=%llu\n", param->s_freq, resolution, bw_fft_size);
         spectrum_rw_fft_result(fft_get_result(), param->s_freq, resolution, bw_fft_size);
 
         memory_pool_free(fft_small_mpool);

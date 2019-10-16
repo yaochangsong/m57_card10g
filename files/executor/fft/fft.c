@@ -1979,8 +1979,8 @@ int  fft_fuzzy_fftdata_handle(int threshordnum,float *fsdata,int datalen,uint32_
             writefileArr("firstmozhi0904.txt",fftdata.cutoffdataraw, cutoffdatacount);
         
 #else
-            writefileArr("/run/firstsmoothdatahann.txt",fftdata.cutoffdata, cutoffdatacount);
-            writefileArr("/run/firstmozhihann.txt",fftdata.cutoffdataraw, cutoffdatacount);
+            //writefileArr("/run/firstsmoothdatahann.txt",fftdata.cutoffdata, cutoffdatacount);
+            //writefileArr("/run/firstmozhihann.txt",fftdata.cutoffdataraw, cutoffdatacount);
 #endif
 
             calculatecenterfrequency(fftdata.cutoffdataraw,cutoffdatacount);                   //5 计算中心频率
@@ -2069,8 +2069,8 @@ void fft_precise_fftdata_calculation(int threshordnum,float *fsdata,uint32_t dat
     writefileArr("secondmozhi0904.txt",fftdata.cutoffdataraw, cutoffdatacount);
 
 #else
-    writefileArr("/run/secondsmoothdatahann.txt",fftdata.cutoffdata, cutoffdatacount);
-    writefileArr("/run/secondmozhihann.txt",fftdata.cutoffdataraw, cutoffdatacount);
+   // writefileArr("/run/secondsmoothdatahann.txt",fftdata.cutoffdata, cutoffdatacount);
+   // writefileArr("/run/secondmozhihann.txt",fftdata.cutoffdataraw, cutoffdatacount);
 #endif
     float minvalue;
     float maxvalue;
@@ -2327,7 +2327,7 @@ void fft_precise_fftdata_calculation(int threshordnum,float *fsdata,uint32_t dat
 
 int  fft_fftdata_handle(int threshold,float *fuzzydata,uint32_t fuzzylen,float *bigdata,uint32_t biglen,uint32_t midpointhz,uint32_t signal_bw,uint32_t total_bw)
 {
-    if((fuzzydata==NULL)&&(bigdata==NULL))
+    if((fuzzydata==NULL)||(bigdata==NULL))
     {
         printf_warn("\n\nThe IQ data you entered is empty, please enter again！\n\n");
         return 0;

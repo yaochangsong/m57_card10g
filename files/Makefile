@@ -89,7 +89,7 @@ endif
 #export CC=arm-linux-gnueabihf-gcc
 
 #dao lib
-SUB_LIBS :=  libubox/libubox.a
+SUB_LIBS :=  lib/libubox/libubox.a
 ifneq ($(findstring json,$(SUPPORT_DAO)),)
 	SUB_LIBS += dao/json/libjson.a
 	C_VAR += -DSUPPORT_DAO_JSON
@@ -108,11 +108,15 @@ libdir_so=-L${prefix}/libiio/usr/lib -L${prefix}/libxml2/usr/lib -L${prefix}/zli
 includedir_so=-I${prefix}/libiio/usr/include -I${prefix}/libxml2/usr/include/libxml2/libxml -I${prefix}/zlib/usr/include
 
 ifeq ($(CC), gcc)
-libdir_so += -L./executor/fft/libfftw3/x86/lib
-includedir_so += -I./executor/fft/libfftw3/x86/include
+libdir_so += -L./lib/libfftw3/x86/lib
+includedir_so += -I./lib/libfftw3/x86/include
+libdir_so += -L./lib/libiio/x86/lib
+includedir_so += -I./lib/libiio/arm/include
 else
-libdir_so += -L./executor/fft/libfftw3/arm/lib
-includedir_so += -I./executor/fft/libfftw3/arm/include
+libdir_so += -L./lib/libfftw3/arm/lib
+includedir_so += -I./lib/libfftw3/arm/include
+libdir_so += -L./lib/libiio/arm/lib
+includedir_so += -I./lib/libiio/arm/include
 endif
 
 INCLUDE_DIR = -I. -I./ ${includedir_so} 

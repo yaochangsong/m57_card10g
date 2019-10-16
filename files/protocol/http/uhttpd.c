@@ -19,8 +19,8 @@
 
 #include <stdlib.h>
 #include <unistd.h>
-#include "libubox/usock.h"
-#include "libubox/avl-cmp.h"
+#include "lib/libubox/usock.h"
+#include "lib/libubox/avl-cmp.h"
 
 #include "uhttpd.h"
 //#include "uh_ssl.h"

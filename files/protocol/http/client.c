@@ -22,7 +22,7 @@
 #include <unistd.h>
 #include <arpa/inet.h>
 #include <linux/limits.h>
-#include "libubox/blobmsg.h"
+#include "lib/libubox/blobmsg.h"
 
 #include "uhttpd.h"
 #include "client.h"

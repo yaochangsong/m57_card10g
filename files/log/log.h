@@ -19,7 +19,7 @@
 #define _LOG_H
 
 #include <string.h>
-#include "libubox/ulog.h"
+#include "lib/libubox/ulog.h"
 
 #define __FILENAME__ (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
 

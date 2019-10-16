@@ -24,9 +24,9 @@
 #include <fftw3.h>
 
 
-#include "libubox/ulog.h"
-#include "libubox/uloop.h"
-#include "libubox/usock.h"
+#include "lib/libubox/ulog.h"
+#include "lib/libubox/uloop.h"
+#include "lib/libubox/usock.h"
 
 #include "conf/conf.h"
 #include "log/log.h"

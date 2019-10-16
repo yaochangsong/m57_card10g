@@ -510,7 +510,7 @@ static inline int8_t spectrum_sideband_deal_mm_pool(memory_pool_t  *fftmpool, me
 
     extra_data_single_size = fft_size * SINGLE_SIDE_BAND_POINT_RATE;//alignment_down(fft_size * SINGLE_SIDE_BAND_POINT_RATE, sizeof(float));
     printf_note("##extra_data_single_size=%u, fft_size=%u, pool_step=%u, use=%d\n", extra_data_single_size, fft_size, memory_pool_step(fftmpool), memory_pool_get_use_count(fftmpool));
-    rsb_fft_size = fft_size-2 * extra_data_single_size;
+    rsb_fft_size = fft_size/SIDE_BAND_RATE;  //fft_size-2 * extra_data_single_size;
     if(rsb_fft_size > memory_pool_step(rsb_fftmpool)/4){
         printf_err("remove side band size[%u] is bigger than raw fft size[%u]\n", rsb_fft_size, memory_pool_step(rsb_fftmpool));
         return -1;

@@ -1864,7 +1864,7 @@ int  fft_fuzzy_fftdata_handle(int threshordnum,float *fsdata,int datalen,uint32_
 #ifdef PLAT_FORM_ARCH_X86
 				writefileArr("rawdatafuzzy.txt",fsdata, datalen);			
 #else
-				writefileArr("/run/rawdatafuzzy.txt",fsdata, datalen);
+				//writefileArr("/run/rawdatafuzzy.txt",fsdata, datalen);
 #endif
 
 	printf_note("datalen=%d,threshordnum=%d,N=%d\n",datalen,threshordnum,N);
@@ -1984,8 +1984,8 @@ int  fft_fuzzy_fftdata_handle(int threshordnum,float *fsdata,int datalen,uint32_
             writefileArr("firstmozhi0904.txt",fftdata.cutoffdataraw, cutoffdatacount);
         
 #else
-            writefileArr("/run/firstsmoothdatahann.txt",fftdata.cutoffdata, cutoffdatacount);
-            writefileArr("/run/firstmozhihann.txt",fftdata.cutoffdataraw, cutoffdatacount);
+          //  writefileArr("/run/firstsmoothdatahann.txt",fftdata.cutoffdata, cutoffdatacount);
+          //  writefileArr("/run/firstmozhihann.txt",fftdata.cutoffdataraw, cutoffdatacount);
 #endif
 
             calculatecenterfrequency(fftdata.cutoffdataraw,cutoffdatacount);                   //5 计算中心频率
@@ -2039,7 +2039,7 @@ void fft_precise_fftdata_calculation(int threshordnum,float *fsdata,uint32_t dat
 #ifdef PLAT_FORM_ARCH_X86
 		writefileArr("rawdataprecise.txt",fsdata, datalen);			
 #else
-		writefileArr("/run/rawdataprecise.txt",fsdata, datalen);
+		//writefileArr("/run/rawdataprecise.txt",fsdata, datalen);
 #endif
 
     memset(fftdata.smoothdata,0,sizeof(float)*N );
@@ -2079,8 +2079,8 @@ void fft_precise_fftdata_calculation(int threshordnum,float *fsdata,uint32_t dat
     writefileArr("secondmozhi0904.txt",fftdata.cutoffdataraw, cutoffdatacount);
 
 #else
-    writefileArr("/run/secondsmoothdatahann.txt",fftdata.cutoffdata, cutoffdatacount);
-    writefileArr("/run/secondmozhihann.txt",fftdata.cutoffdataraw, cutoffdatacount);
+    //writefileArr("/run/secondsmoothdatahann.txt",fftdata.cutoffdata, cutoffdatacount);
+   // writefileArr("/run/secondmozhihann.txt",fftdata.cutoffdataraw, cutoffdatacount);
 #endif
     float minvalue;
     float maxvalue;

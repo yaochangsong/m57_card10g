@@ -1864,7 +1864,7 @@ int  fft_fuzzy_fftdata_handle(int threshordnum,float *fsdata,int datalen,uint32_
 #ifdef PLAT_FORM_ARCH_X86
 				writefileArr("rawdatafuzzy.txt",fsdata, datalen);			
 #else
-			//	writefileArr("/run/rawdatafuzzy.txt",fsdata, datalen);
+				writefileArr("/run/rawdatafuzzy.txt",fsdata, datalen);
 #endif
 
 	printf_note("datalen=%d,threshordnum=%d,N=%d\n",datalen,threshordnum,N);
@@ -1941,7 +1941,7 @@ int  fft_fuzzy_fftdata_handle(int threshordnum,float *fsdata,int datalen,uint32_
             writefileArr("firstsmoothdata0904.txt",fftdata.smoothdata, narrowbandlen);
             writefileArr("firstmozhi0904.txt",fsdata, narrowbandlen);
 #else
-           // writefileArr("/run/firstsmoothdatahann.txt",fftdata.smoothdata, fftsize);
+          //  writefileArr("/run/firstsmoothdatahann.txt",fftdata.smoothdata, fftsize);
            // writefileArr("/run/firstmozhihann.txt",fftdata.mozhi, fftsize);
 #endif
             fftstate.Threshold=0;
@@ -1984,8 +1984,8 @@ int  fft_fuzzy_fftdata_handle(int threshordnum,float *fsdata,int datalen,uint32_
             writefileArr("firstmozhi0904.txt",fftdata.cutoffdataraw, cutoffdatacount);
         
 #else
-           // writefileArr("/run/firstsmoothdatahann.txt",fftdata.cutoffdata, cutoffdatacount);
-           // writefileArr("/run/firstmozhihann.txt",fftdata.cutoffdataraw, cutoffdatacount);
+            writefileArr("/run/firstsmoothdatahann.txt",fftdata.cutoffdata, cutoffdatacount);
+            writefileArr("/run/firstmozhihann.txt",fftdata.cutoffdataraw, cutoffdatacount);
 #endif
 
             calculatecenterfrequency(fftdata.cutoffdataraw,cutoffdatacount);                   //5 计算中心频率
@@ -2039,7 +2039,7 @@ void fft_precise_fftdata_calculation(int threshordnum,float *fsdata,uint32_t dat
 #ifdef PLAT_FORM_ARCH_X86
 		writefileArr("rawdataprecise.txt",fsdata, datalen);			
 #else
-		//writefileArr("/run/rawdataprecise.txt",fsdata, datalen);
+		writefileArr("/run/rawdataprecise.txt",fsdata, datalen);
 #endif
 
     memset(fftdata.smoothdata,0,sizeof(float)*N );
@@ -2079,8 +2079,8 @@ void fft_precise_fftdata_calculation(int threshordnum,float *fsdata,uint32_t dat
     writefileArr("secondmozhi0904.txt",fftdata.cutoffdataraw, cutoffdatacount);
 
 #else
-   // writefileArr("/run/secondsmoothdatahann.txt",fftdata.cutoffdata, cutoffdatacount);
-  //  writefileArr("/run/secondmozhihann.txt",fftdata.cutoffdataraw, cutoffdatacount);
+    writefileArr("/run/secondsmoothdatahann.txt",fftdata.cutoffdata, cutoffdatacount);
+    writefileArr("/run/secondmozhihann.txt",fftdata.cutoffdataraw, cutoffdatacount);
 #endif
     float minvalue;
     float maxvalue;
@@ -2204,7 +2204,7 @@ void fft_precise_fftdata_calculation(int threshordnum,float *fsdata,uint32_t dat
                 impairment=0;
                 printf_warn("粗检范围fftstate.y[i]=%d,fftstate.z[i]=%d\n",fftstate.y[i],fftstate.z[i]);
                 int temp;
-                temp=(fftstate.z[i]*multiple-fftstate.y[i]*multiple)/10;
+                temp=(fftstate.z[i]*multiple-fftstate.y[i]*multiple)/20;
                 printf_warn("第一个点范围fftstate.z[i]*multiple=%d,j>=fftstate.y[i]*multiple-temp=%d\n",fftstate.z[i]*multiple,j=fftstate.y[i]*multiple-temp);
 				printf_warn("第二个点范围fftstate.y[i]*multiple=%d,fftstate.z[i]*multiple+temp=%d\n",fftstate.y[i]*multiple,j=fftstate.z[i]*multiple+temp);
 				printf_warn("倍数关系=%d,门限=%f\n",multiple,maxvalue);
@@ -2251,8 +2251,8 @@ void fft_precise_fftdata_calculation(int threshordnum,float *fsdata,uint32_t dat
                     }
                 }
 				float  linjie_point;
-				linjie_point=(raw_max-maxvalue)/6+maxvalue;
-				printf_warn("linjie_point=%f,(raw_max-maxvalue)/6=%f\n",linjie_point,(raw_max-maxvalue)/6);
+				linjie_point=(raw_max-maxvalue)/5+maxvalue;
+				printf_warn("linjie_point=%f,(raw_max-maxvalue)/5=%f\n",linjie_point,(raw_max-maxvalue)/5);
 
                 for(j=fftstate.z[i]*multiple;j>=fftstate.y[i]*multiple-temp;j--)
                 {

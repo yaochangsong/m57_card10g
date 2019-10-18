@@ -467,7 +467,8 @@ static int8_t inline spectrum_get_analysis_paramter(uint64_t s_freq, uint64_t e_
     uint32_t analysis_bw;
     uint64_t analysis_middle_freq;
     struct poal_config *poal_config = &(config_get_config()->oal_config);
-    
+
+    /* When calculating the FFT, the calculation analysis bandwidth is set to an integral multiple of the rf  bandwidth. */
     analysis_bw = alignment_up(poal_config->ctrl_para.specturm_analysis_param.bandwidth_hz, RF_BANDWIDTH); 
     analysis_middle_freq =  spectrum_get_analysis_middle_freq(s_freq);
     

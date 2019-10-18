@@ -7,7 +7,7 @@
 #define ARRAY_SIZE(array) (sizeof(array)/sizeof(array[0]))
 #define EVEN(x) (((x)%2== 0) ? 1 : 0)
 #define alignment_down(a, size) (((uint32_t)a/(uint32_t)size)*(uint32_t)size) //((uint32_t)a & (~((uint32_t)size-1)))
-#define alignment_up(a, size)   ((a+size-1) & (~ (size-1)))
+#define alignment_up(a, size)   (size +((a-1)/size)*size)
 
 
 #define TIME_ELAPSED(codeToTime) do{      \

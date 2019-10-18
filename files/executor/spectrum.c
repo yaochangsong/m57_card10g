@@ -468,8 +468,8 @@ static int8_t inline spectrum_get_analysis_paramter(uint64_t s_freq, uint64_t e_
     uint64_t analysis_middle_freq;
     struct poal_config *poal_config = &(config_get_config()->oal_config);
     
-    analysis_bw = poal_config->ctrl_para.specturm_analysis_param.bandwidth_hz;
-    analysis_middle_freq =  spectrum_get_analysis_middle_freq(s_freq);;
+    analysis_bw = alignment_up(poal_config->ctrl_para.specturm_analysis_param.bandwidth_hz, RF_BANDWIDTH); 
+    analysis_middle_freq =  spectrum_get_analysis_middle_freq(s_freq);
     
     if(analysis_middle_freq < s_freq || analysis_middle_freq > e_freq){
         printf_err("analysis frequency[%llu] is not  NOT within the bandwidth range[%llu, %llu]\n", analysis_middle_freq, s_freq, e_freq);

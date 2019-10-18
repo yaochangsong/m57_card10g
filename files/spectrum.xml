@@ -61,180 +61,180 @@
     <fileDelete>1</fileDelete>
     <fileStrategy>1</fileStrategy>
   </fileStorePara>
-  <calibration>
+  <calibration psd_power="-4390" analysis_power="-195">
     <psd_power index="0">
 	<start_requency>50000</start_requency>
 	<end_requency>70000</end_requency>
-	<level>-3950</level>
+	<level>0</level>
     </psd_power>
     <psd_power index="1">
 	<start_requency>70000</start_requency>
 	<end_requency>100000</end_requency>
-	<level>-3950</level>
+	<level>0</level>
     </psd_power>
     <psd_power index="2">
 	<start_requency>100000</start_requency>
 	<end_requency>120000</end_requency>
-	<level>-4050</level>
+	<level>0</level>
     </psd_power>
     <psd_power index="3">
 	<start_requency>120000</start_requency>
 	<end_requency>140000</end_requency>
-	<level>-4050</level>
+	<level>0</level>
     </psd_power>
     <psd_power index="4">
 	<start_requency>140000</start_requency>
 	<end_requency>160000</end_requency>
-	<level>-4100</level>
+	<level>0</level>
     </psd_power>
     <psd_power index="5">
 	<start_requency>160000</start_requency>
 	<end_requency>200000</end_requency>
-	<level>-4380</level>
+	<level>0</level>
     </psd_power>
     <psd_power index="6">
 	<start_requency>200000</start_requency>
 	<end_requency>220000</end_requency>
-	<level>-4390</level>
+	<level>0</level>
     </psd_power>
     <psd_power index="7">
 	<start_requency>220000</start_requency>
 	<end_requency>750000</end_requency>
-	<level>-4390</level>
+	<level>0</level>
     </psd_power>
     <psd_power index="8">
 	<start_requency>750000</start_requency>
 	<end_requency>950000</end_requency>
-	<level>-4360</level>
+	<level>0</level>
     </psd_power>
     <psd_power index="9">
 	<start_requency>950000</start_requency>
 	<end_requency>1050000</end_requency>
-	<level>-4420</level>
+	<level>0</level>
     </psd_power>
     <psd_power index="10">
 	<start_requency>1050000</start_requency>
 	<end_requency>1150000</end_requency>
-	<level>-4390</level>
+	<level>0</level>
     </psd_power>
     <psd_power index="11">
 	<start_requency>1150000</start_requency>
 	<end_requency>1250000</end_requency>
-	<level>-4360</level>
+	<level>0</level>
     </psd_power>
     <psd_power index="12">
 	<start_requency>1250000</start_requency>
 	<end_requency>1350000</end_requency>
-	<level>-4390</level>
+	<level>0</level>
     </psd_power>
     <psd_power index="13">
 	<start_requency>1350000</start_requency>
 	<end_requency>1550000</end_requency>
-	<level>-4390</level>
+	<level>0</level>
     </psd_power>
     <psd_power index="14">
 	<start_requency>1550000</start_requency>
 	<end_requency>1750000</end_requency>
-	<level>-4350</level>
+	<level>0</level>
     </psd_power>
     <psd_power index="15">
         <start_requency>1750000</start_requency>
         <end_requency>1800000</end_requency>
-        <level>-4350</level>
+        <level>0</level>
     </psd_power>
 
     <psd_power index="16">
         <start_requency>1800000</start_requency>
         <end_requency>1850000</end_requency>
-        <level>-4360</level>
+        <level>0</level>
     </psd_power>
 
     <psd_power index="17">
         <start_requency>1850000</start_requency>
         <end_requency>1950000</end_requency>
-        <level>-4330</level>
+        <level>0</level>
     </psd_power>
 
 
     <psd_power index="18">
         <start_requency>1950000</start_requency>
         <end_requency>2150000</end_requency>
-        <level>-4350</level>
+        <level>0</level>
     </psd_power>
     <psd_power index="19">
         <start_requency>2150000</start_requency>
         <end_requency>2350000</end_requency>
-        <level>-4270</level>
+        <level>0</level>
     </psd_power>
     <psd_power index="20">
         <start_requency>2350000</start_requency>
         <end_requency>2550000</end_requency>
-        <level>-4620</level>
+        <level>0</level>
     </psd_power>
     <psd_power index="21">
         <start_requency>2550000</start_requency>
         <end_requency>2750000</end_requency>
-        <level>-4695</level>
+        <level>0</level>
     </psd_power>
     <psd_power index="22">
         <start_requency>2750000</start_requency>
         <end_requency>2950000</end_requency>
-        <level>-4595</level>
+        <level>0</level>
     </psd_power>
     <psd_power index="23">
         <start_requency>2950000</start_requency>
         <end_requency>3150000</end_requency>
-        <level>-4505</level>
+        <level>0</level>
     </psd_power>
     <psd_power index="24">
         <start_requency>3150000</start_requency>
         <end_requency>3200000</end_requency>
-        <level>-4245</level>
+        <level>0</level>
     </psd_power>
     <psd_power index="25">
         <start_requency>3200000</start_requency>
         <end_requency>3400000</end_requency>
-        <level>-4120</level>
+        <level>0</level>
     </psd_power>
     <psd_power index="26">
         <start_requency>3400000</start_requency>
         <end_requency>3600000</end_requency>
-        <level>-4200</level>
+        <level>0</level>
     </psd_power>
     <psd_power index="27">
         <start_requency>3600000</start_requency>
         <end_requency>3800000</end_requency>
-        <level>-4090</level>
+        <level>0</level>
     </psd_power>
     <psd_power index="28">
         <start_requency>3800000</start_requency>
         <end_requency>4000000</end_requency>
-        <level>-4200</level>
+        <level>0</level>
     </psd_power>
     <psd_power index="29">
         <start_requency>4000000</start_requency>
         <end_requency>4200000</end_requency>
-        <level>-4120</level>
+        <level>0</level>
     </psd_power>
     <psd_power index="30">
         <start_requency>4200000</start_requency>
         <end_requency>4400000</end_requency>
-        <level>-4060</level>
+        <level>0</level>
     </psd_power>
     <psd_power index="31">
         <start_requency>4400000</start_requency>
         <end_requency>4600000</end_requency>
-        <level>-4000</level>
+        <level>0</level>
     </psd_power>
     <psd_power index="32">
         <start_requency>4600000</start_requency>
         <end_requency>4800000</end_requency>
-        <level>-4010</level>
+        <level>0</level>
     </psd_power>
     <psd_power index="33">
         <start_requency>4800000</start_requency>
         <end_requency>5000000</end_requency>
-        <level>-4020</level>
+        <level>0</level>
     </psd_power>
     <psd_power index="34">
         <start_requency>0</start_requency>
@@ -270,174 +270,174 @@
     <analysis_power index="0">
 	<start_requency>20000</start_requency>
 	<end_requency>70000</end_requency>
-	<level>-149</level>
+	<level>0</level>
     </analysis_power>
     <analysis_power index="1">
 	<start_requency>70000</start_requency>
 	<end_requency>100000</end_requency>
-	<level>-149</level>
+	<level>0</level>
     </analysis_power>
     <analysis_power index="2">
 	<start_requency>100000</start_requency>
 	<end_requency>120000</end_requency>
-	<level>-196</level>
+	<level>0</level>
     </analysis_power>
     <analysis_power index="3">
 	<start_requency>120000</start_requency>
 	<end_requency>140000</end_requency>
-	<level>-196</level>
+	<level>0</level>
     </analysis_power>
     <analysis_power index="4">
 	<start_requency>140000</start_requency>
 	<end_requency>160000</end_requency>
-	<level>-166</level>
+	<level>-0</level>
     </analysis_power>
     <analysis_power index="5">
 	<start_requency>160000</start_requency>
 	<end_requency>200000</end_requency>
-	<level>-196</level>
+	<level>-0</level>
     </analysis_power>
     <analysis_power index="6">
 	<start_requency>200000</start_requency>
 	<end_requency>220000</end_requency>
-	<level>-196</level>
+	<level>-0</level>
     </analysis_power>
     <analysis_power index="7">
 	<start_requency>220000</start_requency>
 	<end_requency>750000</end_requency>
-	<level>-196</level>
+	<level>-0</level>
     </analysis_power>
     <analysis_power index="8">
 	<start_requency>750000</start_requency>
 	<end_requency>950000</end_requency>
-	<level>-193</level>
+	<level>-0</level>
     </analysis_power>
     <analysis_power index="9">
 	<start_requency>950000</start_requency>
 	<end_requency>1050000</end_requency>
-	<level>-200</level>
+	<level>-0</level>
     </analysis_power>
     <analysis_power index="10">
 	<start_requency>1050000</start_requency>
 	<end_requency>1150000</end_requency>
-	<level>-197</level>
+	<level>-0</level>
     </analysis_power>
     <analysis_power index="11">
 	<start_requency>1150000</start_requency>
 	<end_requency>1250000</end_requency>
-	<level>-195</level>
+	<level>-0</level>
     </analysis_power>
     <analysis_power index="12">
 	<start_requency>1250000</start_requency>
 	<end_requency>1350000</end_requency>
-	<level>-196</level>
+	<level>-0</level>
     </analysis_power>
     <analysis_power index="13">
 	<start_requency>1350000</start_requency>
 	<end_requency>1550000</end_requency>
-	<level>-196</level>
+	<level>-0</level>
     </analysis_power>
     <analysis_power index="14">
 	<start_requency>1550000</start_requency>
 	<end_requency>1750000</end_requency>
-	<level>-191</level>
+	<level>-0</level>
     </analysis_power>
     <analysis_power index="15">
         <start_requency>1750000</start_requency>
         <end_requency>1800000</end_requency>
-        <level>-192</level>
+        <level>-0</level>
     </analysis_power>
     <analysis_power index="16">
         <start_requency>1800000</start_requency>
         <end_requency>1850000</end_requency>
-        <level>-197</level>
+        <level>-0</level>
     </analysis_power>
     <analysis_power index="17">
         <start_requency>1850000</start_requency>
         <end_requency>1950000</end_requency>
-        <level>-192</level>
+        <level>-0</level>
     </analysis_power>
 
 
     <analysis_power index="18">
         <start_requency>1950000</start_requency>
         <end_requency>2150000</end_requency>
-        <level>-194</level>
+        <level>-0</level>
     </analysis_power>
     <analysis_power index="19">
         <start_requency>2150000</start_requency>
         <end_requency>2350000</end_requency>
-        <level>-185</level>
+        <level>-0</level>
     </analysis_power>
     <analysis_power index="20">
         <start_requency>2350000</start_requency>
         <end_requency>2550000</end_requency>
-        <level>-214</level>
+        <level>-0</level>
     </analysis_power>
     <analysis_power index="21">
         <start_requency>2550000</start_requency>
         <end_requency>2750000</end_requency>
-        <level>-225</level>
+        <level>-0</level>
     </analysis_power>
     <analysis_power index="22">
         <start_requency>2750000</start_requency>
         <end_requency>2950000</end_requency>
-        <level>-213</level>
+        <level>-0</level>
     </analysis_power>
     <analysis_power index="23">
         <start_requency>2950000</start_requency>
         <end_requency>3150000</end_requency>
-        <level>-203</level>
+        <level>-0</level>
     </analysis_power>
     <analysis_power index="24">
         <start_requency>3150000</start_requency>
         <end_requency>3200000</end_requency>
-        <level>-178</level>
+        <level>-0</level>
     </analysis_power>
     <analysis_power index="25">
         <start_requency>3200000</start_requency>
         <end_requency>3400000</end_requency>
-        <level>-175</level>
+        <level>-0</level>
     </analysis_power>
     <analysis_power index="26">
         <start_requency>3400000</start_requency>
         <end_requency>3600000</end_requency>
-        <level>-175</level>
+        <level>-0</level>
     </analysis_power>
     <analysis_power index="27">
         <start_requency>3600000</start_requency>
         <end_requency>3800000</end_requency>
-        <level>-163</level>
+        <level>-0</level>
     </analysis_power>
     <analysis_power index="28">
         <start_requency>3800000</start_requency>
         <end_requency>4000000</end_requency>
-        <level>-175</level>
+        <level>-0</level>
     </analysis_power>
     <analysis_power index="29">
         <start_requency>4000000</start_requency>
         <end_requency>4200000</end_requency>
-        <level>-166</level>
+        <level>-0</level>
     </analysis_power>
     <analysis_power index="30">
         <start_requency>4200000</start_requency>
         <end_requency>4400000</end_requency>
-        <level>-160</level>
+        <level>-0</level>
     </analysis_power>
     <analysis_power index="31">
         <start_requency>4400000</start_requency>
         <end_requency>4600000</end_requency>
-        <level>-152</level>
+        <level>-0</level>
     </analysis_power>
     <analysis_power index="32">
         <start_requency>4600000</start_requency>
         <end_requency>4800000</end_requency>
-        <level>-156</level>
+        <level>-0</level>
     </analysis_power>
     <analysis_power index="33">
         <start_requency>4800000</start_requency>
         <end_requency>5000000</end_requency>
-        <level>-157</level>
+        <level>-0</level>
     </analysis_power>
     <analysis_power index="34">
         <start_requency>0</start_requency>

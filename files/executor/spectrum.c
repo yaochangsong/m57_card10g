@@ -303,9 +303,9 @@ void spectrum_psd_user_deal(struct spectrum_header_param *param)
 int32_t spectrum_analysis_level_calibration(uint64_t m_freq)
 {
     struct poal_config *poal_config = &(config_get_config()->oal_config);
-    int32_t cal_value = -196, found = 0;
+    int32_t cal_value = 0, found = 0;
     int i;
-    
+
     for(i = 0; i< sizeof(poal_config->cal_level.analysis.start_freq)/sizeof(uint64_t); i++){
         if((m_freq >= poal_config->cal_level.analysis.start_freq[i]*1000) && (m_freq < poal_config->cal_level.analysis.end_freq[i]*1000)){
             cal_value = poal_config->cal_level.analysis.power_level[i];
@@ -318,6 +318,7 @@ int32_t spectrum_analysis_level_calibration(uint64_t m_freq)
     }else{
         printf_note("Not find the calibration level, use default value: %d\n", cal_value);
     }
+    cal_value += poal_config->cal_level.analysis.global_roughly_power_lever;
     return cal_value;
 }
 
@@ -418,7 +419,9 @@ void spectrum_level_calibration(fft_data_type *fftdata, uint32_t fft_valid_len, 
     }else{
         printf_note("Not find the calibration level, use default value: %d\n", cal_value);
     }
-        
+
+    cal_value += poal_config->cal_level.specturm.global_roughly_power_lever;
+    
     if(fft_size == 512){
         cal_value = cal_value - 20;
     }else if(fft_size == 1024){

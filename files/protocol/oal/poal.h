@@ -238,12 +238,14 @@ struct calibration_specturm_info_st{
     uint64_t start_freq[40];
     uint64_t end_freq[40];
     int power_level[40];
+    int global_roughly_power_lever;
 }__attribute__ ((packed));
 
 struct calibration_analysis_info_st{
     uint64_t start_freq[40];
     uint64_t end_freq[40];
     int power_level[40];
+    int global_roughly_power_lever;
 }__attribute__ ((packed));
 
 struct calibration_info_st{

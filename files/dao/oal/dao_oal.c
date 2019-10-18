@@ -718,6 +718,27 @@ void read_calibration_file(mxml_node_t *root, void *config)
     sys_config = (s_config*)config;
     
     cali_config = &sys_config->oal_config.cal_level; 
+
+    mxml_node_t *node;
+    char *node_value;
+    node = mxmlFindElement(root, root,"calibration","psd_power", NULL,MXML_DESCEND);
+    node_value = mxmlElementGetAttr(node,"psd_power");
+    if(node_value != NULL){
+        cali_config->specturm.global_roughly_power_lever = atoi(node_value);
+    }else{
+        cali_config->specturm.global_roughly_power_lever = 0;
+    }
+    printf_debug("specturm.global_roughly_power_lever=%d\n", cali_config->specturm.global_roughly_power_lever);
+
+    node = mxmlFindElement(root, root,"calibration","analysis_power", NULL,MXML_DESCEND);
+    node_value = mxmlElementGetAttr(node,"analysis_power");
+    if(node_value != NULL){
+        cali_config->analysis.global_roughly_power_lever = atoi(node_value);
+    }else{
+        cali_config->analysis.global_roughly_power_lever = 0;
+    }
+    printf_debug("analysis.global_roughly_power_lever=%d\n", cali_config->analysis.global_roughly_power_lever);
+     
     printf_debug("sizeof = %d\n", sizeof(cali_config->specturm.start_freq)/sizeof(uint64_t));
     for(int i = 0; i<sizeof(cali_config->specturm.start_freq)/sizeof(uint64_t); i++){
         sprintf(indexvalue, "%d", i);

@@ -404,7 +404,7 @@ fft_data_type *spectrum_get_fft_data(uint32_t *len)
 void spectrum_level_calibration(fft_data_type *fftdata, uint32_t fft_valid_len, uint32_t fft_size, uint64_t m_freq)
 {
     struct poal_config *poal_config = &(config_get_config()->oal_config);
-    int32_t cal_value = -4660, found = 0;
+    int32_t cal_value = 0, found = 0;
     int i;
     
     for(i = 0; i< sizeof(poal_config->cal_level.analysis.start_freq)/sizeof(uint64_t); i++){

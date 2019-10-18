@@ -57,13 +57,10 @@ static inline  bool specturm_is_psd_enable(void)
         return false;
 }
 
-static inline uint64_t spectrum_get_analysis_middle_freq(uint64_t sig_sfreq)
+static inline uint64_t spectrum_get_signal_middle_freq(uint64_t sig_sfreq)
 {
     struct poal_config *poal_config = &(config_get_config()->oal_config);
-    if(poal_config->ctrl_para.specturm_analysis_param.frequency_hz == 0){
-        poal_config->ctrl_para.specturm_analysis_param.frequency_hz = sig_sfreq + poal_config->ctrl_para.specturm_analysis_param.bandwidth_hz/2;
-    }
-    return poal_config->ctrl_para.specturm_analysis_param.frequency_hz;
+    return sig_sfreq + poal_config->ctrl_para.specturm_analysis_param.bandwidth_hz/2;
 }
 
 
@@ -371,7 +368,7 @@ void *spectrum_rw_fft_result(fft_result *result, uint64_t s_freq_hz, float freq_
         pfft->mid_freq_hz[i] = s_freq_hz + result->centfeqpoint[i]*freq_resolution;
         pfft->peak_value = s_freq_hz + result->maximum_x*freq_resolution;
         pfft->bw_hz[i] = result->bandwidth[i] * freq_resolution;
-        analysis_middle_freq =  spectrum_get_analysis_middle_freq(s_freq_hz);
+        analysis_middle_freq =  spectrum_get_signal_middle_freq(s_freq_hz);
         pfft->level[i] = result->arvcentfreq[i] + spectrum_analysis_level_calibration(analysis_middle_freq);//spectrum_analysis_level_calibration(pfft->mid_freq_hz[i]);
         printf_warn("m_freq=%llu,s_freq_hz=%llu, freq_resolution=%f, fft_size=%u\n", analysis_middle_freq, s_freq_hz, freq_resolution, fft_size);
         printf_warn("mid_freq_hz=%d, bw_hz=%d, level=%f\n", result->centfeqpoint[i], result->bandwidth[i], result->arvcentfreq[i]);
@@ -467,33 +464,33 @@ int32_t spectrum_send_fft_data_interval(void)
 /* load specturm analysis paramter */
 static int8_t inline spectrum_get_analysis_paramter(uint64_t s_freq, uint64_t e_freq,uint32_t *_analysis_bw, uint64_t *midd_freq_offset)
 {
-    uint32_t analysis_bw;
-    uint64_t analysis_middle_freq;
+    uint32_t analysis_signal_bw;
+    uint64_t analysis_signal_middle_freq;
     struct poal_config *poal_config = &(config_get_config()->oal_config);
 
-    /* When calculating the FFT, the calculation analysis bandwidth is set to an integral multiple of the rf  bandwidth. */
+    /* When calculating the FFT(bandwidth_hz>RF_BANDWIDTH), the calculation analysis bandwidth is set to an integral multiple of the rf  bandwidth. */
     if(poal_config->ctrl_para.specturm_analysis_param.bandwidth_hz >RF_BANDWIDTH){
-        analysis_bw = alignment_up(poal_config->ctrl_para.specturm_analysis_param.bandwidth_hz, RF_BANDWIDTH); 
+        analysis_signal_bw = alignment_up(poal_config->ctrl_para.specturm_analysis_param.bandwidth_hz, RF_BANDWIDTH); 
     }else{
-        analysis_bw = poal_config->ctrl_para.specturm_analysis_param.bandwidth_hz;
+        analysis_signal_bw = poal_config->ctrl_para.specturm_analysis_param.bandwidth_hz;
     }
-    analysis_middle_freq =  spectrum_get_analysis_middle_freq(s_freq);
+    analysis_signal_middle_freq =  spectrum_get_signal_middle_freq(s_freq);
     
-    if(analysis_middle_freq < s_freq || analysis_middle_freq > e_freq){
-        printf_err("analysis frequency[%llu] is not  NOT within the bandwidth range[%llu, %llu]\n", analysis_middle_freq, s_freq, e_freq);
+    if(analysis_signal_middle_freq < s_freq || analysis_signal_middle_freq > e_freq){
+        printf_err("analysis frequency[%llu] is not  NOT within the bandwidth range[%llu, %llu]\n", analysis_signal_middle_freq, s_freq, e_freq);
         return -1;
     }
-    if(analysis_bw > RF_BANDWIDTH*SPECTRUM_MAX_SCAN_COUNT || analysis_bw == 0){
-        printf_err("analysis bandwidth [%u] not surpport!!\n", analysis_bw);
+    if(analysis_signal_bw > RF_BANDWIDTH*SPECTRUM_MAX_SCAN_COUNT || analysis_signal_bw == 0){
+        printf_err("analysis bandwidth [%u] not surpport!!\n", analysis_signal_bw);
         return -1;
     }
     
-    *_analysis_bw = analysis_bw;
+    *_analysis_bw = analysis_signal_bw;
 
     /* Calculate the center frequency offset value (relative to the rf operating bandwidth) for spectrum analysis */
-    if(analysis_middle_freq <= RF_BANDWIDTH/2){
+    if(analysis_signal_middle_freq <= RF_BANDWIDTH/2){
         if(s_freq >= delta_bw){
-            *midd_freq_offset = RF_BANDWIDTH/2+delta_bw - analysis_middle_freq;
+            *midd_freq_offset = RF_BANDWIDTH/2+delta_bw - analysis_signal_middle_freq;
         }else{
             printf_err("start frequency[%llu] is too small\n", s_freq);
             return -1;

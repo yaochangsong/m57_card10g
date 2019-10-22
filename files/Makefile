@@ -20,7 +20,7 @@ ifneq ($(findstring x86,$(SUPPORT_PLAT_FORM_ARCH)),)
 	CC=gcc
 	C_VAR += -DSUPPORT_PLATFORM_ARCH_X86
 else ifneq ($(findstring arm,$(SUPPORT_PLAT_FORM_ARCH)),)
-#	CC=arm-linux-gnueabihf-gcc
+	#CC=arm-linux-gnueabihf-gcc
 	C_VAR += -DSUPPORT_PLATFORM_ARCH_ARM
 endif
 
@@ -75,7 +75,14 @@ ifneq ($(findstring y,$(SUPPORT_RF_ADRV9009)),)
 	C_VAR += -DSUPPORT_RF_ADRV9009
 endif
 
-SOURCE_DIR += log net protocol/oal dao/oal conf executor executor/fft utils device  device/gpio 
+#fft
+ifneq ($(findstring y,$(SUPPORT_FFT)),)
+	SOURCE_DIR += executor/fft
+	C_VAR += -DSUPPORT_FFT
+endif
+
+
+SOURCE_DIR += log net protocol/oal dao/oal conf executor  utils device  device/gpio 
 
 #control enable
 ifneq ($(findstring y,$(SUPPORT_REMOTE_LOCAL_CTRL_EN)),)
@@ -121,7 +128,12 @@ endif
 
 INCLUDE_DIR = -I. -I./ ${includedir_so} 
 
-LDFLAGS = $(SUB_LIBS)  ${libdir_so}  -lpthread  -lm -lz -lfftw3f
+LDFLAGS = $(SUB_LIBS)  ${libdir_so}  -lpthread  
+
+#fft
+ifneq ($(findstring y,$(SUPPORT_FFT)),)
+	LDFLAGS += -lm -lz -lfftw3f -lxml2
+endif
 
 ifeq ($(CC), gcc)
 else
@@ -130,8 +142,9 @@ ifneq ($(findstring y,$(SUPPORT_LIB_IIO)),)
 	C_VAR += -DSUPPORT_LIB_IIO
 	LDFLAGS += -liio
 endif
-LDFLAGS += -lxml2
 endif
+
+
 
 CFLAGS = -Wall -Wno-unused-function  -Wno-unused-variable -Wno-discarded-qualifiers $(INCLUDE_DIR)  $(C_VAR)
 

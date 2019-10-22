@@ -536,6 +536,27 @@ static inline int8_t spectrum_sideband_deal_mm_pool(memory_pool_t  *fftmpool, me
     return 0;
 }
 
+static int spectrum_data_write_file(memory_pool_t  *mpool, uint8_t data_type_len, int index)
+{
+    char strbuf[128];
+    void *p_dat, *p_end;
+    size_t p_inc;
+
+    p_end = memory_pool_end(mpool);
+    p_inc = memory_pool_step(mpool);
+
+    sprintf(strbuf, "/run/%s%d", data_type_len == sizeof(int16_t) ? "IQ":"FFT",  index);
+    printf_info("##start save iq:%s, %d, %d\n", strbuf, p_inc, memory_pool_get_use_count(mpool));
+    if(data_type_len == sizeof(int16_t)){  //int16
+        write_file_in_int16((void*)(memory_pool_first(mpool)), p_inc * memory_pool_get_use_count(mpool)/data_type_len, strbuf);
+    }
+    else if(data_type_len == sizeof(float)){ //float
+        write_file_in_float((void*)(memory_pool_first(mpool)), p_inc * memory_pool_get_use_count(mpool)/data_type_len, strbuf);
+    }
+    return 0;
+}
+
+#ifdef SUPPORT_FFT
 static size_t spectrum_iq_convert_fft_store_mm_pool(memory_pool_t  *fftmpool, memory_pool_t  *iqmpool)
 {
     void *p_dat, *p_end;
@@ -559,26 +580,6 @@ static size_t spectrum_iq_convert_fft_store_mm_pool(memory_pool_t  *fftmpool, me
     }
 
     return (fft_size*memory_pool_get_use_count(fftmpool));
-}
-
-static int spectrum_data_write_file(memory_pool_t  *mpool, uint8_t data_type_len, int index)
-{
-    char strbuf[128];
-    void *p_dat, *p_end;
-    size_t p_inc;
-
-    p_end = memory_pool_end(mpool);
-    p_inc = memory_pool_step(mpool);
-
-    sprintf(strbuf, "/run/%s%d", data_type_len == sizeof(int16_t) ? "IQ":"FFT",  index);
-    printf_info("##start save iq:%s, %d, %d\n", strbuf, p_inc, memory_pool_get_use_count(mpool));
-    if(data_type_len == sizeof(int16_t)){  //int16
-        write_file_in_int16((void*)(memory_pool_first(mpool)), p_inc * memory_pool_get_use_count(mpool)/data_type_len, strbuf);
-    }
-    else if(data_type_len == sizeof(float)){ //float
-        write_file_in_float((void*)(memory_pool_first(mpool)), p_inc * memory_pool_get_use_count(mpool)/data_type_len, strbuf);
-    }
-    return 0;
 }
 
 void specturm_analysis_deal_thread(void *arg)
@@ -661,7 +662,7 @@ loop:
         printf_note("work total bw=%u\n", total_bw);
         printf_note("###STEP4: Start to analysis FFT data###\n");
 
-        TIME_ELAPSED(fft_fftdata_handle(get_power_level_threshold(),                /* signal threshold */
+        TIME_ELAPSED(fft_spectrum_fftdata_handle(get_power_level_threshold(),       /* signal threshold */
                     (float *)memory_pool_first(fft_small_rsb_mpool),                /* remove side band small fft data */
                     small_fft_rsb_size,                                             /* small fft data len */
                     (float *)memory_pool_first(fft_big_rsb_mpool),                  /* remove side band big fft data */
@@ -675,7 +676,7 @@ loop:
         bw_fft_size = ((float)analysis_bw/(float)total_bw) *big_fft_size ;
         analysis_signal_start_freq =  spectrum_get_work_middle_freq(param->s_freq) - analysis_bw/2;
         printf_note("analysis_signal_start_freq = %llu,s_freq=%llu, resolution=%f, bw_fft_size=%llu\n", analysis_signal_start_freq, param->s_freq, resolution, bw_fft_size);
-        spectrum_rw_fft_result(fft_get_result(), analysis_signal_start_freq, resolution, bw_fft_size);
+        spectrum_rw_fft_result(fft_spectrum_get_result(), analysis_signal_start_freq, resolution, bw_fft_size);
 
         memory_pool_free(fft_small_mpool);
         memory_pool_free(fft_big_mpool);
@@ -686,16 +687,17 @@ loop:
     }
 
 }
-
-
+#endif
 
 void spectrum_init(void)
 {
     struct spectrum_st *ps;
     int ret, i;
     pthread_t work_id;
-
+   
+#ifdef SUPPORT_FFT
     fft_init();
+#endif
     printf_info("fft_init\n");
 
     sem_init(&(sp_sem.notify_iq_to_fft), 0, 0);
@@ -715,9 +717,11 @@ void spectrum_init(void)
     mp_fft_small_buffer_rsb_head = memory_pool_create(SPECTRUM_SMALL_FFT_SIZE*4, SPECTRUM_MAX_SCAN_COUNT);
     mp_fft_big_buffer_rsb_head = memory_pool_create(SPECTRUM_BIG_FFT_SIZE*4, SPECTRUM_MAX_SCAN_COUNT);
 
+#ifdef SUPPORT_FFT
     ret=pthread_create(&work_id,NULL,(void *)specturm_analysis_deal_thread, NULL);
     if(ret!=0)
         perror("pthread cread work_id");
     pthread_detach(work_id);
+#endif
 }
 

@@ -128,8 +128,13 @@ static  int8_t  executor_fregment_scan(uint32_t fregment_num,uint8_t ch, work_mo
             left_band = e_freq - s_freq - i * scan_bw;
             m_freq = s_freq + i * scan_bw + left_band/2;
         #else
-            m_freq = s_freq + i * scan_bw + scan_bw/2;
-            left_band = scan_bw;
+            if(scan_count > 0){
+                m_freq = s_freq + i * scan_bw + scan_bw/2;
+                left_band = scan_bw;
+            }else{
+                left_band = e_freq - s_freq - i * scan_bw;
+                m_freq = s_freq + i * scan_bw + left_band/2;
+            }
         #endif
         }
         header_param.ch = ch;

@@ -123,9 +123,14 @@ static  int8_t  executor_fregment_scan(uint32_t fregment_num,uint8_t ch, work_mo
             left_band = scan_bw;
         }
         else{
+        #if (KERNEL_IOCTL_EN == 1)
             /* 若不是整数，需计算剩余带宽中心频率 */
             left_band = e_freq - s_freq - i * scan_bw;
             m_freq = s_freq + i * scan_bw + left_band/2;
+        #else
+            m_freq = s_freq + i * scan_bw + scan_bw/2;
+            left_band = scan_bw;
+        #endif
         }
         header_param.ch = ch;
         header_param.s_freq = s_freq;

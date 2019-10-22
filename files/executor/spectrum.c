@@ -57,11 +57,20 @@ static inline  bool specturm_is_psd_enable(void)
         return false;
 }
 
+/* get the signal middle frequency */
 static inline uint64_t spectrum_get_signal_middle_freq(uint64_t sig_sfreq)
 {
     struct poal_config *poal_config = &(config_get_config()->oal_config);
     return sig_sfreq + poal_config->ctrl_para.specturm_analysis_param.bandwidth_hz/2;
 }
+
+/* get the whole rf work middle frequency, maybe not equal to signal middle frequency */
+static inline uint64_t spectrum_get_work_middle_freq(uint64_t sig_sfreq)
+{
+    struct poal_config *poal_config = &(config_get_config()->oal_config);
+    return  sig_sfreq + alignment_up(poal_config->ctrl_para.specturm_analysis_param.bandwidth_hz, RF_BANDWIDTH)/2;
+}
+
 
 
 /* Read Rx Raw IQ data*/
@@ -492,7 +501,9 @@ static int8_t inline spectrum_get_analysis_paramter(uint64_t s_freq, uint64_t e_
         }
         
     }else{
-        *midd_freq_offset = 0;
+        //*midd_freq_offset = 0;
+        /*real rf work middle frequency - signal middle frequency */
+        midd_freq_offset = spectrum_get_work_middle_freq(s_freq) - analysis_signal_middle_freq;
     }
     
     return 0;
@@ -579,7 +590,7 @@ void specturm_analysis_deal_thread(void *arg)
     struct spectrum_st *ps;
     struct spectrum_header_param *param;
     float resolution;
-    uint64_t analysis_midd_freq_offset, bw_fft_size;
+    uint64_t analysis_midd_freq_offset, bw_fft_size, analysis_signal_start_freq;
     uint32_t analysis_bw; 
     uint32_t total_bw; 
     ps = &_spectrum;
@@ -635,7 +646,7 @@ loop:
         small_fft_rsb_size = memory_pool_step(fft_small_rsb_mpool)*memory_pool_get_use_count(fft_small_rsb_mpool)/4;
         big_fft_rsb_size = memory_pool_step(fft_big_rsb_mpool)*memory_pool_get_use_count(fft_big_rsb_mpool)/4;
         
-        printf_info("analysis_bw=%u, analysis_midd_freq_offset=%llu\n", analysis_bw, analysis_midd_freq_offset);
+        printf_note("analysis_bw=%u, analysis_midd_freq_offset=%llu\n", analysis_bw, analysis_midd_freq_offset);
         printf_note("small fft data len=%d, use_count=%d\n", small_fft_size, memory_pool_get_use_count(fft_small_mpool));
         printf_note("big fft data len=%d, use_count=%d\n", big_fft_size, memory_pool_get_use_count(fft_big_mpool));
         printf_note("fft small mpool step =%u, big fft size step=%u\n", memory_pool_step(fft_small_mpool), memory_pool_step(fft_big_mpool));
@@ -644,7 +655,7 @@ loop:
         printf_note("rsb big fft data len=%d, use_count=%d\n", big_fft_rsb_size, memory_pool_get_use_count(fft_big_rsb_mpool));
         printf_note("rsb fft small mpool step=%u, rsb big fft mpool step=%u\n", memory_pool_step(fft_small_rsb_mpool), memory_pool_step(fft_big_rsb_mpool));
         
-        printf_info("work total bw=%u\n", total_bw);
+        printf_note("work total bw=%u\n", total_bw);
         printf_note("###STEP4: Start to analysis FFT data###\n");
 
         TIME_ELAPSED(fft_fftdata_handle(get_power_level_threshold(),                /* signal threshold */
@@ -659,8 +670,9 @@ loop:
 
         resolution = calc_resolution(total_bw, big_fft_size);
         bw_fft_size = ((float)analysis_bw/(float)total_bw) *big_fft_size ;
-        printf_note("s_freq=%llu, resolution=%f, bw_fft_size=%llu\n", param->s_freq, resolution, bw_fft_size);
-        spectrum_rw_fft_result(fft_get_result(), param->s_freq, resolution, bw_fft_size);
+        analysis_signal_start_freq =  spectrum_get_work_middle_freq(param->s_freq) - analysis_bw/2;
+        printf_note("analysis_signal_start_freq = %llu,s_freq=%llu, resolution=%f, bw_fft_size=%llu\n", analysis_signal_start_freq, param->s_freq, resolution, bw_fft_size);
+        spectrum_rw_fft_result(fft_get_result(), analysis_signal_start_freq, resolution, bw_fft_size);
 
         memory_pool_free(fft_small_mpool);
         memory_pool_free(fft_big_mpool);

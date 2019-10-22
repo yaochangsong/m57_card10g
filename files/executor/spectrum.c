@@ -68,7 +68,18 @@ static inline uint64_t spectrum_get_signal_middle_freq(uint64_t sig_sfreq)
 static inline uint64_t spectrum_get_work_middle_freq(uint64_t sig_sfreq)
 {
     struct poal_config *poal_config = &(config_get_config()->oal_config);
-    return  sig_sfreq + alignment_up(poal_config->ctrl_para.specturm_analysis_param.bandwidth_hz, RF_BANDWIDTH)/2;
+    struct spectrum_st *ps;
+    uint64_t middle_freq = 0;
+    ps = &_spectrum;
+    /* If the signal analysis width is greater than the working bandwidth(ps->param.total_fft > 1), 
+       we need to obtain the working bandwidth, otherwise we will get the signal analysis bandwidth. 
+    */
+    if(ps->param.total_fft > 1){
+        middle_freq = sig_sfreq + alignment_up(poal_config->ctrl_para.specturm_analysis_param.bandwidth_hz, RF_BANDWIDTH)/2;
+    }else{
+        middle_freq = sig_sfreq + poal_config->ctrl_para.specturm_analysis_param.bandwidth_hz/2;
+    }
+    return  middle_freq;
 }
 
 

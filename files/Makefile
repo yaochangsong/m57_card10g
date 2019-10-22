@@ -110,7 +110,7 @@ ALL_C_FILES := $(foreach n,$(SOURCE_DIR),$(n)/*.c)
 SUB_LIB_DIRS := $(foreach n,$(SUB_LIBS),$(dir $(n)))
 
 top_dir = $(abspath $(shell pwd)/../../../../../)
-prefix=$(top_dir)/tmp/sysroots-components/cortexa9hf-neon
+prefix=$(top_dir)/tmp/sysroots-components/*-neon
 libdir_so=-L${prefix}/libiio/usr/lib -L${prefix}/libxml2/usr/lib -L${prefix}/zlib/usr/lib
 includedir_so=-I${prefix}/libiio/usr/include -I${prefix}/libxml2/usr/include/libxml2/libxml -I${prefix}/zlib/usr/include
 

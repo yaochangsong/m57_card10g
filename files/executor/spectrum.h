@@ -12,7 +12,15 @@
 #define RF_BANDWIDTH  MHZ(20)
 #endif
 
+#ifdef SUPPORT_FFT
 #define fft_spectrum_iq_to_fft_handle fft_fftw_calculate_hann
+#define fft_spectrum_fftdata_handle   fft_fftdata_handle
+#define fft_spectrum_get_result       fft_get_result
+#else
+#define fft_spectrum_iq_to_fft_handle
+#define fft_spectrum_fftdata_handle
+#define fft_spectrum_get_result
+#endif
 
 
 #define SPECTRUM_START_FLAG 0x7E7E

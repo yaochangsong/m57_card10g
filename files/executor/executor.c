@@ -57,7 +57,7 @@ static inline int8_t executor_wait_kernel_deal(void)
     return 0;
 }
 
-static  int8_t  executor_fregment_scan(uint32_t fregment_num,uint8_t ch, work_mode mode)
+static  int8_t  executor_fragment_scan(uint32_t fregment_num,uint8_t ch, work_mode mode)
 {
     struct poal_config *poal_config = &(config_get_config()->oal_config);
 
@@ -128,6 +128,7 @@ static  int8_t  executor_fregment_scan(uint32_t fregment_num,uint8_t ch, work_mo
             left_band = e_freq - s_freq - i * scan_bw;
             m_freq = s_freq + i * scan_bw + left_band/2;
         #else
+            /*spectrum is more than one fragment */
             if(scan_count > 0){
                 m_freq = s_freq + i * scan_bw + scan_bw/2;
                 left_band = scan_bw;
@@ -293,7 +294,7 @@ loop:   printf_info("######wait to deal work######\n");
                     if(poal_config->enable.psd_en || poal_config->enable.spec_analy_en){
                         for(j = 0; j < poal_config->multi_freq_fregment_para[ch].freq_segment_cnt; j++){
                             printf_debug("Segment Scan [%d]\n", j);
-                            if(executor_fregment_scan(j, ch, poal_config->work_mode) == -1){
+                            if(executor_fragment_scan(j, ch, poal_config->work_mode) == -1){
                                 sleep(1);
                                 goto loop;
                             }

@@ -57,6 +57,17 @@ static inline  bool specturm_is_psd_enable(void)
         return false;
 }
 
+/* Whether the signal analysis bandwidth exceeds the maximum operating bandwidth of the radio */
+static inline bool spectrum_is_more_than_one_fragment(void)
+{
+    struct spectrum_st *ps;
+    ps = &_spectrum;
+    if(ps->param.total_fft > 1){
+        return true;
+    }
+    return false;
+}
+
 /* get the signal middle frequency */
 static inline uint64_t spectrum_get_signal_middle_freq(uint64_t sig_sfreq)
 {
@@ -71,10 +82,11 @@ static inline uint64_t spectrum_get_work_middle_freq(uint64_t sig_sfreq)
     struct spectrum_st *ps;
     uint64_t middle_freq = 0;
     ps = &_spectrum;
-    /* If the signal analysis width is greater than the working bandwidth(ps->param.total_fft > 1), 
-       we need to obtain the working bandwidth, otherwise we will get the signal analysis bandwidth. 
+    /* If the signal analysis bandwidth exceeds the maximum operating bandwidth of the RF,
+       Then our analysis bandwidth is an integer multiple of the RF working bandwidth, 
+       otherwise the analysis bandwidth is based on the analysis bandwidth of the actual signal.
     */
-    if(ps->param.total_fft > 1){
+    if(spectrum_is_more_than_one_fragment()){
         middle_freq = sig_sfreq + alignment_up(poal_config->ctrl_para.specturm_analysis_param.bandwidth_hz, RF_BANDWIDTH)/2;
     }else{
         middle_freq = sig_sfreq + poal_config->ctrl_para.specturm_analysis_param.bandwidth_hz/2;
@@ -396,26 +408,6 @@ void *spectrum_rw_fft_result(fft_result *result, uint64_t s_freq_hz, float freq_
 exit:
     UNLOCK_SP_RESULT();
     return (void *)pfft;
-}
-
-
-fft_data_type *spectrum_get_fft_data(uint32_t *len)
-{
-    struct spectrum_st *ps;
-    fft_data_type *data;
-    ps = &_spectrum;
-    
-    LOCK_SP_DATA();
-    if(ps->fft_data_ready == false){
-        *len = 0;
-        UNLOCK_SP_DATA();
-        return NULL;
-    }
-    data = ps->fft_short_payload;
-    *len = ps->fft_len;
-    ps->fft_data_ready = false;
-    UNLOCK_SP_DATA();
-    return data;
 }
 
 void spectrum_level_calibration(fft_data_type *fftdata, uint32_t fft_valid_len, uint32_t fft_size, uint64_t m_freq)

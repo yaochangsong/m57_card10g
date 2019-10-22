@@ -445,6 +445,7 @@ static int akt_execute_set_command(void)
         case RF_ATTENUATION_CMD:
             check_valid_channel(header->buf[0]);
             poal_config->rf_para[ch].attenuation = header->buf[1];
+            printf_info("RF_ATTENUATION_CMD:%d\n", poal_config->rf_para[ch].attenuation);
             executor_set_command(EX_RF_FREQ_CMD, EX_RF_ATTENUATION, ch, &poal_config->rf_para[ch].attenuation);
             break;
         case RF_WORK_MODE_CMD:

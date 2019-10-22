@@ -89,11 +89,8 @@ struct spectrum_fft_result_st{
     pthread_mutex_unlock(&spectrum_iq_data_mutex); \
 } while (0)
 
-extern bool specturm_work_write_enable(bool enable);
 extern void spectrum_init(void);
 extern void *spectrum_rw_fft_result(fft_result *result, uint64_t s_freq_hz, float freq_resolution, uint32_t fft_size);
-extern int16_t *spectrum_get_fft_data(uint32_t *len);
 extern int32_t spectrum_send_fft_data_interval(void);
 extern void spectrum_psd_user_deal(struct spectrum_header_param *param);
-extern void spectrum_analysis_user_deal(struct spectrum_header_param *param);
 #endif

@@ -50,11 +50,6 @@ void config_init(void)
     config.daemon = -1;
     config.oal_config.work_mode = OAL_FAST_SCAN_MODE;
     dao_read_create_config_file(config.configfile, &config);
-    
-#if  (CALIBRATION_FILE_EN == 1)
-    dao_read_calibration_file(config.calibrationfile, &config);
-#endif
-
 }
 
 /** Accessor for the current configuration

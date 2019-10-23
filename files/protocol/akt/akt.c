@@ -581,60 +581,13 @@ static int akt_execute_get_command(void)
             self_check.clk_status = 1;
             self_check.ad_status = 0;
             self_check.pfga_temperature = io_get_adc_temperature();
-            printf_info("pfga_temperature=%d\n", self_check.pfga_temperature);
-            
-            #define AVG_FREQ_POINT  16  
-            int i;
-            FFT_SIGNAL_RESPINSE_ST *resp_result;
-            struct spectrum_fft_result_st *fft_result;
-            static uint64_t center_freq_buf[AVG_FREQ_POINT], cnt = 0;
-            uint64_t avg_freq = 0;
-
-
-            fft_result = (struct spectrum_fft_result_st *)spectrum_rw_fft_result(NULL, 0, 0, 0);
-            if(fft_result == NULL){
-                err_code = RET_CODE_INTERNAL_ERR;
-                printf_info("error fft_result\n");
-                return -1;
-            }
-            //resp_result.signal_num = fft_result->result_num;
-            printf_warn("#########Find FFT Parameter[%d]:###############\n",fft_result->result_num);
-            if(fft_result->result_num > 1){
-                fft_result->result_num = 1;
-            }
-            resp_result = (FFT_SIGNAL_RESPINSE_ST *)safe_malloc(sizeof(FFT_SIGNAL_RESPINSE_ST) + sizeof(FFT_SIGNAL_RESULT_ST)*fft_result->result_num);
-            resp_result->signal_num = fft_result->result_num;
-            printf_warn("malloc size:%d\n",sizeof(FFT_SIGNAL_RESPINSE_ST) + sizeof(FFT_SIGNAL_RESULT_ST)*fft_result->result_num);
-            for(i = 0; i < resp_result->signal_num; i++){
-                resp_result->signal_array[i].center_freq = fft_result->mid_freq_hz[i];
-                resp_result->signal_array[i].bandwidth = fft_result->bw_hz[i];
-                resp_result->signal_array[i].power_level = fft_result->level[i];
-                
-                center_freq_buf[cnt++] = resp_result->signal_array[i].center_freq;
-                if(cnt >= AVG_FREQ_POINT){
-                    for(int i = 0; i< AVG_FREQ_POINT; i++){
-                        avg_freq +=  center_freq_buf[i];
-                    }
-                    printf_warn("After %d times filter: center freq:%llu\n", AVG_FREQ_POINT, avg_freq/AVG_FREQ_POINT);
-                    cnt = 0;
-                    avg_freq = 0;
-                }
-                
-                printf_warn("[%d]center_freq=%lluHz, bandwidth=%llu, power_level=%f, peak:%d\n", i,
-                    resp_result->signal_array[i].center_freq,
-                    resp_result->signal_array[i].bandwidth,
-                    resp_result->signal_array[i].power_level,
-                    fft_result->peak_value);
-            }
-            resp_result->temperature = io_get_adc_temperature();
-            resp_result->humidity = 40;
-            safe_free(resp_result);
             memcpy(akt_get_response_data.payload_data, &self_check, sizeof(DEVICE_SELF_CHECK_STATUS_RSP_ST));
             akt_get_response_data.header.len = sizeof(DEVICE_SELF_CHECK_STATUS_RSP_ST);
             break;
         }
         case SPCTRUM_PARAM_CMD:
         {
+        #ifdef SUPPORT_SPECTRUM_FFT
             #define AVG_FREQ_POINT  16  
             int i, datalen;
             FFT_SIGNAL_RESPINSE_ST *resp_result;
@@ -699,6 +652,7 @@ static int akt_execute_get_command(void)
             memcpy(akt_get_response_data.payload_data, resp_result, datalen);
             akt_get_response_data.header.len = datalen;
             safe_free(resp_result);
+        #endif
         }
         case SOFTWARE_VERSION_CMD:
             break;

@@ -62,7 +62,7 @@ static void  io_compute_extract_factor_by_fftsize(uint32_t anays_band,uint32_t *
 static void io_set_common_param(uint8_t type, uint8_t *buf,uint32_t buf_len)
 {
     printf_debug("set common param: type=%d,data_len=%d\n",type,buf_len);
-#if (KERNEL_IOCTL_EN == 1)    
+#if defined(SUPPORT_SPECTRUM_KERNEL)  
     COMMON_PARAM_ST c_p_param;
     c_p_param.type = type;
     if(buf_len >0){
@@ -76,7 +76,7 @@ static void io_set_common_param(uint8_t type, uint8_t *buf,uint32_t buf_len)
 void io_set_smooth_factor(uint32_t factor)
 {
     printf_note("[**REGISTER**]Set Smooth factor: factor=%d[0x%x]\n",factor, factor);
-#if (KERNEL_IOCTL_EN == 1)
+#if defined(SUPPORT_SPECTRUM_KERNEL)
     //smooth mode
     ioctl(io_ctrl_fd,IOCTL_SMOOTH_CH0,0x10000);
     //smooth value
@@ -88,7 +88,7 @@ void io_set_smooth_factor(uint32_t factor)
 void io_set_calibrate_val(uint32_t ch, uint32_t  factor)
 {
     printf_note("[**REGISTER**][ch=%d]Set Calibrate Val factor=%u[0x%x]\n",ch, factor,factor);
-#if (KERNEL_IOCTL_EN == 1)
+#if defined(SUPPORT_SPECTRUM_KERNEL)
     ioctl(io_ctrl_fd,IOCTL_CALIBRATE_CH0,&factor);
 #endif
 }
@@ -129,7 +129,7 @@ void io_set_dq_param(void *pdata)
     dq.bandwidth = bandwidth;
     dq.center_freq = dec_para->center_freq;
     dq.d_method = dec_para->d_method;
-#if (KERNEL_IOCTL_EN == 1)
+#if defined(SUPPORT_SPECTRUM_KERNEL)
     ioctl(io_ctrl_fd,IOCTL_RUN_DEC_PARAM,&dq);
 #endif
     
@@ -178,7 +178,7 @@ void io_dma_dev_enable(uint32_t ch,uint8_t continuous)
     uint32_t ctrl_val = 0;
     uint32_t con ;
     con = continuous;
-#if (KERNEL_IOCTL_EN == 1)
+#if defined(SUPPORT_SPECTRUM_KERNEL)
     if (io_ctrl_fd > 0) {
         ctrl_val = ((con&0xff)<<16) | ((ch & 0xFF) << 8) | 1;
         ioctl(io_ctrl_fd,IOCTL_ENABLE_DISABLE,ctrl_val);
@@ -189,7 +189,7 @@ void io_dma_dev_enable(uint32_t ch,uint8_t continuous)
 static void io_dma_dev_trans_len(uint32_t ch, uint32_t len)
 {
     TRANS_LEN_PARAMETERS tran_parameter;
-#if (KERNEL_IOCTL_EN == 1)
+#if defined(SUPPORT_SPECTRUM_KERNEL)
     if (io_ctrl_fd > 0) {
         tran_parameter.ch = ch;
         tran_parameter.len = len;
@@ -226,7 +226,7 @@ void io_set_fft_size(uint32_t ch, uint32_t fft_size)
         return;
     }
     printf_note("[**REGISTER**][ch:%d]Set FFT Size=%u, factor=%u[0x%x]\n", ch, fft_size,factor, factor);
-#if (KERNEL_IOCTL_EN == 1)
+#if defined(SUPPORT_SPECTRUM_KERNEL)
     ioctl(io_ctrl_fd,IOCTL_FFT_SIZE_CH0,factor);
 #endif
 }
@@ -246,7 +246,7 @@ static void io_dma_dev_disable(uint32_t ch)
 {
     uint32_t ctrl_val = 0;
     
-#if (KERNEL_IOCTL_EN == 1)
+#if defined(SUPPORT_SPECTRUM_KERNEL)
     if (io_ctrl_fd > 0) {
         ctrl_val = (ch & 0xFF) << 8;
         ioctl(io_ctrl_fd,IOCTL_ENABLE_DISABLE,ctrl_val);
@@ -391,7 +391,7 @@ int32_t io_set_assamble_kernel_header_response_data(void *data){
     int32_t ret = 0;
     DATUM_SPECTRUM_HEADER_ST *pdata;
     pdata = (DATUM_SPECTRUM_HEADER_ST *)data;
-#if (KERNEL_IOCTL_EN == 1)
+#if defined(SUPPORT_SPECTRUM_KERNEL)
     if(io_ctrl_fd <= 0){
         return 0;
     }
@@ -485,8 +485,7 @@ static void io_asyn_signal_handler(int signum)
 void io_init(void)
 {
     printf_info("io init!\n");
-#if (KERNEL_IOCTL_EN == 1)
-
+#if defined(SUPPORT_SPECTRUM_KERNEL)
     int Oflags;
     
     if (io_ctrl_fd > 0) {

@@ -37,6 +37,11 @@ pthread_mutex_t spectrum_result_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t spectrum_data_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t spectrum_iq_data_mutex = PTHREAD_MUTEX_INITIALIZER;
 
+/* Spectrum thread condition variable  */
+pthread_cond_t spectrum_analysis_cond = PTHREAD_COND_INITIALIZER;
+pthread_mutex_t spectrum_analysis_cond_mutex = PTHREAD_MUTEX_INITIALIZER;
+
+
 struct sp_sem_nofity_st sp_sem;
 
 static inline  bool specturm_is_analysis_enable(void)
@@ -72,7 +77,7 @@ static inline bool spectrum_is_more_than_one_fragment(void)
 static inline uint64_t spectrum_get_signal_middle_freq(uint64_t sig_sfreq)
 {
     struct poal_config *poal_config = &(config_get_config()->oal_config);
-    return sig_sfreq + poal_config->ctrl_para.specturm_analysis_param.bandwidth_hz/2;
+    return (sig_sfreq + poal_config->ctrl_para.specturm_analysis_param.bandwidth_hz/2);
 }
 
 /* get the whole rf work middle frequency, maybe not equal to signal middle frequency */
@@ -295,7 +300,8 @@ void spectrum_psd_user_deal(struct spectrum_header_param *param)
         if(!specturm_write_oneframe_iq_data_to_buffer(param, ps->iq_payload, ps->iq_len)){
             /* notify thread can start to conver iq to fft */
             printf_note("##New Frame IQ Data Created, Notify to Deal##\n");
-            sem_post(&sp_sem.notify_iq_to_fft);
+            //sem_post(&sp_sem.notify_iq_to_fft);
+            pthread_cond_signal(&spectrum_analysis_cond);
         }
     }
 
@@ -506,7 +512,7 @@ static int8_t inline spectrum_get_analysis_paramter(uint64_t s_freq, uint64_t e_
     }else{
         //*midd_freq_offset = 0;
         /*real rf work middle frequency - signal middle frequency */
-        midd_freq_offset = spectrum_get_work_middle_freq(s_freq) - analysis_signal_middle_freq;
+        *midd_freq_offset = spectrum_get_work_middle_freq(s_freq) - analysis_signal_middle_freq;
     }
     
     return 0;
@@ -556,7 +562,6 @@ static int spectrum_data_write_file(memory_pool_t  *mpool, uint8_t data_type_len
     return 0;
 }
 
-#ifdef SUPPORT_FFT
 static size_t spectrum_iq_convert_fft_store_mm_pool(memory_pool_t  *fftmpool, memory_pool_t  *iqmpool)
 {
     void *p_dat, *p_end;
@@ -603,7 +608,15 @@ loop:
     while(1){
          /* wait to product iq data */
         printf_note("###wait to analysis specturm###\n");
-        sem_wait(&sp_sem.notify_iq_to_fft);
+        //sem_wait(&sp_sem.notify_iq_to_fft);
+        
+        /* Mutex must be locked for pthread_cond_timedwait... */
+        pthread_mutex_lock(&spectrum_analysis_cond_mutex);
+        /* Thread safe "sleep" */
+        pthread_cond_wait(&spectrum_analysis_cond, &spectrum_analysis_cond_mutex);
+        /* No longer needs to be locked */
+        pthread_mutex_unlock(&spectrum_analysis_cond_mutex);
+           
         /* Here we have get IQ data in memory pool (name: iq_mpool)*/
         printf_info("###Save IQ data###\n");
         spectrum_data_write_file(iq_mpool, sizeof(int16_t), 0);
@@ -674,7 +687,7 @@ loop:
 
         resolution = calc_resolution(total_bw, big_fft_size);
         bw_fft_size = ((float)analysis_bw/(float)total_bw) *big_fft_size ;
-        analysis_signal_start_freq =  spectrum_get_work_middle_freq(param->s_freq) - analysis_bw/2;
+        analysis_signal_start_freq =  spectrum_get_signal_middle_freq(param->s_freq) - analysis_bw/2;
         printf_note("analysis_signal_start_freq = %llu,s_freq=%llu, resolution=%f, bw_fft_size=%llu\n", analysis_signal_start_freq, param->s_freq, resolution, bw_fft_size);
         spectrum_rw_fft_result(fft_spectrum_get_result(), analysis_signal_start_freq, resolution, bw_fft_size);
 
@@ -687,7 +700,6 @@ loop:
     }
 
 }
-#endif
 
 void spectrum_init(void)
 {
@@ -695,9 +707,7 @@ void spectrum_init(void)
     int ret, i;
     pthread_t work_id;
    
-#ifdef SUPPORT_FFT
     fft_init();
-#endif
     printf_info("fft_init\n");
 
     sem_init(&(sp_sem.notify_iq_to_fft), 0, 0);
@@ -717,11 +727,9 @@ void spectrum_init(void)
     mp_fft_small_buffer_rsb_head = memory_pool_create(SPECTRUM_SMALL_FFT_SIZE*4, SPECTRUM_MAX_SCAN_COUNT);
     mp_fft_big_buffer_rsb_head = memory_pool_create(SPECTRUM_BIG_FFT_SIZE*4, SPECTRUM_MAX_SCAN_COUNT);
 
-#ifdef SUPPORT_FFT
     ret=pthread_create(&work_id,NULL,(void *)specturm_analysis_deal_thread, NULL);
     if(ret!=0)
         perror("pthread cread work_id");
     pthread_detach(work_id);
-#endif
 }
 

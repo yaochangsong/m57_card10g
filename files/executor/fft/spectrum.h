@@ -12,15 +12,10 @@
 #define RF_BANDWIDTH  MHZ(20)
 #endif
 
-#ifdef SUPPORT_FFT
 #define fft_spectrum_iq_to_fft_handle fft_fftw_calculate_hann
 #define fft_spectrum_fftdata_handle   fft_fftdata_handle
 #define fft_spectrum_get_result       fft_get_result
-#else
-#define fft_spectrum_iq_to_fft_handle
-#define fft_spectrum_fftdata_handle
-#define fft_spectrum_get_result
-#endif
+
 
 
 #define SPECTRUM_START_FLAG 0x7E7E
@@ -72,12 +67,10 @@ struct spectrum_fft_result_st{
 };
 
 #define LOCK_SP_RESULT() do { \
-    printf_debug("lock sp result\n");\
     pthread_mutex_lock(&spectrum_result_mutex); \
 } while (0)
 
 #define UNLOCK_SP_RESULT() do { \
-    printf_debug("unlock sp result\n");\
     pthread_mutex_unlock(&spectrum_result_mutex); \
 } while (0)
 

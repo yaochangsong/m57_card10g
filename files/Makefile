@@ -75,10 +75,15 @@ ifneq ($(findstring y,$(SUPPORT_RF_ADRV9009)),)
 	C_VAR += -DSUPPORT_RF_ADRV9009
 endif
 
-#fft
-ifneq ($(findstring y,$(SUPPORT_FFT)),)
+#specturm fft
+ifneq ($(findstring y,$(SUPPORT_SPECTRUM_FFT)),)
 	SOURCE_DIR += executor/fft
-	C_VAR += -DSUPPORT_FFT
+	C_VAR += -DSUPPORT_SPECTRUM_FFT
+endif
+
+#specturm kernel
+ifneq ($(findstring y,$(SUPPORT_SPECTRUM_KERNEL)),)
+	C_VAR += -DSUPPORT_SPECTRUM_KERNEL
 endif
 
 
@@ -131,7 +136,7 @@ INCLUDE_DIR = -I. -I./ ${includedir_so}
 LDFLAGS = $(SUB_LIBS)  ${libdir_so}  -lpthread  
 
 #fft
-ifneq ($(findstring y,$(SUPPORT_FFT)),)
+ifneq ($(findstring y,$(SUPPORT_SPECTRUM_FFT)),)
 	LDFLAGS += -lm -lz -lfftw3f -lxml2
 endif
 

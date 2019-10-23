@@ -49,7 +49,7 @@
 
 #include "executor/executor.h"
 #include "executor/io.h"
-#include "executor/spectrum.h"
+#include "executor/fft/spectrum.h"
 #include "executor/fft/fft.h"
 
 
@@ -66,9 +66,4 @@
 #include "dao/oal/dao_conf.h"
 
 #define SPCTRUM_VERSION_STRING "1.0.0-"__DATE__"."__TIME__ /* application version */
-
-
-#define KERNEL_IOCTL_EN 0
-
-#define CALIBRATION_FILE_EN 0
 

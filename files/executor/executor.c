@@ -110,8 +110,6 @@ static  int8_t  executor_fragment_scan(uint32_t fregment_num,uint8_t ch, work_mo
     printf_debug("e_freq=%llu, s_freq=%llu, fftsize=%u\n", e_freq, s_freq, fftsize);
     printf_debug("scan_bw =%u,scan_count=%d, is_remainder=%d\n", scan_bw, scan_count, is_remainder);
     executor_set_command(EX_RF_FREQ_CMD,  EX_RF_MID_BW, ch, &scan_bw);
-    executor_set_command(EX_MID_FREQ_CMD, EX_BANDWITH,  ch, &scan_bw);
-    executor_set_command(EX_MID_FREQ_CMD, EX_FFT_SIZE,  ch, &fftsize);
     /* 
            Step 2: 根据扫描带宽�?从开始频率到截止频率循环扫描
    */
@@ -123,11 +121,7 @@ static  int8_t  executor_fragment_scan(uint32_t fregment_num,uint8_t ch, work_mo
             left_band = scan_bw;
         }
         else{
-        #if (KERNEL_IOCTL_EN == 1)
-            /* 若不是整数，需计算剩余带宽中心频率 */
-            left_band = e_freq - s_freq - i * scan_bw;
-            m_freq = s_freq + i * scan_bw + left_band/2;
-        #else
+        #if defined (SUPPORT_SPECTRUM_FFT)
             /*spectrum is more than one fragment */
             if(scan_count > 0){
                 m_freq = s_freq + i * scan_bw + scan_bw/2;
@@ -136,6 +130,10 @@ static  int8_t  executor_fragment_scan(uint32_t fregment_num,uint8_t ch, work_mo
                 left_band = e_freq - s_freq - i * scan_bw;
                 m_freq = s_freq + i * scan_bw + left_band/2;
             }
+        #else
+            /* 若不是整数，需计算剩余带宽中心频率 */
+            left_band = e_freq - s_freq - i * scan_bw;
+            m_freq = s_freq + i * scan_bw + left_band/2;
         #endif
         }
         header_param.ch = ch;
@@ -151,24 +149,29 @@ static  int8_t  executor_fragment_scan(uint32_t fregment_num,uint8_t ch, work_mo
         m_freq =  middle_freq_resetting(scan_bw, m_freq);
         executor_set_command(EX_RF_FREQ_CMD, EX_RF_MID_FREQ, ch, &m_freq);
 #ifdef SUPPORT_PLATFORM_ARCH_ARM
-    #if (KERNEL_IOCTL_EN == 1)
+    #if defined(SUPPORT_SPECTRUM_KERNEL)
+        executor_set_command(EX_MID_FREQ_CMD, EX_BANDWITH,  ch, &scan_bw);
+        executor_set_command(EX_MID_FREQ_CMD, EX_FFT_SIZE,  ch, &fftsize);
         io_set_enable_command(PSD_MODE_ENABLE, ch, header_param.fft_size);
         executor_set_command(EX_WORK_MODE_CMD, mode, ch, &header_param);
         executor_wait_kernel_deal();
-    #else
+    #elif defined (SUPPORT_SPECTRUM_FFT)
         if(is_spectrum_aditool_debug() == false){
                 spectrum_psd_user_deal(&header_param);
         }else{
             usleep(500);
         }
+    #else
+        usleep(500);
     #endif
 #else
     
 #endif
         if(poal_config->enable.bit_reset == true){
             poal_config->enable.bit_reset = false;
-            printf_info("receive reset task sigal\n");
-            break;
+            printf_note("receive reset task sigal......\n");
+            //break;
+            return -1;
         }
     }
     printf_debug("Exit fregment scan function\n");
@@ -251,14 +254,14 @@ void executor_work_mode_thread(void *arg)
     while(1)
     {
         
-loop:   printf_info("######wait to deal work######\n");
+loop:   printf_note("######wait to deal work######\n");
         sem_wait(&work_sem.notify_deal);
         ch = poal_config->enable.cid;
         if(OAL_NULL_MODE == poal_config->work_mode){
             printf_warn("Work Mode not set\n");
             goto loop;
         }
-        printf_info("receive notify, [Channel:%d]%s Work: [%s], [%s], [%s]\n", 
+        printf_note("receive notify, [Channel:%d]%s Work: [%s], [%s], [%s]\n", 
                      ch,
                      poal_config->enable.bit_en == 0 ? "Stop" : "Start",
                      poal_config->enable.psd_en == 0 ? "Psd Stop" : "Psd Start",
@@ -295,7 +298,7 @@ loop:   printf_info("######wait to deal work######\n");
                         for(j = 0; j < poal_config->multi_freq_fregment_para[ch].freq_segment_cnt; j++){
                             printf_debug("Segment Scan [%d]\n", j);
                             if(executor_fragment_scan(j, ch, poal_config->work_mode) == -1){
-                                sleep(1);
+                                usleep(1000);
                                 goto loop;
                             }
                         }
@@ -442,7 +445,7 @@ int8_t executor_set_command(exec_cmd cmd, uint8_t type, uint8_t ch,  void *data)
         case EX_ENABLE_CMD:
         {
             /* notify thread to deal data */
-            printf_debug("notify thread to deal data\n");
+            printf_note("notify thread to deal data\n");
             poal_config->enable.bit_reset = true; /* reset(stop) all working task */
             sem_post(&work_sem.notify_deal);
             break;
@@ -555,7 +558,9 @@ int8_t executor_set_enable_command(uint8_t ch)
 
 void executor_timer_task1_cb(struct uloop_timeout *t)
 {
+#ifdef SUPPORT_SPECTRUM_FFT
     spectrum_send_fft_data_interval();
+#endif
     uloop_timeout_set(t, 200);
 }
 void executor_timer_task_init(void)

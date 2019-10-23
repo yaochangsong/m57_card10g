@@ -134,17 +134,15 @@ struct spectrum_header_param{
 /*  define the command setting lock */
 #define LOCK_SET_COMMAND() do { \
     pthread_mutex_lock(&set_cmd_mutex); \
-    printf_debug("Set command locked\n"); \
 } while (0)
 
 #define UNLOCK_SET_COMMAND() do { \
     pthread_mutex_unlock(&set_cmd_mutex); \
-    printf_debug("Set command unlocked\n"); \
 } while (0)
 
 #include "config.h"
 #ifdef SUPPORT_PROTOCAL_AKT
-    #if (KERNEL_IOCTL_EN == 1)
+    #if defined(SUPPORT_SPECTRUM_KERNEL)
     /* use kernel space to deal data(fft, iq) and send to client */
     #define executor_assamble_header_response_data_cb  akt_assamble_data_extend_frame_header_data
     /* use user space to send basic config parameter (TCP) */

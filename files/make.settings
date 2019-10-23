@@ -13,13 +13,14 @@ SUPPORT_REMOTE_LOCAL_CTRL_EN=n
 #project (ssa)频谱传感器
 SUPPORT_PROJECT_SSA=n
 
-#fft
-SUPPORT_FFT=n
+#spectrum fft or kernel
+SUPPORT_SPECTRUM_FFT=n
+SUPPORT_SPECTRUM_KERNEL=n
 
 ifneq ($(findstring x86,$(SUPPORT_PLAT_FORM_ARCH)),)
 	#uart: y n
 	SUPPORT_UART=n
-	#uart: y n
+	#lcd: y n
 	SUPPORT_LCD=n
 	#ambient temperature&humidity: y n
 	SUPPORT_AMBIENT_TEMP_HUMIDITY=n
@@ -34,7 +35,7 @@ ifneq ($(findstring x86,$(SUPPORT_PLAT_FORM_ARCH)),)
 else
 	#uart: y n
 	SUPPORT_UART=n
-	#uart: y n
+	#lcd: y n
 	SUPPORT_LCD=n
 	#ambient temperature&humidity: y n
 	SUPPORT_AMBIENT_TEMP_HUMIDITY=n

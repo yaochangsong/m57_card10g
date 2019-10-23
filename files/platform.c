@@ -101,15 +101,13 @@ int main(int argc, char **argv)
 #ifdef SUPPORT_UART
     uart_init();
 #endif
-#ifdef SUPPORT_PLATFORM_ARCH_ARM
+#ifdef SUPPORT_PROJECT_SSA
     gpio_init_control();
 #endif
 
 #ifdef SUPPORT_AMBIENT_TEMP_HUMIDITY
     temp_humidity_init();
 #endif 
-
-
 #ifdef SUPPORT_LCD
     init_lcd();
 #endif
@@ -118,7 +116,9 @@ if(spectrum_aditool_debug == false){
     #ifdef SUPPORT_RF
     rf_init();
     #endif
+    #ifdef SUPPORT_SPECTRUM_FFT
     spectrum_init();
+    #endif
 }
     if(server_init() == -1){
         printf_err("server init fail!\n");

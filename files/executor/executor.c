@@ -375,7 +375,7 @@ static int8_t executor_set_kernel_command(uint8_t type, uint8_t ch, void *data)
         }
         case EX_SMOOTH_TIME:
         {
-            io_set_smooth_factor(*(uint32_t *)data);
+            io_set_smooth_factor(*(uint16_t *)data);
             break;
         }
         case EX_RESIDENCE_TIME:
@@ -402,6 +402,7 @@ static int8_t executor_set_kernel_command(uint8_t type, uint8_t ch, void *data)
         }
         case EX_BANDWITH:
         {
+            io_set_extract_ch0(ch,*(uint32_t *)data);
             printf_debug("ch:%d, bw:%u\n", ch, *(uint32_t *)data);
             break;
         }
@@ -589,6 +590,7 @@ void executor_init(void)
     for(i = 0; i<MAX_RADIO_CHANNEL_NUM ; i++){
         io_set_enable_command(PSD_MODE_DISABLE, i, 0);
         io_set_enable_command(AUDIO_MODE_DISABLE, i, 0);
+        io_set_enable_command(FREQUENCY_BAND_ENABLE_DISABLE, i, 0);
         //executor_set_command(EX_RF_FREQ_CMD, EX_RF_ATTENUATION, 0, &poal_config->rf_para[i].attenuation);
     }
     sem_init(&(work_sem.notify_deal), 0, 0);

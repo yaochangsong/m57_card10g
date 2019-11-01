@@ -24,7 +24,7 @@
 #include "lib/libubox/kvlist.h"
 #include "lib/libubox/ustream.h"
 
-#include "config.h"
+//#include "config.h"
 
 #if (UHTTPD_SSL_SUPPORT)
 #include <libubox/ustream-ssl.h>

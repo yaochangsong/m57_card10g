@@ -90,7 +90,7 @@ struct multi_freq_point_para_st{
     uint8_t cid;
     uint8_t window_type;
     uint8_t frame_drop_cnt;
-    uint8_t smooth_time;
+    uint16_t smooth_time;
     uint32_t residence_time;
     int32_t residence_policy;
     float audio_sample_rate;

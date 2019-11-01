@@ -127,6 +127,17 @@ typedef enum _IOCTL_CMD {
 #define IOCTL_COMMON_PARAM_CMD    _IOW(DMA_RF_IOC_MAGIC, COMMON_PARAM_CONFIG, uint32_t)
 #define IOCTL_GET_CH_SIGNAL_AMP    _IOW(DMA_RF_IOC_MAGIC, GET_CH_SIGNAL_AMP, uint32_t)
 
+
+/* kernel client info */
+typedef struct  _STATION_INFO{
+    uint32_t index;
+    int32_t connfd;
+    struct sockaddr_in client;
+    struct timespec keepalive_time;
+    SNIFFER_DATA_REPORT_ST target_addr[MAX_CHANNEL_NUM];
+}__attribute__ ((packed)) STATION_INFO;
+
+
 typedef struct  _COMMON_PARAM_ST{
     uint8_t type;
     uint8_t buf[MAX_COMMON_PARAM_LEN];
@@ -182,8 +193,10 @@ extern int8_t io_set_work_mode_command(void *data);
 extern int8_t io_set_para_command(uint8_t type, uint8_t ch, void *data);
 extern int16_t io_get_adc_temperature(void);
 extern void io_set_dq_param(void *pdata);
-extern void io_set_smooth_factor(uint32_t factor);
+extern void io_set_smooth_factor(uint16_t factor);
 extern void io_set_fft_size(uint32_t ch, uint32_t fft_size);
 extern uint8_t  io_set_network_to_interfaces(void *netinfo);
-
+extern int32_t io_set_sta_info_param(STATION_INFO *data);
+extern int32_t io_set_refresh_keepalive_time(uint32_t index);
+extern int32_t io_set_extract_ch0(uint32_t ch, uint32_t bandwith);
 #endif

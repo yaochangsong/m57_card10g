@@ -31,6 +31,11 @@ static struct  band_table_t bandtable[] ={
     {458785, 0, 150000},
     {458772, 0, 250000},
     {458772, 0, 500000},
+    {458762, 0, 1000000},
+    {458757, 0, 2000000},
+    {983040, 0, 5000000},
+    {458752, 0, 10000000},
+    {196608, 0, 20000000},
 }; 
 
 
@@ -58,6 +63,33 @@ static void  io_compute_extract_factor_by_fftsize(uint32_t anays_band,uint32_t *
     }
 }
 
+int32_t io_set_sta_info_param(STATION_INFO *data){
+    int32_t ret = 0;
+#if defined(SUPPORT_SPECTRUM_KERNEL) 
+    ret = ioctl(io_ctrl_fd,IOCTL_STA_INFO_PARAM,data);
+#endif
+    return ret;
+}
+
+int32_t io_set_refresh_keepalive_time(uint32_t index){
+    int32_t ret = 0;
+#if defined(SUPPORT_SPECTRUM_KERNEL) 
+    ret = ioctl(io_ctrl_fd,IOCTL_KEEPALIVE_PARAM,index);
+#endif
+    return ret;
+}
+
+int32_t io_set_extract_ch0(uint32_t ch, uint32_t bandwith){
+    int32_t ret = 0;
+    uint32_t band_factor, filter_factor;
+#if defined(SUPPORT_SPECTRUM_KERNEL) 
+    io_compute_extract_factor_by_fftsize(bandwith,&band_factor, &filter_factor);
+    ret = ioctl(io_ctrl_fd, IOCTL_EXTRACT_CH0, (0x1000000 | band_factor));
+#endif
+    return ret;
+
+}
+
 
 static void io_set_common_param(uint8_t type, uint8_t *buf,uint32_t buf_len)
 {
@@ -73,7 +105,7 @@ static void io_set_common_param(uint8_t type, uint8_t *buf,uint32_t buf_len)
 }
 
 
-void io_set_smooth_factor(uint32_t factor)
+void io_set_smooth_factor(uint16_t factor)
 {
     printf_note("[**REGISTER**]Set Smooth factor: factor=%d[0x%x]\n",factor, factor);
 #if defined(SUPPORT_SPECTRUM_KERNEL)
@@ -345,6 +377,11 @@ int8_t io_set_enable_command(uint8_t type, uint8_t ch, uint32_t fftsize)
         }
         case DIRECTION_MODE_ENABLE_DISABLE:
         {
+            break;
+        }
+        case FREQUENCY_BAND_ENABLE_DISABLE:
+        {
+            ioctl(io_ctrl_fd,IOCTL_FREQUENCY_BAND_CONFIG0,0);
             break;
         }
     }

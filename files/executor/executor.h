@@ -65,6 +65,7 @@ enum {
     SPCTRUM_MODE_ANALYSIS_DISABLE=57,
     DIRECTION_MODE_ENABLE=58,       /*测向使能位*/
     DIRECTION_MODE_ENABLE_DISABLE=59,
+    FREQUENCY_BAND_ENABLE_DISABLE=60,
 };
 
 /* executor: status paramter */

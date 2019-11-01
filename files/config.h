@@ -33,6 +33,8 @@
 #include "protocol/http/utils.h"
 #include "protocol/http/uhttpd.h"
 #include "protocol/http/client.h"
+#include "executor/io.h"
+
 #include "protocol/akt/akt.h"
 #include "protocol/xnrp/xnrp.h"
 #include "protocol/xnrp/xnrp-xml.h"
@@ -48,7 +50,7 @@
 #include "utils/mempool.h"
 
 #include "executor/executor.h"
-#include "executor/io.h"
+
 #include "executor/fft/spectrum.h"
 #include "executor/fft/fft.h"
 

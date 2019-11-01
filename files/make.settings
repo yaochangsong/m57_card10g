@@ -13,9 +13,12 @@ SUPPORT_REMOTE_LOCAL_CTRL_EN=n
 #project (ssa)频谱传感器
 SUPPORT_PROJECT_SSA=n
 
+#project (wbif160m)
+SUPPORT_PROJECT_WBIF160M=y
+
 #spectrum fft or kernel
 SUPPORT_SPECTRUM_FFT=n
-SUPPORT_SPECTRUM_KERNEL=n
+SUPPORT_SPECTRUM_KERNEL=y
 
 ifneq ($(findstring x86,$(SUPPORT_PLAT_FORM_ARCH)),)
 	#uart: y n
@@ -45,8 +48,8 @@ else
 	#rf
 	SUPPORT_RF=y
 	ifneq ($(findstring y,$(SUPPORT_PROJECT_SSA)),)
-		SUPPORT_RF_ADRV9009=n
+		SUPPORT_RF_ADRV9009=y
 		#iio
-		SUPPORT_LIB_IIO=n
+		SUPPORT_LIB_IIO=y
 	endif
 endif

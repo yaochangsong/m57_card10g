@@ -74,11 +74,19 @@ ifneq ($(findstring y,$(SUPPORT_RF_ADRV9009)),)
 	SOURCE_DIR += device/rf/adrv9009
 	C_VAR += -DSUPPORT_RF_ADRV9009
 endif
-
-#specturm fft
-ifneq ($(findstring y,$(SUPPORT_SPECTRUM_FFT)),)
+ifneq ($(findstring y,$(SUPPORT_RF_ADRV9361)),)
+	SOURCE_DIR += device/rf/adrv9361
+	C_VAR += -DSUPPORT_RF_ADRV9361
+endif
+#specturm user
+ifneq ($(findstring y,$(SUPPORT_SPECTRUM_USER)),)
 	SOURCE_DIR += executor/fft
-	C_VAR += -DSUPPORT_SPECTRUM_FFT
+	C_VAR += -DSUPPORT_SPECTRUM_USER
+endif
+
+#specturm fft analysis
+ifneq ($(findstring y,$(SUPPORT_SPECTRUM_FFT_ANALYSIS)),)
+	C_VAR += -DSUPPORT_SPECTRUM_FFT_ANALYSIS
 endif
 
 #specturm kernel
@@ -98,6 +106,9 @@ endif
 ifneq ($(findstring y,$(SUPPORT_PROJECT_SSA)),)
 	C_VAR += -DSUPPORT_PROJECT_SSA
 endif
+ifneq ($(findstring y,$(SUPPORT_PROJECT_SSA_9361)),)
+	C_VAR += -DSUPPORT_PROJECT_SSA_9361
+endif
 #export CC=arm-linux-gnueabihf-gcc
 
 #dao lib
@@ -115,7 +126,7 @@ ALL_C_FILES := $(foreach n,$(SOURCE_DIR),$(n)/*.c)
 SUB_LIB_DIRS := $(foreach n,$(SUB_LIBS),$(dir $(n)))
 
 top_dir = $(abspath $(shell pwd)/../../../../../)
-prefix=$(top_dir)/tmp/sysroots-components/*-neon
+prefix=$(top_dir)/tmp/sysroots-components/cortexa9hf-neon
 libdir_so=-L${prefix}/libiio/usr/lib -L${prefix}/libxml2/usr/lib -L${prefix}/zlib/usr/lib
 includedir_so=-I${prefix}/libiio/usr/include -I${prefix}/libxml2/usr/include/libxml2/libxml -I${prefix}/zlib/usr/include
 
@@ -136,7 +147,7 @@ INCLUDE_DIR = -I. -I./ ${includedir_so}
 LDFLAGS = $(SUB_LIBS)  ${libdir_so}  -lpthread  
 
 #fft
-ifneq ($(findstring y,$(SUPPORT_SPECTRUM_FFT)),)
+ifneq ($(findstring y,$(SUPPORT_SPECTRUM_USER)),)
 	LDFLAGS += -lm -lz -lfftw3f -lxml2
 endif
 

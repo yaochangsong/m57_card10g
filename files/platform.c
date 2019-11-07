@@ -95,7 +95,7 @@ int main(int argc, char **argv)
         }
     }
     log_init(debug_level);
-    printf_note("VERSION:%s\n",SPCTRUM_VERSION_STRING);
+    printf_warn("VERSION:%s\n",SPCTRUM_VERSION_STRING);
     config_init();
     uloop_init();
 #ifdef SUPPORT_UART
@@ -116,7 +116,7 @@ if(spectrum_aditool_debug == false){
     #ifdef SUPPORT_RF
     rf_init();
     #endif
-    #ifdef SUPPORT_SPECTRUM_FFT
+    #ifdef SUPPORT_SPECTRUM_USER
     spectrum_init();
     #endif
 }

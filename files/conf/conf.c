@@ -138,19 +138,19 @@ int8_t config_write_data(exec_cmd cmd, uint8_t type, uint8_t ch, void *data)
                     if(*(uint8_t *)data > 1){
                         return -1;
                     }
-                    *(int8_t *)data = poal_config->multi_freq_point_param[ch].points[0].noise_en;
+                    poal_config->multi_freq_point_param[ch].points[0].noise_en = *(int8_t *)data;
                     break;
                 case EX_MUTE_THRE:
-                    *(int8_t *)data = poal_config->multi_freq_point_param[ch].points[0].noise_thrh;
+                    poal_config->multi_freq_point_param[ch].points[0].noise_thrh = *(int8_t *)data;
                     break;
                 case EX_DEC_METHOD:
-                    *(int8_t *)data = poal_config->multi_freq_point_param[ch].points[0].d_method;
+                    poal_config->multi_freq_point_param[ch].points[0].d_method = *(int8_t *)data;
                     break;
                 case EX_DEC_BW:
-                     *(int32_t *)data = poal_config->multi_freq_point_param[ch].points[0].d_bandwith;
+                    poal_config->multi_freq_point_param[ch].points[0].d_bandwith = *(int32_t *)data;
                     break;
                 case EX_AUDIO_SAMPLE_RATE:
-                   *(float *)data = poal_config->multi_freq_point_param[ch].audio_sample_rate;
+                    poal_config->multi_freq_point_param[ch].audio_sample_rate = *(float *)data;
                     break;
                 default:
                     printf_err("not surpport type\n");
@@ -163,19 +163,19 @@ int8_t config_write_data(exec_cmd cmd, uint8_t type, uint8_t ch, void *data)
             switch(type)
             {
                 case EX_RF_MID_FREQ:
-                    *(int64_t *)data = poal_config->rf_para[ch].mid_freq;
+                    poal_config->rf_para[ch].mid_freq = *(int64_t *)data;
                     break;
                 case EX_RF_MID_BW:
-                    *(int32_t *)data = poal_config->rf_para[ch].mid_bw;
+                    poal_config->rf_para[ch].mid_bw = *(int32_t *)data;
                     break;
                 case EX_RF_MODE_CODE:
-                    *(int8_t *)data = poal_config->rf_para[ch].rf_mode_code;
+                    poal_config->rf_para[ch].rf_mode_code = *(int8_t *)data;
                     break;
                 case EX_RF_GAIN_MODE:
-                    *(int8_t *)data = poal_config->rf_para[ch].gain_ctrl_method;;
+                    poal_config->rf_para[ch].gain_ctrl_method = *(int8_t *)data;
                     break;
                 case EX_RF_MGC_GAIN:
-                    *(int8_t *)data = poal_config->rf_para[ch].mgc_gain_value;
+                    poal_config->rf_para[ch].mgc_gain_value = *(int8_t *)data;
                     break;
                 default:
                     printf_err("not surpport type\n");
@@ -192,16 +192,16 @@ int8_t config_write_data(exec_cmd cmd, uint8_t type, uint8_t ch, void *data)
             switch(type)
             {
                 case EX_NETWORK_IP:
-                     *(int32_t *)data = poal_config->network.ipaddress;
+                    poal_config->network.ipaddress = *(int32_t *)data;
                     break;
                 case EX_NETWORK_MASK:
-                   *(int32_t *)data = poal_config->network.netmask;
+                    poal_config->network.netmask = *(int32_t *)data;
                     break;
                 case EX_NETWORK_GW:
-                   *(int32_t *)data = poal_config->network.gateway;
+                    poal_config->network.gateway = *(int32_t *)data;
                     break;
                 case EX_NETWORK_PORT:
-                   *(int16_t *)data = poal_config->network.port;
+                    poal_config->network.port = *(int16_t *)data;
                     break;
                 default:
                     printf_err("not surpport type\n");
@@ -234,7 +234,7 @@ int8_t config_write_data(exec_cmd cmd, uint8_t type, uint8_t ch, void *data)
 
 int8_t config_read_by_cmd(exec_cmd cmd, uint8_t type, uint8_t ch, void *data)
 {
-    printf_info("config_read_by_cmd\n");
+    printf_debug("config_read_by_cmd[%d]\n", cmd);
     struct poal_config *poal_config = &(config_get_config()->oal_config);
     
     if(data == NULL){
@@ -247,19 +247,19 @@ int8_t config_read_by_cmd(exec_cmd cmd, uint8_t type, uint8_t ch, void *data)
             switch(type)
             {
                 case EX_MUTE_SW:
-                    data = (void *)&poal_config->multi_freq_point_param[ch].points[0].noise_en;
+                    *(uint8_t *)data = poal_config->multi_freq_point_param[ch].points[0].noise_en;
                     break;
                 case EX_MUTE_THRE:
-                     data = (void *)&poal_config->multi_freq_point_param[ch].points[0].noise_thrh;
+                     *(int8_t *)data = poal_config->multi_freq_point_param[ch].points[0].noise_thrh;
                     break;
                 case EX_DEC_METHOD:
-                     data = (void *)&poal_config->multi_freq_point_param[ch].points[0].d_method;
+                     *(uint8_t *)data = poal_config->multi_freq_point_param[ch].points[0].d_method;
                     break;
                 case EX_DEC_BW:
-                     data = (void *)&poal_config->multi_freq_point_param[ch].points[0].d_bandwith;
+                     *(uint32_t *)data = poal_config->multi_freq_point_param[ch].points[0].d_bandwith;
                     break;
                 case EX_AUDIO_SAMPLE_RATE:
-                     data = (void *)&poal_config->multi_freq_point_param[ch].audio_sample_rate;
+                     *(float *)data = poal_config->multi_freq_point_param[ch].audio_sample_rate;
                     break;
                 default:
                     printf_err("not surpport type\n");
@@ -272,19 +272,38 @@ int8_t config_read_by_cmd(exec_cmd cmd, uint8_t type, uint8_t ch, void *data)
             switch(type)
             {
                 case EX_RF_MID_FREQ:
-                    data = (void *)&poal_config->rf_para[ch].mid_freq;
+                    *(uint64_t *)data = poal_config->rf_para[ch].mid_freq;
                     break;
-                case EX_RF_MID_BW:
-                    data = (void *)&poal_config->rf_para[ch].mid_bw;
+                case EX_RF_MID_BW:{
+                    struct scan_bindwidth_info *scanbw;
+                    scanbw = &poal_config->ctrl_para.scan_bw; 
+                    if(scanbw->work_fixed_bindwidth_flag){
+                        *(int32_t *)data = scanbw->work_bindwidth_hz;
+                    }
+                    else{
+                        *(int32_t *)data = poal_config->rf_para[ch].mid_bw;
+                    }
+                    if(*(int32_t *)data == 0){
+                        return -1;
+                    }
+                    /* Update sideband rate based on bandwidth */
+                    for(int i = 0; i<sizeof(scanbw->bindwidth_hz)/sizeof(uint32_t); i++){
+                        if(*(int32_t *)data == scanbw->bindwidth_hz[i]){
+                            scanbw->work_sideband_rate = scanbw->sideband_rate[i];
+                            printf_debug("Update sideband rate[%f] based on bandwidth[%u]\n", scanbw->work_sideband_rate, scanbw->bindwidth_hz[i]);
+                            break;
+                        }
+                    }
+                }
                     break;
                 case EX_RF_MODE_CODE:
-                    data = (void *)&poal_config->rf_para[ch].rf_mode_code;
+                    *(uint8_t *)data = poal_config->rf_para[ch].rf_mode_code;
                     break;
                 case EX_RF_GAIN_MODE:
-                    data = (void *)&poal_config->rf_para[ch].gain_ctrl_method;
+                    *(uint8_t *)data = poal_config->rf_para[ch].gain_ctrl_method;
                     break;
                 case EX_RF_MGC_GAIN:
-                    data = (void *)&poal_config->rf_para[ch].mgc_gain_value;
+                    *(int8_t *)data = poal_config->rf_para[ch].mgc_gain_value;
                     break;
                 default:
                     printf_err("not surpport type\n");
@@ -301,16 +320,16 @@ int8_t config_read_by_cmd(exec_cmd cmd, uint8_t type, uint8_t ch, void *data)
             switch(type)
             {
                 case EX_NETWORK_IP:
-                    data = (void *)&poal_config->network.ipaddress;
+                    *(uint32_t *)data = poal_config->network.ipaddress;
                     break;
                 case EX_NETWORK_MASK:
-                    data = (void *)&poal_config->network.netmask;
+                    *(uint32_t *)data = poal_config->network.netmask;
                     break;
                 case EX_NETWORK_GW:
-                    data = (void *)&poal_config->network.gateway;
+                    *(uint32_t *)data = poal_config->network.gateway;
                     break;
                 case EX_NETWORK_PORT:
-                    data = (void *)&poal_config->network.port;
+                    *(uint16_t *)data = poal_config->network.port;
                     break;
                 default:
                     printf_err("not surpport type\n");
@@ -324,10 +343,20 @@ int8_t config_read_by_cmd(exec_cmd cmd, uint8_t type, uint8_t ch, void *data)
              {
                 case EX_CTRL_LOCAL_REMOTE:
                     break;
+                case EX_CTRL_SIDEBAND:{
+                    struct scan_bindwidth_info *scanbw;
+                    scanbw = &poal_config->ctrl_para.scan_bw; 
+                    *(float *)data = scanbw->work_sideband_rate;
+                    if(*(float *)data == 0){
+                        return -1;
+                    }
+                }
+                    break;
                 default:
                     printf_err("not surpport type\n");
                     return -1;
              }
+             break;
         }
         default:
             printf_err("invalid set data[%d]\n", cmd);

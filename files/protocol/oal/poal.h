@@ -165,12 +165,22 @@ struct specturm_analysis_control_st{
 }__attribute__ ((packed));
 
 
-/* 控制参数 */
+struct scan_bindwidth_info{
+    bool     fixed_bindwidth_flag[8];                            /* 固定扫描带宽标志： ture:使用某固定带宽扫描； false: 根据带宽扫描 */
+    uint32_t bindwidth_hz[8];                                /* 扫描带宽 */
+    float    sideband_rate[8];                                   /* 扫描带宽边带率 */
+    bool     work_fixed_bindwidth_flag;
+    uint32_t work_bindwidth_hz;
+    float    work_sideband_rate;
+}__attribute__ ((packed));
+
+/* 控制/配置参数 */
 struct control_st{
     uint8_t remote_local;                                         /* 本控 or 远控 */
     uint8_t fft_noise_threshold;                                  /* FFT 计算噪音门限 */
     uint32_t spectrum_time_interval;                              /* 发送频谱时间间隔 */
     struct specturm_analysis_control_st specturm_analysis_param;  /* 频谱分析控制参数 */
+    struct scan_bindwidth_info scan_bw;                           /* 扫描带宽参数 */
 }__attribute__ ((packed));
 
 
@@ -235,22 +245,40 @@ struct poal_status_infor{
 }__attribute__ ((packed));
 
 struct calibration_specturm_info_st{
-    uint64_t start_freq[40];
-    uint64_t end_freq[40];
+    uint32_t start_freq_khz[40];
+    uint32_t end_freq_khz[40];
     int power_level[40];
     int global_roughly_power_lever;
 }__attribute__ ((packed));
 
 struct calibration_analysis_info_st{
-    uint64_t start_freq[40];
-    uint64_t end_freq[40];
+    uint32_t start_freq_khz[40];
+    uint32_t end_freq_khz[40];
     int power_level[40];
     int global_roughly_power_lever;
 }__attribute__ ((packed));
 
+struct calibration_lo_leakage_info_st{
+    uint32_t fft_size[16];
+    int16_t threshold[16];
+    int16_t renew_data_len[16];
+    int16_t global_threshold;
+    int16_t global_renew_data_len;
+}__attribute__ ((packed));
+
+struct calibration_mgc_info_st{
+    uint32_t start_freq_khz[16];
+    uint32_t end_freq_khz[16];
+    int32_t  gain_val[16];
+    int32_t  global_gain_val;
+}__attribute__ ((packed));
+
+
 struct calibration_info_st{
     struct calibration_specturm_info_st specturm;
     struct calibration_analysis_info_st analysis;
+    struct calibration_lo_leakage_info_st lo_leakage;
+    struct calibration_mgc_info_st mgc;
 }__attribute__ ((packed));
 
 

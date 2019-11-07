@@ -108,6 +108,7 @@ enum {
     EX_CTRL_LOCAL_REMOTE,        /* 本控远控 */
     EX_CTRL_CALIBRATION,         /* 校准控制 */
     EX_CTRL_TIMESET,             /* 时间设置 */
+    EX_CTRL_SIDEBAND,            /* 边带率 */
 };
 
 struct sem_st{

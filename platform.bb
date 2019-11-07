@@ -10,7 +10,7 @@ LIC_FILES_CHKSUM = "file://${COMMON_LICENSE_DIR}/MIT;md5=0835ade698e0bcf8506ecda
 SRC_URI = "file://*.c \
 	   file://Makefile \
 		  "
-
+RDEPENDS_${PN} += "libiio"
 S = "${WORKDIR}"
 
 do_compile() {
@@ -24,6 +24,7 @@ do_install() {
          install -m 0755 platform ${D}${bindir}
          install -m 0755 shell/platform.sh ${D}/etc/init.d/
          install -m 0755 lib/libfftw3/arm/lib/libfftw3f.so.3 ${D}${libdir}
+         install -m 0755 conf/spectrum.xml ${D}/etc/
 }
 INSANE_SKIP_${PN} = "ldflags"
 INSANE_SKIP_${PN}-dev = "ldflags"

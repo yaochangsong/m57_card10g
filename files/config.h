@@ -57,7 +57,12 @@
 
 #include "device/uart/uart.h"
 #include "device/rf/rf.h"
+#if defined (SUPPORT_RF_ADRV9009)
 #include "device/rf/adrv9009/adrv9009-iiostream.h"
+#endif
+#if defined (SUPPORT_RF_ADRV9361)
+#include "device/rf/adrv9361/adrv9361.h"
+#endif
 #include "device/humidity/si7021.h" 
 
 

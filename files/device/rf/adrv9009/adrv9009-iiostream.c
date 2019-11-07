@@ -300,8 +300,46 @@ int16_t adrv9009_iio_set_freq(uint64_t freq_hz)
 	struct iio_channel *chn = NULL;
 	if (!get_lo_chan(ctx, &chn)) { return -1; }
 	wr_ch_lli(chn, "frequency", freq_hz);
+    usleep(10000);
 	return 0;
 }
+
+int16_t adrv9009_iio_set_bw(uint32_t bw_hz)
+{
+	#define BW_PROFILES_FILE      "/sys/bus/iio/devices/iio:device2/profile_config"
+	#define BW_CONFIG_FILE_PATH   "/var/local"
+	
+	static uint64_t s_bw_hz = 0;
+	if(is_spectrum_aditool_debug() == true)
+	{
+		return 0;
+	}
+	if(s_bw_hz == bw_hz){
+		return 0;
+	}
+	if(stop == true){
+		return 0;
+	}
+	s_bw_hz = bw_hz;
+	printf_note("* Setting ADRV9009 RX Bw:%u\n", bw_hz);
+
+	char cfile[64];
+	char cmd[64];
+	
+	sprintf(cfile, "%s/Rx_BW%u.txt", BW_CONFIG_FILE_PATH, bw_hz);
+	printf_note("Config file: %s\n", cfile);
+	if((access(cfile,F_OK)) == -1)   
+	{
+		printf_err("Config file: %s is not exist!!\n", cfile);  
+		return -1;
+	}
+	sprintf(cmd, "cat %s > %s", cfile,BW_PROFILES_FILE);
+	printf_warn("%s\n", cmd);
+	safe_system(cmd);
+	usleep(1000);
+	return 0;
+}
+
 
 int16_t *adrv9009_iio_read_rx0_data(ssize_t *rsize)
 {

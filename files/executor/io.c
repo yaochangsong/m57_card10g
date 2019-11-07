@@ -438,7 +438,7 @@ int32_t io_set_assamble_kernel_header_response_data(void *data){
 }
 
 #ifdef SUPPORT_PLATFORM_ARCH_ARM
-#define do_system(cmd)   system(cmd)
+#define do_system(cmd)   safe_system(cmd)
 #else
 #define do_system(cmd)
 #endif

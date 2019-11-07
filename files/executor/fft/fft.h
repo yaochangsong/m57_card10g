@@ -14,8 +14,8 @@ static unsigned int N=16*1024*1024;
 #define  THRESHOLD         (7)//门限
 #define  CORRECTIONSIGNAL  (300)
 
-
-#define   SMOOTHPOINT        (64)//滑动平均滤波计算平均值时所取的点数
+#define BOTTOM_CORRECT  450    //没有信号时候的底噪校正值
+#define   SMOOTHPOINT_BOTTOM        (64)//滑动平均滤波计算平均值时所取的点数
 #define   TRANNUM     (1024)      //每次传1K的点
 #define  FILTER_A      (0.01)
 static unsigned int INTERVALNUM=10000;
@@ -23,6 +23,9 @@ static unsigned int SHIELDPOINTS=20000;
 static unsigned int  INTERVALNUMTOW=2;
 static unsigned int  firstfftlen=8*1024;
 static unsigned int  narrowbandlen=128*1024;
+static uint32_t  SMOOTHPOINT=32;
+
+
 
 
 
@@ -81,16 +84,45 @@ void fft_iqdata_handle(int bd,short *data,int fftsize, int datalen,uint32_t midp
         uint32_t midpointhz    距离带宽中心的距离（单位：hz）
         uint32_t signal_bw   要检测信号的带宽
         uint32_t total_bw    总带宽
+        uint32_t multiple     细检原始fftsize除以粗检原始fftsize
+        
 返回值：
       -1 异常
       0 正常
 
 *********************************************************************************/
 
-int fft_fftdata_handle(int threshold,float *fuzzydata,uint32_t fuzzylen,float *bigdata,uint32_t biglen,uint32_t midpointhz,uint32_t signal_bw,uint32_t total_bw);
-void xulitest(void);
+int  fft_fftdata_handle(int threshold,float *fuzzydata,uint32_t fuzzylen,float *bigdata,uint32_t biglen,
+                             uint32_t midpointhz,uint32_t signal_bw,uint32_t total_bw,uint32_t multiple);
+/********************************************************************************
+
+函数功能：修改平滑次数
+输入：
+    uint32_t smoothcount :想要设置的平滑次数的值；
+
+        
+返回值：
+     无
+*********************************************************************************/
 
 
+void fft_set_smoothcount(uint32_t smoothcount);
+
+
+
+/********************************************************************************
+
+函数功能：当没有信号的求底噪值
+输入：
+      float *data：去边带后的fft数据长度
+      uint32 datalen；去边带后的fft数据长度
+      
+返回值：
+      计算后的底噪值
+
+*********************************************************************************/
+
+float fft_get_bottom(float *data,uint32_t datalen);
 
 #endif
 

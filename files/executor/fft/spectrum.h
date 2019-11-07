@@ -7,6 +7,9 @@
 #ifdef SUPPORT_RF_ADRV9009
 #define specturm_rx0_read_data adrv9009_iio_read_rx0_data
 #define RF_BANDWIDTH  RF_ADRV9009_BANDWITH
+#elif defined (SUPPORT_RF_ADRV9361)
+#define specturm_rx0_read_data adrv9361_iio_read_rx0_data
+#define RF_BANDWIDTH  RF_ADRV9361_BANDWITH
 #else
 #define specturm_rx0_read_data
 #define RF_BANDWIDTH  MHZ(20)
@@ -22,14 +25,36 @@
 #define SPECTRUM_DEFAULT_FFT_SIZE (512*1024)
 #define SPECTRUM_MAX_SCAN_COUNT (50)
 
-#define SIDE_BAND_RATE  (1.2288) 
-#define SINGLE_SIDE_BAND_POINT_RATE  (0.093098958333333333335)  /* (1-1/1.2288)/2 */
+#define SIDE_BAND_RATE_1_28  (1.28)
+#define SIDE_BAND_RATE_1_2228  (1.2288)
+#define SINGLE_SIDE_BAND_POINT_RATE_1_28  (0.109375)                  /* (1-1/1.28)/2 */
+#define SINGLE_SIDE_BAND_POINT_RATE_1_2228  (0.093098958333333333335) /* (1-1/1.2288)/2 */
 
+#ifdef SUPPORT_RF_ADRV9009
+#define DEFAULT_SIDE_BAND_RATE  SIDE_BAND_RATE_1_28
+#define DEFAULT_SINGLE_SIDE_BAND_POINT_RATE  SINGLE_SIDE_BAND_POINT_RATE_1_28  
 #define  SPECTRUM_IQ_SIZE   RF_ADRV9009_IQ_SIZE
-#define  SPECTRUM_SMALL_FFT_SIZE   (8192)
-#define  SPECTRUM_BIG_FFT_SIZE  RF_ADRV9009_IQ_SIZE/2
+#elif defined (SUPPORT_RF_ADRV9361)
+#define DEFAULT_SIDE_BAND_RATE  SIDE_BAND_RATE_1_28
+#define DEFAULT_SINGLE_SIDE_BAND_POINT_RATE  SINGLE_SIDE_BAND_POINT_RATE_1_28
+#define  SPECTRUM_IQ_SIZE   RF_ADRV9361_IQ_SIZE
+#else
+#define DEFAULT_SIDE_BAND_RATE  SIDE_BAND_RATE_1_28
+#define DEFAULT_SINGLE_SIDE_BAND_POINT_RATE  SINGLE_SIDE_BAND_POINT_RATE_1_28
+#define  SPECTRUM_IQ_SIZE   (1024*1024)
 
-#define calc_resolution(bw_hz, fft_size)  (SIDE_BAND_RATE*bw_hz/fft_size)
+#endif
+
+
+
+//#define get_side_band_rate() (1.28)
+//#define get_single_side_band_pointrate() (0.109375)
+
+
+#define  SPECTRUM_SMALL_FFT_SIZE   (8192)
+#define  SPECTRUM_BIG_FFT_SIZE  SPECTRUM_IQ_SIZE/2
+
+//#define calc_resolution(bw_hz, fft_size)  (SIDE_BAND_RATE*bw_hz/fft_size)
 
 #define delta_bw  MHZ(30)
 #define middle_freq_resetting(bw, mfreq)    ((bw/2) >= (mfreq) ? (bw/2+delta_bw) : (mfreq))

@@ -9,6 +9,15 @@
 #define alignment_down(a, size) (((uint32_t)a/(uint32_t)size)*(uint32_t)size) //((uint32_t)a & (~((uint32_t)size-1)))
 #define alignment_up(a, size)   (size +((a-1)/size)*size)
 
+/*
+单精度浮点比较
+a == b                  a != b              a < b                     a > b
+sgn(a - b) == 0         sgn(a - b) != 0       sgn(a - b) <  0         sgn(a - b) > 0  
+*/
+#define eps (1e-6)
+#define f_sgn(a) (a < -eps ? -1 : a < eps ? 0 : 1)
+
+
 
 #define TIME_ELAPSED(codeToTime) do{      \
         struct timeval beginTime, endTime; \

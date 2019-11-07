@@ -455,8 +455,6 @@ const char *read_config_file_single(const char *parent_element,const char *eleme
 const char *read_config_file_array(mxml_node_t *root, const char *array,const char *name,const char *value,const char *element)
 {
 #ifdef SUPPORT_DAO_XML
-    printf_debug("开始读取array\n");
-
     mxml_node_t *parent_node,*node;
     //printf_debug("load xml config file\n");
 
@@ -467,7 +465,6 @@ const char *read_config_file_array(mxml_node_t *root, const char *array,const ch
     if(node == NULL) return NULL;
 
     const char *string = mxmlGetText(node, NULL);
-    printf_debug("读取结束\n");
     return string;
 #elif defined SUPPORT_DAO_JSON
 
@@ -710,6 +707,65 @@ static void *dao_load_root(void *root)
 #endif
 }
 
+static inline int8_t dao_read_float_data_array_value(void *root, const char *array_name, 
+                                     const char *index_name, const char *index_value, 
+                                     const char *element, float *result)
+{
+    char *pdata;
+#ifdef SUPPORT_DAO_XML 
+    pdata = read_config_file_array(root, array_name,index_name,index_value,element);
+    if(pdata != NULL){
+        *result = atof(pdata);
+        return 0;
+    }
+    return -1;
+#endif
+}
+
+static inline int8_t dao_read_long_data_array_value(void *root, const char *array_name, 
+                                     const char *index_name, const char *index_value, 
+                                     const char *element, uint32_t *result)
+{
+    char *pdata;
+#ifdef SUPPORT_DAO_XML 
+    pdata = read_config_file_array(root, array_name,index_name,index_value,element);
+    if(pdata != NULL){
+        *result = atol(pdata);
+        return 0;
+    }
+    return -1;
+#endif
+}
+
+static inline int8_t dao_read_int_data_array_value(void *root, const char *array_name, 
+                                     const char *index_name, const char *index_value, 
+                                     const char *element,  int32_t *result)
+{
+    char *pdata;
+#ifdef SUPPORT_DAO_XML 
+        pdata = read_config_file_array(root, array_name,index_name,index_value,element);
+        if(pdata != NULL){
+            *result = atoi(pdata);
+            return 0;
+        }
+        return -1;
+#endif
+}
+
+static inline int8_t dao_read_int_data_single_value(const char *parent, const char *element,  int32_t *result)
+{
+ char *pdata;
+#ifdef SUPPORT_DAO_XML 
+     pdata = read_config_file_single(parent,element);
+     if(pdata != NULL){
+         *result = atoi(pdata);
+         return 0;
+     }
+     return -1;
+#endif
+}
+
+
 void read_calibration_file(mxml_node_t *root, void *config)
 {
     s_config *sys_config;
@@ -738,32 +794,140 @@ void read_calibration_file(mxml_node_t *root, void *config)
         cali_config->analysis.global_roughly_power_lever = 0;
     }
     printf_debug("analysis.global_roughly_power_lever=%d\n", cali_config->analysis.global_roughly_power_lever);
-     
-    printf_debug("sizeof = %d\n", sizeof(cali_config->specturm.start_freq)/sizeof(uint64_t));
-    for(int i = 0; i<sizeof(cali_config->specturm.start_freq)/sizeof(uint64_t); i++){
+    /* read lo_leakage globe calibration value  */
+    node = mxmlFindElement(root, root,"calibration","lo_leakage_threshold", NULL,MXML_DESCEND);
+    node_value = mxmlElementGetAttr(node,"lo_leakage_threshold");
+    if(node_value != NULL){
+        cali_config->lo_leakage.global_threshold = atoi(node_value);
+    }else{
+        cali_config->lo_leakage.global_threshold = 0;
+    }
+    /* read lo_leakage renew_data_len globe calibration value  */
+    node = mxmlFindElement(root, root,"calibration","lo_leakage_renew_data_len", NULL,MXML_DESCEND);
+    node_value = mxmlElementGetAttr(node,"lo_leakage_renew_data_len");
+    if(node_value != NULL){
+        cali_config->lo_leakage.global_renew_data_len = atoi(node_value);
+    }else{
+        cali_config->lo_leakage.global_renew_data_len = 0;
+    }
+    
+    /* read mgc_gain globe calibration value  */
+    node = mxmlFindElement(root, root,"calibration","mgc_gain", NULL,MXML_DESCEND);
+    node_value = mxmlElementGetAttr(node,"mgc_gain");
+    if(node_value != NULL){
+        cali_config->mgc.global_gain_val = atoi(node_value);
+    }else{
+        cali_config->mgc.global_gain_val = 0;
+    }
+    
+    printf_debug("sizeof = %d\n", sizeof(cali_config->specturm.start_freq_khz)/sizeof(uint32_t));
+    /* read psd  calibration value in different frequency */
+    for(int i = 0; i<sizeof(cali_config->specturm.start_freq_khz)/sizeof(uint32_t); i++){
         sprintf(indexvalue, "%d", i);
-        cali_config->specturm.start_freq[i]  = atol(read_config_file_array(root, "psd_power","index",indexvalue,"start_requency")) ;
-        cali_config->specturm.end_freq[i]  = atol(read_config_file_array(root,"psd_power","index",indexvalue,"end_requency")) ;
+        cali_config->specturm.start_freq_khz[i]  = atol(read_config_file_array(root, "psd_power","index",indexvalue,"start_requency")) ;
+        cali_config->specturm.end_freq_khz[i]  = atol(read_config_file_array(root,"psd_power","index",indexvalue,"end_requency")) ;
         cali_config->specturm.power_level[i]  = atoi(read_config_file_array(root,"psd_power","index",indexvalue,"level")) ;
 
         printf_debug("indexvalue=%s\n", indexvalue);
 
-        printf_debug("read calbration start_freq = %llu\n",cali_config->specturm.start_freq[i]);
-        printf_debug("read calbration end_freq = %llu\n",cali_config->specturm.end_freq[i]);
-        printf_debug("read calbration power_level = %d\n",cali_config->specturm.power_level[i]);
+        printf_debug("read calbration start_freq[%d] = %uKHz\n",i,cali_config->specturm.start_freq_khz[i]);
+        printf_debug("read calbration end_freq[%d] = %uKHz\n",i,cali_config->specturm.end_freq_khz[i]);
+        printf_debug("read calbration power_level[%d] = %d\n",i,cali_config->specturm.power_level[i]);
     }
-
-    /*-----------------------------------------------*/
-    for(int i = 0; i<sizeof(cali_config->analysis.start_freq)/sizeof(uint64_t); i++){
+    
+     /* read analysis calibration value in different frequency */
+    for(int i = 0; i<sizeof(cali_config->analysis.start_freq_khz)/sizeof(uint32_t); i++){
         sprintf(indexvalue, "%d", i);
-        cali_config->analysis.start_freq[i]  = atol(read_config_file_array(root,"analysis_power","index",indexvalue,"start_requency")) ;
-        cali_config->analysis.end_freq[i]  = atol(read_config_file_array(root,"analysis_power","index",indexvalue,"end_requency")) ;
+        cali_config->analysis.start_freq_khz[i]  = atol(read_config_file_array(root,"analysis_power","index",indexvalue,"start_requency")) ;
+        cali_config->analysis.end_freq_khz[i]  = atol(read_config_file_array(root,"analysis_power","index",indexvalue,"end_requency")) ;
         cali_config->analysis.power_level[i]  = atoi(read_config_file_array(root,"analysis_power","index",indexvalue,"level")) ;
-        printf_debug("analysis_power read calbration start_freq = %llu\n",cali_config->analysis.start_freq[i]);
-        printf_debug("analysis_power read calbration end_freq = %llu\n",cali_config->analysis.end_freq[i]);
-        printf_debug("analysis_power read calbration power_level = %d\n",cali_config->analysis.power_level[i]);
+        printf_debug("analysis_power read calbration start_freq[%d] = %uKHz\n",i,cali_config->analysis.start_freq_khz[i]);
+        printf_debug("analysis_power read calbration end_freq[%d] = %uKHz\n",i,cali_config->analysis.end_freq_khz[i]);
+        printf_debug("analysis_power read calbration power_level[%d] = %d\n",i,cali_config->analysis.power_level[i]);
     }
+    /* read lo_leakage calibration value */
+   
+    for(int i = 0; i<sizeof(cali_config->lo_leakage.fft_size)/sizeof(uint32_t); i++){
+         sprintf(indexvalue, "%d", i);
+         if(dao_read_int_data_array_value(root, "lo_leakage", "index", indexvalue, 
+                                         "fft_size",  &cali_config->lo_leakage.fft_size[i]) == -1)
+                break;
+         if(dao_read_int_data_array_value(root, "lo_leakage", "index", indexvalue, 
+                                        "threshold",  &cali_config->lo_leakage.threshold[i]) == -1)
+                break;
+         if(dao_read_int_data_array_value(root, "lo_leakage", "index", indexvalue, 
+                                        "renew_data_len",  &cali_config->lo_leakage.renew_data_len[i]) == -1)
+                break;
+        printf_debug("lo_leakage.fft_size[%d] = %u\n",i, cali_config->lo_leakage.fft_size[i]);
+        printf_debug("lo_leakage.threshold[%d] = %d\n",i, cali_config->lo_leakage.threshold[i]);
+        printf_debug("lo_leakage.renew_data_len[%d] = %d\n",i, cali_config->lo_leakage.renew_data_len[i]);
+    }
+    
+    /* read mgc calibration value */
+    for(int i = 0; i<sizeof(cali_config->mgc.start_freq_khz)/sizeof(uint32_t); i++){
+        sprintf(indexvalue, "%d", i);
+        if(dao_read_long_data_array_value(root, "mgc", "index", indexvalue, 
+                                         "start_requency",  &cali_config->mgc.start_freq_khz[i]) == -1)
+                break;
+        if(dao_read_long_data_array_value(root, "mgc", "index", indexvalue, 
+                                        "end_requency",  &cali_config->mgc.end_freq_khz[i]) == -1)
+                break;
+        if(dao_read_int_data_array_value(root, "mgc", "index", indexvalue, 
+                                        "gain",  &cali_config->mgc.gain_val[i]) == -1)
+                break;
+        printf_debug("mgc.start_freq[%d] = %uKHz\n",i, cali_config->mgc.start_freq_khz[i]);
+        printf_debug("mgc.end_freq[%d] = %uKHz\n",i, cali_config->mgc.end_freq_khz[i]);
+        printf_debug("mgc.gain_val[%d] = %d\n",i, cali_config->mgc.gain_val[i]);
+    }
+}
 
+void read_scan_param_info(mxml_node_t *root, void *config)
+{
+    s_config *sys_config;
+    struct scan_bindwidth_info *scanbw;
+    mxml_node_t *parent_node;
+    char indexvalue[32] = {0};
+    sys_config = (s_config*)config;
+    
+    scanbw = &sys_config->oal_config.ctrl_para.scan_bw; 
+
+    mxml_node_t *node;
+    char *node_value;
+
+    /* read scan bindwidth value */
+    scanbw->work_fixed_bindwidth_flag = false;
+    for(int i = 0; i<sizeof(scanbw->bindwidth_hz)/sizeof(uint32_t); i++){
+        sprintf(indexvalue, "%d", i);
+        if(dao_read_long_data_array_value(root, "scanBindWidthInfo", "index", indexvalue, 
+                                         "bindWidth",  &scanbw->bindwidth_hz[i]) == -1)
+                break;
+        if(dao_read_float_data_array_value(root, "scanBindWidthInfo", "index", indexvalue, 
+                                 "sideBandRate",  &scanbw->sideband_rate[i]) == -1)
+                break;
+        
+        printf_debug("Scan bindWidth[%d] = %d, sideband rate[%d]=%f\n",i, scanbw->bindwidth_hz[i], i,scanbw->sideband_rate[i]);
+
+
+        parent_node = mxmlFindElement(root, root, "scanBindWidthInfo", "index",indexvalue, MXML_DESCEND);
+        node = mxmlFindElement(root, parent_node,"scanBindWidthInfo","fixed", NULL,MXML_DESCEND);
+        node_value = mxmlElementGetAttr(node,"fixed");
+        if(node_value != NULL){
+            scanbw->fixed_bindwidth_flag[i] =  (atoi(node_value)==0 ? false:true);
+        }else{
+            scanbw->fixed_bindwidth_flag[i] = false;
+        }
+        printf_debug("scanbw->fixed_bindwidth_flag[%d]=%d\n", i, scanbw->fixed_bindwidth_flag[i]);
+        if(scanbw->fixed_bindwidth_flag[i] == true){
+           scanbw->work_fixed_bindwidth_flag = true;
+           scanbw->work_sideband_rate = scanbw->sideband_rate[i];
+           scanbw->work_bindwidth_hz = scanbw->bindwidth_hz[i];
+           printf_warn("work fixed bindwidth flag=%d, work bindwidth_hz=%u,work sideband rate=%f\n",scanbw->work_fixed_bindwidth_flag, scanbw->work_bindwidth_hz, scanbw->work_sideband_rate);
+            break;
+        }else{
+            scanbw->work_sideband_rate = scanbw->sideband_rate[i]; /* the last value ; work_bindwidth_hz is set by remote*/
+        }
+    }
+    printf_debug("scanbw->fixed_bindwidth_flag=%d,scanbw->work_bindwidth_hz=%u\n", scanbw->work_fixed_bindwidth_flag, scanbw->work_bindwidth_hz);
 }
 
 void read_config(void *root_config)
@@ -875,6 +1039,7 @@ void read_config(void *root_config)
     printf_debug("读取............................rfAttenuation = %d\n",fre_config->oal_config.rf_para->attenuation);
 
     read_calibration_file(root, root_config);
+    read_scan_param_info(root, root_config);
 }
 
 void dao_read_create_config_file(char *file, void *root_config)

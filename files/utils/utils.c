@@ -200,5 +200,78 @@ int32_t inline diff_time(void)
 }
 
 
+/* system() 存在父进程内存大的话，存在空间申请失败的问题，这里改写system() */
+static int _system(const char * cmdstring)  
+{  
+    pid_t pid;  
+    int status;  
+  
+    if(cmdstring == NULL)  
+    {  
+        return (1); //如果cmdstring为空，返回非零值，一般为1  
+    }  
+      
+    if((pid = vfork())<0)  /* system() 这里采用fork()调用，如果父进程内存大的话，存在空间申请失败的问题 */
+    {  
+        status = -1; //fork失败，返回-1  
+    }  
+    else if(pid == 0)  
+    {  
+        execl("/bin/sh", "sh", "-c", cmdstring, (char *)0);  
+        _exit(127); // exec执行失败返回127，注意exec只在失败时才返回现在的进程，成功的话现在的进程就不存在啦~~  
+    }  
+    else //父进程  
+    {  
+        while(waitpid(pid, &status, 0) < 0)  
+        {  
+            if(errno != EINTR)  
+            {  
+                status = -1; //如果waitpid被信号中断，则返回-1  
+                break;  
+            }  
+        }  
+    }  
+    return status; //如果waitpid成功，则返回子进程的返回状态  
+}  
 
+
+typedef void (*sighandler_t)(int);
+int safe_system(const char *cmdstring)
+{
+    int status = 0;
+    sighandler_t old_handler;
+
+    if(NULL == cmdstring)
+    {
+       return -1;
+    }
+
+    old_handler = signal(SIGCHLD, SIG_DFL);
+    status = _system(cmdstring);
+    signal(SIGCHLD, old_handler);
+
+    if(status < 0)
+    {
+        printf_err("cmd: %s\t error: %s", cmdstring, strerror(errno)); 
+        return -1;
+    }
+
+    if(WIFEXITED(status))
+    {
+        /* 正常执行， 取得cmdstring执行结果 */
+        printf_debug("normal termination, exit status = %d\n", WEXITSTATUS(status)); 
+    }
+    else if(WIFSIGNALED(status))
+    {
+        /* 如果cmdstring被信号中断，取得信号值 */
+        printf_info("abnormal termination,signal number =%d\n", WTERMSIG(status)); 
+    }
+    else if(WIFSTOPPED(status))
+    {
+        /* 如果cmdstring被信号暂停执行，取得信号值 */
+        printf_info("process stopped, signal number =%d\n", WSTOPSIG(status)); 
+    }
+
+    return status;
+}
 

@@ -84,11 +84,11 @@ static  int8_t  executor_fragment_scan(uint32_t fregment_num,uint8_t ch, work_mo
         e_freq -= KU_FREQUENCY_OFFSET;
     }
 #endif
-#ifdef SUPPORT_PROJECT_SSA
-    scan_bw = RF_BANDWIDTH;
-#else
-    scan_bw = poal_config->rf_para[ch].mid_bw;
-#endif
+    if(config_read_by_cmd(EX_RF_FREQ_CMD, EX_RF_MID_BW, 0, &scan_bw) == -1){
+        printf_err("Error read scan bindwidth=%u\n", scan_bw);
+        return -1;
+    }
+    
     fftsize= poal_config->multi_freq_fregment_para[ch].fregment[fregment_num].fft_size;
     
     if(e_freq < s_freq || scan_bw <= 0){
@@ -108,8 +108,8 @@ static  int8_t  executor_fragment_scan(uint32_t fregment_num,uint8_t ch, work_mo
     if((scan_count == 0) && (is_remainder == 0))
         return -1;
     printf_debug("e_freq=%llu, s_freq=%llu, fftsize=%u\n", e_freq, s_freq, fftsize);
-    printf_debug("scan_bw =%u,scan_count=%d, is_remainder=%d\n", scan_bw, scan_count, is_remainder);
-    executor_set_command(EX_RF_FREQ_CMD,  EX_RF_MID_BW, ch, &scan_bw);
+    printf_debug("###scan_bw =%u,scan_count=%d, is_remainder=%d\n", scan_bw, scan_count, is_remainder);
+    //executor_set_command(EX_RF_FREQ_CMD,  EX_RF_MID_BW, ch, &scan_bw);
     /* 
            Step 2: 根据扫描带宽�?从开始频率到截止频率循环扫描
    */
@@ -121,7 +121,7 @@ static  int8_t  executor_fragment_scan(uint32_t fregment_num,uint8_t ch, work_mo
             left_band = scan_bw;
         }
         else{
-        #if defined (SUPPORT_SPECTRUM_FFT)
+        #if defined (SUPPORT_SPECTRUM_USER)
             /*spectrum is more than one fragment */
             if(scan_count > 0){
                 m_freq = s_freq + i * scan_bw + scan_bw/2;
@@ -155,7 +155,7 @@ static  int8_t  executor_fragment_scan(uint32_t fregment_num,uint8_t ch, work_mo
         io_set_enable_command(PSD_MODE_ENABLE, ch, header_param.fft_size);
         executor_set_command(EX_WORK_MODE_CMD, mode, ch, &header_param);
         executor_wait_kernel_deal();
-    #elif defined (SUPPORT_SPECTRUM_FFT)
+    #elif defined (SUPPORT_SPECTRUM_USER)
         if(is_spectrum_aditool_debug() == false){
                 spectrum_psd_user_deal(&header_param);
         }else{
@@ -170,7 +170,6 @@ static  int8_t  executor_fragment_scan(uint32_t fregment_num,uint8_t ch, work_mo
         if(poal_config->enable.bit_reset == true){
             poal_config->enable.bit_reset = false;
             printf_note("receive reset task sigal......\n");
-            //break;
             return -1;
         }
     }
@@ -375,7 +374,7 @@ static int8_t executor_set_kernel_command(uint8_t type, uint8_t ch, void *data)
         }
         case EX_SMOOTH_TIME:
         {
-            io_set_smooth_factor(*(uint16_t *)data);
+            io_set_smooth_factor(*(uint32_t *)data);
             break;
         }
         case EX_RESIDENCE_TIME:
@@ -402,7 +401,6 @@ static int8_t executor_set_kernel_command(uint8_t type, uint8_t ch, void *data)
         }
         case EX_BANDWITH:
         {
-            io_set_extract_ch0(ch,*(uint32_t *)data);
             printf_debug("ch:%d, bw:%u\n", ch, *(uint32_t *)data);
             break;
         }
@@ -526,9 +524,14 @@ int8_t executor_set_enable_command(uint8_t ch)
             }
             case OAL_FAST_SCAN_MODE:
             {
+                uint32_t bw;
                 executor_set_command(EX_RF_FREQ_CMD, EX_RF_ATTENUATION, ch, &poal_config->rf_para[ch].attenuation);
                 //executor_set_command(EX_RF_FREQ_CMD, EX_RF_MID_FREQ, ch, &poal_config->rf_para[ch].mid_freq);
-                executor_set_command(EX_RF_FREQ_CMD, EX_RF_MID_BW, ch, &poal_config->rf_para[ch].mid_bw);
+                if(config_read_by_cmd(EX_RF_FREQ_CMD, EX_RF_MID_BW, 0, &bw) == -1){
+                    printf_err("Error read scan bindwidth=%u\n", bw);
+                    return -1;
+                }
+                executor_set_command(EX_RF_FREQ_CMD, EX_RF_MID_BW, ch, &bw);
                 /* 中频带宽和射频带宽一�?*/
                 executor_set_command(EX_MID_FREQ_CMD, EX_BANDWITH, ch, &poal_config->rf_para[ch].mid_bw);
                 executor_set_command(EX_MID_FREQ_CMD, EX_CHANNEL_SELECT, ch, &ch);
@@ -559,7 +562,7 @@ int8_t executor_set_enable_command(uint8_t ch)
 
 void executor_timer_task1_cb(struct uloop_timeout *t)
 {
-#ifdef SUPPORT_SPECTRUM_FFT
+#ifdef SUPPORT_SPECTRUM_USER
     spectrum_send_fft_data_interval();
 #endif
     uloop_timeout_set(t, 200);

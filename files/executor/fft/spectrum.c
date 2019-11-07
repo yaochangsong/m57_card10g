@@ -44,6 +44,43 @@ pthread_mutex_t spectrum_analysis_cond_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 struct sp_sem_nofity_st sp_sem;
 
+static inline float get_side_band_rate(void)
+{
+    float sidebind_rate;
+    if(config_read_by_cmd(EX_CTRL_CMD, EX_CTRL_SIDEBAND, 0, &sidebind_rate) == -1){
+        printf_note("Error read scan sidebind_rate, use default sidebind_rate[%f]\n", DEFAULT_SIDE_BAND_RATE);
+        return DEFAULT_SIDE_BAND_RATE;
+    }
+    //printf_warn("sidebind_rate=%.6f, %d\n", sidebind_rate, f_sgn(sidebind_rate - SIDE_BAND_RATE_1_2228));
+    if(f_sgn(sidebind_rate - SIDE_BAND_RATE_1_28) == 0){
+        return SIDE_BAND_RATE_1_28;
+    }
+    else if(f_sgn(sidebind_rate - SIDE_BAND_RATE_1_2228) == 0){
+        return SIDE_BAND_RATE_1_2228;
+    }
+    else{
+        return SIDE_BAND_RATE_1_28;
+    }
+}
+
+static inline double get_single_side_band_pointrate(void)
+{
+    float sidebind_rate;
+    sidebind_rate = get_side_band_rate();
+    if(f_sgn(sidebind_rate - SIDE_BAND_RATE_1_28) == 0)
+        return SINGLE_SIDE_BAND_POINT_RATE_1_28;
+    else if(f_sgn(sidebind_rate - SIDE_BAND_RATE_1_2228) == 0)
+        return SINGLE_SIDE_BAND_POINT_RATE_1_2228;
+    else
+        return DEFAULT_SINGLE_SIDE_BAND_POINT_RATE;
+}
+
+
+static inline float calc_resolution(uint32_t bw_hz, uint32_t fft_size)  
+{
+        return (get_side_band_rate()*bw_hz/fft_size);
+}
+
 static inline  bool specturm_is_analysis_enable(void)
 {
     struct poal_config *poal_config = &(config_get_config()->oal_config);
@@ -92,7 +129,7 @@ static inline uint64_t spectrum_get_work_middle_freq(uint64_t sig_sfreq)
        otherwise the analysis bandwidth is based on the analysis bandwidth of the actual signal.
     */
     if(spectrum_is_more_than_one_fragment()){
-        middle_freq = sig_sfreq + alignment_up(poal_config->ctrl_para.specturm_analysis_param.bandwidth_hz, RF_BANDWIDTH)/2;
+        middle_freq = sig_sfreq + alignment_up(poal_config->ctrl_para.specturm_analysis_param.bandwidth_hz, ps->param.bandwidth)/2;
     }else{
         middle_freq = sig_sfreq + poal_config->ctrl_para.specturm_analysis_param.bandwidth_hz/2;
     }
@@ -177,7 +214,7 @@ fft_data_type *spectrum_fft_data_order(struct spectrum_st *ps, uint32_t *result_
        remove sideband signals data
    */
     /* single sideband signal fft size */
-    uint32_t single_sideband_size = ps->fft_len*SINGLE_SIDE_BAND_POINT_RATE;
+    uint32_t single_sideband_size = ps->fft_len*get_single_side_band_pointrate();
     
     /* odd number */
     if(!EVEN(single_sideband_size)){
@@ -195,14 +232,14 @@ fft_data_type *spectrum_fft_data_order(struct spectrum_st *ps, uint32_t *result_
                 the right extra data: (BW + deltabw - mf0 - bw0/2) *fftSize / BW; [BW + deltabw >= mf0 + bw0/2]
      */
     uint32_t left_extra_single_size = 0, right_extra_single_size = 0;
-    if((ps->param.m_freq <= RF_BANDWIDTH/2) && (ps->param.m_freq > 0)){
+    if((ps->param.m_freq <= ps->param.bandwidth/2) && (ps->param.m_freq > 0)){
         if(ps->param.m_freq - ps->param.bandwidth/2 >= delta_bw){
-            left_extra_single_size = (ps->param.m_freq - ps->param.bandwidth/2 - delta_bw) * (*result_fft_size) / RF_BANDWIDTH;
+            left_extra_single_size = (ps->param.m_freq - ps->param.bandwidth/2 - delta_bw) * (*result_fft_size) / ps->param.bandwidth;
         }else{
             left_extra_single_size = 0;
         }
-        if(RF_BANDWIDTH + delta_bw > ps->param.m_freq + ps->param.bandwidth/2){
-            right_extra_single_size = (RF_BANDWIDTH + delta_bw - ps->param.m_freq - ps->param.bandwidth/2) * (*result_fft_size) / RF_BANDWIDTH;
+        if(ps->param.bandwidth + delta_bw > ps->param.m_freq + ps->param.bandwidth/2){
+            right_extra_single_size = (ps->param.bandwidth + delta_bw - ps->param.m_freq - ps->param.bandwidth/2) * (*result_fft_size) / ps->param.bandwidth;
         }else{
             right_extra_single_size = 0;
         }
@@ -222,9 +259,9 @@ fft_data_type *spectrum_fft_data_order(struct spectrum_st *ps, uint32_t *result_
               There Bw is: RF_BANDWIDTH, ScanBw is ps->param.bandwidth,
                ScanBw must less than or equal to Bw
         */
-        if((RF_BANDWIDTH > ps->param.bandwidth) && (ps->param.bandwidth > 0)){
-            extra_data_single_size = ((1-(float)ps->param.bandwidth/(float)RF_BANDWIDTH)/2) * (*result_fft_size);
-            printf_info("bw:%u, m_freq:%llu,need to remove the single extra data: %f,%u,%u\n",ps->param.bandwidth, ps->param.m_freq, (1-(float)ps->param.bandwidth/(float)RF_BANDWIDTH)/2, *result_fft_size, extra_data_single_size);
+        if((ps->param.bandwidth > ps->param.bandwidth) && (ps->param.bandwidth > 0)){
+            extra_data_single_size = ((1-(float)ps->param.bandwidth/(float)ps->param.bandwidth)/2) * (*result_fft_size);
+            printf_info("bw:%u, m_freq:%llu,need to remove the single extra data: %f,%u,%u\n",ps->param.bandwidth, ps->param.m_freq, (1-(float)ps->param.bandwidth/(float)ps->param.bandwidth)/2, *result_fft_size, extra_data_single_size);
             if(ps->fft_len <  extra_data_single_size *2){
                 *result_fft_size = 0;
             }else{
@@ -238,6 +275,7 @@ fft_data_type *spectrum_fft_data_order(struct spectrum_st *ps, uint32_t *result_
  exit:
     return (fft_data_type *)((fft_data_type *)ps->fft_short_payload + single_sideband_size + extra_data_single_size + left_extra_single_size);
 }
+
 
 static int specturm_write_oneframe_iq_data_to_buffer(struct spectrum_header_param *param, void *data, size_t nbyte)
 {
@@ -287,6 +325,7 @@ void spectrum_psd_user_deal(struct spectrum_header_param *param)
 
     ps = &_spectrum;
 
+    spectrum_mgc_calibration(param->ch, param->m_freq);
     /* Read Raw IQ data*/
     ps->iq_payload = specturm_rx_iq_read(&ps->iq_len);
     if(ps->iq_len == 0){
@@ -294,7 +333,8 @@ void spectrum_psd_user_deal(struct spectrum_header_param *param)
         return;
     }
     printf_debug("ps->iq_payload[0]=%d, %d,param->fft_size=%d, ps->iq_len=%d\n", ps->iq_payload[0],ps->iq_payload[1], param->fft_size, ps->iq_len);
-    
+
+#ifdef SUPPORT_SPECTRUM_FFT_ANALYSIS
     /* if spectrum analysis is enable, we start to save iq data(one frame) to memery pool; prepare to analysis spectrum */
     if(specturm_is_analysis_enable()){
         if(!specturm_write_oneframe_iq_data_to_buffer(param, ps->iq_payload, ps->iq_len)){
@@ -304,10 +344,11 @@ void spectrum_psd_user_deal(struct spectrum_header_param *param)
             pthread_cond_signal(&spectrum_analysis_cond);
         }
     }
+#endif
 
     if(specturm_is_psd_enable()){
         fft_size = param->fft_size;
-        /* Start Convert IQ data to FFT, Noise threshold:8 */
+        /* Start Convert IQ data to FFT */
         fft_float_data = (float *)safe_malloc(fft_size*4);
         ps->fft_float_payload = fft_float_data;
         fft_spectrum_iq_to_fft_handle(ps->iq_payload, fft_size, fft_size*2, ps->fft_float_payload);
@@ -335,27 +376,137 @@ void spectrum_psd_user_deal(struct spectrum_header_param *param)
     }
 }
 
-int32_t spectrum_analysis_level_calibration(uint64_t m_freq)
+int32_t spectrum_analysis_level_calibration(uint64_t m_freq_hz)
 {
     struct poal_config *poal_config = &(config_get_config()->oal_config);
     int32_t cal_value = 0, found = 0;
     int i;
 
-    for(i = 0; i< sizeof(poal_config->cal_level.analysis.start_freq)/sizeof(uint64_t); i++){
-        if((m_freq >= poal_config->cal_level.analysis.start_freq[i]*1000) && (m_freq < poal_config->cal_level.analysis.end_freq[i]*1000)){
+    for(i = 0; i< sizeof(poal_config->cal_level.analysis.start_freq_khz)/sizeof(uint32_t); i++){
+        if((m_freq_hz >= poal_config->cal_level.analysis.start_freq_khz[i]*1000) && (m_freq_hz < poal_config->cal_level.analysis.end_freq_khz[i]*1000)){
             cal_value = poal_config->cal_level.analysis.power_level[i];
             found = 1;
             break;
         }
     }
     if(found){
-        printf_debug("find the calibration level: %llu, %d\n", m_freq, cal_value);
+        printf_debug("find the calibration level: %llu, %d\n", m_freq_hz, cal_value);
     }else{
         printf_note("Not find the calibration level, use default value: %d\n", cal_value);
     }
     cal_value += poal_config->cal_level.analysis.global_roughly_power_lever;
     return cal_value;
 }
+
+void spectrum_level_calibration(fft_data_type *fftdata, uint32_t fft_valid_len, uint32_t fft_size, uint64_t m_freq_hz)
+{
+    struct poal_config *poal_config = &(config_get_config()->oal_config);
+    int32_t cal_value = 0, found = 0;
+    int i;
+    
+    for(i = 0; i< sizeof(poal_config->cal_level.analysis.start_freq_khz)/sizeof(uint32_t); i++){
+        if((m_freq_hz >= poal_config->cal_level.specturm.start_freq_khz[i]*1000) && (m_freq_hz < poal_config->cal_level.specturm.end_freq_khz[i]*1000)){
+            cal_value = poal_config->cal_level.specturm.power_level[i];
+            found = 1;
+            break;
+        }
+    }
+    if(found){
+        printf_debug("find the calibration level: %llu, %d\n", m_freq_hz, cal_value);
+    }else{
+        printf_note("Not find the calibration level, use default value: %d\n", cal_value);
+    }
+
+    cal_value += poal_config->cal_level.specturm.global_roughly_power_lever;
+    
+    if(fft_size == 512){
+        cal_value = cal_value - 20;
+    }else if(fft_size == 1024){
+        cal_value = cal_value - 10;
+    }else if(fft_size == 2048){
+        cal_value = cal_value;
+    }else if(fft_size == 4096){
+        cal_value = cal_value + 10;
+    }else if(fft_size == 8192){
+        cal_value = cal_value + 20;
+    }else{
+        printf_warn("fft size is not set, set default calibration level!!\n");
+    }
+    printf_debug("freq:[%llu], The final cal_value:%d, fft size:%u,%u\n", m_freq_hz, cal_value, fft_size, fft_valid_len);
+    SSDATA_MUL_OFFSET(fftdata, 10, fft_valid_len);
+    SSDATA_CUT_OFFSET(fftdata, cal_value, fft_valid_len);
+}
+
+
+/* mgc  calibration*/
+void spectrum_mgc_calibration(uint8_t ch, uint64_t m_freq_hz)
+{
+    struct poal_config *poal_config = &(config_get_config()->oal_config);
+    int32_t cal_value = 0, found = 0;
+    int i;
+
+    for(i = 0; i< sizeof(poal_config->cal_level.mgc.start_freq_khz)/sizeof(uint32_t); i++){
+        if((m_freq_hz >= poal_config->cal_level.mgc.start_freq_khz[i]*1000) && (m_freq_hz < poal_config->cal_level.mgc.end_freq_khz[i]*1000)){
+            cal_value = poal_config->cal_level.mgc.gain_val[i];
+            found = 1;
+            break;
+        }
+    }
+    cal_value += poal_config->cal_level.mgc.global_gain_val;
+    if(found){
+        printf_debug("find the mgc calibration level: %llu, %d\n", m_freq_hz, cal_value);
+    }else{
+        
+        printf_info("Not find the  mgc calibration level, use default value: %d\n", 
+                    poal_config->cal_level.mgc.global_gain_val);
+    }
+    executor_set_command(EX_RF_FREQ_CMD, EX_RF_MGC_GAIN, ch, &cal_value);
+}
+
+
+/* ÖÐÆµÐ¹Â¶´¦Àí */
+void spectrum_middle_freq_leakage_calibration(char *data ,unsigned int len,unsigned int fft_size){
+    short int renew_data_len,left_diff_one,left_diff_two,right_diff_one,right_diff_two,threshold;
+    unsigned int mid_fft_point=0;
+    #define DATA_TYPE_BYTE_LEN 2
+
+    struct poal_config *poal_config = &(config_get_config()->oal_config);
+    int32_t found = 0;
+    int i;
+    for(i = 0; i< sizeof(poal_config->cal_level.lo_leakage.fft_size)/sizeof(uint32_t); i++){
+        if(fft_size == poal_config->cal_level.lo_leakage.fft_size[i]){
+            threshold = poal_config->cal_level.lo_leakage.threshold[i];
+            renew_data_len = poal_config->cal_level.lo_leakage.renew_data_len[i];
+            found = 1;
+            break;
+        }
+    }    
+
+    threshold += poal_config->cal_level.lo_leakage.global_threshold;
+    renew_data_len += poal_config->cal_level.lo_leakage.global_renew_data_len;
+    
+    if(found){
+        printf_debug("fft_size=%d, find the lo_leakage threshold calibration level: %d, %d\n", fft_size, threshold, renew_data_len);
+    }else{
+        printf_info("Not find the lo_leakage threshold calibration level, use default value: %d,%d\n", 
+            poal_config->cal_level.lo_leakage.global_threshold, poal_config->cal_level.lo_leakage.global_renew_data_len);
+    }
+
+    mid_fft_point = len/2 ;// for half point number
+
+    left_diff_one = (*(short *)(data+mid_fft_point)) - (*(short *)(data+mid_fft_point+DATA_TYPE_BYTE_LEN));
+    left_diff_two = (*(short *)(data+mid_fft_point)) - (*(short *)(data+mid_fft_point+renew_data_len*DATA_TYPE_BYTE_LEN));
+
+    right_diff_one =  (*(short *)(data+mid_fft_point-DATA_TYPE_BYTE_LEN)) - (*(short *)(data+mid_fft_point-2*DATA_TYPE_BYTE_LEN));
+    right_diff_two =  (*(short *)(data+mid_fft_point-DATA_TYPE_BYTE_LEN)) - (*(short *)(data+mid_fft_point-DATA_TYPE_BYTE_LEN-renew_data_len*DATA_TYPE_BYTE_LEN));
+    if(left_diff_one >0 && right_diff_one >0 && left_diff_two >0 && left_diff_two <=threshold && right_diff_two >0 && right_diff_two <=threshold){
+        //for right part 
+        memcpy(data+mid_fft_point,data+mid_fft_point+renew_data_len*DATA_TYPE_BYTE_LEN,renew_data_len*DATA_TYPE_BYTE_LEN);
+        //for left part
+        memcpy(data+mid_fft_point-renew_data_len*DATA_TYPE_BYTE_LEN,data+mid_fft_point-2*renew_data_len*DATA_TYPE_BYTE_LEN,renew_data_len*DATA_TYPE_BYTE_LEN);
+    }
+}
+
 
 /* function: read or write fft result 
     @result =NULL : read
@@ -416,45 +567,6 @@ exit:
     return (void *)pfft;
 }
 
-void spectrum_level_calibration(fft_data_type *fftdata, uint32_t fft_valid_len, uint32_t fft_size, uint64_t m_freq)
-{
-    struct poal_config *poal_config = &(config_get_config()->oal_config);
-    int32_t cal_value = 0, found = 0;
-    int i;
-    
-    for(i = 0; i< sizeof(poal_config->cal_level.analysis.start_freq)/sizeof(uint64_t); i++){
-        if((m_freq >= poal_config->cal_level.specturm.start_freq[i]*1000) && (m_freq < poal_config->cal_level.specturm.end_freq[i]*1000)){
-            cal_value = poal_config->cal_level.specturm.power_level[i];
-            found = 1;
-            break;
-        }
-    }
-    if(found){
-        printf_debug("find the calibration level: %llu, %d\n", m_freq, cal_value);
-    }else{
-        printf_note("Not find the calibration level, use default value: %d\n", cal_value);
-    }
-
-    cal_value += poal_config->cal_level.specturm.global_roughly_power_lever;
-    
-    if(fft_size == 512){
-        cal_value = cal_value - 20;
-    }else if(fft_size == 1024){
-        cal_value = cal_value - 10;
-    }else if(fft_size == 2048){
-        cal_value = cal_value;
-    }else if(fft_size == 4096){
-        cal_value = cal_value + 10;
-    }else if(fft_size == 8192){
-        cal_value = cal_value + 20;
-    }else{
-        printf_warn("fft size is not set, set default calibration level!!\n");
-    }
-    printf_debug("freq:[%llu], The final cal_value:%d, fft size:%u,%u\n", m_freq, cal_value, fft_size, fft_valid_len);
-    SSDATA_MUL_OFFSET(fftdata, 10, fft_valid_len);
-    SSDATA_CUT_OFFSET(fftdata, cal_value, fft_valid_len);
-
-}
 
 /* timer callback function, send spectrum to client every interval */
 int32_t spectrum_send_fft_data_interval(void)
@@ -471,6 +583,7 @@ int32_t spectrum_send_fft_data_interval(void)
     }
     fft_send_payload = spectrum_fft_data_order(ps, &fft_order_len);
     printf_debug("fft order len[%u], ps->fft_len=%u\n", fft_order_len, ps->fft_len);
+    spectrum_middle_freq_leakage_calibration((char *)fft_send_payload, fft_order_len * 2, ps->fft_len);
     spectrum_level_calibration(fft_send_payload, fft_order_len, ps->param.fft_size, ps->param.m_freq);
     spectrum_send_fft_data((void *)fft_send_payload, fft_order_len*sizeof(fft_data_type), &ps->param);
     ps->fft_data_ready = false;
@@ -480,7 +593,8 @@ int32_t spectrum_send_fft_data_interval(void)
 
 
 /* load specturm analysis paramter */
-static int8_t inline spectrum_get_analysis_paramter(uint64_t s_freq, uint64_t e_freq,uint32_t *_analysis_bw, uint64_t *midd_freq_offset)
+static int8_t inline spectrum_get_analysis_paramter(uint64_t s_freq, uint64_t e_freq, uint32_t wk_bandwidth, 
+                                                              uint32_t *_analysis_bw, uint64_t *midd_freq_offset)
 {
     uint32_t analysis_signal_bw;
     uint64_t analysis_signal_middle_freq;
@@ -493,7 +607,7 @@ static int8_t inline spectrum_get_analysis_paramter(uint64_t s_freq, uint64_t e_
         printf_err("analysis frequency[%llu] is not  NOT within the bandwidth range[%llu, %llu]\n", analysis_signal_middle_freq, s_freq, e_freq);
         return -1;
     }
-    if(analysis_signal_bw > RF_BANDWIDTH*SPECTRUM_MAX_SCAN_COUNT || analysis_signal_bw == 0){
+    if(analysis_signal_bw > wk_bandwidth*SPECTRUM_MAX_SCAN_COUNT || analysis_signal_bw == 0){
         printf_err("analysis bandwidth [%u] not surpport!!\n", analysis_signal_bw);
         return -1;
     }
@@ -501,9 +615,9 @@ static int8_t inline spectrum_get_analysis_paramter(uint64_t s_freq, uint64_t e_
     *_analysis_bw = analysis_signal_bw;
 
     /* Calculate the center frequency offset value (relative to the rf operating bandwidth) for spectrum analysis */
-    if(analysis_signal_middle_freq <= RF_BANDWIDTH/2){
+    if(analysis_signal_middle_freq <= wk_bandwidth/2){
         if(s_freq >= delta_bw){
-            *midd_freq_offset = RF_BANDWIDTH/2+delta_bw - analysis_signal_middle_freq;
+            *midd_freq_offset = wk_bandwidth/2+delta_bw - analysis_signal_middle_freq;
         }else{
             printf_err("start frequency[%llu] is too small\n", s_freq);
             return -1;
@@ -518,7 +632,7 @@ static int8_t inline spectrum_get_analysis_paramter(uint64_t s_freq, uint64_t e_
     return 0;
 }
 
-static inline int8_t spectrum_sideband_deal_mm_pool(memory_pool_t  *fftmpool, memory_pool_t  *rsb_fftmpool)
+static inline int8_t spectrum_sideband_deal_mm_pool(memory_pool_t  *fftmpool, memory_pool_t  *rsb_fftmpool, uint32_t bandwidth_hz)
 {   
     uint32_t extra_data_single_size = 0;
     void *p_dat, *p_end;
@@ -528,9 +642,9 @@ static inline int8_t spectrum_sideband_deal_mm_pool(memory_pool_t  *fftmpool, me
     p_end = memory_pool_end(fftmpool);
     p_inc = memory_pool_step(fftmpool);
 
-    extra_data_single_size = fft_size * SINGLE_SIDE_BAND_POINT_RATE;//alignment_down(fft_size * SINGLE_SIDE_BAND_POINT_RATE, sizeof(float));
+    extra_data_single_size = fft_size * get_single_side_band_pointrate();//alignment_down(fft_size * SINGLE_SIDE_BAND_POINT_RATE, sizeof(float));
     printf_note("##extra_data_single_size=%u, fft_size=%u, pool_step=%u, use=%d\n", extra_data_single_size, fft_size, memory_pool_step(fftmpool), memory_pool_get_use_count(fftmpool));
-    rsb_fft_size = fft_size/SIDE_BAND_RATE;  //fft_size-2 * extra_data_single_size;
+    rsb_fft_size = fft_size/get_side_band_rate();  //fft_size-2 * extra_data_single_size;
     if(rsb_fft_size > memory_pool_step(rsb_fftmpool)/4){
         printf_err("remove side band size[%u] is bigger than raw fft size[%u]\n", rsb_fft_size, memory_pool_step(rsb_fftmpool));
         return -1;
@@ -620,46 +734,48 @@ loop:
         /* Here we have get IQ data in memory pool (name: iq_mpool)*/
         printf_info("###Save IQ data###\n");
         spectrum_data_write_file(iq_mpool, sizeof(int16_t), 0);
+
+        printf_note("###STEP1: Write Attr to  Small Pool###\n");
+        memory_pool_write_attr_value(fft_small_mpool, memory_pool_get_attr(iq_mpool), memory_pool_get_attr_len(iq_mpool));
+        
+        param = (struct spectrum_header_param *)memory_pool_get_attr(fft_small_mpool);
+        printf_note("bandwidth=%uHz, s_freq=%llu, e_freq=%llu\n", param->bandwidth, param->s_freq, param->e_freq);
         
         /* --1step IQ convert 4K(small) fft, and store fft data to small memory pool  */
-        printf_note("###STEP1: IQ Convert to Small FFT###\n");
+        printf_note("###STEP2: IQ Convert to Small FFT###\n");
         small_fft_size = spectrum_iq_convert_fft_store_mm_pool(fft_small_mpool, iq_mpool);
         printf_info("###Save FFT data###\n");
         /* remove side band */
-        if(spectrum_sideband_deal_mm_pool(fft_small_mpool, fft_small_rsb_mpool) == -1){
+        if(spectrum_sideband_deal_mm_pool(fft_small_mpool, fft_small_rsb_mpool, param->bandwidth) == -1){
             sleep(1);
             goto loop;
         }
         spectrum_data_write_file(fft_small_rsb_mpool, sizeof(float), 1);
         
         /* --2 step: IQ convet 128K(big) fft, and store fft data to big memory pool */
-        printf_note("###STEP2: IQ Convert to Big FFT###\n");
+        printf_note("###STEP4: IQ Convert to Big FFT###\n");
         big_fft_size = spectrum_iq_convert_fft_store_mm_pool(fft_big_mpool, iq_mpool);
         /* remove side band */
-        if(spectrum_sideband_deal_mm_pool(fft_big_mpool, fft_big_rsb_mpool) == -1){
+        if(spectrum_sideband_deal_mm_pool(fft_big_mpool, fft_big_rsb_mpool, param->bandwidth) == -1){
             sleep(1);
             goto loop;
         }
         printf_info("###Save Big FFT data###\n");
         spectrum_data_write_file(fft_big_rsb_mpool, sizeof(float), 2);
         
-        /* save specturm perameter to big fft memory pool */
-        printf_note("###STEP3: Write FFT Attr to Pool###\n");
-        memory_pool_write_attr_value(fft_big_mpool, memory_pool_get_attr(iq_mpool), memory_pool_get_attr_len(iq_mpool));
+
         /* now, we can refill IQ data to memory pool again */
         
         printf_note("###IQ Deal Over,Free, Wait New IQ data###\n");
 
-        param = (struct spectrum_header_param *)memory_pool_get_attr(fft_big_mpool);
-        printf_info("s_freq=%llu, e_freq=%llu\n", param->s_freq, param->e_freq);
 
         /* load specturm analysis paramter: analysis_bw, analysis_midd_freq_offset*/
-        if(spectrum_get_analysis_paramter(param->s_freq, param->e_freq, &analysis_bw, &analysis_midd_freq_offset) == -1){
+        if(spectrum_get_analysis_paramter(param->s_freq, param->e_freq, param->bandwidth, &analysis_bw,   &analysis_midd_freq_offset) == -1){
             sleep(1);
             goto loop;
         }
         
-        total_bw = RF_BANDWIDTH*memory_pool_get_use_count(fft_big_mpool);
+        total_bw = param->bandwidth*memory_pool_get_use_count(fft_big_mpool);
         small_fft_rsb_size = memory_pool_step(fft_small_rsb_mpool)*memory_pool_get_use_count(fft_small_rsb_mpool)/4;
         big_fft_rsb_size = memory_pool_step(fft_big_rsb_mpool)*memory_pool_get_use_count(fft_big_rsb_mpool)/4;
         
@@ -672,8 +788,8 @@ loop:
         printf_note("rsb big fft data len=%d, use_count=%d\n", big_fft_rsb_size, memory_pool_get_use_count(fft_big_rsb_mpool));
         printf_note("rsb fft small mpool step=%u, rsb big fft mpool step=%u\n", memory_pool_step(fft_small_rsb_mpool), memory_pool_step(fft_big_rsb_mpool));
         
-        printf_note("work total bw=%u\n", total_bw);
-        printf_note("###STEP4: Start to analysis FFT data###\n");
+        printf_note("work total bw=%u, big_fft_size/small_fft_size=%d\n", total_bw, big_fft_size/small_fft_size);
+        printf_note("###STEP4: v2. Start to analysis FFT data###\n");
 
         TIME_ELAPSED(fft_spectrum_fftdata_handle(get_power_level_threshold(),       /* signal threshold */
                     (float *)memory_pool_first(fft_small_rsb_mpool),                /* remove side band small fft data */
@@ -682,7 +798,8 @@ loop:
                     big_fft_rsb_size,                                               /* big fft data len */
                     analysis_midd_freq_offset,                                      /* analysis signal middle frequency */
                     analysis_bw,                                                    /* analysis signal bandwidth */
-                    total_bw                                                        /* total bw */
+                    total_bw,                                                       /* total bw */
+                    big_fft_size/small_fft_size
                     ));                                                 
 
         resolution = calc_resolution(total_bw, big_fft_size);
@@ -708,7 +825,9 @@ void spectrum_init(void)
     pthread_t work_id;
    
     fft_init();
-    printf_info("fft_init\n");
+    /* set default smooth count */
+    fft_set_smoothcount(8);
+    printf_warn("fft_init:%.10f, %.6f\n", get_single_side_band_pointrate(), get_side_band_rate());
 
     sem_init(&(sp_sem.notify_iq_to_fft), 0, 0);
 
@@ -717,7 +836,7 @@ void spectrum_init(void)
     ps->fft_data_ready = false;/* fft data not vaild to deal */
     ps->iq_data_ready = false;
     UNLOCK_SP_DATA();
-
+#ifdef SUPPORT_SPECTRUM_FFT_ANALYSIS
     /* create memory pool */
     /* 128K fft, 1fft=4byte */
     mp_iq_buffer_head = memory_pool_create(SPECTRUM_IQ_SIZE*4, SPECTRUM_MAX_SCAN_COUNT);
@@ -731,5 +850,6 @@ void spectrum_init(void)
     if(ret!=0)
         perror("pthread cread work_id");
     pthread_detach(work_id);
+#endif
 }
 

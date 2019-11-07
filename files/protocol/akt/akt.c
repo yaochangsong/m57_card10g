@@ -595,7 +595,7 @@ static int akt_execute_get_command(void)
         }
         case SPCTRUM_PARAM_CMD:
         {
-        #ifdef SUPPORT_SPECTRUM_FFT
+        #ifdef SUPPORT_SPECTRUM_FFT_ANALYSIS
             #define AVG_FREQ_POINT  16  
             int i, datalen;
             FFT_SIGNAL_RESPINSE_ST *resp_result;
@@ -660,6 +660,8 @@ static int akt_execute_get_command(void)
             memcpy(akt_get_response_data.payload_data, resp_result, datalen);
             akt_get_response_data.header.len = datalen;
             safe_free(resp_result);
+        #else
+            printf_warn("###########SPECTRUM ANALYSIS NOT SUPPORT#############\n");
         #endif
         }
         case SOFTWARE_VERSION_CMD:

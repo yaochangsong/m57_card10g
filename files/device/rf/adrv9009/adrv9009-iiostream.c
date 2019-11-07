@@ -31,10 +31,13 @@
 #include <iio.h>
 #endif
 
-
 /* helper macros */
+#ifndef MHZ(x)
 #define MHZ(x) ((long long)(x*1000000.0 + .5))
+#endif
+#ifndef GHZ(x)
 #define GHZ(x) ((long long)(x*1000000000.0 + .5))
+#endif
 
 #define ASSERT(expr) { \
 	if (!(expr)) { \

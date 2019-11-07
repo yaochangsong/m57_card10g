@@ -136,10 +136,14 @@ includedir_so += -I./lib/libfftw3/x86/include
 libdir_so += -L./lib/libiio/x86/lib
 includedir_so += -I./lib/libiio/arm/include
 else
-libdir_so += -L./lib/libfftw3/arm/lib
-includedir_so += -I./lib/libfftw3/arm/include
-libdir_so += -L./lib/libiio/arm/lib
-includedir_so += -I./lib/libiio/arm/include
+	ifneq ($(findstring y,$(SUPPORT_SPECTRUM_USER)),)
+		libdir_so += -L./lib/libfftw3/arm/lib
+		includedir_so += -I./lib/libfftw3/arm/include
+	endif
+	ifneq ($(findstring y,$(SUPPORT_LIB_IIO)),)
+		libdir_so += -L./lib/libiio/arm/lib
+		includedir_so += -I./lib/libiio/arm/include
+	endif
 endif
 
 INCLUDE_DIR = -I. -I./ ${includedir_so} 

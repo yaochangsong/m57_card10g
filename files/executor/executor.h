@@ -142,6 +142,9 @@ struct spectrum_header_param{
     pthread_mutex_unlock(&set_cmd_mutex); \
 } while (0)
 
+#define delta_bw  MHZ(30)
+#define middle_freq_resetting(bw, mfreq)    ((bw/2) >= (mfreq) ? (bw/2+delta_bw) : (mfreq))
+
 #include "config.h"
 #ifdef SUPPORT_PROTOCAL_AKT
     #if defined(SUPPORT_SPECTRUM_KERNEL)

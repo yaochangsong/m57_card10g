@@ -21,7 +21,9 @@
 #include <errno.h>
 #include <linux/spi/spidev.h>
 #include <time.h>
+#ifdef SUPPORT_SPECTRUM_USER
 #include <fftw3.h>
+#endif
 
 
 #include "lib/libubox/ulog.h"
@@ -51,9 +53,10 @@
 
 #include "executor/executor.h"
 
+#ifdef SUPPORT_SPECTRUM_USER
 #include "executor/fft/spectrum.h"
 #include "executor/fft/fft.h"
-
+#endif
 
 #include "device/uart/uart.h"
 #include "device/rf/rf.h"
@@ -63,14 +66,23 @@
 #if defined (SUPPORT_RF_ADRV9361)
 #include "device/rf/adrv9361/adrv9361.h"
 #endif
+#if defined (SUPPORT_TEMP_HUMIDITY_SI7021)
 #include "device/humidity/si7021.h" 
-
-
-
+#endif
+#if defined (SUPPORT_LCD)
 #include "device/lcd/ss_k600.h"
 #include "device/lcd/lcd.h"
+#endif
 #include "device/gpio/gpio.h"
 #include "dao/oal/dao_conf.h"
+
+
+#ifndef MHZ(x)
+#define MHZ(x) ((long long)(x*1000000.0 + .5))
+#endif
+#ifndef GHZ(x)
+#define GHZ(x) ((long long)(x*1000000000.0 + .5))
+#endif
 
 #define SPCTRUM_VERSION_STRING "1.0.0-"__DATE__"."__TIME__ /* application version */
 

@@ -2,8 +2,6 @@
 #define _SPRCTRUM_H_H
 #include "config.h"
 
-#define MHZ(x) ((long long)(x*1000000.0 + .5))
-
 #ifdef SUPPORT_RF_ADRV9009
 #define specturm_rx0_read_data adrv9009_iio_read_rx0_data
 #define RF_BANDWIDTH  RF_ADRV9009_BANDWITH
@@ -55,9 +53,6 @@
 #define  SPECTRUM_BIG_FFT_SIZE  SPECTRUM_IQ_SIZE/2
 
 //#define calc_resolution(bw_hz, fft_size)  (SIDE_BAND_RATE*bw_hz/fft_size)
-
-#define delta_bw  MHZ(30)
-#define middle_freq_resetting(bw, mfreq)    ((bw/2) >= (mfreq) ? (bw/2+delta_bw) : (mfreq))
 
 #define KU_FREQUENCY_START   10700000000 //10.7G
 #define KU_FREQUENCY_END     12750000000 //12.75G

@@ -503,6 +503,9 @@ uint8_t  io_set_network_to_interfaces(void *netinfo)
 
     sprintf(cmd, "echo \"gateway %s\" >> %s", s_gw, NETWORK_INTERFACES_FILE_PATH);
     do_system(cmd);
+
+    sprintf(cmd, "ip addr flush dev %s", NETWORK_EHTHERNET_POINT);
+    do_system(cmd);
     
     sprintf(cmd, "/etc/init.d/networking restart");
     printf_debug("%s\n", cmd);

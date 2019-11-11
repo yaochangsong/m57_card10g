@@ -293,7 +293,7 @@ static const char * uh_file_mime_lookup(const char *path)
 static void uh_file_response_ok_hdrs(struct uh_client *cl, struct stat *s)
 {
     char buf[128];
-
+    cl->printf(cl, "Access-Control-Allow-Origin:*\r\n");/* 允许跨域 add by yaocs */
     cl->printf(cl, "Last-Modified: %s\r\n", file_unix2date(s->st_mtime, buf, sizeof(buf)));
     cl->printf(cl, "Date: %s\r\n", file_unix2date(time(NULL), buf, sizeof(buf)));
 }
@@ -448,10 +448,10 @@ static void blk_file_write_cb(struct uh_client *cl)
             cl->request_done(cl);
             return;
         }
-        for(i = 0; i< r; i++){
+        /*for(i = 0; i< r; i++){
             printf("%d ", buf[i]);
         }
-        printf("\n");
+        printf("\n");*/
         cl->send(cl, buf, r);
     }
     #endif
@@ -470,9 +470,7 @@ static void uh_blk_file_data(struct uh_client *cl, struct path_info *pi)
 
     /* write status */
     uh_file_response_200(cl, &pi->stat);
-    printf_warn("----%s\n",pi->name);
     cl->printf(cl, "Content-Type: %s\r\n\r\n", uh_file_mime_lookup(pi->name));
-    printf_warn("----\n");
 
     /* send header */
     if (cl->request.method == UH_HTTP_METHOD_HEAD) {
@@ -488,6 +486,9 @@ static void uh_blk_file_data(struct uh_client *cl, struct path_info *pi)
     //cl->dispatch.free = uh_file_free;
     blk_file_write_cb(cl);
 }
+
+
+
 
 bool handle_blk_file_request(struct uh_client *cl, const char *path)
 {

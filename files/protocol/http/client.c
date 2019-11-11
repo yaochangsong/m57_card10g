@@ -513,7 +513,7 @@ static bool client_header_cb(struct uh_client *cl, char *buf, int len)
     client_parse_header(cl, buf);
     line_len = newline + 2 - buf;
     ustream_consume(cl->us, line_len);
-    printf_warn("cl->state=%d\n", cl->state);
+    printf_warn("cl->state=%d,%d\n", cl->state, CLIENT_STATE_DATA);
     if (cl->state == CLIENT_STATE_DATA)
         return client_data_cb(cl, newline + 2, len - line_len);
 

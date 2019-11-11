@@ -17,14 +17,26 @@
 #define _FILE_HTTP_H
 
 enum {
-    BLK_FILE_READ_CMD =1,
-    BLK_FILE_DELETE_CMD=2,
-    BLK_FILE_ADD_CMD=3,
-    BLK_FILE_BACKTRACE_CMD=4,
-    BLK_FILE_SEARCH_CMD=5
+    BLK_FILE_DOWNLOAD_CMD =1,
+    BLK_FILE_START_STORE_CMD,
+    BLK_FILE_STOP_STORE_CMD,
+    BLK_FILE_SEARCH_CMD,
+    BLK_FILE_START_BACKTRACE_CMD,
+    BLK_FILE_STOP_BACKTRACE_CMD,
+    BLK_FILE_DELETE_CMD,
 };
 
-#define HTTP_QUERY_READ_FILE_CMD    "ReadFile"
+#define HTTP_FILE_PATH                      "file"
+
+#define HTTP_DOWNLOAD_FILE_CMD              "download"
+#define HTTP_START_STORE_FILE_CMD           "startstore"
+#define HTTP_STOP_STORE_FILE_CMD            "stopstore"
+#define HTTP_SEARCH_FILE_CMD                "search"
+#define HTTP_START_BACKTRACE_FILE_CMD       "startbacktrace"
+#define HTTP_STOP_BACKTRACE_FILE_CMD        "stopbacktrace"
+#define HTTP_DELETE_FILE_CMD                "delete"
+
+
 #define HTTP_QUERY_DELETE_FILE_CMD  "DeleteFile"
 #define HTTP_QUERY_ADD_FILE_CMD     "AddFile"
 #define HTTP_QUERY_BACKTRACE_FILE_CMD     "BackTraceFile"

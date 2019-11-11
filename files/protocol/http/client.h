@@ -80,7 +80,7 @@ struct dispatch {
     struct {
         int fd;
         int cmd; /* add by ycs */
-        char path[64];/* add by ycs */
+        char path[128];/* add by ycs */
     } file;
 
     int post_len;

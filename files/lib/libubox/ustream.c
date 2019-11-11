@@ -235,7 +235,7 @@ void ustream_consume(struct ustream *s, int len)
 		ustream_free_buf(&s->r, buf);
 		buf = next;
 	} while(len);
-
+    printf("__ustream_set_read_blocked\n");
 	__ustream_set_read_blocked(s, s->read_blocked & ~READ_BLOCKED_FULL);
 }
 

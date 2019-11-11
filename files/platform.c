@@ -112,6 +112,8 @@ int main(int argc, char **argv)
     init_lcd();
 #endif
     executor_init();
+    file_http_init();
+
 if(spectrum_aditool_debug == false){
     #ifdef SUPPORT_RF
     rf_init();

@@ -172,6 +172,7 @@ struct path_info *uh_path_lookup(struct uh_client *cl, const char *path)
 
     /* create canon path */
     len = strlen(buf);
+    printf_warn("buf=%s, len=%d,%d\n", buf, len, sizeof(path_phys));//buf=./file/spectrum.xml, len=19
     slash = len && buf[len - 1] == '/';
     len = min(len, sizeof(path_phys) - 1);
 
@@ -188,7 +189,7 @@ struct path_info *uh_path_lookup(struct uh_client *cl, const char *path)
 
         if (!exists)
             continue;
-
+        printf_warn("path_phys=%s\n", path_phys);//./file/spectrum.xml    ./file  .
         /* test current path */
         if (stat(path_phys, &p.stat))
             continue;
@@ -201,6 +202,7 @@ struct path_info *uh_path_lookup(struct uh_client *cl, const char *path)
     if (strncmp(path_phys, docroot, docroot_len) != 0 ||
         (path_phys[docroot_len] != 0 &&
         path_phys[docroot_len] != '/'))
+        printf_warn("---");
         return NULL;
 
     /* is a regular file */
@@ -209,14 +211,21 @@ struct path_info *uh_path_lookup(struct uh_client *cl, const char *path)
         p.phys = path_phys;
         p.name = &path_phys[docroot_len];
         p.info = path_info[0] ? path_info : NULL;
+        printf_warn("---");
         return &p;
     }
 
-    if (!(p.stat.st_mode & S_IFDIR))
+    if (!(p.stat.st_mode & S_IFDIR)){
+        printf_warn("---");
         return NULL;
+    }
+        
 
-    if (path_info[0])
+    if (path_info[0]){
+        printf_warn("---");
         return NULL;
+    }
+        
 
     pathptr = path_phys + strlen(path_phys);
 
@@ -231,6 +240,7 @@ struct path_info *uh_path_lookup(struct uh_client *cl, const char *path)
        is missing in the request url, redirect the client to the same
        url with trailing slash appended */
     if (!slash) {
+        printf_warn("---");
         cl->redirect(cl, 302, "%s%s%s", &path_phys[docroot_len], query ? "?" : "", query ? query : "");
         p.redirected = 1;
         return &p;
@@ -240,13 +250,15 @@ struct path_info *uh_path_lookup(struct uh_client *cl, const char *path)
     len = path_phys + sizeof(path_phys) - pathptr - 1;
     strcpy(pathptr, cl->srv->index_file);
 
-    if (stat(path_phys, &p.stat) < 0)
+    if (stat(path_phys, &p.stat) < 0){
+        printf_warn("---");
         return NULL;
+    }
 
     p.root = docroot;
     p.phys = path_phys;
     p.name = &path_phys[docroot_len];
-
+    printf_warn("p.root=%s, p.phys=%s, p.name=%s\n", p.root, p.phys,  p.name);
     return p.phys ? &p : NULL;
 }
 
@@ -321,7 +333,7 @@ static void file_write_cb(struct uh_client *cl)
     static char buf[4096];
     int fd = cl->dispatch.file.fd;
     int r;
-
+    printf_warn("cl->us->w.data_bytes=%d\n", cl->us->w.data_bytes);
     while (cl->us->w.data_bytes < 256) {
         r = read(fd, buf, sizeof(buf));
         if (r < 0) {
@@ -353,9 +365,11 @@ static void uh_file_data(struct uh_client *cl, struct path_info *pi, int fd)
         close(fd);
         return;
     }
+     printf_warn("pi->phys[%s], pi->name:%s,pi->info=%s\n", pi->phys,pi->name, pi->info);
 
     /* write status */
     uh_file_response_200(cl, &pi->stat);
+    printf_warn("---\n");
 
     cl->printf(cl, "Content-Type: %s\r\n\r\n", uh_file_mime_lookup(pi->name));
 
@@ -397,16 +411,97 @@ error:
 bool handle_file_request(struct uh_client *cl, const char *path)
 {
     struct path_info *pi;
-
     pi = uh_path_lookup(cl, path);
     if (!pi)
         return false;
 
     if (pi->redirected)
         return true;
-
+    printf_warn("path=%s,pi->redirected=%d\n", path, pi->redirected);
     uh_file_request(cl, path, pi);
 
     return true;
 }
+
+/* add by ycs */
+#include "executor/file/http_file.h"
+
+static void blk_file_write_cb(struct uh_client *cl)
+{
+    static char buf[256];
+    char *path = cl->dispatch.file.path;
+    int fd = cl->dispatch.file.fd;
+    int r, i;
+    #if 1
+    while (cl->us->w.data_bytes < 256) {
+        r = file_http_read(path, buf, sizeof(buf));
+        printf_warn("r=%d\n", r);
+        if (r < 0) {
+            printf_warn("read error\n");
+            if (errno == EINTR)
+                continue;
+            uh_log_err("read");
+        }
+
+        if (r <= 0) {
+            printf_warn("request_done\n");
+            cl->request_done(cl);
+            return;
+        }
+        for(i = 0; i< r; i++){
+            printf("%d ", buf[i]);
+        }
+        printf("\n");
+        cl->send(cl, buf, r);
+    }
+    #endif
+}
+
+static void uh_blk_file_data(struct uh_client *cl, struct path_info *pi)
+{
+    /* test preconditions */
+    if ((!uh_file_if_modified_since(cl, &pi->stat))) {
+        cl->printf(cl, "\r\n");
+        cl->request_done(cl);
+        //close(fd);
+        return;
+    }
+     printf_warn("pi->phys[%s], pi->name:%s,pi->info=%s\n", pi->phys,pi->name, pi->info);
+
+    /* write status */
+    uh_file_response_200(cl, &pi->stat);
+    printf_warn("----%s\n",pi->name);
+    cl->printf(cl, "Content-Type: %s\r\n\r\n", uh_file_mime_lookup(pi->name));
+    printf_warn("----\n");
+
+    /* send header */
+    if (cl->request.method == UH_HTTP_METHOD_HEAD) {
+        cl->request_done(cl);
+        //close(fd);
+        return;
+    }
+
+    cl->state = CLIENT_STATE_DONE;
+
+   // cl->dispatch.file.fd = fd;
+    cl->dispatch.write_cb = blk_file_write_cb;
+    //cl->dispatch.free = uh_file_free;
+    blk_file_write_cb(cl);
+}
+
+bool handle_blk_file_request(struct uh_client *cl, const char *path)
+{
+    struct path_info *pi;
+    pi = file_http_fill_path_info(cl, path);
+    if (!pi)
+        return false;
+
+    if (pi->redirected)
+        return true;
+    printf_warn("path=%s,pi->redirected=%d\n", path, pi->redirected);
+    uh_blk_file_data(cl, pi);
+
+    return true;
+}
+
 

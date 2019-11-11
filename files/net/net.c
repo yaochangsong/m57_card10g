@@ -14,12 +14,15 @@
 ******************************************************************************/
 
 #include "config.h"
+#include "executor/file/http_file.h"
+
 
 static void on_accept(struct uh_client *cl)
 {
     printf_info("New connection from: %s:%d\n", cl->get_peer_addr(cl), cl->get_peer_port(cl));
 }
 
+#if 0
 static int on_request(struct uh_client *cl)
 {
     const char *path = cl->get_path(cl);
@@ -43,6 +46,13 @@ static int on_request(struct uh_client *cl)
 
     return UH_REQUEST_DONE;
 }
+#endif
+
+static int on_request(struct uh_client *cl)
+{
+    return file_http_on_request(cl);
+}
+
 
 
 /******************************************************************************

@@ -32,10 +32,10 @@
 #endif
 
 /* helper macros */
-#ifndef MHZ(x)
+#ifndef MHZ
 #define MHZ(x) ((long long)(x*1000000.0 + .5))
 #endif
-#ifndef GHZ(x)
+#ifndef GHZ
 #define GHZ(x) ((long long)(x*1000000000.0 + .5))
 #endif
 

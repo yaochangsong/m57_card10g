@@ -94,6 +94,11 @@ ifneq ($(findstring y,$(SUPPORT_SPECTRUM_KERNEL)),)
 	C_VAR += -DSUPPORT_SPECTRUM_KERNEL
 endif
 
+#file
+ifneq ($(findstring y,$(SUPPORT_BLK_HTTP_FILE)),)
+	SOURCE_DIR += executor/file
+	C_VAR += -DSUPPORT_BLK_HTTP_FILE
+endif
 
 SOURCE_DIR += log net protocol/oal dao/oal conf executor  utils device  device/gpio 
 

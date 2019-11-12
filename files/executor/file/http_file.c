@@ -25,15 +25,25 @@
 #include "config.h"
 #include "protocol/http/file.h"
 
+bool file_download(struct uh_client *cl, void *arg);
+bool file_startstore(struct uh_client *cl, void *arg);
+bool file_stopstore(struct uh_client *cl, void *arg);
+bool file_search(struct uh_client *cl, void *arg);
+bool file_start_backtrace(struct uh_client *cl, void *arg);
+bool file_stop_backtrace(struct uh_client *cl, void *arg);
+bool file_delete(struct uh_client *cl, void *arg);
+
+
+
 static struct http_file_request_info http_req_cmd[] = {
-    {"/file/*.*",               BLK_FILE_DOWNLOAD_CMD},
-    {"/file/download",          BLK_FILE_DOWNLOAD_CMD},
-    {"/file/startstore",        BLK_FILE_START_STORE_CMD},
-    {"/file/stopstore",         BLK_FILE_STOP_STORE_CMD},
-    {"/file/search",            BLK_FILE_SEARCH_CMD},
-    {"/file/startbacktrace",    BLK_FILE_START_BACKTRACE_CMD},
-    {"/file/stopbacktrace",     BLK_FILE_STOP_BACKTRACE_CMD},
-    {"/file/delete",            BLK_FILE_DELETE_CMD},
+    {"/file/*.*",               BLK_FILE_DOWNLOAD_CMD,          file_download},
+    {"/file/download",          BLK_FILE_DOWNLOAD_CMD,          file_download},
+    {"/file/startstore",        BLK_FILE_START_STORE_CMD,       file_startstore},
+    {"/file/stopstore",         BLK_FILE_STOP_STORE_CMD,        file_stopstore},
+    {"/file/search",            BLK_FILE_SEARCH_CMD,            file_search},
+    {"/file/startbacktrace",    BLK_FILE_START_BACKTRACE_CMD,   file_start_backtrace},
+    {"/file/stopbacktrace",     BLK_FILE_STOP_BACKTRACE_CMD,    file_stop_backtrace},
+    {"/file/delete",            BLK_FILE_DELETE_CMD,            file_delete},
 };
 
 
@@ -71,27 +81,51 @@ int file_http_reload_buffer(void)
     }
     memcpy(gfile.pfile, gfile.ptotalbuffer+offset, gfile.file_len);
     printf_warn("--------------offset=%d, reload offset =%d,gfile.buffer_total_len=%d\n", offset, gfile.file_len, gfile.buffer_total_len);
+    sleep(1);
     return gfile.file_len;
 }
 
-bool file_startstore(const char *path)
+bool file_startstore(struct uh_client *cl, void *arg)
 {
     printf_warn("startstore\n");
+    sleep(5);
     return true;
 }
 
-bool file_stopstore(const char *path)
+bool file_stopstore(struct uh_client *cl, void *arg)
 {
     printf_warn("stopstore\n");
+    sleep(1);
     return true;
 }
 
-bool file_search(const char *path)
+bool file_search(struct uh_client *cl, void *arg)
 {
     printf_warn("search\n");
+    sleep(1);
     return true;
 }
 
+bool file_start_backtrace(struct uh_client *cl, void *arg)
+{
+    printf_warn("start_backtrace\n");
+    sleep(1);
+    return true;
+}
+
+bool file_stop_backtrace(struct uh_client *cl, void *arg)
+{
+    printf_warn("stop backtrace\n");
+    sleep(1);
+    return true;
+}
+
+bool file_delete(struct uh_client *cl, void *arg)
+{
+    printf_warn("stop backtrace\n");
+    sleep(1);
+    return true;
+}
 
 
 int file_http_read(char *path, uint8_t *buf, int len)
@@ -100,7 +134,6 @@ int file_http_read(char *path, uint8_t *buf, int len)
     char *ptr_head;
     static int offset = 0;
     static int buffer_total_len = 0;
-    
     
     if(buf == NULL)
         return -1;
@@ -147,6 +180,37 @@ loop:
 }
 
 
+bool file_download(struct uh_client *cl, void *arg)
+{
+    
+    static char buf[256];
+    char *path = cl->dispatch.file.path;
+    int r, i;
+
+    printf_warn("download:path=%s\n", path);
+    while (cl->us->w.data_bytes < 256) {
+        r = file_http_read(path, buf, sizeof(buf));
+        printf_warn("r=%d\n", r);
+        if (r < 0) {
+            printf_warn("read error\n");
+            if (errno == EINTR)
+                continue;
+            uh_log_err("read");
+        }
+
+        if (r <= 0) {
+            printf_warn("request_done\n");
+            cl->request_done(cl);
+            return;
+        }
+        
+        cl->send(cl, buf, r);
+    }
+    return true;
+}
+
+
+
 struct path_info *file_http_fill_path_info(struct uh_client *cl, const char *path)
 {
     static struct path_info p;
@@ -184,7 +248,7 @@ int file_http_on_request(struct uh_client *cl)
     if(path ==NULL)
         return UH_REQUEST_CONTINUE;
 
-    printf_info("accept path: %s\n", path);
+    printf_warn("accept path: %s\n", path);
     
     /* Check if the request path is a file request cmd */
     for(int i = 0; i<sizeof(http_req_cmd)/sizeof(struct http_file_request_info); i++){
@@ -204,8 +268,32 @@ int file_http_on_request(struct uh_client *cl)
     if(filename != NULL){
         strncpy(cl->dispatch.file.path, filename, sizeof(cl->dispatch.file.path));
         cl->dispatch.file.path[sizeof(cl->dispatch.file.path) -1] = 0;
+        printf_info("cl->dispatch.file.path=%s\n",cl->dispatch.file.path);
     }
     return UH_REQUEST_CONTINUE;
+}
+
+
+int file_http_request_action(struct uh_client *cl)
+{
+    const char *path, *filename = NULL;
+    path = cl->get_path(cl);
+
+    printf_warn("path=%s\n",path);
+    for(int i = 0; i<sizeof(http_req_cmd)/sizeof(struct http_file_request_info); i++){
+        if(!strcmp(http_req_cmd[i].path, path)){
+            filename = cl->get_var(cl, "filename");
+            printf_warn("filename=%s\n",filename);
+            http_req_cmd[i].action(cl, NULL);
+            break;
+        }
+        if(strrchr(path, '.') && strrchr(http_req_cmd[i].path, '.')){
+            filename = strrchr(path, '/')+1;
+            printf_warn("filename=%s\n",filename);
+            http_req_cmd[i].action(cl, NULL);
+            break;
+        }
+    }
 }
 
 void file_http_init(void)

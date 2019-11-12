@@ -13,11 +13,11 @@
 *  Initial revision.
 ******************************************************************************/
 
-#ifndef _FILE_HTTP_H
-#define _FILE_HTTP_H
+#ifndef _REQUSET_H
+#define _REQUSET_H
 
 #include <stdbool.h>
-#include "protocol/http/client.h"
+#include "client.h"
 
 enum {
     BLK_FILE_DOWNLOAD_CMD =1,
@@ -29,14 +29,14 @@ enum {
     BLK_FILE_DELETE_CMD,
 };
 
-struct http_file_request_info {
+struct request_info {
     char *path;
     int cmd;
-
-    bool (*action)(struct uh_client *cl, void *arg);
+    int (*action)(struct uh_client *cl, void *arg);
 };
 
-extern void file_http_init(void);
+extern void http_requset_init(void);
 extern int file_http_read(char *filename, unsigned char *buf, int len);
 
 #endif
+

@@ -73,7 +73,11 @@ typedef enum _IOCTL_CMD {
     DECODE_MID_FREQ = 0x31,
     COMMON_PARAM_CONFIG=0x32,
     GET_CH_SIGNAL_AMP=0x33,
-    MAX_CMD_NUM = 0x34,
+    /* disk */
+    DISK_REFRESH_FILE_BUFFER=0x34,
+    DISK_READ_FILE_INFO=0x35,
+    
+    MAX_CMD_NUM = 0x35
 
 }IOCTL_CMD;
 
@@ -127,6 +131,18 @@ typedef enum _IOCTL_CMD {
 #define IOCTL_COMMON_PARAM_CMD    _IOW(DMA_RF_IOC_MAGIC, COMMON_PARAM_CONFIG, uint32_t)
 #define IOCTL_GET_CH_SIGNAL_AMP    _IOW(DMA_RF_IOC_MAGIC, GET_CH_SIGNAL_AMP, uint32_t)
 
+/* disk ioctl */
+#define IOCTL_DISK_REFRESH_FILE_BUFFER    _IOW(DMA_RF_IOC_MAGIC, DISK_REFRESH_FILE_BUFFER, uint32_t)
+#define IOCTL_DISK_READ_FILE_INFO    _IOW(DMA_RF_IOC_MAGIC, DISK_READ_FILE_INFO, uint32_t)
+
+#include <time.h>
+
+struct disk_file_info{
+    uint32_t st_blocks;             /* number of blocks allocated -文件所占块数*/
+    uint32_t st_blksize;            /* blocksize for filesystem I/O -系统块的大小*/
+    uint64_t st_size;               /* total size, in bytes -文件大小，字节为单位*/
+    time_t     ctime;               /* create time 创建时间   */
+};
 
 /* kernel client info */
 typedef struct  _STATION_INFO{

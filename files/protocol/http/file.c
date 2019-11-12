@@ -29,6 +29,8 @@
 #include "utils.h"
 #include "uhttpd.h"
 #include "log/log.h"
+#include "request.h"
+
 
 static const struct mimetype uh_mime_types[] = {
     { "txt",     "text/plain" },
@@ -293,6 +295,8 @@ static const char * uh_file_mime_lookup(const char *path)
 static void uh_file_response_ok_hdrs(struct uh_client *cl, struct stat *s)
 {
     char buf[128];
+    
+    cl->printf(cl, "Cache-Control:no-cache\r\n");
     cl->printf(cl, "Access-Control-Allow-Origin:*\r\n");/* 允许跨域 add by yaocs */
     cl->printf(cl, "Last-Modified: %s\r\n", file_unix2date(s->st_mtime, buf, sizeof(buf)));
     cl->printf(cl, "Date: %s\r\n", file_unix2date(time(NULL), buf, sizeof(buf)));
@@ -424,46 +428,12 @@ bool handle_file_request(struct uh_client *cl, const char *path)
 }
 
 /* add by ycs */
-#include "executor/file/http_file.h"
-
-static void blk_file_write_cb(struct uh_client *cl)
-{
-    static char buf[256];
-    char *path = cl->dispatch.file.path;
-    int fd = cl->dispatch.file.fd;
-    int r, i;
-    #if 1
-    while (cl->us->w.data_bytes < 256) {
-        r = file_http_read(path, buf, sizeof(buf));
-        printf_warn("r=%d\n", r);
-        if (r < 0) {
-            printf_warn("read error\n");
-            if (errno == EINTR)
-                continue;
-            uh_log_err("read");
-        }
-
-        if (r <= 0) {
-            printf_warn("request_done\n");
-            cl->request_done(cl);
-            return;
-        }
-        /*for(i = 0; i< r; i++){
-            printf("%d ", buf[i]);
-        }
-        printf("\n");*/
-        cl->send(cl, buf, r);
-    }
-    #endif
-}
-
-static void uh_blk_file_data(struct uh_client *cl, struct path_info *pi)
+void uh_blk_file_response_header(struct uh_client *cl, struct path_info *pi)
 {
     /* test preconditions */
     if ((!uh_file_if_modified_since(cl, &pi->stat))) {
         cl->printf(cl, "\r\n");
         cl->request_done(cl);
-        //close(fd);
         return;
     }
      printf_warn("pi->phys[%s], pi->name:%s,pi->info=%s\n", pi->phys,pi->name, pi->info);
@@ -475,34 +445,11 @@ static void uh_blk_file_data(struct uh_client *cl, struct path_info *pi)
     /* send header */
     if (cl->request.method == UH_HTTP_METHOD_HEAD) {
         cl->request_done(cl);
-        //close(fd);
+         printf_warn("send header-----\n");
         return;
     }
 
     cl->state = CLIENT_STATE_DONE;
-
-   // cl->dispatch.file.fd = fd;
-    cl->dispatch.write_cb = blk_file_write_cb;
-    //cl->dispatch.free = uh_file_free;
-    blk_file_write_cb(cl);
-}
-
-
-
-
-bool handle_blk_file_request(struct uh_client *cl, const char *path)
-{
-    struct path_info *pi;
-    pi = file_http_fill_path_info(cl, path);
-    if (!pi)
-        return false;
-
-    if (pi->redirected)
-        return true;
-    printf_warn("path=%s,pi->redirected=%d\n", path, pi->redirected);
-    uh_blk_file_data(cl, pi);
-
-    return true;
 }
 
 

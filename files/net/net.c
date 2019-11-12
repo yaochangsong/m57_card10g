@@ -14,7 +14,7 @@
 ******************************************************************************/
 
 #include "config.h"
-#include "executor/file/http_file.h"
+#include "protocol/http/request.h"
 
 
 static void on_accept(struct uh_client *cl)
@@ -50,7 +50,7 @@ static int on_request(struct uh_client *cl)
 
 static int on_request(struct uh_client *cl)
 {
-    return file_http_on_request(cl);
+    return http_on_request(cl);
 }
 
 

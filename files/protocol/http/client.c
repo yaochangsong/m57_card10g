@@ -189,8 +189,16 @@ static void post_post_done(struct uh_client *cl)
     if (cl->srv->on_request(cl) == UH_REQUEST_DONE)
         return;
     printf_warn("path=%s\n", path);
-    if (handle_file_request(cl, path))
-        return;
+    //if (handle_file_request(cl, path))
+    //    return;
+    if(cl->dispatch.cmd == 0){
+        if (handle_file_request(cl, path))
+            return;
+    }else{
+         if(http_requset_handle_cmd(cl, path)){
+            return;
+         }
+    }
 
     if (cl->srv->on_error404) {
         cl->srv->on_error404(cl);
@@ -231,13 +239,13 @@ static void uh_handle_request(struct uh_client *cl)
             return;
         }
     }
-    if(cl->dispatch.file.cmd == 0){
-         printf_warn("handle_file_request blk act=%d\n", cl->dispatch.file.cmd);
+    if(cl->dispatch.cmd == 0){
+         printf_warn("handle_file_request blk act=%d\n", cl->dispatch.cmd);
         if (handle_file_request(cl, path))
             return;
     }else{
-         printf_warn("path = %s, blk act=%d\n", path, cl->dispatch.file.cmd);
-         if(handle_blk_file_request(cl, path)){
+         printf_warn("path = %s, blk act=%d\n", path, cl->dispatch.cmd);
+         if(http_requset_handle_cmd(cl, path)){
             return;
          }
     }

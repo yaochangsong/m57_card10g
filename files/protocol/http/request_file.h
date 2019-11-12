@@ -12,31 +12,19 @@
 *  Rev 1.0   09 Nov 2019   yaochangsong
 *  Initial revision.
 ******************************************************************************/
+#ifndef _REQUEST_FILE_H_
+#define _REQUEST_FILE_H_
 
-#ifndef _FILE_HTTP_H
-#define _FILE_HTTP_H
+#define REQUEST_FILESIZE_BUFFER_LEN  512
 
-#include <stdbool.h>
-#include "protocol/http/client.h"
+extern int file_download(struct uh_client *cl, void *arg);
+extern int file_startstore(struct uh_client *cl, void *arg);
+extern int file_stopstore(struct uh_client *cl, void *arg);
+extern int file_search(struct uh_client *cl, void *arg);
+extern int file_start_backtrace(struct uh_client *cl, void *arg);
+extern int file_stop_backtrace(struct uh_client *cl, void *arg);
+extern int file_delete(struct uh_client *cl, void *arg);
+extern void file_handle_init(void);
 
-enum {
-    BLK_FILE_DOWNLOAD_CMD =1,
-    BLK_FILE_START_STORE_CMD,
-    BLK_FILE_STOP_STORE_CMD,
-    BLK_FILE_SEARCH_CMD,
-    BLK_FILE_START_BACKTRACE_CMD,
-    BLK_FILE_STOP_BACKTRACE_CMD,
-    BLK_FILE_DELETE_CMD,
-};
-
-struct http_file_request_info {
-    char *path;
-    int cmd;
-
-    bool (*action)(struct uh_client *cl, void *arg);
-};
-
-extern void file_http_init(void);
-extern int file_http_read(char *filename, unsigned char *buf, int len);
 
 #endif

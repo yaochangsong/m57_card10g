@@ -32,7 +32,6 @@ struct http_file_request_info {
 };
 
 extern void file_http_init(void);
-extern int file_http_on_request(struct uh_client *cl);
 extern int file_http_read(char *filename, unsigned char *buf, int len);
 
 #endif

@@ -178,10 +178,7 @@ struct path_info *file_http_fill_path_info(struct uh_client *cl, const char *pat
 
 int file_http_on_request(struct uh_client *cl)
 {
-   
     const char *path, *filename = NULL;
-    const char *file_path, *cmd;
-    int body_len = 0;
 
     path = cl->get_path(cl);
     if(path ==NULL)

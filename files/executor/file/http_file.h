@@ -26,24 +26,13 @@ enum {
     BLK_FILE_DELETE_CMD,
 };
 
-#define HTTP_FILE_PATH                      "file"
-
-#define HTTP_DOWNLOAD_FILE_CMD              "download"
-#define HTTP_START_STORE_FILE_CMD           "startstore"
-#define HTTP_STOP_STORE_FILE_CMD            "stopstore"
-#define HTTP_SEARCH_FILE_CMD                "search"
-#define HTTP_START_BACKTRACE_FILE_CMD       "startbacktrace"
-#define HTTP_STOP_BACKTRACE_FILE_CMD        "stopbacktrace"
-#define HTTP_DELETE_FILE_CMD                "delete"
-
-
-#define HTTP_QUERY_DELETE_FILE_CMD  "DeleteFile"
-#define HTTP_QUERY_ADD_FILE_CMD     "AddFile"
-#define HTTP_QUERY_BACKTRACE_FILE_CMD     "BackTraceFile"
-#define HTTP_QUERY_SEARCH_FILE_CMD     "SearchFile"
+struct http_file_request_info {
+    char *path;
+    int cmd;
+};
 
 extern void file_http_init(void);
-//extern int file_http_on_request(struct uh_client *cl);
+extern int file_http_on_request(struct uh_client *cl);
 extern int file_http_read(char *filename, unsigned char *buf, int len);
 
 #endif

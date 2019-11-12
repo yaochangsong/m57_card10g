@@ -25,6 +25,18 @@
 #include "config.h"
 #include "protocol/http/file.h"
 
+static struct http_file_request_info http_req_cmd[] = {
+    {"/file/*.*",               BLK_FILE_DOWNLOAD_CMD},
+    {"/file/download",          BLK_FILE_DOWNLOAD_CMD},
+    {"/file/startstore",        BLK_FILE_START_STORE_CMD},
+    {"/file/stopstore",         BLK_FILE_STOP_STORE_CMD},
+    {"/file/search",            BLK_FILE_SEARCH_CMD},
+    {"/file/startbacktrace",    BLK_FILE_START_BACKTRACE_CMD},
+    {"/file/stopbacktrace",     BLK_FILE_STOP_BACKTRACE_CMD},
+    {"/file/delete",            BLK_FILE_DELETE_CMD},
+};
+
+
 #define BUFFER_LEN  512
 
 struct file_read{
@@ -167,76 +179,35 @@ struct path_info *file_http_fill_path_info(struct uh_client *cl, const char *pat
 int file_http_on_request(struct uh_client *cl)
 {
    
-    const char *path, *filename;
+    const char *path, *filename = NULL;
     const char *file_path, *cmd;
     int body_len = 0;
 
-    printf_warn("-------------------------------\n");
-    printf_warn("get_url %s\n", cl->get_url(cl));
-    printf_warn("accept %s\n", path);
-    printf_warn("get_query %s\n", cl->get_query(cl));
-
-    /*path format:  http://192.168.1.111/file/{cmd}?ch=1&subch=1&filename=channel001.iq 
-        or          http://192.168.1.111/file/{filename}?ch=1&subch=1
-    */
     path = cl->get_path(cl);
     if(path ==NULL)
         return UH_REQUEST_CONTINUE;
 
-    /* Check if the request path is a file path  */
-    file_path =  strchr(path, '/')+1;
-    printf_warn("file path is:%s, %s,%d\n", file_path, HTTP_FILE_PATH,sizeof(HTTP_FILE_PATH));
-    if(strncmp(file_path, HTTP_FILE_PATH, sizeof(HTTP_FILE_PATH)-1)){
-        printf_warn("file_path is:%s\n", file_path);
-        return UH_REQUEST_CONTINUE;
+    printf_info("accept path: %s\n", path);
+    
+    /* Check if the request path is a file request cmd */
+    for(int i = 0; i<sizeof(http_req_cmd)/sizeof(struct http_file_request_info); i++){
+        if(!strcmp(http_req_cmd[i].path, path)){
+            cl->dispatch.file.cmd = http_req_cmd[i].cmd;
+            filename = cl->get_var(cl, "filename");
+            printf_info("http request cmd: path=%s, cmd=%d\n", path, cl->dispatch.file.cmd);
+            break;
+        }
+        if(strrchr(path, '.') && strrchr(http_req_cmd[i].path, '.')){
+            cl->dispatch.file.cmd = http_req_cmd[i].cmd;
+            filename = strrchr(path, '/')+1;
+            printf_info("http download source: path=%s,filename=%s, cmd=%d\n", path, filename, cl->dispatch.file.cmd);
+            break;
+        }
     }
-
-    /* Check cmd or filename */
-    cmd = strrchr(path, '/')+1;
-    if(cmd == NULL)
-        return UH_REQUEST_DONE;
-
-    if(strrchr(cmd, '.')){
-        /* is filename */
-        strncpy(cl->dispatch.file.path, cmd, sizeof(cl->dispatch.file.path));
+    if(filename != NULL){
+        strncpy(cl->dispatch.file.path, filename, sizeof(cl->dispatch.file.path));
         cl->dispatch.file.path[sizeof(cl->dispatch.file.path) -1] = 0;
-        cl->dispatch.file.cmd = BLK_FILE_DOWNLOAD_CMD;
-        printf_warn("download the filename is:%s\n", cmd);
-        printf_warn("cl->dispatch.file.path=%s\n\n", cl->dispatch.file.path);
-        return UH_REQUEST_CONTINUE;
     }
-        /* is cmd */
-    if(!strcmp(cmd, HTTP_DOWNLOAD_FILE_CMD)){
-        cl->dispatch.file.cmd = BLK_FILE_DOWNLOAD_CMD;
-        printf_warn("download file\n");
-    }else if(!strcmp(cmd, HTTP_START_STORE_FILE_CMD)){
-        cl->dispatch.file.cmd = BLK_FILE_START_STORE_CMD;
-        printf_warn("startstore file\n");
-    }else if(!strcmp(cmd, HTTP_STOP_STORE_FILE_CMD)){
-        cl->dispatch.file.cmd = BLK_FILE_STOP_STORE_CMD;
-        printf_warn("stopstore\n");
-    }else if(!strcmp(cmd, HTTP_SEARCH_FILE_CMD)){
-        cl->dispatch.file.cmd = BLK_FILE_SEARCH_CMD;
-        printf_warn("search file\n");
-    }else if(!strcmp(cmd, HTTP_START_BACKTRACE_FILE_CMD)){
-        cl->dispatch.file.cmd = BLK_FILE_START_BACKTRACE_CMD;
-        printf_warn("start backtrace file\n");
-    }else if(!strcmp(cmd, HTTP_STOP_BACKTRACE_FILE_CMD)){
-        cl->dispatch.file.cmd = BLK_FILE_STOP_BACKTRACE_CMD;
-        printf_warn("stop backtrace file\n");
-    }else if(!strcmp(cmd, HTTP_DELETE_FILE_CMD)){
-        cl->dispatch.file.cmd = BLK_FILE_DELETE_CMD;
-        printf_warn("delete file\n");
-    }
-
-     /* get file name*/
-    filename = cl->get_var(cl, "filename");
-    if(filename == NULL)
-        return UH_REQUEST_DONE;
-    strncpy(cl->dispatch.file.path, filename, sizeof(cl->dispatch.file.path));
-    cl->dispatch.file.path[sizeof(cl->dispatch.file.path) -1] = 0;
-    printf_warn("cl->dispatch.file.path=%s\n", cl->dispatch.file.path);
-
     return UH_REQUEST_CONTINUE;
 }
 

@@ -49,6 +49,7 @@ struct path_info *http_request_fill_path_info(struct uh_client *cl, const char *
     static struct path_info p;
     struct disk_file_info fi;
     char *filename;
+    int ret;
     
     if(path == NULL)
         return;
@@ -59,8 +60,12 @@ struct path_info *http_request_fill_path_info(struct uh_client *cl, const char *
     }
     printf_warn("filename=%s\n", filename);
     /* get file info */
-    io_get_read_file_info(filename, (void *)&fi);
-    printf_warn("fi.st_ctime=%s, fi.st_blocks=%u,fi.st_blksize=%u,fi.st_size=%llu\n", asctime(gmtime(&fi.ctime)), fi.st_blocks,fi.st_blksize,fi.st_size);
+    ret = io_get_read_file_info(filename, (void *)&fi);
+    if(ret == -ENOENT){
+        printf_warn("No such file or directory \n");
+        return NULL;
+    }  
+    printf_warn("ret =%d,fi.st_ctime=%s, fi.st_blocks=%u,fi.st_blksize=%u,fi.st_size=%llu\n", ret, asctime(gmtime(&fi.ctime)), fi.st_blocks,fi.st_blksize,fi.st_size);
     p.stat.st_mode = S_IFBLK|S_IRUSR|S_IROTH;   /*  区块装置,文件所有者具可读取权限,其他用户具可读取权限 */
     p.stat.st_mtime = fi.ctime;                /* time of last modification -最近修改时间*/   
     p.stat.st_atime = fi.ctime;                /* time of last access -最近存取时间*/
@@ -94,6 +99,7 @@ int http_on_request(struct uh_client *cl)
             printf_info("http request cmd: path=%s, cmd=%d\n", path, cl->dispatch.cmd);
             break;
         }
+        /* NOTE: compate "/file/" path and *.* */
         if((memcmp(path, http_req_cmd[i].path, 6) ==0) && strrchr(path, '.') && strrchr(http_req_cmd[i].path, '.')){
             cl->dispatch.cmd = http_req_cmd[i].cmd;
             filename = strrchr(path, '/')+1;
@@ -144,11 +150,11 @@ bool http_requset_handle_cmd(struct uh_client *cl, const char *path)
             http_request_action(cl);
             break;
         case BLK_FILE_START_STORE_CMD:
+        case BLK_FILE_START_BACKTRACE_CMD:
             http_request_action(cl);
             break;
         case BLK_FILE_STOP_STORE_CMD:
         case BLK_FILE_SEARCH_CMD:
-        case BLK_FILE_START_BACKTRACE_CMD:
         case BLK_FILE_STOP_BACKTRACE_CMD:
         case BLK_FILE_DELETE_CMD:
             http_request_action(cl);

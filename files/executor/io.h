@@ -76,9 +76,6 @@ typedef enum _IOCTL_CMD {
     /* disk */
     DISK_REFRESH_FILE_BUFFER=0x34,
     DISK_READ_FILE_INFO=0x35,
-    
-    MAX_CMD_NUM = 0x35
-
 }IOCTL_CMD;
 
 
@@ -138,6 +135,7 @@ typedef enum _IOCTL_CMD {
 #include <time.h>
 
 struct disk_file_info{
+    uint8_t  file_path[256];
     uint32_t st_blocks;             /* number of blocks allocated -文件所占块数*/
     uint32_t st_blksize;            /* blocksize for filesystem I/O -系统块的大小*/
     uint64_t st_size;               /* total size, in bytes -文件大小，字节为单位*/

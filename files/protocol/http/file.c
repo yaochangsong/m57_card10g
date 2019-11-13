@@ -174,7 +174,6 @@ struct path_info *uh_path_lookup(struct uh_client *cl, const char *path)
 
     /* create canon path */
     len = strlen(buf);
-    printf_warn("buf=%s, len=%d,%d\n", buf, len, sizeof(path_phys));//buf=./file/spectrum.xml, len=19
     slash = len && buf[len - 1] == '/';
     len = min(len, sizeof(path_phys) - 1);
 
@@ -191,7 +190,7 @@ struct path_info *uh_path_lookup(struct uh_client *cl, const char *path)
 
         if (!exists)
             continue;
-        printf_warn("path_phys=%s\n", path_phys);//./file/spectrum.xml    ./file  .
+
         /* test current path */
         if (stat(path_phys, &p.stat))
             continue;
@@ -204,7 +203,6 @@ struct path_info *uh_path_lookup(struct uh_client *cl, const char *path)
     if (strncmp(path_phys, docroot, docroot_len) != 0 ||
         (path_phys[docroot_len] != 0 &&
         path_phys[docroot_len] != '/'))
-        printf_warn("---");
         return NULL;
 
     /* is a regular file */
@@ -213,21 +211,14 @@ struct path_info *uh_path_lookup(struct uh_client *cl, const char *path)
         p.phys = path_phys;
         p.name = &path_phys[docroot_len];
         p.info = path_info[0] ? path_info : NULL;
-        printf_warn("---");
         return &p;
     }
 
-    if (!(p.stat.st_mode & S_IFDIR)){
-        printf_warn("---");
+    if (!(p.stat.st_mode & S_IFDIR))
         return NULL;
-    }
-        
 
-    if (path_info[0]){
-        printf_warn("---");
+    if (path_info[0])
         return NULL;
-    }
-        
 
     pathptr = path_phys + strlen(path_phys);
 
@@ -242,7 +233,6 @@ struct path_info *uh_path_lookup(struct uh_client *cl, const char *path)
        is missing in the request url, redirect the client to the same
        url with trailing slash appended */
     if (!slash) {
-        printf_warn("---");
         cl->redirect(cl, 302, "%s%s%s", &path_phys[docroot_len], query ? "?" : "", query ? query : "");
         p.redirected = 1;
         return &p;
@@ -252,17 +242,16 @@ struct path_info *uh_path_lookup(struct uh_client *cl, const char *path)
     len = path_phys + sizeof(path_phys) - pathptr - 1;
     strcpy(pathptr, cl->srv->index_file);
 
-    if (stat(path_phys, &p.stat) < 0){
-        printf_warn("---");
+    if (stat(path_phys, &p.stat) < 0)
         return NULL;
-    }
 
     p.root = docroot;
     p.phys = path_phys;
     p.name = &path_phys[docroot_len];
-    printf_warn("p.root=%s, p.phys=%s, p.name=%s\n", p.root, p.phys,  p.name);
+
     return p.phys ? &p : NULL;
 }
+
 
 static char *file_unix2date(time_t ts, char *buf, int len)
 {

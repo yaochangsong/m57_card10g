@@ -94,7 +94,7 @@ int http_on_request(struct uh_client *cl)
             printf_info("http request cmd: path=%s, cmd=%d\n", path, cl->dispatch.cmd);
             break;
         }
-        if(strrchr(path, '.') && strrchr(http_req_cmd[i].path, '.')){
+        if((memcmp(path, http_req_cmd[i].path, 6) ==0) && strrchr(path, '.') && strrchr(http_req_cmd[i].path, '.')){
             cl->dispatch.cmd = http_req_cmd[i].cmd;
             filename = strrchr(path, '/')+1;
             printf_info("http download source: path=%s,filename=%s, cmd=%d\n", path, filename, cl->dispatch.cmd);

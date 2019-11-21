@@ -62,7 +62,7 @@
     <fileDelete>1</fileDelete>
     <fileStrategy>1</fileStrategy>
   </fileStorePara>
-  <calibration psd_power="-4440" analysis_power="-195" low_noise_power="-100"  lo_leakage_threshold="40" lo_leakage_renew_data_len="0" mgc_gain="4">
+  <calibration psd_power="-444" analysis_power="-444" low_noise_power="-744"  lo_leakage_threshold="40" lo_leakage_renew_data_len="0" mgc_gain="4">
 	<lo_leakage index="0">
 		<fft_size>256</fft_size>
 		<threshold>0</threshold>

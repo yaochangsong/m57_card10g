@@ -14,8 +14,27 @@
 ******************************************************************************/
 #ifndef _REQUEST_FILE_H_
 #define _REQUEST_FILE_H_
+#include <time.h>
 
 #define REQUEST_FILESIZE_BUFFER_LEN  512
+
+struct disk_file_info{
+    uint8_t  file_path[64];
+    uint32_t st_blocks;             /* number of blocks allocated -文件所占块数*/
+    uint32_t st_blksize;            /* blocksize for filesystem I/O -系统块的大小*/
+    uint64_t st_size;               /* total size, in bytes -文件大小，字节为单位*/
+    time_t     ctime;               /* create time 创建时间   */
+    uint32_t read_cnt;                 /* 读取缓存总次数 */
+    uint32_t buffer_len;               /*缓存区大小 */
+};
+
+struct file_request_read{
+    uint8_t *read_buffer_pointer;        /* File buffer memory pointer */
+    size_t read_buffer_len;              /* File buffer memory length */
+    size_t read_offset;                  /* File buffer byte offset size */
+};
+
+
 
 extern int file_download(struct uh_client *cl, void *arg);
 extern int file_startstore(struct uh_client *cl, void *arg);

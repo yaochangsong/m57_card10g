@@ -132,15 +132,6 @@ typedef enum _IOCTL_CMD {
 #define IOCTL_DISK_REFRESH_FILE_BUFFER    _IOW(DMA_RF_IOC_MAGIC, DISK_REFRESH_FILE_BUFFER, uint32_t)
 #define IOCTL_DISK_READ_FILE_INFO    _IOW(DMA_RF_IOC_MAGIC, DISK_READ_FILE_INFO, uint32_t)
 
-#include <time.h>
-
-struct disk_file_info{
-    uint8_t  file_path[256];
-    uint32_t st_blocks;             /* number of blocks allocated -文件所占块数*/
-    uint32_t st_blksize;            /* blocksize for filesystem I/O -系统块的大小*/
-    uint64_t st_size;               /* total size, in bytes -文件大小，字节为单位*/
-    time_t     ctime;               /* create time 创建时间   */
-};
 
 /* kernel client info */
 typedef struct  _STATION_INFO{

@@ -36,7 +36,5 @@ struct request_info {
 };
 
 extern void http_requset_init(void);
-extern int file_http_read(char *filename, unsigned char *buf, int len);
-
 #endif
 

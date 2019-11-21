@@ -26,43 +26,20 @@
 #include "request_file.h"
 
 
-struct file_read{
-    char *ptotalbuffer;
-    char *pfile;
-    int file_len;
-    int buffer_total_len;
-};
-struct file_read gfile;
+struct file_request_read req_readx;
 
-static char *file_get_file_buffer()
+static char *file_get_read_buffer_pointer()
 {
-    //mmap
-    return gfile.pfile;
+   return  memshare_get_dma_rx_base();
 }
 
-static int file_read_shutdown(char *filename)
-{
-    int64_t len = 0;
-    //ioctl(filename, );//notify kernel read file data one by one
-    return len;
-}
 
 static int file_reload_buffer(char *filename)
 {
-    static int offset = 0;
-    offset += gfile.file_len;
-    if(offset > gfile.buffer_total_len){
-        offset = 0;
-        printf_note("reload buffer over\n");
-        return 0;
-    }
-    memcpy(gfile.pfile, gfile.ptotalbuffer+offset, gfile.file_len);
     printf_note("filename:%s\n", filename);
-    io_set_refresh_disk_file_buffer((void*)filename);
-    printf_note("--------------offset=%d, reload offset =%d,gfile.buffer_total_len=%d\n", offset, gfile.file_len, gfile.buffer_total_len);
-    sleep(1);
-    return gfile.file_len;
+    return io_set_refresh_disk_file_buffer((void*)filename);
 }
+
 
 
 int file_startstore(struct uh_client *cl, void *arg)
@@ -108,56 +85,52 @@ int file_delete(struct uh_client *cl, void *arg)
 }
 
 
-int file_http_read(char *filename, uint8_t *buf, int len)
+int file_read(const char *filename, uint8_t *buf, int len)
 {
-    int read_result_len = 0, read_len = 0;
-    char *ptr_head;
-    static int offset = 0;
-    static int buffer_total_len = 0;
+    int ret;
+    struct file_request_read *fr=&req_readx;
     
     if(buf == NULL)
         return -1;
 
 loop:
-    printf_note("read offset=%d\n", offset);
-    if(offset == 0){
-        buffer_total_len = file_reload_buffer(filename);
-        if(buffer_total_len <= 0){
-            buffer_total_len = 0;
-            offset = 0;
-            printf_note("read over buffer_total_len=%d*********\n", buffer_total_len);
+    printf_note("read offset=%d\n", fr->read_offset);
+    if(fr->read_offset == 0){
+        ret = file_reload_buffer(filename);
+        if(ret < 0){
+            fr->read_offset = 0;
+            printf_err("read err %d\n", ret);
+            return ret;
+        }else if(ret == 0){
+            printf_note("read over\n");
             return 0;
         }
     }
-
-    printf_info("buffer_total_len=%d\n", buffer_total_len);
-    ptr_head = file_get_file_buffer();
-    if(ptr_head == NULL){
-        return -1;
-    }
-
     memset(buf, 0, len);
-    read_len = len;
-    if(read_len > buffer_total_len - offset)
-        read_len = buffer_total_len - offset;
-    
-    if(offset < buffer_total_len){
-        memcpy(buf, ptr_head+offset, read_len);
-        read_result_len = read_len;
-        offset += read_len; 
+    if(len > fr->read_buffer_len - fr->read_offset){
+        len =  fr->read_buffer_len - fr->read_offset;
+    }
+    if(fr->read_offset < fr->read_buffer_len){
+        memcpy(buf, fr->read_buffer_pointer + fr->read_offset, len);
+        fr->read_offset += len;
+        ret = len;
     }else{
-        /* read over, reset buffer offset */
-        printf_info("reset offset = %d, read_result_len=%d\n", offset, read_result_len);
-        offset = 0;
-        read_result_len = 0;
-        /* start reload buffer */
-        //buffer_total_len = file_http_reload_buffer();
-        //if(file_http_reload_buffer>0)
+        /*  read buffer over, reload buffer */
+        fr->read_offset = 0;
         goto loop;
     }
-    printf_info("offset = %d, read_result_len=%d\n", offset, read_result_len);
-    return read_result_len;
+    
+    return ret;
 }
+
+int file_read_attr_info(const char *name, void *info)
+{
+    if(name == NULL || info == NULL)
+        return -1;
+    strcpy((char *)info, name);
+    return io_get_read_file_info(info);
+}
+
 
 
 int file_download(struct uh_client *cl, void *arg)
@@ -169,7 +142,7 @@ int file_download(struct uh_client *cl, void *arg)
 
     printf_info("download:path=%s\n", path);
     while (cl->us->w.data_bytes < 256) {
-        r = file_http_read(path, buf, sizeof(buf));
+        r = file_read(path, buf, sizeof(buf));
         printf_info("r=%d\n", r);
         if (r < 0) {
             printf_warn("read error\n");
@@ -191,6 +164,7 @@ int file_download(struct uh_client *cl, void *arg)
 
 void file_handle_init(void)
 {
+#if 0
     char text[]={1,2,3,4,5,6,7,8,9,10,11,12,13,14};
     
     
@@ -203,4 +177,34 @@ void file_handle_init(void)
    // memcpy(gfile.pfile, text, sizeof(text));
     gfile.file_len = REQUEST_FILESIZE_BUFFER_LEN;//sizeof(text);
     //printf_warn("%s, %d\n", gfile.pfile, gfile.file_len);
+        char buf[256];
+    int fd ;
+        struct disk_file_info fi;
+    int ret;
+    char filename[256]="test.txt";
+    printf_warn("filename=%s\n", filename);
+    ret = io_get_read_file_info(filename, (void *)&fi, sizeof(struct disk_file_info));
+    printf_warn("ret=%d\n", ret);
+    printf_warn("fi.ctime=%u, fi.file_path=%s,fi.read_cnt=%u, fi.st_blksize=%u, fi.st_blocks=%u, fi.st_size=%llu\n", 
+                fi.ctime, fi.file_path,fi.read_cnt, fi.st_blksize, fi.st_blocks, fi.st_size);
+    //fd = read(io_get_fd(), buf, 256),
+    //printf_warn("read %d:%s\n", fd,buf);
+    
+#endif
+    
+    struct disk_file_info fi;
+    int ret;
+    char filename[64]="test.txt";
+    char buf[256];
+    memshare_init();
+    ret = file_read_attr_info(filename, (void *)&fi);
+    printf_warn("ret=%d\n", ret);
+    printf_warn("fi.ctime=%u, fi.file_path=%s,fi.read_cnt=%u, fi.st_blksize=%u, fi.st_blocks=%u, fi.st_size=%llu\n", 
+                fi.ctime, fi.file_path,fi.read_cnt, fi.st_blksize, fi.st_blocks, fi.st_size);
+    req_readx.read_buffer_pointer=file_get_read_buffer_pointer();
+    req_readx.read_buffer_len =  fi.buffer_len;
+    req_readx.read_offset = 0;
+    lseek(io_get_fd(), 0, SEEK_SET);
+    file_read(filename, buf, sizeof(buf));
+    printfe("buf = %s\n", buf);
 }

@@ -158,7 +158,7 @@ int file_download(struct uh_client *cl, void *arg)
     char *filename = cl->dispatch.file.filename;
     int r, i;
 
-    printf_warn("download:name=%s\n", filename);
+    printf_warn("download:name=%s, cmd=%d\n", filename, cl->dispatch.cmd);
     while (cl->us->w.data_bytes < 256) {
         r = file_read(filename, buf, sizeof(buf));
         printf_info("r=%d\n", r);

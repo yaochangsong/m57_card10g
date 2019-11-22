@@ -104,7 +104,7 @@ int http_on_request(struct uh_client *cl)
     if(path ==NULL)
         return UH_REQUEST_CONTINUE;
 
-    printf_warn("accept path: %s\n", path);
+    printf_note("accept path: %s\n", path);
     
     /* Check if the request path is a file request cmd */
     for(int i = 0; i<sizeof(http_req_cmd)/sizeof(struct request_info); i++){
@@ -128,39 +128,33 @@ int http_on_request(struct uh_client *cl)
         cl->dispatch.file.path[sizeof(cl->dispatch.file.path) -1] = 0;
         printf_note("filename=%s,file.path=%s\n",filename, cl->dispatch.file.path);
     }
+    printf_note("dispatch.cmd=%d\n",cl->dispatch.cmd);
+    
     return UH_REQUEST_CONTINUE;
 }
 
 
 int http_request_action(struct uh_client *cl)
 {
-    const char *path, *filename = NULL;
-    path = cl->dispatch.file.path;
-
-    printf_warn("path=%s\n",path);
-    if(path == NULL){
+    int found = 0;
+    for(int i = 0; i<ARRAY_SIZE(http_req_cmd); i++){
+        if(cl->dispatch.cmd == http_req_cmd[i].cmd){
+            http_req_cmd[i].action(cl, NULL);
+            found = 1;
+            break;
+        }
+    }
+    if(found == 0){
+        printf_warn("request action not found [cmd=%d]\n",cl->dispatch.cmd);
         return -1;
     }
-    for(int i = 0; i<sizeof(http_req_cmd)/sizeof(struct request_info); i++){
-        if(!strcmp(http_req_cmd[i].path, path)){
-            filename = cl->get_var(cl, "filename");
-            printf_warn("filename=%s\n",filename);
-            http_req_cmd[i].action(cl, NULL);
-            break;
-        }
-        if(strrchr(path, '.') && strrchr(http_req_cmd[i].path, '.')){
-            filename = strrchr(path, '/')+1;
-            printf_warn("filename=%s\n",filename);
-            http_req_cmd[i].action(cl, NULL);
-            break;
-        }
-    }
+    return 0;
 }
 
 bool http_requset_handle_cmd(struct uh_client *cl, const char *path)
 {
     struct path_info *pi;
-    
+    printf_note("dispatch.cmd=%d\n",cl->dispatch.cmd);
     switch(cl->dispatch.cmd)
     {
         case BLK_FILE_DOWNLOAD_CMD:

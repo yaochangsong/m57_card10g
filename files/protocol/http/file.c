@@ -420,13 +420,14 @@ bool handle_file_request(struct uh_client *cl, const char *path)
 void uh_blk_file_response_header(struct uh_client *cl, struct path_info *pi)
 {
     /* test preconditions */
+#if 0
     if ((!uh_file_if_modified_since(cl, &pi->stat))) {
         cl->printf(cl, "\r\n");
         cl->request_done(cl);
         return;
     }
      printf_warn("pi->phys[%s], pi->name:%s,pi->info=%s\n", pi->phys,pi->name, pi->info);
-
+#endif
     /* write status */
     uh_file_response_200(cl, &pi->stat);
     cl->printf(cl, "Content-Type: %s\r\n\r\n", uh_file_mime_lookup(pi->name));
@@ -434,14 +435,13 @@ void uh_blk_file_response_header(struct uh_client *cl, struct path_info *pi)
     /* send header */
     if (cl->request.method == UH_HTTP_METHOD_HEAD) {
         cl->request_done(cl);
-         printf_warn("send header-----\n");
+        printf_warn("send header-----\n");
         return;
     }
 
     cl->state = CLIENT_STATE_DONE;
     cl->dispatch.write_cb = http_request_action;
-    //cl->dispatch.free = http_request_action(cl,path);
-    //file_write_cb(cl);
+    
 }
 
 

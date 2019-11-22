@@ -36,7 +36,6 @@ static char *file_get_read_buffer_pointer()
 
 static int file_reload_buffer(char *filename)
 {
-    printf_note("filename:%s\n", filename);
     return io_set_refresh_disk_file_buffer((void*)filename);
 }
 
@@ -92,23 +91,42 @@ int file_read(const char *filename, uint8_t *buf, int len)
     
     if(buf == NULL)
         return -1;
+    if(fr->read_flags == FILE_READ_IDLE){
+        struct disk_file_info fi;
+        ret = file_read_attr_info(filename, (void *)&fi);
+        printf_note("file_path:%s,buffer_len:%u,read_cnt:%u,st_size=%lu,st_blocks=%d\n", 
+            fi.file_path,fi.buffer_len, fi.read_cnt,fi.st_size, fi.st_blocks);
+        strcpy(fr->file_path,fi.file_path);
+        fr->read_buffer_pointer=file_get_read_buffer_pointer();
+        fr->read_buffer_len =  fi.buffer_len;
+        fr->read_offset = 0;
+        lseek(io_get_fd(), 0, SEEK_SET);
+        fr->read_flags = FILE_READ_BUSY;
+    }else if(strcmp(fr->file_path, filename)){
+        printf_note("file read [%s] is busy\n", fr->file_path);
+        return -1;
+    }
 
 loop:
-    printf_note("read offset=%d\n", fr->read_offset);
+    printf_note("read_buffer_len=%u, read offset=%u,len=%d\n", fr->read_buffer_len, fr->read_offset, len);
     if(fr->read_offset == 0){
         ret = file_reload_buffer(filename);
         if(ret < 0){
-            fr->read_offset = 0;
+            fr->read_flags = FILE_READ_IDLE;
             printf_err("read err %d\n", ret);
             return ret;
         }else if(ret == 0){
+            fr->read_flags = FILE_READ_IDLE;
             printf_note("read over\n");
             return 0;
+        }else{
+            printf_note("reading\n");
         }
     }
     memset(buf, 0, len);
     if(len > fr->read_buffer_len - fr->read_offset){
         len =  fr->read_buffer_len - fr->read_offset;
+        printf_note("cut len:%d\n", len);
     }
     if(fr->read_offset < fr->read_buffer_len){
         memcpy(buf, fr->read_buffer_pointer + fr->read_offset, len);
@@ -136,13 +154,13 @@ int file_read_attr_info(const char *name, void *info)
 int file_download(struct uh_client *cl, void *arg)
 {
     
-    static char buf[256];
-    char *path = cl->dispatch.file.path;
+    static char buf[4096];
+    char *filename = cl->dispatch.file.filename;
     int r, i;
 
-    printf_info("download:path=%s\n", path);
+    printf_warn("download:name=%s\n", filename);
     while (cl->us->w.data_bytes < 256) {
-        r = file_read(path, buf, sizeof(buf));
+        r = file_read(filename, buf, sizeof(buf));
         printf_info("r=%d\n", r);
         if (r < 0) {
             printf_warn("read error\n");
@@ -152,59 +170,23 @@ int file_download(struct uh_client *cl, void *arg)
         }
 
         if (r <= 0) {
-            printf_info("request_done\n");
+            printf_warn("request_done:%d\n", cl->us->w.data_bytes);
             cl->request_done(cl);
             return;
         }
         
         cl->send(cl, buf, r);
     }
+    printf_warn("w.data_bytes:%d\n", cl->us->w.data_bytes);
     return true;
 }
 
 void file_handle_init(void)
 {
-#if 0
-    char text[]={1,2,3,4,5,6,7,8,9,10,11,12,13,14};
-    
-    
-    gfile.ptotalbuffer = malloc(1024);
-    memset(gfile.ptotalbuffer, 'a', 1024);
-    gfile.buffer_total_len = 1024;
-
-    gfile.pfile = malloc(REQUEST_FILESIZE_BUFFER_LEN);
-    memset(gfile.pfile, 0, REQUEST_FILESIZE_BUFFER_LEN);
-   // memcpy(gfile.pfile, text, sizeof(text));
-    gfile.file_len = REQUEST_FILESIZE_BUFFER_LEN;//sizeof(text);
-    //printf_warn("%s, %d\n", gfile.pfile, gfile.file_len);
-        char buf[256];
-    int fd ;
-        struct disk_file_info fi;
-    int ret;
-    char filename[256]="test.txt";
-    printf_warn("filename=%s\n", filename);
-    ret = io_get_read_file_info(filename, (void *)&fi, sizeof(struct disk_file_info));
-    printf_warn("ret=%d\n", ret);
-    printf_warn("fi.ctime=%u, fi.file_path=%s,fi.read_cnt=%u, fi.st_blksize=%u, fi.st_blocks=%u, fi.st_size=%llu\n", 
-                fi.ctime, fi.file_path,fi.read_cnt, fi.st_blksize, fi.st_blocks, fi.st_size);
-    //fd = read(io_get_fd(), buf, 256),
-    //printf_warn("read %d:%s\n", fd,buf);
-    
-#endif
-    
-    struct disk_file_info fi;
-    int ret;
-    char filename[64]="test.txt";
-    char buf[256];
     memshare_init();
-    ret = file_read_attr_info(filename, (void *)&fi);
-    printf_warn("ret=%d\n", ret);
-    printf_warn("fi.ctime=%u, fi.file_path=%s,fi.read_cnt=%u, fi.st_blksize=%u, fi.st_blocks=%u, fi.st_size=%llu\n", 
-                fi.ctime, fi.file_path,fi.read_cnt, fi.st_blksize, fi.st_blocks, fi.st_size);
-    req_readx.read_buffer_pointer=file_get_read_buffer_pointer();
-    req_readx.read_buffer_len =  fi.buffer_len;
-    req_readx.read_offset = 0;
-    lseek(io_get_fd(), 0, SEEK_SET);
-    file_read(filename, buf, sizeof(buf));
-    printfe("buf = %s\n", buf);
+    memset(&req_readx, 0, sizeof(struct file_request_read));
+
+    //do{
+    //    ret = file_read(filename, buf, sizeof(buf));
+    //}while(ret > 0);
 }

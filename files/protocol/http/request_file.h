@@ -18,6 +18,12 @@
 
 #define REQUEST_FILESIZE_BUFFER_LEN  512
 
+typedef enum _request_read_status {
+    FILE_READ_IDLE = 0x0,
+    FILE_READ_BUSY = 0x1,
+}request_read_status;
+
+
 struct disk_file_info{
     uint8_t  file_path[64];
     uint32_t st_blocks;             /* number of blocks allocated -文件所占块数*/
@@ -29,9 +35,11 @@ struct disk_file_info{
 };
 
 struct file_request_read{
+    uint8_t  file_path[64];
     uint8_t *read_buffer_pointer;        /* File buffer memory pointer */
     size_t read_buffer_len;              /* File buffer memory length */
     size_t read_offset;                  /* File buffer byte offset size */
+    uint8_t read_flags;                  /* 0: idle, 1: busy */
 };
 
 

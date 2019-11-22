@@ -439,6 +439,9 @@ void uh_blk_file_response_header(struct uh_client *cl, struct path_info *pi)
     }
 
     cl->state = CLIENT_STATE_DONE;
+    cl->dispatch.write_cb = http_request_action;
+    //cl->dispatch.free = http_request_action(cl,path);
+    //file_write_cb(cl);
 }
 
 

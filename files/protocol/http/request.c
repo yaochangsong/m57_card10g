@@ -27,8 +27,7 @@
 #include "request.h"
 #include "request_file.h"
 #include "executor/io.h"
-
-
+#include "utils/memshare.h"
 
 
 
@@ -44,6 +43,20 @@ static struct request_info http_req_cmd[] = {
 };
 
 
+size_t refill_buffer_file(void)
+{
+    struct stat stats;
+    char path_phys[] = "/spectrum.xml";
+    
+    if (!stat(path_phys, &stats)){
+        printf_note("(%s)st_size:%u, st_blocks:%u, st_mode:%x\n", path_phys, stats.st_size, stats.st_blocks, stats.st_mode);
+        read_file(memshare_get_dma_rx_base(), stats.st_size, path_phys);
+    }
+    return stats.st_size;
+
+}
+
+
 struct path_info *http_request_fill_path_info(struct uh_client *cl, const char *path)
 {
     static struct path_info p;
@@ -54,25 +67,27 @@ struct path_info *http_request_fill_path_info(struct uh_client *cl, const char *
     if(path == NULL)
         return;
 
-    filename = cl->dispatch.file.path;
+    filename = cl->dispatch.file.filename;
     if(filename == NULL){
         return;
     }
     printf_warn("filename=%s\n", filename);
+    
     /* get file info */
-    ret = io_get_read_file_info(filename, (void *)&fi);
+    ret = file_read_attr_info(filename, (void *)&fi);
     if(ret == -ENOENT){
         printf_warn("No such file or directory \n");
         return NULL;
     }  
-    printf_warn("ret =%d,fi.st_ctime=%s, fi.st_blocks=%u,fi.st_blksize=%u,fi.st_size=%llu\n", ret, asctime(gmtime(&fi.ctime)), fi.st_blocks,fi.st_blksize,fi.st_size);
+    printf_warn("ret =%d,file_path=%s, st_ctime=%s, st_blocks=%u,st_blksize=%u,st_size=%llu\n", 
+        ret, fi.file_path, asctime(gmtime(&fi.ctime)), fi.st_blocks,fi.st_blksize,fi.st_size);
     p.stat.st_mode = S_IFBLK|S_IRUSR|S_IROTH;   /*  区块装置,文件所有者具可读取权限,其他用户具可读取权限 */
     p.stat.st_mtime = fi.ctime;                /* time of last modification -最近修改时间*/   
     p.stat.st_atime = fi.ctime;                /* time of last access -最近存取时间*/
     p.stat.st_ctime = fi.ctime;                /* 创建时间   */
     p.stat.st_blocks = fi.st_blocks;               /* number of blocks allocated -文件所占块数*/ 
     p.stat.st_blksize = fi.st_blksize;           /* blocksize for filesystem I/O -系统块的大小*/
-    p.stat.st_size = REQUEST_FILESIZE_BUFFER_LEN;        /* total size, in bytes -文件大小，字节为单位*/ 
+    p.stat.st_size = DMA_SSD_RX_SIZE;        /* total size, in bytes -文件大小，字节为单位*/ 
     p.phys=filename;
     p.name=filename;
     p.info = filename;
@@ -108,9 +123,10 @@ int http_on_request(struct uh_client *cl)
         }
     }
     if(filename != NULL){
-        strncpy(cl->dispatch.file.path, filename, sizeof(cl->dispatch.file.path));
+        strncpy(cl->dispatch.file.filename, filename, sizeof(cl->dispatch.file.path));
+        strncpy(cl->dispatch.file.path, path, sizeof(cl->dispatch.file.path));
         cl->dispatch.file.path[sizeof(cl->dispatch.file.path) -1] = 0;
-        printf_info("cl->dispatch.file.path=%s\n",cl->dispatch.file.path);
+        printf_note("filename=%s,file.path=%s\n",filename, cl->dispatch.file.path);
     }
     return UH_REQUEST_CONTINUE;
 }
@@ -119,9 +135,12 @@ int http_on_request(struct uh_client *cl)
 int http_request_action(struct uh_client *cl)
 {
     const char *path, *filename = NULL;
-    path = cl->get_path(cl);
+    path = cl->dispatch.file.path;
 
     printf_warn("path=%s\n",path);
+    if(path == NULL){
+        return -1;
+    }
     for(int i = 0; i<sizeof(http_req_cmd)/sizeof(struct request_info); i++){
         if(!strcmp(http_req_cmd[i].path, path)){
             filename = cl->get_var(cl, "filename");
@@ -165,8 +184,10 @@ bool http_requset_handle_cmd(struct uh_client *cl, const char *path)
 }
 
 
+
 void http_requset_init(void)
 {
     file_handle_init();
+    refill_buffer_file();
 }
 

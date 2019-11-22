@@ -425,7 +425,6 @@ int16_t io_get_adc_temperature(void)
 
 int32_t io_set_refresh_disk_file_buffer(void *arg){
     int32_t ret = 0;
-    printf_note("filename=%s\n", (char *)arg);
 #if defined(SUPPORT_SPECTRUM_KERNEL) 
     /* filename */
     ret = ioctl(io_ctrl_fd,IOCTL_DISK_REFRESH_FILE_BUFFER,arg);
@@ -435,7 +434,6 @@ int32_t io_set_refresh_disk_file_buffer(void *arg){
 
 int32_t io_get_read_file_info(void *arg){
     int32_t ret = 0;
-    printf_note("filename=%s\n", (char *)arg);
 #if defined(SUPPORT_SPECTRUM_KERNEL) 
     ret = ioctl(io_ctrl_fd,IOCTL_DISK_READ_FILE_INFO,arg);
 #endif

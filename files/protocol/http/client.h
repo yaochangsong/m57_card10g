@@ -79,6 +79,7 @@ struct dispatch {
 
     struct {
         int fd;
+        char filename[64];
         char path[128];/* add by ycs */
     } file;
     int cmd; /* add by ycs */

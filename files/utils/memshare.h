@@ -53,7 +53,7 @@ memory map:
 
 #define DMA_IQ_SIZE         SZ_16M
 #define DMA_FFT_SIZE        SZ_16M
-#define DMA_SSD_RX_SIZE     SZ_32M
+#define DMA_SSD_RX_SIZE    SZ_1M// SZ_32M
 #define DMA_SSD_TX_SIZE     SZ_32M
 
 extern int memshare_init(void);

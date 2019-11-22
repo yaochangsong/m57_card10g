@@ -36,5 +36,7 @@ struct request_info {
 };
 
 extern void http_requset_init(void);
+extern int http_request_action(struct uh_client *cl);
+
 #endif
 

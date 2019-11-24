@@ -558,7 +558,7 @@ int8_t executor_set_enable_command(uint8_t ch)
                 executor_set_command(EX_RF_FREQ_CMD, EX_RF_MID_BW, ch, &bw);
                 /* 中频带宽和射频带宽一�?*/
                 //executor_set_command(EX_MID_FREQ_CMD, EX_CHANNEL_SELECT, ch, &ch);
-                executor_set_command(EX_MID_FREQ_CMD, EX_SMOOTH_TIME, ch,frp->smooth_time);
+                executor_set_command(EX_MID_FREQ_CMD, EX_SMOOTH_TIME, ch,&frp->smooth_time);
                 executor_set_command(EX_MID_FREQ_CMD, EX_BANDWITH, ch,&bw);
                 executor_set_command(EX_MID_FREQ_CMD, EX_FPGA_CALIBRATE, ch, NULL);
                 executor_set_command(EX_MID_FREQ_CMD, EX_FPGA_RESET, ch, NULL);

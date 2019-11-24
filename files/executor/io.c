@@ -327,7 +327,7 @@ static void io_dma_dev_trans_len(uint32_t ch, uint8_t type, uint32_t len)
     uint32_t ctrl_val = 0;
 #if defined(SUPPORT_SPECTRUM_KERNEL)
     if (io_ctrl_fd > 0) {
-        ctrl_val = (((ch & 0xF) << 28) | (len & 0xFFFFFF));
+        ctrl_val = (((data_offset & 0xF) << 28) | (len & 0xFFFFFF));
         ioctl(io_ctrl_fd,IOCTL_TRANSLEN, ctrl_val);
     }
 #endif
@@ -374,7 +374,7 @@ static void io_dma_dev_disable(uint32_t ch,uint8_t type)
     uint8_t data_offset = (ch<<2)|type;
     printf_note("[**REGISTER**]ch=%d, type=%s data_offset=%x Disable\n", ch, type==0?"IQ":"FFT", data_offset);
     if (io_ctrl_fd > 0) {
-        ctrl_val = (ch & 0xFF) << 8;
+        ctrl_val = (data_offset & 0xFF) << 8;
         ioctl(io_ctrl_fd,IOCTL_ENABLE_DISABLE,ctrl_val);
     }
 #endif

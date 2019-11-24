@@ -28,11 +28,11 @@
 
 /* 工作模式参数参数 */
 typedef enum _work_mode_type {
-    OAL_NULL_MODE               = 0x00,
-    OAL_FIXED_FREQ_ANYS_MODE    = 0x01,
-    OAL_FAST_SCAN_MODE          = 0x02,
-    OAL_MULTI_ZONE_SCAN_MODE    = 0x03,
-    OAL_MULTI_POINT_SCAN_MODE   = 0x04,
+    OAL_NULL_MODE               = 0xff,
+    OAL_FIXED_FREQ_ANYS_MODE    = 0x00,
+    OAL_FAST_SCAN_MODE          = 0x01,
+    OAL_MULTI_ZONE_SCAN_MODE    = 0x02,
+    OAL_MULTI_POINT_SCAN_MODE   = 0x03,
     
 }work_mode_type;
 

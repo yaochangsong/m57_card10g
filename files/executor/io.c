@@ -363,19 +363,6 @@ void io_set_fft_size(uint32_t ch, uint32_t fft_size)
 #endif
 }
 
-
-static void io_set_dma_SPECTRUM_out_en(uint8_t cid, uint8_t outputen,uint32_t trans_len,uint8_t continuous)
-{
-
-    uint8_t ch = cid;
-    printf_info("SPECTRUM out enable: ch[%d]output en[outputen:%x]\n",cid, outputen);
-    io_dma_dev_disable(ch,IO_SPECTRUM_TYPE);
-    if((outputen&IO_SPECTRUM_ENABLE) > 0){
-            io_dma_dev_enable(ch,IO_SPECTRUM_TYPE,continuous);
-            io_dma_dev_trans_len(ch,IO_SPECTRUM_TYPE, trans_len);
-        }
-    }
-
 static void io_dma_dev_disable(uint32_t ch,uint8_t type)
 {
     uint32_t ctrl_val = 0;
@@ -389,6 +376,21 @@ static void io_dma_dev_disable(uint32_t ch,uint8_t type)
     }
 #endif
 }
+
+
+static void io_set_dma_SPECTRUM_out_en(uint8_t cid, uint8_t outputen,uint32_t trans_len,uint8_t continuous)
+{
+
+    uint8_t ch = cid;
+    printf_info("SPECTRUM out enable: ch[%d]output en[outputen:%x]\n",cid, outputen);
+    io_dma_dev_disable(ch,IO_SPECTRUM_TYPE);
+    if((outputen&IO_SPECTRUM_ENABLE) > 0){
+            io_dma_dev_enable(ch,IO_SPECTRUM_TYPE,continuous);
+            io_dma_dev_trans_len(ch,IO_SPECTRUM_TYPE, trans_len);
+        }
+    }
+
+
 
 static void io_set_dma_SPECTRUM_out_disable(uint8_t ch)
 {

@@ -412,6 +412,7 @@ static int akt_execute_set_command(void)
             SNIFFER_DATA_REPORT_ST net_para;
             STATION_INFO sta_info_para = {0};
             struct sockaddr_in client;
+            struct timespec ts;
             check_valid_channel(header->buf[0]);
             net_para.cid = ch;
             memcpy(&net_para, header->buf, sizeof(SNIFFER_DATA_REPORT_ST));
@@ -420,17 +421,23 @@ static int akt_execute_set_command(void)
             char *ipstr=NULL;
             ipdata.s_addr = net_para.ipaddr;
             ipstr= inet_ntoa(ipdata);
-            printf_info("ipstr=%s  ipaddr=%x, port=%d, type=%d\n", ipstr,  ipdata.s_addr, ntohs(net_para.port), net_para.type);
+            printf_note("ipstr=%s  ipaddr=%x, port=%d, type=%d\n", ipstr,  ipdata.s_addr, ntohs(net_para.port), net_para.type);
             client.sin_port = net_para.port;//ntohs(net_para.port);
             client.sin_addr.s_addr = ipdata.s_addr;
             udp_add_client(&client);
             /* refresh kernel client info */
             memcpy(&sta_info_para.target_addr[ch], &net_para, sizeof(SNIFFER_DATA_REPORT_ST));
+            sta_info_para.target_addr[ch].cid = net_para.cid;
             sta_info_para.target_addr[ch].ipaddr = ntohl(net_para.ipaddr);
             sta_info_para.target_addr[ch].port = ntohs(net_para.port);
-            printf_info("ch = %d ipstr=%d  ipaddr=%x, port=%d\n",ch,net_para.ipaddr,sta_info_para.target_addr[ch].ipaddr,sta_info_para.target_addr[ch].port);
-            io_set_sta_info_param(&sta_info_para);
+            sta_info_para.target_addr[ch].type = net_para.type;
+            clock_gettime(CLOCK_REALTIME, &ts);
+            sta_info_para.keepalive_time = ts;
+            printf_note("ch = %d ipstr=%d  ipaddr=%x, port=%d\n",ch,net_para.ipaddr,sta_info_para.target_addr[ch].ipaddr,sta_info_para.target_addr[ch].port);
             
+            io_set_sta_info_param(&sta_info_para);
+            io_save_net_param((SNIFFER_DATA_REPORT_ST *)(&(sta_info_para.target_addr[ch])));
+            io_set_refresh_keepalive_time(0);
             break;
         }
         case AUDIO_SAMPLE_RATE:

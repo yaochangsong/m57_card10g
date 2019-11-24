@@ -79,16 +79,81 @@ int32_t io_set_refresh_keepalive_time(uint32_t index){
     return ret;
 }
 
-int32_t io_set_extract_ch0(uint32_t ch, uint32_t bandwith){
+int32_t io_save_net_param(SNIFFER_DATA_REPORT_ST *data){
+    int32_t ret = 0;
+
+    if(io_ctrl_fd<=0){
+        return 0;
+    }
+    ret = ioctl(io_ctrl_fd,IOCTL_RUN_NET_PARAM,data);
+    return ret;
+}
+void io_reset_fpga_data_link(void){
+    #define RESET_ADDR      0x04U
+    int32_t ret = 0;
+    int32_t data = 0;
+    if(io_ctrl_fd<=0){
+        return ;
+    }
+    printf_note("[**REGISTER**]Reset FPGA\n");
+    data = (RESET_ADDR &0xffff)<<16;
+    ret = ioctl(io_ctrl_fd,IOCTL_SET_DDC_REGISTER_VALUE,&data);
+}
+
+/*设置带宽*/
+int32_t io_set_bandwidth(uint32_t ch, uint32_t bandwidth){
     int32_t ret = 0;
     uint32_t band_factor, filter_factor;
+    printf_note("[**REGISTER**]ch:%d, Set Bandwidth:%u\n", ch, bandwidth);
 #if defined(SUPPORT_SPECTRUM_KERNEL) 
-    io_compute_extract_factor_by_fftsize(bandwith,&band_factor, &filter_factor);
+    io_compute_extract_factor_by_fftsize(bandwidth,&band_factor, &filter_factor);
+    printf_note("[**REGISTER**]Set Bandwidth factor:%x\n", band_factor);
     ret = ioctl(io_ctrl_fd, IOCTL_EXTRACT_CH0, (0x1000000 | band_factor));
 #endif
     return ret;
 
 }
+
+/*设置解调带宽*/
+int32_t io_set_dec_bandwidth(uint32_t ch, uint32_t dec_bandwidth){
+    int32_t ret = 0;
+    uint32_t band_factor, filter_factor;
+    printf_note("[**REGISTER**]ch:%d, Set Decode Bandwidth:%u\n", ch, dec_bandwidth);
+#if defined(SUPPORT_SPECTRUM_KERNEL) 
+    io_compute_extract_factor_by_fftsize(dec_bandwidth,&band_factor, &filter_factor);
+    printf_note("[**REGISTER**]Set Decode Bandwidth factor:%x\n", band_factor);
+    ret = ioctl(io_ctrl_fd, IOCTL_EXTRACT_CH0, (0x2000000 | band_factor));
+#endif
+    return ret;
+
+}
+
+
+/*设置解调方式*/
+int32_t io_set_dec_method(uint32_t ch, uint32_t dec_method){
+    int32_t ret = 0;
+    uint32_t d_method = 0;
+    printf_note("[**REGISTER**]ch:%d, Set Decode method:%u\n", ch, dec_method);
+#if defined(SUPPORT_SPECTRUM_KERNEL) 
+    if(dec_method == DQ_MODE_AM){
+        d_method = 0x4000000;
+    }else if(dec_method == DQ_MODE_FM) {
+        d_method = 0x4000001;
+    }else if(dec_method == DQ_MODE_LSB) {
+        d_method = 0x4000002;
+    }else if(dec_method == DQ_MODE_USB) {
+        d_method = 0x4000002;
+    }else{
+        printf_warn("decode method not support:%d\n",dec_method);
+        return -1;
+    }
+    ret = ioctl(io_ctrl_fd,IOCTL_EXTRACT_CH0,d_method);
+#endif
+    return ret;
+
+}
+
+
 
 
 static void io_set_common_param(uint8_t type, uint8_t *buf,uint32_t buf_len)
@@ -104,24 +169,25 @@ static void io_set_common_param(uint8_t type, uint8_t *buf,uint32_t buf_len)
 #endif
 }
 
-
-void io_set_smooth_factor(uint16_t factor)
+/* 设置平滑数 */
+void io_set_smooth_time(uint16_t stime)
 {
-    printf_note("[**REGISTER**]Set Smooth factor: factor=%d[0x%x]\n",factor, factor);
+    printf_note("[**REGISTER**]Set Smooth time: factor=%d[0x%x]\n",stime, stime);
 #if defined(SUPPORT_SPECTRUM_KERNEL)
     //smooth mode
     ioctl(io_ctrl_fd,IOCTL_SMOOTH_CH0,0x10000);
     //smooth value
-    ioctl(io_ctrl_fd,IOCTL_SMOOTH_CH0,factor);  
+    ioctl(io_ctrl_fd,IOCTL_SMOOTH_CH0,stime);  
 #endif
 }
 
 
-void io_set_calibrate_val(uint32_t ch, uint32_t  factor)
+/* 设置FPGA校准值 */
+void io_set_calibrate_val(uint32_t ch, uint32_t  cal_value)
 {
-    printf_note("[**REGISTER**][ch=%d]Set Calibrate Val factor=%u[0x%x]\n",ch, factor,factor);
+    printf_note("[**REGISTER**][ch=%d]Set Calibrate Val factor=%u[0x%x]\n",ch, cal_value,cal_value);
 #if defined(SUPPORT_SPECTRUM_KERNEL)
-    ioctl(io_ctrl_fd,IOCTL_CALIBRATE_CH0,&factor);
+    ioctl(io_ctrl_fd,IOCTL_CALIBRATE_CH0,&cal_value);
 #endif
 }
 
@@ -205,30 +271,64 @@ void io_set_dma_DQ_out_disable(uint8_t ch)
     io_set_common_param(1,convert_buf,4);
 }
 
-void io_dma_dev_enable(uint32_t ch,uint8_t continuous)
+void io_dma_dev_enable(uint32_t ch, uint8_t type, uint8_t continuous)
 {
     uint32_t ctrl_val = 0;
     uint32_t con ;
+    /* DMA data type area and channel correspondence map: 
+    +-------------------------------------------------------------------------+
+     |                            DMA map                                               |
+     +-------------------------------  -+---------------------------------+-----+
+     |       channel 0                    |   chaneel 1                          |....
+     +---------------------------------+-------+--------+---------------+----+
+     | IQ data | FFT data | SSD RX |SSD TX  |  IQ data | FFT data | SSD RX |SSD TX |...
+     +-------+--------+------+--------+--------+--------+-------+------+----+
+                        
+    */
+    uint8_t data_offset = (ch<<2)|type;
+    printf_note("[**REGISTER**]ch=%d, type=%s, data_offset=%x, Enable\n", ch, type==0?"IQ":"FFT", data_offset);
     con = continuous;
 #if defined(SUPPORT_SPECTRUM_KERNEL)
     if (io_ctrl_fd > 0) {
-        ctrl_val = ((con&0xff)<<16) | ((ch & 0xFF) << 8) | 1;
+        ctrl_val = ((con&0xff)<<16) | ((data_offset & 0xFF) << 8) | 1;
         ioctl(io_ctrl_fd,IOCTL_ENABLE_DISABLE,ctrl_val);
     }
 #endif
 }
 
-static void io_dma_dev_trans_len(uint32_t ch, uint32_t len)
+static void io_dma_dev_trans_len(uint32_t ch, uint8_t type, uint32_t len)
 {
     TRANS_LEN_PARAMETERS tran_parameter;
+/* DMA data type area and channel correspondence map: 
++-------------------------------------------------------------------------+
+ |                            DMA map                                               |
+ +-------------------------------  -+---------------------------------+-----+
+ |       channel 0                    |   chaneel 1                          |....
+ +---------------------------------+-------+--------+---------------+----+
+ | IQ data | FFT data | SSD RX |SSD TX  |  IQ data | FFT data | SSD RX |SSD TX |...
+ +-------+--------+------+--------+--------+--------+-------+------+----+
+                    
+*/
+    uint8_t data_offset = (ch<<2)|type;
+    printf_note("[**REGISTER**]ch=%d, type=%s, data_offset=%x Transfer len:%d\n", ch, type==0?"IQ":"FFT", data_offset, len);
 #if defined(SUPPORT_SPECTRUM_KERNEL)
     if (io_ctrl_fd > 0) {
-        tran_parameter.ch = ch;
+        tran_parameter.ch = data_offset;
         tran_parameter.len = len;
         tran_parameter.type = FAST_SCAN;
         ioctl(io_ctrl_fd,IOCTL_TRANSLEN, &tran_parameter);
     }
 #endif
+
+//TRANS_LEN_PARAMETERS tran_parameter;
+    uint32_t ctrl_val = 0;
+#if defined(SUPPORT_SPECTRUM_KERNEL)
+    if (io_ctrl_fd > 0) {
+        ctrl_val = (((ch & 0xF) << 28) | (len & 0xFFFFFF));
+        ioctl(io_ctrl_fd,IOCTL_TRANSLEN, ctrl_val);
+    }
+#endif
+
 }
 
 void io_set_fft_size(uint32_t ch, uint32_t fft_size)
@@ -266,19 +366,23 @@ void io_set_fft_size(uint32_t ch, uint32_t fft_size)
 
 static void io_set_dma_SPECTRUM_out_en(uint8_t cid, uint8_t outputen,uint32_t trans_len,uint8_t continuous)
 {
+
     uint8_t ch = cid;
     printf_info("SPECTRUM out enable: ch[%d]output en[outputen:%x]\n",cid, outputen);
+    io_dma_dev_disable(ch,IO_SPECTRUM_TYPE);
     if((outputen&IO_SPECTRUM_ENABLE) > 0){
-        io_dma_dev_enable(ch,continuous);
-        io_dma_dev_trans_len(ch,trans_len);
+            io_dma_dev_enable(ch,IO_SPECTRUM_TYPE,continuous);
+            io_dma_dev_trans_len(ch,IO_SPECTRUM_TYPE, trans_len);
         }
     }
 
-static void io_dma_dev_disable(uint32_t ch)
+static void io_dma_dev_disable(uint32_t ch,uint8_t type)
 {
     uint32_t ctrl_val = 0;
     
 #if defined(SUPPORT_SPECTRUM_KERNEL)
+    uint8_t data_offset = (ch<<2)|type;
+    printf_note("[**REGISTER**]ch=%d, type=%s data_offset=%x Disable\n", ch, type==0?"IQ":"FFT", data_offset);
     if (io_ctrl_fd > 0) {
         ctrl_val = (ch & 0xFF) << 8;
         ioctl(io_ctrl_fd,IOCTL_ENABLE_DISABLE,ctrl_val);
@@ -288,8 +392,7 @@ static void io_dma_dev_disable(uint32_t ch)
 
 static void io_set_dma_SPECTRUM_out_disable(uint8_t ch)
 {
-    printf_info("SPECTRUM out disable: ch[%d]\n",ch);
-    io_dma_dev_disable(ch);
+    io_dma_dev_disable(ch, IO_SPECTRUM_TYPE);
 }
 
 int8_t io_set_para_command(uint8_t type, uint8_t ch, void *data)

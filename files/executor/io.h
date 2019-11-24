@@ -133,6 +133,10 @@ typedef enum _IOCTL_CMD {
 #define IOCTL_DISK_READ_FILE_INFO    _IOW(DMA_RF_IOC_MAGIC, DISK_READ_FILE_INFO, uint32_t)
 
 
+#define IO_SPECTRUM_TYPE 1
+#define IO_IQ_TYPE 0
+
+
 /* kernel client info */
 typedef struct  _STATION_INFO{
     uint32_t index;
@@ -198,7 +202,7 @@ extern int8_t io_set_work_mode_command(void *data);
 extern int8_t io_set_para_command(uint8_t type, uint8_t ch, void *data);
 extern int16_t io_get_adc_temperature(void);
 extern void io_set_dq_param(void *pdata);
-extern void io_set_smooth_factor(uint16_t factor);
+extern void io_set_smooth_time(uint16_t factor);
 extern void io_set_fft_size(uint32_t ch, uint32_t fft_size);
 extern uint8_t  io_set_network_to_interfaces(void *netinfo);
 extern int32_t io_set_sta_info_param(STATION_INFO *data);

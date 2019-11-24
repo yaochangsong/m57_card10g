@@ -41,6 +41,8 @@ enum {
     EX_FFT_SIZE=21,              /*FFT 点数*/
     EX_FRAME_DROP_CNT=22,        /*丢帧次数*/
     EX_CHANNEL_SELECT=23,        /*通道选择*/
+    EX_FPGA_RESET=24,            /*FPGA复位*/
+    EX_FPGA_CALIBRATE=25,        /*FPGA校准*/
 };
 
 /* executor: work mode  */

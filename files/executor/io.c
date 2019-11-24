@@ -311,7 +311,7 @@ static void io_dma_dev_trans_len(uint32_t ch, uint8_t type, uint32_t len)
 */
     uint8_t data_offset = (ch<<2)|type;
     printf_note("[**REGISTER**]ch=%d, type=%s, data_offset=%x Transfer len:%d\n", ch, type==0?"IQ":"FFT", data_offset, len);
-#if defined(SUPPORT_SPECTRUM_KERNEL)
+#if 0//defined(SUPPORT_SPECTRUM_KERNEL)
     if (io_ctrl_fd > 0) {
         tran_parameter.ch = data_offset;
         tran_parameter.len = len;

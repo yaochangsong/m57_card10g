@@ -10,6 +10,89 @@ static RF_FREQ_STATS rf_freq_stats[MAX_CHANNEL_NUM] = {0};
 static pthread_mutex_t mut;
 
 
+uint8_t clock_7044_config[49][3]={
+{0x00,0x01, 0x60},
+{0x00,0x03, 0x24},
+{0x00,0x04, 0x78},
+{0x00,0x05, 0x6f},
+{0x00,0x0b, 0x07},
+{0x00,0x5a, 0x01},
+{0x00,0x5c, 0x80},
+{0x00,0x5d, 0x00},
+{0x00,0x64, 0x01},
+{0x01,0x04, 0xd1},
+{0x01,0x05, 0x04},
+{0x01,0x06, 0x00},
+{0x01,0x0b, 0x00},
+{0x01,0x0c, 0x08},
+{0x01,0x18, 0xd1},
+{0x01,0x19, 0x01},
+{0x01,0x1a, 0x00},
+{0x01,0x1f, 0x00},
+{0x01,0x20, 0x08},
+{0x01,0x22, 0x5d},
+{0x01,0x23, 0x40},
+{0x01,0x24, 0x00},
+{0x01,0x29, 0x00},
+{0x01,0x2a, 0x91},
+{0x01,0x2c, 0xd1},
+{0x01,0x2d, 0x04},
+{0x01,0x2e, 0x00},
+{0x01,0x33, 0x00},
+{0x01,0x34, 0x08},
+{0x01,0x36, 0x5d},
+{0x01,0x37, 0x40},
+{0x01,0x38, 0x00},
+{0x01,0x3d, 0x00},
+{0x01,0x3e, 0x91},
+{0x01,0x40, 0xd1},
+{0x01,0x41, 0x04},
+{0x01,0x42, 0x00},
+{0x01,0x47, 0x00},
+{0x01,0x48, 0x08},
+{0x01,0x4a, 0x5d},
+{0x01,0x4b, 0x40},
+{0x01,0x4c, 0x00},
+{0x01,0x51, 0x00},
+{0x01,0x52, 0x91},
+{0x00,0x9f, 0x4d},
+{0x00,0xa0, 0xdf},
+{0x00,0xa5, 0x06},
+{0x00,0xa8, 0x06},
+{0x00,0xb0, 0x04},
+};
+
+uint8_t ad_9690_config[26][3]={
+{0x00,0x3f,0x80},
+{0x00,0x40,0xbf},
+{0x05,0x71,0x15},
+{0x00,0x16,0x6c},
+{0x02,0x00,0x02},
+{0x02,0x01,0x01},
+{0x03,0x10,0x43},
+{0x03,0x11,0x00},
+{0x03,0x14,0x00},
+{0x03,0x15,0x0c},
+{0x03,0x20,0x00},
+{0x03,0x21,0x00},
+{0x03,0x30,0x43},
+{0x03,0x31,0x00},
+{0x03,0x34,0x02},
+{0x03,0x35,0x00},
+{0x03,0x40,0x00},
+{0x03,0x41,0x00},
+{0x05,0x70,0x91},
+{0x05,0x6e,0x10},
+{0x05,0x8b,0x03},
+{0x01,0x20,0x02},
+{0x01,0x21,0x00},
+{0x03,0x00,0x01},
+{0x00,0x01,0x02},
+{0x05,0x71,0x14},
+};
+
+
+
 static void spi_fd_init(void)
 {
     int i ;
@@ -75,81 +158,6 @@ static int init_gpio(uint8_t index){
 }
 
 
-int8_t  spi_dev_init(void)
-{
-    uint8_t mode = 0;
-    uint32_t speed = 4000000;
-    uint32_t i,cnum;
-    char dev_name[32];
-
-    if(spidevfd[0] >0){
-         //printf_err("spi device has been inited.\n");
-         return -1;
-    }
-    for(cnum=0 ;cnum <SPI_CONTROL_NUM ;cnum++){
-
-        if(cnum == 0){
-            mode = 0;
-            sprintf(dev_name,"/dev/spidev32765.0");
-        }else{
-            //sprintf(dev_name,"/dev/spidev%d.0",dev_num);
-            //same one spi controller
-            continue;
-        }
-
-        if (spidevfd[cnum] <=0){
-            spidevfd[cnum] =  open(dev_name,O_RDWR);
-            if(spidevfd[cnum] < 0){
-                // return  -1;
-                continue;
-            }
-            if(ioctl(spidevfd[cnum], SPI_IOC_WR_MODE,&mode) <0){
-                return -1;   
-            }
-            if(ioctl(spidevfd[cnum],SPI_IOC_WR_MAX_SPEED_HZ, &speed)<0){
-                return -1;
-            }
-        }
-
-        //spi0 with gpio for multi bus
-        if(cnum == 0){
-            for(i = 0 ;i <MAX_GPIO_NUM;i++){
-                //only init used gpio
-                if((GPIO_USED_MASK&(ULLI<<i))>0){
-                        if(gpiofd[i] <=0){
-                                printf_debug("gpio init i = %d\n",i);
-                                gpiofd[i] = init_gpio(i);
-                            if(gpiofd[i] <0){
-                                printf_err("gpio init failed\n");
-                                continue;
-                        }
-                    }
-                }
-            }
-        }
-
-    }
-    for(cnum=1 ;cnum <SPI_CONTROL_NUM ;cnum++){
-        spidevfd[cnum] = spidevfd[cnum-1];
-        printf_debug("spi num:%d,fd=%d\n",cnum,spidevfd[cnum]);
-    }
-
-#if 0
-for(i = 0 ;i <MAX_LED_NUM;i++){
-    if(ledfd[i] <=0){
-        ledfd[i] = init_led(i);
-        if(ledfd[i] <0){
-            //return -1;
-            printf_err("led[%d] init failed\n", i);
-        }
-    }
-}
-
-
-    set_green_led_on();
-#endif
-    return 0;
-}
 
 
 static int init_led(uint8_t index){
@@ -222,6 +230,84 @@ static void set_spi_cs(uint8_t ch){
         set_gpio_low(gpiofd[10]);
     }	
 }
+
+void switch_adc_mode(uint8_t is_backtrace){
+    
+    lseek(gpiofd[0], 0, SEEK_SET);
+    if(is_backtrace >0){
+        printf("-------------------------set adc pin value: high\n");
+	set_gpio_high(gpiofd[0]);   
+    }else{
+	    printf("---------------------------set adc pin value: low\n");
+        set_gpio_low(gpiofd[0]);   
+    }
+}
+
+int8_t  spi_dev_init(void)
+{
+    uint8_t mode = 0;
+        uint32_t speed = 4000000;
+        uint32_t i,cnum;
+        char dev_name[32];
+        static uint8_t adc_mode_init = 0;
+    
+        if(adc_mode_init != 0){
+              printf("spi device has been inited.\n");
+             return -1;
+        }
+        
+        for(cnum=0 ;cnum <SPI_CONTROL_NUM ;cnum++){
+            if(cnum == 0){
+                mode = 0;
+                sprintf(dev_name,"/dev/spidev32766.0");
+            }else if(cnum == 1){
+                mode = 0;
+                sprintf(dev_name,"/dev/spidev32766.1");
+            }else if(cnum == 2){
+                mode = SPI_CPOL|SPI_CPHA ;
+                sprintf(dev_name,"/dev/spidev32765.0");
+            }else if(cnum == 3){
+                mode = 0;
+                sprintf(dev_name,"/dev/spidev32765.1");
+            }else{
+                //sprintf(dev_name,"/dev/spidev%d.0",dev_num);
+                break;
+            }
+    
+            if (spidevfd[cnum] <=0) {
+                spidevfd[cnum] =  open(dev_name,O_RDWR);
+                if(spidevfd[cnum] < 0){
+                    return  -1;
+                }
+                if(ioctl(spidevfd[cnum], SPI_IOC_WR_MODE,&mode) <0){
+                    return -1;   
+                }
+                if(ioctl(spidevfd[cnum],SPI_IOC_WR_MAX_SPEED_HZ, &speed)<0){
+                    return -1;
+                }
+            }
+            
+        }
+        for(i = 0 ;i <MAX_LED_NUM;i++){
+            if(ledfd[i] <=0){
+                ledfd[i] = init_led(i);
+                if(ledfd[i] <0){
+                    //return -1;
+                    printf("led init failed\n");
+                }
+            }
+        }
+    
+        set_green_led_on();
+    
+        //adc data source switch
+        gpiofd[0] = init_gpio(63);
+        switch_adc_mode(0);  
+        adc_mode_init = 0xaa;
+        return 0;
+
+}
+
 
 
 static uint8_t get_response_len_bytype(uint8_t type){
@@ -418,7 +504,61 @@ static long time_usec_diff(struct timespec now,struct timespec old){
 }
 
 void clock_7044_init(void){
+    uint8_t send_buf[10],bits_len,recv_len,*precv;
+    uint32_t i;
+    
+    if(spidevfd[0] <=0){
+        spi_dev_init();
+    }
+    
+    recv_len =0;
+    bits_len = 24;
 
+    send_buf[0] = 0x0;
+    send_buf[1] = 0x0;
+    send_buf[2] = 0x01;
+    translate_data(0,send_buf,bits_len/8,recv_len);
+    usleep(50000);
+
+    send_buf[0] = 0x0;
+    send_buf[1] = 0x0;
+    send_buf[2] = 0x00;
+    translate_data(0,send_buf,bits_len/8,recv_len);
+    usleep(50000);
+
+    for(i=0;i<(sizeof(clock_7044_config)/3);i++){
+        uint8_t tmp_buf[4];
+        memcpy(tmp_buf,clock_7044_config[i],3);
+        translate_data(0,tmp_buf,bits_len/8,recv_len);
+    }
+
+    
+    bits_len = 24;
+    recv_len =0;
+
+    send_buf[0] = 0x0;
+    send_buf[1] = 0x1;
+    send_buf[2] = 0x62;
+    translate_data(0,send_buf,bits_len/8,recv_len);
+    usleep(100);
+
+    send_buf[0] = 0x0;
+    send_buf[1] = 0x01;
+    send_buf[2] = 0x60;
+    translate_data(0,send_buf,bits_len/8,recv_len);
+
+    send_buf[0] = 0x0;
+    send_buf[1] = 0x01;
+    send_buf[2] = 0xe0;
+    translate_data(0,send_buf,bits_len/8,recv_len);
+    usleep(100);
+    
+    send_buf[0] = 0x0;
+    send_buf[1] = 0x01;
+    send_buf[2] = 0x60;
+    translate_data(0,send_buf,bits_len/8,recv_len);
+    sleep(1);
+    printf_warn("-------------clock 7044 init finished \n");
 }
 
 #if defined(INTERNAL_CLK)
@@ -429,7 +569,29 @@ void clock_7044_init_internal(void){
 #endif
 
 void ad9690_init(void){
+    uint8_t send_buf[10],bits_len,recv_len,*precv;
+    uint32_t i;
 
+    if(spidevfd[1] <=0){
+        spi_dev_init();
+    }
+    
+    recv_len =0;
+    bits_len = 24;
+    
+    send_buf[0] = 0x0;
+    send_buf[1] = 0x0;
+    send_buf[2] = 0x81;
+    translate_data(1,send_buf,bits_len/8,recv_len);
+    usleep(10000);
+
+    for(i=0;i<(sizeof(ad_9690_config)/3);i++){
+        uint8_t tmp_buf[4];
+        memcpy(tmp_buf,ad_9690_config[i],3);
+        //PRINTF("reg value:%02x %02x %02x",tmp_buf[0],tmp_buf[1],tmp_buf[2]);
+        translate_data(1,tmp_buf,bits_len/8,recv_len);
+    }
+    printf_warn("----------------ad chip 9690 init finished\n");
 }
 
 
@@ -465,6 +627,9 @@ static uint8_t send_gain_set_cmd(uint8_t ch,uint8_t gain){
     }
     return ret;
 }
+
+
+
 
 
 static uint8_t send_noise_mode_set_cmd(uint8_t ch,uint8_t noise_mode_flag){

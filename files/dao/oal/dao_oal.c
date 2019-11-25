@@ -794,6 +794,16 @@ void read_calibration_file(mxml_node_t *root, void *config)
         cali_config->analysis.global_roughly_power_lever = 0;
     }
     printf_debug("analysis.global_roughly_power_lever=%d\n", cali_config->analysis.global_roughly_power_lever);
+
+    /* low noise */
+    node = mxmlFindElement(root, root,"calibration","low_noise_power", NULL,MXML_DESCEND);
+    node_value = mxmlElementGetAttr(node,"low_noise_power");
+    if(node_value != NULL){
+        cali_config->low_noise.global_power_val = atoi(node_value);
+    }else{
+        cali_config->low_noise.global_power_val = 0;
+    }
+    printf_debug("low_noise.global_power_val=%d\n", cali_config->low_noise.global_power_val);
     /* read lo_leakage globe calibration value  */
     node = mxmlFindElement(root, root,"calibration","lo_leakage_threshold", NULL,MXML_DESCEND);
     node_value = mxmlElementGetAttr(node,"lo_leakage_threshold");

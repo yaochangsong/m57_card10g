@@ -49,7 +49,7 @@
 //#define get_single_side_band_pointrate() (0.109375)
 
 
-#define  SPECTRUM_SMALL_FFT_SIZE   (8192)
+#define  SPECTRUM_SMALL_FFT_SIZE   (2048)
 #define  SPECTRUM_BIG_FFT_SIZE  SPECTRUM_IQ_SIZE/2
 
 //#define calc_resolution(bw_hz, fft_size)  (SIDE_BAND_RATE*bw_hz/fft_size)
@@ -69,13 +69,14 @@ struct spectrum_st{
     long long bw_hz;
     uint32_t level;
     int16_t *iq_payload;   /* IQ data */
-    uint32_t iq_len;
+    uint32_t iq_byte_len;
     float *fft_float_payload;         /* FFT float data */
-    fft_data_type fft_short_payload[10*1024];       /* FFT short data */
+    fft_data_type fft_short_payload[32*1024];       /* FFT short data */
     uint32_t fft_len;
     struct spectrum_header_param param;
     volatile bool fft_data_ready;
     volatile bool iq_data_ready;
+    volatile bool iq_data_upload_ready;
 };
 
 struct spectrum_fft_result_st{
@@ -110,8 +111,9 @@ struct spectrum_fft_result_st{
     pthread_mutex_unlock(&spectrum_iq_data_mutex); \
 } while (0)
 
+
 extern void spectrum_init(void);
-extern void *spectrum_rw_fft_result(fft_result *result, uint64_t s_freq_hz, float freq_resolution, uint32_t fft_size);
+extern void *spectrum_rw_fft_result(fft_result *result, uint64_t s_freq_hz, float freq_resolution, uint32_t fft_size, struct spectrum_header_param *param);
 extern int32_t spectrum_send_fft_data_interval(void);
 extern void spectrum_psd_user_deal(struct spectrum_header_param *param);
 #endif

@@ -383,7 +383,7 @@ static int akt_execute_set_command(void)
         {
             check_valid_channel(header->buf[0]);
             memcpy(&(pakt_config->smooth[pakt_config->cid]), header->buf, sizeof(DIRECTION_SMOOTH_PARAM));
-            if(poal_config->work_mode == OAL_FAST_SCAN_MODE || poal_config->work_mode == OAL_MULTI_POINT_SCAN_MODE){
+            if(poal_config->work_mode == OAL_FIXED_FREQ_ANYS_MODE || poal_config->work_mode == OAL_MULTI_POINT_SCAN_MODE){
                 poal_config->multi_freq_point_param[ch].smooth_time = pakt_config->smooth[ch].smooth;
             }else if(poal_config->work_mode == OAL_FAST_SCAN_MODE || poal_config->work_mode == OAL_MULTI_ZONE_SCAN_MODE){
                 poal_config->multi_freq_fregment_para[ch].smooth_time = pakt_config->smooth[ch].smooth;
@@ -504,17 +504,21 @@ static int akt_execute_set_command(void)
                 err_code = RET_CODE_PARAMTER_ERR;
                 goto set_exit;
             }
+            printf_warn("sub_ch=%d\n", sub_ch);
+            printf_warn("bandwidth:%u,d_method:%d, center_freq:%llu\n",pakt_config->sub_channel[sub_ch].bandwidth,
+                            pakt_config->sub_channel[sub_ch].decode_method_id, pakt_config->sub_channel[sub_ch].freq);
             decode_param.cid = ch;
-            //decode_param.sub_ch = sub_ch;
+            decode_param.sub_ch = sub_ch;
             decode_param.d_bandwidth = pakt_config->sub_channel[sub_ch].bandwidth;
             decode_param.d_method = akt_decode_method_convert(pakt_config->sub_channel[sub_ch].decode_method_id);
             decode_param.center_freq = pakt_config->sub_channel[sub_ch].freq;
-            printf_info("ch:%d, sub_ch=%d, d_bandwidth:%llu,d_method:%d, center_freq:%llu", ch, sub_ch, decode_param.d_bandwidth, decode_param.d_method, decode_param.center_freq);
+            printf_warn("ch:%d, sub_ch=%d, d_bandwidth:%u,d_method:%d, center_freq:%llu\n", 
+                ch, sub_ch, decode_param.d_bandwidth, decode_param.d_method, decode_param.center_freq);
             executor_set_command(EX_MID_FREQ_CMD, EX_DEC_BW, ch, &decode_param);
             io_set_enable_command(AUDIO_MODE_DISABLE, ch, 0);
-            
-            if(poal_config->sub_ch_enable.audio_en || poal_config->sub_ch_enable.iq_en)
-                io_set_enable_command(AUDIO_MODE_ENABLE, ch, 32768);
+            printf_warn("ch:%d, au_en:%d,iq_en:%d\n", ch, poal_config->sub_ch_enable.audio_en, poal_config->sub_ch_enable.iq_en);
+            //if(poal_config->sub_ch_enable.audio_en || poal_config->sub_ch_enable.iq_en)
+            //    io_set_enable_command(AUDIO_MODE_ENABLE, ch, 32768);
             break;
         }
         case SUB_SIGNAL_OUTPUT_ENABLE_CMD:
@@ -531,9 +535,12 @@ static int akt_execute_set_command(void)
                 err_code = RET_CODE_PARAMTER_NOT_SET;
                 goto set_exit;
             }
-            io_set_enable_command(AUDIO_MODE_DISABLE, ch, 0);
-            if(poal_config->sub_ch_enable.audio_en || poal_config->sub_ch_enable.iq_en)
-                io_set_enable_command(AUDIO_MODE_ENABLE, ch, 32768);
+            //io_set_enable_command(AUDIO_MODE_DISABLE, ch, 0);
+            printf_warn("ch:%d, au_en:%d,iq_en:%d\n", ch,poal_config->sub_ch_enable.audio_en, poal_config->sub_ch_enable.iq_en);
+            
+            //if(poal_config->sub_ch_enable.audio_en || poal_config->sub_ch_enable.iq_en)
+            //    io_set_enable_command(AUDIO_MODE_ENABLE, ch, 32768);
+            executor_set_enable_command(ch);
             break;
         }
         case SPCTRUM_PARAM_CMD:
@@ -586,7 +593,7 @@ static int akt_execute_get_command(void)
     header = &akt_header;
 
     err_code = RET_CODE_SUCCSESS;
-    printf_info("get bussiness code[%x]\n", header->code);
+    printf_note("get bussiness code[%x]\n", header->code);
     switch (header->code)
     {
         case DEVICE_SELF_CHECK_CMD:
@@ -612,7 +619,7 @@ static int akt_execute_get_command(void)
             uint32_t result_num = 0;
 
 
-            fft_result = (struct spectrum_fft_result_st *)spectrum_rw_fft_result(NULL, 0, 0, 0);
+            fft_result = (struct spectrum_fft_result_st *)spectrum_rw_fft_result(NULL, 0, 0, 0, NULL);
             if(fft_result == NULL){
                 err_code = RET_CODE_INTERNAL_ERR;
                 printf_info("error fft_result\n");
@@ -1004,6 +1011,64 @@ int akt_assamble_error_response_data(uint8_t **buf, int err_code)
     return len;
 }
 
+
+uint8_t *akt_assamble_demodulation_data_extend_frame_header_data(uint32_t *len, void *config)
+{
+    struct poal_config *poal_config = &(config_get_config()->oal_config);
+    static uint8_t param_buf[sizeof(DATUM_DEMODULATE_HEADER_ST)];
+    DATUM_DEMODULATE_HEADER_ST *ext_hdr = NULL;
+    static bool start_flag = false;
+    uint32_t time_interval_ms;
+
+    ext_hdr = (DATUM_DEMODULATE_HEADER_ST *)param_buf;
+    
+    memset(param_buf, 0, sizeof(DATUM_DEMODULATE_HEADER_ST));
+    printf_debug("akt_assamble_data_extend_frame_header_data\n");
+    ext_hdr->dev_id = akt_get_device_id();
+    
+    ext_hdr->work_mode =  poal_config->work_mode;
+    ext_hdr->gain_mode = poal_config->rf_para[poal_config->cid].gain_ctrl_method;
+    ext_hdr->gain = poal_config->rf_para[poal_config->cid].mgc_gain_value;
+
+    time_interval_ms=(uint32_t)diff_time();
+    if(start_flag == false){
+        ext_hdr->duration = 100; /* first time, set default duration time:  100ms */
+        start_flag = true;
+    }else{
+        ext_hdr->duration = (uint64_t)time_interval_ms;
+    }
+    printf_debug("ext_hdr->duration=%lu, time_interval_ms=%u\n", ext_hdr->duration,time_interval_ms);
+
+    struct spectrum_header_param *header_param;
+    header_param = (struct spectrum_header_param *)config;
+    ext_hdr->cid = header_param->ch;
+    ext_hdr->center_freq = header_param->m_freq;
+    ext_hdr->bandwidth = header_param->bandwidth;
+    ext_hdr->demodulate_type = header_param->d_method;
+    ext_hdr->sample_rate = 0;
+    ext_hdr->frag_total_num = 1;
+    ext_hdr->frag_cur_num = 0;
+    ext_hdr->frag_data_len = (int16_t)(header_param->data_len);
+#if 1
+    printfd("-----------------------------assamble_spectrum_header-----------------------------------\n");
+    printfd("dev_id[%d], cid[%d], work_mode[%d], gain_mode[%d]\n", 
+        ext_hdr->dev_id, ext_hdr->cid, ext_hdr->work_mode, ext_hdr->gain_mode);
+    printfd("d_method[%d], m_freq[%llu], bandwidth[%u]\n", 
+        ext_hdr->demodulate_type, header_param->m_freq, header_param->bandwidth);
+    printfd("----------------------------------------------------------------------------------------\n");
+#endif
+    printfd("DEMODULATE Extend frame header:\n");
+    for(int i = 0; i< sizeof(DATUM_DEMODULATE_HEADER_ST); i++){
+        printfd("%x ", *(param_buf+i));
+    }
+    printfd("\n");
+
+    *len = sizeof(DATUM_DEMODULATE_HEADER_ST);
+    return param_buf;
+}
+
+
+
 /******************************************************************************
 * FUNCTION:
 *     akt_assamble_data_extend_frame_header_data
@@ -1020,7 +1085,6 @@ uint8_t *akt_assamble_data_extend_frame_header_data(uint32_t *len, void *config)
     DATUM_SPECTRUM_HEADER_ST *ext_hdr = NULL;
     static bool start_flag = false;
     uint32_t time_interval_ms;
-    //uint8_t ex_buf[sizeof(DATUM_SPECTRUM_HEADER_ST)];
     ext_hdr = (DATUM_SPECTRUM_HEADER_ST *)param_buf;
     
     memset(param_buf, 0, sizeof(DATUM_SPECTRUM_HEADER_ST));
@@ -1062,7 +1126,7 @@ uint8_t *akt_assamble_data_extend_frame_header_data(uint32_t *len, void *config)
         ext_hdr->dev_id, ext_hdr->cid, ext_hdr->work_mode, ext_hdr->gain_mode);
     printfd("gain[%d], duration[%llu], start_freq[%llu], cutoff_freq[%llu], center_freq[%llu]\n",
          ext_hdr->gain, ext_hdr->duration, ext_hdr->start_freq, ext_hdr->cutoff_freq, ext_hdr->center_freq);
-    printfd("bandwidth[%u], sample_rate[%u], freq_resolution[%f], fft_len[%d], datum_total=%d\n",
+    printfd("bandwidth[%u], sample_rate[%u], freq_resolution[%f], fft_len[%u], datum_total=%d\n",
         ext_hdr->bandwidth,ext_hdr->sample_rate,ext_hdr->freq_resolution,ext_hdr->fft_len,ext_hdr->datum_total);
     printfd("sn[%d], datum_type[%d],frag_data_len[%d]\n", 
         ext_hdr->sn,ext_hdr->datum_type,ext_hdr->frag_data_len);
@@ -1094,36 +1158,44 @@ uint8_t * akt_assamble_data_frame_header_data(uint32_t *len, void *config)
     DATUM_PDU_HEADER_ST *package_header;
     static unsigned short seq_num[MAX_RADIO_CHANNEL_NUM] = {0};
     struct spectrum_header_param *header_param;
-    static uint8_t head_buf[sizeof(DATUM_PDU_HEADER_ST)+sizeof(DATUM_SPECTRUM_HEADER_ST)];
+    static uint8_t head_buf[sizeof(DATUM_PDU_HEADER_ST)+sizeof(DATUM_SPECTRUM_HEADER_ST)+sizeof(DATUM_DEMODULATE_HEADER_ST)];
     uint8_t *pextend;
     uint32_t extend_data_header_len;
     struct timeval tv;
 
-    printf_debug("akt_assamble_data_frame_header_data. v2\n");
+    printf_debug("akt_assamble_data_frame_header_data. v3\n");
     header_param = (struct spectrum_header_param *)config;
-    pextend = akt_assamble_data_extend_frame_header_data(&extend_data_header_len, config);
+    printf_debug("header_param->ex_type:%d\n", header_param->ex_type);
+    if(header_param->ex_type == SPECTRUM_DATUM)
+        pextend = akt_assamble_data_extend_frame_header_data(&extend_data_header_len, config);
+    else if(header_param->ex_type == DEMODULATE_DATUM)
+        pextend = akt_assamble_demodulation_data_extend_frame_header_data(&extend_data_header_len, config);
+    else{
+        printf_err("extend type is not valid!\n");
+        return NULL;
+    }
     memset(head_buf, 0, sizeof(DATUM_PDU_HEADER_ST)+extend_data_header_len);
     memcpy(head_buf+ sizeof(DATUM_PDU_HEADER_ST), pextend, extend_data_header_len);
     
     package_header = (DATUM_PDU_HEADER_ST*)head_buf;
     package_header->syn_flag = AKT_START_FLAG;
-    package_header->type = SPECTRUM_DATUM_FLOAT;
+    package_header->type = header_param->type;
     gettimeofday(&tv,NULL);
-    package_header->toa = tv.tv_sec*1000 + tv.tv_usec/1000;
+    package_header->toa = 0;//tv.tv_sec*1000 + tv.tv_usec/1000;
     package_header->seqnum = seq_num[header_param->ch]++;
     package_header->virtual_ch = 0;
     memset(package_header->reserve, 0, sizeof(package_header->reserve));
-    package_header->ex_type = SPECTRUM_DATUM;
+    package_header->ex_type = header_param->ex_type;
     package_header->ex_len = extend_data_header_len;
     package_header->data_len = header_param->data_len;
     package_header->crc = 0;
     printfd("-----------------------------assamble_pdu_header----------------------------------------\n");
-    printfd("toa=[%llu], seqnum[%d], data_len[%d]\n",  package_header->toa, package_header->seqnum, package_header->data_len);
+    printfd("toa=[%llu], seqnum[%d], ex_len[%d],data_len[%d]\n",  package_header->toa, package_header->seqnum, package_header->ex_len, package_header->data_len);
     printfd("----------------------------------------------------------------------------------------\n");
     *len = sizeof(DATUM_PDU_HEADER_ST) + extend_data_header_len;
     printfd("Header len[%d]: \n", sizeof(DATUM_PDU_HEADER_ST));
     for(int i = 0; i< sizeof(DATUM_PDU_HEADER_ST); i++){
-        printfi("%x ", *(head_buf + i));
+        printfd("%x ", *(head_buf + i));
     }
     printfd("\n");
     printfd("extend header len[%d]: \n", extend_data_header_len);

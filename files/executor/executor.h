@@ -118,8 +118,9 @@ struct sem_st{
     sem_t   kernel_sysn;        /* 频谱分析时，内核处理完数据后，异步消息通知应用层 */
 };
 
-/* 数据帧头部分变量参数结构体，数据上报时，内核用作发送到客户端 */
+/* 频谱或IQ数据部分变量参数结构体，用作变化的参数传递 */
 struct spectrum_header_param{
+    uint32_t scan_bw;
     uint32_t bandwidth;
     uint32_t fft_size;
     uint32_t fft_sn;
@@ -129,9 +130,12 @@ struct spectrum_header_param{
     uint64_t m_freq;             /* 中心频率 */
     float freq_resolution;       /* 分辨率 */
     uint8_t ch;
-    uint8_t datum_type;
+    uint8_t datum_type;          /* 0x00：字符型 0x01：短整型 0x02 浮点型 */
     work_mode mode;
     uint32_t data_len;
+    uint8_t d_method;           /* 解调类型 */
+    uint8_t type;               /* 数据类型： 频谱数据/IQ数据/音频数据 */
+    uint8_t ex_type;            /* 扩展帧类型： 频谱帧/解调帧 */
 };
 
 

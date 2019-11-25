@@ -273,10 +273,16 @@ struct calibration_mgc_info_st{
     int32_t  global_gain_val;
 }__attribute__ ((packed));
 
+struct calibration_low_noise_info_st{
+    int32_t  global_power_val;
+}__attribute__ ((packed));
+
+
 
 struct calibration_info_st{
     struct calibration_specturm_info_st specturm;
     struct calibration_analysis_info_st analysis;
+    struct calibration_low_noise_info_st low_noise;
     struct calibration_lo_leakage_info_st lo_leakage;
     struct calibration_mgc_info_st mgc;
 }__attribute__ ((packed));

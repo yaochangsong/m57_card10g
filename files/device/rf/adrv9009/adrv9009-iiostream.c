@@ -351,7 +351,6 @@ int16_t *adrv9009_iio_read_rx0_data(ssize_t *rsize)
 		sleep(1);
 		return NULL;
 	}
-	printf_info("* iio_read_rx_data\n");
 	/* It is very important to refill three times here, for some unknown reason...
 	   otherwise it will cause the order of IQ data to be disordered.
 	*/

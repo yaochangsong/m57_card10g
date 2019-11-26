@@ -33,6 +33,9 @@ typedef enum {
     RET_CODE_PARAMTER_NOT_SET = 7,
     RET_CODE_PARAMTER_TOO_LONG= 8,
     RET_CODE_LOCAL_CTRL_MODE  = 9,
+    RET_CODE_DEVICE_BUSY      = 10,
+    RET_CODE_FILE_NOT_FOUND   = 11,
+    RET_CODE_FILE_EXISTS      = 12,
 } x_return_code;
 
 /* method code */

@@ -311,6 +311,28 @@ static int akt_work_mode_set(struct akt_protocal_param *akt_config)
     return 0;
 }
 
+static inline int akt_err_code_check(int ret)
+{
+    int err_code = RET_CODE_INTERNAL_ERR;
+    if(ret == 0){
+        return RET_CODE_SUCCSESS;
+    }
+    if(ret == -EBUSY){
+        printf_warn("Disk is busy now\n");
+        err_code = RET_CODE_DEVICE_BUSY;
+    }else if(ret == -ENOMEM || ret == EFAULT){
+        printf_warn("No memory or Bad address:%d\n", ret);
+        err_code = RET_CODE_INTERNAL_ERR;
+    }else if(ret == -EEXIST){
+        printf_warn("File exists\n");
+        err_code = RET_CODE_FILE_EXISTS;
+    }else if(ret == -ENOENT){
+        printf_warn("No such file\n");
+        err_code = RET_CODE_FILE_NOT_FOUND;
+    }
+    return err_code;
+}
+
 
 static int akt_execute_set_command(void)
 {
@@ -569,37 +591,50 @@ static int akt_execute_set_command(void)
         /* disk cmd */
         case STORAGE_IQ_CMD:
         {
-            int ret;
+            int ret = 0;
             STORAGE_IQ_ST  sis;
             check_valid_channel(header->buf[0]);
             memcpy(&sis, header->buf, sizeof(STORAGE_IQ_ST));
             if(sis.cmd == 1){/* start add iq file */
+                printf_note("Start add file:%s\n", sis.filepath);
                 ret = io_start_save_file(sis.filepath);
             }else if(sis.cmd == 0){/* stop add iq file */
+                printf_note("Stop add file:%s\n", sis.filepath);
                 ret = io_stop_save_file(sis.filepath);
             }else{
+                printf_err("error cmd\n");
                 err_code = RET_CODE_PARAMTER_ERR;
+            }
+            if(ret != 0){
+                err_code = akt_err_code_check(ret);
+                goto set_exit;
             }
             break;
         }
         case BACKTRACE_IQ_CMD:
         {
             BACKTRACE_IQ_ST bis;
-            int ret;
+            int ret = 0;
             check_valid_channel(header->buf[0]);
             memcpy(&bis, header->buf, sizeof(BACKTRACE_IQ_ST));
             if(bis.cmd == 1){/* start backtrace iq file */
                 /* switch to backtrace mode */
                 switch_adc_mode(1);
+                printf_note("Start backtrace file:%s\n", bis.filepath);
                 ret = io_start_backtrace_file(bis.filepath);
             }else if(bis.cmd == 0){/* stop backtrace iq file */
                 /* switch to normal mode */
                 switch_adc_mode(0);
+                printf_note("Stop backtrace file:%s\n", bis.filepath);
                 ret = io_stop_save_file(bis.filepath);
             }else{
+                printf_err("error cmd\n");
                 err_code = RET_CODE_PARAMTER_ERR;
             }
-            printf_note("backtrace iq cmd ret=%d\n", ret);
+            if(ret != 0){
+                err_code = akt_err_code_check(ret);
+                goto set_exit;
+            }
             break;
         }
         case STORAGE_DELETE_POLICY_CMD:
@@ -613,7 +648,11 @@ static int akt_execute_set_command(void)
             char filename[FILE_PATH_MAX_LEN];
             memcpy(filename, header->buf, FILE_PATH_MAX_LEN);
             ret = io_delete_file(filename);
-            printf_note("delete file ret=%d\n", ret);
+            printf_note("Delete file:%s, %d\n", filename, ret);
+            if(ret != 0){
+                err_code = akt_err_code_check(ret);
+                goto set_exit;
+            }
             break;
         }
         default:
@@ -744,6 +783,11 @@ static int akt_execute_get_command(void)
                 break;
             }
             ret = io_get_disk_info(psi);
+            printf_note("Get disk info: %d\n", ret);
+            if(ret != 0){
+                err_code = akt_err_code_check(ret);
+                goto exit;
+            }
             printf_note("ret=%d, num=%d, speed=%u, capacity_bytes=%llu, used_bytes=%llu\n",
                 ret, psi->disk_num, psi->read_write_speed_kbytesps, 
                 psi->disk_capacity[0].disk_capacity_bytes, psi->disk_capacity[0].disk_used_bytes);
@@ -759,6 +803,11 @@ static int akt_execute_get_command(void)
             char filename[FILE_PATH_MAX_LEN];
             memcpy(filename, header->buf, FILE_PATH_MAX_LEN);
             ret = io_find_file_info(&fsp);
+            printf_note("Find file:%s, %d\n", filename, ret);
+            if(ret != 0){
+                err_code = akt_err_code_check(ret);
+                goto exit;
+            }
             printf_note("ret=%d, filepath=%s, file_size=%llu, status=%d\n",ret, fsp.filepath, fsp.file_size, fsp.status);
             memcpy(akt_get_response_data.payload_data, &fsp, sizeof(SEARCH_FILE_STATUS_RSP_ST));
             akt_get_response_data.header.len = sizeof(SEARCH_FILE_STATUS_RSP_ST);
@@ -767,8 +816,9 @@ static int akt_execute_get_command(void)
         default:
             printf_debug("not sppoort get commmand\n");
     }
+exit:
     akt_get_response_data.header.operation = QUERY_CMD_RSP;
-    return 0;
+    return err_code;
 }
 
 static int akt_execute_net_command(void)

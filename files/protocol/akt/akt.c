@@ -626,7 +626,7 @@ static int akt_execute_set_command(void)
                 /* switch to normal mode */
                 switch_adc_mode(0);
                 printf_note("Stop backtrace file:%s\n", bis.filepath);
-                ret = io_stop_save_file(bis.filepath);
+                ret = io_stop_backtrace_file(bis.filepath);
             }else{
                 printf_err("error cmd\n");
                 err_code = RET_CODE_PARAMTER_ERR;

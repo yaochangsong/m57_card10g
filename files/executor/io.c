@@ -599,6 +599,13 @@ int32_t io_start_backtrace_file(void *arg){
     return ret;
 }
 
+int32_t io_stop_backtrace_file(void *arg){
+    int32_t ret = 0;
+#if defined(SUPPORT_SPECTRUM_KERNEL) 
+    ret = ioctl(io_ctrl_fd,IOCTL_DISK_STOP_BACKTRACE_FILE_INFO,arg);
+#endif
+    return ret;
+}
 
 
 

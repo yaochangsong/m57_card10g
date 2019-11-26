@@ -123,7 +123,7 @@ int http_on_request(struct uh_client *cl)
         }
     }
     if(filename != NULL){
-        strncpy(cl->dispatch.file.filename, filename, sizeof(cl->dispatch.file.path));
+        strncpy(cl->dispatch.file.filename, filename, sizeof(cl->dispatch.file.filename));
         strncpy(cl->dispatch.file.path, path, sizeof(cl->dispatch.file.path));
         cl->dispatch.file.path[sizeof(cl->dispatch.file.path) -1] = 0;
         printf_note("filename=%s,file.path=%s\n",filename, cl->dispatch.file.path);

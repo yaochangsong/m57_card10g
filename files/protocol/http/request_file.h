@@ -16,6 +16,7 @@
 #define _REQUEST_FILE_H_
 #include <time.h>
 
+#define FILE_PATH_MAX_LEN 128
 #define REQUEST_FILESIZE_BUFFER_LEN  512
 
 typedef enum _request_read_status {
@@ -25,7 +26,7 @@ typedef enum _request_read_status {
 
 
 struct disk_file_info{
-    uint8_t  file_path[64];
+    uint8_t  file_path[FILE_PATH_MAX_LEN];
     uint32_t st_blocks;             /* number of blocks allocated -文件所占块数*/
     uint32_t st_blksize;            /* blocksize for filesystem I/O -系统块的大小*/
     uint64_t st_size;               /* total size, in bytes -文件大小，字节为单位*/
@@ -35,7 +36,7 @@ struct disk_file_info{
 };
 
 struct file_request_read{
-    uint8_t  file_path[64];
+    uint8_t  file_path[FILE_PATH_MAX_LEN];
     uint8_t *read_buffer_pointer;        /* File buffer memory pointer */
     size_t read_buffer_len;              /* File buffer memory length */
     size_t read_offset;                  /* File buffer byte offset size */

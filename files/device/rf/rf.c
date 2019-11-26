@@ -231,14 +231,13 @@ static void set_spi_cs(uint8_t ch){
     }	
 }
 
+/* is_backtrace =1:backtrace mode; =0 ADC normal mode */
 void switch_adc_mode(uint8_t is_backtrace){
     
     lseek(gpiofd[0], 0, SEEK_SET);
     if(is_backtrace >0){
-        printf("-------------------------set adc pin value: high\n");
-	set_gpio_high(gpiofd[0]);   
+        set_gpio_high(gpiofd[0]);   
     }else{
-	    printf("---------------------------set adc pin value: low\n");
         set_gpio_low(gpiofd[0]);   
     }
 }
@@ -302,6 +301,7 @@ int8_t  spi_dev_init(void)
     
         //adc data source switch
         gpiofd[0] = init_gpio(63);
+        /* set normal mode */
         switch_adc_mode(0);  
         adc_mode_init = 0xaa;
         return 0;

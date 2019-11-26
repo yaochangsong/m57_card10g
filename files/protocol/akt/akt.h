@@ -642,6 +642,43 @@ typedef struct _FFT_SIGNAL_RESPINSE{
     FFT_SIGNAL_RESULT_ST signal_array[0];
 }__attribute__ ((packed)) FFT_SIGNAL_RESPINSE_ST;
 
+/************Disk-related parameters***********************/
+
+typedef struct  _STORAGE_DISK_INFO_ST{
+    uint64_t disk_capacity_bytes;
+    uint64_t disk_used_bytes;
+}__attribute__ ((packed)) STORAGE_DISK_INFO_ST; 
+
+typedef struct  _STORAGE_STATUS_RSP_ST{
+    uint32_t read_write_speed_kbytesps;
+    uint8_t disk_num;
+    STORAGE_DISK_INFO_ST disk_capacity[0];
+}__attribute__ ((packed)) STORAGE_STATUS_RSP_ST; 
+
+typedef struct  _STORAGE_IQ_ST{
+    uint8_t cid;
+    uint8_t cmd;
+    uint16_t signal_ch;
+    uint64_t freq;
+    uint32_t bandwidth;
+    uint16_t caputure_time_len;
+    uint8_t filepath[FILE_PATH_MAX_LEN];
+}__attribute__ ((packed)) STORAGE_IQ_ST; 
+
+typedef struct  _BACKTRACE_IQ_ST{
+    uint8_t cid;
+    uint8_t cmd;
+    uint16_t signal_ch;
+    uint64_t freq;
+    uint32_t bandwidth;
+    uint8_t filepath[FILE_PATH_MAX_LEN];
+}__attribute__ ((packed)) BACKTRACE_IQ_ST; 
+
+typedef struct  _SEARCH_FILE_STATUS_RSP_ST{
+    uint8_t filepath[FILE_PATH_MAX_LEN];
+    uint8_t status;
+    uint64_t file_size;
+}__attribute__ ((packed)) SEARCH_FILE_STATUS_RSP_ST; 
 
 
 /*************************************************************************/

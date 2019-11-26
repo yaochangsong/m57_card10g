@@ -31,21 +31,16 @@ int memshare_init(void)
         return -1;
     }
 
-    //map_base = mmap(NULL, DMA_DDR_SIZE, PROT_READ|PROT_WRITE, MAP_SHARED, mem_share_fd, DMA_ADDR_START);
+    map_base = mmap(NULL, DMA_DDR_SIZE, PROT_READ|PROT_WRITE, MAP_SHARED, mem_share_fd, DMA_ADDR_START);
 
     /* for test */
-    map_base = mmap(NULL, DMA_SSD_RX_SIZE, PROT_READ|PROT_WRITE, MAP_SHARED, io_get_fd(), 0);
+    //map_base = mmap(NULL, DMA_SSD_RX_SIZE, PROT_READ|PROT_WRITE, MAP_SHARED, io_get_fd(), 0);
 
     if (map_base == 0){
         printf_err("memshare init failed!\n");
         return -1;
-    }else{
-        char buffer[]="hello mem share!!\n";
-        printf_note("memshare init ok!\n");
-        printf_note("Memory mapped at address %p.\n", map_base);
-        memcpy(map_base, buffer, sizeof(buffer));
-        printf_note("%s", map_base);
     }
+    printf_note("Memory mapped at address %p.\n", map_base);
     memset(memshare_get_dma_rx_base(), 0, DMA_SSD_RX_SIZE);
     return 0;
 }
@@ -55,6 +50,6 @@ void * memshare_get_dma_rx_base(void)
     if(map_base == NULL)
         return NULL;
     else
-        return (map_base);
-        //return (map_base + DMA_IQ_SIZE+DMA_FFT_SIZE);
+        //return (map_base);
+        return (map_base + DMA_IQ_SIZE+DMA_FFT_SIZE);
 }

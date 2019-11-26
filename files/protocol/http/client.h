@@ -23,7 +23,6 @@
 #include <netinet/in.h>
 #include "lib/libubox/kvlist.h"
 #include "lib/libubox/ustream.h"
-
 //#include "config.h"
 
 #if (UHTTPD_SSL_SUPPORT)
@@ -71,6 +70,8 @@ struct http_request {
 
 struct uh_client;
 
+#include "request_file.h"
+
 struct dispatch {
     int (*post_data)(struct uh_client *cl, const char *data, int len);
     void (*post_done)(struct uh_client *cl);
@@ -80,7 +81,7 @@ struct dispatch {
     struct {
         int fd;
         char filename[64];
-        char path[128];/* add by ycs */
+        char path[FILE_PATH_MAX_LEN];/* add by ycs */
     } file;
     int cmd; /* add by ycs */
     int post_len;

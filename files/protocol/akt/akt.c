@@ -326,7 +326,7 @@ static int akt_execute_set_command(void)
         err_code = RET_CODE_LOCAL_CTRL_MODE;
         goto set_exit;
     }
-    printf_info("set bussiness code[%x]\n", header->code);
+    printf_note("set bussiness code[%x]\n", header->code);
     switch (header->code)
     {
         case OUTPUT_ENABLE_PARAM:
@@ -565,7 +565,57 @@ static int akt_execute_set_command(void)
             break;
         }
         case SYSTEM_TIME_SET_REQ:
+            break;       
+        /* disk cmd */
+        case STORAGE_IQ_CMD:
+        {
+            int ret;
+            STORAGE_IQ_ST  sis;
+            check_valid_channel(header->buf[0]);
+            memcpy(&sis, header->buf, sizeof(STORAGE_IQ_ST));
+            if(sis.cmd == 1){/* start add iq file */
+                ret = io_start_save_file(sis.filepath);
+            }else if(sis.cmd == 0){/* stop add iq file */
+                ret = io_stop_save_file(sis.filepath);
+            }else{
+                err_code = RET_CODE_PARAMTER_ERR;
+            }
             break;
+        }
+        case BACKTRACE_IQ_CMD:
+        {
+            BACKTRACE_IQ_ST bis;
+            int ret;
+            check_valid_channel(header->buf[0]);
+            memcpy(&bis, header->buf, sizeof(BACKTRACE_IQ_ST));
+            if(bis.cmd == 1){/* start backtrace iq file */
+                /* switch to backtrace mode */
+                switch_adc_mode(1);
+                ret = io_start_backtrace_file(bis.filepath);
+            }else if(bis.cmd == 0){/* stop backtrace iq file */
+                /* switch to normal mode */
+                switch_adc_mode(0);
+                ret = io_stop_save_file(bis.filepath);
+            }else{
+                err_code = RET_CODE_PARAMTER_ERR;
+            }
+            printf_note("backtrace iq cmd ret=%d\n", ret);
+            break;
+        }
+        case STORAGE_DELETE_POLICY_CMD:
+        {
+
+            break;
+        }
+        case STORAGE_DELETE_FILE_CMD:
+        {
+            int ret = 0;
+            char filename[FILE_PATH_MAX_LEN];
+            memcpy(filename, header->buf, FILE_PATH_MAX_LEN);
+            ret = io_delete_file(filename);
+            printf_note("delete file ret=%d\n", ret);
+            break;
+        }
         default:
           printf_err("not support class code[%x]\n",header->code);
           err_code = RET_CODE_PARAMTER_ERR;
@@ -680,6 +730,40 @@ static int akt_execute_get_command(void)
         }
         case SOFTWARE_VERSION_CMD:
             break;
+        /* disk cmd */
+        case STORAGE_STATUS_CMD:
+        {
+            #define SSD_DISK_NUM 1
+            STORAGE_STATUS_RSP_ST *psi;
+            int i, ret = 0, st_size = 0;
+            st_size = sizeof(STORAGE_STATUS_RSP_ST)+sizeof(STORAGE_DISK_INFO_ST)*SSD_DISK_NUM;
+            psi = (STORAGE_STATUS_RSP_ST *)safe_malloc(st_size);
+            if(psi == NULL){
+                printf_err("malloc error!\n");
+                ret = -ENOMEM;
+                break;
+            }
+            ret = io_get_disk_info(psi);
+            printf_note("ret=%d, num=%d, speed=%u, capacity_bytes=%llu, used_bytes=%llu\n",
+                ret, psi->disk_num, psi->read_write_speed_kbytesps, 
+                psi->disk_capacity[0].disk_capacity_bytes, psi->disk_capacity[0].disk_used_bytes);
+            memcpy(akt_get_response_data.payload_data, psi, st_size);
+            akt_get_response_data.header.len = st_size;
+            safe_free(psi);
+            break;
+        } 
+        case SEARCH_FILE_STATUS_CMD:
+        {
+            int ret = 0;
+            SEARCH_FILE_STATUS_RSP_ST fsp;
+            char filename[FILE_PATH_MAX_LEN];
+            memcpy(filename, header->buf, FILE_PATH_MAX_LEN);
+            ret = io_find_file_info(&fsp);
+            printf_note("ret=%d, filepath=%s, file_size=%llu, status=%d\n",ret, fsp.filepath, fsp.file_size, fsp.status);
+            memcpy(akt_get_response_data.payload_data, &fsp, sizeof(SEARCH_FILE_STATUS_RSP_ST));
+            akt_get_response_data.header.len = sizeof(SEARCH_FILE_STATUS_RSP_ST);
+            break;
+        }
         default:
             printf_debug("not sppoort get commmand\n");
     }

@@ -185,8 +185,4 @@ void file_handle_init(void)
 {
     memshare_init();
     memset(&req_readx, 0, sizeof(struct file_request_read));
-
-    //do{
-    //    ret = file_read(filename, buf, sizeof(buf));
-    //}while(ret > 0);
 }

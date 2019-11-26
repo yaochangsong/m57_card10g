@@ -402,6 +402,7 @@ static void io_set_dma_SPECTRUM_out_disable(uint8_t ch)
 
 int8_t io_set_para_command(uint8_t type, uint8_t ch, void *data)
 {
+    int ret = 0;
     struct poal_config *poal_config = &(config_get_config()->oal_config);
 
     switch(type)
@@ -421,10 +422,10 @@ int8_t io_set_para_command(uint8_t type, uint8_t ch, void *data)
         }
         default:
             printf_err("invalid type[%d]", type);
-        return -1;
+            ret =  -1;
      break;
     }
-    return 0;
+    return ret;
 }
 
 int8_t io_set_work_mode_command(void *data)
@@ -531,6 +532,7 @@ int16_t io_get_adc_temperature(void)
 
 }
 
+/* ---Disk-related function--- */
 int32_t io_set_refresh_disk_file_buffer(void *arg){
     int32_t ret = 0;
 #if defined(SUPPORT_SPECTRUM_KERNEL) 
@@ -547,6 +549,57 @@ int32_t io_get_read_file_info(void *arg){
 #endif
     return ret;
 }
+
+int32_t io_get_disk_info(void *arg){
+    int32_t ret = 0;
+#if defined(SUPPORT_SPECTRUM_KERNEL) 
+    ret = ioctl(io_ctrl_fd,IOCTL_DISK_GET_INFO,arg);
+#endif
+    return ret;
+}
+
+int32_t io_find_file_info(void *arg){
+    int32_t ret = 0;
+#if defined(SUPPORT_SPECTRUM_KERNEL) 
+    ret = ioctl(io_ctrl_fd,IOCTL_DISK_FIND_FILE_INFO,arg);
+#endif
+    return ret;
+}
+
+int32_t io_delete_file(void *arg){
+    int32_t ret = 0;
+#if defined(SUPPORT_SPECTRUM_KERNEL) 
+    ret = ioctl(io_ctrl_fd,IOCTL_DISK_DELETE_FILE_INFO,arg);
+#endif
+    return ret;
+}
+
+
+int32_t io_start_save_file(void *arg){
+    int32_t ret = 0;
+#if defined(SUPPORT_SPECTRUM_KERNEL) 
+    ret = ioctl(io_ctrl_fd,IOCTL_DISK_START_SAVE_FILE_INFO,arg);
+#endif
+    return ret;
+}
+
+int32_t io_stop_save_file(void *arg){
+    int32_t ret = 0;
+#if defined(SUPPORT_SPECTRUM_KERNEL) 
+    ret = ioctl(io_ctrl_fd,IOCTL_DISK_STOP_SAVE_FILE_INFO,arg);
+#endif
+    return ret;
+}
+
+int32_t io_start_backtrace_file(void *arg){
+    int32_t ret = 0;
+#if defined(SUPPORT_SPECTRUM_KERNEL) 
+    ret = ioctl(io_ctrl_fd,IOCTL_DISK_START_BACKTRACE_FILE_INFO,arg);
+#endif
+    return ret;
+}
+
+
 
 
 int32_t io_set_assamble_kernel_header_response_data(void *data){

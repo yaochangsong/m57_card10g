@@ -6,6 +6,7 @@
 #define MAX_RADIO_CHANNEL_NUM 1
 #define MAX_SIGNAL_CHANNEL_NUM (16)
 #define MAX_SIG_CHANNLE 128
+#define FILE_PATH_MAX_LEN 256
 
 #ifdef SUPPORT_PROTOCAL_XNRP
     #define poal_parse_header xnrp_parse_header

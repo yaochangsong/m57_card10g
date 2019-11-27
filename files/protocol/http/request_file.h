@@ -16,7 +16,7 @@
 #define _REQUEST_FILE_H_
 #include <time.h>
 
-#define FILE_PATH_MAX_LEN 128
+#define FILE_PATH_MAX_LEN 256
 #define REQUEST_FILESIZE_BUFFER_LEN  512
 
 typedef enum _request_read_status {
@@ -26,23 +26,23 @@ typedef enum _request_read_status {
 
 
 struct disk_file_info{
-    uint8_t  file_path[FILE_PATH_MAX_LEN];
     uint32_t st_blocks;             /* number of blocks allocated -文件所占块数*/
     uint32_t st_blksize;            /* blocksize for filesystem I/O -系统块的大小*/
     uint64_t st_size;               /* total size, in bytes -文件大小，字节为单位*/
     time_t     ctime;               /* create time 创建时间   */
-    uint32_t read_cnt;                 /* 读取缓存总次数 */
-    uint32_t buffer_len;               /*缓存区大小 */
-};
+    uint32_t buffer_rx_len;         /*接收缓存区大小 */
+    uint8_t  file_path[FILE_PATH_MAX_LEN];
+}__attribute__ ((packed));
 
 struct file_request_read{
-    uint8_t  file_path[FILE_PATH_MAX_LEN];
     uint8_t *read_buffer_pointer;        /* File buffer memory pointer */
     size_t read_buffer_len;              /* File buffer memory length */
-    size_t read_offset;                  /* File buffer byte offset size */
-    uint8_t read_flags;                  /* 0: idle, 1: busy */
+    size_t read_buffer_offset;           /* File buffer byte offset size，缓冲区读取偏移 */
+    uint64_t st_size;                   /* 请求文件大小 */
+    uint64_t offset_size;               /* 文件读取偏移 */
+    bool is_buffer_has_data;            /* 缓冲区是否有数据 */
+    uint8_t  file_path[FILE_PATH_MAX_LEN];
 };
-
 
 
 extern int file_download(struct uh_client *cl, void *arg);

@@ -57,42 +57,42 @@ size_t refill_buffer_file(void)
 }
 
 
-struct path_info *http_request_fill_path_info(struct uh_client *cl, const char *path)
+ssize_t http_request_fill_path_info(struct uh_client *cl, const char *path, struct path_info *pi)
 {
-    static struct path_info p;
+    struct path_info *p;
     struct disk_file_info fi;
     char *filename;
     int ret;
     
     if(path == NULL)
-        return;
+        return -1;
 
     filename = cl->dispatch.file.filename;
     if(filename == NULL){
-        return;
+        return -1;
     }
     printf_warn("filename=%s\n", filename);
-    
     /* get file info */
     ret = file_read_attr_info(filename, (void *)&fi);
-    if(ret == -ENOENT){
-        printf_warn("No such file or directory \n");
-        return NULL;
+    if(http_err_code_check(ret)== -1){
+        return -1;
     }  
-    printf_warn("ret =%d,file_path=%s, st_ctime=%s, st_blocks=%u,st_blksize=%u,st_size=%llu\n", 
+    printf_warn("ret =%d,file_path=%s, st_ctime=%s, st_blocks=%x,st_blksize=%x,st_size=%llx\n", 
         ret, fi.file_path, asctime(gmtime(&fi.ctime)), fi.st_blocks,fi.st_blksize,fi.st_size);
-    p.stat.st_mode = S_IFBLK|S_IRUSR|S_IROTH;   /*  区块装置,文件所有者具可读取权限,其他用户具可读取权限 */
-    p.stat.st_mtime = fi.ctime;                /* time of last modification -最近修改时间*/   
-    p.stat.st_atime = fi.ctime;                /* time of last access -最近存取时间*/
-    p.stat.st_ctime = fi.ctime;                /* 创建时间   */
-    p.stat.st_blocks = fi.st_blocks;               /* number of blocks allocated -文件所占块数*/ 
-    p.stat.st_blksize = fi.st_blksize;           /* blocksize for filesystem I/O -系统块的大小*/
-    p.stat.st_size = DMA_SSD_RX_SIZE;        /* total size, in bytes -文件大小，字节为单位*/ 
-    p.phys=filename;
-    p.name=filename;
-    p.info = filename;
 
-    return &p;
+    p = pi;
+    p->stat.st_mode = S_IFBLK|S_IRUSR|S_IROTH;   /*  区块装置,文件所有者具可读取权限,其他用户具可读取权限 */
+    p->stat.st_mtime = fi.ctime;                /* time of last modification -最近修改时间*/   
+    p->stat.st_atime = fi.ctime;                /* time of last access -最近存取时间*/
+    p->stat.st_ctime = fi.ctime;                /* 创建时间   */
+    p->stat.st_blocks = fi.st_blocks;               /* number of blocks allocated -文件所占块数*/ 
+    p->stat.st_blksize = fi.st_blksize;           /* blocksize for filesystem I/O -系统块的大小*/
+    p->stat.st_size = fi.st_size;        /* total size, in bytes -文件大小，字节为单位*/ 
+    p->phys=filename;
+    p->name=filename;
+    p->info = filename;
+
+    return 0;
 }
 
 
@@ -153,13 +153,17 @@ int http_request_action(struct uh_client *cl)
 
 bool http_requset_handle_cmd(struct uh_client *cl, const char *path)
 {
-    struct path_info *pi;
+    struct path_info pi;
+    ssize_t err;
     printf_note("dispatch.cmd=%d\n",cl->dispatch.cmd);
     switch(cl->dispatch.cmd)
     {
         case BLK_FILE_DOWNLOAD_CMD:
-            pi = http_request_fill_path_info(cl, path);
-            uh_blk_file_response_header(cl, pi); 
+            err = http_request_fill_path_info(cl, path, &pi);
+            if(err != 0)
+                break;
+            printf_warn("pi.stat.st_size=%llx,%x, %d\n", pi.stat.st_size, pi.stat.st_size,pi.stat.st_size);
+            uh_blk_file_response_header(cl, &pi); 
             http_request_action(cl);
             break;
         case BLK_FILE_START_STORE_CMD:
@@ -182,6 +186,6 @@ bool http_requset_handle_cmd(struct uh_client *cl, const char *path)
 void http_requset_init(void)
 {
     file_handle_init();
-    refill_buffer_file();
+    //refill_buffer_file();
 }
 

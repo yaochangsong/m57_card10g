@@ -21,7 +21,7 @@ struct net_tcp_client {
     int response_length;
     void (*free)(struct net_tcp_client *cl);
     void (*send_error)(struct net_tcp_client *cl, int code, const char *summary, const char *fmt, ...);
-    void (*send_header)(struct net_tcp_client *cl, int code, const char *summary, int length);
+    void (*send_header)(struct net_tcp_client *cl, int code, const char *summary, int64_t length);
     void (*append_header)(struct net_tcp_client *cl, const char *name, const char *value);
     void (*header_end)(struct net_tcp_client *cl);
     void (*redirect)(struct net_tcp_client *cl, int code, const char *fmt, ...);

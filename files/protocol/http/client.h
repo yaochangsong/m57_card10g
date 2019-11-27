@@ -106,7 +106,7 @@ struct uh_client {
 
     void (*free)(struct uh_client *cl);
     void (*send_error)(struct uh_client *cl, int code, const char *summary, const char *fmt, ...);
-    void (*send_header)(struct uh_client *cl, int code, const char *summary, int length);
+    void (*send_header)(struct uh_client *cl, int code, const char *summary, int64_t length);
     void (*append_header)(struct uh_client *cl, const char *name, const char *value);
     void (*header_end)(struct uh_client *cl);
     void (*redirect)(struct uh_client *cl, int code, const char *fmt, ...);

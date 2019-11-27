@@ -166,7 +166,7 @@ endif
 
 
 
-CFLAGS = -Wall -Wno-unused-function  -Wno-unused-variable -Wno-discarded-qualifiers $(INCLUDE_DIR)  $(C_VAR)
+CFLAGS = -Wall -Wno-unused-function  -Wno-unused-variable -Wno-discarded-qualifiers $(INCLUDE_DIR)  $(C_VAR) -D_FILE_OFFSET_BITS=64 -D_LARGE_FILE
 
 MAKE := make
 

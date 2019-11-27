@@ -287,6 +287,7 @@ static void uh_file_response_ok_hdrs(struct uh_client *cl, struct stat *s)
     
     cl->printf(cl, "Cache-Control:no-cache\r\n");
     cl->printf(cl, "Access-Control-Allow-Origin:*\r\n");/* 允许跨域 add by yaocs */
+    cl->printf(cl, "Content-Disposition:attachement\r\n");
     cl->printf(cl, "Last-Modified: %s\r\n", file_unix2date(s->st_mtime, buf, sizeof(buf)));
     cl->printf(cl, "Date: %s\r\n", file_unix2date(time(NULL), buf, sizeof(buf)));
 }
@@ -435,7 +436,6 @@ void uh_blk_file_response_header(struct uh_client *cl, struct path_info *pi)
     /* send header */
     if (cl->request.method == UH_HTTP_METHOD_HEAD) {
         cl->request_done(cl);
-        printf_warn("send header-----\n");
         return;
     }
 

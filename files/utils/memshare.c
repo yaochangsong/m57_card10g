@@ -32,7 +32,6 @@ int memshare_init(void)
     }
 
     map_base = mmap(NULL, DMA_DDR_SIZE, PROT_READ|PROT_WRITE, MAP_SHARED, mem_share_fd, DMA_ADDR_START);
-
     /* for test */
     //map_base = mmap(NULL, DMA_SSD_RX_SIZE, PROT_READ|PROT_WRITE, MAP_SHARED, io_get_fd(), 0);
 

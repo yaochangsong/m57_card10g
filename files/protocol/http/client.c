@@ -48,15 +48,14 @@ static inline void client_send(struct uh_client *cl, const void *data, int len)
     ustream_write(cl->us, data, len, true);
 }
 
-static void client_send_header(struct uh_client *cl, int code, const char *summary, int length)
+static void client_send_header(struct uh_client *cl, int code, const char *summary, int64_t length/* change by ycs */)
 {
     cl->printf(cl, "%s %03i %s\r\n", http_versions[cl->request.version], code, summary);
     cl->printf(cl, "Server: Libuhttpd %s\r\n", UHTTPD_VERSION_STRING);
-
-     if (length < 0) {
+    if (length < 0) {
         cl->printf(cl, "Transfer-Encoding: chunked\r\n");
     } else {
-        cl->printf(cl, "Content-Length: %d\r\n", length);
+        cl->printf(cl, "Content-Length: %lld\r\n", length);
     }
 
     cl->response_length = length;

@@ -103,6 +103,13 @@ int file_delete(struct uh_client *cl, void *arg)
     return true;
 }
 
+int file_disk_format(struct uh_client *cl, void *arg)
+{
+    printf_note("disk format\n");
+    io_set_format_disk(arg);
+    return true;
+}
+
 
 ssize_t readn(int fd, void *ptr, size_t n)
 {
@@ -141,13 +148,14 @@ ssize_t readmem(void *ptr, size_t n)
     
     memcpy(ptr, fr->read_buffer_pointer + fr->read_buffer_offset, n);
     fr->read_buffer_offset += n;
-
     nleft = fr->read_buffer_len - fr->read_buffer_offset;
-    printf_note("nleft=%d, read_buffer_len=0x%x, read_buffer_offset=0x%x\n", nleft, fr->read_buffer_len, fr->read_buffer_offset);
+    printf_debug("buffer_len=0x%x, buffer_offset=0x%x, nleft=0x%x, n=0x%x\n", 
+                     fr->read_buffer_len, fr->read_buffer_offset, nleft, n);
     if(nleft <= 0){
         fr->read_buffer_offset = 0;
         return 0; /* read buffer over */
     }
+    
     return n;
 }
 
@@ -174,7 +182,7 @@ int file_read_attr(const char *filename)
     if(http_err_code_check(ret)== -1){
         return -1;
     }
-    printf_note("file_path:%s,buffer_len:0x%x,st_size=0x%llx, st_blocks=%x\n", 
+    printf_warn("file_path:%s,buffer_len:0x%x,st_size=0x%llx, st_blocks=%x\n", 
                 fi.file_path,fi.buffer_rx_len,fi.st_size, fi.st_blocks);
     strcpy(fr->file_path,fi.file_path);
     fr->read_buffer_pointer = file_get_read_buffer_pointer();
@@ -183,7 +191,7 @@ int file_read_attr(const char *filename)
     fr->offset_size = 0;
     fr->st_size = fi.st_size;
     fr->is_buffer_has_data = false;
-    lseek(io_get_fd(), 0, SEEK_SET);
+    //lseek(io_get_fd(), 0, SEEK_SET);
     return 0;
 }
 
@@ -192,14 +200,15 @@ int file_read_attr(const char *filename)
 static ssize_t file_read(const char *filename, uint8_t *ptr, int n)
 {
     struct file_request_read *fr=&req_readx;
-    int ret = 0;
+    int ret = -1; /* NOTE: reload buffer return value; initialize value must not 0[ reload over]  */
     ssize_t nread;
     int64_t nleft;
     
     nleft = fr->st_size - fr->offset_size;
-    printf_note("n=%d, nleft=%llx, st_size:0x%llx, offset_size:0x%llx\n", 
+    printf_debug("n=%d, nleft=%llx, st_size:0x%llx, offset_size:0x%llx\n", 
         n, nleft, fr->st_size, fr->offset_size);
     if(nleft <= 0){
+        printf_note("read file over!!!!!!!!!!!!!\n");
         return 0;   /* read file over */
     }
     if(n > nleft){
@@ -207,23 +216,27 @@ static ssize_t file_read(const char *filename, uint8_t *ptr, int n)
     }
 loop:
     if((nread = readmem(ptr, n)) <= 0){
+        fr->is_buffer_has_data = false;
+        if(nread  == 0 && ret == 0){
+                printf_note("read file over!,total read file size:%llu Byte\n", fr->offset_size);
+                return 0;
+        }
         ret = file_reload_buffer(filename);
         if(ret < 0){
             printf_err("read file err %d\n", ret);
             return ret;
-        }else if(ret == 0){
-            printf_note("read file over\n");
-            return 0;
-        }else{
+        }else { /* ret >= 0 */
             fr->is_buffer_has_data = true;
-            printf_note("reading\n");
             goto loop;
         }
     }
     fr->offset_size +=  nread;
     if(fr->offset_size >= fr->st_size){
+        printf_note("read file over!,total read file size:%llu (0x%llx)Byte\n", fr->offset_size, fr->offset_size);
         return 0; /* read file over */
     }
+    if(ret >= 0)
+        printf_note("reload buffer,ret=%d,nread=%d, offset_size=0x%llx\n",ret, nread, fr->offset_size);
     return nread;
 }
 
@@ -235,10 +248,7 @@ int file_download(struct uh_client *cl, void *arg)
     int r, i;
 
     printf_info("download:name=%s, cmd=%d\n", filename, cl->dispatch.cmd);
-    if(file_read_attr(filename) == -1){
-        printf_err("file download error\n");
-        return -1;
-    }
+    
     while (cl->us->w.data_bytes < 256) {
         r = file_read(filename, buf, sizeof(buf));
         printf_info("r=%d\n", r);
@@ -265,4 +275,7 @@ void file_handle_init(void)
 {
     memshare_init();
     memset(&req_readx, 0, sizeof(struct file_request_read));
+    if(is_disk_format()){
+        file_disk_format(NULL, NULL);
+    }
 }

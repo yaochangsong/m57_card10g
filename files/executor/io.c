@@ -531,6 +531,16 @@ int16_t io_get_adc_temperature(void)
 }
 
 /* ---Disk-related function--- */
+int32_t io_set_format_disk(void *arg){
+    int32_t ret = 0;
+#if defined(SUPPORT_SPECTRUM_KERNEL) 
+    /* filename */
+    ret = ioctl(io_ctrl_fd,IOCTL_DISK_FORMAT,arg);
+#endif
+    return ret;
+}
+
+
 int32_t io_set_refresh_disk_file_buffer(void *arg){
     int32_t ret = 0;
 #if defined(SUPPORT_SPECTRUM_KERNEL) 

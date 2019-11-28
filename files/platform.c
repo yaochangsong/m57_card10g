@@ -21,6 +21,7 @@ static void usage(const char *prog)
         "          -d debug_level  # [3(LOG_ERR),4(LOG_WARNING),5(LOG_NOTICE),6(LOG_INFO),7(LOG_DEBUG),-1(OFF)]\n"
         "          -m power level  # [fft power level threshold, 1,2,3...n]\n"
         "          -c spectrum continuous mode # [true or false,Default false]\n"
+        "          -f format disk  # [Warn:format once when start,Default false]\n"
         "          -t ADI Tool     # [(ADI IIO)specturm tool on; true or false,Default false]\n", prog);
     exit(1);
 }
@@ -39,6 +40,13 @@ static void usage(const char *prog)
 * RETURNS
 *     none
 ******************************************************************************/
+bool disk_format = false;
+
+bool is_disk_format(void)
+{
+    return disk_format;
+}
+
 bool spectrum_aditool_debug = false;
 
 bool is_spectrum_aditool_debug(void)
@@ -65,7 +73,7 @@ int main(int argc, char **argv)
 {
     int debug_level = -1;
     int opt;
-    while ((opt = getopt(argc, argv, "d:tm:c")) != -1) {
+    while ((opt = getopt(argc, argv, "d:tm:cf")) != -1) {
         switch (opt)
         {
         case 'd':
@@ -89,6 +97,10 @@ int main(int argc, char **argv)
         case 'c':
             printf("spectrum continuous_mode true\n");
             spectrum_continuous_mode = true;
+            break;
+        case 'f':
+            printf("format disk once; when start\n");
+            disk_format = true;
             break;
         default: /* '?' */
             usage(argv[0]);

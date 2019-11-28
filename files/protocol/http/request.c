@@ -57,17 +57,13 @@ size_t refill_buffer_file(void)
 }
 
 
-ssize_t http_request_fill_path_info(struct uh_client *cl, const char *path, struct path_info *pi)
+ssize_t http_request_fill_path_info(struct uh_client *cl, const char *filename, struct path_info *pi)
 {
     struct path_info *p;
     struct disk_file_info fi;
-    char *filename;
+    //char *filename;
     int ret;
     
-    if(path == NULL)
-        return -1;
-
-    filename = cl->dispatch.file.filename;
     if(filename == NULL){
         return -1;
     }
@@ -155,15 +151,21 @@ bool http_requset_handle_cmd(struct uh_client *cl, const char *path)
 {
     struct path_info pi;
     ssize_t err;
-    printf_note("dispatch.cmd=%d\n",cl->dispatch.cmd);
+    char *filename = cl->dispatch.file.filename;
+    printf_note("dispatch.cmd=%d, filename=%s\n",cl->dispatch.cmd, filename);
     switch(cl->dispatch.cmd)
     {
         case BLK_FILE_DOWNLOAD_CMD:
-            err = http_request_fill_path_info(cl, path, &pi);
+            err = http_request_fill_path_info(cl, filename, &pi);
             if(err != 0){
                 printf_warn("err code=%d\n",err);
                 return false;
             }
+            if(file_read_attr(filename) == -1){
+                printf_err("file download error\n");
+                return -1;
+            }
+            lseek(io_get_fd(), 0, SEEK_SET);
             uh_blk_file_response_header(cl, &pi); 
             http_request_action(cl);
             break;

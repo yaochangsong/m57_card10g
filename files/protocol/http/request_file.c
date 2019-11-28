@@ -41,8 +41,10 @@ int http_err_code_check(int ret)
         printf_warn("File exists\n");
     }else if(ret == -ENOENT){
         printf_warn("No such file\n");
+    }else{
+        printf_warn("err[%d]\n", ret);
     }
-    return -1;
+    return ret;
 }
 
 

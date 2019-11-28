@@ -74,8 +74,8 @@ ssize_t http_request_fill_path_info(struct uh_client *cl, const char *path, stru
     printf_warn("filename=%s\n", filename);
     /* get file info */
     ret = file_read_attr_info(filename, (void *)&fi);
-    if(http_err_code_check(ret)== -1){
-        return -1;
+    if((ret = http_err_code_check(ret)) != 0){
+        return ret;
     }  
     printf_warn("ret =%d,file_path=%s, st_ctime=%s, st_blocks=%x,st_blksize=%x,st_size=%llx\n", 
         ret, fi.file_path, asctime(gmtime(&fi.ctime)), fi.st_blocks,fi.st_blksize,fi.st_size);
@@ -160,9 +160,10 @@ bool http_requset_handle_cmd(struct uh_client *cl, const char *path)
     {
         case BLK_FILE_DOWNLOAD_CMD:
             err = http_request_fill_path_info(cl, path, &pi);
-            if(err != 0)
-                break;
-            printf_warn("pi.stat.st_size=%llx,%x, %d\n", pi.stat.st_size, pi.stat.st_size,pi.stat.st_size);
+            if(err != 0){
+                printf_warn("err code=%d\n",err);
+                return false;
+            }
             uh_blk_file_response_header(cl, &pi); 
             http_request_action(cl);
             break;

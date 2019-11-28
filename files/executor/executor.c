@@ -89,6 +89,7 @@ static  int8_t  executor_fragment_scan(uint32_t fregment_num,uint8_t ch, work_mo
         return -1;
     }
     
+    scan_bw =  e_freq - s_freq;
     fftsize= poal_config->multi_freq_fregment_para[ch].fregment[fregment_num].fft_size;
     executor_set_command(EX_MID_FREQ_CMD, EX_FFT_SIZE,  ch, &fftsize);
     
@@ -150,6 +151,7 @@ static  int8_t  executor_fragment_scan(uint32_t fregment_num,uint8_t ch, work_mo
         /* 为避免在一定带宽下，中心频率过小导致起始频率<0，设置前需要对中频做判断 */
         m_freq =  middle_freq_resetting(scan_bw, m_freq);
         executor_set_command(EX_RF_FREQ_CMD, EX_RF_MID_FREQ, ch, &m_freq);
+        executor_set_command(EX_MID_FREQ_CMD, EX_BANDWITH, ch, &scan_bw);
 #ifdef SUPPORT_PLATFORM_ARCH_ARM
     #if defined(SUPPORT_SPECTRUM_KERNEL)
         io_set_enable_command(PSD_MODE_ENABLE, ch, header_param.fft_size);
@@ -659,7 +661,7 @@ void executor_init(void)
     struct poal_config *poal_config = &(config_get_config()->oal_config);
     io_init();
     spi_dev_init();
-    clock_7044_init();
+    clock_7044_init_internal();
     ad9690_init();
     executor_timer_task_init();
     /* set default network */

@@ -17,6 +17,15 @@
 #define ULLI                          ((uint64_t)1)
 #define GPIO_USED_MASK (ULLI<<8 | ULLI<<9 | ULLI<<10 | ULLI<<63 | ULLI<<24 | ULLI<<25 | ULLI<<26 | ULLI<<27 | ULLI<<28 | ULLI<<29 | ULLI<<30 | ULLI<<31)
 
+#define INTERNAL_CLK
+
+void clock_7044_init(void);
+#if defined(INTERNAL_CLK)
+void clock_7044_init_internal(void);
+#endif
+void ad9690_init(void);
+
+
 
 typedef enum _RF_COMMAND_CODE{
     RF_FREQ_SET = 0x01,

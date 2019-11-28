@@ -802,7 +802,7 @@ static int akt_execute_get_command(void)
             SEARCH_FILE_STATUS_RSP_ST fsp;
             char filename[FILE_PATH_MAX_LEN];
             memcpy(filename, header->buf, FILE_PATH_MAX_LEN);
-            ret = io_find_file_info(&fsp);
+            ret = io_read_more_info_by_name(filename, &fsp, io_find_file_info);
             printf_note("Find file:%s, %d\n", filename, ret);
             if(ret != 0){
                 err_code = akt_err_code_check(ret);

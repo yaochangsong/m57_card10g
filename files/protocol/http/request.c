@@ -163,11 +163,13 @@ bool http_requset_handle_cmd(struct uh_client *cl, const char *path)
             }
             if(file_read_attr(filename) == -1){
                 printf_err("file download error\n");
-                return -1;
+                return false;
             }
             lseek(io_get_fd(), 0, SEEK_SET);
             uh_blk_file_response_header(cl, &pi); 
-            http_request_action(cl);
+            if(http_request_action(cl) == -1){
+                return false;
+            }
             break;
         case BLK_FILE_START_STORE_CMD:
         case BLK_FILE_START_BACKTRACE_CMD:

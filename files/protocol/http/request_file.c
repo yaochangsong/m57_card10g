@@ -162,12 +162,10 @@ ssize_t readmem(void *ptr, size_t n)
 int file_read_attr_info(const char *name, void *info)
 {
     int ret = 0;
-    struct disk_file_info *fi;
     if(name == NULL || info == NULL)
         return -1;
     strcpy((char *)info, name);
     ret = io_get_read_file_info(info);
-    fi = (struct disk_file_info *)info;
     return ret;
 }
 

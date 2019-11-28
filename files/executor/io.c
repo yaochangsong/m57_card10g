@@ -531,6 +531,16 @@ int16_t io_get_adc_temperature(void)
 }
 
 /* ---Disk-related function--- */
+int io_read_more_info_by_name(const char *name, void *info, int32_t (*iofunc)(void *))
+{
+    int ret = 0;
+    if(name == NULL || info == NULL)
+        return -1;
+    strcpy((char *)info, name);
+    ret = iofunc(info);
+    return ret;
+}
+
 int32_t io_set_format_disk(void *arg){
     int32_t ret = 0;
 #if defined(SUPPORT_SPECTRUM_KERNEL) 

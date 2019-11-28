@@ -536,7 +536,7 @@ static int akt_execute_set_command(void)
             decode_param.center_freq = pakt_config->sub_channel[sub_ch].freq;
             printf_warn("ch:%d, sub_ch=%d, d_bandwidth:%u,d_method:%d, center_freq:%llu\n", 
                 ch, sub_ch, decode_param.d_bandwidth, decode_param.d_method, decode_param.center_freq);
-            executor_set_command(EX_MID_FREQ_CMD, EX_DEC_BW, ch, &decode_param);
+            executor_set_command(EX_MID_FREQ_CMD, EX_DEC_BW, ch, &decode_param.d_bandwidth);
             io_set_enable_command(AUDIO_MODE_DISABLE, ch, 0);
             printf_warn("ch:%d, au_en:%d,iq_en:%d\n", ch, poal_config->sub_ch_enable.audio_en, poal_config->sub_ch_enable.iq_en);
             //if(poal_config->sub_ch_enable.audio_en || poal_config->sub_ch_enable.iq_en)
@@ -694,6 +694,7 @@ static int akt_execute_get_command(void)
             self_check.pfga_temperature = io_get_adc_temperature();
             memcpy(akt_get_response_data.payload_data, &self_check, sizeof(DEVICE_SELF_CHECK_STATUS_RSP_ST));
             akt_get_response_data.header.len = sizeof(DEVICE_SELF_CHECK_STATUS_RSP_ST);
+            io_set_refresh_keepalive_time(0);
             break;
         }
         case SPCTRUM_PARAM_CMD:

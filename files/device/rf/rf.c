@@ -1071,6 +1071,39 @@ static uint8_t send_mid_freq_attenuation_set_cmd(uint8_t ch,uint8_t attenuation)
 
 }
 
+uint8_t send_middle_freq_bandwidth_set_cmd(uint8_t ch,uint32_t bandwidth_flag){
+    uint8_t *send_buf,send_len;
+    uint8_t recv_len;
+    uint8_t *precv;
+    uint8_t ret = 1;
+    RF_TRANSLATE_CMD *pcmd,*pres_cmd;
+    send_buf = create_buf_bytype(RF_MIDDLE_FREQ_BANDWIDTH_FILTER_SET,&send_len);
+    pcmd = (RF_TRANSLATE_CMD *) (send_buf); 
+    pcmd->body.middle_freq_bandwidth.bandwidth_flag = bandwidth_flag;
+    send_buf[send_len-2] = checksum(send_buf+CHECKSUM_OFFSET,send_len-CHECKSUM_IGNORE_LEN);
+    recv_len = get_response_len_bytype(RF_MIDDLE_FREQ_BANDWIDTH_FILTER_SET);
+    precv = translate_data(2,send_buf,send_len,recv_len);
+    if(precv){
+        pres_cmd = (RF_TRANSLATE_CMD *) (precv);
+        if(pres_cmd->body.middle_freq_bandwidth_response.bandwidth_flag == pcmd->body.middle_freq_bandwidth.bandwidth_flag){
+            ret = 0;
+        }else{
+            ret = pres_cmd->body.middle_freq_bandwidth_response.status;
+        }
+    }else{
+        ret = 1;
+    }
+
+    if(precv){
+        free(precv);
+    }
+    if(send_buf){
+        free(send_buf);
+    }
+    return ret;
+}
+
+
 
 
 static uint8_t query_rf_temperature(uint8_t ch,int16_t *temperature){
@@ -1185,12 +1218,38 @@ uint8_t rf_set_interface(uint8_t cmd,uint8_t ch,void *data){
         #endif
             break; 
         }
+        case EX_MID_FREQ:
+        send_mid_freq_attenuation_set_cmd(ch,* (uint32_t *) data);
+        break;
+        case EX_MIDDLE_FREQ:
+        send_middle_freq_bandwidth_set_cmd(ch,* (uint32_t *) data);
+        break;
         default:{
             break;
         }
     }
     return ret;
 }
+/*uint8_t spi_set_command(uint8_t cmd,uint8_t ch,void *data)
+{
+
+  switch(cmd){
+  case EX_RF_ATTENUATION:
+  send_rf_attenuation_set_cmd(ch,* (uint32_t *) data);
+  break;
+
+  case EX_MID_FREQ:
+  send_mid_freq_attenuation_set_cmd(ch,* (uint32_t *) data);
+  break;
+
+  case EX_MIDDLE_FREQ:
+  send_middle_freq_bandwidth_set_cmd(ch,* (uint32_t *) data);
+  break;
+  
+  default:
+  break;
+  }
+}*/
 
 
 
@@ -1264,6 +1323,14 @@ void spi_close(void)
         }
     }
 }
+
+
+
+
+
+
+
+
 
 
 int8_t rf_init(void)

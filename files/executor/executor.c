@@ -603,7 +603,7 @@ int8_t executor_set_enable_command(uint8_t ch)
                 executor_set_command(EX_RF_FREQ_CMD, EX_RF_ATTENUATION, ch, &poal_config->rf_para[ch].attenuation);
                 //executor_set_command(EX_RF_FREQ_CMD, EX_RF_MID_FREQ, ch, &poal_config->rf_para[ch].mid_freq);
                 executor_set_command(EX_RF_FREQ_CMD,EX_MID_FREQ,ch,&poal_config->rf_para[ch].mid_freq);
-                executor_set_command(EX_RF_FREQ_CMD,EX_MIDDLE_FREQ,ch,&poal_config->rf_para[ch].mid_bw);
+                executor_set_command(EX_RF_FREQ_CMD,EX_RF_MID_BW,ch,&poal_config->rf_para[ch].mid_bw);
                 if(config_read_by_cmd(EX_RF_FREQ_CMD, EX_RF_MID_BW, 0, &bw) == -1){
                     printf_err("Error read scan bindwidth=%u\n", bw);
                     return -1;

@@ -43,7 +43,6 @@ enum {
     EX_CHANNEL_SELECT=23,        /*通道选择*/
     EX_FPGA_RESET=24,            /*FPGA复位*/
     EX_FPGA_CALIBRATE=25,        /*FPGA校准*/
-    EX_MIDDLE_FREQ=26,
 };
 
 /* executor: work mode  */

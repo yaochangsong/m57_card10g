@@ -1145,9 +1145,11 @@ uint8_t rf_set_interface(uint8_t cmd,uint8_t ch,void *data){
 #endif
             break; 
         }
-        case EX_RF_MID_BW :{
+         case EX_RF_MID_BW :   {
+         send_middle_freq_bandwidth_set_cmd(ch,* (uint32_t *) data);
             break; 
         }
+
         case EX_RF_MODE_CODE :{
             noise_mode = *((uint8_t *)data);
             printf_debug("[**RF**]ch=%d, noise_mode=%d\n", ch, noise_mode);
@@ -1221,9 +1223,8 @@ uint8_t rf_set_interface(uint8_t cmd,uint8_t ch,void *data){
         case EX_MID_FREQ:
         send_mid_freq_attenuation_set_cmd(ch,* (uint32_t *) data);
         break;
-        case EX_MIDDLE_FREQ:
-        send_middle_freq_bandwidth_set_cmd(ch,* (uint32_t *) data);
-        break;
+
+
         default:{
             break;
         }

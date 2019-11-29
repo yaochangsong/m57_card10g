@@ -15,6 +15,7 @@
     <timeSet>1</timeSet>
     <spectrum_time_interval>200</spectrum_time_interval>
 	<bandwidthRemoteCtrl>1</bandwidthRemoteCtrl>
+	<internalClock>1</internalClock>
     <dataOutPutEn>
       <enable>1</enable>
       <subChannel>-1</subChannel>
@@ -27,7 +28,7 @@
   </controlPara>
   <statusPara>
     <softVersion>
-      <app>1.1.0-Nov 12 2019.02:26:08</app>
+      <app>1.0.0-Nov 12 2019.02:26:08</app>
       <kernel>v1.0-20190702-134310</kernel>
       <uboot>v1.0-20190702-134310</uboot>
     </softVersion>
@@ -62,7 +63,7 @@
     <fileDelete>1</fileDelete>
     <fileStrategy>1</fileStrategy>
   </fileStorePara>
-  <calibration psd_power="-444" analysis_power="-444" low_noise_power="-744"  lo_leakage_threshold="40" lo_leakage_renew_data_len="0" mgc_gain="4">
+  <calibration psd_power="1880" analysis_power="-195" low_noise_power="-100"  lo_leakage_threshold="40" lo_leakage_renew_data_len="0" mgc_gain="4">
 	<lo_leakage index="0">
 		<fft_size>256</fft_size>
 		<threshold>0</threshold>
@@ -553,7 +554,7 @@
     </radiofrequency>
 	<workMode>
 		<scanMode>
-			<scanBindWidthInfo index="0" fixed = "0">
+			<scanBindWidthInfo index="0"  fixed = "0">
 				<bindWidth>200000000</bindWidth>
 				<sideBandRate>1.2288</sideBandRate>
 			</scanBindWidthInfo>

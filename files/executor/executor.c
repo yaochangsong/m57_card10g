@@ -660,9 +660,7 @@ void executor_init(void)
     pthread_t work_id, work_id_iio;
     struct poal_config *poal_config = &(config_get_config()->oal_config);
     io_init();
-    spi_dev_init();
-    clock_7044_init_internal();
-    ad9690_init();
+
     executor_timer_task_init();
     /* set default network */
     executor_set_command(EX_NETWORK_CMD, 0, 0, NULL);

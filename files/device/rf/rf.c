@@ -735,7 +735,7 @@ void ad9690_init(void){
         //PRINTF("reg value:%02x %02x %02x",tmp_buf[0],tmp_buf[1],tmp_buf[2]);
         translate_data(1,tmp_buf,bits_len/8,recv_len);
     }
-    printf_warn("----------------ad chip 9690 init finished\n");
+    printf_note("ad chip 9690 init finished\n");
 }
 
 
@@ -1277,6 +1277,14 @@ int8_t rf_init(void)
     pthread_mutex_init(&mut,NULL);
     spi_fd_init();
     ret = spi_dev_init();
+    if(config_get_is_internal_clock()){
+        printf_warn("InternalClock Init\n");
+        clock_7044_init_internal();
+    }else{
+        printf_warn("ExternalClock Init\n");
+        clock_7044_init();
+    }
+    ad9690_init();
     #endif
 #endif
     return ret;

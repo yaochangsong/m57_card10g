@@ -74,6 +74,15 @@ ctrl_mode_param config_get_control_mode(void)
     return CTRL_MODE_REMOTE;
 }
 
+bool config_get_is_internal_clock(void)
+{
+    if(config.oal_config.ctrl_para.internal_clock == 0){
+        /* External clock */
+        return false;
+    }
+    return true;
+}
+
 /******************************************************************************
 * FUNCTION:
 *     config_save_batch

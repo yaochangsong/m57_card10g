@@ -179,6 +179,7 @@ struct scan_bindwidth_info{
 struct control_st{
     uint8_t remote_local;                                         /* 本控 or 远控 */
     uint8_t fft_noise_threshold;                                  /* FFT 计算噪音门限 */
+    uint8_t internal_clock;                                       /* 内外时钟>=1:内部 0外部 */
     uint32_t spectrum_time_interval;                              /* 发送频谱时间间隔 */
     struct specturm_analysis_control_st specturm_analysis_param;  /* 频谱分析控制参数 */
     struct scan_bindwidth_info scan_bw;                           /* 扫描带宽参数 */

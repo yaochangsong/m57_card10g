@@ -40,7 +40,7 @@ int memshare_init(void)
         return -1;
     }
     printf_note("Memory mapped at address %p.\n", map_base);
-    memset(memshare_get_dma_rx_base(), 0, DMA_SSD_RX_SIZE);
+    //memset(memshare_get_dma_rx_base(), 0, DMA_SSD_RX_SIZE);
     return 0;
 }
 

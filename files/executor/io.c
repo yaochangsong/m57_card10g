@@ -62,7 +62,7 @@ static void  io_compute_extract_factor_by_fftsize(uint32_t anays_band,uint32_t *
     if(found == 0){
         *extract = bandtable[i-1].extract_factor;
         *extract_filter = bandtable[i-1].filter_factor;
-        printf_warn("[%u]not find band table, set default: extract=%d, extract_filter=%d\n", anays_band, *extract, *extract_filter);
+        printf_info("[%u]not find band table, set default: extract=%d, extract_filter=%d\n", anays_band, *extract, *extract_filter);
     }
 }
 

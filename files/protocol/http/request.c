@@ -167,9 +167,7 @@ bool http_requset_handle_cmd(struct uh_client *cl, const char *path)
             }
             lseek(io_get_fd(), 0, SEEK_SET);
             uh_blk_file_response_header(cl, &pi); 
-            if(http_request_action(cl) == -1){
-                return false;
-            }
+            http_request_action(cl);
             break;
         case BLK_FILE_START_STORE_CMD:
         case BLK_FILE_START_BACKTRACE_CMD:

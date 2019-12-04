@@ -16,6 +16,16 @@
 ******************************************************************************/
 
 #include "config.h"
+#include "../mxml-3.0/config.h"
+#include "../mxml-3.0/mxml-private.h"
+#ifndef _WIN32
+#  include <unistd.h>
+#endif /* !_WIN32 */
+#include <fcntl.h>
+#ifndef O_BINARY
+#  define O_BINARY 0
+#endif /* !O_BINARY */
+
 
 mxml_node_t *whole_root;
 mxml_node_t *calibration_root;
@@ -629,7 +639,7 @@ static void *dao_load_default_config_file(char *file)
     powerstate = mxmlNewElement(statusPara, "powerstate");
     /*状态参数下softVersion的子节点*/
     node = mxmlNewElement(softVersion, "app");
-    mxmlNewText(node, 0, SPCTRUM_VERSION_STRING);
+    mxmlNewText(node, 0, get_version_string());
     node = mxmlNewElement(softVersion, "kernel");
     mxmlNewText(node, 0, "v1.0-20190702-134310");
     node = mxmlNewElement(softVersion, "uboot");
@@ -763,6 +773,123 @@ static inline int8_t dao_read_int_data_single_value(const char *parent, const ch
      }
      return -1;
 #endif
+}
+
+const char *
+whitespace_cb(mxml_node_t *node, int where)
+{
+    if (where == MXML_WS_BEFORE_OPEN || where == MXML_WS_AFTER_CLOSE)
+      return ("\n");
+    else return NULL;
+}
+
+const char *				/* O - Whitespace string or NULL */
+whitespace_cb_x(mxml_node_t *node,	/* I - Element node */
+              int         where)	/* I - Open or close tag? */
+{
+  mxml_node_t	*parent;		/* Parent node */
+  int		level;			/* Indentation level */
+  const char	*name;			/* Name of element */
+  static const char *tabs = "\t\t\t\t\t\t\t\t";
+					/* Tabs for indentation */
+
+   // printf_warn("whitespace_cb_x-------------------");
+ /*
+  * We can conditionally break to a new line before or after any element.
+  * These are just common HTML elements...
+  */
+
+  name = node->value.element.name;
+  printf_warn("name:%s\n", name);
+  if (!strcmp(name, "html") || !strcmp(name, "head") || !strcmp(name, "body") ||
+      !strcmp(name, "pre") || !strcmp(name, "p") ||
+      !strcmp(name, "h1") || !strcmp(name, "h2") || !strcmp(name, "h3") ||
+      !strcmp(name, "h4") || !strcmp(name, "h5") || !strcmp(name, "h6"))
+  {
+   /*
+    * Newlines before open and after close...
+    */
+
+    if (where == MXML_WS_BEFORE_OPEN || where == MXML_WS_AFTER_CLOSE)
+      return ("\n");
+  }
+  else if (!strcmp(name, "dl") || !strcmp(name, "ol") || !strcmp(name, "ul"))
+  {
+   /*
+    * Put a newline before and after list elements...
+    */
+
+    return ("\n");
+  }
+  else if (!strcmp(name, "dd") || !strcmp(name, "dt") || !strcmp(name, "li"))
+  {
+   /*
+    * Put a tab before <li>'s, <dd>'s, and <dt>'s, and a newline after them...
+    */
+
+    if (where == MXML_WS_BEFORE_OPEN)
+      return ("\t");
+    else if (where == MXML_WS_AFTER_CLOSE)
+      return ("\n");
+  }
+  else if (!strncmp(name, "?xml", 4))
+  {
+    if (where == MXML_WS_AFTER_OPEN)
+      return ("\n");
+    else
+      return (NULL);
+  }
+  else if (where == MXML_WS_BEFORE_OPEN ||
+           ((!strcmp(name, "choice") || !strcmp(name, "option")) &&
+	    where == MXML_WS_BEFORE_CLOSE))
+  {
+    for (level = -1, parent = node->parent;
+         parent;
+	 level ++, parent = parent->parent);
+
+    if (level > 8)
+      level = 8;
+    else if (level < 0)
+      level = 0;
+
+    return (tabs + 8 - level);
+  }
+  else if (where == MXML_WS_AFTER_CLOSE ||
+           ((!strcmp(name, "group") || !strcmp(name, "option") ||
+	     !strcmp(name, "choice")) &&
+            where == MXML_WS_AFTER_OPEN))
+    return ("\n");
+  else if (where == MXML_WS_AFTER_OPEN && !node->child)
+    return ("\n");
+
+ /*
+  * Return NULL for no added whitespace...
+  */
+
+  return (NULL);
+}
+
+
+void dao_version_check(mxml_node_t *root, char *file)
+{
+    FILE *fp;
+    mxml_node_t *node = mxmlFindElement(root, "softVersion", "app",NULL, NULL,MXML_DESCEND);
+    if(node != NULL){
+        printf_warn("--%s\n", mxmlGetText(node ,NULL));
+        if(!strcmp(mxmlGetText(node ,NULL), get_version_string())){
+            return;
+        }
+        mxmlSetText(node, 0, get_version_string());
+        fp = fopen(file, "w");
+        mxmlSaveFile(root, fp, whitespace_cb_x);
+        fclose(fp);
+    }
+    
+
+    
+    //if(!strcmp(node_value, get_version_string())){
+    //    return;
+    //}
 }
 
 
@@ -1063,7 +1190,8 @@ void dao_read_create_config_file(char *file, void *root_config)
     /* read/write or create file */
     fp = fopen(file, "r");
     if(fp != NULL){
-        whole_root = mxmlLoadFile(NULL, fp, MXML_TEXT_CALLBACK);
+        whole_root = mxmlLoadFile(NULL, fp, MXML_TEXT_CALLBACK);//MXML_TEXT_CALLBACK);
+        dao_version_check(whole_root, file);
         read_config(root_config);
         fclose(fp);
     }else{

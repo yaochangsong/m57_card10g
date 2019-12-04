@@ -107,7 +107,7 @@ int main(int argc, char **argv)
         }
     }
     log_init(debug_level);
-    printf_warn("VERSION:%s\n",SPCTRUM_VERSION_STRING);
+    printf_warn("VERSION:%s\n",get_version_string());
     config_init();
     uloop_init();
 #ifdef SUPPORT_UART
@@ -115,6 +115,9 @@ int main(int argc, char **argv)
 #endif
 #ifdef SUPPORT_PROJECT_SSA
     gpio_init_control();
+#endif
+#ifdef SUPPORT_AUDIO
+    audio_init();
 #endif
 
 #ifdef SUPPORT_AMBIENT_TEMP_HUMIDITY

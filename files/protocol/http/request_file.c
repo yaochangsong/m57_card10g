@@ -24,6 +24,7 @@
 #include "log/log.h"
 #include "file.h"
 #include "request_file.h"
+#include "utils/memshare.h"
 
 
 struct file_request_read req_readx;
@@ -273,6 +274,7 @@ void file_handle_init(void)
 {
     memshare_init();
     memset(&req_readx, 0, sizeof(struct file_request_read));
+    
     if(is_disk_format()){
         file_disk_format(NULL, NULL);
     }

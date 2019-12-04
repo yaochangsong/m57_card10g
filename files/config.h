@@ -85,5 +85,5 @@
 #define GHZ(x) ((long long)(x*1000000000.0 + .5))
 #endif
 
-#define SPCTRUM_VERSION_STRING "1.0.0-"__DATE__"."__TIME__ /* application version */
+#define PLATFORM_VERSION  "1.0.0" /* application version */
 

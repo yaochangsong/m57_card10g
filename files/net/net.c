@@ -90,7 +90,7 @@ int server_init(void)
 #ifdef  SUPPORT_PROTOCAL_HTTP
     struct uh_server *srv = NULL;
     printf_info("http server init[port:%d]\n", 8888);
-    srv = uh_server_new("0.0.0.0", 8889);
+    srv = uh_server_new("0.0.0.0", 8888);
     if (!srv)
         return -1;
     srv->on_accept = on_accept;

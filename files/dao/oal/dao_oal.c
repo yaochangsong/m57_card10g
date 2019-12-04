@@ -1191,7 +1191,7 @@ void dao_read_create_config_file(char *file, void *root_config)
     fp = fopen(file, "r");
     if(fp != NULL){
         whole_root = mxmlLoadFile(NULL, fp, MXML_TEXT_CALLBACK);//MXML_TEXT_CALLBACK);
-        dao_version_check(whole_root, file);
+        //dao_version_check(whole_root, file);
         read_config(root_config);
         fclose(fp);
     }else{

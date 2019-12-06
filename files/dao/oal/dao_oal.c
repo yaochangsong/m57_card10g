@@ -961,9 +961,17 @@ void read_calibration_file(mxml_node_t *root, void *config)
     /* read psd  calibration value in different frequency */
     for(int i = 0; i<sizeof(cali_config->specturm.start_freq_khz)/sizeof(uint32_t); i++){
         sprintf(indexvalue, "%d", i);
-        cali_config->specturm.start_freq_khz[i]  = atol(read_config_file_array(root, "psd_power","index",indexvalue,"start_requency")) ;
-        cali_config->specturm.end_freq_khz[i]  = atol(read_config_file_array(root,"psd_power","index",indexvalue,"end_requency")) ;
-        cali_config->specturm.power_level[i]  = atoi(read_config_file_array(root,"psd_power","index",indexvalue,"level")) ;
+        
+
+        if(dao_read_long_data_array_value(root, "psd_power", "index", indexvalue, 
+                                    "start_requency",  &cali_config->specturm.start_freq_khz[i]) == -1)
+           break;
+        if(dao_read_long_data_array_value(root, "psd_power", "index", indexvalue, 
+                                    "end_requency",  &cali_config->specturm.end_freq_khz[i]) == -1)
+           break;
+        if(dao_read_int_data_array_value(root, "psd_power", "index", indexvalue, 
+                                    "level",  &cali_config->specturm.power_level[i]) == -1)
+           break;
 
         printf_debug("indexvalue=%s\n", indexvalue);
 
@@ -975,9 +983,17 @@ void read_calibration_file(mxml_node_t *root, void *config)
      /* read analysis calibration value in different frequency */
     for(int i = 0; i<sizeof(cali_config->analysis.start_freq_khz)/sizeof(uint32_t); i++){
         sprintf(indexvalue, "%d", i);
-        cali_config->analysis.start_freq_khz[i]  = atol(read_config_file_array(root,"analysis_power","index",indexvalue,"start_requency")) ;
-        cali_config->analysis.end_freq_khz[i]  = atol(read_config_file_array(root,"analysis_power","index",indexvalue,"end_requency")) ;
-        cali_config->analysis.power_level[i]  = atoi(read_config_file_array(root,"analysis_power","index",indexvalue,"level")) ;
+
+        if(dao_read_long_data_array_value(root, "analysis_power", "index", indexvalue, 
+                                    "start_requency",  &cali_config->analysis.start_freq_khz[i]) == -1)
+           break;
+        if(dao_read_long_data_array_value(root, "analysis_power", "index", indexvalue, 
+                                    "end_requency",  &cali_config->analysis.end_freq_khz[i]) == -1)
+           break;
+        if(dao_read_int_data_array_value(root, "analysis_power", "index", indexvalue, 
+                                    "level",  &cali_config->analysis.power_level[i]) == -1)
+           break;
+
         printf_debug("analysis_power read calbration start_freq[%d] = %uKHz\n",i,cali_config->analysis.start_freq_khz[i]);
         printf_debug("analysis_power read calbration end_freq[%d] = %uKHz\n",i,cali_config->analysis.end_freq_khz[i]);
         printf_debug("analysis_power read calbration power_level[%d] = %d\n",i,cali_config->analysis.power_level[i]);
@@ -1101,83 +1117,133 @@ void read_config(void *root_config)
      printf_debug("读取............................ipaddress = %p\n",fre_config->oal_config.network.ipaddress);
 
         
-
-    fre_config->oal_config.network.port = atoi(read_config_file_single("network","port")) ;
-    printf_debug("读取............................port = %d\n",fre_config->oal_config.network.port);
-
-    fre_config->oal_config.enable.bit_en = atoi(read_config_file_single("dataOutPutEn","enable")) ;
-    printf_debug("读取............................enable = %d\n",fre_config->oal_config.enable.bit_en);
-
-    fre_config->oal_config.enable.sub_id = atoi(read_config_file_single("dataOutPutEn","subChannel")) ;
-    printf_debug("读取............................subChannel = %d\n",fre_config->oal_config.enable.sub_id);
-
-    fre_config->oal_config.enable.psd_en = atoi(read_config_file_single("dataOutPutEn","psdEnable")) ;
-    printf_debug("读取............................psdEnable = %d\n",fre_config->oal_config.enable.psd_en);
-
-    fre_config->oal_config.enable.audio_en = atoi(read_config_file_single("dataOutPutEn","audioEnable")) ;
-    printf_debug("读取............................audioEnable = %d\n",fre_config->oal_config.enable.audio_en);
-
-    fre_config->oal_config.enable.iq_en = atoi(read_config_file_single("dataOutPutEn","IQEnable")) ;
-    printf_debug("读取............................IQEnable = %d\n",fre_config->oal_config.enable.iq_en);
-
-    fre_config->oal_config.enable.spec_analy_en = atoi(read_config_file_single("dataOutPutEn","spectrumAnalysisEn")) ;
-    printf_debug("读取............................spectrumAnalysisEn = %d\n",fre_config->oal_config.enable.spec_analy_en);
-
-    fre_config->oal_config.enable.direction_en = atoi(read_config_file_single("dataOutPutEn","directionEn")) ;
-    printf_debug("读取............................directionEn = %d\n",fre_config->oal_config.enable.direction_en);
-
-    fre_config->oal_config.ctrl_para.spectrum_time_interval = atoi(read_config_file_single("controlPara","spectrum_time_interval")) ;
-    printf_debug("spectrum_timer_interval = %d\n",fre_config->oal_config.ctrl_para.spectrum_time_interval);
-
-    if(dao_read_int_data_single_value("controlPara","internalClock", &fre_config->oal_config.ctrl_para.internal_clock) != -1){
-        printf_debug("internal_clock: %d\n",fre_config->oal_config.ctrl_para.internal_clock);
+    if(dao_read_int_data_single_value("network","port", &fre_config->oal_config.network.port)!=-1){
+         printf_debug("读取............................port = %d\n",fre_config->oal_config.network.port);
     }
+
+
+    if(dao_read_int_data_single_value("dataOutPutEn","enable", &fre_config->oal_config.enable.bit_en)!=-1){
+         printf_debug("读取............................enable = %d\n",fre_config->oal_config.enable.bit_en);
+    }
+
+
+    if(dao_read_int_data_single_value("dataOutPutEn","subChannel", &fre_config->oal_config.enable.sub_id)!=-1){
+         printf_debug("读取............................subChannel = %d\n",fre_config->oal_config.enable.sub_id);
+    }
+
+
+    if(dao_read_int_data_single_value("dataOutPutEn","psdEnable", &fre_config->oal_config.enable.psd_en)!=-1){
+         printf_debug("读取............................psdEnable = %d\n",fre_config->oal_config.enable.psd_en);
+    }
+
     
-    fre_config->oal_config.multi_freq_point_param[0].cid  = atoi(read_config_file_array(root,"channel","index","0","cid")) ;
-    printf_debug("读取............................cid = %d\n",fre_config->oal_config.multi_freq_point_param[0].cid);
-
-    fre_config->oal_config.multi_freq_point_param[0].points[0].center_freq  = atoi(read_config_file_array(root,"freqPoint","index","0","centerFreq"));
-    printf_debug("读取............................centerFreq = %d\n",fre_config->oal_config.multi_freq_point_param[0].points[0].center_freq);
-
-    fre_config->oal_config.multi_freq_point_param[0].points[0].bandwidth  = atoi(read_config_file_array(root,"freqPoint","index","0","bandwith"));
-    printf_debug("读取............................bandwith = %d\n",fre_config->oal_config.multi_freq_point_param[0].points[0].bandwidth);
-
-    fre_config->oal_config.multi_freq_point_param[0].points[0].freq_resolution  = atof(read_config_file_array(root,"freqPoint","index","0","freqResolution"));
-    printf_debug("读取............................freqResolution = %f\n",fre_config->oal_config.multi_freq_point_param[0].points[0].freq_resolution);
-
-    fre_config->oal_config.multi_freq_point_param[0].points[0].fft_size  = atoi(read_config_file_array(root,"freqPoint","index","0","fftSize"));
-    printf_debug("读取............................fftSize = %d\n",fre_config->oal_config.multi_freq_point_param[0].points[0].fft_size);
-
-    fre_config->oal_config.multi_freq_point_param[0].points[0].d_method  = atoi(read_config_file_array(root,"freqPoint","index","0","decMethodId"));
-    printf_debug("读取............................decMethodId = %d\n",fre_config->oal_config.multi_freq_point_param[0].points[0].d_method);
-
-    fre_config->oal_config.multi_freq_point_param[0].points[0].d_bandwith  = atoi(read_config_file_array(root,"freqPoint","index","0","decBandwidth"));
-    printf_debug("读取............................decBandwidth = %d\n",fre_config->oal_config.multi_freq_point_param[0].points[0].d_bandwith);
-
-    fre_config->oal_config.multi_freq_point_param[0].points[0].noise_en  = atoi(read_config_file_array(root,"freqPoint","index","0","muteSwitch"));
-    printf_debug("读取............................muteSwitch = %d\n",fre_config->oal_config.multi_freq_point_param[0].points[0].noise_en);
-
-    fre_config->oal_config.multi_freq_point_param[0].points[0].noise_thrh  = atoi(read_config_file_array(root,"freqPoint","index","0","muteThreshold"));
-    printf_debug("读取............................muteThreshold = %d\n",fre_config->oal_config.multi_freq_point_param[0].points[0].noise_thrh);
+    if(dao_read_int_data_single_value("dataOutPutEn","audioEnable", &fre_config->oal_config.enable.audio_en)!=-1){
+         printf_debug("读取............................audioEnable = %d\n",fre_config->oal_config.enable.audio_en);
+    }
 
 
-    fre_config->oal_config.rf_para->rf_mode_code = atoi(read_config_file_single("radiofrequency","modeCode")) ;
-    printf_debug("读取............................modeCode = %d\n",fre_config->oal_config.rf_para->rf_mode_code);
+    if(dao_read_int_data_single_value("dataOutPutEn","IQEnable", &fre_config->oal_config.enable.iq_en)!=-1){
+         printf_debug("读取............................IQEnable = %d\n",fre_config->oal_config.enable.iq_en);
+    }
 
-    fre_config->oal_config.rf_para->gain_ctrl_method = atoi(read_config_file_single("radiofrequency","gainMode")) ;
-    printf_debug("读取............................gainMode = %d\n",fre_config->oal_config.rf_para->gain_ctrl_method);
 
-    fre_config->oal_config.rf_para->agc_ctrl_time = atoi(read_config_file_single("radiofrequency","agcCtrlTime")) ;
-    printf_debug("读取............................agcCtrlTime = %d\n",fre_config->oal_config.rf_para->agc_ctrl_time);
+    if(dao_read_int_data_single_value("dataOutPutEn","spectrumAnalysisEn", &fre_config->oal_config.enable.spec_analy_en)!=-1){
+         printf_debug("读取............................spectrumAnalysisEn = %d\n",fre_config->oal_config.enable.spec_analy_en);
+    }
 
-    fre_config->oal_config.rf_para->agc_mid_freq_out_level = atoi(read_config_file_single("radiofrequency","agcOutPutAmp")) ;
-    printf_debug("读取............................agcOutPutAmp = %d\n",fre_config->oal_config.rf_para->agc_mid_freq_out_level);
 
-    fre_config->oal_config.rf_para->mid_bw = atoi(read_config_file_single("radiofrequency","midBw")) ;
-    printf_debug("读取............................midBw = %d\n",fre_config->oal_config.rf_para->mid_bw);
+    if(dao_read_int_data_single_value("dataOutPutEn","directionEn", &fre_config->oal_config.enable.direction_en)!=-1){
+         printf_debug("读取............................directionEn = %d\n",fre_config->oal_config.enable.direction_en);
+    }   
 
-    fre_config->oal_config.rf_para->attenuation = atoi(read_config_file_single("radiofrequency","rfAttenuation")) ;
-    printf_debug("读取............................rfAttenuation = %d\n",fre_config->oal_config.rf_para->attenuation);
+    
+    if(dao_read_int_data_single_value("controlPara","spectrum_time_interval", &fre_config->oal_config.ctrl_para.spectrum_time_interval)!=-1){
+         printf_debug("spectrum_timer_interval = %d\n",fre_config->oal_config.ctrl_para.spectrum_time_interval);
+    }
+
+    if(dao_read_int_data_array_value(root, "channel", "index", "0", 
+                                "cid",&fre_config->oal_config.multi_freq_point_param[0].cid)!=-1){
+        printf_debug("读取............................cid = %d\n",fre_config->oal_config.multi_freq_point_param[0].cid);
+       };
+
+
+    if(dao_read_int_data_array_value(root, "freqPoint", "index", "0", 
+                                "centerFreq",&fre_config->oal_config.multi_freq_point_param[0].points[0].center_freq)!=-1){
+        printf_debug("读取............................centerFreq = %d\n",fre_config->oal_config.multi_freq_point_param[0].points[0].center_freq);
+       };
+
+
+    if(dao_read_int_data_array_value(root, "freqPoint", "index", "0", 
+                                "bandwith",&fre_config->oal_config.multi_freq_point_param[0].points[0].bandwidth) !=-1){
+        printf_debug("读取............................bandwith = %d\n",fre_config->oal_config.multi_freq_point_param[0].points[0].bandwidth);
+       };
+
+
+    if(dao_read_float_data_array_value(root, "freqPoint", "index", "0", 
+                                "freqResolution",&fre_config->oal_config.multi_freq_point_param[0].points[0].freq_resolution) !=-1){
+        printf_debug("读取............................freqResolution = %d\n",fre_config->oal_config.multi_freq_point_param[0].points[0].freq_resolution);
+       };
+
+
+    if(dao_read_int_data_array_value(root, "freqPoint", "index", "0", 
+                                "fftSize",&fre_config->oal_config.multi_freq_point_param[0].points[0].fft_size) !=-1){
+        printf_debug("读取............................fftSize = %d\n",fre_config->oal_config.multi_freq_point_param[0].points[0].fft_size);
+       };
+
+    if(dao_read_int_data_array_value(root, "freqPoint", "index", "0", 
+                                "decMethodId",&fre_config->oal_config.multi_freq_point_param[0].points[0].d_method) !=-1){
+        printf_debug("读取............................decMethodId = %d\n",fre_config->oal_config.multi_freq_point_param[0].points[0].d_method);
+       };
+
+
+    if(dao_read_int_data_array_value(root, "freqPoint", "index", "0", 
+                                "decBandwidth",&fre_config->oal_config.multi_freq_point_param[0].points[0].d_bandwith) !=-1){
+        printf_debug("读取............................decBandwidth = %d\n",fre_config->oal_config.multi_freq_point_param[0].points[0].d_bandwith);
+       };
+
+
+    if(dao_read_int_data_array_value(root, "freqPoint", "index", "0", 
+                                "muteSwitch",&fre_config->oal_config.multi_freq_point_param[0].points[0].noise_en) !=-1){
+        printf_debug("读取............................muteSwitch = %d\n",fre_config->oal_config.multi_freq_point_param[0].points[0].noise_en);
+       };
+
+
+
+    if(dao_read_int_data_array_value(root, "freqPoint", "index", "0", 
+                                "muteThreshold",&fre_config->oal_config.multi_freq_point_param[0].points[0].noise_thrh) !=-1){
+        printf_debug("读取............................muteThreshold = %d\n",fre_config->oal_config.multi_freq_point_param[0].points[0].noise_thrh);
+       };
+
+
+    
+    if(dao_read_int_data_single_value("radiofrequency","modeCode", &fre_config->oal_config.rf_para->rf_mode_code)!=-1){
+         printf_debug("读取............................modeCode = %d\n",fre_config->oal_config.rf_para->rf_mode_code);
+    }
+
+
+    if(dao_read_int_data_single_value("radiofrequency","gainMode", &fre_config->oal_config.rf_para->gain_ctrl_method)!=-1){
+         printf_debug("读取............................gainMode = %d\n",fre_config->oal_config.rf_para->gain_ctrl_method);
+    }
+ 
+
+    if(dao_read_int_data_single_value("radiofrequency","agcCtrlTime", &fre_config->oal_config.rf_para->agc_ctrl_time)!=-1){
+         printf_debug("读取............................agcCtrlTime = %d\n",fre_config->oal_config.rf_para->agc_ctrl_time);
+    }
+
+
+    if(dao_read_int_data_single_value("radiofrequency","agcOutPutAmp", &fre_config->oal_config.rf_para->agc_mid_freq_out_level)!=-1){
+         printf_debug("读取............................agcOutPutAmp = %d\n",fre_config->oal_config.rf_para->agc_mid_freq_out_level);
+    }
+
+
+    if(dao_read_int_data_single_value("radiofrequency","midBw", &fre_config->oal_config.rf_para->mid_bw)!=-1){
+         printf_debug("读取............................midBw = %d\n",fre_config->oal_config.rf_para->mid_bw);
+    }
+
+
+    if(dao_read_int_data_single_value("radiofrequency","rfAttenuation", &fre_config->oal_config.rf_para->attenuation)!=-1){
+         printf_debug("读取............................rfAttenuation = %d\n",fre_config->oal_config.rf_para->attenuation);
+    }
 
     read_calibration_file(root, root_config);
     read_scan_param_info(root, root_config);

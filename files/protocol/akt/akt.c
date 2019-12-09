@@ -447,6 +447,7 @@ static int akt_execute_set_command(void)
             client.sin_port = net_para.port;//ntohs(net_para.port);
             client.sin_addr.s_addr = ipdata.s_addr;
             udp_add_client(&client);
+            tcp_add_addr_to_udp_by_port(client.sin_port);
             /* refresh kernel client info */
             memcpy(&sta_info_para.target_addr[ch], &net_para, sizeof(SNIFFER_DATA_REPORT_ST));
             sta_info_para.target_addr[ch].cid = net_para.cid;
@@ -455,7 +456,7 @@ static int akt_execute_set_command(void)
             sta_info_para.target_addr[ch].type = net_para.type;
             clock_gettime(CLOCK_REALTIME, &ts);
             sta_info_para.keepalive_time = ts;
-            printf_note("ch = %d ipstr=%d  ipaddr=%x, port=%d\n",ch,net_para.ipaddr,sta_info_para.target_addr[ch].ipaddr,sta_info_para.target_addr[ch].port);
+            printf_debug("ch = %d ipstr=%x  ipaddr=%x, port=%d\n",ch,net_para.ipaddr,sta_info_para.target_addr[ch].ipaddr,sta_info_para.target_addr[ch].port);
             
             io_set_sta_info_param(&sta_info_para);
             io_save_net_param((SNIFFER_DATA_REPORT_ST *)(&(sta_info_para.target_addr[ch])));

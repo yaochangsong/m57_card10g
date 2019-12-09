@@ -643,7 +643,7 @@ void clock_7044_init(void){
     send_buf[2] = 0x60;
     translate_data(0,send_buf,bits_len/8,recv_len);
     sleep(1);
-    printf_warn("-------------clock 7044 init finished \n");
+    printf_note("clock 7044 init finished \n");
 }
 
 #if defined(INTERNAL_CLK)

@@ -1164,6 +1164,10 @@ void read_config(void *root_config)
          printf_debug("spectrum_timer_interval = %u\n",fre_config->oal_config.ctrl_para.spectrum_time_interval);
     }
 
+    if(dao_read_int_data_single_value("controlPara","internalClock", &fre_config->oal_config.ctrl_para.internal_clock) != -1){
+        printf_debug("internal_clock: %d\n",fre_config->oal_config.ctrl_para.internal_clock);
+    }
+
     if(dao_read_int_data_array_value(root, "channel", "index", "0", 
                                 "cid",&fre_config->oal_config.multi_freq_point_param[0].cid)!=-1){
         printf_debug("读取............................cid = %d\n",fre_config->oal_config.multi_freq_point_param[0].cid);

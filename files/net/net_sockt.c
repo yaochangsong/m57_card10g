@@ -144,7 +144,6 @@ static void tcp_accept_cb(struct uloop_fd *fd, unsigned int events)
     cl->get_peer_addr = tcp_get_peer_addr;
     cl->get_peer_port = tcp_get_peer_port;
     printf_note("New connection from: %s:%d\n", cl->get_peer_addr(cl), cl->get_peer_port(cl));
-
     return;
 err:
     close(sfd);
@@ -170,6 +169,27 @@ bool tcp_find_client(struct sockaddr_in *addr)
         }
     }
     return false;
+}
+
+bool tcp_add_addr_to_udp_by_port(int port)
+{
+    struct net_tcp_client *cl_list, *list_tmp;
+    struct sockaddr_in client;
+    list_for_each_entry_safe(cl_list, list_tmp, &g_srv->clients, list){
+        client.sin_port = port;
+        client.sin_addr.s_addr =cl_list->peer_addr.sin_addr.s_addr; 
+        udp_add_client(&client);
+    }
+    return true;
+}
+
+uint32_t tcp_get_addr(void)
+{
+    struct net_tcp_client *cl_list, *list_tmp;
+    list_for_each_entry_safe(cl_list, list_tmp, &g_srv->clients, list){
+       return  cl_list->peer_addr.sin_addr.s_addr;
+    }
+    return 0;
 }
 
 struct net_tcp_server *tcp_server_new(const char *host, int port)

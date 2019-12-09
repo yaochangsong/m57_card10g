@@ -37,6 +37,16 @@ int udp_send_data_to_client(struct net_udp_client *client, uint8_t *data, uint32
     return 0;
 }
 
+void udp_client_dump(void)
+{
+    struct net_udp_client *cl_list, *list_tmp;
+    struct net_udp_server *srv = get_udp_server();
+
+    list_for_each_entry_safe(cl_list, list_tmp, &srv->clients, list){
+           printf("udp client: addr=%s, port=%d\n", cl_list->get_peer_addr(cl_list), cl_list->get_peer_port(cl_list));
+       }
+}
+
 void udp_add_client(struct sockaddr_in *addr)
 {
     struct net_udp_client *cl = NULL;

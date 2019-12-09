@@ -717,15 +717,18 @@ static void *dao_load_root(void *root)
 #endif
 }
 
-static inline int8_t dao_read_float_data_array_value(void *root, const char *array_name, 
+static  int8_t dao_read_float_data_array_value(void *root, const char *array_name, 
                                      const char *index_name, const char *index_value, 
                                      const char *element, float *result)
 {
     char *pdata;
-#ifdef SUPPORT_DAO_XML 
+    float fdata;
+#ifdef SUPPORT_DAO_XML
     pdata = read_config_file_array(root, array_name,index_name,index_value,element);
     if(pdata != NULL){
-        *result = atof(pdata);
+        fdata = atof(pdata);
+        *result = fdata;
+        //*result = atof(pdata); /* Bus error ??? */
         return 0;
     }
     return -1;
@@ -1104,17 +1107,17 @@ void read_config(void *root_config)
      
      saddr.sin_addr.s_addr=inet_addr(read_config_file_single("network","gateway"));
      fre_config->oal_config.network.gateway = saddr.sin_addr.s_addr;
-     printf_debug("读取............................gateway = %p\n",fre_config->oal_config.network.gateway);
+     printf_debug("读取............................gateway = %x\n",fre_config->oal_config.network.gateway);
      
      
      saddr.sin_addr.s_addr=inet_addr(read_config_file_single("network","netmask"));
      fre_config->oal_config.network.netmask = saddr.sin_addr.s_addr;
-     printf_debug("读取............................netmask = %p\n",fre_config->oal_config.network.netmask);
+     printf_debug("读取............................netmask = %x\n",fre_config->oal_config.network.netmask);
      
      
      saddr.sin_addr.s_addr=inet_addr(read_config_file_single("network","ipaddress"));
      fre_config->oal_config.network.ipaddress = saddr.sin_addr.s_addr;
-     printf_debug("读取............................ipaddress = %p\n",fre_config->oal_config.network.ipaddress);
+     printf_debug("读取............................ipaddress = %x\n",fre_config->oal_config.network.ipaddress);
 
         
     if(dao_read_int_data_single_value("network","port", &fre_config->oal_config.network.port)!=-1){
@@ -1158,7 +1161,7 @@ void read_config(void *root_config)
 
     
     if(dao_read_int_data_single_value("controlPara","spectrum_time_interval", &fre_config->oal_config.ctrl_para.spectrum_time_interval)!=-1){
-         printf_debug("spectrum_timer_interval = %d\n",fre_config->oal_config.ctrl_para.spectrum_time_interval);
+         printf_debug("spectrum_timer_interval = %u\n",fre_config->oal_config.ctrl_para.spectrum_time_interval);
     }
 
     if(dao_read_int_data_array_value(root, "channel", "index", "0", 
@@ -1169,25 +1172,22 @@ void read_config(void *root_config)
 
     if(dao_read_int_data_array_value(root, "freqPoint", "index", "0", 
                                 "centerFreq",&fre_config->oal_config.multi_freq_point_param[0].points[0].center_freq)!=-1){
-        printf_debug("读取............................centerFreq = %d\n",fre_config->oal_config.multi_freq_point_param[0].points[0].center_freq);
+        printf_debug("读取............................centerFreq = %llu\n",fre_config->oal_config.multi_freq_point_param[0].points[0].center_freq);
        };
 
 
     if(dao_read_int_data_array_value(root, "freqPoint", "index", "0", 
                                 "bandwith",&fre_config->oal_config.multi_freq_point_param[0].points[0].bandwidth) !=-1){
-        printf_debug("读取............................bandwith = %d\n",fre_config->oal_config.multi_freq_point_param[0].points[0].bandwidth);
+        printf_debug("读取............................bandwith = %llu\n",fre_config->oal_config.multi_freq_point_param[0].points[0].bandwidth);
        };
-
 
     if(dao_read_float_data_array_value(root, "freqPoint", "index", "0", 
-                                "freqResolution",&fre_config->oal_config.multi_freq_point_param[0].points[0].freq_resolution) !=-1){
-        printf_debug("读取............................freqResolution = %d\n",fre_config->oal_config.multi_freq_point_param[0].points[0].freq_resolution);
-       };
-
-
+                                "freqResolution",&(fre_config->oal_config.multi_freq_point_param[0].points[0].freq_resolution)) !=-1){
+        printf_debug("读取............................freqResolution = %f\n",fre_config->oal_config.multi_freq_point_param[0].points[0].freq_resolution);
+    };
     if(dao_read_int_data_array_value(root, "freqPoint", "index", "0", 
                                 "fftSize",&fre_config->oal_config.multi_freq_point_param[0].points[0].fft_size) !=-1){
-        printf_debug("读取............................fftSize = %d\n",fre_config->oal_config.multi_freq_point_param[0].points[0].fft_size);
+        printf_debug("读取............................fftSize = %u\n",fre_config->oal_config.multi_freq_point_param[0].points[0].fft_size);
        };
 
     if(dao_read_int_data_array_value(root, "freqPoint", "index", "0", 
@@ -1198,7 +1198,7 @@ void read_config(void *root_config)
 
     if(dao_read_int_data_array_value(root, "freqPoint", "index", "0", 
                                 "decBandwidth",&fre_config->oal_config.multi_freq_point_param[0].points[0].d_bandwith) !=-1){
-        printf_debug("读取............................decBandwidth = %d\n",fre_config->oal_config.multi_freq_point_param[0].points[0].d_bandwith);
+        printf_debug("读取............................decBandwidth = %u\n",fre_config->oal_config.multi_freq_point_param[0].points[0].d_bandwith);
        };
 
 
@@ -1227,7 +1227,7 @@ void read_config(void *root_config)
  
 
     if(dao_read_int_data_single_value("radiofrequency","agcCtrlTime", &fre_config->oal_config.rf_para->agc_ctrl_time)!=-1){
-         printf_debug("读取............................agcCtrlTime = %d\n",fre_config->oal_config.rf_para->agc_ctrl_time);
+         printf_debug("读取............................agcCtrlTime = %u\n",fre_config->oal_config.rf_para->agc_ctrl_time);
     }
 
 
@@ -1237,7 +1237,7 @@ void read_config(void *root_config)
 
 
     if(dao_read_int_data_single_value("radiofrequency","midBw", &fre_config->oal_config.rf_para->mid_bw)!=-1){
-         printf_debug("读取............................midBw = %d\n",fre_config->oal_config.rf_para->mid_bw);
+         printf_debug("读取............................midBw = %u\n",fre_config->oal_config.rf_para->mid_bw);
     }
 
 

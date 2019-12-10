@@ -1138,7 +1138,7 @@ uint8_t rf_set_interface(uint8_t cmd,uint8_t ch,void *data){
             }else{
                 break;
             }
-            printf_info("[**RF**]ch=%d, middle_freq=%llu\n",ch, *(uint64_t*)data);
+            printf_note("[**RF**]ch=%d, middle_freq=%llu\n",ch, *(uint64_t*)data);
 #ifdef SUPPORT_RF_ADRV9009
             gpio_select_rf_channel(*(uint64_t*)data);
             adrv9009_iio_set_freq(*(uint64_t*)data);
@@ -1146,13 +1146,14 @@ uint8_t rf_set_interface(uint8_t cmd,uint8_t ch,void *data){
             break; 
         }
          case EX_RF_MID_BW :   {
-         send_middle_freq_bandwidth_set_cmd(ch,* (uint32_t *) data);
+            printf_note("[**RF**]ch=%d, middle bw=%u\n", ch, *(uint32_t *) data);
+            send_middle_freq_bandwidth_set_cmd(ch, *(uint32_t *) data);
             break; 
         }
 
         case EX_RF_MODE_CODE :{
             noise_mode = *((uint8_t *)data);
-            printf_debug("[**RF**]ch=%d, noise_mode=%d\n", ch, noise_mode);
+            printf_note("[**RF**]ch=%d, noise_mode=%d\n", ch, noise_mode);
         #if defined(SUPPORT_PLATFORM_ARCH_ARM)
             #ifdef SUPPORT_RF_ADRV9009
             #else
@@ -1167,7 +1168,7 @@ uint8_t rf_set_interface(uint8_t cmd,uint8_t ch,void *data){
         }
         case EX_RF_MGC_GAIN : {
             mgc_gain_value = *((uint8_t *)data);
-            printf_debug("[**RF**]ch=%d, mgc_gain_value=%d\n",ch, mgc_gain_value);
+            printf_note("[**RF**]ch=%d, mgc_gain_value=%d\n",ch, mgc_gain_value);
         #if defined(SUPPORT_PLATFORM_ARCH_ARM)
             #ifdef SUPPORT_RF_ADRV9009
             #else
@@ -1211,7 +1212,7 @@ uint8_t rf_set_interface(uint8_t cmd,uint8_t ch,void *data){
         }
         case EX_RF_AGC_BW :{
             rf_bw = *((uint32_t *)data);
-            printf_debug("[**RF**]ch=%d, rf_bw=%d\n",ch, rf_bw);
+            printf_note("[**RF**]ch=%d, rf_bw=%d\n",ch, rf_bw);
         #if defined(SUPPORT_PLATFORM_ARCH_ARM)
             #ifdef SUPPORT_RF_ADRV9009
             #else
@@ -1221,9 +1222,8 @@ uint8_t rf_set_interface(uint8_t cmd,uint8_t ch,void *data){
             break; 
         }
         case EX_MID_FREQ:
-        send_mid_freq_attenuation_set_cmd(ch,* (uint32_t *) data);
+            send_mid_freq_attenuation_set_cmd(ch,* (uint32_t *) data);
         break;
-
 
         default:{
             break;

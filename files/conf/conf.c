@@ -295,6 +295,7 @@ int8_t config_read_by_cmd(exec_cmd cmd, uint8_t type, uint8_t ch, void *data)
                     else{
                         *(int32_t *)data = poal_config->rf_para[ch].mid_bw;
                     }
+                    printf_debug("ch=%d, rf middle bw=%u\n",ch, poal_config->rf_para[ch].mid_bw);
                     if(*(int32_t *)data == 0){
                         return -1;
                     }

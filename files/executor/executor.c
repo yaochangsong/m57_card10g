@@ -84,7 +84,7 @@ static  int8_t  executor_fragment_scan(uint32_t fregment_num,uint8_t ch, work_mo
         e_freq -= KU_FREQUENCY_OFFSET;
     }
 #endif
-    if(config_read_by_cmd(EX_RF_FREQ_CMD, EX_RF_MID_BW, 0, &scan_bw) == -1){
+    if(config_read_by_cmd(EX_RF_FREQ_CMD, EX_RF_MID_BW, ch, &scan_bw) == -1){
         printf_err("Error read scan bindwidth=%u\n", scan_bw);
         return -1;
     }
@@ -196,7 +196,7 @@ static inline int8_t  executor_points_scan(uint8_t ch, work_mode mode)
     point = &poal_config->multi_freq_point_param[ch];
     points_count = point->freq_point_cnt;
 
-    if(config_read_by_cmd(EX_RF_FREQ_CMD, EX_RF_MID_BW, 0, &scan_bw) == -1){
+    if(config_read_by_cmd(EX_RF_FREQ_CMD, EX_RF_MID_BW, ch, &scan_bw) == -1){
         printf_err("Error read scan bindwidth=%u\n", scan_bw);
         return -1;
     }
@@ -215,16 +215,12 @@ static inline int8_t  executor_points_scan(uint8_t ch, work_mode mode)
         header_param.bandwidth = point->points[i].bandwidth;
         header_param.m_freq = point->points[i].center_freq;
         header_param.mode = mode;
-		header_param.d_method = point->points[i].d_method;
-#if defined(SUPPORT_SPECTRUM_KERNEL)
-        header_param.scan_bw = header_param.bandwidth;
-#else
+        header_param.d_method = point->points[i].d_method;
         header_param.scan_bw = scan_bw;
-#endif
-        
+
         header_param.freq_resolution = (float)point->points[i].bandwidth * BAND_FACTOR / (float)point->points[i].fft_size;
         printf_info("ch=%d, s_freq=%llu, e_freq=%llu, fft_size=%u, d_method=%d\n", ch, s_freq, e_freq, header_param.fft_size,header_param.d_method);
-        printf_info("bandwidth=%u, m_freq=%llu, freq_resolution=%f\n",header_param.scan_bw, header_param.m_freq, header_param.freq_resolution);
+        printf_note("bandwidth=%u, m_freq=%llu, freq_resolution=%f\n",header_param.scan_bw, header_param.m_freq, header_param.freq_resolution);
         executor_set_command(EX_RF_FREQ_CMD,  EX_RF_MID_FREQ, ch, &point->points[i].center_freq);
         executor_set_command(EX_RF_FREQ_CMD,  EX_RF_MID_BW,   ch, &header_param.scan_bw);
 #if defined(SUPPORT_SPECTRUM_KERNEL)
@@ -614,14 +610,16 @@ int8_t executor_set_enable_command(uint8_t ch)
             case OAL_FIXED_FREQ_ANYS_MODE:
             {
                 printf_debug("freq_point_cnt=%d\n", poal_config->multi_freq_point_param[ch].freq_point_cnt);
+                printf_note("ch=%d,attenuation=%d, mgc_gain_value=%d, mid_bw=%u\n",ch, poal_config->rf_para[ch].attenuation, 
+                    poal_config->rf_para[ch].mgc_gain_value, poal_config->rf_para[ch].mid_bw);
                 executor_set_command(EX_RF_FREQ_CMD, EX_RF_ATTENUATION, ch, &poal_config->rf_para[ch].attenuation);
                 executor_set_command(EX_RF_FREQ_CMD, EX_RF_MGC_GAIN, ch, &poal_config->rf_para[ch].mgc_gain_value);
                 //executor_set_command(EX_RF_FREQ_CMD, EX_RF_MID_FREQ, ch, &poal_config->rf_para[ch].mid_freq);
-                executor_set_command(EX_RF_FREQ_CMD, EX_RF_MID_BW, ch, &poal_config->rf_para[ch].mid_bw);
-                printf_note("ch=%d,rf_para[ch].mid_bw=%u, bandwidth=%u\n", ch, poal_config->rf_para[ch].mid_bw, poal_config->multi_freq_point_param[ch].points[0].bandwidth);
+                //executor_set_command(EX_RF_FREQ_CMD, EX_RF_MID_BW, ch, &poal_config->rf_para[ch].mid_bw);
                 executor_set_command(EX_MID_FREQ_CMD, EX_BANDWITH, ch, &poal_config->rf_para[ch].mid_bw);
                 executor_set_command(EX_MID_FREQ_CMD, EX_CHANNEL_SELECT, ch, &ch);
                 executor_set_command(EX_MID_FREQ_CMD, EX_SMOOTH_TIME, ch, &poal_config->multi_freq_point_param[ch].smooth_time);
+                executor_set_command(EX_MID_FREQ_CMD, EX_FPGA_CALIBRATE, ch, NULL);
                 break;
             }
             case OAL_FAST_SCAN_MODE:
@@ -653,14 +651,19 @@ int8_t executor_set_enable_command(uint8_t ch)
                 executor_set_command(EX_RF_FREQ_CMD, EX_RF_ATTENUATION, ch, &poal_config->rf_para[ch].attenuation);
                 executor_set_command(EX_RF_FREQ_CMD, EX_RF_MGC_GAIN, ch, &poal_config->rf_para[ch].mgc_gain_value);
                 executor_set_command(EX_MID_FREQ_CMD, EX_SMOOTH_TIME, ch, &poal_config->multi_freq_fregment_para[ch].smooth_time);
+                executor_set_command(EX_MID_FREQ_CMD, EX_FPGA_CALIBRATE, ch, NULL);
                 executor_set_command(EX_MID_FREQ_CMD, EX_CHANNEL_SELECT, ch, &ch);
+                executor_set_command(EX_MID_FREQ_CMD, EX_FPGA_RESET, ch, NULL);
                 break;
             }
             case OAL_MULTI_POINT_SCAN_MODE:
                 executor_set_command(EX_RF_FREQ_CMD, EX_RF_ATTENUATION, ch, &poal_config->rf_para[ch].attenuation);
                 executor_set_command(EX_RF_FREQ_CMD, EX_RF_MGC_GAIN, ch, &poal_config->rf_para[ch].mgc_gain_value);
+                executor_set_command(EX_MID_FREQ_CMD, EX_BANDWITH, ch, &poal_config->rf_para[ch].mid_bw);
                 executor_set_command(EX_MID_FREQ_CMD, EX_SMOOTH_TIME, ch, &poal_config->multi_freq_fregment_para[ch].smooth_time);
+                executor_set_command(EX_MID_FREQ_CMD, EX_FPGA_CALIBRATE, ch, NULL);
                 executor_set_command(EX_MID_FREQ_CMD, EX_CHANNEL_SELECT, ch, &ch);
+                executor_set_command(EX_MID_FREQ_CMD, EX_FPGA_RESET, ch, NULL);
                 break;
             default:
                 return -1;

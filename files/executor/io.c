@@ -20,27 +20,20 @@ static struct  band_table_t bandtable[] ={
     {459085, 134, 600},
     {459085, 133, 1500},
     {459085, 132, 2400},
-    {459085, 131, 5000},
-    {459085, 130, 6000},
-    {459085, 129, 9000},
-    {459085, 128, 12000},
-    {459085, 0, 15000},
-    {458852, 0, 25000},
-    {458852, 0, 50000},
-    {458802, 0, 100000},
-    {458785, 0, 150000},
-    {458772, 0, 250000},
-    {458772, 0, 500000},
-    {458762, 0, 1000000},
-    {458757, 0, 2000000},
-    {983040, 0, 5000000},
-    {458752, 0, 10000000},
+    {0x70fa0, 131, 5000},
+    {0x70320, 0, 25000},
+    {0x70190, 0, 50000},
+    {0x700c8, 0, 100000},
+    {0x70050, 0, 250000},
+    {0x70028, 0, 500000},
+    {0x70014, 0, 1000000},
+    {0x70008, 0, 2500000},
+    {0x70004, 0, 5000000},
     {0x70000, 0, 20000000},
     {0x30000, 0, 40000000},
     {0x10000, 0, 80000000},
     {0, 0, 160000000},
 }; 
-
 
 static void  io_compute_extract_factor_by_fftsize(uint32_t anays_band,uint32_t *extract, uint32_t *extract_filter)
 {
@@ -155,6 +148,90 @@ int32_t io_set_dec_method(uint32_t ch, uint32_t dec_method){
 }
 
 
+/*设置解调中心频率（需要根据中心频率计算）*/
+uint32_t io_set_dec_middle_freq_reg(uint64_t dec_middle_freq, uint64_t middle_freq)
+{
+        /* delta_freq = (reg* 204800000)/2^32 ==>  reg= delta_freq*2^32/204800000 */
+#define FREQ_MAGIC1 (204800000)
+#define FREQ_MAGIC2 (0x100000000ULL)  /* 2^32 */
+    
+        uint64_t delta_freq;
+        uint32_t reg;
+        int32_t ret = 0;
+    
+#if defined(SUPPORT_SPECTRUM_KERNEL) 
+        if(middle_freq > dec_middle_freq){
+            delta_freq = FREQ_MAGIC2 +  dec_middle_freq - middle_freq ;
+        }else{
+            delta_freq = dec_middle_freq -middle_freq;
+        }
+        reg = (uint32_t)((delta_freq *FREQ_MAGIC2)/FREQ_MAGIC1);
+#endif
+        return reg;
+}
+
+
+/*设置主通道解调中心频率*/
+int32_t io_set_dec_middle_freq(uint32_t ch, uint64_t dec_middle_freq, uint64_t middle_freq)
+{
+    uint32_t reg;
+    int32_t ret = 0;
+
+#if defined(SUPPORT_SPECTRUM_KERNEL) 
+    reg = io_set_dec_middle_freq_reg(dec_middle_freq, middle_freq);
+    printf_warn("[**REGISTER**]ch:%d, MiddleFreq =%llu, Decode MiddleFreq:%llu, reg=0x%x\n", ch, middle_freq, dec_middle_freq, reg);
+    ret = ioctl(io_ctrl_fd, IOCTL_DECODE_MID_FREQ, reg);
+#endif
+    return ret;
+}
+
+
+/*设置子通道解调中心频率*/
+int32_t io_set_subch_dec_middle_freq(uint32_t subch, uint64_t dec_middle_freq, uint64_t middle_freq)
+{
+        uint32_t reg;
+        int32_t ret = 0;
+        struct  ioctl_data_t odata;
+#if defined(SUPPORT_SPECTRUM_KERNEL) 
+        reg = io_set_dec_middle_freq_reg(dec_middle_freq, middle_freq);
+        odata.ch = subch;
+        memcpy(odata.data,&reg,sizeof(reg));
+        ret = ioctl(io_ctrl_fd, IOCTL_SUB_CH_MIDDLE_FREQ, &odata);
+        printf_warn("[**REGISTER**]ch:%d, SubChannel Set MiddleFreq =%llu, Decode MiddleFreq:%llu, reg=0x%x, ret=%d， sizeof(reg)=0x%d\n", subch, middle_freq, dec_middle_freq, reg, ret,sizeof(reg));
+        
+#endif
+        return ret;
+}
+
+/*设置子通道开关*/
+int32_t io_set_subch_onoff(uint32_t subch, uint8_t onoff)
+{
+    struct  ioctl_data_t odata;
+    int32_t ret = 0;
+#if defined(SUPPORT_SPECTRUM_KERNEL) 
+    odata.ch = subch;
+    memcpy(odata.data,&onoff,sizeof(onoff));
+    ret = ioctl(io_ctrl_fd, IOCTL_SUB_CH_ONOFF, &odata);
+    printf_warn("[**REGISTER**]ch:%d, SubChannle Set OnOff=%d, ret=%d, sizeof(onoff)=%d\n",subch, onoff, ret, sizeof(onoff));
+#endif
+    return ret;
+}
+
+/*设置子通道解调带宽*/
+int32_t io_set_subch_bandwidth(uint32_t subch, uint32_t bandwidth)
+{
+    int32_t ret = 0;
+    uint32_t band_factor, filter_factor;
+    struct  ioctl_data_t odata;
+#if defined(SUPPORT_SPECTRUM_KERNEL) 
+    io_compute_extract_factor_by_fftsize(bandwidth,&band_factor, &filter_factor);
+    odata.ch = subch;
+    memcpy(odata.data,&band_factor,sizeof(band_factor));
+    ret = ioctl(io_ctrl_fd, IOCTL_SUB_CH_BANDWIDTH, &odata);
+    printf_warn("[**REGISTER**]ch:%d, SubChannle Set Bandwidth=%u, factor=0x%x ret=%d\n",subch, bandwidth, band_factor, ret);
+#endif
+    return ret;
+}
 
 
 static void io_set_common_param(uint8_t type, uint8_t *buf,uint32_t buf_len)

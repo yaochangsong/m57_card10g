@@ -270,6 +270,9 @@ int8_t config_read_by_cmd(exec_cmd cmd, uint8_t type, uint8_t ch, void *data)
                 case EX_AUDIO_SAMPLE_RATE:
                      *(float *)data = poal_config->multi_freq_point_param[ch].audio_sample_rate;
                     break;
+                case EX_MID_FREQ:
+                    *(uint64_t *)data = poal_config->multi_freq_point_param[ch].points[0].center_freq;
+                    break;
                 default:
                     printf_err("not surpport type\n");
                     return -1;

@@ -28,21 +28,25 @@ typedef enum {
 
 /* executor: mid frequency paramter */
 enum {
-    EX_MUTE_SW=11,                /*静噪开关*/
-    EX_MUTE_THRE=12,              /*静噪门限*/
-    EX_MID_FREQ=13,               /*中心频率*/
-    EX_BANDWITH=14,               /*带宽*/
-    EX_DEC_METHOD=15,             /*解调方式*/
-    EX_DEC_BW=16,                 /*解调带宽*/
-    EX_SMOOTH_TIME=17,            /*平滑次数*/
-    EX_RESIDENCE_TIME=18,         /*驻留时间*/
-    EX_RESIDENCE_POLICY=19,       /*驻留策略*/
-    EX_AUDIO_SAMPLE_RATE=20,     /*音频采样速率*/
-    EX_FFT_SIZE=21,              /*FFT 点数*/
-    EX_FRAME_DROP_CNT=22,        /*丢帧次数*/
-    EX_CHANNEL_SELECT=23,        /*通道选择*/
-    EX_FPGA_RESET=24,            /*FPGA复位*/
-    EX_FPGA_CALIBRATE=25,        /*FPGA校准*/
+    EX_MUTE_SW=11,             /*静噪开关*/
+    EX_MUTE_THRE,              /*静噪门限*/
+    EX_MID_FREQ,               /*中心频率*/
+    EX_BANDWITH,               /*带宽*/
+    EX_DEC_METHOD,             /*解调方式*/
+    EX_DEC_BW,                 /*解调带宽*/
+    EX_DEC_MID_FREQ,           /* 解调中心频率 */
+    EX_SMOOTH_TIME,            /*平滑次数*/
+    EX_RESIDENCE_TIME,         /*驻留时间*/
+    EX_RESIDENCE_POLICY,       /*驻留策略*/
+    EX_AUDIO_SAMPLE_RATE,      /*音频采样速率*/
+    EX_FFT_SIZE,               /*FFT 点数*/
+    EX_FRAME_DROP_CNT,         /*丢帧次数*/
+    EX_CHANNEL_SELECT,         /*通道选择*/
+    EX_FPGA_RESET,             /*FPGA复位*/
+    EX_FPGA_CALIBRATE,         /*FPGA校准*/
+    EX_SUB_CH_DEC_BW,          /* 子通道解调带宽 */
+    EX_SUB_CH_MID_FREQ,        /* 子通道解调中心频率 */
+    EX_SUB_CH_ONOFF            /* 子通道开关 */
 };
 
 /* executor: work mode  */
@@ -57,28 +61,28 @@ typedef enum {
 
 /* executor: enable paramter */
 enum {
-    PSD_MODE_ENABLE=50,             /*PSD 数据使能*/
-    PSD_MODE_DISABLE=51,
-    AUDIO_MODE_ENABLE=52,           /*音频数据使能*/
-    AUDIO_MODE_DISABLE=53,
-    IQ_MODE_ENABLE=54,              /*IQ 数据使能*/
-    IQ_MODE_DISABLE=55,
-    SPCTRUM_MODE_ANALYSIS_ENABLE=56,/*频谱分析使能*/
-    SPCTRUM_MODE_ANALYSIS_DISABLE=57,
-    DIRECTION_MODE_ENABLE=58,       /*测向使能位*/
-    DIRECTION_MODE_ENABLE_DISABLE=59,
-    FREQUENCY_BAND_ENABLE_DISABLE=60,
+    PSD_MODE_ENABLE=50,          /*PSD 数据使能*/
+    PSD_MODE_DISABLE,
+    AUDIO_MODE_ENABLE,           /*音频数据使能*/
+    AUDIO_MODE_DISABLE,
+    IQ_MODE_ENABLE,              /*IQ 数据使能*/
+    IQ_MODE_DISABLE,
+    SPCTRUM_MODE_ANALYSIS_ENABLE,/*频谱分析使能*/
+    SPCTRUM_MODE_ANALYSIS_DISABLE,
+    DIRECTION_MODE_ENABLE,       /*测向使能位*/
+    DIRECTION_MODE_ENABLE_DISABLE,
+    FREQUENCY_BAND_ENABLE_DISABLE,
 };
 
 /* executor: status paramter */
 enum {
-    EX_SW_VERSION=70,             /*软件版本*/
-    EX_DISK_INFO=71,              /*磁盘信息*/
-    EX_CLK_INFO=72,               /*时钟信息*/
-    EX_AD_INFO=73,                /*AD 信息*/
-    EX_RF_INFO=74,                /*射频信息*/
-    EX_FPGA_INFO=75,              /*fpga 信息*/
-    EX_FPGA_TEMPERATURE=76        /*fpga 温度*/
+    EX_SW_VERSION=70,          /*软件版本*/
+    EX_DISK_INFO,              /*磁盘信息*/
+    EX_CLK_INFO,               /*时钟信息*/
+    EX_AD_INFO,                /*AD 信息*/
+    EX_RF_INFO,                /*射频信息*/
+    EX_FPGA_INFO,              /*fpga 信息*/
+    EX_FPGA_TEMPERATURE        /*fpga 温度*/
 };
 
 /* executor: RF paramter */
@@ -172,8 +176,9 @@ struct spectrum_header_param{
 
 extern struct sem_st work_sem;
 extern void executor_init(void);
-extern int8_t executor_set_command(exec_cmd cmd, uint8_t type, uint8_t ch,  void *data);
+//extern int8_t executor_set_command(exec_cmd cmd, uint8_t type, uint8_t ch,  void *data);
 extern int8_t executor_get_command(exec_cmd cmd, uint8_t type, uint8_t ch,  void *data);
 extern int8_t executor_set_enable_command(uint8_t ch);
+extern int8_t executor_set_command(exec_cmd cmd, uint8_t type, uint8_t ch,  void *data, ...);
 
 #endif

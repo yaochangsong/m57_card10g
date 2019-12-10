@@ -396,7 +396,7 @@ static int8_t executor_get_kernel_command(uint8_t type, uint8_t ch, void *data)
 }
 
 
-static int8_t executor_set_kernel_command(uint8_t type, uint8_t ch, void *data)
+static int8_t executor_set_kernel_command(uint8_t type, uint8_t ch, void *data, va_list ap)
 {
     switch(type)
      {
@@ -424,6 +424,14 @@ static int8_t executor_set_kernel_command(uint8_t type, uint8_t ch, void *data)
         case EX_DEC_BW:
         {
             io_set_dec_bandwidth(ch, *(uint32_t *)data);
+            break;
+        }
+        case EX_DEC_MID_FREQ:
+        {
+            uint64_t  middle_freq;
+            middle_freq = va_arg(ap, uint64_t);
+            printf_warn("ch=%d, dec_middle=%llu, middle_freq=%llu\n", ch, *(uint64_t *)data, middle_freq);
+            io_set_dec_middle_freq(ch, *(uint64_t *)data, middle_freq);
             break;
         }
         case EX_SMOOTH_TIME:
@@ -476,6 +484,23 @@ static int8_t executor_set_kernel_command(uint8_t type, uint8_t ch, void *data)
             io_set_calibrate_val(ch, cal);
             break;
         }
+        case EX_SUB_CH_ONOFF:
+        {
+            io_set_subch_onoff(ch, *(uint8_t *)data);
+            break;
+        }
+        case EX_SUB_CH_DEC_BW:
+        {
+            io_set_subch_bandwidth(ch, *(uint32_t *)data);
+            break;
+        }
+        case EX_SUB_CH_MID_FREQ:
+        {
+            uint64_t  middle_freq;
+            middle_freq = va_arg(ap, uint64_t);
+            io_set_subch_dec_middle_freq(ch, *(uint64_t *)data, middle_freq);
+            break;
+        }
         default:
             printf_err("not support type[%d]\n", type);
      }
@@ -496,15 +521,17 @@ static int8_t executor_get_rf_command(uint8_t type, uint8_t ch, void *data)
 }
 
 
-int8_t executor_set_command(exec_cmd cmd, uint8_t type, uint8_t ch,  void *data)
+int8_t executor_set_command(exec_cmd cmd, uint8_t type, uint8_t ch,  void *data, ...)
 {
      struct poal_config *poal_config = &(config_get_config()->oal_config);
+     va_list argp;
      LOCK_SET_COMMAND();
+     va_start (argp, data);
      switch(cmd)
      {
         case EX_MID_FREQ_CMD:
         {
-            executor_set_kernel_command(type, ch, data);
+            executor_set_kernel_command(type, ch, data, argp);
             break;
         }
         case EX_RF_FREQ_CMD:
@@ -538,6 +565,7 @@ int8_t executor_set_command(exec_cmd cmd, uint8_t type, uint8_t ch,  void *data)
         default:
             printf_err("invalid set command[%d]\n", cmd);
      }
+     va_end(argp);
      UNLOCK_SET_COMMAND();
      return 0;
 }
@@ -592,6 +620,15 @@ int8_t executor_set_enable_command(uint8_t ch)
                 executor_set_command(EX_MID_FREQ_CMD, EX_BANDWITH, ch, &poal_config->rf_para[ch].mid_bw);
                 executor_set_command(EX_MID_FREQ_CMD, EX_CHANNEL_SELECT, ch, &ch);
                 executor_set_command(EX_MID_FREQ_CMD, EX_SMOOTH_TIME, ch, &poal_config->multi_freq_point_param[ch].smooth_time);
+                /* 解调参数 */
+                if(poal_config->enable.audio_en || poal_config->enable.iq_en){
+                    /* 解调频率=工作频率 */
+                    executor_set_command(EX_MID_FREQ_CMD, EX_DEC_MID_FREQ, ch,
+                        &poal_config->multi_freq_point_param[ch].points[0].center_freq, 
+                        poal_config->multi_freq_point_param[ch].points[0].center_freq);
+                    executor_set_command(EX_MID_FREQ_CMD, EX_DEC_METHOD, ch, &poal_config->multi_freq_point_param[ch].points[0].d_method);
+                    executor_set_command(EX_MID_FREQ_CMD, EX_DEC_BW, ch, &poal_config->multi_freq_point_param[ch].points[0].d_bandwith);
+                }
                 break;
             }
             case OAL_FAST_SCAN_MODE:

@@ -55,7 +55,7 @@ static void  io_compute_extract_factor_by_fftsize(uint32_t anays_band,uint32_t *
     if(found == 0){
         *extract = bandtable[i-1].extract_factor;
         *extract_filter = bandtable[i-1].filter_factor;
-        printf_info("[%u]not find band table, set default: extract=%d, extract_filter=%d\n", anays_band, *extract, *extract_filter);
+        printf_note("[%u]not find band table, set default: extract=%d, extract_filter=%d\n", anays_band, *extract, *extract_filter);
     }
 }
 
@@ -99,11 +99,20 @@ void io_reset_fpga_data_link(void){
 /*设置带宽*/
 int32_t io_set_bandwidth(uint32_t ch, uint32_t bandwidth){
     int32_t ret = 0;
-    uint32_t band_factor, filter_factor;
-    printf_info("[**REGISTER**]ch:%d, Set Bandwidth:%u\n", ch, bandwidth);
+    uint32_t set_factor,band_factor, filter_factor;
+    static int32_t old_ch=-1;
+    static uint32_t old_val=0;
 #if defined(SUPPORT_SPECTRUM_KERNEL) 
     io_compute_extract_factor_by_fftsize(bandwidth,&band_factor, &filter_factor);
-    ret = ioctl(io_ctrl_fd, IOCTL_EXTRACT_CH0, (0x1000000 | band_factor));
+    set_factor = band_factor|0x1000000;
+    if((old_val == set_factor) && (ch == old_ch)){
+        /* 避免重复设置相同参数 */
+        return ret;
+    }
+    old_val = set_factor;
+    old_ch = ch;
+    printf_note("[**REGISTER**]ch:%d, Set Bandwidth:%u,band_factor=0x%x,set_factor=0x%x\n", ch, bandwidth,band_factor,set_factor);
+    ret = ioctl(io_ctrl_fd, IOCTL_EXTRACT_CH0, set_factor);
 #endif
     return ret;
 
@@ -112,11 +121,20 @@ int32_t io_set_bandwidth(uint32_t ch, uint32_t bandwidth){
 /*设置解调带宽*/
 int32_t io_set_dec_bandwidth(uint32_t ch, uint32_t dec_bandwidth){
     int32_t ret = 0;
-    uint32_t band_factor, filter_factor;
-    printf_info("[**REGISTER**]ch:%d, Set Decode Bandwidth:%u\n", ch, dec_bandwidth);
+    uint32_t set_factor, band_factor, filter_factor;
+    static int32_t old_ch=-1;
+    static uint32_t old_val=0;
 #if defined(SUPPORT_SPECTRUM_KERNEL) 
     io_compute_extract_factor_by_fftsize(dec_bandwidth,&band_factor, &filter_factor);
-    ret = ioctl(io_ctrl_fd, IOCTL_EXTRACT_CH0, (0x2000000 | band_factor));
+    set_factor = band_factor|0x2000000;
+    if((old_val == set_factor) && (ch == old_ch)){
+        /* 避免重复设置相同参数 */
+        return ret;
+    }
+    old_val = set_factor;
+    old_ch = ch;
+    printf_note("[**REGISTER**]ch:%d, Set Decode Bandwidth:%u, band_factor=0x%x, set_factor=0x%x\n", ch, dec_bandwidth, band_factor, set_factor);
+    ret = ioctl(io_ctrl_fd, IOCTL_EXTRACT_CH0, set_factor);
 #endif
     return ret;
 
@@ -124,10 +142,12 @@ int32_t io_set_dec_bandwidth(uint32_t ch, uint32_t dec_bandwidth){
 
 
 /*设置解调方式*/
-int32_t io_set_dec_method(uint32_t ch, uint32_t dec_method){
+int32_t io_set_dec_method(uint32_t ch, uint8_t dec_method){
     int32_t ret = 0;
     uint32_t d_method = 0;
-    printf_info("[**REGISTER**]ch:%d, Set Decode method:%u\n", ch, dec_method);
+    static int32_t old_ch=-1;
+    static uint32_t old_val=0;
+   
 #if defined(SUPPORT_SPECTRUM_KERNEL) 
     if(dec_method == DQ_MODE_AM){
         d_method = 0x4000000;
@@ -141,6 +161,13 @@ int32_t io_set_dec_method(uint32_t ch, uint32_t dec_method){
         printf_warn("decode method not support:%d\n",dec_method);
         return -1;
     }
+     if((old_val == d_method) && (ch == old_ch)){
+        /* 避免重复设置相同参数 */
+        return ret;
+    }
+    old_val = d_method;
+    old_ch = ch;
+    printf_note("[**REGISTER**]ch:%d, Set Decode method:%u, d_method=0x%x\n", ch, dec_method, d_method);
     ret = ioctl(io_ctrl_fd,IOCTL_EXTRACT_CH0,d_method);
 #endif
     return ret;
@@ -176,9 +203,17 @@ int32_t io_set_dec_middle_freq(uint32_t ch, uint64_t dec_middle_freq, uint64_t m
 {
     uint32_t reg;
     int32_t ret = 0;
-
+    static uint32_t old_val = 0;
+    static int32_t old_ch=-1;
+    
 #if defined(SUPPORT_SPECTRUM_KERNEL) 
     reg = io_set_dec_middle_freq_reg(dec_middle_freq, middle_freq);
+    if((old_val == reg) && (ch == old_ch)){
+        /* 避免重复设置相同参数 */
+        return ret;
+    }
+    old_val = reg;
+    old_ch = ch;
     printf_warn("[**REGISTER**]ch:%d, MiddleFreq =%llu, Decode MiddleFreq:%llu, reg=0x%x\n", ch, middle_freq, dec_middle_freq, reg);
     ret = ioctl(io_ctrl_fd, IOCTL_DECODE_MID_FREQ, reg);
 #endif
@@ -197,7 +232,7 @@ int32_t io_set_subch_dec_middle_freq(uint32_t subch, uint64_t dec_middle_freq, u
         odata.ch = subch;
         memcpy(odata.data,&reg,sizeof(reg));
         ret = ioctl(io_ctrl_fd, IOCTL_SUB_CH_MIDDLE_FREQ, &odata);
-        printf_warn("[**REGISTER**]ch:%d, SubChannel Set MiddleFreq =%llu, Decode MiddleFreq:%llu, reg=0x%x, ret=%d， sizeof(reg)=0x%d\n", subch, middle_freq, dec_middle_freq, reg, ret,sizeof(reg));
+        printf_warn("[**REGISTER**]ch:%d, SubChannel Set MiddleFreq =%llu, Decode MiddleFreq:%llu, reg=0x%x, ret=%d\n", subch, middle_freq, dec_middle_freq, reg, ret);
         
 #endif
         return ret;
@@ -212,7 +247,7 @@ int32_t io_set_subch_onoff(uint32_t subch, uint8_t onoff)
     odata.ch = subch;
     memcpy(odata.data,&onoff,sizeof(onoff));
     ret = ioctl(io_ctrl_fd, IOCTL_SUB_CH_ONOFF, &odata);
-    printf_warn("[**REGISTER**]ch:%d, SubChannle Set OnOff=%d, ret=%d, sizeof(onoff)=%d\n",subch, onoff, ret, sizeof(onoff));
+    printf_warn("[**REGISTER**]ch:%d, SubChannle Set OnOff=%d, ret=%d\n",subch, onoff, ret);
 #endif
     return ret;
 }
@@ -321,47 +356,18 @@ void io_set_dq_param(void *pdata)
 }
 
 
-void io_set_dma_DQ_out_en(uint8_t ch, uint8_t outputen,uint32_t trans_len,uint8_t continious)
-{
-    //for 8 channel device only one sub channel 
-    uint16_t sub_ch = 0;
-    //for iq and dq dma .for 512 fixed length ,continious mode
-    printf_info("dq output enable, ch:%d, en:%x\n", ch, outputen);
-    if((outputen&(IO_D_OUT_MASK_ENABLE|IO_IQ_OUT_MASK_ENABLE)) > 0){
-        uint8_t convert_buf[512] = {0};
-        memcpy(convert_buf,(uint8_t *)(&ch),sizeof(uint8_t));
-        memcpy(convert_buf+1,(uint8_t *)(&sub_ch),sizeof(uint16_t));
-        memcpy(convert_buf+3,(uint8_t *)(&outputen),sizeof(uint8_t));
-        io_set_common_param(1,convert_buf,4);
-    }
-}
-
-void io_set_dma_DQ_out_disable(uint8_t ch)
-{
-    uint8_t convert_buf[512] = {0};
-    uint8_t outputen = 0;
-    //for 8 channel device only one sub channel 
-    uint16_t sub_ch = 0;
-    printf_info("dq output disable, ch:%d\n", ch);
-    memcpy(convert_buf,(uint8_t *)(&ch),sizeof(uint8_t));
-    memcpy(convert_buf+1,(uint8_t *)(&sub_ch),sizeof(uint16_t));
-    memcpy(convert_buf+3,(uint8_t *)(&outputen),sizeof(uint8_t));
-    io_set_common_param(1,convert_buf,4);
-}
-
 void io_dma_dev_enable(uint32_t ch, uint8_t type, uint8_t continuous)
 {
     uint32_t ctrl_val = 0;
     uint32_t con ;
-    /* DMA data type area and channel correspondence map: 
-    +-------------------------------------------------------------------------+
-     |                            DMA map                                               |
-     +-------------------------------  -+---------------------------------+-----+
-     |       channel 0                    |   chaneel 1                          |....
-     +---------------------------------+-------+--------+---------------+----+
-     | IQ data | FFT data | SSD RX |SSD TX  |  IQ data | FFT data | SSD RX |SSD TX |...
-     +-------+--------+------+--------+--------+--------+-------+------+----+
-                        
+    /*data map: 
+     +------------------------------------------------------------------+
+     |                            data(ctrl_val) map                            |
+     +---------------------------------+-------------+-----------------+
+     |  continuous mode    |       ch       |fft|iq|dq(type)|      enable       |
+     +---------------- - +--------------+------------+------------------+
+     32bit              16bit              10bit          8bit                0bit
+     |<-continuous(16bit)->|<-----data_offset(8bit)------>|<---enable(8bit)-->|
     */
     uint8_t data_offset = (ch<<2)|type;
     printf_info("[**REGISTER**]ch=%d, type=%s, data_offset=%x, Enable\n", ch, type==0?"IQ":"FFT", data_offset);
@@ -377,28 +383,8 @@ void io_dma_dev_enable(uint32_t ch, uint8_t type, uint8_t continuous)
 static void io_dma_dev_trans_len(uint32_t ch, uint8_t type, uint32_t len)
 {
     TRANS_LEN_PARAMETERS tran_parameter;
-/* DMA data type area and channel correspondence map: 
-+-------------------------------------------------------------------------+
- |                            DMA map                                               |
- +-------------------------------  -+---------------------------------+-----+
- |       channel 0                    |   chaneel 1                          |....
- +---------------------------------+-------+--------+---------------+----+
- | IQ data | FFT data | SSD RX |SSD TX  |  IQ data | FFT data | SSD RX |SSD TX |...
- +-------+--------+------+--------+--------+--------+-------+------+----+
-                    
-*/
     uint8_t data_offset = (ch<<2)|type;
     printf_info("[**REGISTER**]ch=%d, type=%s, data_offset=%x Transfer len:%d\n", ch, type==0?"IQ":"FFT", data_offset, len);
-#if 0//defined(SUPPORT_SPECTRUM_KERNEL)
-    if (io_ctrl_fd > 0) {
-        tran_parameter.ch = data_offset;
-        tran_parameter.len = len;
-        tran_parameter.type = FAST_SCAN;
-        ioctl(io_ctrl_fd,IOCTL_TRANSLEN, &tran_parameter);
-    }
-#endif
-
-//TRANS_LEN_PARAMETERS tran_parameter;
     uint32_t ctrl_val = 0;
 #if defined(SUPPORT_SPECTRUM_KERNEL)
     if (io_ctrl_fd > 0) {
@@ -456,24 +442,46 @@ static void io_dma_dev_disable(uint32_t ch,uint8_t type)
 }
 
 
-static void io_set_dma_SPECTRUM_out_en(uint8_t cid, uint8_t outputen,uint32_t trans_len,uint8_t continuous)
+static void io_set_dma_SPECTRUM_out_en(uint8_t ch, uint32_t trans_len,uint8_t continuous)
 {
-
-    uint8_t ch = cid;
-    printf_info("SPECTRUM out enable: ch[%d]output en[outputen:%x]\n",cid, outputen);
+    printf_info("SPECTRUM out enable: ch[%d]output en\n",ch);
     io_dma_dev_disable(ch,IO_SPECTRUM_TYPE);
-    if((outputen&IO_SPECTRUM_ENABLE) > 0){
-            io_dma_dev_enable(ch,IO_SPECTRUM_TYPE,continuous);
-            io_dma_dev_trans_len(ch,IO_SPECTRUM_TYPE, trans_len);
-        }
-    }
-
-
+    io_dma_dev_enable(ch,IO_SPECTRUM_TYPE,continuous);
+    io_dma_dev_trans_len(ch,IO_SPECTRUM_TYPE, trans_len);
+}
 
 static void io_set_dma_SPECTRUM_out_disable(uint8_t ch)
 {
     io_dma_dev_disable(ch, IO_SPECTRUM_TYPE);
 }
+
+
+static void io_set_IQ_out_disable(uint8_t ch)
+{
+    io_dma_dev_disable(ch, IO_IQ_TYPE);
+}
+
+static void io_set_IQ_out_en(uint8_t ch,uint32_t trans_len,uint8_t continuous)
+{
+    printf_info("SPECTRUM out enable: ch[%d]output en, trans_len=0x%u\n",ch, trans_len);
+    io_dma_dev_disable(ch,IO_IQ_TYPE);
+    io_dma_dev_enable(ch,IO_IQ_TYPE,continuous);
+    io_dma_dev_trans_len(ch,IO_IQ_TYPE, trans_len);
+}
+
+
+static void io_set_dma_DQ_out_en(uint8_t ch,uint32_t trans_len,uint8_t continuous)
+{
+    io_dma_dev_disable(ch,IO_DQ_TYPE);
+    io_dma_dev_enable(ch,IO_DQ_TYPE,continuous);
+    io_dma_dev_trans_len(ch,IO_DQ_TYPE, trans_len);
+}
+
+static void  io_set_dma_DQ_out_dis(uint8_t ch)
+{
+    io_dma_dev_disable(ch,IO_DQ_TYPE);
+}
+
 
 int8_t io_set_para_command(uint8_t type, uint8_t ch, void *data)
 {
@@ -517,7 +525,7 @@ int8_t io_set_enable_command(uint8_t type, uint8_t ch, uint32_t fftsize)
     {
         case PSD_MODE_ENABLE:
         {
-            io_set_dma_SPECTRUM_out_en(ch, IO_SPECTRUM_ENABLE,fftsize*2,0);
+            io_set_dma_SPECTRUM_out_en(ch,fftsize*2,0);
             break;
         }
         case PSD_MODE_DISABLE:
@@ -528,23 +536,27 @@ int8_t io_set_enable_command(uint8_t type, uint8_t ch, uint32_t fftsize)
         case AUDIO_MODE_ENABLE:
         {
             if(fftsize == 0)
-                io_set_dma_DQ_out_en(ch, IO_D_OUT_MASK_ENABLE, 512, 0);
+                io_set_dma_DQ_out_en(ch, 512, 1);
             else
-                io_set_dma_DQ_out_en(ch, IO_D_OUT_MASK_ENABLE, fftsize, 0);
+                io_set_dma_DQ_out_en(ch, fftsize, 1);
+            break;
+        }
+        case AUDIO_MODE_DISABLE:
+        {
+            io_set_dma_DQ_out_dis(ch);
             break;
         }
         case IQ_MODE_ENABLE:
         {
             if(fftsize == 0)
-                io_set_dma_DQ_out_en(ch, IO_IQ_OUT_MASK_ENABLE, 512, 0);
+                io_set_IQ_out_en(ch, 32768, 1);
             else
-                io_set_dma_DQ_out_en(ch, IO_IQ_OUT_MASK_ENABLE, fftsize, 0);
+                io_set_IQ_out_en(ch, fftsize, 1);
             break;
         }
-        case AUDIO_MODE_DISABLE:
         case IQ_MODE_DISABLE:
         {
-            io_set_dma_DQ_out_disable(ch);
+            io_set_IQ_out_disable(ch);
             break;
         }
         case SPCTRUM_MODE_ANALYSIS_ENABLE:

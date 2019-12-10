@@ -154,10 +154,11 @@ typedef enum _IOCTL_CMD {
 #define IOCTL_DISK_GET_INFO    _IOW(DMA_RF_IOC_MAGIC, DISK_GET_INFO, uint32_t)
 #define IOCTL_DISK_FORMAT    _IOW(DMA_RF_IOC_MAGIC, DISK_FORMAT, uint32_t)
 
-
-
-#define IO_SPECTRUM_TYPE 1
-#define IO_IQ_TYPE 0
+enum _data_type{
+    IO_IQ_TYPE = 0,
+    IO_SPECTRUM_TYPE,
+    IO_DQ_TYPE,
+};
 
 
 /* kernel client info */
@@ -194,13 +195,6 @@ struct io_decode_param_st{
     uint32_t d_bandwidth;  
     uint64_t center_freq;
 };
-
-typedef enum _io_work_enable {
-    IO_SPECTRUM_ENABLE = 0x01,
-    IO_D_OUT_MASK_ENABLE = 0x02,
-    IO_IQ_OUT_MASK_ENABLE = 0x04,
-    IO_ANGLE_MASK_ENABLE = 0x08,
-}io_work_enable;
 
 typedef enum _io_dq_method_code{
     IO_DQ_MODE_AM = 0x00,

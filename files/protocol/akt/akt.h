@@ -195,10 +195,9 @@ typedef enum _DQ_MODE_CODE{
     DQ_MODE_IQ = 0x00,
     DQ_MODE_AM = 0x01,
     DQ_MODE_FM = 0x02,
-    DQ_MODE_WFM = 0x03,
-    DQ_MODE_CW = 0x04,
-    DQ_MODE_LSB = 0x05,
-    DQ_MODE_USB = 0x06,
+    DQ_MODE_CW = 0x03,
+    DQ_MODE_LSB = 0x04,
+    DQ_MODE_USB = 0x05,
 }DQ_MODE_CODE;
 
 typedef enum _DQ_MODE_FPGA_CODE{

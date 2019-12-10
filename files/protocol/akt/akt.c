@@ -35,7 +35,7 @@ int8_t akt_decode_method_convert(uint8_t method)
     
     if(method == DQ_MODE_AM){
         d_method = IO_DQ_MODE_AM;
-    }else if(method == DQ_MODE_FM || method == DQ_MODE_WFM) {
+    }else if(method == DQ_MODE_FM) {
         d_method = IO_DQ_MODE_FM;
     }else if(method == DQ_MODE_LSB || method == DQ_MODE_USB) {
         d_method = IO_DQ_MODE_LSB;
@@ -448,7 +448,7 @@ static int akt_execute_set_command(void)
             char *ipstr=NULL;
             ipdata.s_addr = net_para.ipaddr;
             ipstr= inet_ntoa(ipdata);
-            printf_note("ipstr=%s  ipaddr=%x, port=%d, type=%d\n", ipstr,  ipdata.s_addr, ntohs(net_para.port), net_para.type);
+            printf_info("ipstr=%s  ipaddr=%x, port=%d, type=%d\n", ipstr,  ipdata.s_addr, ntohs(net_para.port), net_para.type);
             client.sin_port = net_para.port;//ntohs(net_para.port);
             client.sin_addr.s_addr = ipdata.s_addr;
             udp_add_client(&client);
@@ -481,7 +481,7 @@ static int akt_execute_set_command(void)
             check_valid_channel(header->buf[0]);
             memcpy(&(pakt_config->mid_freq_bandwidth[ch]), header->buf, sizeof(DIRECTION_MID_FREQ_BANDWIDTH_PARAM));
             poal_config->rf_para[ch].mid_bw = *((uint32_t *)(header->buf+1));
-            printf_info("bandwidth:%u\n", poal_config->rf_para[ch].mid_bw);
+            printf_note("ch=%d, bandwidth:%u\n", ch, poal_config->rf_para[ch].mid_bw);
             executor_set_command(EX_RF_FREQ_CMD, EX_RF_MID_BW, ch, &poal_config->rf_para[ch].mid_bw);
             break;
         }
@@ -524,6 +524,8 @@ static int akt_execute_set_command(void)
             
             uint8_t sub_ch;
             sub_ch = *(uint16_t *)(header->buf+1);
+            if(sub_ch >= 1)
+                sub_ch-= 1;
             check_valid_channel(header->buf[0]);
             if(check_sub_channel(sub_ch)){
                 err_code = RET_CODE_PARAMTER_ERR;
@@ -548,6 +550,8 @@ static int akt_execute_set_command(void)
             uint8_t sub_ch, enable = 0;
             check_valid_channel(header->buf[0]);
             sub_ch = *(uint16_t *)(header->buf+1);
+            if(sub_ch >= 1)
+                sub_ch-= 1;
             if(check_sub_channel(sub_ch)){
                 err_code = RET_CODE_PARAMTER_ERR;
                 goto set_exit;
@@ -557,10 +561,15 @@ static int akt_execute_set_command(void)
                 err_code = RET_CODE_PARAMTER_NOT_SET;
                 goto set_exit;
             }
-            printf_warn("ch:%d, sub_ch=%d, au_en:%d,iq_en:%d, %d\n", ch,sub_ch, poal_config->sub_ch_enable.audio_en, poal_config->sub_ch_enable.iq_en,poal_config->sub_ch_enable.iq_en|poal_config->sub_ch_enable.audio_en);
-            enable = ((poal_config->sub_ch_enable.iq_en|poal_config->sub_ch_enable.audio_en) == 0 ? 0 : 1);
+            io_set_enable_command(IQ_MODE_DISABLE, ch, 0);
+            printf_warn("ch:%d, sub_ch=%d, au_en:%d,iq_en:%d, %d\n", ch,sub_ch, poal_config->sub_ch_enable.audio_en, poal_config->sub_ch_enable.iq_en);
+            enable = (poal_config->sub_ch_enable.iq_en == 0 ? 0 : 1);
             executor_set_command(EX_MID_FREQ_CMD, EX_SUB_CH_ONOFF, sub_ch, &enable);
-            executor_set_enable_command(ch);
+            if(enable){
+                io_set_enable_command(IQ_MODE_ENABLE, sub_ch, 0);
+            }else{
+                io_set_enable_command(IQ_MODE_DISABLE, sub_ch, 0);
+            }
             break;
         }
         case SPCTRUM_PARAM_CMD:

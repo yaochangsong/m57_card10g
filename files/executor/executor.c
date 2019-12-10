@@ -233,16 +233,17 @@ static inline int8_t  executor_points_scan(uint8_t ch, work_mode mode)
         executor_set_command(EX_WORK_MODE_CMD,mode, ch, &header_param);
         /* notify client that some paramter has changed */
        // poal_config->send_active((void *)&header_param);
-
-        if(poal_config->enable.audio_en || poal_config->enable.iq_en){
-            decode_param.center_freq = point->points[i].center_freq;
-            decode_param.cid = ch;
-            decode_param.d_bandwidth = point->points[i].bandwidth;
-            decode_param.d_method = point->points[i].d_method;
-            executor_set_command(EX_MID_FREQ_CMD, EX_DEC_BW, ch, &decode_param); 
-            io_set_enable_command(AUDIO_MODE_ENABLE, ch, point->points[i].fft_size);
+        /* 解调参数: 音频 */
+        printf_note("enable.audio_en=%d, residence_time=%u,points_count=%u\n",poal_config->enable.audio_en,point->residence_time, points_count);
+        if(poal_config->enable.audio_en){
+            printf_note("ch=%d, i=%d, center_freq=%llu, d_method=%d, d_bandwith=%u\n",ch, i,
+                point->points[i].center_freq, point->points[i].d_method, point->points[i].d_bandwith);
+            executor_set_command(EX_MID_FREQ_CMD, EX_DEC_MID_FREQ, ch,&point->points[i].center_freq,  point->points[i].center_freq);
+            executor_set_command(EX_MID_FREQ_CMD, EX_DEC_METHOD, ch, &point->points[i].d_method);
+            executor_set_command(EX_MID_FREQ_CMD, EX_DEC_BW, ch, &point->points[i].d_bandwith);
+            io_set_enable_command(AUDIO_MODE_ENABLE, ch, 0);
         }else{
-            io_set_enable_command(AUDIO_MODE_DISABLE, ch, point->points[i].fft_size);
+            io_set_enable_command(AUDIO_MODE_DISABLE, ch, 0);
         }
 #endif
         s_time = time(NULL);
@@ -419,7 +420,7 @@ static int8_t executor_set_kernel_command(uint8_t type, uint8_t ch, void *data, 
             break;
         }
         case EX_DEC_METHOD:
-            io_set_dec_method(ch, *(uint32_t *)data);
+            io_set_dec_method(ch, *(uint8_t *)data);
             break;
         case EX_DEC_BW:
         {
@@ -617,18 +618,10 @@ int8_t executor_set_enable_command(uint8_t ch)
                 executor_set_command(EX_RF_FREQ_CMD, EX_RF_MGC_GAIN, ch, &poal_config->rf_para[ch].mgc_gain_value);
                 //executor_set_command(EX_RF_FREQ_CMD, EX_RF_MID_FREQ, ch, &poal_config->rf_para[ch].mid_freq);
                 executor_set_command(EX_RF_FREQ_CMD, EX_RF_MID_BW, ch, &poal_config->rf_para[ch].mid_bw);
+                printf_note("ch=%d,rf_para[ch].mid_bw=%u, bandwidth=%u\n", ch, poal_config->rf_para[ch].mid_bw, poal_config->multi_freq_point_param[ch].points[0].bandwidth);
                 executor_set_command(EX_MID_FREQ_CMD, EX_BANDWITH, ch, &poal_config->rf_para[ch].mid_bw);
                 executor_set_command(EX_MID_FREQ_CMD, EX_CHANNEL_SELECT, ch, &ch);
                 executor_set_command(EX_MID_FREQ_CMD, EX_SMOOTH_TIME, ch, &poal_config->multi_freq_point_param[ch].smooth_time);
-                /* 解调参数 */
-                if(poal_config->enable.audio_en || poal_config->enable.iq_en){
-                    /* 解调频率=工作频率 */
-                    executor_set_command(EX_MID_FREQ_CMD, EX_DEC_MID_FREQ, ch,
-                        &poal_config->multi_freq_point_param[ch].points[0].center_freq, 
-                        poal_config->multi_freq_point_param[ch].points[0].center_freq);
-                    executor_set_command(EX_MID_FREQ_CMD, EX_DEC_METHOD, ch, &poal_config->multi_freq_point_param[ch].points[0].d_method);
-                    executor_set_command(EX_MID_FREQ_CMD, EX_DEC_BW, ch, &poal_config->multi_freq_point_param[ch].points[0].d_bandwith);
-                }
                 break;
             }
             case OAL_FAST_SCAN_MODE:

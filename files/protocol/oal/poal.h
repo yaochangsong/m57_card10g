@@ -70,20 +70,20 @@ struct output_en_st{
     */
     volatile uint8_t  bit_en;
     volatile bool  bit_reset;
-}__attribute__ ((packed));
+};//__attribute__ ((packed));
 
 /* 频点参数 */
 struct freq_points_st{
     int16_t index;
-    uint64_t center_freq; /* rf */
-    uint64_t bandwidth;   /* rf */
-    float freq_resolution;
-    volatile uint32_t fft_size;
-    uint8_t d_method;
-    uint32_t d_bandwith;
     uint8_t  noise_en;
     int8_t noise_thrh;
-}__attribute__ ((packed));
+    uint8_t d_method;
+    float freq_resolution;
+    volatile uint32_t fft_size;
+    uint32_t d_bandwith;
+    uint64_t center_freq; /* rf */
+    uint64_t bandwidth;   /* rf */
+};//__attribute__ ((packed));
 
 
 /* 多频点扫描参数 */
@@ -97,27 +97,27 @@ struct multi_freq_point_para_st{
     float audio_sample_rate;
     uint32_t freq_point_cnt;
     struct freq_points_st  points[MAX_SIG_CHANNLE];
-}__attribute__ ((packed));
+};//__attribute__ ((packed));
 
 
 /* 子通道解调参数 */
 struct sub_channel_freq_para_st{
     uint8_t cid;
-    float audio_sample_rate;
     uint8_t frame_drop_cnt;
     uint16_t sub_channel_num;
+    float audio_sample_rate;
     struct freq_points_st  sub_ch[MAX_SIGNAL_CHANNEL_NUM];
-}__attribute__ ((packed));
+};//__attribute__ ((packed));
 
 /* 频段参数 */
 struct freq_fregment_para_st{
     int16_t  index;
-    uint64_t start_freq;
-    uint64_t end_freq;
     uint32_t  step;
     float freq_resolution;
     uint32_t fft_size;
-}__attribute__ ((packed));
+    uint64_t start_freq;
+    uint64_t end_freq;
+};//__attribute__ ((packed));
 
 /* 多频段扫描参数 */
 struct multi_freq_fregment_para_st{
@@ -127,22 +127,22 @@ struct multi_freq_fregment_para_st{
     uint16_t smooth_time;
     uint32_t freq_segment_cnt;
     struct freq_fregment_para_st  fregment[MAX_SIG_CHANNLE];
-}__attribute__ ((packed));
+};//__attribute__ ((packed));
 
 /* 射频参数 */
 struct rf_para_st{
     uint8_t cid;
-    uint64_t mid_freq;              /* 中心频率 */
     uint8_t rf_mode_code;           /* 射频模式码; 0：低失真 1：常规 2：低噪声 */
     uint8_t gain_ctrl_method;       /* 增益方法; 0：手动控制（MGC） 1：自动控制（AGC）*/
     int8_t mgc_gain_value;          /* MGC 增益值; 单位 dB，精度 1dB*/
-    uint32_t agc_ctrl_time;         /* AGC 控制时间; 单位：10 微秒 快速：100 微秒  中速：1000 微秒 慢速：10000 微秒*/
     int8_t agc_mid_freq_out_level;  /* AGC 中频 输出幅度;单位，dBm 默认值：-10dBm*/
-    uint32_t mid_bw;                /* 射频中频带宽; 0~2^32 */
     uint8_t antennas_elect;         /* 天线选择 */
     int8_t  attenuation;            /* 射频衰减 ;  -100 至 120 单位 dB，精度 1dB*/
     int16_t temperature;            /* 射频温度 */
-}__attribute__ ((packed));
+    uint32_t agc_ctrl_time;         /* AGC 控制时间; 单位：10 微秒 快速：100 微秒  中速：1000 微秒 慢速：10000 微秒*/
+    uint32_t mid_bw;                /* 射频中频带宽; 0~2^32 */
+    uint64_t mid_freq;              /* 中心频率 */
+};//__attribute__ ((packed));
 
 /* 控制参数 */
 struct ctrl_st{
@@ -153,17 +153,17 @@ struct ctrl_st{
 /* 网络参数 */
 struct network_st{
     uint8_t mac[6];
+    uint16_t port;
     uint32_t ipaddress;
     uint32_t netmask;
     uint32_t gateway;
-    uint16_t port;
 }__attribute__ ((packed));
 
 /* 频谱分析控制参数 */
 struct specturm_analysis_control_st{
     uint32_t bandwidth_hz;        /* 频谱分析带宽*/
     uint64_t frequency_hz;        /* 频谱分析频率点 */
-}__attribute__ ((packed));
+};//__attribute__ ((packed));
 
 
 struct scan_bindwidth_info{
@@ -173,7 +173,7 @@ struct scan_bindwidth_info{
     bool     work_fixed_bindwidth_flag;
     uint32_t work_bindwidth_hz;
     float    work_sideband_rate;
-}__attribute__ ((packed));
+};//__attribute__ ((packed));
 
 /* 控制/配置参数 */
 struct control_st{
@@ -183,7 +183,7 @@ struct control_st{
     uint32_t spectrum_time_interval;                              /* 发送频谱时间间隔 */
     struct specturm_analysis_control_st specturm_analysis_param;  /* 频谱分析控制参数 */
     struct scan_bindwidth_info scan_bw;                           /* 扫描带宽参数 */
-}__attribute__ ((packed));
+};//__attribute__ ((packed));
 
 
 /*状态参数*/
@@ -251,14 +251,14 @@ struct calibration_specturm_info_st{
     uint32_t end_freq_khz[40];
     int power_level[40];
     int global_roughly_power_lever;
-}__attribute__ ((packed));
+};//__attribute__ ((packed));
 
 struct calibration_analysis_info_st{
     uint32_t start_freq_khz[40];
     uint32_t end_freq_khz[40];
     int power_level[40];
     int global_roughly_power_lever;
-}__attribute__ ((packed));
+};//__attribute__ ((packed));
 
 struct calibration_lo_leakage_info_st{
     uint32_t fft_size[16];
@@ -266,18 +266,18 @@ struct calibration_lo_leakage_info_st{
     int16_t renew_data_len[16];
     int16_t global_threshold;
     int16_t global_renew_data_len;
-}__attribute__ ((packed));
+};//__attribute__ ((packed));
 
 struct calibration_mgc_info_st{
     uint32_t start_freq_khz[16];
     uint32_t end_freq_khz[16];
     int32_t  gain_val[16];
     int32_t  global_gain_val;
-}__attribute__ ((packed));
+};//__attribute__ ((packed));
 
 struct calibration_low_noise_info_st{
     int32_t  global_power_val;
-}__attribute__ ((packed));
+};//__attribute__ ((packed));
 
 
 
@@ -287,7 +287,7 @@ struct calibration_info_st{
     struct calibration_low_noise_info_st low_noise;
     struct calibration_lo_leakage_info_st lo_leakage;
     struct calibration_mgc_info_st mgc;
-}__attribute__ ((packed));
+};//__attribute__ ((packed));
 
 
 struct poal_config{
@@ -305,7 +305,7 @@ struct poal_config{
     struct calibration_info_st cal_level;
     uint8_t (*assamble_response_data)(uint32_t *, void *);
     void (*send_active)(void *);
-}__attribute__ ((packed));
+};//__attribute__ ((packed));
 
 
 int poal_handle_request(struct net_tcp_client *cl, uint8_t *data, int len);

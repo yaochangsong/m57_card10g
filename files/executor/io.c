@@ -796,10 +796,10 @@ uint8_t  io_set_network_to_interfaces(void *netinfo)
 
     sprintf(cmd, "echo \"gateway %s\" >> %s", s_gw, NETWORK_INTERFACES_FILE_PATH);
     do_system(cmd);
-
-    sprintf(cmd, "ip addr flush dev %s", NETWORK_EHTHERNET_POINT);
+#ifndef SUPPORT_GDB_DEBUG
+    sprintf(cmd, "ip addr flush dev %s", NETWORK_EHTHERNET_POINT);/* 删除接口上所有地址 */
     do_system(cmd);
-    
+#endif
     sprintf(cmd, "/etc/init.d/networking restart");
     printf_debug("%s\n", cmd);
     do_system(cmd);

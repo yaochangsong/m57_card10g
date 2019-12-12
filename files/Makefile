@@ -19,6 +19,7 @@ CFLAGS:=
 ifneq ($(findstring y,$(SUPPORT_GDB_DEBUG)),)
 	top_dir = $(abspath $(shell pwd)/../../../../../)
 	export CC=$(PETALINUX)/tools/linux-i386/gcc-arm-linux-gnueabi/bin/arm-linux-gnueabihf-gcc
+	C_VAR += -DSUPPORT_GDB_DEBUG
 	CFLAGS = -g
 endif
 	top_dir ?= $(abspath $(shell pwd)/../../../../../../)

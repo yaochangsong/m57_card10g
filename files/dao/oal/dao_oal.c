@@ -717,64 +717,105 @@ static void *dao_load_root(void *root)
 #endif
 }
 
-static  int8_t dao_read_float_data_array_value(void *root, const char *array_name, 
+static int8_t dao_read_array_data(void *root, const char *array_name, 
                                      const char *index_name, const char *index_value, 
-                                     const char *element, float *result)
+                                     const char *element, void *result, dao_data_type_t type)
 {
     char *pdata;
-    float fdata;
 #ifdef SUPPORT_DAO_XML
     pdata = read_config_file_array(root, array_name,index_name,index_value,element);
     if(pdata != NULL){
-        fdata = atof(pdata);
-        *result = fdata;
-        //*result = atof(pdata); /* Bus error ??? */
-        return 0;
-    }
-    return -1;
-#endif
-}
-
-static inline int8_t dao_read_long_data_array_value(void *root, const char *array_name, 
-                                     const char *index_name, const char *index_value, 
-                                     const char *element, uint32_t *result)
-{
-    char *pdata;
-#ifdef SUPPORT_DAO_XML 
-    pdata = read_config_file_array(root, array_name,index_name,index_value,element);
-    if(pdata != NULL){
-        *result = atol(pdata);
-        return 0;
-    }
-    return -1;
-#endif
-}
-
-static inline int8_t dao_read_int_data_array_value(void *root, const char *array_name, 
-                                     const char *index_name, const char *index_value, 
-                                     const char *element,  int32_t *result)
-{
-    char *pdata;
-#ifdef SUPPORT_DAO_XML 
-        pdata = read_config_file_array(root, array_name,index_name,index_value,element);
-        if(pdata != NULL){
-            *result = atoi(pdata);
-            return 0;
+        if(DDATA_I8 == type){
+            int8_t data;
+            data = (int8_t)atoi(pdata);
+            *(int8_t *)result = data;
+        }else if(DDATA_U8 == type){
+            uint8_t data;
+            data = (uint8_t)atoi(pdata);
+            *(uint8_t *)result = data;
+        }else if(DDATA_U16 == type){
+            uint16_t data;
+            data = (uint16_t)atoi(pdata);
+            *(uint16_t *)result = data;
+        }else if(DDATA_I16 == type){
+            int16_t data;
+            data = (int16_t)atoi(pdata);
+            *(int16_t *)result = data;
+        }else if(DDATA_I32 == type){
+            int data;
+            data = (int)atoi(pdata);
+            *(int *)result = data;
+        }else if(DDATA_U32 == type){
+            uint32_t data;
+            data = (uint32_t)atol(pdata);
+            *(uint32_t *)result = data;
+        }else if(DDATA_FLOAT == type){
+            float data;
+            data = (float)atof(pdata);
+           // *result = atof(pdata); /* Bus error ??? */
+            *(float *)result = data;
+        }else if(DDATA_U64 == type){
+            uint64_t data;
+            data =  (uint64_t)atoll(pdata);
+            *(uint64_t *)result = data;
+        }else if(DDATA_TEXT == type){
+            result = (void *)pdata;
+        }else{
+            return -1;
         }
-        return -1;
+        return 0;
+    }
+    return -1;
 #endif
 }
 
-static inline int8_t dao_read_int_data_single_value(const char *parent, const char *element,  int32_t *result)
+static int8_t dao_read_single_data(const char *parent, const char *element,  
+                                        void *result, dao_data_type_t type)
 {
- char *pdata;
-#ifdef SUPPORT_DAO_XML 
-     pdata = read_config_file_single(parent,element);
-     if(pdata != NULL){
-         *result = atoi(pdata);
-         return 0;
-     }
-     return -1;
+    char *pdata;
+#ifdef SUPPORT_DAO_XML
+    pdata = read_config_file_single(parent,element);
+    if(pdata != NULL){
+        if(DDATA_I8 == type){
+            int8_t data;
+            data = (int8_t)atoi(pdata);
+            *(int8_t *)result = data;
+        }else if(DDATA_U8 == type){
+            uint8_t data;
+            data = (uint8_t)atoi(pdata);
+            *(uint8_t *)result = data;
+        }else if(DDATA_U16 == type){
+            uint16_t data;
+            data = (uint16_t)atoi(pdata);
+            *(uint16_t *)result = data;
+        }else if(DDATA_I16 == type){
+            int16_t data;
+            data = (int16_t)atoi(pdata);
+            *(int16_t *)result = data;
+        }else if(DDATA_I32 == type){
+            int data;
+            data = (int)atoi(pdata);
+            *(int *)result = data;
+        }else if(DDATA_U32 == type){
+            uint32_t data;
+            data = (uint32_t)atol(pdata);
+            *(uint32_t *)result = data;
+        }else if(DDATA_FLOAT == type){
+            float data;
+            data = (float)atof(pdata);
+            *(float *)result = data;
+        }else if(DDATA_U64 == type){
+            uint64_t data;
+            data =  (uint64_t)atoll(pdata);
+            *(uint64_t *)result =data;
+        }else if(DDATA_TEXT == type){
+            result = (void *)pdata;
+        }else{
+            return -1;
+        }
+        return 0;
+    }
+    return -1;
 #endif
 }
 
@@ -966,14 +1007,14 @@ void read_calibration_file(mxml_node_t *root, void *config)
         sprintf(indexvalue, "%d", i);
         
 
-        if(dao_read_long_data_array_value(root, "psd_power", "index", indexvalue, 
-                                    "start_requency",  &cali_config->specturm.start_freq_khz[i]) == -1)
+        if(dao_read_array_data(root, "psd_power", "index", indexvalue, 
+                                    "start_requency",  &cali_config->specturm.start_freq_khz[i], DDATA_U32) == -1)
            break;
-        if(dao_read_long_data_array_value(root, "psd_power", "index", indexvalue, 
-                                    "end_requency",  &cali_config->specturm.end_freq_khz[i]) == -1)
+        if(dao_read_array_data(root, "psd_power", "index", indexvalue, 
+                                    "end_requency",  &cali_config->specturm.end_freq_khz[i], DDATA_U32) == -1)
            break;
-        if(dao_read_int_data_array_value(root, "psd_power", "index", indexvalue, 
-                                    "level",  &cali_config->specturm.power_level[i]) == -1)
+        if(dao_read_array_data(root, "psd_power", "index", indexvalue, 
+                                    "level",  &cali_config->specturm.power_level[i], DDATA_I32) == -1)
            break;
 
         printf_debug("indexvalue=%s\n", indexvalue);
@@ -987,14 +1028,14 @@ void read_calibration_file(mxml_node_t *root, void *config)
     for(int i = 0; i<sizeof(cali_config->analysis.start_freq_khz)/sizeof(uint32_t); i++){
         sprintf(indexvalue, "%d", i);
 
-        if(dao_read_long_data_array_value(root, "analysis_power", "index", indexvalue, 
-                                    "start_requency",  &cali_config->analysis.start_freq_khz[i]) == -1)
+        if(dao_read_array_data(root, "analysis_power", "index", indexvalue, 
+                                    "start_requency",  &cali_config->analysis.start_freq_khz[i], DDATA_U32) == -1)
            break;
-        if(dao_read_long_data_array_value(root, "analysis_power", "index", indexvalue, 
-                                    "end_requency",  &cali_config->analysis.end_freq_khz[i]) == -1)
+        if(dao_read_array_data(root, "analysis_power", "index", indexvalue, 
+                                    "end_requency",  &cali_config->analysis.end_freq_khz[i], DDATA_U32) == -1)
            break;
-        if(dao_read_int_data_array_value(root, "analysis_power", "index", indexvalue, 
-                                    "level",  &cali_config->analysis.power_level[i]) == -1)
+        if(dao_read_array_data(root, "analysis_power", "index", indexvalue, 
+                                    "level",  &cali_config->analysis.power_level[i], DDATA_I32) == -1)
            break;
 
         printf_debug("analysis_power read calbration start_freq[%d] = %uKHz\n",i,cali_config->analysis.start_freq_khz[i]);
@@ -1005,14 +1046,14 @@ void read_calibration_file(mxml_node_t *root, void *config)
    
     for(int i = 0; i<sizeof(cali_config->lo_leakage.fft_size)/sizeof(uint32_t); i++){
          sprintf(indexvalue, "%d", i);
-         if(dao_read_int_data_array_value(root, "lo_leakage", "index", indexvalue, 
-                                         "fft_size",  &cali_config->lo_leakage.fft_size[i]) == -1)
+         if(dao_read_array_data(root, "lo_leakage", "index", indexvalue, 
+                                         "fft_size",  &cali_config->lo_leakage.fft_size[i], DDATA_U32) == -1)
                 break;
-         if(dao_read_int_data_array_value(root, "lo_leakage", "index", indexvalue, 
-                                        "threshold",  &cali_config->lo_leakage.threshold[i]) == -1)
+         if(dao_read_array_data(root, "lo_leakage", "index", indexvalue, 
+                                        "threshold",  &cali_config->lo_leakage.threshold[i], DDATA_I16) == -1)
                 break;
-         if(dao_read_int_data_array_value(root, "lo_leakage", "index", indexvalue, 
-                                        "renew_data_len",  &cali_config->lo_leakage.renew_data_len[i]) == -1)
+         if(dao_read_array_data(root, "lo_leakage", "index", indexvalue, 
+                                        "renew_data_len",  &cali_config->lo_leakage.renew_data_len[i], DDATA_I16) == -1)
                 break;
         printf_debug("lo_leakage.fft_size[%d] = %u\n",i, cali_config->lo_leakage.fft_size[i]);
         printf_debug("lo_leakage.threshold[%d] = %d\n",i, cali_config->lo_leakage.threshold[i]);
@@ -1022,14 +1063,14 @@ void read_calibration_file(mxml_node_t *root, void *config)
     /* read mgc calibration value */
     for(int i = 0; i<sizeof(cali_config->mgc.start_freq_khz)/sizeof(uint32_t); i++){
         sprintf(indexvalue, "%d", i);
-        if(dao_read_long_data_array_value(root, "mgc", "index", indexvalue, 
-                                         "start_requency",  &cali_config->mgc.start_freq_khz[i]) == -1)
+        if(dao_read_array_data(root, "mgc", "index", indexvalue, 
+                                         "start_requency",  &cali_config->mgc.start_freq_khz[i], DDATA_U32) == -1)
                 break;
-        if(dao_read_long_data_array_value(root, "mgc", "index", indexvalue, 
-                                        "end_requency",  &cali_config->mgc.end_freq_khz[i]) == -1)
+        if(dao_read_array_data(root, "mgc", "index", indexvalue, 
+                                        "end_requency",  &cali_config->mgc.end_freq_khz[i], DDATA_U32) == -1)
                 break;
-        if(dao_read_int_data_array_value(root, "mgc", "index", indexvalue, 
-                                        "gain",  &cali_config->mgc.gain_val[i]) == -1)
+        if(dao_read_array_data(root, "mgc", "index", indexvalue, 
+                                        "gain",  &cali_config->mgc.gain_val[i], DDATA_I32) == -1)
                 break;
         printf_debug("mgc.start_freq[%d] = %uKHz\n",i, cali_config->mgc.start_freq_khz[i]);
         printf_debug("mgc.end_freq[%d] = %uKHz\n",i, cali_config->mgc.end_freq_khz[i]);
@@ -1054,11 +1095,11 @@ void read_scan_param_info(mxml_node_t *root, void *config)
     scanbw->work_fixed_bindwidth_flag = false;
     for(int i = 0; i<sizeof(scanbw->bindwidth_hz)/sizeof(uint32_t); i++){
         sprintf(indexvalue, "%d", i);
-        if(dao_read_long_data_array_value(root, "scanBindWidthInfo", "index", indexvalue, 
-                                         "bindWidth",  &scanbw->bindwidth_hz[i]) == -1)
+        if(dao_read_array_data(root, "scanBindWidthInfo", "index", indexvalue, 
+                                         "bindWidth",  &scanbw->bindwidth_hz[i], DDATA_U32) == -1)
                 break;
-        if(dao_read_float_data_array_value(root, "scanBindWidthInfo", "index", indexvalue, 
-                                 "sideBandRate",  &scanbw->sideband_rate[i]) == -1)
+        if(dao_read_array_data(root, "scanBindWidthInfo", "index", indexvalue, 
+                                 "sideBandRate",  &scanbw->sideband_rate[i], DDATA_FLOAT) == -1)
                 break;
         
         printf_debug("Scan bindWidth[%d] = %d, sideband rate[%d]=%f\n",i, scanbw->bindwidth_hz[i], i,scanbw->sideband_rate[i]);
@@ -1104,148 +1145,146 @@ void read_config(void *root_config)
     }
 
      struct sockaddr_in saddr;
-     
      saddr.sin_addr.s_addr=inet_addr(read_config_file_single("network","gateway"));
      fre_config->oal_config.network.gateway = saddr.sin_addr.s_addr;
-     printf_debug("读取............................gateway = %x\n",fre_config->oal_config.network.gateway);
+     printf_debug("读取............................gateway = %s\n",inet_ntoa(saddr.sin_addr));
      
      
      saddr.sin_addr.s_addr=inet_addr(read_config_file_single("network","netmask"));
      fre_config->oal_config.network.netmask = saddr.sin_addr.s_addr;
-     printf_debug("读取............................netmask = %x\n",fre_config->oal_config.network.netmask);
-     
+     printf_debug("读取............................netmask = %s\n",inet_ntoa(saddr.sin_addr));
      
      saddr.sin_addr.s_addr=inet_addr(read_config_file_single("network","ipaddress"));
      fre_config->oal_config.network.ipaddress = saddr.sin_addr.s_addr;
-     printf_debug("读取............................ipaddress = %x\n",fre_config->oal_config.network.ipaddress);
+     printf_debug("读取............................ipaddress = %s\n",inet_ntoa(saddr.sin_addr));
 
         
-    if(dao_read_int_data_single_value("network","port", &fre_config->oal_config.network.port)!=-1){
+    if(dao_read_single_data("network","port", &fre_config->oal_config.network.port,DDATA_U16)!=-1){
          printf_debug("读取............................port = %d\n",fre_config->oal_config.network.port);
     }
 
 
-    if(dao_read_int_data_single_value("dataOutPutEn","enable", &fre_config->oal_config.enable.bit_en)!=-1){
+    if(dao_read_single_data("dataOutPutEn","enable", &fre_config->oal_config.enable.bit_en,DDATA_U8)!=-1){
          printf_debug("读取............................enable = %d\n",fre_config->oal_config.enable.bit_en);
     }
 
 
-    if(dao_read_int_data_single_value("dataOutPutEn","subChannel", &fre_config->oal_config.enable.sub_id)!=-1){
+    if(dao_read_single_data("dataOutPutEn","subChannel", &fre_config->oal_config.enable.sub_id,DDATA_I8)!=-1){
          printf_debug("读取............................subChannel = %d\n",fre_config->oal_config.enable.sub_id);
     }
 
 
-    if(dao_read_int_data_single_value("dataOutPutEn","psdEnable", &fre_config->oal_config.enable.psd_en)!=-1){
+    if(dao_read_single_data("dataOutPutEn","psdEnable", &fre_config->oal_config.enable.psd_en, DDATA_U8)!=-1){
          printf_debug("读取............................psdEnable = %d\n",fre_config->oal_config.enable.psd_en);
     }
 
     
-    if(dao_read_int_data_single_value("dataOutPutEn","audioEnable", &fre_config->oal_config.enable.audio_en)!=-1){
+    if(dao_read_single_data("dataOutPutEn","audioEnable", &fre_config->oal_config.enable.audio_en,DDATA_U8)!=-1){
          printf_debug("读取............................audioEnable = %d\n",fre_config->oal_config.enable.audio_en);
     }
 
 
-    if(dao_read_int_data_single_value("dataOutPutEn","IQEnable", &fre_config->oal_config.enable.iq_en)!=-1){
+    if(dao_read_single_data("dataOutPutEn","IQEnable", &fre_config->oal_config.enable.iq_en, DDATA_U8)!=-1){
          printf_debug("读取............................IQEnable = %d\n",fre_config->oal_config.enable.iq_en);
     }
 
 
-    if(dao_read_int_data_single_value("dataOutPutEn","spectrumAnalysisEn", &fre_config->oal_config.enable.spec_analy_en)!=-1){
+    if(dao_read_single_data("dataOutPutEn","spectrumAnalysisEn", &fre_config->oal_config.enable.spec_analy_en, DDATA_U8)!=-1){
          printf_debug("读取............................spectrumAnalysisEn = %d\n",fre_config->oal_config.enable.spec_analy_en);
     }
 
 
-    if(dao_read_int_data_single_value("dataOutPutEn","directionEn", &fre_config->oal_config.enable.direction_en)!=-1){
+    if(dao_read_single_data("dataOutPutEn","directionEn", &fre_config->oal_config.enable.direction_en,DDATA_U8)!=-1){
          printf_debug("读取............................directionEn = %d\n",fre_config->oal_config.enable.direction_en);
     }   
 
     
-    if(dao_read_int_data_single_value("controlPara","spectrum_time_interval", &fre_config->oal_config.ctrl_para.spectrum_time_interval)!=-1){
+    if(dao_read_single_data("controlPara","spectrum_time_interval", &fre_config->oal_config.ctrl_para.spectrum_time_interval, DDATA_U32)!=-1){
          printf_debug("spectrum_timer_interval = %u\n",fre_config->oal_config.ctrl_para.spectrum_time_interval);
     }
 
-    if(dao_read_int_data_single_value("controlPara","internalClock", &fre_config->oal_config.ctrl_para.internal_clock) != -1){
+    if(dao_read_single_data("controlPara","internalClock", &fre_config->oal_config.ctrl_para.internal_clock, DDATA_U8) != -1){
         printf_debug("internal_clock: %d\n",fre_config->oal_config.ctrl_para.internal_clock);
     }
 
-    if(dao_read_int_data_array_value(root, "channel", "index", "0", 
-                                "cid",&fre_config->oal_config.multi_freq_point_param[0].cid)!=-1){
+    if(dao_read_array_data(root, "channel", "index", "0", 
+                                "cid",&fre_config->oal_config.multi_freq_point_param[0].cid, DDATA_U8)!=-1){
         printf_debug("读取............................cid = %d\n",fre_config->oal_config.multi_freq_point_param[0].cid);
        };
 
 
-    if(dao_read_int_data_array_value(root, "freqPoint", "index", "0", 
-                                "centerFreq",&fre_config->oal_config.multi_freq_point_param[0].points[0].center_freq)!=-1){
+    if(dao_read_array_data(root, "freqPoint", "index", "0", 
+                                "centerFreq",&fre_config->oal_config.multi_freq_point_param[0].points[0].center_freq, DDATA_U64)!=-1){
         printf_debug("读取............................centerFreq = %llu\n",fre_config->oal_config.multi_freq_point_param[0].points[0].center_freq);
        };
 
 
-    if(dao_read_int_data_array_value(root, "freqPoint", "index", "0", 
-                                "bandwith",&fre_config->oal_config.multi_freq_point_param[0].points[0].bandwidth) !=-1){
+    if(dao_read_array_data(root, "freqPoint", "index", "0", 
+                                "bandwith",&fre_config->oal_config.multi_freq_point_param[0].points[0].bandwidth,DDATA_U64) !=-1){
         printf_debug("读取............................bandwith = %llu\n",fre_config->oal_config.multi_freq_point_param[0].points[0].bandwidth);
        };
 
-    if(dao_read_float_data_array_value(root, "freqPoint", "index", "0", 
-                                "freqResolution",&(fre_config->oal_config.multi_freq_point_param[0].points[0].freq_resolution)) !=-1){
+    if(dao_read_array_data(root, "freqPoint", "index", "0", 
+                                "freqResolution",&(fre_config->oal_config.multi_freq_point_param[0].points[0].freq_resolution), DDATA_FLOAT) !=-1){
         printf_debug("读取............................freqResolution = %f\n",fre_config->oal_config.multi_freq_point_param[0].points[0].freq_resolution);
     };
-    if(dao_read_int_data_array_value(root, "freqPoint", "index", "0", 
-                                "fftSize",&fre_config->oal_config.multi_freq_point_param[0].points[0].fft_size) !=-1){
+    if(dao_read_array_data(root, "freqPoint", "index", "0", 
+                                "fftSize",&fre_config->oal_config.multi_freq_point_param[0].points[0].fft_size, DDATA_U32) !=-1){
         printf_debug("读取............................fftSize = %u\n",fre_config->oal_config.multi_freq_point_param[0].points[0].fft_size);
        };
 
-    if(dao_read_int_data_array_value(root, "freqPoint", "index", "0", 
-                                "decMethodId",&fre_config->oal_config.multi_freq_point_param[0].points[0].d_method) !=-1){
+    if(dao_read_array_data(root, "freqPoint", "index", "0", 
+                                "decMethodId",&fre_config->oal_config.multi_freq_point_param[0].points[0].d_method,DDATA_U8) !=-1){
         printf_debug("读取............................decMethodId = %d\n",fre_config->oal_config.multi_freq_point_param[0].points[0].d_method);
        };
 
 
-    if(dao_read_int_data_array_value(root, "freqPoint", "index", "0", 
-                                "decBandwidth",&fre_config->oal_config.multi_freq_point_param[0].points[0].d_bandwith) !=-1){
+    if(dao_read_array_data(root, "freqPoint", "index", "0", 
+                                "decBandwidth",&fre_config->oal_config.multi_freq_point_param[0].points[0].d_bandwith,DDATA_U32) !=-1){
         printf_debug("读取............................decBandwidth = %u\n",fre_config->oal_config.multi_freq_point_param[0].points[0].d_bandwith);
        };
 
 
-    if(dao_read_int_data_array_value(root, "freqPoint", "index", "0", 
-                                "muteSwitch",&fre_config->oal_config.multi_freq_point_param[0].points[0].noise_en) !=-1){
+    if(dao_read_array_data(root, "freqPoint", "index", "0", 
+                                "muteSwitch",&fre_config->oal_config.multi_freq_point_param[0].points[0].noise_en, DDATA_U8) !=-1){
         printf_debug("读取............................muteSwitch = %d\n",fre_config->oal_config.multi_freq_point_param[0].points[0].noise_en);
        };
 
 
 
-    if(dao_read_int_data_array_value(root, "freqPoint", "index", "0", 
-                                "muteThreshold",&fre_config->oal_config.multi_freq_point_param[0].points[0].noise_thrh) !=-1){
+    if(dao_read_array_data(root, "freqPoint", "index", "0", 
+                                "muteThreshold",&fre_config->oal_config.multi_freq_point_param[0].points[0].noise_thrh, DDATA_I8) !=-1){
         printf_debug("读取............................muteThreshold = %d\n",fre_config->oal_config.multi_freq_point_param[0].points[0].noise_thrh);
        };
 
 
     
-    if(dao_read_int_data_single_value("radiofrequency","modeCode", &fre_config->oal_config.rf_para->rf_mode_code)!=-1){
+    if(dao_read_single_data("radiofrequency","modeCode", &fre_config->oal_config.rf_para->rf_mode_code, DDATA_U8)!=-1){
          printf_debug("读取............................modeCode = %d\n",fre_config->oal_config.rf_para->rf_mode_code);
     }
 
 
-    if(dao_read_int_data_single_value("radiofrequency","gainMode", &fre_config->oal_config.rf_para->gain_ctrl_method)!=-1){
+    if(dao_read_single_data("radiofrequency","gainMode", &fre_config->oal_config.rf_para->gain_ctrl_method, DDATA_U8)!=-1){
          printf_debug("读取............................gainMode = %d\n",fre_config->oal_config.rf_para->gain_ctrl_method);
     }
  
 
-    if(dao_read_int_data_single_value("radiofrequency","agcCtrlTime", &fre_config->oal_config.rf_para->agc_ctrl_time)!=-1){
+    if(dao_read_single_data("radiofrequency","agcCtrlTime", &fre_config->oal_config.rf_para->agc_ctrl_time,DDATA_U32)!=-1){
          printf_debug("读取............................agcCtrlTime = %u\n",fre_config->oal_config.rf_para->agc_ctrl_time);
     }
 
 
-    if(dao_read_int_data_single_value("radiofrequency","agcOutPutAmp", &fre_config->oal_config.rf_para->agc_mid_freq_out_level)!=-1){
+    if(dao_read_single_data("radiofrequency","agcOutPutAmp", &fre_config->oal_config.rf_para->agc_mid_freq_out_level, DDATA_I8)!=-1){
          printf_debug("读取............................agcOutPutAmp = %d\n",fre_config->oal_config.rf_para->agc_mid_freq_out_level);
     }
 
 
-    if(dao_read_int_data_single_value("radiofrequency","midBw", &fre_config->oal_config.rf_para->mid_bw)!=-1){
+    if(dao_read_single_data("radiofrequency","midBw", &fre_config->oal_config.rf_para->mid_bw, DDATA_U32)!=-1){
          printf_debug("读取............................midBw = %u\n",fre_config->oal_config.rf_para->mid_bw);
     }
 
 
-    if(dao_read_int_data_single_value("radiofrequency","rfAttenuation", &fre_config->oal_config.rf_para->attenuation)!=-1){
+    if(dao_read_single_data("radiofrequency","rfAttenuation", &fre_config->oal_config.rf_para->attenuation, DDATA_I8)!=-1){
          printf_debug("读取............................rfAttenuation = %d\n",fre_config->oal_config.rf_para->attenuation);
     }
 

@@ -37,6 +37,20 @@ typedef struct {
     const char *seed_element;
 } spectrum_single;
 
+typedef enum dao_data_type_e		/**** The XML node type. ****/
+{
+  DDATA_I8,
+  DDATA_U8,
+  DDATA_I16,
+  DDATA_U16,
+  DDATA_U32,              /* unsigned Integer value */
+  DDATA_I32,              /* Integer value */
+  DDATA_FLOAT,            /* Float*/
+  DDATA_U64,              /* longlong int */
+  DDATA_TEXT,               /* text*/
+} dao_data_type_t;
+
+
 void *write_config_file_single(char *file,const char *parent_element,const char *element,const char *string,int val);
 void *write_config_file_array(char *file,const char *array,
 const char *name,const char *value,const char *element,const char *seed_element,

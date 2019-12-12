@@ -3,7 +3,7 @@
 
 #include "config.h"
 
-#define MAX_SIG_CHANNLE 128
+#define MAX_SIG_CHANNLE 64
 #define MAX_SIGNAL_CHANNEL_NUM (16)
 
 

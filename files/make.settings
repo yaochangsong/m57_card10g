@@ -1,5 +1,7 @@
 #arch: x86 arm
 SUPPORT_PLAT_FORM_ARCH=arm
+#debug
+SUPPORT_GDB_DEBUG=n
 
 #Protocal Support: http akt xnrp
 SUPPORT_PROTOCAL="http akt"

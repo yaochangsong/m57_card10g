@@ -14,13 +14,20 @@
 #*****************************************************************************
 include make.settings
 
-#export CC=arm-linux-gnueabihf-gcc
-#compiler
+#debug
+CFLAGS:=
+ifneq ($(findstring y,$(SUPPORT_GDB_DEBUG)),)
+	top_dir = $(abspath $(shell pwd)/../../../../../)
+	export CC=$(PETALINUX)/tools/linux-i386/gcc-arm-linux-gnueabi/bin/arm-linux-gnueabihf-gcc
+	CFLAGS = -g
+endif
+	top_dir ?= $(abspath $(shell pwd)/../../../../../../)
+#arch
 ifneq ($(findstring x86,$(SUPPORT_PLAT_FORM_ARCH)),)
-	CC=gcc
+	CC?=gcc
 	C_VAR += -DSUPPORT_PLATFORM_ARCH_X86
 else ifneq ($(findstring arm,$(SUPPORT_PLAT_FORM_ARCH)),)
-	#CC=arm-linux-gnueabihf-gcc
+	CC?=arm-linux-gnueabihf-gcc
 	C_VAR += -DSUPPORT_PLATFORM_ARCH_ARM
 endif
 
@@ -125,8 +132,7 @@ endif
 ALL_C_FILES := $(foreach n,$(SOURCE_DIR),$(n)/*.c)
 SUB_LIB_DIRS := $(foreach n,$(SUB_LIBS),$(dir $(n)))
 
-top_dir = $(abspath $(shell pwd)/../../../../../)
-prefix=$(top_dir)/tmp/sysroots-components/cortexa9hf-neon
+prefix=$(top_dir)/build/tmp/sysroots-components/cortexa9hf-neon
 libdir_so=-L${prefix}/libiio/usr/lib -L${prefix}/libxml2/usr/lib -L${prefix}/zlib/usr/lib
 includedir_so=-I${prefix}/libiio/usr/include -I${prefix}/libxml2/usr/include/libxml2/libxml -I${prefix}/zlib/usr/include
 
@@ -166,7 +172,7 @@ endif
 
 
 
-CFLAGS = -Wall -Wno-unused-function  -Wno-unused-variable -Wno-discarded-qualifiers $(INCLUDE_DIR)  $(C_VAR) -D_FILE_OFFSET_BITS=64 -D_LARGE_FILE
+CFLAGS += -Wall -Wno-unused-function  -Wno-unused-variable -Wno-discarded-qualifiers $(INCLUDE_DIR)  $(C_VAR) -D_FILE_OFFSET_BITS=64 -D_LARGE_FILE
 
 MAKE := make
 

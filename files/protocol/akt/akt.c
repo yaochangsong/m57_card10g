@@ -564,11 +564,14 @@ static int akt_execute_set_command(void)
             io_set_enable_command(IQ_MODE_DISABLE, ch, 0);
             printf_warn("ch:%d, sub_ch=%d, au_en:%d,iq_en:%d, %d\n", ch,sub_ch, poal_config->sub_ch_enable.audio_en, poal_config->sub_ch_enable.iq_en);
             enable = (poal_config->sub_ch_enable.iq_en == 0 ? 0 : 1);
+            /* 子通道解调开关 */
             executor_set_command(EX_MID_FREQ_CMD, EX_SUB_CH_ONOFF, sub_ch, &enable);
+            /* 通道IQ使能 */
             if(enable){
-                io_set_enable_command(IQ_MODE_ENABLE, sub_ch, 0);
+                /* NOTE:The parameter must be a MAIN channel, not a subchannel */
+                io_set_enable_command(IQ_MODE_ENABLE, ch, 0);
             }else{
-                io_set_enable_command(IQ_MODE_DISABLE, sub_ch, 0);
+                io_set_enable_command(IQ_MODE_DISABLE, ch, 0);
             }
             break;
         }

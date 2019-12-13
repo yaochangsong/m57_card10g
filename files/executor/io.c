@@ -438,7 +438,7 @@ static void io_dma_dev_disable(uint32_t ch,uint8_t type)
         ctrl_val = (data_offset & 0xFF) << 8;
         ret = ioctl(io_ctrl_fd,IOCTL_ENABLE_DISABLE,ctrl_val);
     }
-    printf_note("[**REGISTER**]ch=%d, type=%s data_offset=%x Disable, ret=%d\n", ch, type==0?"IQ":"FFT", data_offset, ret);
+    printf_info("[**REGISTER**]ch=%d, type=%s data_offset=%x Disable, ret=%d\n", ch, type==0?"IQ":"FFT", data_offset, ret);
 #endif
 }
 

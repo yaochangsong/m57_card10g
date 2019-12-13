@@ -430,14 +430,15 @@ void io_set_fft_size(uint32_t ch, uint32_t fft_size)
 static void io_dma_dev_disable(uint32_t ch,uint8_t type)
 {
     uint32_t ctrl_val = 0;
+    int ret = -1;
     
 #if defined(SUPPORT_SPECTRUM_KERNEL)
     uint8_t data_offset = (ch<<2)|type;
-    printf_info("[**REGISTER**]ch=%d, type=%s data_offset=%x Disable\n", ch, type==0?"IQ":"FFT", data_offset);
     if (io_ctrl_fd > 0) {
         ctrl_val = (data_offset & 0xFF) << 8;
-        ioctl(io_ctrl_fd,IOCTL_ENABLE_DISABLE,ctrl_val);
+        ret = ioctl(io_ctrl_fd,IOCTL_ENABLE_DISABLE,ctrl_val);
     }
+    printf_note("[**REGISTER**]ch=%d, type=%s data_offset=%x Disable, ret=%d\n", ch, type==0?"IQ":"FFT", data_offset, ret);
 #endif
 }
 

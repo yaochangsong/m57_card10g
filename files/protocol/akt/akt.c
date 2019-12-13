@@ -163,12 +163,12 @@ static int akt_convert_oal_config(uint8_t ch, uint8_t cmd)
                     }
                      /* smooth */
                     point->smooth_time = pakt_config->smooth[ch].smooth;
-                    printf_info("residence_time:%u\n",point->residence_time);
-                    printf_info("freq_point_cnt:%u\n",point->freq_point_cnt);
-                    printf_info("ch:%d, sig_cnt:%d,center_freq:%u\n", ch,sig_cnt,point->points[sig_cnt].center_freq);
-                    printf_info("bandwidth:%u\n",point->points[sig_cnt].bandwidth);
-                    printf_info("fft_size:%u\n",point->points[sig_cnt].fft_size);
-                    printf_info("smooth_time:%u\n",point->smooth_time);
+                    printf_note("residence_time:%u\n",point->residence_time);
+                    printf_note("freq_point_cnt:%u\n",point->freq_point_cnt);
+                    printf_note("ch:%d, sig_cnt:%d,center_freq:%u\n", ch,sig_cnt,point->points[sig_cnt].center_freq);
+                    printf_note("bandwidth:%u\n",point->points[sig_cnt].bandwidth);
+                    printf_note("fft_size:%u\n",point->points[sig_cnt].fft_size);
+                    printf_note("smooth_time:%u\n",point->smooth_time);
                     break;
                 }
                 case OAL_FAST_SCAN_MODE:

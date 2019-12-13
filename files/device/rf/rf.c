@@ -321,8 +321,10 @@ void switch_adc_mode(uint8_t is_backtrace){
     
     lseek(gpiofd[0], 0, SEEK_SET);
     if(is_backtrace >0){
+        printf_note("set adc pin high...\n");
         set_gpio_high(gpiofd[0]);   
     }else{
+        printf_note("set adc pin low...\n");
         set_gpio_low(gpiofd[0]);   
     }
 }
@@ -1071,6 +1073,7 @@ static uint8_t send_mid_freq_attenuation_set_cmd(uint8_t ch,uint8_t attenuation)
 
 }
 
+#if 0
 uint8_t send_middle_freq_bandwidth_set_cmd(uint8_t ch,uint32_t bandwidth_flag){
     uint8_t *send_buf,send_len;
     uint8_t recv_len;
@@ -1103,7 +1106,7 @@ uint8_t send_middle_freq_bandwidth_set_cmd(uint8_t ch,uint32_t bandwidth_flag){
     return ret;
 }
 
-
+#endif
 
 
 static uint8_t query_rf_temperature(uint8_t ch,int16_t *temperature){
@@ -1142,12 +1145,14 @@ uint8_t rf_set_interface(uint8_t cmd,uint8_t ch,void *data){
 #ifdef SUPPORT_RF_ADRV9009
             gpio_select_rf_channel(*(uint64_t*)data);
             adrv9009_iio_set_freq(*(uint64_t*)data);
+#else
+            ret = send_freq_set_cmd(ch,*(uint64_t*)data);//设置射频频率
 #endif
             break; 
         }
          case EX_RF_MID_BW :   {
             printf_note("[**RF**]ch=%d, middle bw=%u\n", ch, *(uint32_t *) data);
-            send_middle_freq_bandwidth_set_cmd(ch, *(uint32_t *) data);
+            send_rf_freq_bandwidth_set_cmd(ch, *(uint32_t *) data);
             break; 
         }
 
@@ -1198,6 +1203,7 @@ uint8_t rf_set_interface(uint8_t cmd,uint8_t ch,void *data){
         #endif
             break; 
         }
+ #if 0
         case EX_RF_AGC_FREQUENCY :{
             rf_freq = *((uint64_t *)data);
             printf_debug("[**RF**]ch=%d, agc_freq=%d\n",ch, rf_freq);
@@ -1210,6 +1216,7 @@ uint8_t rf_set_interface(uint8_t cmd,uint8_t ch,void *data){
 #endif
             break; 
         }
+
         case EX_RF_AGC_BW :{
             rf_bw = *((uint32_t *)data);
             printf_note("[**RF**]ch=%d, rf_bw=%d\n",ch, rf_bw);
@@ -1224,6 +1231,7 @@ uint8_t rf_set_interface(uint8_t cmd,uint8_t ch,void *data){
         case EX_MID_FREQ:
             send_mid_freq_attenuation_set_cmd(ch,* (uint32_t *) data);
         break;
+#endif
 
         default:{
             break;

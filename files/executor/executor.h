@@ -35,6 +35,7 @@ enum {
     EX_DEC_METHOD,             /*解调方式*/
     EX_DEC_BW,                 /*解调带宽*/
     EX_DEC_MID_FREQ,           /* 解调中心频率 */
+    EX_DEC_RAW_DATA,           /* 解调原始参数 */
     EX_SMOOTH_TIME,            /*平滑次数*/
     EX_RESIDENCE_TIME,         /*驻留时间*/
     EX_RESIDENCE_POLICY,       /*驻留策略*/

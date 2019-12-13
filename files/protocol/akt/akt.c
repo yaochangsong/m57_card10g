@@ -89,6 +89,7 @@ static int akt_convert_oal_config(uint8_t ch, uint8_t cmd)
                     printf_warn("d_method error=%d\n", poal_config->multi_freq_point_param[ch].points[i].d_method);
                     return -1;
                 }
+                poal_config->multi_freq_point_param[ch].points[i].raw_d_method = pakt_config->decode_param[ch].sig_ch[i].decode_method_id;
                 poal_config->multi_freq_point_param[ch].points[i].d_method = method_id;
                 poal_config->multi_freq_point_param[ch].points[i].d_bandwith = pakt_config->decode_param[ch].sig_ch[i].bandwidth;
                 poal_config->multi_freq_point_param[ch].points[i].center_freq = pakt_config->decode_param[ch].sig_ch[i].center_freq;
@@ -261,6 +262,7 @@ static int akt_convert_oal_config(uint8_t ch, uint8_t cmd)
                         point->points[i].bandwidth = pakt_config->multi_freq_zone[ch].sig_ch[i].bandwidth;
                         point->points[i].fft_size = pakt_config->fft[ch].fft_size;
                         point->points[i].d_method = akt_decode_method_convert(pakt_config->decode_param[ch].sig_ch[i].decode_method_id);
+                        point->points[i].raw_d_method = pakt_config->decode_param[ch].sig_ch[i].decode_method_id;
                         point->points[i].d_bandwith = pakt_config->decode_param[ch].sig_ch[i].bandwidth;
                         if(point->points[i].fft_size > 0){
                             point->points[i].freq_resolution = BAND_FACTOR*(float)point->points[i].d_bandwith/(float)point->points[i].fft_size;

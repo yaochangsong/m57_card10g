@@ -300,6 +300,7 @@ int audio_init(void)
         printf_note("Audio init Failed\n");
         return -1;
     }
+    audio_volume_set(100);
     printf_note("Audio init OK\n");
     return 0;
 }

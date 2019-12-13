@@ -232,6 +232,8 @@ static inline int8_t  executor_points_scan(uint8_t ch, work_mode mode)
             executor_set_command(EX_MID_FREQ_CMD, EX_DEC_MID_FREQ, ch,&point->points[i].center_freq,  point->points[i].center_freq);
             executor_set_command(EX_MID_FREQ_CMD, EX_DEC_METHOD, ch, &point->points[i].d_method);
             executor_set_command(EX_MID_FREQ_CMD, EX_DEC_BW, ch, &point->points[i].d_bandwith);
+            executor_set_command(EX_MID_FREQ_CMD, EX_DEC_RAW_DATA, ch, &point->points[i].center_freq, 
+                                point->points[i].d_bandwith, point->points[i].raw_d_method);
             io_set_enable_command(AUDIO_MODE_ENABLE, ch, 0);
         }else{
             io_set_enable_command(AUDIO_MODE_DISABLE, ch, 0);
@@ -424,6 +426,18 @@ static int8_t executor_set_kernel_command(uint8_t type, uint8_t ch, void *data, 
             middle_freq = va_arg(ap, uint64_t);
             printf_warn("ch=%d, dec_middle=%llu, middle_freq=%llu\n", ch, *(uint64_t *)data, middle_freq);
             io_set_dec_middle_freq(ch, *(uint64_t *)data, middle_freq);
+            break;
+        }
+        case EX_DEC_RAW_DATA:
+        {
+            uint64_t  middle_freq;
+            uint32_t bindwidth;
+            uint8_t  d_method;
+            middle_freq = *(uint64_t *)data;
+            bindwidth = va_arg(ap, uint32_t);
+            d_method = (uint8_t)va_arg(ap, uint32_t);
+            printf_warn("EX_DEC_RAW_DATA: ch=%d, middle_freq=%llu, bindwidth=%u, d_method=%d\n", ch, middle_freq, bindwidth, d_method);
+            io_set_dec_parameter(ch, middle_freq, d_method, bindwidth);
             break;
         }
         case EX_SMOOTH_TIME:

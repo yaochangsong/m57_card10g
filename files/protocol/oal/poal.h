@@ -77,6 +77,7 @@ struct freq_points_st{
     int16_t index;
     uint8_t  noise_en;
     int8_t noise_thrh;
+    uint8_t raw_d_method; /* Original demodulation */
     uint8_t d_method;
     float freq_resolution;
     volatile uint32_t fft_size;

@@ -96,7 +96,7 @@ void io_reset_fpga_data_link(void){
     ret = ioctl(io_ctrl_fd,IOCTL_SET_DDC_REGISTER_VALUE,&data);
 }
 
-/*设置带宽*/
+/*设置带宽因子*/
 int32_t io_set_bandwidth(uint32_t ch, uint32_t bandwidth){
     int32_t ret = 0;
     uint32_t set_factor,band_factor, filter_factor;
@@ -118,7 +118,7 @@ int32_t io_set_bandwidth(uint32_t ch, uint32_t bandwidth){
 
 }
 
-/*设置解调带宽*/
+/*设置解调带宽因子*/
 int32_t io_set_dec_bandwidth(uint32_t ch, uint32_t dec_bandwidth){
     int32_t ret = 0;
     uint32_t set_factor, band_factor, filter_factor;
@@ -175,7 +175,20 @@ int32_t io_set_dec_method(uint32_t ch, uint8_t dec_method){
 }
 
 
-/*设置解调中心频率（需要根据中心频率计算）*/
+/*解调实际参数下发：内核发送数据头使用*/
+int32_t io_set_dec_parameter(uint32_t ch, uint64_t dec_middle_freq, uint8_t dec_method, uint32_t dec_bandwidth)
+{
+    FIXED_FREQ_ANYS_D_PARAM_ST dq;
+    dq.cid = ch;
+    dq.bandwidth = dec_bandwidth;
+    dq.center_freq = dec_middle_freq;
+    dq.d_method = dec_method;
+    ioctl(io_ctrl_fd,IOCTL_RUN_DEC_PARAM,&dq);
+}
+
+
+
+/*解调中心频率计算（需要根据中心频率计算）*/
 uint32_t io_set_dec_middle_freq_reg(uint64_t dec_middle_freq, uint64_t middle_freq)
 {
         /* delta_freq = (reg* 204800000)/2^32 ==>  reg= delta_freq*2^32/204800000 */
@@ -198,7 +211,7 @@ uint32_t io_set_dec_middle_freq_reg(uint64_t dec_middle_freq, uint64_t middle_fr
 }
 
 
-/*设置主通道解调中心频率*/
+/*设置主通道解调中心频率因子*/
 int32_t io_set_dec_middle_freq(uint32_t ch, uint64_t dec_middle_freq, uint64_t middle_freq)
 {
     uint32_t reg;
@@ -221,7 +234,7 @@ int32_t io_set_dec_middle_freq(uint32_t ch, uint64_t dec_middle_freq, uint64_t m
 }
 
 
-/*设置子通道解调中心频率*/
+/*设置子通道解调中心频率因子*/
 int32_t io_set_subch_dec_middle_freq(uint32_t subch, uint64_t dec_middle_freq, uint64_t middle_freq)
 {
         uint32_t reg;
@@ -252,7 +265,7 @@ int32_t io_set_subch_onoff(uint32_t subch, uint8_t onoff)
     return ret;
 }
 
-/*设置子通道解调带宽*/
+/*设置子通道解调带宽因子*/
 int32_t io_set_subch_bandwidth(uint32_t subch, uint32_t bandwidth)
 {
     int32_t ret = 0;

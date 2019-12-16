@@ -42,6 +42,8 @@
 
 #define printfd ULOG_DEBUG
 #define printfi ULOG_INFO
+#define printfn ULOG_NOTE
+#define printfw ULOG_WARN
 #define printfe ULOG_ERR
 
 

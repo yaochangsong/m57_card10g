@@ -78,6 +78,12 @@ ifneq ($(findstring y,$(SUPPORT_RF)),)
 	SOURCE_DIR += device/rf
 	C_VAR += -DSUPPORT_RF
 endif
+#rf spi
+ifneq ($(findstring y,$(SUPPORT_RF_SPI)),)
+	SOURCE_DIR += device/rf/spi
+	C_VAR += -DSUPPORT_RF_SPI
+endif
+
 ifneq ($(findstring y,$(SUPPORT_RF_ADRV9009)),)
 	SOURCE_DIR += device/rf/adrv9009
 	C_VAR += -DSUPPORT_RF_ADRV9009

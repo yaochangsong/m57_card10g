@@ -1145,6 +1145,9 @@ uint8_t rf_set_interface(uint8_t cmd,uint8_t ch,void *data){
 #ifdef SUPPORT_RF_ADRV9009
             gpio_select_rf_channel(*(uint64_t*)data);
             adrv9009_iio_set_freq(*(uint64_t*)data);
+#elif defined(SUPPORT_RF_SPI)
+            uint64_t host_freq=htobe64(old_freq) >> 24;
+            ret = spi_rf_set_command(SPI_RF_FREQ_SET, &host_freq);
 #else
             ret = send_freq_set_cmd(ch,*(uint64_t*)data);//设置射频频率
 #endif
@@ -1332,13 +1335,6 @@ void spi_close(void)
         }
     }
 }
-
-
-
-
-
-
-
 
 
 

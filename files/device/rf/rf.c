@@ -910,7 +910,7 @@ static uint8_t send_freq_set_cmd(uint8_t ch,uint64_t freq){
     for(i=0;i<bytes_num;i++){
         pcmd->body.freq.freq_val[i] = (freq >>(8*(bytes_num-i-1))) &0xff;   
     }
-
+    
     clock_gettime(CLOCK_REALTIME, &st_time);
     send_buf[send_len-2] = checksum(send_buf+CHECKSUM_OFFSET,send_len-CHECKSUM_IGNORE_LEN);
     recv_len = get_response_len_bytype(RF_FREQ_SET);
@@ -1157,7 +1157,13 @@ uint8_t rf_set_interface(uint8_t cmd,uint8_t ch,void *data){
         }
          case EX_RF_MID_BW :   {
             printf_note("[**RF**]ch=%d, middle bw=%u\n", ch, *(uint32_t *) data);
+            #ifdef  SUPPORT_RF_SPI
+            //uint32_t filter=htobe32(*(uint32_t *)data) >> 24;
+            uint32_t filter=*(uint32_t *)data;
+            ret = spi_rf_set_command(RF_MIDDLE_FREQ_BANDWIDTH_FILTER_SET, &filter);
+            #else
             send_rf_freq_bandwidth_set_cmd(ch, *(uint32_t *) data);
+            #endif
             break; 
         }
 
@@ -1166,6 +1172,8 @@ uint8_t rf_set_interface(uint8_t cmd,uint8_t ch,void *data){
             printf_note("[**RF**]ch=%d, noise_mode=%d\n", ch, noise_mode);
         #if defined(SUPPORT_PLATFORM_ARCH_ARM)
             #ifdef SUPPORT_RF_ADRV9009
+            #elif defined(SUPPORT_RF_SPI)
+            ret = spi_rf_set_command(RF_NOISE_MODE_SET, &noise_mode);
             #else
             ret = send_noise_mode_set_cmd(ch,noise_mode);//设置射频接收模式
             #endif
@@ -1181,6 +1189,8 @@ uint8_t rf_set_interface(uint8_t cmd,uint8_t ch,void *data){
             printf_note("[**RF**]ch=%d, mgc_gain_value=%d\n",ch, mgc_gain_value);
         #if defined(SUPPORT_PLATFORM_ARCH_ARM)
             #ifdef SUPPORT_RF_ADRV9009
+            #elif defined(SUPPORT_RF_SPI)
+            ret = spi_rf_set_command(MID_FREQ_GAIN_SET, &mgc_gain_value);
             #else
             ret = send_mid_freq_attenuation_set_cmd(ch,mgc_gain_value);//设置中频增益
             #endif
@@ -1202,6 +1212,8 @@ uint8_t rf_set_interface(uint8_t cmd,uint8_t ch,void *data){
         #if defined(SUPPORT_PLATFORM_ARCH_ARM)
             #ifdef SUPPORT_RF_ADRV9009
             gpio_select_rf_attenuation(rf_gain_value);
+            #elif defined(SUPPORT_RF_SPI)
+            ret = spi_rf_set_command(RF_GAIN_SET, &rf_gain_value);
             #else
             ret = send_rf_attenuation_set_cmd(ch,rf_gain_value);//设置射频增益
             #endif

@@ -16,7 +16,6 @@
 #include "config.h"
 #include "protocol/http/request.h"
 
-
 static void on_accept(struct uh_client *cl)
 {
     printf_info("New connection from: %s:%d\n", cl->get_peer_addr(cl), cl->get_peer_port(cl));

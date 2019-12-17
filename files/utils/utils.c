@@ -13,6 +13,15 @@
 *  Initial revision.
 ******************************************************************************/
 #include "config.h"
+#include <sys/ioctl.h>  
+#include <sys/types.h>  
+#include <sys/socket.h>  
+#include <netinet/in.h>  
+#include <arpa/inet.h>  
+#include <net/if.h>  
+#include <error.h>  
+#include <net/route.h>  
+
 
 /** Duplicates a string or die if memory cannot be allocated
  * @param s String to duplicate
@@ -32,6 +41,100 @@ char *safe_strdup(const char *s)
     }
     return (retval);
 }
+
+int get_ipaddress(struct in_addr *addr)
+{
+    int sock;
+    struct sockaddr_in sin;
+    struct ifreq ifr;
+	char *temp_ip = NULL;
+    
+    sock = socket(AF_INET, SOCK_DGRAM, 0);
+    if (sock == -1)
+    {
+        perror("socket");
+        return -1;                
+    }
+    strncpy(ifr.ifr_name, NETWORK_EHTHERNET_POINT, IFNAMSIZ-1);
+    ifr.ifr_name[IFNAMSIZ - 1] = 0;
+    
+    if (ioctl(sock, SIOCGIFADDR, &ifr) < 0)
+    {
+        perror("ioctl");
+        return -1;
+    }
+    memcpy(&sin, &ifr.ifr_addr, sizeof(sin));
+    temp_ip = inet_ntoa(sin.sin_addr);
+    *addr = sin.sin_addr;
+    //strcpy(ip,temp_ip);
+    //fprintf(stdout, "eth0: %s\n", temp_ip);
+
+    return 0;
+}
+
+int set_ipaddress(char *ipaddr, char *mask,char *gateway)  
+{  
+    int fd;  
+    int rc;  
+    struct ifreq ifr;   
+    struct sockaddr_in *sin;  
+    struct rtentry  rt;  
+  
+    fd = socket(AF_INET, SOCK_DGRAM, 0);  
+    if(fd < 0)  
+    {  
+            perror("socket   error");       
+            return -1;       
+    }  
+    memset(&ifr,0,sizeof(ifr));   
+    strcpy(ifr.ifr_name,NETWORK_EHTHERNET_POINT);   
+    sin = (struct sockaddr_in*)&ifr.ifr_addr;       
+    sin->sin_family = AF_INET;       
+    //IP地址  
+    if(inet_aton(ipaddr,&(sin->sin_addr)) < 0)     
+    {       
+        perror("inet_aton   error");       
+        return -2;       
+    }      
+  
+    if(ioctl(fd,SIOCSIFADDR,&ifr) < 0)     
+    {       
+        perror("ioctl   SIOCSIFADDR   error");       
+        return -3;       
+    }  
+    //子网掩码  
+    if(inet_aton(mask,&(sin->sin_addr)) < 0)     
+    {       
+        perror("inet_pton   error");       
+        return -4;       
+    }      
+    if(ioctl(fd, SIOCSIFNETMASK, &ifr) < 0)  
+    {  
+        perror("ioctl");  
+        return -5;  
+    }  
+    //网关  
+    memset(&rt, 0, sizeof(struct rtentry));  
+    memset(sin, 0, sizeof(struct sockaddr_in));  
+    sin->sin_family = AF_INET;  
+    sin->sin_port = 0;  
+    if(inet_aton(gateway, &sin->sin_addr)<0)  
+    {  
+       printf_err( "inet_aton error\n" );  
+    }  
+    memcpy ( &rt.rt_gateway, sin, sizeof(struct sockaddr_in));  
+    ((struct sockaddr_in *)&rt.rt_dst)->sin_family=AF_INET;  
+    ((struct sockaddr_in *)&rt.rt_genmask)->sin_family=AF_INET;  
+    rt.rt_flags = RTF_GATEWAY;  
+    if (ioctl(fd, SIOCADDRT, &rt)<0)  
+    {  
+        printf_err( "ioctl(SIOCADDRT) error in set_default_route\n");  
+        close(fd);  
+        return -1;  
+    }  
+    close(fd);  
+    return rc;  
+}  
 
 
 int get_mac(char * mac, int len_limit)    

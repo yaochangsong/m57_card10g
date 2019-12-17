@@ -260,7 +260,7 @@ int32_t io_set_subch_onoff(uint32_t subch, uint8_t onoff)
     odata.ch = subch;
     memcpy(odata.data,&onoff,sizeof(onoff));
     ret = ioctl(io_ctrl_fd, IOCTL_SUB_CH_ONOFF, &odata);
-    printf_warn("[**REGISTER**]ch:%d, SubChannle Set OnOff=%d, ret=%d\n",subch, onoff, ret);
+    printf_info("[**REGISTER**]ch:%d, SubChannle Set OnOff=%d, ret=%d\n",subch, onoff, ret);
 #endif
     return ret;
 }
@@ -715,6 +715,7 @@ int32_t io_stop_save_file(void *arg){
 int32_t io_start_backtrace_file(void *arg){
     int32_t ret = 0;
 #if defined(SUPPORT_SPECTRUM_KERNEL) 
+    SW_TO_BACKTRACE_MODE();
     ret = ioctl(io_ctrl_fd,IOCTL_DISK_START_BACKTRACE_FILE_INFO,arg);
 #endif
     return ret;
@@ -723,6 +724,7 @@ int32_t io_start_backtrace_file(void *arg){
 int32_t io_stop_backtrace_file(void *arg){
     int32_t ret = 0;
 #if defined(SUPPORT_SPECTRUM_KERNEL) 
+    SW_TO_AD_MODE();
     ret = ioctl(io_ctrl_fd,IOCTL_DISK_STOP_BACKTRACE_FILE_INFO,arg);
 #endif
     return ret;

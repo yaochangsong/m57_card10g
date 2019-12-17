@@ -52,7 +52,6 @@ static int gpio_write(int pin_number,int value)
     }
     sprintf(v_str, "%d", value);
     lseek(fd, 0, SEEK_SET);
-    printf_warn("w_str=%s, v_str=%s, %d\n", w_str, v_str, strlen(v_str));
     ret = write(fd, v_str, strlen(v_str)+1);
     close(fd);
     

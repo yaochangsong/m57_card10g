@@ -630,13 +630,9 @@ static int akt_execute_set_command(void)
             check_valid_channel(header->buf[0]);
             memcpy(&bis, header->buf, sizeof(BACKTRACE_IQ_ST));
             if(bis.cmd == 1){/* start backtrace iq file */
-                /* switch to backtrace mode */
-                switch_adc_mode(1);
                 printf_note("Start backtrace file:%s\n", bis.filepath);
                 ret = io_start_backtrace_file(bis.filepath);
             }else if(bis.cmd == 0){/* stop backtrace iq file */
-                /* switch to normal mode */
-                switch_adc_mode(0);
                 printf_note("Stop backtrace file:%s\n", bis.filepath);
                 ret = io_stop_backtrace_file(bis.filepath);
             }else{
@@ -796,12 +792,12 @@ static int akt_execute_get_command(void)
                 break;
             }
             ret = io_get_disk_info(psi);
-            printf_note("Get disk info: %d\n", ret);
+            printf_info("Get disk info: %d\n", ret);
             if(ret != 0){
                 err_code = akt_err_code_check(ret);
                 goto exit;
             }
-            printf_note("ret=%d, num=%d, speed=%u, capacity_bytes=%llu, used_bytes=%llu\n",
+            printf_info("ret=%d, num=%d, speed=%u, capacity_bytes=%llu, used_bytes=%llu\n",
                 ret, psi->disk_num, psi->read_write_speed_kbytesps, 
                 psi->disk_capacity[0].disk_capacity_bytes, psi->disk_capacity[0].disk_used_bytes);
             memcpy(akt_get_response_data.payload_data, psi, st_size);

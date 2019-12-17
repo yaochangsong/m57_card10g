@@ -94,8 +94,9 @@ int spi_send_data(int spi_fd, uint8_t *send_buffer, size_t send_len,
     }else{
         ret = ioctl(spi_fd, SPI_IOC_MESSAGE(1), xfer);
     }
-    if(ret < 0)
-        printf_err("spi send error\n");
+    if(ret < 0){
+        printf_err("spi send error:%d, %s\n", ret, strerror(errno));
+    }
     return ret;
 }
 
@@ -180,7 +181,7 @@ ssize_t spi_rf_set_command(rf_spi_set_cmd_code cmd, void *data)
         printfn("%02x ", frame_buffer[i]);
     printfn("\n");
     ret = spi_send_data(spi_fd, frame_buffer, frame_size, recv_buffer, recv_size);
-    if(ret != 0){
+    if(ret < 0){
         return NULL;
     }
     printf_note("receive data buffer[%d]:", recv_size);
@@ -226,7 +227,7 @@ ssize_t spi_rf_get_command(rf_spi_get_cmd_code cmd, void *data)
         printfn("0x%x ", frame_buffer[i]);
     printfn("\n");
     ret = spi_send_data(spi_fd, frame_buffer, frame_size, recv_buffer, recv_size);
-    if(ret != 0){
+    if(ret < 0){
         return -1;
     }
     printf_note("receive data buffer[%d]:", recv_size);

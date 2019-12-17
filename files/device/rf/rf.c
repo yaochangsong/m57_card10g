@@ -1285,28 +1285,6 @@ uint8_t rf_set_interface(uint8_t cmd,uint8_t ch,void *data){
     }
     return ret;
 }
-/*uint8_t spi_set_command(uint8_t cmd,uint8_t ch,void *data)
-{
-
-  switch(cmd){
-  case EX_RF_ATTENUATION:
-  send_rf_attenuation_set_cmd(ch,* (uint32_t *) data);
-  break;
-
-  case EX_MID_FREQ:
-  send_mid_freq_attenuation_set_cmd(ch,* (uint32_t *) data);
-  break;
-
-  case EX_MIDDLE_FREQ:
-  send_middle_freq_bandwidth_set_cmd(ch,* (uint32_t *) data);
-  break;
-  
-  default:
-  break;
-  }
-}*/
-
-
 
 uint8_t rf_read_interface(uint8_t cmd,uint8_t ch,void *data){
     uint8_t ret = -1;
@@ -1346,6 +1324,9 @@ uint8_t rf_read_interface(uint8_t cmd,uint8_t ch,void *data){
         case EX_RF_STATUS_TEMPERAT :{
             int16_t  rf_temperature = 0;
             #if defined(SUPPORT_PLATFORM_ARCH_ARM)
+            #elif defined(SUPPORT_RF_SPI)
+            ret = spi_rf_get_command(SPI_RF_TEMPRATURE_GET, &rf_temperature);
+            #else
             ret = query_rf_temperature(ch,&rf_temperature);//设置射频增益
             #endif
             *(int16_t *)data = rf_temperature;

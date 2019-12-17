@@ -50,16 +50,6 @@ enum {
     EX_SUB_CH_ONOFF            /* 子通道开关 */
 };
 
-/* executor: work mode  */
-typedef enum {
-    EX_NULL_MODE            =0x00,
-    EX_FIXED_FREQ_ANYS_MODE =0x01,      /*定频模式*/
-    EX_FAST_SCAN_MODE       =0x02,      /*快速扫描模式*/
-    EX_MULTI_ZONE_SCAN_MODE =0x03,      /*多频段模式*/
-    EX_MULTI_POINT_SCAN_MODE=0x04,      /*多频点模式*/
-}work_mode;
-
-
 /* executor: enable paramter */
 enum {
     PSD_MODE_ENABLE=50,          /*PSD 数据使能*/
@@ -137,7 +127,7 @@ struct spectrum_header_param{
     float freq_resolution;       /* 分辨率 */
     uint8_t ch;
     uint8_t datum_type;          /* 0x00：字符型 0x01：短整型 0x02 浮点型 */
-    work_mode mode;
+    uint8_t mode;
     uint32_t data_len;
     uint8_t d_method;           /* 解调类型 */
     uint8_t type;               /* 数据类型： 频谱数据/IQ数据/音频数据 */

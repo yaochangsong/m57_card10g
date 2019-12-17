@@ -82,7 +82,7 @@ int xnrp_execute_set_command(void)
                 case B_CODE_WK_MODE_MULTI_FRQ_POINT:
                 {
                     xnrp_xml_parse_data(header->class_code, header->business_code, header->payload, header->payload_len);
-                    config_save_batch(EX_WORK_MODE_CMD, EX_MULTI_POINT_SCAN_MODE, config_get_config());
+                    config_save_batch(EX_WORK_MODE_CMD, OAL_MULTI_POINT_SCAN_MODE, config_get_config());
                     break;
                 }
                 case B_CODE_WK_MODE_SUB_CH_DEC:

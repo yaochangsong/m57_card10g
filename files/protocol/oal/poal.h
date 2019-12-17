@@ -34,7 +34,6 @@ typedef enum _work_mode_type {
     OAL_FAST_SCAN_MODE          = 0x01,
     OAL_MULTI_ZONE_SCAN_MODE    = 0x02,
     OAL_MULTI_POINT_SCAN_MODE   = 0x03,
-    
 }work_mode_type;
 
 /* bit_en：内部使能位定义 */

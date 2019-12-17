@@ -162,7 +162,7 @@ void dao_conf_save_batch(exec_cmd cmd, uint8_t type, s_config *config)
         
 
         case EX_WORK_MODE_CMD:
-            if(type==EX_FIXED_FREQ_ANYS_MODE)/*定频模式*/
+            if(type==OAL_FIXED_FREQ_ANYS_MODE)/*定频模式*/
             {
                 write_config_file_array(XMLFILENAME,"channel","index",temp,"cid",NULL,NULL,NULL,NULL,config->oal_config.multi_freq_point_param[config->oal_config.cid].points[0].center_freq,ARRAY);
                 write_config_file_array(XMLFILENAME,"channel","index",temp,"mediumfrequency","centerFreq","freqPoint","index",signalnum,config->oal_config.multi_freq_point_param[config->oal_config.cid].points[0].center_freq,ARRAY_ARRAY);

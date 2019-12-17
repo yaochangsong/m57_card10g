@@ -207,7 +207,7 @@ static ssize_t file_read(const char *filename, uint8_t *ptr, int n)
     printf_debug("n=%d, nleft=%llx, st_size:0x%llx, offset_size:0x%llx\n", 
         n, nleft, fr->st_size, fr->offset_size);
     if(nleft <= 0){
-        printf_note("read file over!!!!!!!!!!!!!\n");
+        printf_note("[%s]read file over!!!!!!!!!!!!!\n", filename);
         return 0;   /* read file over */
     }
     if(n > nleft){
@@ -217,7 +217,7 @@ loop:
     if((nread = readmem(ptr, n)) <= 0){
         fr->is_buffer_has_data = false;
         if(nread  == 0 && ret == 0){
-                printf_note("read file over!,total read file size:%llu Byte\n", fr->offset_size);
+                printf_note("[%s]read file over!,total read file size:%llu Byte\n", filename, fr->offset_size);
                 return 0;
         }
         ret = file_reload_buffer(filename);
@@ -231,7 +231,7 @@ loop:
     }
     fr->offset_size +=  nread;
     if(fr->offset_size >= fr->st_size){
-        printf_note("read file over!,total read file size:%llu (0x%llx)Byte\n", fr->offset_size, fr->offset_size);
+        printf_note("[%s]read file over!,total read file size:%llu (0x%llx)Byte\n", filename, fr->offset_size, fr->offset_size);
         return 0; /* read file over */
     }
     if(ret >= 0)
@@ -247,10 +247,9 @@ int file_download(struct uh_client *cl, void *arg)
     int r, i;
 
     printf_info("download:name=%s, cmd=%d\n", filename, cl->dispatch.cmd);
-    
     while (cl->us->w.data_bytes < 256) {
         r = file_read(filename, buf, sizeof(buf));
-        printf_info("r=%d\n", r);
+        printf_debug("r=%d\n", r);
         if (r < 0) {
             printf_warn("read error\n");
             if (errno == EINTR)

@@ -21,9 +21,6 @@ struct response_set_data akt_set_response_data;
 
 struct akt_protocal_param akt_config;
 
-bool akt_assamble_kernel_header_response_data(char *pbuf, work_mode wmode, void *config);
-
-
 int akt_get_device_id(void)
 {
     return 0;

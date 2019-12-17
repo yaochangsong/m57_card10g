@@ -57,7 +57,7 @@ static inline int8_t executor_wait_kernel_deal(void)
     return 0;
 }
 
-static  int8_t  executor_fragment_scan(uint32_t fregment_num,uint8_t ch, work_mode mode)
+static  int8_t  executor_fragment_scan(uint32_t fregment_num,uint8_t ch, work_mode_type mode)
 {
     struct poal_config *poal_config = &(config_get_config()->oal_config);
 
@@ -178,7 +178,7 @@ static  int8_t  executor_fragment_scan(uint32_t fregment_num,uint8_t ch, work_mo
     return 0;
 }
 
-static inline int8_t  executor_points_scan(uint8_t ch, work_mode mode)
+static inline int8_t  executor_points_scan(uint8_t ch, work_mode_type mode)
 {
     struct poal_config *poal_config = &(config_get_config()->oal_config);
     uint32_t points_count, i;
@@ -513,19 +513,6 @@ static int8_t executor_set_kernel_command(uint8_t type, uint8_t ch, void *data, 
     return 0;
 }
 
-static int8_t executor_get_rf_command(uint8_t type, uint8_t ch, void *data)
-{
-    switch(type)
-    {
-        case EX_RF_STATUS_TEMPERAT:
-            rf_read_interface(EX_RF_STATUS_TEMPERAT, ch, data);
-            break;
-        default:
-            printf_err("not support get type[%d]\n", type);
-    }
-    return 0;
-}
-
 
 int8_t executor_set_command(exec_cmd cmd, uint8_t type, uint8_t ch,  void *data, ...)
 {
@@ -588,7 +575,6 @@ int8_t executor_get_command(exec_cmd cmd, uint8_t type, uint8_t ch,  void *data)
         case EX_RF_FREQ_CMD:
         {
             rf_read_interface(type, ch, data);
-            //executor_get_rf_command(type, ch, data);
             break;
         }
         case EX_NETWORK_CMD:

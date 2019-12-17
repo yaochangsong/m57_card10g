@@ -136,6 +136,11 @@ struct calibration_source_t{
 extern    int8_t   rf_init(void);                                                      //射频初始化
 extern    uint8_t  rf_set_interface(uint8_t cmd,uint8_t ch,void *data);                 //射频设置接口
 extern    uint8_t  rf_read_interface(uint8_t cmd,uint8_t ch,void *data);                //射频查询接口
-
+extern    uint32_t get_internal_clock_cfg_array_size(void);
+extern    uint32_t get_external_clock_cfg_array_size(void);
+extern    uint32_t get_adc_cfg_array_size(void);
+extern    uint8_t clock_7044_config[][3];
+extern    uint8_t clock_7044_config_internal[][3];
+extern    uint8_t ad_9690_config[][3];
 #endif
 

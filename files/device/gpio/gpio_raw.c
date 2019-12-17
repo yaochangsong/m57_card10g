@@ -17,7 +17,7 @@
 
 struct gpio_node_info gpio_node[] ={
     /* pin   direction  default gpio value   func_code    func_name    fd */
-    {63,      "out",       0,               GPIO_FUNC_ADC,  "ADC gpio",    -1 },  /* low:  adc ; high : backtrace*/
+    {63,      "out",       0,               GPIO_FUNC_ADC,  "ADC&Backtrace gpio ctrl",    -1 },  /* low:  adc ; high : backtrace*/
 };
 
 static int gpio_export(int pin_number)
@@ -81,7 +81,7 @@ static int gpio_set_direction(int pin_number,char *direction)
 
 int gpio_raw_init(void)
 {
-    int ret = -1;
+    int ret = 0;
     struct gpio_node_info *ptr = &gpio_node;
 
     for(int i = 0; i< ARRAY_SIZE(gpio_node); i++){
@@ -90,17 +90,21 @@ int gpio_raw_init(void)
             if(gpio_set_direction(ptr[i].pin_num, ptr[i].direction) == -1){
                 printf_err("GPIO set direction: %s faild\n", ptr[i].func_name);
                 ret = -1;
-                //break;
+                continue;
             }
             if(gpio_write(ptr[i].pin_num, ptr[i].value) == -1){
                 printf_err("GPIO write: %s faild\n", ptr[i].func_name);
                 ret = -1;
-                //break;
+                continue;
             }
-            printf_note("GPIO init: %s OK\n", ptr[i].func_name);
+            printf_note("GPIO init OK[%s]\n", ptr[i].func_name);
+            if(ptr[i].func_code == GPIO_FUNC_ADC){
+                    printf_note("Mode value:%d[%s]\n",ptr[i].value, ptr[i].value == 0?"ADC Mode":"Backtrace Mode");
+            }
+
         }
     }
-    return 0;
+    return ret;
 }
 
 

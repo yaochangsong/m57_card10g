@@ -697,6 +697,7 @@ void executor_timer_task_init(void)
         printf_note("timer task: fft data send opened:%d\n", is_spectrum_continuous_mode());
         task1_timeout.cb = executor_timer_task1_cb;
         uloop_timeout_set(&task1_timeout, 2000); /* 5000 ms */
+        printf_note("executor_timer_task ok\n");
     }else{
         printf_note("timer task: fft data send shutdown:%d\n", is_spectrum_continuous_mode());
     }

@@ -15,6 +15,9 @@
 #include "config.h"
 #include "spi.h"
 
+pthread_mutex_t spi_mutex = PTHREAD_MUTEX_INITIALIZER;
+
+
 struct rf_spi_cmd_info spi_cmd[] ={
     /* setcmd                 get cmd              send data byte len    receive data(&status) byte len */
     {SPI_RF_FREQ_SET,              SPI_RF_FREQ_GET,                 5,                    7 },
@@ -30,9 +33,11 @@ struct rf_spi_cmd_info spi_cmd[] ={
 
 
 struct rf_spi_node_info spi_node[] ={
-    /* name path                 function    pin  spifd  pinfd */
-    {"/dev/spidev32765.0",     SPI_FUNC_RF,  8,   -1      -1  },
-    {NULL, -1               -1,   -1      -1  },
+    /* name path               function code    pin  spifd      pinfd  info */
+    {"/dev/spidev32765.0",     SPI_FUNC_RF,     8,   -1,      -1,  "spi rf"},
+    {"/dev/spidev32766.0",     SPI_FUNC_CLOCK,  8,   -1,      -1,  "spi clock 7044 chip"},
+    {"/dev/spidev32766.1",     SPI_FUNC_AD,     8,   -1,      -1,  "spi ad 9690 chip"},
+    {NULL,                     -1              -1,   -1,      -1,  NULL},
 };
 
 static uint8_t spi_checksum(uint8_t *buffer,uint8_t len){
@@ -70,24 +75,27 @@ int spi_send_data(int spi_fd, uint8_t *send_buffer, size_t send_len,
 {
     struct spi_ioc_transfer xfer[2];
     int ret = -1;
-    return 0;
+    
     memset(xfer, 0, sizeof(xfer));
-    memset(recv_buffer, 0, recv_len);
+    if((recv_len > 0) && (recv_buffer != NULL)){
+        memset(recv_buffer, 0, recv_len);
+    }
 
     xfer[0].tx_buf = (unsigned long) send_buffer;
     xfer[0].len = send_len;
     xfer[0].delay_usecs = 2;
-    if(recv_len >0){
+    if((recv_len > 0) && (recv_buffer != NULL)){
         xfer[1].rx_buf = (unsigned long) recv_buffer;
         xfer[1].len = recv_len;
         xfer[1].delay_usecs = 2;
     }
-     if(recv_len >0){
+    if((recv_len > 0) && (recv_buffer != NULL)){
         ret = ioctl(spi_fd, SPI_IOC_MESSAGE(2), xfer);
-    
     }else{
         ret = ioctl(spi_fd, SPI_IOC_MESSAGE(1), xfer);
     }
+    if(ret < 0)
+        printf_err("spi send error\n");
     return ret;
 }
 
@@ -109,9 +117,10 @@ int spi_init(void)
                 printf_err("can't set max speed hz\n");
                 continue;
             }
-            printf_note("spi[%s]max speed: %d Hz (%d KHz)\n", ptr[i].name, speed, speed/1000);
+            printf_note("spi[%s, %s][fd=%d]max speed: %d Hz (%d KHz)\n", ptr[i].name, ptr[i].info,ptr[i].fd, speed, speed/1000);
         }
     }
+    return 0;
 }
 
 
@@ -229,5 +238,117 @@ ssize_t spi_rf_get_command(rf_spi_get_cmd_code cmd, void *data)
         return -1;
     return 0;
 }
+
+int spi_clock_init(void)
+{
+    uint8_t send_buf[8];
+    int spi_fd, ret =0;
+    int found = 0, index = 0;
+    uint32_t array_len = 3;
+    bool internal_clock = config_get_is_internal_clock();
+    
+    for(int i = 0; i< ARRAY_SIZE(spi_node); i++){
+        if(spi_node[i].func_code == SPI_FUNC_CLOCK){
+            spi_fd = spi_node[i].fd;
+            index = i;
+            found = 1;
+        }
+    }
+    if(found == 0 || spi_fd == -1){
+        printf_err("SPI CLOCK init Faild!\n");
+        return -1;
+    }
+
+    send_buf[0] = 0x0;
+    send_buf[1] = 0x0;
+    send_buf[2] = 0x01;
+    ret = spi_send_data(spi_fd, send_buf, array_len, NULL, 0);
+    usleep(50000);
+
+    send_buf[0] = 0x0;
+    send_buf[1] = 0x0;
+    send_buf[2] = 0x00;
+    ret = spi_send_data(spi_fd, send_buf, array_len, NULL, 0);
+    usleep(50000);
+
+    if(internal_clock){
+        for(int i=0; i<get_internal_clock_cfg_array_size(); i++){
+             memcpy(send_buf,clock_7044_config_internal[i],array_len);
+             ret = spi_send_data(spi_fd, send_buf, array_len, NULL, 0);
+         }
+        send_buf[0] = 0x0;
+        send_buf[1] = 0xb0;
+        send_buf[2] = 0x04;
+        ret = spi_send_data(spi_fd, send_buf, array_len, NULL, 0);
+        usleep(10000);
+    }else{
+        for(int i=0; i<get_external_clock_cfg_array_size(); i++){
+            memcpy(send_buf,clock_7044_config[i],array_len);
+            ret = spi_send_data(spi_fd, send_buf, array_len, NULL, 0);
+        }
+    }
+    send_buf[0] = 0x0;
+    send_buf[1] = 0x01;
+    send_buf[2] = 0x62;
+    ret = spi_send_data(spi_fd, send_buf, array_len, NULL, 0);
+
+    send_buf[0] = 0x0;
+    send_buf[1] = 0x01;
+    send_buf[2] = 0x60;
+    ret = spi_send_data(spi_fd, send_buf, array_len, NULL, 0);
+    usleep(5000);
+
+    send_buf[0] = 0x0;
+    send_buf[1] = 0x01;
+    send_buf[2] = 0xe0;
+    ret = spi_send_data(spi_fd, send_buf, array_len, NULL, 0);
+    usleep(100);
+    
+    send_buf[0] = 0x0;
+    send_buf[1] = 0x01;
+    send_buf[2] = 0x60;
+    ret = spi_send_data(spi_fd, send_buf, array_len, NULL, 0);
+    usleep(100);
+    
+    printf_note("[%s]SPI CLOCK init OK![%s] Clock\n",  spi_node[index].info, internal_clock== true ? "Internal" : "External");
+    return ret;
+}
+
+int spi_adc_init(void)
+{
+    
+    uint8_t send_buf[8];
+    int spi_fd, ret =0;
+    int found = 0, index = 0;
+    uint32_t array_len = 3;
+    
+    for(int i = 0; i< ARRAY_SIZE(spi_node); i++){
+        if(spi_node[i].func_code == SPI_FUNC_AD){
+            spi_fd = spi_node[i].fd;
+            index = i;
+            found = 1;
+        }
+    }
+    if(found == 0 || spi_fd == -1){
+        printf_err("SPI ADC init Faild!\n");
+        return -1;
+    }
+    printf_note("SPI ADC spi_fd=%d\n", spi_fd);
+
+    send_buf[0] = 0x0;
+    send_buf[1] = 0x0;
+    send_buf[2] = 0x81;
+    ret = spi_send_data(spi_fd, send_buf, array_len, NULL, 0);
+    usleep(10000);
+
+    for(int i=0; i<get_adc_cfg_array_size(); i++){
+        memcpy(send_buf,ad_9690_config[i],array_len);
+        printfd("0x%02x 0x%02x 0x%02x\n",  send_buf[0], send_buf[1], send_buf[2]);
+        ret = spi_send_data(spi_fd, send_buf, array_len, NULL, 0);
+    }
+    printf_note("[%s]SPI ADC init OK!\n",  spi_node[index].info);
+    return ret;
+}
+
 
 

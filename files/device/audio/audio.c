@@ -146,9 +146,9 @@ void AudioPllConfig(void ) {
     while(retry++<100){
         read_i2c_register_for_adau1761(i2c_fd,slave_addr,0x02,u8RxData,6);
         if((u8RxData[5] & 0x02) == 0){
-            printf("pll no lock\n");
+            printf_debug("pll no lock\n");
         }else{
-            printf("pll lock\n");
+            printf_debug("pll lock\n");
             break;
         }
         usleep(1000);

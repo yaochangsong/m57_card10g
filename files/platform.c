@@ -113,6 +113,7 @@ int main(int argc, char **argv)
 #ifdef SUPPORT_UART
     uart_init();
 #endif
+    gpio_raw_init();
 #ifdef SUPPORT_PROJECT_SSA
     gpio_init_control();
 #endif

@@ -42,6 +42,8 @@ typedef enum _rf_spi_set_cmd{
 
 typedef enum _spi_func_code{
     SPI_FUNC_RF = 0x01,
+    SPI_FUNC_CLOCK,
+    SPI_FUNC_AD,
 }spi_func_code;
 
 
@@ -51,6 +53,7 @@ struct rf_spi_node_info{
     int pin_cs;
     int fd;
     int pin_fd;
+    char *info;
 };
 struct rf_spi_cmd_info{
     rf_spi_set_cmd_code scode;
@@ -59,7 +62,20 @@ struct rf_spi_cmd_info{
     size_t recv_byte_len;/* SPI接收数据(包括状态等字节)字节长度 */
 };
 
+extern pthread_mutex_t spi_mutex;
+
+#define LOCK_SPI() do { \
+	pthread_mutex_lock(&spi_mutex); \
+} while (0)
+
+#define UNLOCK_SPI() do { \
+	pthread_mutex_unlock(&spi_mutex); \
+} while (0)
+
+
 extern int spi_init(void);
+extern int spi_adc_init(void);
+extern int spi_clock_init(void);
 extern ssize_t spi_rf_get_command(rf_spi_get_cmd_code cmd, void *data);
 extern ssize_t spi_rf_set_command(rf_spi_set_cmd_code cmd, void *data);
 #endif

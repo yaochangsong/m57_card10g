@@ -680,6 +680,14 @@ typedef struct  _SEARCH_FILE_STATUS_RSP_ST{
 }__attribute__ ((packed)) SEARCH_FILE_STATUS_RSP_ST; 
 
 
+typedef struct  _CALIBRATION_SOURCE_ST{
+    uint8_t cid;
+    uint8_t enable;
+    uint64_t middle_freq_hz;
+    int8_t power;
+}__attribute__ ((packed)) CALIBRATION_SOURCE_ST; 
+
+
 /*************************************************************************/
 #define check_radio_channel(ch)   (ch > MAX_RADIO_CHANNEL_NUM ? 1 : 0) 
 #define check_sub_channel(sub_ch) (sub_ch > MAX_SIGNAL_CHANNEL_NUM ? 1 : 0) 

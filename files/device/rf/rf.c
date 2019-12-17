@@ -1148,7 +1148,7 @@ uint8_t rf_set_interface(uint8_t cmd,uint8_t ch,void *data){
             gpio_select_rf_channel(*(uint64_t*)data);
             adrv9009_iio_set_freq(*(uint64_t*)data);
 #elif defined(SUPPORT_RF_SPI)
-            uint64_t host_freq=htobe64(old_freq) >> 24;
+            uint64_t host_freq=htobe64(old_freq) >> 24; //小端转大端（文档中心频率为大端字节序列，5个字节）
             ret = spi_rf_set_command(SPI_RF_FREQ_SET, &host_freq);
 #else
             ret = send_freq_set_cmd(ch,*(uint64_t*)data);//设置射频频率
@@ -1219,6 +1219,20 @@ uint8_t rf_set_interface(uint8_t cmd,uint8_t ch,void *data){
             #endif
         #endif
             break; 
+        }
+        case EX_RF_CALIBRATE:
+        {
+            CALIBRATION_SOURCE_ST *akt_cs;
+            struct calibration_source_t cs;
+            akt_cs = (CALIBRATION_SOURCE_ST *)data;
+            cs.source = akt_cs->enable;
+            cs.middle_freq_mhz = akt_cs->middle_freq_hz/1000000;
+            cs.power = (float)akt_cs->power;
+            printf_note("source=%d, middle_freq_mhz=%uMhz, power=%f\n", cs.source, cs.middle_freq_mhz, cs.power);
+#if defined(SUPPORT_RF_SPI)
+            ret = spi_rf_set_command(SPI_RF_CALIBRATE_SOURCE_SET, &cs);
+#endif
+            break;
         }
  #if 0
         case EX_RF_AGC_FREQUENCY :{

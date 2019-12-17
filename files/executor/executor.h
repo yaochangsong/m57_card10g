@@ -100,6 +100,7 @@ enum {
     EX_RF_STATUS_TEMPERAT,         /*射频温度*/
     EX_RF_AGC_FREQUENCY,          /*AGC 频率设置*/
     EX_RF_AGC_BW,                 /*AGC 带宽设置*/
+    EX_RF_CALIBRATE,              /*校正*/
 };
 
 /* network paramters */

@@ -600,6 +600,15 @@ static int akt_execute_set_command(void)
         }
         case SYSTEM_TIME_SET_REQ:
             break;       
+        case DEVICE_CALIBRATE_CMD:
+        {
+            CALIBRATION_SOURCE_ST cal_source;
+            check_valid_channel(header->buf[0]);
+            memcpy(&cal_source, header->buf, sizeof(CALIBRATION_SOURCE_ST));
+            printf_note("RF calibrate: cid=%d, enable=%d, middle_freq_hz=%uhz, power=%d\n", 
+                cal_source.cid, cal_source.enable, cal_source.middle_freq_hz, cal_source.power);
+            executor_set_command(EX_RF_FREQ_CMD, EX_RF_CALIBRATE, ch, &cal_source);
+        }
         /* disk cmd */
         case STORAGE_IQ_CMD:
         {

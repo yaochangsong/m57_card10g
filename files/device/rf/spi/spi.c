@@ -24,6 +24,7 @@ struct rf_spi_cmd_info spi_cmd[] ={
     {SPI_RF_GAIN_CALIBRATE_SET,    SPI_RF_GAIN_CALIBRATE_GET,       0,                    1 },
     {SPI_RF_MIDFREQ_GAIN_SET,      SPI_RF_MIDFREQ_GAIN_GET,         1,                    2 },
     {-1,                           SPI_RF_TEMPRATURE_GET,           0,                    3 },
+    {SPI_RF_CALIBRATE_SOURCE_SET,  -1,                              9,                   10 }
     
 };
 
@@ -165,7 +166,7 @@ ssize_t spi_rf_set_command(rf_spi_set_cmd_code cmd, void *data)
     if(found == 0 || spi_fd == -1){
         return -1;
     }
-    printf_warn("send frame buffer[%d]:", frame_size);
+    printf_note("send frame buffer[%d]:", frame_size);
     for(int i = 0; i< frame_size; i++)
         printfn("%02x ", frame_buffer[i]);
     printfn("\n");
@@ -173,7 +174,7 @@ ssize_t spi_rf_set_command(rf_spi_set_cmd_code cmd, void *data)
     if(ret != 0){
         return NULL;
     }
-    printf_warn("receive data buffer[%d]:", recv_size);
+    printf_note("receive data buffer[%d]:", recv_size);
     for(int i = 0; i< recv_size; i++)
         printfn("0x%x ", recv_buffer[i]);
     printfn("\n");

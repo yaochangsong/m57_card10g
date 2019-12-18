@@ -480,10 +480,10 @@ static int8_t executor_set_kernel_command(uint8_t type, uint8_t ch, void *data, 
         }
         case EX_FPGA_CALIBRATE:
         {
-            uint32_t  value = 0;
+            int32_t  value = 0;
             value = config_get_fft_calibration_value(config_get_fft_size(ch));
-            printf_note("ch:%d, fft calibration value:%u\n", ch, value);
-            io_set_calibrate_val(ch, value);
+            printf_note("ch:%d, fft calibration value:%d\n", ch, value);
+            io_set_calibrate_val(ch, (uint32_t)value);
             break;
         }
         case EX_SUB_CH_ONOFF:

@@ -116,9 +116,8 @@ int32_t  config_get_fft_calibration_value(uint32_t fft_size)
 
         }
     }
-    printf_warn("cal_value=%d\n",cal_value);
     cal_value += poal_config->cal_level.specturm.global_roughly_power_lever;
-    printf_warn("cal_value=%d\n",cal_value);
+    printf_note("cal_value=%d\n",cal_value);
     if(found){
         printf_debug("find the fft_mgc calibration value: %d\n",cal_value);
     }else{
@@ -318,6 +317,11 @@ int8_t config_read_by_cmd(exec_cmd cmd, uint8_t type, uint8_t ch, void *data)
                 case EX_MID_FREQ:
                     *(uint64_t *)data = poal_config->multi_freq_point_param[ch].points[0].center_freq;
                     break;
+                case EX_BANDWITH:
+                {
+                    *(uint32_t *)data = poal_config->multi_freq_point_param[ch].points[0].bandwidth;
+                    break;
+                }
                 default:
                     printf_err("not surpport type\n");
                     return -1;

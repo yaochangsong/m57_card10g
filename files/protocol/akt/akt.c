@@ -611,14 +611,24 @@ static int akt_execute_set_command(void)
         {
             int ret = 0;
             STORAGE_IQ_ST  sis;
+            uint32_t max_bandwidth = 0;
             check_valid_channel(header->buf[0]);
             memcpy(&sis, header->buf, sizeof(STORAGE_IQ_ST));
             if(sis.cmd == 1){/* start add iq file */
                 printf_note("Start add file:%s\n", sis.filepath);
+                /* 开始存储前，中频带宽设置到最大射频工作带宽，以便存储速度到达最快 */
+                config_read_by_cmd(EX_RF_FREQ_CMD, EX_RF_MID_BW,ch, &max_bandwidth);
+                printf_note("set max bandwidth:%uHz\n", max_bandwidth);
+                executor_set_command(EX_MID_FREQ_CMD, EX_BANDWITH, ch, &max_bandwidth);
+                /* 开始存储 */
                 ret = io_start_save_file(sis.filepath);
             }else if(sis.cmd == 0){/* stop add iq file */
                 printf_note("Stop add file:%s\n", sis.filepath);
                 ret = io_stop_save_file(sis.filepath);
+                /* 中频带宽设置恢复到中频带宽初始值，定频模式下的中频带宽 */
+                config_read_by_cmd(EX_MID_FREQ_CMD, EX_BANDWITH,ch, &max_bandwidth);
+                printf_note("restore bandwidth:%uHz\n", max_bandwidth);
+                executor_set_command(EX_MID_FREQ_CMD, EX_BANDWITH, ch, &max_bandwidth);
             }else{
                 printf_err("error cmd\n");
                 err_code = RET_CODE_PARAMTER_ERR;

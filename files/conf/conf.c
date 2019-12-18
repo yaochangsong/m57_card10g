@@ -83,6 +83,51 @@ bool config_get_is_internal_clock(void)
     return true;
 }
 
+uint32_t  config_get_fft_size(uint8_t ch)
+{
+    uint32_t fftsize = 0;
+    uint8_t mode; 
+    struct poal_config *poal_config = &(config_get_config()->oal_config);
+    mode = poal_config->work_mode;
+    if((mode == OAL_FAST_SCAN_MODE) || (mode == OAL_MULTI_ZONE_SCAN_MODE)){
+        fftsize = poal_config->multi_freq_fregment_para[ch].fregment[0].fft_size;
+    }else{
+        fftsize = poal_config->multi_freq_point_param[ch].points[0].fft_size;
+    }
+    if(fftsize == 0){
+        printf_warn("fftsize %u not set!!!\n",fftsize);
+    }
+    printf_note("fftsize:%u\n",fftsize);
+    return fftsize;
+}
+
+int32_t  config_get_fft_calibration_value(uint32_t fft_size)
+{
+    struct poal_config *poal_config = &(config_get_config()->oal_config);
+    int i;
+    int32_t cal_value=0,found = 0;
+    for(i=0;i<sizeof(poal_config->cal_level.cali_fft.fftsize)/sizeof(uint32_t);i++)
+    {
+        if(fft_size==poal_config->cal_level.cali_fft.fftsize[i])
+        {
+            cal_value=poal_config->cal_level.cali_fft.cali_value[i];
+            found=1;
+            break;
+
+        }
+    }
+    printf_warn("cal_value=%d\n",cal_value);
+    cal_value += poal_config->cal_level.specturm.global_roughly_power_lever;
+    printf_warn("cal_value=%d\n",cal_value);
+    if(found){
+        printf_debug("find the fft_mgc calibration value: %d\n",cal_value);
+    }else{
+        
+        printf_debug("Not find fft_mgc calibration level, use default value\n");
+    }
+    return cal_value;
+}
+
 /******************************************************************************
 * FUNCTION:
 *     config_save_batch

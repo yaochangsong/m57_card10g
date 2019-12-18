@@ -480,14 +480,10 @@ static int8_t executor_set_kernel_command(uint8_t type, uint8_t ch, void *data, 
         }
         case EX_FPGA_CALIBRATE:
         {
-            struct poal_config *poal_config = &(config_get_config()->oal_config);
-            uint32_t cal;
-            if(data == NULL){
-                cal = poal_config->cal_level.specturm.global_roughly_power_lever;
-            }else{
-                cal = *(uint32_t *)data;
-            }
-            io_set_calibrate_val(ch, cal);
+            uint32_t  value = 0;
+            value = config_get_fft_calibration_value(config_get_fft_size(ch));
+            printf_note("ch:%d, fft calibration value:%u\n", ch, value);
+            io_set_calibrate_val(ch, value);
             break;
         }
         case EX_SUB_CH_ONOFF:

@@ -280,6 +280,11 @@ struct calibration_low_noise_info_st{
 };//__attribute__ ((packed));
 
 
+struct calibration_fft_st{
+    uint32_t  fftsize[8];
+    int32_t   cali_value[8];
+};
+
 
 struct calibration_info_st{
     struct calibration_specturm_info_st specturm;
@@ -287,6 +292,7 @@ struct calibration_info_st{
     struct calibration_low_noise_info_st low_noise;
     struct calibration_lo_leakage_info_st lo_leakage;
     struct calibration_mgc_info_st mgc;
+    struct calibration_fft_st cali_fft;
 };//__attribute__ ((packed));
 
 

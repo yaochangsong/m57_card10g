@@ -1076,6 +1076,21 @@ void read_calibration_file(mxml_node_t *root, void *config)
         printf_debug("mgc.end_freq[%d] = %uKHz\n",i, cali_config->mgc.end_freq_khz[i]);
         printf_debug("mgc.gain_val[%d] = %d\n",i, cali_config->mgc.gain_val[i]);
     }
+    /* fft calibration */
+    for(int i = 0; i<sizeof(cali_config->cali_fft.fftsize)/sizeof(uint32_t); i++){
+        sprintf(indexvalue, "%d", i);
+        if(dao_read_array_data(root, "fft_calibration", "index", indexvalue, 
+                                         "fft_size",  &cali_config->cali_fft.fftsize[i], DDATA_U32) == -1)
+                break;
+        if(dao_read_array_data(root, "fft_calibration", "index", indexvalue, 
+                                        "value",  &cali_config->cali_fft.cali_value[i], DDATA_I32) == -1)
+                break;
+
+                
+        printf_debug("fft_calibration.fftsize[%d] = %u\n",i, cali_config->cali_fft.fftsize[i]);
+        printf_debug("fft_calibration.value[%d] = %d\n",i, cali_config->cali_fft.cali_value[i]);
+
+    }
 }
 
 void read_scan_param_info(mxml_node_t *root, void *config)

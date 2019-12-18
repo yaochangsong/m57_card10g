@@ -1,5 +1,4 @@
 <?xml version="1.0" encoding="utf-8"?>
-
 <root>
   <version>1.0</version>
   <network>
@@ -7,15 +6,15 @@
     <gateway>192.168.1.1</gateway>
     <netmask>255.255.255.0</netmask>
     <ipaddress>192.168.1.111</ipaddress>
-    <port>1325</port>
+    <port>1234</port>
   </network>
   <controlPara>
     <ctrlMode>1</ctrlMode>
     <calibration>1</calibration>
     <timeSet>1</timeSet>
     <spectrum_time_interval>200</spectrum_time_interval>
-	<bandwidthRemoteCtrl>1</bandwidthRemoteCtrl>
-	<internalClock>1</internalClock>
+    <bandwidthRemoteCtrl>1</bandwidthRemoteCtrl>
+    <internalClock>1</internalClock>
     <dataOutPutEn>
       <enable>1</enable>
       <subChannel>-1</subChannel>
@@ -63,73 +62,100 @@
     <fileDelete>1</fileDelete>
     <fileStrategy>1</fileStrategy>
   </fileStorePara>
-  <calibration psd_power="1800" analysis_power="-195" low_noise_power="-100"  lo_leakage_threshold="40" lo_leakage_renew_data_len="0" mgc_gain="4">
-	<lo_leakage index="0">
-		<fft_size>256</fft_size>
-		<threshold>0</threshold>
-		<renew_data_len>2</renew_data_len>
-	</lo_leakage>
-	<lo_leakage index="1">
-		<fft_size>512</fft_size>
-		<threshold>0</threshold>
-		<renew_data_len>3</renew_data_len>
-	</lo_leakage>
-	<lo_leakage index="2">
-		<fft_size>1024</fft_size>
-		<threshold>0</threshold>
-		<renew_data_len>4</renew_data_len>
-	</lo_leakage>
-	<lo_leakage index="3">
-		<fft_size>2048</fft_size>
-		<threshold>0</threshold>
-		<renew_data_len>5</renew_data_len>
-	</lo_leakage>
-	<lo_leakage index="4">
-		<fft_size>4096</fft_size>
-		<threshold>0</threshold>
-		<renew_data_len>6</renew_data_len>
-	</lo_leakage>
-	<lo_leakage index="5">
-		<fft_size>8192</fft_size>
-		<threshold>0</threshold>
-		<renew_data_len>6</renew_data_len>
-	</lo_leakage>
-	<mgc index="0">
-		<start_requency>1050000</start_requency>
-		<end_requency>1250000</end_requency>
-		<gain>0</gain>
-	</mgc>
-        <mgc index="1">
-                <start_requency>1250000</start_requency>
-                <end_requency>1450000</end_requency>
-                <gain>0</gain>
-        </mgc>
-        <mgc index="2">
-                <start_requency>1450000</start_requency>
-                <end_requency>1850000</end_requency>
-                <gain>0</gain>
-        </mgc>  
-        <mgc index="3">
-                <start_requency>1850000</start_requency>
-                <end_requency>2050000</end_requency> 
-                <gain>0</gain>
-        </mgc>
-        <mgc index="4">                                 
-                <start_requency>2050000</start_requency>
-                <end_requency>2150000</end_requency>     
-                <gain>0</gain>                           
-        </mgc>
+  <calibration psd_power="1510" analysis_power="-195" low_noise_power="-100" lo_leakage_threshold="40" lo_leakage_renew_data_len="0" mgc_gain="4">
+    <fft_calibration index="0">
+      <fft_size>512</fft_size>
+      <value>10</value>
+    </fft_calibration>
+    <fft_calibration index="1">
+      <fft_size>1024</fft_size>
+      <value>11</value>
+    </fft_calibration>
+    <fft_calibration index="2">
+      <fft_size>2048</fft_size>
+      <value>12</value>
+    </fft_calibration>
+    <fft_calibration index="3">
+      <fft_size>4096</fft_size>
+      <value>13</value>
+    </fft_calibration>
+    <fft_calibration index="4">
+      <fft_size>8192</fft_size>
+      <value>14</value>
+    </fft_calibration>
+    <fft_calibration index="5">
+      <fft_size>16384</fft_size>
+      <value>15</value>
+    </fft_calibration>
+    <fft_calibration index="6">
+      <fft_size>32768</fft_size>
+      <value>16</value>
+    </fft_calibration>
+    <lo_leakage index="0">
+      <fft_size>256</fft_size>
+      <threshold>0</threshold>
+      <renew_data_len>2</renew_data_len>
+    </lo_leakage>
+    <lo_leakage index="1">
+      <fft_size>512</fft_size>
+      <threshold>0</threshold>
+      <renew_data_len>3</renew_data_len>
+    </lo_leakage>
+    <lo_leakage index="2">
+      <fft_size>1024</fft_size>
+      <threshold>0</threshold>
+      <renew_data_len>4</renew_data_len>
+    </lo_leakage>
+    <lo_leakage index="3">
+      <fft_size>2048</fft_size>
+      <threshold>0</threshold>
+      <renew_data_len>5</renew_data_len>
+    </lo_leakage>
+    <lo_leakage index="4">
+      <fft_size>4096</fft_size>
+      <threshold>0</threshold>
+      <renew_data_len>6</renew_data_len>
+    </lo_leakage>
+    <lo_leakage index="5">
+      <fft_size>8192</fft_size>
+      <threshold>0</threshold>
+      <renew_data_len>6</renew_data_len>
+    </lo_leakage>
+    <mgc index="0">
+      <start_requency>1050000</start_requency>
+      <end_requency>1250000</end_requency>
+      <gain>0</gain>
+    </mgc>
+    <mgc index="1">
+      <start_requency>1250000</start_requency>
+      <end_requency>1450000</end_requency>
+      <gain>0</gain>
+    </mgc>
+    <mgc index="2">
+      <start_requency>1450000</start_requency>
+      <end_requency>1850000</end_requency>
+      <gain>0</gain>
+    </mgc>
+    <mgc index="3">
+      <start_requency>1850000</start_requency>
+      <end_requency>2050000</end_requency>
+      <gain>0</gain>
+    </mgc>
+    <mgc index="4">
+      <start_requency>2050000</start_requency>
+      <end_requency>2150000</end_requency>
+      <gain>0</gain>
+    </mgc>
     <psd_power index="0">
-	<start_requency>0</start_requency>
-	<end_requency>0</end_requency>
-	<level>0</level>
+      <start_requency>0</start_requency>
+      <end_requency>0</end_requency>
+      <level>0</level>
     </psd_power>
-
     <analysis_power index="0">
-	<start_requency>0</start_requency>
-	<end_requency>0</end_requency>
-	<level>0</level>
-    </analysis_power>   
+      <start_requency>0</start_requency>
+      <end_requency>0</end_requency>
+      <level>0</level>
+    </analysis_power>
   </calibration>
   <channel index="0">
     <cid>1</cid>
@@ -155,25 +181,25 @@
       <rfAttenuation>0</rfAttenuation>
       <temprature>50</temprature>
     </radiofrequency>
-	<workMode>
-		<scanMode>
-			<scanBindWidthInfo index="0"  fixed = "0">
-				<bindWidth>200000000</bindWidth>
-				<sideBandRate>1.2288</sideBandRate>
-			</scanBindWidthInfo>
-			<scanBindWidthInfo index="1">
-				<bindWidth>160000000</bindWidth>
-				<sideBandRate>1.28</sideBandRate>
-			</scanBindWidthInfo>
-			<scanBindWidthInfo index="2">
-				<bindWidth>80000000</bindWidth>
-				<sideBandRate>1.28</sideBandRate>
-			</scanBindWidthInfo>
-			<scanBindWidthInfo index="3">
-				<bindWidth>40000000</bindWidth>
-				<sideBandRate>1.28</sideBandRate>
-			</scanBindWidthInfo>
-		</scanMode>
-	</workMode>
+    <workMode>
+      <scanMode>
+        <scanBindWidthInfo index="0" fixed="0">
+          <bindWidth>200000000</bindWidth>
+          <sideBandRate>1.2288</sideBandRate>
+        </scanBindWidthInfo>
+        <scanBindWidthInfo index="1">
+          <bindWidth>160000000</bindWidth>
+          <sideBandRate>1.28</sideBandRate>
+        </scanBindWidthInfo>
+        <scanBindWidthInfo index="2">
+          <bindWidth>80000000</bindWidth>
+          <sideBandRate>1.28</sideBandRate>
+        </scanBindWidthInfo>
+        <scanBindWidthInfo index="3">
+          <bindWidth>40000000</bindWidth>
+          <sideBandRate>1.28</sideBandRate>
+        </scanBindWidthInfo>
+      </scanMode>
+    </workMode>
   </channel>
 </root>

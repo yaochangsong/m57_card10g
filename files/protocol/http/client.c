@@ -239,11 +239,11 @@ static void uh_handle_request(struct uh_client *cl)
         }
     }
     if(cl->dispatch.cmd == 0){
-         printf_warn("handle_file_request blk act=%d\n", cl->dispatch.cmd);
+         printf_info("handle_file_request blk act=%d\n", cl->dispatch.cmd);
         if (handle_file_request(cl, path))
             return;
     }else{
-         printf_warn("path = %s, blk act=%d\n", path, cl->dispatch.cmd);
+         printf_info("path = %s, blk act=%d\n", path, cl->dispatch.cmd);
          if(http_requset_handle_cmd(cl, path)){
             return;
          }
@@ -520,7 +520,7 @@ static bool client_header_cb(struct uh_client *cl, char *buf, int len)
     client_parse_header(cl, buf);
     line_len = newline + 2 - buf;
     ustream_consume(cl->us, line_len);
-    printf_warn("cl->state=%d,%d\n", cl->state, CLIENT_STATE_DATA);
+    printf_info("cl->state=%d,%d\n", cl->state, CLIENT_STATE_DATA);
     if (cl->state == CLIENT_STATE_DATA)
         return client_data_cb(cl, newline + 2, len - line_len);
 

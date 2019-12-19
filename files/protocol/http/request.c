@@ -67,13 +67,13 @@ ssize_t http_request_fill_path_info(struct uh_client *cl, const char *filename, 
     if(filename == NULL){
         return -1;
     }
-    printf_warn("filename=%s\n", filename);
+    printf_info("filename=%s\n", filename);
     /* get file info */
     ret = file_read_attr_info(filename, (void *)&fi);
     if((ret = http_err_code_check(ret)) != 0){
         return ret;
     }  
-    printf_warn("ret =%d,file_path=%s, st_ctime=%s, st_blocks=%x,st_blksize=%x,st_size=%llx\n", 
+    printf_note("ret =%d,file_path=%s, st_ctime=%s, st_blocks=%x,st_blksize=%x,st_size=%llx\n", 
         ret, fi.file_path, asctime(gmtime(&fi.ctime)), fi.st_blocks,fi.st_blksize,fi.st_size);
 
     p = pi;

@@ -181,7 +181,7 @@ int file_read_attr(const char *filename)
     if(http_err_code_check(ret)== -1){
         return -1;
     }
-    printf_warn("file_path:%s,buffer_len:0x%x,st_size=0x%llx, st_blocks=%x\n", 
+    printf_note("file_path:%s,buffer_len:0x%x,st_size=0x%llx, st_blocks=%x\n", 
                 fi.file_path,fi.buffer_rx_len,fi.st_size, fi.st_blocks);
     strcpy(fr->file_path,fi.file_path);
     fr->read_buffer_pointer = file_get_read_buffer_pointer();
@@ -207,7 +207,7 @@ static ssize_t file_read(const char *filename, uint8_t *ptr, int n)
     printf_debug("n=%d, nleft=%llx, st_size:0x%llx, offset_size:0x%llx\n", 
         n, nleft, fr->st_size, fr->offset_size);
     if(nleft <= 0){
-        printf_note("[%s]read file over!!!!!!!!!!!!!\n", filename);
+        printf_note("[%s]read file over,total read file size:%llu (0x%llx)Byte\n", filename, fr->offset_size, fr->offset_size);
         return 0;   /* read file over */
     }
     if(n > nleft){
@@ -217,7 +217,7 @@ loop:
     if((nread = readmem(ptr, n)) <= 0){
         fr->is_buffer_has_data = false;
         if(nread  == 0 && ret == 0){
-                printf_note("[%s]read file over!,total read file size:%llu Byte\n", filename, fr->offset_size);
+                printf_note("[%s]read file over,total read file size:%llu Byte\n", filename, fr->offset_size);
                 return 0;
         }
         ret = file_reload_buffer(filename);
@@ -230,8 +230,8 @@ loop:
         }
     }
     fr->offset_size +=  nread;
-    if(fr->offset_size >= fr->st_size){
-        printf_note("[%s]read file over!,total read file size:%llu (0x%llx)Byte\n", filename, fr->offset_size, fr->offset_size);
+    if(fr->offset_size > fr->st_size){
+        printf_note("[%s]read file over,total read file size:%llu (0x%llx)Byte\n", filename, fr->offset_size, fr->offset_size);
         return 0; /* read file over */
     }
     if(ret >= 0)
@@ -258,7 +258,7 @@ int file_download(struct uh_client *cl, void *arg)
         }
 
         if (r <= 0) {
-            printf_warn("request_done:%d\n", cl->us->w.data_bytes);
+            printf_note("request_done:%d\n", cl->us->w.data_bytes);
             cl->request_done(cl);
             return 0;
         }

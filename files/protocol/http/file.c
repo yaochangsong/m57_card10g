@@ -80,7 +80,11 @@ static const struct mimetype uh_mime_types[] = {
 
     { "mp3",     "audio/mpeg" },
     { "ogg",     "audio/x-vorbis+ogg" },
-    { "wav",     "audio/x-wav" },
+    /* NOTE: In order to avoid the problem of directly playing wav in different browsers, 
+                the wav format download here is changed to tar format  
+        Modified by ycs*/
+    { "wav",     "application/x-tar" },
+    //{ "wav",     "audio/x-wav" },
 
     { "mpg",     "video/mpeg" },
     { "mpeg",    "video/mpeg" },

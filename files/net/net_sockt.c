@@ -171,13 +171,14 @@ bool tcp_find_client(struct sockaddr_in *addr)
     return false;
 }
 
-bool tcp_add_addr_to_udp_by_port(int port)
+bool tcp_add_addr_to_udp_by_port(int port, struct sockaddr_in *tcp_cli)
 {
     struct net_tcp_client *cl_list, *list_tmp;
     struct sockaddr_in client;
     list_for_each_entry_safe(cl_list, list_tmp, &g_srv->clients, list){
         client.sin_port = port;
         client.sin_addr.s_addr =cl_list->peer_addr.sin_addr.s_addr; 
+        memcpy(tcp_cli, &client, sizeof(struct sockaddr_in));
         udp_add_client(&client);
     }
     return true;

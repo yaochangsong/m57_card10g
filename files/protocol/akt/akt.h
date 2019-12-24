@@ -178,7 +178,10 @@ typedef enum _BUSINESS_CODE{
     CONTRL_CHANNEL_POWER=0x1e,
     SPCTRUM_PARAM_CMD=0x18,
     SPCTRUM_ANALYSIS_CTRL_EN_CMD=0x19,
-    SPCTRUM_GET_RESULT_CMD=0x1a
+    SPCTRUM_GET_RESULT_CMD=0x1a,
+#ifdef SUPPORT_NET_WZ
+    SET_NET_WZ_THRESHOLD_CMD=0x16,
+#endif
 }BUSINESS_CODE;
 
 
@@ -341,6 +344,10 @@ typedef struct _SNIFFER_DATA_REPORT{
     uint32_t ipaddr;
     uint8_t type;
     uint16_t port;
+#ifdef SUPPORT_NET_WZ
+    uint32_t wz_ipaddr; /* 添加上位机万兆IP和端口*/
+    uint32_t wz_port;
+#endif
 }__attribute__ ((packed)) SNIFFER_DATA_REPORT_ST;
 
 //table 12 page 26

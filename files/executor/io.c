@@ -17,10 +17,7 @@
 static int io_ctrl_fd = -1;
 
 static struct  band_table_t bandtable[] ={
-    {459085, 134, 600},
-    {459085, 133, 1500},
-    {459085, 132, 2400},
-    {0x70fa0, 131, 5000},
+    {0x70fa0, 0, 5000},
     {0x70320, 0, 25000},
     {0x70190, 0, 50000},
     {0x700c8, 0, 100000},
@@ -28,11 +25,12 @@ static struct  band_table_t bandtable[] ={
     {0x70028, 0, 500000},
     {0x70014, 0, 1000000},
     {0x70008, 0, 2500000},
-    {0x70004, 0, 5000000},
+    {0x30008, 0, 5000000},
+    {0x30004, 0, 10000000},
     {0x70000, 0, 20000000},
     {0x30000, 0, 40000000},
     {0x10000, 0, 80000000},
-    {0, 0, 160000000},
+    {0,       0, 160000000},
 }; 
 
 static void  io_compute_extract_factor_by_fftsize(uint32_t anays_band,uint32_t *extract, uint32_t *extract_filter)

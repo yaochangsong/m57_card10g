@@ -459,6 +459,11 @@ static int akt_execute_set_command(void)
             sta_info_para.target_addr[ch].ipaddr = ntohl(tcp_client.sin_addr.s_addr);//ntohl(net_para.ipaddr);
             sta_info_para.target_addr[ch].port = ntohs(net_para.port);
             sta_info_para.target_addr[ch].type = net_para.type;
+            #ifdef SUPPORT_NET_WZ
+            sta_info_para.target_addr[ch].wz_ipaddr = ntohl(net_para.wz_ipaddr);
+            sta_info_para.target_addr[ch].wz_port = ntohs(net_para.port);
+            printf_note("wz_ipaddr=0x%x  wz_port=%d\n", sta_info_para.target_addr[ch].wz_ipaddr, sta_info_para.target_addr[ch].wz_port);
+            #endif
             clock_gettime(CLOCK_REALTIME, &ts);
             sta_info_para.keepalive_time = ts;
             printf_note("ch = %d tcp_client=%s, ipstr=0x%x  ipaddr=0x%x, port=%d\n",ch,inet_ntoa(tcp_client.sin_addr),net_para.ipaddr,sta_info_para.target_addr[ch].ipaddr,sta_info_para.target_addr[ch].port);
@@ -568,6 +573,15 @@ static int akt_execute_set_command(void)
             executor_set_command(EX_MID_FREQ_CMD, EX_SUB_CH_ONOFF, sub_ch, &enable);
             /* 通道IQ使能 */
             if(enable){
+#ifdef SUPPORT_NET_WZ
+                struct sub_channel_freq_para_st *sub_channel_array;
+                sub_channel_array = &poal_config->sub_channel_para[ch];
+                if(poal_config->ctrl_para.wz_threshold_bandwidth <  sub_channel_array->sub_ch[sub_ch].d_bandwith){
+                    printf_warn("d_bandwith[%u] is more than threshold[%u], Data is't sent by the Gigabit, but by 10 Gigabit\n", 
+                        sub_channel_array->sub_ch[sub_ch].d_bandwith, poal_config->ctrl_para.wz_threshold_bandwidth);
+                    break;
+                }
+#endif
                 /* NOTE:The parameter must be a MAIN channel, not a subchannel */
                 io_set_enable_command(IQ_MODE_ENABLE, ch, 0);
             }else{
@@ -575,6 +589,14 @@ static int akt_execute_set_command(void)
             }
             break;
         }
+#ifdef SUPPORT_NET_WZ
+        case SET_NET_WZ_THRESHOLD_CMD:
+        {
+            poal_config->ctrl_para.wz_threshold_bandwidth =  *(uint32_t *)(header->buf+1);
+            printf_note("wz_threshold_bandwidth  %u\n", poal_config->ctrl_para.wz_threshold_bandwidth);
+            break;
+        }
+#endif
         case SPCTRUM_PARAM_CMD:
         {
             uint64_t freq_hz;

@@ -183,6 +183,9 @@ struct control_st{
     uint32_t spectrum_time_interval;                              /* 发送频谱时间间隔 */
     struct specturm_analysis_control_st specturm_analysis_param;  /* 频谱分析控制参数 */
     struct scan_bindwidth_info scan_bw;                           /* 扫描带宽参数 */
+#ifdef SUPPORT_NET_WZ
+    uint32_t wz_threshold_bandwidth;                              /* 万兆信道带宽阀值 ，带宽<该值，使用千兆口；否则使用万兆口传输IQ */
+#endif
 };//__attribute__ ((packed));
 
 

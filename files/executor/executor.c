@@ -551,17 +551,19 @@ int8_t executor_set_command(exec_cmd cmd, uint8_t type, uint8_t ch,  void *data,
             struct in_addr ipaddr, dst_ipaddr;
             struct network_st *network = &poal_config->network;
             char *ipstr=NULL;
-
+#ifdef SUPPORT_NET_WZ
+            io_set_local_net(network->ipaddress, network->port);
+#endif
             if(get_ipaddress(&ipaddr) == -1){
                 break;
             }
-            printf_warn("ipaddress[%s]\n", inet_ntoa(ipaddr));
+            printf_note("ipaddress[%s]\n", inet_ntoa(ipaddr));
             if(ipaddr.s_addr == network->ipaddress){
                 printf_note("ipaddress[%s] is not change!\n", inet_ntoa(ipaddr));
                 break;
             }
             dst_ipaddr.s_addr = network->ipaddress;
-            printf_warn("ipaddress[%s] is changed to [%s]\n", inet_ntoa(ipaddr), inet_ntoa(dst_ipaddr));
+            printf_note("ipaddress[%s] is changed to [%s]\n", inet_ntoa(ipaddr), inet_ntoa(dst_ipaddr));
             io_set_network_to_interfaces((void *)&poal_config->network);
             break;
         }

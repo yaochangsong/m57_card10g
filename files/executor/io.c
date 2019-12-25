@@ -82,6 +82,27 @@ int32_t io_save_net_param(SNIFFER_DATA_REPORT_ST *data){
     ret = ioctl(io_ctrl_fd,IOCTL_RUN_NET_PARAM,data);
     return ret;
 }
+
+#ifdef SUPPORT_NET_WZ
+int32_t io_set_local_net(uint32_t ip, uint16_t port)
+{
+    struct net_local_param_t{
+        uint32_t local_ip;
+        uint16_t local_port;
+    };
+
+    int32_t ret = 0;
+    if(io_ctrl_fd<=0){
+        return 0;
+    }
+    struct net_local_param_t nl;
+    nl.local_ip = ip;
+    nl.local_port = port;
+    ret = ioctl(io_ctrl_fd,IOCTL_NET_LOCAL_SET,&nl);
+    return ret;
+}
+#endif
+
 void io_reset_fpga_data_link(void){
     #define RESET_ADDR      0x04U
     int32_t ret = 0;

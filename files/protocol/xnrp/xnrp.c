@@ -245,7 +245,7 @@ int xnrp_execute_set_command(void)
     return err_code;
 }
 
-bool xnrp_execute_method(int *code)
+bool xnrp_execute_method(int *code, void *cl)
 {
     struct xnrp_header *header;
     int err_code;

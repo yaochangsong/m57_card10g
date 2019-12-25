@@ -95,9 +95,12 @@ int32_t io_set_local_net(uint32_t ip, uint16_t port)
     if(io_ctrl_fd<=0){
         return 0;
     }
+    
     struct net_local_param_t nl;
-    nl.local_ip = ip;
+    /*万兆设备ip网段在千兆口网段基础上加1,端口和千兆口端口一样*/
+    nl.local_ip = ip+(1 << 8);
     nl.local_port = port;
+    printf_note("ipaddress[0x%x], port=%d\n", nl.local_ip, nl.local_port);
     ret = ioctl(io_ctrl_fd,IOCTL_NET_LOCAL_SET,&nl);
     return ret;
 }

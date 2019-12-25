@@ -184,6 +184,15 @@ bool tcp_add_addr_to_udp_by_port(int port, struct sockaddr_in *tcp_cli)
     return true;
 }
 
+bool tcp_get_peer_addr_port(void *cl, struct sockaddr_in *_peer_addr)
+{
+    struct net_tcp_client *client = (struct net_tcp_client *)cl;
+    printf_note("TCP data connection from: %s:%d\n", client->get_peer_addr(client), client->get_peer_port(client));
+    memcpy(_peer_addr, &client->peer_addr, sizeof(struct sockaddr_in));
+    printf_note("_peer_addr  connection from: %s:%d\n", inet_ntoa(_peer_addr->sin_addr), ntohs(_peer_addr->sin_port));
+    return true;
+}
+
 uint32_t tcp_get_addr(void)
 {
     struct net_tcp_client *cl_list, *list_tmp;

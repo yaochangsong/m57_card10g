@@ -80,7 +80,7 @@ int poal_send_error_response(struct net_tcp_client *cl, int error_code)
 *      ture: handle data successful
 ******************************************************************************/
 
-bool poal_parse_request(uint8_t *data, int len, int *code)
+bool poal_parse_request(uint8_t *data, int len, int *code, void *cl)
 {
     uint8_t *payload = NULL;
     
@@ -94,7 +94,7 @@ bool poal_parse_request(uint8_t *data, int len, int *code)
         }
     }
 
-    if(poal_execute_method(code) == false){
+    if(poal_execute_method(code, cl) == false){
         return false;
     }
     return true;
@@ -107,7 +107,7 @@ int poal_handle_request(struct net_tcp_client *cl, uint8_t *data, int len)
     int send_len = 0;
     uint8_t *send_buf;
 
-    if(poal_parse_request(data, len, &error_code)){
+    if(poal_parse_request(data, len, &error_code,(void *)cl)){
         send_len = poal_assamble_response_data(&send_buf, error_code);
         if(send_len > MAX_SEND_DATA_LEN){
             printf_err("%d is too long\n", send_len);
@@ -152,7 +152,7 @@ int poal_udp_handle_request(struct net_udp_client *cl, uint8_t *data, int len)
     int send_len = 0;
     uint8_t *send_buf;
 
-    if(poal_parse_request(data, len, &error_code)){
+    if(poal_parse_request(data, len, &error_code, cl)){
         send_len = poal_assamble_response_data(&send_buf, error_code);
         if(send_len > MAX_SEND_DATA_LEN){
             printf_err("%d is too long\n", send_len);

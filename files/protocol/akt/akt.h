@@ -346,7 +346,7 @@ typedef struct _SNIFFER_DATA_REPORT{
     uint16_t port;
 #ifdef SUPPORT_NET_WZ
     uint32_t wz_ipaddr; /* 添加上位机万兆IP和端口*/
-    uint32_t wz_port;
+    uint16_t wz_port;
 #endif
 }__attribute__ ((packed)) SNIFFER_DATA_REPORT_ST;
 
@@ -737,7 +737,7 @@ struct response_set_data{
 
 extern bool akt_parse_header(const uint8_t *data, int len, uint8_t **payload, int *err_code);
 extern bool akt_parse_data(const uint8_t *payload, int *code);
-extern bool akt_execute_method(int *code);
+extern bool akt_execute_method(int *code, void *cl);
 extern int akt_assamble_response_data(uint8_t **buf, int err_code);
 extern uint8_t *akt_assamble_data_extend_frame_header_data(uint32_t *len, void *config);
 extern uint8_t *akt_assamble_data_frame_header_data(uint32_t *len, void *config);

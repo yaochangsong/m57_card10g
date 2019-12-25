@@ -338,7 +338,7 @@ static inline int akt_err_code_check(int ret)
 }
 
 
-static int akt_execute_set_command(void)
+static int akt_execute_set_command(void *cl)
 {
     PDU_CFG_REQ_HEADER_ST *header;
     struct akt_protocal_param *pakt_config = &akt_config;
@@ -452,7 +452,9 @@ static int akt_execute_set_command(void)
             client.sin_port = net_para.port;//ntohs(net_para.port);
             client.sin_addr.s_addr = ipdata.s_addr;
             udp_add_client(&client);
-            tcp_add_addr_to_udp_by_port(client.sin_port, &tcp_client);
+            tcp_get_peer_addr_port(cl, &tcp_client);
+            printf_note("tcp connection from: %s:%d\n", inet_ntoa(tcp_client.sin_addr), ntohs(tcp_client.sin_port));
+            //tcp_add_addr_to_udp_by_port(client.sin_port, &tcp_client);
             /* refresh kernel client info */
             memcpy(&sta_info_para.target_addr[ch], &net_para, sizeof(SNIFFER_DATA_REPORT_ST));
             sta_info_para.target_addr[ch].cid = net_para.cid;
@@ -460,9 +462,10 @@ static int akt_execute_set_command(void)
             sta_info_para.target_addr[ch].port = ntohs(net_para.port);
             sta_info_para.target_addr[ch].type = net_para.type;
             #ifdef SUPPORT_NET_WZ
-            sta_info_para.target_addr[ch].wz_ipaddr = ntohl(net_para.wz_ipaddr);
+            sta_info_para.target_addr[ch].wz_ipaddr = ntohl(tcp_client.sin_addr.s_addr)+(1 << 8);//ntohl(net_para.wz_ipaddr);
             sta_info_para.target_addr[ch].wz_port = ntohs(net_para.port);
-            printf_note("wz_ipaddr=0x%x  wz_port=%d\n", sta_info_para.target_addr[ch].wz_ipaddr, sta_info_para.target_addr[ch].wz_port);
+            client.sin_addr.s_addr = sta_info_para.target_addr[ch].wz_ipaddr;
+            printf_note("ch=%d, wz_ipaddr=(%s)0x%x  wz_port=%d\n", ch, inet_ntoa(client.sin_addr), sta_info_para.target_addr[ch].wz_ipaddr, sta_info_para.target_addr[ch].wz_port);
             #endif
             clock_gettime(CLOCK_REALTIME, &ts);
             sta_info_para.keepalive_time = ts;
@@ -571,11 +574,14 @@ static int akt_execute_set_command(void)
             enable = (poal_config->sub_ch_enable.iq_en == 0 ? 0 : 1);
             /* 子通道解调开关 */
             executor_set_command(EX_MID_FREQ_CMD, EX_SUB_CH_ONOFF, sub_ch, &enable);
+            printf_note("wz_threshold_bandwidth[%u]\n", poal_config->ctrl_para.wz_threshold_bandwidth);
+            poal_config->ctrl_para.wz_threshold_bandwidth = 1000000; //debug
             /* 通道IQ使能 */
             if(enable){
 #ifdef SUPPORT_NET_WZ
                 struct sub_channel_freq_para_st *sub_channel_array;
                 sub_channel_array = &poal_config->sub_channel_para[ch];
+                printf_note("sub_channel_array->sub_ch[sub_ch].d_bandwith[%u]\n", sub_channel_array->sub_ch[sub_ch].d_bandwith);
                 if(poal_config->ctrl_para.wz_threshold_bandwidth <  sub_channel_array->sub_ch[sub_ch].d_bandwith){
                     printf_warn("d_bandwith[%u] is more than threshold[%u], Data is't sent by the Gigabit, but by 10 Gigabit\n", 
                         sub_channel_array->sub_ch[sub_ch].d_bandwith, poal_config->ctrl_para.wz_threshold_bandwidth);
@@ -842,6 +848,7 @@ static int akt_execute_get_command(void)
             memcpy(akt_get_response_data.payload_data, psi, st_size);
             akt_get_response_data.header.len = st_size;
             safe_free(psi);
+            io_set_refresh_keepalive_time(0);
             break;
         } 
         case SEARCH_FILE_STATUS_CMD:
@@ -904,7 +911,7 @@ static int akt_execute_net_command(void)
 * RETURNS
 *     err_code: error code
 ******************************************************************************/
-bool akt_execute_method(int *code)
+bool akt_execute_method(int *code, void *cl)
 {
     PDU_CFG_REQ_HEADER_ST *header;
     int err_code;
@@ -916,7 +923,7 @@ bool akt_execute_method(int *code)
     {
         case SET_CMD_REQ:
         {
-            err_code = akt_execute_set_command();
+            err_code = akt_execute_set_command(cl);
             break;
         }
         case QUERY_CMD_REQ:

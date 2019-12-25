@@ -214,7 +214,7 @@ static inline int8_t  executor_points_scan(uint8_t ch, work_mode_type mode)
 
         header_param.freq_resolution = (float)point->points[i].bandwidth * BAND_FACTOR / (float)point->points[i].fft_size;
         printf_info("ch=%d, s_freq=%llu, e_freq=%llu, fft_size=%u, d_method=%d\n", ch, s_freq, e_freq, header_param.fft_size,header_param.d_method);
-        printf_note("rf scan bandwidth=%u, middlebw=%u, m_freq=%llu, freq_resolution=%f\n",header_param.scan_bw,header_param.bandwidth , header_param.m_freq, header_param.freq_resolution);
+        printf_info("rf scan bandwidth=%u, middlebw=%u, m_freq=%llu, freq_resolution=%f\n",header_param.scan_bw,header_param.bandwidth , header_param.m_freq, header_param.freq_resolution);
         executor_set_command(EX_RF_FREQ_CMD,  EX_RF_MID_FREQ, ch, &point->points[i].center_freq);
         executor_set_command(EX_MID_FREQ_CMD, EX_BANDWITH, ch, &point->points[ch].bandwidth);
         //executor_set_command(EX_RF_FREQ_CMD,  EX_RF_MID_BW,   ch, &header_param.scan_bw);
@@ -552,7 +552,8 @@ int8_t executor_set_command(exec_cmd cmd, uint8_t type, uint8_t ch,  void *data,
             struct network_st *network = &poal_config->network;
             char *ipstr=NULL;
 #ifdef SUPPORT_NET_WZ
-            io_set_local_net(network->ipaddress, network->port);
+            /* 设置万兆ip和端口 */
+            io_set_local_net(ntohl(network->ipaddress), network->port);
 #endif
             if(get_ipaddress(&ipaddr) == -1){
                 break;

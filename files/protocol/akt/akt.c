@@ -575,24 +575,30 @@ static int akt_execute_set_command(void *cl)
             /* 子通道解调开关 */
             executor_set_command(EX_MID_FREQ_CMD, EX_SUB_CH_ONOFF, sub_ch, &enable);
             printf_note("wz_threshold_bandwidth[%u]\n", poal_config->ctrl_para.wz_threshold_bandwidth);
-            poal_config->ctrl_para.wz_threshold_bandwidth = 1000000; //debug
+            //poal_config->ctrl_para.wz_threshold_bandwidth = 1000000; //debug
             /* 通道IQ使能 */
             if(enable){
-#ifdef SUPPORT_NET_WZ
-                struct sub_channel_freq_para_st *sub_channel_array;
-                sub_channel_array = &poal_config->sub_channel_para[ch];
-                printf_note("sub_channel_array->sub_ch[sub_ch].d_bandwith[%u]\n", sub_channel_array->sub_ch[sub_ch].d_bandwith);
-                if(poal_config->ctrl_para.wz_threshold_bandwidth <  sub_channel_array->sub_ch[sub_ch].d_bandwith){
-                    printf_warn("d_bandwith[%u] is more than threshold[%u], Data is't sent by the Gigabit, but by 10 Gigabit\n", 
-                        sub_channel_array->sub_ch[sub_ch].d_bandwith, poal_config->ctrl_para.wz_threshold_bandwidth);
-                    break;
-                }
-#endif
                 /* NOTE:The parameter must be a MAIN channel, not a subchannel */
                 io_set_enable_command(IQ_MODE_ENABLE, ch, 0);
             }else{
                 io_set_enable_command(IQ_MODE_DISABLE, ch, 0);
+                /* 关闭所有子通道数据 */
+                uint8_t enable =0;
+                for(int i = 0; i< MAX_SIGNAL_CHANNEL_NUM; i++){
+                    executor_set_command(EX_MID_FREQ_CMD, EX_SUB_CH_ONOFF, i, &enable);
+                }
             }
+            #ifdef SUPPORT_NET_WZ
+                /* 判断解调带宽是否大于万兆传输阈值；大于则使用万兆传输（关闭千兆），否则使用万兆传输 */
+                struct sub_channel_freq_para_st *sub_channel_array;
+                sub_channel_array = &poal_config->sub_channel_para[ch];
+                printf_note("sub_channel_array->sub_ch[sub_ch].d_bandwith[%u]\n", sub_channel_array->sub_ch[sub_ch].d_bandwith);
+                if(poal_config->ctrl_para.wz_threshold_bandwidth <  sub_channel_array->sub_ch[sub_ch].d_bandwith){
+                    io_set_1ge_net_onoff(0);/* 关闭千兆传输；默认开启 */
+                    printf_warn("d_bandwith[%u] is more than threshold[%u], Data is't sent by the Gigabit, but by 10 Gigabit\n", 
+                        sub_channel_array->sub_ch[sub_ch].d_bandwith, poal_config->ctrl_para.wz_threshold_bandwidth);
+                }
+            #endif
             break;
         }
 #ifdef SUPPORT_NET_WZ

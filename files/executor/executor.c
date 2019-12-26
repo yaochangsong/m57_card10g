@@ -553,7 +553,7 @@ int8_t executor_set_command(exec_cmd cmd, uint8_t type, uint8_t ch,  void *data,
             char *ipstr=NULL;
 #ifdef SUPPORT_NET_WZ
             /* 设置万兆ip和端口 */
-            io_set_local_net(ntohl(network->ipaddress), network->port);
+            io_set_local_10g_net(ntohl(network->ipaddress), network->port);
 #endif
             if(get_ipaddress(&ipaddr) == -1){
                 break;

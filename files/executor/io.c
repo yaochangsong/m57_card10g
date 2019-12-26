@@ -84,11 +84,11 @@ int32_t io_save_net_param(SNIFFER_DATA_REPORT_ST *data){
 }
 
 #ifdef SUPPORT_NET_WZ
-int32_t io_set_local_net(uint32_t ip, uint16_t port)
+int32_t io_set_local_10g_net(uint32_t ip, uint16_t port)
 {
-    struct net_local_param_t{
-        uint32_t local_ip;
-        uint16_t local_port;
+    struct net_10g_local_param_t{
+        uint32_t local_ip_10g;
+        uint16_t local_port_10g;
     };
 
     int32_t ret = 0;
@@ -96,15 +96,23 @@ int32_t io_set_local_net(uint32_t ip, uint16_t port)
         return 0;
     }
     
-    struct net_local_param_t nl;
+    struct net_10g_local_param_t nl;
     /*万兆设备ip网段在千兆口网段基础上加1,端口和千兆口端口一样*/
-    nl.local_ip = ip+(1 << 8);
-    nl.local_port = port;
-    printf_note("ipaddress[0x%x], port=%d\n", nl.local_ip, nl.local_port);
-    ret = ioctl(io_ctrl_fd,IOCTL_NET_LOCAL_SET,&nl);
+    nl.local_ip_10g = ip+(1 << 8);
+    nl.local_port_10g = port;
+    printf_note("ipaddress[0x%x], port=%d\n", nl.local_ip_10g, nl.local_port_10g);
+    ret = ioctl(io_ctrl_fd,IOCTL_NET_10G_LOCAL_SET,&nl);
     return ret;
 }
 #endif
+
+int32_t io_set_1ge_net_onoff(uint8_t onoff)
+{
+    int32_t ret = 0;
+    printf_note("[**NET**]1GE net %s\n", onoff == 0 ? "off":"on");
+    ret = ioctl(io_ctrl_fd,IOCTL_NET_1G_IQ_ONOFF_SET,&onoff);
+    return ret;
+}
 
 void io_reset_fpga_data_link(void){
     #define RESET_ADDR      0x04U

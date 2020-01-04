@@ -50,6 +50,12 @@ ifneq ($(findstring y,$(SUPPORT_NET_WZ)),)
 	C_VAR += -DSUPPORT_NET_WZ
 endif
 
+#xwfs
+ifneq ($(findstring y,$(SUPPORT_XWFS)),)
+	C_VAR += -DSUPPORT_XWFS
+	SOURCE_DIR += executor/xwfs
+endif
+
 #lcd
 ifneq ($(findstring y,$(SUPPORT_LCD)),)
 	SOURCE_DIR += device/lcd

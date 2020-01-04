@@ -682,7 +682,7 @@ typedef struct  _BACKTRACE_IQ_ST{
 
 typedef struct  _SEARCH_FILE_STATUS_RSP_ST{
     uint8_t filepath[FILE_PATH_MAX_LEN];
-    uint8_t status;
+    uint8_t status;                        /*0x00：不存在  0x01：正常  0x02:损坏*/
     uint64_t file_size;
 }__attribute__ ((packed)) SEARCH_FILE_STATUS_RSP_ST; 
 

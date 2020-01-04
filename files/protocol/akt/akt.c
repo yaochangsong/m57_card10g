@@ -655,15 +655,22 @@ static int akt_execute_set_command(void *cl)
                 config_read_by_cmd(EX_RF_FREQ_CMD, EX_RF_MID_BW,ch, &max_bandwidth);
                 printf_note("set max bandwidth:%uHz\n", max_bandwidth);
                 executor_set_command(EX_MID_FREQ_CMD, EX_BANDWITH, ch, &max_bandwidth);
+                //executor_set_command(EX_MID_FREQ_CMD, EX_DEC_BW, ch, &max_bandwidth);
                 /* 开始存储 */
-                ret = io_start_save_file(sis.filepath);
+                //ret = io_start_save_file(sis.filepath);
+                #if defined(SUPPORT_XWFS)
+                ret = xwfs_start_save_file(sis.filepath);
+                #endif
             }else if(sis.cmd == 0){/* stop add iq file */
                 printf_note("Stop add file:%s\n", sis.filepath);
-                ret = io_stop_save_file(sis.filepath);
+                //ret = io_stop_save_file(sis.filepath);
+                #if defined(SUPPORT_XWFS)
+                ret = xwfs_stop_save_file(sis.filepath);
+                #endif
                 /* 中频带宽设置恢复到中频带宽初始值，定频模式下的中频带宽 */
-                config_read_by_cmd(EX_MID_FREQ_CMD, EX_BANDWITH,ch, &max_bandwidth);
-                printf_note("restore bandwidth:%uHz\n", max_bandwidth);
-                executor_set_command(EX_MID_FREQ_CMD, EX_BANDWITH, ch, &max_bandwidth);
+                //config_read_by_cmd(EX_MID_FREQ_CMD, EX_BANDWITH,ch, &max_bandwidth);
+               // printf_note("restore bandwidth:%uHz\n", max_bandwidth);
+               // executor_set_command(EX_MID_FREQ_CMD, EX_BANDWITH, ch, &max_bandwidth);
             }else{
                 printf_err("error cmd\n");
                 err_code = RET_CODE_PARAMTER_ERR;
@@ -706,7 +713,7 @@ static int akt_execute_set_command(void *cl)
             int ret = 0;
             char filename[FILE_PATH_MAX_LEN];
             memcpy(filename, header->buf, FILE_PATH_MAX_LEN);
-            ret = io_delete_file(filename);
+            ret = xwfs_delete_file();
             printf_note("Delete file:%s, %d\n", filename, ret);
             if(ret != 0){
                 err_code = akt_err_code_check(ret);
@@ -860,14 +867,21 @@ static int akt_execute_get_command(void)
         case SEARCH_FILE_STATUS_CMD:
         {
             int ret = 0;
+            ssize_t fsize = 0; 
             SEARCH_FILE_STATUS_RSP_ST fsp;
             char filename[FILE_PATH_MAX_LEN];
+            
             memcpy(filename, header->buf, FILE_PATH_MAX_LEN);
-            ret = io_read_more_info_by_name(filename, &fsp, io_find_file_info);
-            printf_note("Find file:%s, %d\n", filename, ret);
+            memset(&fsp, 0 ,sizeof(SEARCH_FILE_STATUS_RSP_ST));
+            strcpy(fsp.filepath, filename);
+            ret = xwfs_get_file_size_by_name(filename, &fsize, sizeof(ssize_t));//io_read_more_info_by_name(filename, &fsp, io_find_file_info);
+            printf_note("Find file:%s, fsize=%u ret =%d\n", fsp.filepath, fsize, ret);
             if(ret != 0){
-                err_code = akt_err_code_check(ret);
-                goto exit;
+                fsp.status = 0;
+                fsp.file_size = 0;
+            }else{
+                fsp.status = 1;
+                fsp.file_size = fsize;
             }
             printf_note("ret=%d, filepath=%s, file_size=%llu, status=%d\n",ret, fsp.filepath, fsp.file_size, fsp.status);
             memcpy(akt_get_response_data.payload_data, &fsp, sizeof(SEARCH_FILE_STATUS_RSP_ST));

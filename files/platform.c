@@ -128,6 +128,9 @@ int main(int argc, char **argv)
     init_lcd();
 #endif
     executor_init();
+#if defined(SUPPORT_XWFS)
+    xwfs_init();
+#endif
     http_requset_init();
 
 if(spectrum_aditool_debug == false){

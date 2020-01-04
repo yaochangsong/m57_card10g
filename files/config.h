@@ -77,6 +77,9 @@
 #include "device/lcd/ss_k600.h"
 #include "device/lcd/lcd.h"
 #endif
+#if defined(SUPPORT_XWFS)
+#include "executor/xwfs/xwfs.h"
+#endif
 #include "device/gpio/gpio.h"
 #include "device/gpio/gpio_raw.h"
 #include "dao/oal/dao_conf.h"

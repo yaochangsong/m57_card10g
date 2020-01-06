@@ -669,9 +669,9 @@ static int akt_execute_set_command(void *cl)
                 ret = xwfs_stop_save_file(sis.filepath);
                 #endif
                 /* 中频带宽设置恢复到中频带宽初始值，定频模式下的中频带宽 */
-                //config_read_by_cmd(EX_MID_FREQ_CMD, EX_BANDWITH,ch, &max_bandwidth);
-               // printf_note("restore bandwidth:%uHz\n", max_bandwidth);
-               // executor_set_command(EX_MID_FREQ_CMD, EX_BANDWITH, ch, &max_bandwidth);
+                config_read_by_cmd(EX_MID_FREQ_CMD, EX_BANDWITH,ch, &max_bandwidth);
+                printf_note("restore bandwidth:%uHz\n", max_bandwidth);
+                executor_set_command(EX_MID_FREQ_CMD, EX_BANDWITH, ch, &max_bandwidth);
             }else{
                 printf_err("error cmd\n");
                 err_code = RET_CODE_PARAMTER_ERR;
@@ -862,9 +862,9 @@ static int akt_execute_get_command(void)
                 err_code = akt_err_code_check(ret);
                 goto exit;
             }
-            printf_note("ret=%d, num=%d, speed=%u, capacity_bytes=%llu, used_bytes=%llu\n",
+            printf_note("ret=%d, num=%d, speed=%uKB/s, capacity_bytes=%llu, used_bytes=%llu\n",
                 ret, psi->disk_num, psi->read_write_speed_kbytesps, 
-                psi->disk_capacity[0].disk_capacity_bytes, psi->disk_capacity[0].disk_used_bytes);
+                psi->disk_capacity[0].disk_capacity_byte, psi->disk_capacity[0].disk_used_byte);
             memcpy(akt_get_response_data.payload_data, psi, st_size);
             akt_get_response_data.header.len = st_size;
             safe_free(psi);

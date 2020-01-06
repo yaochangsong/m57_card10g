@@ -38,6 +38,7 @@ struct file_request_read{
     uint8_t *read_buffer_pointer;        /* File buffer memory pointer */
     size_t read_buffer_len;              /* File buffer memory length */
     size_t read_buffer_offset;           /* File buffer byte offset size，缓冲区读取偏移 */
+    uint32_t st_blkbg_size;             /* 系统数据块组大小 */
     uint64_t st_size;                   /* 请求文件大小 */
     uint64_t offset_size;               /* 文件读取偏移 */
     bool is_buffer_has_data;            /* 缓冲区是否有数据 */

@@ -57,7 +57,8 @@ static char *file_get_read_buffer_pointer()
 
 static int file_reload_buffer(char *filename)
 {
-    return io_set_refresh_disk_file_buffer((void*)filename);
+    return xwfs_refresh_disk_file_buffer((void*)filename);
+   // return io_set_refresh_disk_file_buffer((void*)filename);
 }
 
 
@@ -166,7 +167,7 @@ int file_read_attr_info(const char *name, void *info)
     if(name == NULL || info == NULL)
         return -1;
     strcpy((char *)info, name);
-    ret = io_get_read_file_info(info);
+    ret = xwfs_get_file_info(info);//io_get_read_file_info(info);
     return ret;
 }
 
@@ -181,8 +182,8 @@ int file_read_attr(const char *filename)
     if(http_err_code_check(ret)== -1){
         return -1;
     }
-    printf_note("file_path:%s,buffer_len:0x%x,st_size=0x%llx, st_blocks=%x\n", 
-                fi.file_path,fi.buffer_rx_len,fi.st_size, fi.st_blocks);
+    printf_note("file_path:%s,buffer_len:0x%x,st_size=0x%llx, st_blocks=0x%x, st_blksize=0x%x\n", 
+                fi.file_path,fi.buffer_rx_len,fi.st_size, fi.st_blocks, fi.st_blksize);
     strcpy(fr->file_path,fi.file_path);
     fr->read_buffer_pointer = file_get_read_buffer_pointer();
     fr->read_buffer_len =  fi.buffer_rx_len;
@@ -190,6 +191,7 @@ int file_read_attr(const char *filename)
     fr->offset_size = 0;
     fr->st_size = fi.st_size;
     fr->is_buffer_has_data = false;
+    fr->st_blkbg_size = fi.st_blksize;
     //lseek(io_get_fd(), 0, SEEK_SET);
     return 0;
 }
@@ -226,6 +228,10 @@ loop:
             return ret;
         }else { /* ret >= 0 */
             fr->is_buffer_has_data = true;
+            if(ret > 0){
+                fr->read_buffer_len = ret * fr->st_blkbg_size;
+                printf_note("read_buffer_len %d\n", fr->read_buffer_len);
+            }
             goto loop;
         }
     }

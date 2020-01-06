@@ -165,7 +165,7 @@ bool http_requset_handle_cmd(struct uh_client *cl, const char *path)
                 printf_err("file download error\n");
                 return false;
             }
-            lseek(io_get_fd(), 0, SEEK_SET);
+            lseek(xwfs_get_fd(), 0, SEEK_SET);
             uh_blk_file_response_header(cl, &pi); 
             http_request_action(cl);
             break;

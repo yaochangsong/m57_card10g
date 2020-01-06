@@ -651,8 +651,8 @@ typedef struct _FFT_SIGNAL_RESPINSE{
 /************Disk-related parameters***********************/
 
 typedef struct  _STORAGE_DISK_INFO_ST{
-    uint64_t disk_capacity_bytes;
-    uint64_t disk_used_bytes;
+    uint64_t disk_capacity_byte;
+    uint64_t disk_used_byte;
 }__attribute__ ((packed)) STORAGE_DISK_INFO_ST; 
 
 typedef struct  _STORAGE_STATUS_RSP_ST{

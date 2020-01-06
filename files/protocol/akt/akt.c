@@ -640,6 +640,7 @@ static int akt_execute_set_command(void *cl)
             printf_note("RF calibrate: cid=%d, enable=%d, middle_freq_hz=%uhz, power=%d\n", 
                 cal_source.cid, cal_source.enable, cal_source.middle_freq_hz, cal_source.power);
             executor_set_command(EX_RF_FREQ_CMD, EX_RF_CALIBRATE, ch, &cal_source);
+            break;
         }
         /* disk cmd */
         case STORAGE_IQ_CMD:
@@ -689,10 +690,12 @@ static int akt_execute_set_command(void *cl)
             memcpy(&bis, header->buf, sizeof(BACKTRACE_IQ_ST));
             if(bis.cmd == 1){/* start backtrace iq file */
                 printf_note("Start backtrace file:%s\n", bis.filepath);
-                ret = io_start_backtrace_file(bis.filepath);
+                ret = xwfs_start_backtrace(bis.filepath);
+                //ret = io_start_backtrace_file(bis.filepath);
             }else if(bis.cmd == 0){/* stop backtrace iq file */
                 printf_note("Stop backtrace file:%s\n", bis.filepath);
-                ret = io_stop_backtrace_file(bis.filepath);
+                ret = xwfs_stop_backtrace(bis.filepath);
+                //ret = io_stop_backtrace_file(bis.filepath);
             }else{
                 printf_err("error cmd\n");
                 err_code = RET_CODE_PARAMTER_ERR;
@@ -713,7 +716,9 @@ static int akt_execute_set_command(void *cl)
             int ret = 0;
             char filename[FILE_PATH_MAX_LEN];
             memcpy(filename, header->buf, FILE_PATH_MAX_LEN);
+            #if defined(SUPPORT_XWFS)
             ret = xwfs_delete_file();
+            #endif
             printf_note("Delete file:%s, %d\n", filename, ret);
             if(ret != 0){
                 err_code = akt_err_code_check(ret);
@@ -849,13 +854,15 @@ static int akt_execute_get_command(void)
                 ret = -ENOMEM;
                 break;
             }
-            ret = io_get_disk_info(psi);
+            #if defined(SUPPORT_XWFS)
+            ret = xwfs_get_disk_info(psi);
+            #endif
             printf_info("Get disk info: %d\n", ret);
             if(ret != 0){
                 err_code = akt_err_code_check(ret);
                 goto exit;
             }
-            printf_info("ret=%d, num=%d, speed=%u, capacity_bytes=%llu, used_bytes=%llu\n",
+            printf_note("ret=%d, num=%d, speed=%u, capacity_bytes=%llu, used_bytes=%llu\n",
                 ret, psi->disk_num, psi->read_write_speed_kbytesps, 
                 psi->disk_capacity[0].disk_capacity_bytes, psi->disk_capacity[0].disk_used_bytes);
             memcpy(akt_get_response_data.payload_data, psi, st_size);
@@ -867,23 +874,25 @@ static int akt_execute_get_command(void)
         case SEARCH_FILE_STATUS_CMD:
         {
             int ret = 0;
-            ssize_t fsize = 0; 
+            size_t f_bg_size = 0; 
             SEARCH_FILE_STATUS_RSP_ST fsp;
             char filename[FILE_PATH_MAX_LEN];
             
             memcpy(filename, header->buf, FILE_PATH_MAX_LEN);
             memset(&fsp, 0 ,sizeof(SEARCH_FILE_STATUS_RSP_ST));
             strcpy(fsp.filepath, filename);
-            ret = xwfs_get_file_size_by_name(filename, &fsize, sizeof(ssize_t));//io_read_more_info_by_name(filename, &fsp, io_find_file_info);
-            printf_note("Find file:%s, fsize=%u ret =%d\n", fsp.filepath, fsize, ret);
+            #if defined(SUPPORT_XWFS)
+            ret = xwfs_get_file_size_by_name(filename, &f_bg_size, sizeof(ssize_t));//io_read_more_info_by_name(filename, &fsp, io_find_file_info);
+            #endif
+            printf_note("Find file:%s, fsize=%u ret =%d\n", fsp.filepath, f_bg_size, ret);
             if(ret != 0){
                 fsp.status = 0;
                 fsp.file_size = 0;
             }else{
                 fsp.status = 1;
-                fsp.file_size = fsize;
+                fsp.file_size = (uint64_t)f_bg_size*8*1024*1024; /* data block group size is 8MByte */
             }
-            printf_note("ret=%d, filepath=%s, file_size=%llu, status=%d\n",ret, fsp.filepath, fsp.file_size, fsp.status);
+            printf_note("ret=%d, filepath=%s, file_size=[%u bg]%llu, status=%d\n",ret, fsp.filepath, f_bg_size, fsp.file_size, fsp.status);
             memcpy(akt_get_response_data.payload_data, &fsp, sizeof(SEARCH_FILE_STATUS_RSP_ST));
             akt_get_response_data.header.len = sizeof(SEARCH_FILE_STATUS_RSP_ST);
             break;

@@ -50,6 +50,17 @@ int32_t xwfs_get_file_size_by_name(char *name, void *value, uint32_t value_len){
     return ret;
 }
 
+int32_t xwfs_get_disk_info(void *arg){
+    int32_t ret = 0;
+    printf_note("xwfs_get_disk_info\n");
+    if (xwfs_fd < 0) {
+        return -1;
+    }
+    ret = ioctl(xwfs_fd,IOCTL_XWFS_DISK_GET_INFO,arg);
+    return ret;
+}
+
+
 
 int32_t xwfs_delete_file(void *arg){
     int32_t ret = 0;
@@ -59,6 +70,27 @@ int32_t xwfs_delete_file(void *arg){
     ret = ioctl(xwfs_fd,IOCTL_XWFS_DISK_DELETE_FILE_INFO,arg);
     return ret;
 }
+
+int32_t xwfs_start_backtrace(void *arg){
+    int32_t ret = 0;
+    if (xwfs_fd < 0) {
+        return -1;
+    }
+    SW_TO_BACKTRACE_MODE();
+    ret = ioctl(xwfs_fd,IOCTL_XWFS_DISK_START_BACKTRACE_FILE_INFO,arg);
+    return ret;
+}
+
+int32_t xwfs_stop_backtrace(void *arg){
+    int32_t ret = 0;
+    if (xwfs_fd < 0) {
+        return -1;
+    }
+    SW_TO_AD_MODE();
+    ret = ioctl(xwfs_fd,IOCTL_XWFS_DISK_STOP_BACKTRACE_FILE_INFO,arg);
+    return ret;
+}
+
 
 
 void xwfs_init(void)

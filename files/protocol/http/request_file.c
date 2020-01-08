@@ -149,16 +149,18 @@ ssize_t readmem(void *ptr, size_t n)
         n = fr->read_buffer_len - fr->read_buffer_offset;
     }
     
-    memcpy(ptr, fr->read_buffer_pointer + fr->read_buffer_offset, n);
-    fr->read_buffer_offset += n;
     nleft = fr->read_buffer_len - fr->read_buffer_offset;
-    printf_debug("buffer_len=0x%x, buffer_offset=0x%x, nleft=0x%x, n=0x%x\n", 
-                     fr->read_buffer_len, fr->read_buffer_offset, nleft, n);
     if(nleft <= 0){
         fr->read_buffer_offset = 0;
         return 0; /* read buffer over */
     }
     
+    memcpy(ptr, fr->read_buffer_pointer + fr->read_buffer_offset, n);
+    fr->read_buffer_offset += n;
+    
+    printf_debug("buffer_len=0x%x, buffer_offset=0x%x, nleft=0x%x, n=0x%x\n", 
+                     fr->read_buffer_len, fr->read_buffer_offset, nleft, n);
+
     return n;
 }
 

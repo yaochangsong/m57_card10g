@@ -575,7 +575,7 @@ static int akt_execute_set_command(void *cl)
             /* 子通道解调开关 */
             executor_set_command(EX_MID_FREQ_CMD, EX_SUB_CH_ONOFF, sub_ch, &enable);
             printf_note("wz_threshold_bandwidth[%u]\n", poal_config->ctrl_para.wz_threshold_bandwidth);
-            //poal_config->ctrl_para.wz_threshold_bandwidth = 1000000; //debug
+            poal_config->ctrl_para.wz_threshold_bandwidth = 1000000; //debug
             /* 通道IQ使能 */
             if(enable){
                 /* NOTE:The parameter must be a MAIN channel, not a subchannel */
@@ -589,14 +589,18 @@ static int akt_execute_set_command(void *cl)
                 }
             }
             #ifdef SUPPORT_NET_WZ
-                /* 判断解调带宽是否大于万兆传输阈值；大于则使用万兆传输（关闭千兆），否则使用万兆传输 */
+                /* 判断解调带宽是否大于万兆传输阈值；大于则使用万兆传输（关闭千兆），否则使用千兆传输（关闭万兆） */
                 struct sub_channel_freq_para_st *sub_channel_array;
                 sub_channel_array = &poal_config->sub_channel_para[ch];
                 printf_note("sub_channel_array->sub_ch[sub_ch].d_bandwith[%u]\n", sub_channel_array->sub_ch[sub_ch].d_bandwith);
                 if(poal_config->ctrl_para.wz_threshold_bandwidth <  sub_channel_array->sub_ch[sub_ch].d_bandwith){
-                    io_set_1ge_net_onoff(0);/* 关闭千兆传输；默认开启 */
+                    io_set_1ge_net_onoff(0);/* 关闭千兆传输 */
+                    io_set_10ge_net_onoff(1); /* 开启万兆传输 */
                     printf_warn("d_bandwith[%u] is more than threshold[%u], Data is't sent by the Gigabit, but by 10 Gigabit\n", 
                         sub_channel_array->sub_ch[sub_ch].d_bandwith, poal_config->ctrl_para.wz_threshold_bandwidth);
+                }else{
+                    io_set_1ge_net_onoff(1);/* 开启千兆传输 */
+                    io_set_10ge_net_onoff(0); /* 关闭万兆传输 */
                 }
             #endif
             break;
@@ -647,18 +651,12 @@ static int akt_execute_set_command(void *cl)
         {
             int ret = 0;
             STORAGE_IQ_ST  sis;
-            uint32_t max_bandwidth = 0;
+            uint32_t old_bandwidth = 0;
             check_valid_channel(header->buf[0]);
             memcpy(&sis, header->buf, sizeof(STORAGE_IQ_ST));
             if(sis.cmd == 1){/* start add iq file */
-                printf_note("Start add file:%s\n", sis.filepath);
-                /* 开始存储前，中频带宽设置到最大射频工作带宽，以便存储速度到达最快 */
-                config_read_by_cmd(EX_RF_FREQ_CMD, EX_RF_MID_BW,ch, &max_bandwidth);
-                printf_note("set max bandwidth:%uHz\n", max_bandwidth);
-                executor_set_command(EX_MID_FREQ_CMD, EX_BANDWITH, ch, &max_bandwidth);
-                //executor_set_command(EX_MID_FREQ_CMD, EX_DEC_BW, ch, &max_bandwidth);
-                /* 开始存储 */
-                //ret = io_start_save_file(sis.filepath);
+                printf_note("Start add file:%s, bandwidth=%u\n", sis.filepath, sis.bandwidth);
+                executor_set_command(EX_MID_FREQ_CMD, EX_BANDWITH, ch, &sis.bandwidth);
                 #if defined(SUPPORT_XWFS)
                 ret = xwfs_start_save_file(sis.filepath);
                 #endif
@@ -669,9 +667,9 @@ static int akt_execute_set_command(void *cl)
                 ret = xwfs_stop_save_file(sis.filepath);
                 #endif
                 /* 中频带宽设置恢复到中频带宽初始值，定频模式下的中频带宽 */
-                config_read_by_cmd(EX_MID_FREQ_CMD, EX_BANDWITH,ch, &max_bandwidth);
-                printf_note("restore bandwidth:%uHz\n", max_bandwidth);
-                executor_set_command(EX_MID_FREQ_CMD, EX_BANDWITH, ch, &max_bandwidth);
+                config_read_by_cmd(EX_MID_FREQ_CMD, EX_BANDWITH,ch, &old_bandwidth);
+                printf_note("restore bandwidth:%uHz\n", old_bandwidth);
+                executor_set_command(EX_MID_FREQ_CMD, EX_BANDWITH, ch, &old_bandwidth);
             }else{
                 printf_err("error cmd\n");
                 err_code = RET_CODE_PARAMTER_ERR;
@@ -686,16 +684,16 @@ static int akt_execute_set_command(void *cl)
         {
             BACKTRACE_IQ_ST bis;
             int ret = 0;
+            uint32_t max_bandwidth = 0;
             check_valid_channel(header->buf[0]);
             memcpy(&bis, header->buf, sizeof(BACKTRACE_IQ_ST));
             if(bis.cmd == 1){/* start backtrace iq file */
-                printf_note("Start backtrace file:%s\n", bis.filepath);
+                printf_note("Start backtrace file:%s, bandwidth=%u\n", bis.filepath, bis.bandwidth);
+                executor_set_command(EX_MID_FREQ_CMD, EX_BANDWITH, ch, &bis.bandwidth);
                 ret = xwfs_start_backtrace(bis.filepath);
-                //ret = io_start_backtrace_file(bis.filepath);
             }else if(bis.cmd == 0){/* stop backtrace iq file */
                 printf_note("Stop backtrace file:%s\n", bis.filepath);
                 ret = xwfs_stop_backtrace(bis.filepath);
-                //ret = io_stop_backtrace_file(bis.filepath);
             }else{
                 printf_err("error cmd\n");
                 err_code = RET_CODE_PARAMTER_ERR;
@@ -898,7 +896,7 @@ static int akt_execute_get_command(void)
             break;
         }
         default:
-            printf_debug("not sppoort get commmand\n");
+            printf_debug("not support get commmand\n");
     }
 exit:
     akt_get_response_data.header.operation = QUERY_CMD_RSP;

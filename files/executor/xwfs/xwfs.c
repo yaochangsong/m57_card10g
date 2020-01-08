@@ -72,6 +72,17 @@ int32_t xwfs_get_file_info(void *arg){
 }
 
 
+int32_t xwfs_disk_format(void *arg){
+    int32_t ret = 0;
+    printf_note("xwfs_disk_format\n");
+    if (xwfs_fd < 0) {
+        return -1;
+    }
+    ret = ioctl(xwfs_fd,IOCTL_XWFS_DISK_FORMAT,arg);
+    return ret;
+}
+
+
 
 
 int32_t xwfs_delete_file(void *arg){

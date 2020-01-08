@@ -108,7 +108,8 @@ int file_delete(struct uh_client *cl, void *arg)
 int file_disk_format(struct uh_client *cl, void *arg)
 {
     printf_note("disk format\n");
-    io_set_format_disk(arg);
+    xwfs_disk_format(arg);
+    //io_set_format_disk(arg);
     return true;
 }
 

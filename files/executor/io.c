@@ -104,6 +104,15 @@ int32_t io_set_local_10g_net(uint32_t ip, uint16_t port)
     ret = ioctl(io_ctrl_fd,IOCTL_NET_10G_LOCAL_SET,&nl);
     return ret;
 }
+
+/* 万兆开关 */
+int32_t io_set_10ge_net_onoff(uint8_t onoff)
+{
+    int32_t ret = 0;
+    printf_note("[**NET**]10GE net %s\n", onoff == 0 ? "off":"on");
+    ret = ioctl(io_ctrl_fd,IOCTL_NET_10G_ONOFF_SET,&onoff);
+    return ret;
+}
 #endif
 
 int32_t io_set_1ge_net_onoff(uint8_t onoff)
@@ -113,6 +122,8 @@ int32_t io_set_1ge_net_onoff(uint8_t onoff)
     ret = ioctl(io_ctrl_fd,IOCTL_NET_1G_IQ_ONOFF_SET,&onoff);
     return ret;
 }
+
+
 
 void io_reset_fpga_data_link(void){
     #define RESET_ADDR      0x04U

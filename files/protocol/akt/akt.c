@@ -448,7 +448,7 @@ static int akt_execute_set_command(void *cl)
             char *ipstr=NULL;
             ipdata.s_addr = net_para.ipaddr;
             ipstr= inet_ntoa(ipdata);
-            printf_info("ipstr=%s  ipaddr=%x, port=%d, type=%d\n", ipstr,  ipdata.s_addr, ntohs(net_para.port), net_para.type);
+            printf_note("ipstr=%s  ipaddr=%x, port=%d, type=%d\n", ipstr,  ipdata.s_addr, ntohs(net_para.port), net_para.type);
             client.sin_port = net_para.port;//ntohs(net_para.port);
             client.sin_addr.s_addr = ipdata.s_addr;
             udp_add_client(&client);
@@ -458,12 +458,12 @@ static int akt_execute_set_command(void *cl)
             /* refresh kernel client info */
             memcpy(&sta_info_para.target_addr[ch], &net_para, sizeof(SNIFFER_DATA_REPORT_ST));
             sta_info_para.target_addr[ch].cid = net_para.cid;
-            sta_info_para.target_addr[ch].ipaddr = ntohl(tcp_client.sin_addr.s_addr);//ntohl(net_para.ipaddr);
+            sta_info_para.target_addr[ch].ipaddr = ntohl(net_para.ipaddr);//ntohl(tcp_client.sin_addr.s_addr);//ntohl(net_para.ipaddr);
             sta_info_para.target_addr[ch].port = ntohs(net_para.port);
             sta_info_para.target_addr[ch].type = net_para.type;
             #ifdef SUPPORT_NET_WZ
-            sta_info_para.target_addr[ch].wz_ipaddr = ntohl(tcp_client.sin_addr.s_addr)+(1 << 8);//ntohl(net_para.wz_ipaddr);
-            sta_info_para.target_addr[ch].wz_port = ntohs(net_para.port);
+            sta_info_para.target_addr[ch].wz_ipaddr = ntohl(net_para.wz_ipaddr); //ntohl(tcp_client.sin_addr.s_addr)+(1 << 8);//
+            sta_info_para.target_addr[ch].wz_port = ntohs(net_para.wz_port);//ntohs(5680);//ntohs(net_para.port);
             client.sin_addr.s_addr = sta_info_para.target_addr[ch].wz_ipaddr;
             printf_note("ch=%d, wz_ipaddr=(%s)0x%x  wz_port=%d\n", ch, inet_ntoa(client.sin_addr), sta_info_para.target_addr[ch].wz_ipaddr, sta_info_para.target_addr[ch].wz_port);
             #endif
@@ -473,7 +473,7 @@ static int akt_execute_set_command(void *cl)
             
             io_set_sta_info_param(&sta_info_para);
             io_save_net_param((SNIFFER_DATA_REPORT_ST *)(&(sta_info_para.target_addr[ch])));
-            io_set_refresh_keepalive_time(0);
+            //io_set_refresh_keepalive_time(0);
             break;
         }
         case AUDIO_SAMPLE_RATE:
@@ -544,6 +544,11 @@ static int akt_execute_set_command(void *cl)
                 err_code = RET_CODE_PARAMTER_ERR;
                 goto set_exit;
             }
+            /* 关闭所有子通道数据 */
+            //uint8_t enable =0;
+            //for(int i = 0; i< MAX_SIGNAL_CHANNEL_NUM; i++){
+            //    executor_set_command(EX_MID_FREQ_CMD, EX_SUB_CH_ONOFF, i, &enable);
+            //}
             printf_note("oal ch=%d,sub_ch=%d, freq=%llu, method_id=%d, bandwidth=%u\n", sub_channel_array->cid, sub_channel_array->sub_ch[sub_ch].index,
                        sub_channel_array->sub_ch[sub_ch].center_freq, sub_channel_array->sub_ch[sub_ch].d_method, 
                        sub_channel_array->sub_ch[sub_ch].d_bandwith);
@@ -574,7 +579,7 @@ static int akt_execute_set_command(void *cl)
             enable = (poal_config->sub_ch_enable.iq_en == 0 ? 0 : 1);
             /* 子通道解调开关 */
             executor_set_command(EX_MID_FREQ_CMD, EX_SUB_CH_ONOFF, sub_ch, &enable);
-            printf_note("wz_threshold_bandwidth[%u]\n", poal_config->ctrl_para.wz_threshold_bandwidth);
+            printf_note("wz_threshold_bandwidth[%u],enable=%d\n", poal_config->ctrl_para.wz_threshold_bandwidth,enable);
             poal_config->ctrl_para.wz_threshold_bandwidth = 1000000; //debug
             /* 通道IQ使能 */
             if(enable){
@@ -582,11 +587,6 @@ static int akt_execute_set_command(void *cl)
                 io_set_enable_command(IQ_MODE_ENABLE, ch, 0);
             }else{
                 io_set_enable_command(IQ_MODE_DISABLE, ch, 0);
-                /* 关闭所有子通道数据 */
-                uint8_t enable =0;
-                for(int i = 0; i< MAX_SIGNAL_CHANNEL_NUM; i++){
-                    executor_set_command(EX_MID_FREQ_CMD, EX_SUB_CH_ONOFF, i, &enable);
-                }
             }
             #ifdef SUPPORT_NET_WZ
                 /* 判断解调带宽是否大于万兆传输阈值；大于则使用万兆传输（关闭千兆），否则使用千兆传输（关闭万兆） */
@@ -594,13 +594,13 @@ static int akt_execute_set_command(void *cl)
                 sub_channel_array = &poal_config->sub_channel_para[ch];
                 printf_note("sub_channel_array->sub_ch[sub_ch].d_bandwith[%u]\n", sub_channel_array->sub_ch[sub_ch].d_bandwith);
                 if(poal_config->ctrl_para.wz_threshold_bandwidth <  sub_channel_array->sub_ch[sub_ch].d_bandwith){
-                    io_set_1ge_net_onoff(0);/* 关闭千兆传输 */
-                    io_set_10ge_net_onoff(1); /* 开启万兆传输 */
+                   io_set_1ge_net_onoff(0);/* 关闭千兆传输 */
+                   io_set_10ge_net_onoff(1); /* 开启万兆传输 */
                     printf_warn("d_bandwith[%u] is more than threshold[%u], Data is't sent by the Gigabit, but by 10 Gigabit\n", 
                         sub_channel_array->sub_ch[sub_ch].d_bandwith, poal_config->ctrl_para.wz_threshold_bandwidth);
                 }else{
-                    io_set_1ge_net_onoff(1);/* 开启千兆传输 */
-                    io_set_10ge_net_onoff(0); /* 关闭万兆传输 */
+                   io_set_1ge_net_onoff(1);/* 开启千兆传输 */
+                   io_set_10ge_net_onoff(0); /* 关闭万兆传输 */
                 }
             #endif
             break;
@@ -763,7 +763,6 @@ static int akt_execute_get_command(void)
             self_check.pfga_temperature = io_get_adc_temperature();
             memcpy(akt_get_response_data.payload_data, &self_check, sizeof(DEVICE_SELF_CHECK_STATUS_RSP_ST));
             akt_get_response_data.header.len = sizeof(DEVICE_SELF_CHECK_STATUS_RSP_ST);
-            io_set_refresh_keepalive_time(0);
             break;
         }
         case SPCTRUM_PARAM_CMD:
@@ -866,7 +865,6 @@ static int akt_execute_get_command(void)
             memcpy(akt_get_response_data.payload_data, psi, st_size);
             akt_get_response_data.header.len = st_size;
             safe_free(psi);
-            io_set_refresh_keepalive_time(0);
             break;
         } 
         case SEARCH_FILE_STATUS_CMD:
@@ -899,6 +897,7 @@ static int akt_execute_get_command(void)
             printf_debug("not support get commmand\n");
     }
 exit:
+    //io_set_refresh_keepalive_time(0);
     akt_get_response_data.header.operation = QUERY_CMD_RSP;
     return err_code;
 }
@@ -945,7 +944,7 @@ bool akt_execute_method(int *code, void *cl)
     header = &akt_header;
 
     err_code = RET_CODE_SUCCSESS;
-    printf_debug("operation code[%x]\n", header->operation);
+    printf_note("operation code[%x]\n", header->operation);
     switch (header->operation)
     {
         case SET_CMD_REQ:
@@ -982,6 +981,7 @@ bool akt_execute_method(int *code, void *cl)
             err_code = RET_CODE_PARAMTER_ERR;
             break;
     }
+    io_set_refresh_keepalive_time(0);
     *code = err_code;
     if(err_code == RET_CODE_SUCCSESS)
         return true;
@@ -1128,8 +1128,8 @@ int akt_assamble_response_data(uint8_t **buf, int err_code)
     }else if(req_header->operation == NET_CTRL_CMD){
         /* hearbeat response code */
         if(req_header->code == HEART_BEAT_MSG_REQ){
-            printf_info("response heartbeat code\n");
-            req_header->operation = req_header->operation;
+            printf_note("response heartbeat code\n");
+            response_data->header.operation = req_header->operation;
             response_data->header.code = HEART_BEAT_MSG_RSP;
         }
     }else{
@@ -1158,7 +1158,7 @@ int akt_assamble_response_data(uint8_t **buf, int err_code)
     return len;
 }
 
-int8_t  akt_assamble_send_active_data(uint8_t *send_buf, uint8_t *payload, uint32_t payload_len)
+int  akt_assamble_send_active_data(uint8_t *send_buf, uint8_t *payload, uint32_t payload_len)
 {
     struct response_get_data *response_data;
     int len = 0;

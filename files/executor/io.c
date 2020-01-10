@@ -25,8 +25,8 @@ static struct  band_table_t bandtable[] ={
     {0x70028, 0, 500000},
     {0x70014, 0, 1000000},
     {0x70008, 0, 2500000},
-    {0x30008, 0, 5000000},
-    {0x30004, 0, 10000000},
+    {0x70004, 0, 5000000},
+//    {0x30004, 0, 10000000},
     {0x70000, 0, 20000000},
     {0x30000, 0, 40000000},
     {0x10000, 0, 80000000},
@@ -132,7 +132,7 @@ void io_reset_fpga_data_link(void){
     if(io_ctrl_fd<=0){
         return ;
     }
-    printf_info("[**REGISTER**]Reset FPGA\n");
+    printf_debug("[**REGISTER**]Reset FPGA\n");
     data = (RESET_ADDR &0xffff)<<16;
     ret = ioctl(io_ctrl_fd,IOCTL_SET_DDC_REGISTER_VALUE,&data);
 }
@@ -152,7 +152,7 @@ int32_t io_set_bandwidth(uint32_t ch, uint32_t bandwidth){
     }
     old_val = set_factor;
     old_ch = ch;
-    printf_note("[**REGISTER**]ch:%d, Set Bandwidth:%u,band_factor=0x%x,set_factor=0x%x\n", ch, bandwidth,band_factor,set_factor);
+    printf_debug("[**REGISTER**]ch:%d, Set Bandwidth:%u,band_factor=0x%x,set_factor=0x%x\n", ch, bandwidth,band_factor,set_factor);
     ret = ioctl(io_ctrl_fd, IOCTL_EXTRACT_CH0, set_factor);
 #endif
     return ret;
@@ -268,7 +268,7 @@ int32_t io_set_dec_middle_freq(uint32_t ch, uint64_t dec_middle_freq, uint64_t m
     }
     old_val = reg;
     old_ch = ch;
-    printf_warn("[**REGISTER**]ch:%d, MiddleFreq =%llu, Decode MiddleFreq:%llu, reg=0x%x\n", ch, middle_freq, dec_middle_freq, reg);
+    printf_debug("[**REGISTER**]ch:%d, MiddleFreq =%llu, Decode MiddleFreq:%llu, reg=0x%x\n", ch, middle_freq, dec_middle_freq, reg);
     ret = ioctl(io_ctrl_fd, IOCTL_DECODE_MID_FREQ, reg);
 #endif
     return ret;
@@ -286,7 +286,7 @@ int32_t io_set_subch_dec_middle_freq(uint32_t subch, uint64_t dec_middle_freq, u
         odata.ch = subch;
         memcpy(odata.data,&reg,sizeof(reg));
         ret = ioctl(io_ctrl_fd, IOCTL_SUB_CH_MIDDLE_FREQ, &odata);
-        printf_warn("[**REGISTER**]ch:%d, SubChannel Set MiddleFreq =%llu, Decode MiddleFreq:%llu, reg=0x%x, ret=%d\n", subch, middle_freq, dec_middle_freq, reg, ret);
+        printf_debug("[**REGISTER**]ch:%d, SubChannel Set MiddleFreq =%llu, Decode MiddleFreq:%llu, reg=0x%x, ret=%d\n", subch, middle_freq, dec_middle_freq, reg, ret);
         
 #endif
         return ret;
@@ -301,7 +301,7 @@ int32_t io_set_subch_onoff(uint32_t subch, uint8_t onoff)
     odata.ch = subch;
     memcpy(odata.data,&onoff,sizeof(onoff));
     ret = ioctl(io_ctrl_fd, IOCTL_SUB_CH_ONOFF, &odata);
-    printf_info("[**REGISTER**]ch:%d, SubChannle Set OnOff=%d, ret=%d\n",subch, onoff, ret);
+    printf_debug("[**REGISTER**]ch:%d, SubChannle Set OnOff=%d, ret=%d\n",subch, onoff, ret);
 #endif
     return ret;
 }
@@ -317,7 +317,7 @@ int32_t io_set_subch_bandwidth(uint32_t subch, uint32_t bandwidth)
     odata.ch = subch;
     memcpy(odata.data,&band_factor,sizeof(band_factor));
     ret = ioctl(io_ctrl_fd, IOCTL_SUB_CH_BANDWIDTH, &odata);
-    printf_warn("[**REGISTER**]ch:%d, SubChannle Set Bandwidth=%u, factor=0x%x ret=%d\n",subch, bandwidth, band_factor, ret);
+    printf_debug("[**REGISTER**]ch:%d, SubChannle Set Bandwidth=%u, factor=0x%x ret=%d\n",subch, bandwidth, band_factor, ret);
 #endif
     return ret;
 }
@@ -339,7 +339,7 @@ static void io_set_common_param(uint8_t type, uint8_t *buf,uint32_t buf_len)
 /* 设置平滑数 */
 void io_set_smooth_time(uint16_t stime)
 {
-    printf_info("[**REGISTER**]Set Smooth time: factor=%d[0x%x]\n",stime, stime);
+    printf_debug("[**REGISTER**]Set Smooth time: factor=%d[0x%x]\n",stime, stime);
 #if defined(SUPPORT_SPECTRUM_KERNEL)
     //smooth mode
     ioctl(io_ctrl_fd,IOCTL_SMOOTH_CH0,0x10000);
@@ -352,7 +352,7 @@ void io_set_smooth_time(uint16_t stime)
 /* 设置FPGA校准值 */
 void io_set_calibrate_val(uint32_t ch, uint32_t  cal_value)
 {
-    printf_info("[**REGISTER**][ch=%d]Set Calibrate Val factor=%u[0x%x]\n",ch, cal_value,cal_value);
+    printf_debug("[**REGISTER**][ch=%d]Set Calibrate Val factor=%u[0x%x]\n",ch, cal_value,cal_value);
 #if defined(SUPPORT_SPECTRUM_KERNEL)
     ioctl(io_ctrl_fd,IOCTL_CALIBRATE_CH0,&cal_value);
 #endif
@@ -383,7 +383,7 @@ void io_set_dq_param(void *pdata)
     d_method = dec_para->d_method;
 
     io_compute_extract_factor_by_fftsize(bandwidth,&band_factor, &filter_factor);
-    printf_info("ch:%d, sub_ch:%d,bandwidth=%u,d_method=%d, band_factor=%u, filter_factor=%u\n",ch, sub_ch, bandwidth, d_method, band_factor, filter_factor);
+    printf_debug("ch:%d, sub_ch:%d,bandwidth=%u,d_method=%d, band_factor=%u, filter_factor=%u\n",ch, sub_ch, bandwidth, d_method, band_factor, filter_factor);
 
 
     //first close iq
@@ -403,9 +403,9 @@ void io_set_dq_param(void *pdata)
     memcpy(convert_buf+3,(uint8_t *)(&freq_factor),sizeof(uint32_t));
     memcpy(convert_buf+3+sizeof(uint32_t),(uint8_t *)(&band_factor),sizeof(uint32_t));
     memcpy(convert_buf+3+2*sizeof(uint32_t),(uint8_t *)(&d_method),sizeof(uint32_t));
-    printf_info("[**REGISTER**]ch=%d, sub_ch=%d, d_freq_factor=%u[0x%x]\n", ch, sub_ch, freq_factor, freq_factor);
-    printf_info("[**REGISTER**]ch=%d, sub_ch=%d, d_method=%u[0x%x]\n", ch, sub_ch,d_method, d_method);
-    printf_info("[**REGISTER**]ch=%d, sub_ch=%d, d_band_factor=%u[0x%x]\n", ch, sub_ch, band_factor, band_factor);
+    printf_debug("[**REGISTER**]ch=%d, sub_ch=%d, d_freq_factor=%u[0x%x]\n", ch, sub_ch, freq_factor, freq_factor);
+    printf_debug("[**REGISTER**]ch=%d, sub_ch=%d, d_method=%u[0x%x]\n", ch, sub_ch,d_method, d_method);
+    printf_debug("[**REGISTER**]ch=%d, sub_ch=%d, d_band_factor=%u[0x%x]\n", ch, sub_ch, band_factor, band_factor);
     io_set_common_param(3,convert_buf,sizeof(uint32_t)*3+3);
 }
 
@@ -424,7 +424,7 @@ void io_dma_dev_enable(uint32_t ch, uint8_t type, uint8_t continuous)
      |<-continuous(16bit)->|<-----data_offset(8bit)------>|<---enable(8bit)-->|
     */
     uint8_t data_offset = (ch<<2)|type;
-    printf_info("[**REGISTER**]ch=%d, type=%s, data_offset=%x, Enable\n", ch, type==0?"IQ":"FFT", data_offset);
+    printf_debug("[**REGISTER**]ch=%d, type=%s, data_offset=%x, Enable\n", ch, type==0?"IQ":"FFT", data_offset);
     con = continuous;
 #if defined(SUPPORT_SPECTRUM_KERNEL)
     if (io_ctrl_fd > 0) {
@@ -438,7 +438,7 @@ static void io_dma_dev_trans_len(uint32_t ch, uint8_t type, uint32_t len)
 {
     TRANS_LEN_PARAMETERS tran_parameter;
     uint8_t data_offset = (ch<<2)|type;
-    printf_info("[**REGISTER**]ch=%d, type=%s, data_offset=%x Transfer len:%d\n", ch, type==0?"IQ":"FFT", data_offset, len);
+    printf_debug("[**REGISTER**]ch=%d, type=%s, data_offset=%x Transfer len:%d\n", ch, type==0?"IQ":"FFT", data_offset, len);
     uint32_t ctrl_val = 0;
 #if defined(SUPPORT_SPECTRUM_KERNEL)
     if (io_ctrl_fd > 0) {
@@ -451,7 +451,7 @@ static void io_dma_dev_trans_len(uint32_t ch, uint8_t type, uint32_t len)
 
 void io_set_fft_size(uint32_t ch, uint32_t fft_size)
 {
-    printf_info("set fft size:%d\n",ch, fft_size);
+    printf_debug("set fft size:%d\n",ch, fft_size);
     uint32_t factor;
 
     factor = 0xc;
@@ -475,7 +475,7 @@ void io_set_fft_size(uint32_t ch, uint32_t fft_size)
     if(io_ctrl_fd<=0){
         return;
     }
-    printf_info("[**REGISTER**][ch:%d]Set FFT Size=%u, factor=%u[0x%x]\n", ch, fft_size,factor, factor);
+    printf_debug("[**REGISTER**][ch:%d]Set FFT Size=%u, factor=%u[0x%x]\n", ch, fft_size,factor, factor);
 #if defined(SUPPORT_SPECTRUM_KERNEL)
     ioctl(io_ctrl_fd,IOCTL_FFT_SIZE_CH0,factor);
 #endif
@@ -492,14 +492,14 @@ static void io_dma_dev_disable(uint32_t ch,uint8_t type)
         ctrl_val = (data_offset & 0xFF) << 8;
         ret = ioctl(io_ctrl_fd,IOCTL_ENABLE_DISABLE,ctrl_val);
     }
-    printf_info("[**REGISTER**]ch=%d, type=%s data_offset=%x Disable, ret=%d\n", ch, type==0?"IQ":"FFT", data_offset, ret);
+    printf_debug("[**REGISTER**]ch=%d, type=%s data_offset=%x Disable, ret=%d\n", ch, type==0?"IQ":"FFT", data_offset, ret);
 #endif
 }
 
 
 static void io_set_dma_SPECTRUM_out_en(uint8_t ch, uint32_t trans_len,uint8_t continuous)
 {
-    printf_info("SPECTRUM out enable: ch[%d]output en\n",ch);
+    printf_debug("SPECTRUM out enable: ch[%d]output en\n",ch);
     io_dma_dev_disable(ch,IO_SPECTRUM_TYPE);
     io_dma_dev_enable(ch,IO_SPECTRUM_TYPE,continuous);
     io_dma_dev_trans_len(ch,IO_SPECTRUM_TYPE, trans_len);
@@ -518,7 +518,7 @@ static void io_set_IQ_out_disable(uint8_t ch)
 
 static void io_set_IQ_out_en(uint8_t ch,uint32_t trans_len,uint8_t continuous)
 {
-    printf_info("SPECTRUM out enable: ch[%d]output en, trans_len=0x%u\n",ch, trans_len);
+    printf_debug("SPECTRUM out enable: ch[%d]output en, trans_len=0x%u\n",ch, trans_len);
     io_dma_dev_disable(ch,IO_IQ_TYPE);
     io_dma_dev_enable(ch,IO_IQ_TYPE,continuous);
     io_dma_dev_trans_len(ch,IO_IQ_TYPE, trans_len);
@@ -546,7 +546,7 @@ int8_t io_set_para_command(uint8_t type, uint8_t ch, void *data)
     switch(type)
     {
         case EX_CHANNEL_SELECT:
-            printf_info("[**REGISTER**]Set Channel Select, ch=%d\n", *(uint8_t *)data);
+            printf_debug("[**REGISTER**]Set Channel Select, ch=%d\n", *(uint8_t *)data);
             io_set_common_param(7, data,sizeof(uint8_t));
             break;
         case EX_AUDIO_SAMPLE_RATE:
@@ -554,7 +554,7 @@ int8_t io_set_para_command(uint8_t type, uint8_t ch, void *data)
             SUB_AUDIO_PARAM paudio;
             paudio.cid= ch;
             paudio.sample_rate = *(uint32_t *)data;
-            printf_info("[**REGISTER**]Set Audio Sample Rate, ch=%d, rate:%u[0x%x]\n", paudio.cid, paudio.sample_rate, paudio.sample_rate);
+            printf_debug("[**REGISTER**]Set Audio Sample Rate, ch=%d, rate:%u[0x%x]\n", paudio.cid, paudio.sample_rate, paudio.sample_rate);
             io_set_common_param(9, &paudio,sizeof(SUB_AUDIO_PARAM));
             break;
         }

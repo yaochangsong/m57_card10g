@@ -48,7 +48,7 @@ void config_init(void)
     config.configfile = safe_strdup(DEFAULT_CONFIGFILE);
     config.calibrationfile = safe_strdup(CALIBRATION_FILE);
     config.daemon = -1;
-    config.oal_config.work_mode = OAL_FAST_SCAN_MODE;
+    config.oal_config.work_mode = OAL_NULL_MODE;
     dao_read_create_config_file(config.configfile, &config);
 }
 

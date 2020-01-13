@@ -448,7 +448,7 @@ static int akt_execute_set_command(void *cl)
             char *ipstr=NULL;
             ipdata.s_addr = net_para.ipaddr;
             ipstr= inet_ntoa(ipdata);
-            printf_note("ipstr=%s  ipaddr=%x, port=%d, type=%d\n", ipstr,  ipdata.s_addr, ntohs(net_para.port), net_para.type);
+            printf_note("ipstr=%s  ipaddr=%x, port=%d, type=%d, sizeof=%d\n", ipstr,  ipdata.s_addr, ntohs(net_para.port), net_para.type, sizeof(SNIFFER_DATA_REPORT_ST));
             client.sin_port = net_para.port;//ntohs(net_para.port);
             client.sin_addr.s_addr = ipdata.s_addr;
             udp_add_client(&client);
@@ -456,7 +456,7 @@ static int akt_execute_set_command(void *cl)
             printf_note("tcp connection from: %s:%d\n", inet_ntoa(tcp_client.sin_addr), ntohs(tcp_client.sin_port));
             //tcp_add_addr_to_udp_by_port(client.sin_port, &tcp_client);
             /* refresh kernel client info */
-            memcpy(&sta_info_para.target_addr[ch], &net_para, sizeof(SNIFFER_DATA_REPORT_ST));
+            //memcpy(&sta_info_para.target_addr[ch], &net_para, sizeof(SNIFFER_DATA_REPORT_ST));
             sta_info_para.target_addr[ch].cid = net_para.cid;
             sta_info_para.target_addr[ch].ipaddr = ntohl(net_para.ipaddr);//ntohl(tcp_client.sin_addr.s_addr);//ntohl(net_para.ipaddr);
             sta_info_para.target_addr[ch].port = ntohs(net_para.port);
@@ -465,7 +465,8 @@ static int akt_execute_set_command(void *cl)
             sta_info_para.target_addr[ch].wz_ipaddr = ntohl(net_para.wz_ipaddr); //ntohl(tcp_client.sin_addr.s_addr)+(1 << 8);//
             sta_info_para.target_addr[ch].wz_port = ntohs(net_para.wz_port);//ntohs(5680);//ntohs(net_para.port);
             client.sin_addr.s_addr = sta_info_para.target_addr[ch].wz_ipaddr;
-            printf_note("ch=%d, wz_ipaddr=(%s)0x%x  wz_port=%d\n", ch, inet_ntoa(client.sin_addr), sta_info_para.target_addr[ch].wz_ipaddr, sta_info_para.target_addr[ch].wz_port);
+            printf_note("ch=%d, wz_ipaddr=(%s)0x%x  wz_port=%d[0x%x], net_para.wz_port=0x%x\n", 
+                ch, inet_ntoa(client.sin_addr), sta_info_para.target_addr[ch].wz_ipaddr, sta_info_para.target_addr[ch].wz_port, sta_info_para.target_addr[ch].wz_port, net_para.wz_port);
             #endif
             clock_gettime(CLOCK_REALTIME, &ts);
             sta_info_para.keepalive_time = ts;
@@ -580,7 +581,7 @@ static int akt_execute_set_command(void *cl)
             /* 子通道解调开关 */
             executor_set_command(EX_MID_FREQ_CMD, EX_SUB_CH_ONOFF, sub_ch, &enable);
             printf_note("wz_threshold_bandwidth[%u],enable=%d\n", poal_config->ctrl_para.wz_threshold_bandwidth,enable);
-            poal_config->ctrl_para.wz_threshold_bandwidth = 1000000; //debug
+            //poal_config->ctrl_para.wz_threshold_bandwidth = 1000000; //debug
             /* 通道IQ使能 */
             if(enable){
                 /* NOTE:The parameter must be a MAIN channel, not a subchannel */
@@ -589,16 +590,17 @@ static int akt_execute_set_command(void *cl)
                 io_set_enable_command(IQ_MODE_DISABLE, ch, 0);
             }
             #ifdef SUPPORT_NET_WZ
-                /* 判断解调带宽是否大于万兆传输阈值；大于则使用万兆传输（关闭千兆），否则使用千兆传输（关闭万兆） */
+                /* 判断解调带宽是否大于万兆传输阈值；大于等于则使用万兆传输（关闭千兆），否则使用千兆传输（关闭万兆） */
                 struct sub_channel_freq_para_st *sub_channel_array;
                 sub_channel_array = &poal_config->sub_channel_para[ch];
                 printf_note("sub_channel_array->sub_ch[sub_ch].d_bandwith[%u]\n", sub_channel_array->sub_ch[sub_ch].d_bandwith);
-                if(poal_config->ctrl_para.wz_threshold_bandwidth <  sub_channel_array->sub_ch[sub_ch].d_bandwith){
+                if(poal_config->ctrl_para.wz_threshold_bandwidth <=  sub_channel_array->sub_ch[sub_ch].d_bandwith){
                    io_set_1ge_net_onoff(0);/* 关闭千兆传输 */
                    io_set_10ge_net_onoff(1); /* 开启万兆传输 */
                     printf_warn("d_bandwith[%u] is more than threshold[%u], Data is't sent by the Gigabit, but by 10 Gigabit\n", 
                         sub_channel_array->sub_ch[sub_ch].d_bandwith, poal_config->ctrl_para.wz_threshold_bandwidth);
                 }else{
+                   printf_warn("Data is sent by the Gigabit, NOT by 10 Gigabit\n");
                    io_set_1ge_net_onoff(1);/* 开启千兆传输 */
                    io_set_10ge_net_onoff(0); /* 关闭万兆传输 */
                 }

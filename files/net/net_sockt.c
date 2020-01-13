@@ -42,6 +42,7 @@ void tcp_free(struct net_tcp_client *cl)
     printf_info("tcp_free:");
     printf_info(": %s:%d\n", cl->get_peer_addr(cl), cl->get_peer_port(cl));
     if (cl) {
+        executor_tcp_disconnect(cl);
         uloop_timeout_cancel(&cl->timeout);
         ustream_free(&cl->sfd.stream);
         shutdown(cl->sfd.fd.fd, SHUT_RDWR);

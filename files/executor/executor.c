@@ -42,6 +42,12 @@ static void executor_send_config_data_to_clent(void *data)
     poal_send_active_to_all_client(send_data, send_data_len);
 }
 
+int executor_tcp_disconnect(void *cl)
+{
+    io_set_1ge_net_onoff(0);/* 关闭千兆传输 */
+    io_set_10ge_net_onoff(0); /* 客户端离线，关闭万兆传输 */
+}
+
 static inline int8_t executor_wait_kernel_deal(void)
 {
     struct timespec ts;
@@ -286,6 +292,7 @@ loop:   printf_note("######wait to deal work######\n");
         ch = poal_config->enable.cid;
         if(OAL_NULL_MODE == poal_config->work_mode){
             printf_warn("Work Mode not set\n");
+            sleep(1);
             goto loop;
         }
         printf_note("receive notify, [Channel:%d]%s Work: [%s], [%s], [%s]\n", 

@@ -57,6 +57,15 @@ static void  io_compute_extract_factor_by_fftsize(uint32_t anays_band,uint32_t *
     }
 }
 
+int io_set_udp_client_info(void *arg)
+{
+    int32_t ret = 0;
+#if defined(SUPPORT_SPECTRUM_KERNEL) 
+    ret = ioctl(io_ctrl_fd,IOCTL_UDP_CLIENT_INFO_NOTIFY,arg);
+#endif
+    return ret;
+}
+
 int32_t io_set_sta_info_param(STATION_INFO *data){
     int32_t ret = 0;
 #if defined(SUPPORT_SPECTRUM_KERNEL) 

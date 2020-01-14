@@ -17,7 +17,7 @@ static inline int udp_get_peer_port(struct net_udp_client *cl)
     return ntohs(cl->peer_addr.sin_port);
 }
 
-static void udp_free(struct net_udp_client *cl)
+void udp_free(struct net_udp_client *cl)
 {
     printf_note("udp_free\n");
     if (cl) {
@@ -47,7 +47,7 @@ void udp_client_dump(void)
        }
 }
 
-void udp_add_client(struct sockaddr_in *addr)
+void udp_add_client(struct sockaddr_in *addr, int ch)
 {
     struct net_udp_client *cl = NULL;
     struct net_udp_client *cl_list, *list_tmp;
@@ -78,6 +78,7 @@ void udp_add_client(struct sockaddr_in *addr)
     cl->get_peer_addr = udp_get_peer_addr;
     cl->get_peer_port = udp_get_peer_port;
     cl->peer_addr.sin_family = AF_INET;
+    cl->ch = ch;
     list_add(&cl->list, &srv->clients);
     cl->srv = srv;
     cl->srv->nclients++;

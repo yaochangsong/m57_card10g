@@ -9,6 +9,7 @@ struct net_udp_client {
     bool connection_close;
     int response_length;
     int tag;
+    int ch; /* channel */
     void (*free)(struct net_udp_client *cl);
     void (*send_error)(struct net_udp_client *cl, int code, const char *summary, const char *fmt, ...);
     void (*send)(struct net_udp_client *cl, const void *data, int len);
@@ -30,6 +31,6 @@ struct net_udp_server {
 extern struct net_udp_server *udp_server_new(const char *host, int port);
 extern int udp_send_data(uint8_t  *data, uint32_t data_len);
 extern int udp_send_data_to_client(struct net_udp_client *client, uint8_t *data, uint32_t data_len);
-extern void udp_add_client(struct sockaddr_in *addr);
+extern void udp_add_client(struct sockaddr_in *addr, int ch);
 #endif
 

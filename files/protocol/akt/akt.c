@@ -338,6 +338,41 @@ static inline int akt_err_code_check(int ret)
 }
 
 
+int akt_add_udp_client(void *cl_info)
+{
+    #define UDP_CLIENT_NUM 8
+    struct net_udp_client *cl = NULL;
+    struct net_udp_client *cl_list, *list_tmp;
+    struct net_udp_server *srv = get_udp_server();
+    int index = 0;
+
+    struct udp_client_info ucli[UDP_CLIENT_NUM];
+    SNIFFER_DATA_REPORT_ST *ci = (SNIFFER_DATA_REPORT_ST *)cl_info;
+    memset(ucli, 0, sizeof(struct udp_client_info)*UDP_CLIENT_NUM);
+    
+    printf_note("cid=%x, ipaddr=%x, port=%d, type=%d,wz_ipaddr=%x, wz_port=%d\n",
+        ci->cid, ci->ipaddr, ci->port,ci->type, ci->wz_ipaddr, ci->wz_port);
+    
+    list_for_each_entry_safe(cl_list, list_tmp, &srv->clients, list){
+        ucli[index].cid = cl_list->ch;
+        ucli[index].ipaddr = ntohl(cl_list->peer_addr.sin_addr.s_addr);
+        ucli[index].port = cl_list->peer_addr.sin_port;
+#ifdef SUPPORT_NET_WZ
+        ucli[index].wz_ipaddr = ci->wz_ipaddr;
+        ucli[index].wz_port = ci->wz_port;
+#endif
+        printf_note("akt kernel add client index=%d, cid=%d, [ip:%x][port:%d][10g_ipaddr=0x%x][10g_port=%d], online\n", 
+                        index, ucli[index].cid, ucli[index].ipaddr, ucli[index].port, ucli[index].wz_ipaddr, ucli[index].wz_port);
+        index ++;
+        if(index >= UDP_CLIENT_NUM){
+            break;
+        }
+    }
+    io_set_udp_client_info(ucli);
+    return 0;
+}
+
+
 static int akt_execute_set_command(void *cl)
 {
     PDU_CFG_REQ_HEADER_ST *header;
@@ -443,38 +478,23 @@ static int akt_execute_set_command(void *cl)
             check_valid_channel(header->buf[0]);
             net_para.cid = ch;
             memcpy(&net_para, header->buf, sizeof(SNIFFER_DATA_REPORT_ST));
-            
-            struct in_addr ipdata;
-            char *ipstr=NULL;
-            ipdata.s_addr = net_para.ipaddr;
-            ipstr= inet_ntoa(ipdata);
-            printf_note("ipstr=%s  ipaddr=%x, port=%d, type=%d, sizeof=%d\n", ipstr,  ipdata.s_addr, ntohs(net_para.port), net_para.type, sizeof(SNIFFER_DATA_REPORT_ST));
-            client.sin_port = net_para.port;//ntohs(net_para.port);
-            client.sin_addr.s_addr = ipdata.s_addr;
-            udp_add_client(&client);
+            /* Test */
             tcp_get_peer_addr_port(cl, &tcp_client);
             printf_note("tcp connection from: %s:%d\n", inet_ntoa(tcp_client.sin_addr), ntohs(tcp_client.sin_port));
-            //tcp_add_addr_to_udp_by_port(client.sin_port, &tcp_client);
-            /* refresh kernel client info */
-            //memcpy(&sta_info_para.target_addr[ch], &net_para, sizeof(SNIFFER_DATA_REPORT_ST));
-            sta_info_para.target_addr[ch].cid = net_para.cid;
-            sta_info_para.target_addr[ch].ipaddr = ntohl(net_para.ipaddr);//ntohl(tcp_client.sin_addr.s_addr);//ntohl(net_para.ipaddr);
-            sta_info_para.target_addr[ch].port = ntohs(net_para.port);
-            sta_info_para.target_addr[ch].type = net_para.type;
-            #ifdef SUPPORT_NET_WZ
-            sta_info_para.target_addr[ch].wz_ipaddr = ntohl(net_para.wz_ipaddr); //ntohl(tcp_client.sin_addr.s_addr)+(1 << 8);//
-            sta_info_para.target_addr[ch].wz_port = ntohs(net_para.wz_port);//ntohs(5680);//ntohs(net_para.port);
-            client.sin_addr.s_addr = sta_info_para.target_addr[ch].wz_ipaddr;
-            printf_note("ch=%d, wz_ipaddr=(%s)0x%x  wz_port=%d[0x%x], net_para.wz_port=0x%x\n", 
-                ch, inet_ntoa(client.sin_addr), sta_info_para.target_addr[ch].wz_ipaddr, sta_info_para.target_addr[ch].wz_port, sta_info_para.target_addr[ch].wz_port, net_para.wz_port);
-            #endif
-            clock_gettime(CLOCK_REALTIME, &ts);
-            sta_info_para.keepalive_time = ts;
-            printf_note("ch = %d tcp_client=%s, ipstr=0x%x  ipaddr=0x%x, port=%d\n",ch,inet_ntoa(tcp_client.sin_addr),net_para.ipaddr,sta_info_para.target_addr[ch].ipaddr,sta_info_para.target_addr[ch].port);
-            
-            io_set_sta_info_param(&sta_info_para);
-            io_save_net_param((SNIFFER_DATA_REPORT_ST *)(&(sta_info_para.target_addr[ch])));
-            //io_set_refresh_keepalive_time(0);
+            net_para.port = ntohs(net_para.port);
+            //net_para.ipaddr = ntohs(net_para.ipaddr);
+            net_para.ipaddr =  tcp_client.sin_addr.s_addr;
+            net_para.wz_ipaddr = ntohl(tcp_client.sin_addr.s_addr)+(1 << 8);
+            net_para.wz_port = net_para.port;
+            /* EndTest */
+            client.sin_port = net_para.port;
+            client.sin_addr.s_addr = net_para.ipaddr;//ntohl(net_para.sin_addr.s_addr);
+
+            printf_note("ipstr=%s, port=%d, type=%d\n",
+                inet_ntoa(client.sin_addr),  client.sin_port, net_para.type);
+    
+            udp_add_client(&client, ch);
+            akt_add_udp_client(&net_para);
             break;
         }
         case AUDIO_SAMPLE_RATE:

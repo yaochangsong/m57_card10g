@@ -44,7 +44,35 @@ static void executor_send_config_data_to_clent(void *data)
 
 int executor_tcp_disconnect(void *cl)
 {
-    io_set_1ge_net_onoff(0);/* 关闭千兆传输 */
+    #define UDP_CLIENT_NUM 8
+    struct net_udp_client *cl_list, *list_tmp;
+    struct net_udp_server *srv = get_udp_server();
+    struct net_tcp_client *tcp_cl = (struct net_tcp_client *)cl;
+    int index = 0;
+    struct udp_client_info ucli[UDP_CLIENT_NUM];
+    memset(ucli, 0, sizeof(struct udp_client_info)*UDP_CLIENT_NUM);
+    
+   /* release udp client */
+    list_for_each_entry_safe(cl_list, list_tmp, &srv->clients, list){
+        if(memcmp(&cl_list->peer_addr.sin_addr, &tcp_cl->peer_addr.sin_addr, sizeof(tcp_cl->peer_addr.sin_addr)) == 0){
+           printf_note("del udp client %s:%d\n", inet_ntoa(cl_list->peer_addr.sin_addr), cl_list->peer_addr.sin_port);
+           udp_free(cl_list);
+        }
+    }
+    /* reload udp client */
+    list_for_each_entry_safe(cl_list, list_tmp, &srv->clients, list){
+        ucli[index].cid = cl_list->ch;
+        ucli[index].ipaddr = ntohl(cl_list->peer_addr.sin_addr.s_addr);
+        ucli[index].port = cl_list->peer_addr.sin_port;
+        printf_note("reload client index=%d, cid=%d, [ip:%x][port:%d][10g_ipaddr=0x%x][10g_port=%d], online\n", 
+                        index, ucli[index].cid, ucli[index].ipaddr, ucli[index].port);
+        index ++;
+        if(index >= UDP_CLIENT_NUM){
+            break;
+        }
+    }
+    printf_note("disconnect, free udp, remain udp client: %d\n", (index > 0 ? (index -1) : index));
+    io_set_udp_client_info(ucli);
     io_set_10ge_net_onoff(0); /* 客户端离线，关闭万兆传输 */
 }
 

@@ -80,6 +80,7 @@ typedef enum _IOCTL_CMD {
     NET_10G_REMOTE_SET=0x38,
     NET_10G_ONOFF_SET=0x39,
     NET_1G_ONOFF_SET=0x40,
+    UDP_CLIENT_INFO_NOTIFY=0x41,
 
     /* disk */
     DISK_REFRESH_FILE_BUFFER=0x70,
@@ -150,6 +151,7 @@ typedef enum _IOCTL_CMD {
 #define IOCTL_NET_10G_REMOTE_SET    _IOW(DMA_RF_IOC_MAGIC, NET_10G_REMOTE_SET, uint32_t)
 #define IOCTL_NET_10G_ONOFF_SET    _IOW(DMA_RF_IOC_MAGIC, NET_10G_ONOFF_SET, uint32_t)
 #define IOCTL_NET_1G_IQ_ONOFF_SET    _IOW(DMA_RF_IOC_MAGIC, NET_1G_ONOFF_SET, uint32_t)
+#define IOCTL_UDP_CLIENT_INFO_NOTIFY    _IOW(DMA_RF_IOC_MAGIC, UDP_CLIENT_INFO_NOTIFY, uint32_t)
 
 
 
@@ -180,6 +182,17 @@ typedef struct  _STATION_INFO{
     struct timespec keepalive_time;
     SNIFFER_DATA_REPORT_ST target_addr[MAX_CHANNEL_NUM];
 }__attribute__ ((packed)) STATION_INFO;
+
+
+struct udp_client_info{
+    uint8_t cid;
+    uint32_t ipaddr;
+    uint16_t port;
+#ifdef SUPPORT_NET_WZ
+    uint32_t wz_ipaddr; /* 添加上位机万兆IP和端口*/
+    uint16_t wz_port;
+#endif
+}__attribute__ ((packed));
 
 
 typedef struct  _COMMON_PARAM_ST{

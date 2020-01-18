@@ -344,7 +344,7 @@ int spi_clock_init_after(void)
     send_buf[2] = 0x40;
     ret = spi_send_data(spi_fd, send_buf, array_len, NULL, 0);
 
-    printf_note("[%s]SPI CLOCK init OK!\n");
+    printf_note("SPI CLOCK init OK!\n");
     return ret;
 }
 

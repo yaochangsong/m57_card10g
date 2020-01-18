@@ -557,13 +557,11 @@ static int8_t executor_set_ctrl_command(uint8_t type, uint8_t ch, void *data, va
             uint32_t bandwidth;
             float side_rate;
             bandwidth = *(uint32_t *)data;
-            printf_note("bandwidth[%u]\n", bandwidth);
             /* 根据带宽获取边带率 */
             if(config_read_by_cmd(EX_CTRL_CMD, EX_CTRL_SIDEBAND,ch, &side_rate, bandwidth) == -1){
                 printf_err("!!!!!!!!!!!!!SideRate Is Not Set In Config File[bandwidth=%u]!!!!!!!!!!!!!\n", bandwidth);
                 return -1;
             }
-            printf_note("side_rate[%f]\n", side_rate);
             /* 设置边带率 */
             io_set_side_rate(ch, &side_rate);
             break;

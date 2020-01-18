@@ -172,10 +172,10 @@ int32_t io_set_bandwidth(uint32_t ch, uint32_t bandwidth){
 }
 
 /*根据边带率,设置数据长度 
-    @rate: 边带率>0;实际下发边带率为整数；放大10000倍（内核不处理浮点数）
+    @rate: 边带率>0;实际下发边带率为整数；放大100倍（内核不处理浮点数）
 */
 int32_t io_set_side_rate(uint32_t ch, float *rate){
-    #define RATE_GAIN 10000
+    #define RATE_GAIN 100
     int32_t ret = 0;
     static int32_t old_ch=-1;
     static uint32_t old_val=0;
@@ -187,8 +187,8 @@ int32_t io_set_side_rate(uint32_t ch, float *rate){
         return ret;
     }
     old_val = irate;
-    printf_note("[**REGISTER**]ch:%d, %u\n", ch, old_val);
-    ret = ioctl(io_ctrl_fd, IOCTL_BAND_SIDE_RATE, old_val);
+    printf_note("[**REGISTER**]ch:%d, side rate%u\n", ch, irate);
+    ret = ioctl(io_ctrl_fd, IOCTL_BAND_SIDE_RATE, irate);
 #endif
     return ret;
 

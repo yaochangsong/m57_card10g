@@ -1146,7 +1146,7 @@ int akt_assamble_response_data(uint8_t **buf, int err_code)
     }else if(req_header->operation == NET_CTRL_CMD){
         /* hearbeat response code */
         if(req_header->code == HEART_BEAT_MSG_REQ){
-            printf_note("response heartbeat code\n");
+            printf_info("response heartbeat code\n");
             response_data->header.operation = req_header->operation;
             response_data->header.code = HEART_BEAT_MSG_RSP;
         }

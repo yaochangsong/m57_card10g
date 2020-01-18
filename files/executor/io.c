@@ -17,7 +17,9 @@
 static int io_ctrl_fd = -1;
 
 static struct  band_table_t bandtable[] ={
-    {0x70fa0, 0, 5000},
+    //{0x70fa0, 0, 5000},
+   // {0xf07d0, 0, 5000},
+    {0x70320, 0, 5000},
     {0x70320, 0, 25000},
     {0x70190, 0, 50000},
     {0x700c8, 0, 100000},
@@ -26,11 +28,12 @@ static struct  band_table_t bandtable[] ={
     {0x70014, 0, 1000000},
     {0x70008, 0, 2500000},
     {0x70004, 0, 5000000},
-//    {0x30004, 0, 10000000},
+    {0x30004, 0, 10000000},
     {0x70000, 0, 20000000},
     {0x30000, 0, 40000000},
     {0x10000, 0, 80000000},
     {0,       0, 160000000},
+    {0,       0, 175000000},
 }; 
 
 static void  io_compute_extract_factor_by_fftsize(uint32_t anays_band,uint32_t *extract, uint32_t *extract_filter)
@@ -161,12 +164,36 @@ int32_t io_set_bandwidth(uint32_t ch, uint32_t bandwidth){
     }
     old_val = set_factor;
     old_ch = ch;
-    printf_debug("[**REGISTER**]ch:%d, Set Bandwidth:%u,band_factor=0x%x,set_factor=0x%x\n", ch, bandwidth,band_factor,set_factor);
+    printf_note("[**REGISTER**]ch:%d, Set Bandwidth:%u,band_factor=0x%x,set_factor=0x%x\n", ch, bandwidth,band_factor,set_factor);
     ret = ioctl(io_ctrl_fd, IOCTL_EXTRACT_CH0, set_factor);
 #endif
     return ret;
 
 }
+
+/*根据边带率,设置数据长度 
+    @rate: 边带率>0;实际下发边带率为整数；放大10000倍（内核不处理浮点数）
+*/
+int32_t io_set_side_rate(uint32_t ch, float *rate){
+    #define RATE_GAIN 10000
+    int32_t ret = 0;
+    static int32_t old_ch=-1;
+    static uint32_t old_val=0;
+    uint32_t irate = 0;
+#if defined(SUPPORT_SPECTRUM_KERNEL) 
+    irate = (uint32_t)(*(float *)rate * (float)RATE_GAIN);
+    if((irate == old_val) && (ch == old_ch)){
+        /* 避免重复设置相同参数 */
+        return ret;
+    }
+    old_val = irate;
+    printf_note("[**REGISTER**]ch:%d, %u\n", ch, old_val);
+    ret = ioctl(io_ctrl_fd, IOCTL_BAND_SIDE_RATE, old_val);
+#endif
+    return ret;
+
+}
+
 
 /*设置解调带宽因子*/
 int32_t io_set_dec_bandwidth(uint32_t ch, uint32_t dec_bandwidth){
@@ -295,7 +322,7 @@ int32_t io_set_subch_dec_middle_freq(uint32_t subch, uint64_t dec_middle_freq, u
         odata.ch = subch;
         memcpy(odata.data,&reg,sizeof(reg));
         ret = ioctl(io_ctrl_fd, IOCTL_SUB_CH_MIDDLE_FREQ, &odata);
-        printf_debug("[**REGISTER**]ch:%d, SubChannel Set MiddleFreq =%llu, Decode MiddleFreq:%llu, reg=0x%x, ret=%d\n", subch, middle_freq, dec_middle_freq, reg, ret);
+        printf_note("[**REGISTER**]ch:%d, SubChannel Set MiddleFreq =%llu, Decode MiddleFreq:%llu, reg=0x%x, ret=%d\n", subch, middle_freq, dec_middle_freq, reg, ret);
         
 #endif
         return ret;
@@ -310,7 +337,7 @@ int32_t io_set_subch_onoff(uint32_t subch, uint8_t onoff)
     odata.ch = subch;
     memcpy(odata.data,&onoff,sizeof(onoff));
     ret = ioctl(io_ctrl_fd, IOCTL_SUB_CH_ONOFF, &odata);
-    printf_debug("[**REGISTER**]ch:%d, SubChannle Set OnOff=%d, ret=%d\n",subch, onoff, ret);
+    printf_note("[**REGISTER**]ch:%d, SubChannle Set OnOff=%d, ret=%d\n",subch, onoff, ret);
 #endif
     return ret;
 }
@@ -321,6 +348,16 @@ int32_t io_set_subch_bandwidth(uint32_t subch, uint32_t bandwidth)
     int32_t ret = 0;
     uint32_t band_factor, filter_factor;
     struct  ioctl_data_t odata;
+    
+    static uint32_t old_val = 0;
+    static int32_t old_ch=-1;
+    
+    if((old_val == bandwidth) && (subch == old_ch)){
+        /* 避免重复设置相同参数 */
+        return ret;
+    }
+    old_val = bandwidth;
+    old_ch = subch;
 #if defined(SUPPORT_SPECTRUM_KERNEL) 
     io_compute_extract_factor_by_fftsize(bandwidth,&band_factor, &filter_factor);
     odata.ch = subch;
@@ -348,7 +385,15 @@ static void io_set_common_param(uint8_t type, uint8_t *buf,uint32_t buf_len)
 /* 设置平滑数 */
 void io_set_smooth_time(uint16_t stime)
 {
-    printf_debug("[**REGISTER**]Set Smooth time: factor=%d[0x%x]\n",stime, stime);
+    static uint16_t old_val = 0;
+    
+    if(old_val == stime){
+        /* 避免重复设置相同参数 */
+        return;
+    }
+    old_val = stime;
+
+    printf_note("[**REGISTER**]Set Smooth time: factor=%d[0x%x]\n",stime, stime);
 #if defined(SUPPORT_SPECTRUM_KERNEL)
     //smooth mode
     ioctl(io_ctrl_fd,IOCTL_SMOOTH_CH0,0x10000);
@@ -361,61 +406,19 @@ void io_set_smooth_time(uint16_t stime)
 /* 设置FPGA校准值 */
 void io_set_calibrate_val(uint32_t ch, uint32_t  cal_value)
 {
-    printf_debug("[**REGISTER**][ch=%d]Set Calibrate Val factor=%u[0x%x]\n",ch, cal_value,cal_value);
+    static uint32_t old_val = 0, flag = 0;
+    
+    if((old_val == cal_value) || (flag == 0)){
+        /* 避免重复设置相同参数 */
+        flag = 1;
+        return;
+    }
+    old_val = cal_value;
+
+    printf_note("[**REGISTER**][ch=%d]Set Calibrate Val factor=%u[0x%x]\n",ch, cal_value,cal_value);
 #if defined(SUPPORT_SPECTRUM_KERNEL)
     ioctl(io_ctrl_fd,IOCTL_CALIBRATE_CH0,&cal_value);
 #endif
-}
-
-void io_set_dq_param(void *pdata)
-{
-    struct io_decode_param_st *dec_para = (struct io_decode_param_st *)pdata;
-    uint64_t tmp_freq;
-    uint32_t bandwidth;
-    uint64_t fix_value1 = (0x100000000ULL);
-    uint64_t fix_value2 = (102400000);
-    uint32_t freq_factor,band_factor, filter_factor;
-
-    uint32_t d_method = 0;
-    uint16_t ch, sub_ch = 0;
-
-    unsigned char convert_buf[32]={0};    
-    //mid frequency  map value
-    tmp_freq = fix_value2 ;
-    tmp_freq = tmp_freq*fix_value1;
-    tmp_freq /= fix_value2;
-    freq_factor = (uint32_t)tmp_freq;
-
-    //banwidth 
-    ch = dec_para->cid;
-    bandwidth = dec_para->d_bandwidth;
-    d_method = dec_para->d_method;
-
-    io_compute_extract_factor_by_fftsize(bandwidth,&band_factor, &filter_factor);
-    printf_debug("ch:%d, sub_ch:%d,bandwidth=%u,d_method=%d, band_factor=%u, filter_factor=%u\n",ch, sub_ch, bandwidth, d_method, band_factor, filter_factor);
-
-
-    //first close iq
-    band_factor |= 0x1000000;
-
-
-    FIXED_FREQ_ANYS_D_PARAM_ST dq;
-    dq.bandwidth = bandwidth;
-    dq.center_freq = dec_para->center_freq;
-    dq.d_method = dec_para->d_method;
-#if defined(SUPPORT_SPECTRUM_KERNEL)
-    ioctl(io_ctrl_fd,IOCTL_RUN_DEC_PARAM,&dq);
-#endif
-    
-    memcpy(convert_buf,(uint8_t *)(&ch),sizeof(uint8_t));
-    memcpy(convert_buf+1,(uint8_t *)(&sub_ch),sizeof(uint16_t));
-    memcpy(convert_buf+3,(uint8_t *)(&freq_factor),sizeof(uint32_t));
-    memcpy(convert_buf+3+sizeof(uint32_t),(uint8_t *)(&band_factor),sizeof(uint32_t));
-    memcpy(convert_buf+3+2*sizeof(uint32_t),(uint8_t *)(&d_method),sizeof(uint32_t));
-    printf_debug("[**REGISTER**]ch=%d, sub_ch=%d, d_freq_factor=%u[0x%x]\n", ch, sub_ch, freq_factor, freq_factor);
-    printf_debug("[**REGISTER**]ch=%d, sub_ch=%d, d_method=%u[0x%x]\n", ch, sub_ch,d_method, d_method);
-    printf_debug("[**REGISTER**]ch=%d, sub_ch=%d, d_band_factor=%u[0x%x]\n", ch, sub_ch, band_factor, band_factor);
-    io_set_common_param(3,convert_buf,sizeof(uint32_t)*3+3);
 }
 
 
@@ -462,7 +465,12 @@ void io_set_fft_size(uint32_t ch, uint32_t fft_size)
 {
     printf_debug("set fft size:%d\n",ch, fft_size);
     uint32_t factor;
+    static uint32_t old_value = 0;
 
+    if(old_value == fft_size){
+        return;
+    }
+    old_value = fft_size;
     factor = 0xc;
     if(fft_size == FFT_SIZE_256){
         factor = 0x8;
@@ -484,7 +492,7 @@ void io_set_fft_size(uint32_t ch, uint32_t fft_size)
     if(io_ctrl_fd<=0){
         return;
     }
-    printf_debug("[**REGISTER**][ch:%d]Set FFT Size=%u, factor=%u[0x%x]\n", ch, fft_size,factor, factor);
+    printf_note("[**REGISTER**][ch:%d]Set FFT Size=%u, factor=%u[0x%x]\n", ch, fft_size,factor, factor);
 #if defined(SUPPORT_SPECTRUM_KERNEL)
     ioctl(io_ctrl_fd,IOCTL_FFT_SIZE_CH0,factor);
 #endif
@@ -613,7 +621,7 @@ int8_t io_set_enable_command(uint8_t type, uint8_t ch, uint32_t fftsize)
         case IQ_MODE_ENABLE:
         {
             if(fftsize == 0)
-                io_set_IQ_out_en(ch, 32768, 1);
+                io_set_IQ_out_en(ch, 512, 1);
             else
                 io_set_IQ_out_en(ch, fftsize, 1);
             break;
@@ -875,7 +883,7 @@ uint8_t  io_set_network_to_interfaces(void *netinfo)
 
 static void io_asyn_signal_handler(int signum)
 {
-    printf_info("receive a signal, signalnum:%d\n", signum);
+    printf_debug("receive a signal, signalnum:%d\n", signum);
     sem_post(&work_sem.kernel_sysn);
 }
 

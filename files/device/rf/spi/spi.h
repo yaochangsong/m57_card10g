@@ -78,4 +78,6 @@ extern int spi_adc_init(void);
 extern int spi_clock_init(void);
 extern ssize_t spi_rf_get_command(rf_spi_get_cmd_code cmd, void *data);
 extern ssize_t spi_rf_set_command(rf_spi_set_cmd_code cmd, void *data);
+extern int spi_clock_init_after(void);
+
 #endif

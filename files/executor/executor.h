@@ -79,7 +79,7 @@ enum {
 /* executor: RF paramter */
 enum {
     EX_RF_MID_FREQ,               /* 射频中心频率 */
-    EX_RF_MID_BW,                 /*中频带宽*/
+    EX_RF_MID_BW,                 /*中频模拟带宽*/
     EX_RF_MODE_CODE,              /*模式码 0x00：低失真 0x01：常规 0x02：低噪声*/
     EX_RF_GAIN_MODE,              /*增益模式*/
     EX_RF_MGC_GAIN,               /*MGC 增益值*/

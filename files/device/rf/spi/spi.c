@@ -143,7 +143,7 @@ static ssize_t prase_recv_data(uint8_t cmd, uint8_t *recv_buffer, size_t data_le
     }
     ptr_data += data_len -status_len;
     status = *ptr_data;
-    printf_note("status=%d\n", status);
+    printf_info("status=%d\n", status);
     return status;
 }
 
@@ -176,18 +176,18 @@ ssize_t spi_rf_set_command(rf_spi_set_cmd_code cmd, void *data)
     if(found == 0 || spi_fd == -1){
         return -1;
     }
-    printf_note("send frame buffer[%d]:", frame_size);
+    printf_info("send frame buffer[%d]:", frame_size);
     for(int i = 0; i< frame_size; i++)
-        printfn("%02x ", frame_buffer[i]);
-    printfn("\n");
+        printfi("%02x ", frame_buffer[i]);
+    printfi("\n");
     ret = spi_send_data(spi_fd, frame_buffer, frame_size, recv_buffer, recv_size);
     if(ret < 0){
         return NULL;
     }
-    printf_note("receive data buffer[%d]:", recv_size);
+    printf_info("receive data buffer[%d]:", recv_size);
     for(int i = 0; i< recv_size; i++)
-        printfn("0x%x ", recv_buffer[i]);
-    printfn("\n");
+        printfi("0x%x ", recv_buffer[i]);
+    printfi("\n");
     ret = prase_recv_data(cmd, recv_buffer, data_len, NULL);
     if(ret != 0)
         return -1;
@@ -222,25 +222,25 @@ ssize_t spi_rf_get_command(rf_spi_get_cmd_code cmd, void *data)
     if(found == 0 || spi_fd == -1){
         return -1;
     }
-    printf_note("send frame buffer[%d]:", frame_size);
+    printf_info("send frame buffer[%d]:", frame_size);
     for(int i = 0; i< frame_size; i++)
-        printfn("0x%x ", frame_buffer[i]);
-    printfn("\n");
+        printfi("0x%x ", frame_buffer[i]);
+    printfi("\n");
     ret = spi_send_data(spi_fd, frame_buffer, frame_size, recv_buffer, recv_size);
     if(ret < 0){
         return -1;
     }
-    printf_note("receive data buffer[%d]:", recv_size);
+    printf_info("receive data buffer[%d]:", recv_size);
     for(int i = 0; i< recv_size; i++)
-        printfn("0x%x ", recv_buffer[i]);
-    printfn("\n");
+        printfi("0x%x ", recv_buffer[i]);
+    printfi("\n");
     ret = prase_recv_data(cmd, recv_buffer, data_len,data);
     if(ret != 0)
         return -1;
     return 0;
 }
 
-int spi_clock_init(void)
+int spi_clock_init_before(void)
 {
     uint8_t send_buf[8];
     int spi_fd, ret =0;
@@ -314,6 +314,40 @@ int spi_clock_init(void)
     printf_note("[%s]SPI CLOCK init OK![%s] Clock\n",  spi_node[index].info, internal_clock== true ? "Internal" : "External");
     return ret;
 }
+
+int spi_clock_init_after(void)
+{
+    uint8_t send_buf[8];
+    int spi_fd, ret =0;
+    int found = 0, index = 0;
+    uint32_t array_len = 3;
+    
+    for(int i = 0; i< ARRAY_SIZE(spi_node); i++){
+        if(spi_node[i].func_code == SPI_FUNC_CLOCK){
+            spi_fd = spi_node[i].fd;
+            index = i;
+            found = 1;
+        }
+    }
+    if(found == 0 || spi_fd == -1){
+        printf_err("SPI CLOCK init Faild!\n");
+        return -1;
+    }
+
+    send_buf[0] = 0x0;
+    send_buf[1] = 0x1;
+    send_buf[2] = 0x44;
+    ret = spi_send_data(spi_fd, send_buf, array_len, NULL, 0);
+
+    send_buf[0] = 0x0;
+    send_buf[1] = 0x1;
+    send_buf[2] = 0x40;
+    ret = spi_send_data(spi_fd, send_buf, array_len, NULL, 0);
+
+    printf_note("[%s]SPI CLOCK init OK!\n");
+    return ret;
+}
+
 
 int spi_adc_init(void)
 {

@@ -73,7 +73,12 @@ int executor_tcp_disconnect(void *cl)
     }
     printf_note("disconnect, free udp, remain udp client: %d\n", (index > 0 ? (index -1) : index));
     io_set_udp_client_info(ucli);
-    io_set_10ge_net_onoff(0); /* 客户端离线，关闭万兆传输 */
+    /* client is 0 */
+    if(index == 0){
+        SW_TO_AD_MODE();            /* 切换到默认AD转换工作模式 */
+        io_set_10ge_net_onoff(0);   /* 客户端离线，关闭万兆传输 */
+    }
+    
 }
 
 static inline int8_t executor_wait_kernel_deal(void)
@@ -122,7 +127,7 @@ static  int8_t  executor_fragment_scan(uint32_t fregment_num,uint8_t ch, work_mo
             printf_err("Error read scan bindwidth=%u\n", scan_bw);
             return -1;
     }
-
+    executor_set_command(EX_MID_FREQ_CMD, EX_BANDWITH, ch, &scan_bw);
     fftsize= poal_config->multi_freq_fregment_para[ch].fregment[fregment_num].fft_size;
     executor_set_command(EX_MID_FREQ_CMD, EX_FFT_SIZE,  ch, &fftsize);
     
@@ -142,8 +147,8 @@ static  int8_t  executor_fragment_scan(uint32_t fregment_num,uint8_t ch, work_mo
     }
     if((scan_count == 0) && (is_remainder == 0))
         return -1;
-    printf_debug("e_freq=%llu, s_freq=%llu, fftsize=%u\n", e_freq, s_freq, fftsize);
-    printf_note("###scan_bw =%u,scan_count=%d, is_remainder=%d\n", scan_bw, scan_count, is_remainder);
+    printf_info("e_freq=%llu, s_freq=%llu, fftsize=%u\n", e_freq, s_freq, fftsize);
+    printf_info("###scan_bw =%u,scan_count=%d, is_remainder=%d\n", scan_bw, scan_count, is_remainder);
     //executor_set_command(EX_RF_FREQ_CMD,  EX_RF_MID_BW, ch, &scan_bw);
     /* 
            Step 2: 根据扫描带宽�?从开始频率到截止频率循环扫描
@@ -184,11 +189,12 @@ static  int8_t  executor_fragment_scan(uint32_t fregment_num,uint8_t ch, work_mo
         /* 为避免在一定带宽下，中心频率过小导致起始频率<0，设置前需要对中频做判断 */
         m_freq =  middle_freq_resetting(scan_bw, m_freq);
         executor_set_command(EX_RF_FREQ_CMD, EX_RF_MID_FREQ, ch, &m_freq);
-        executor_set_command(EX_MID_FREQ_CMD, EX_BANDWITH, ch, &scan_bw);
 #ifdef SUPPORT_PLATFORM_ARCH_ARM
     #if defined(SUPPORT_SPECTRUM_KERNEL)
         executor_set_command(EX_WORK_MODE_CMD, mode, ch, &header_param);
         io_set_enable_command(PSD_MODE_ENABLE, ch, header_param.fft_size);
+        /* 根据带宽设置边带率 */
+        executor_set_command(EX_CTRL_CMD, EX_CTRL_SIDEBAND, ch, &header_param.bandwidth);
         executor_wait_kernel_deal();
     #elif defined (SUPPORT_SPECTRUM_USER)
         if(is_spectrum_aditool_debug() == false){
@@ -216,7 +222,6 @@ static inline int8_t  executor_points_scan(uint8_t ch, work_mode_type mode)
 {
     struct poal_config *poal_config = &(config_get_config()->oal_config);
     uint32_t points_count, i;
-    uint32_t scan_bw;
     uint64_t c_freq, s_freq, e_freq, m_freq;
     struct spectrum_header_param header_param;
     struct multi_freq_point_para_st *point;
@@ -225,10 +230,7 @@ static inline int8_t  executor_points_scan(uint8_t ch, work_mode_type mode)
 
     point = &poal_config->multi_freq_point_param[ch];
     points_count = point->freq_point_cnt;
-    if(config_read_by_cmd(EX_RF_FREQ_CMD, EX_RF_MID_BW, ch, &scan_bw) == -1){
-        printf_err("Error read scan bindwidth=%u\n", scan_bw);
-        return -1;
-    }
+
     printf_info("residence_time=%d, points_count=%d\n", point->residence_time, points_count);
     for(i = 0; i < points_count; i++){
         printf_info("Scan Point [%d]......\n", i);
@@ -244,7 +246,7 @@ static inline int8_t  executor_points_scan(uint8_t ch, work_mode_type mode)
         header_param.m_freq = point->points[i].center_freq;
         header_param.mode = mode;
         header_param.d_method = point->points[i].d_method;
-        header_param.scan_bw = scan_bw;
+        header_param.scan_bw = point->points[i].bandwidth;
 
         header_param.freq_resolution = (float)point->points[i].bandwidth * BAND_FACTOR / (float)point->points[i].fft_size;
         printf_info("ch=%d, s_freq=%llu, e_freq=%llu, fft_size=%u, d_method=%d\n", ch, s_freq, e_freq, header_param.fft_size,header_param.d_method);
@@ -255,6 +257,8 @@ static inline int8_t  executor_points_scan(uint8_t ch, work_mode_type mode)
 #if defined(SUPPORT_SPECTRUM_KERNEL)
         executor_set_command(EX_MID_FREQ_CMD, EX_MID_FREQ,    ch, &point->points[i].center_freq);
         executor_set_command(EX_MID_FREQ_CMD, EX_FFT_SIZE, ch, &point->points[i].fft_size);
+        /* 根据带宽设置边带率 */
+        executor_set_command(EX_CTRL_CMD, EX_CTRL_SIDEBAND, ch, &header_param.scan_bw);
         executor_set_command(EX_WORK_MODE_CMD,mode, ch, &header_param);
         /* notify client that some paramter has changed */
        // poal_config->send_active((void *)&header_param);
@@ -361,7 +365,7 @@ loop:   printf_note("######wait to deal work######\n");
                 case OAL_FAST_SCAN_MODE:
                 case OAL_MULTI_ZONE_SCAN_MODE:
                 {   
-                    printf_debug("scan segment count: %d\n", poal_config->multi_freq_fregment_para[ch].freq_segment_cnt);
+                    printf_note("scan segment count: %d\n", poal_config->multi_freq_fregment_para[ch].freq_segment_cnt);
                     if(poal_config->multi_freq_fregment_para[ch].freq_segment_cnt == 0){
                         sleep(1);
                         goto loop;
@@ -506,6 +510,7 @@ static int8_t executor_set_kernel_command(uint8_t type, uint8_t ch, void *data, 
         {
             printf_debug("ch:%d, bw:%u\n", ch, *(uint32_t *)data);
             io_set_bandwidth(ch, *(uint32_t *)data);
+            //io_set_side_rate(1.28);
             break;
         }
         case EX_FPGA_RESET:
@@ -543,6 +548,30 @@ static int8_t executor_set_kernel_command(uint8_t type, uint8_t ch, void *data, 
      }
     return 0;
 }
+
+static int8_t executor_set_ctrl_command(uint8_t type, uint8_t ch, void *data, va_list ap)
+{
+    switch(type){
+        case EX_CTRL_SIDEBAND:
+        {
+            uint32_t bandwidth;
+            float side_rate;
+            bandwidth = *(uint32_t *)data;
+            printf_note("bandwidth[%u]\n", bandwidth);
+            /* 根据带宽获取边带率 */
+            if(config_read_by_cmd(EX_CTRL_CMD, EX_CTRL_SIDEBAND,ch, &side_rate, bandwidth) == -1){
+                printf_err("!!!!!!!!!!!!!SideRate Is Not Set In Config File[bandwidth=%u]!!!!!!!!!!!!!\n", bandwidth);
+                return -1;
+            }
+            printf_note("side_rate[%f]\n", side_rate);
+            /* 设置边带率 */
+            io_set_side_rate(ch, &side_rate);
+            break;
+        }
+    }
+    return 0;
+}
+
 
 
 int8_t executor_set_command(exec_cmd cmd, uint8_t type, uint8_t ch,  void *data, ...)
@@ -603,6 +632,11 @@ int8_t executor_set_command(exec_cmd cmd, uint8_t type, uint8_t ch,  void *data,
             io_set_network_to_interfaces((void *)&poal_config->network);
             break;
         }
+        case EX_CTRL_CMD:
+        {
+            executor_set_ctrl_command(type, ch, data, argp);
+            break;
+        }
         default:
             printf_err("invalid set command[%d]\n", cmd);
      }
@@ -652,6 +686,7 @@ int8_t executor_set_enable_command(uint8_t ch)
         {
             case OAL_FIXED_FREQ_ANYS_MODE:
             {
+                uint32_t bandwidth = 0;
                 printf_debug("freq_point_cnt=%d\n", poal_config->multi_freq_point_param[ch].freq_point_cnt);
                 executor_set_command(EX_RF_FREQ_CMD, EX_RF_ATTENUATION, ch, &poal_config->rf_para[ch].attenuation);
                 executor_set_command(EX_RF_FREQ_CMD, EX_RF_MGC_GAIN, ch, &poal_config->rf_para[ch].mgc_gain_value);
@@ -660,7 +695,7 @@ int8_t executor_set_enable_command(uint8_t ch)
                 //executor_set_command(EX_RF_FREQ_CMD, EX_RF_MID_FREQ, ch, &poal_config->rf_para[ch].mid_freq);
                 //executor_set_command(EX_RF_FREQ_CMD, EX_RF_MID_BW, ch, &poal_config->rf_para[ch].mid_bw);
                 //executor_set_command(EX_MID_FREQ_CMD, EX_BANDWITH, ch, &poal_config->rf_para[ch].mid_bw);
-                executor_set_command(EX_MID_FREQ_CMD, EX_CHANNEL_SELECT, ch, &ch);
+                //executor_set_command(EX_MID_FREQ_CMD, EX_CHANNEL_SELECT, ch, &ch);
                 executor_set_command(EX_MID_FREQ_CMD, EX_SMOOTH_TIME, ch, &poal_config->multi_freq_point_param[ch].smooth_time);
                 executor_set_command(EX_MID_FREQ_CMD, EX_FPGA_CALIBRATE, ch, NULL);
                 break;
@@ -675,27 +710,22 @@ int8_t executor_set_enable_command(uint8_t ch)
                 //executor_set_command(EX_RF_FREQ_CMD, EX_RF_MID_FREQ, ch, &poal_config->rf_para[ch].mid_freq);
                 executor_set_command(EX_RF_FREQ_CMD,EX_RF_MID_FREQ,ch,&poal_config->rf_para[ch].mid_freq);
                 executor_set_command(EX_RF_FREQ_CMD,EX_RF_MID_BW,ch,&poal_config->rf_para[ch].mid_bw);
-                if(config_read_by_cmd(EX_RF_FREQ_CMD, EX_RF_MID_BW, 0, &bw) == -1){
-                    printf_err("Error read scan bindwidth=%u\n", bw);
-                    return -1;
-                }
-                executor_set_command(EX_RF_FREQ_CMD, EX_RF_MID_BW, ch, &bw);
                 /* 中频带宽和射频带宽一�?*/
                 //executor_set_command(EX_MID_FREQ_CMD, EX_CHANNEL_SELECT, ch, &ch);
                 executor_set_command(EX_MID_FREQ_CMD, EX_SMOOTH_TIME, ch,&frp->smooth_time);
                 executor_set_command(EX_MID_FREQ_CMD, EX_BANDWITH, ch,&bw);
                 executor_set_command(EX_MID_FREQ_CMD, EX_FPGA_CALIBRATE, ch, NULL);
                 executor_set_command(EX_MID_FREQ_CMD, EX_FPGA_RESET, ch, NULL);
-                
                 break;
             }
             case OAL_MULTI_ZONE_SCAN_MODE:
             {
+                uint32_t bandwidth = 0;
                 executor_set_command(EX_RF_FREQ_CMD, EX_RF_ATTENUATION, ch, &poal_config->rf_para[ch].attenuation);
                 executor_set_command(EX_RF_FREQ_CMD, EX_RF_MGC_GAIN, ch, &poal_config->rf_para[ch].mgc_gain_value);
                 executor_set_command(EX_MID_FREQ_CMD, EX_SMOOTH_TIME, ch, &poal_config->multi_freq_fregment_para[ch].smooth_time);
                 executor_set_command(EX_MID_FREQ_CMD, EX_FPGA_CALIBRATE, ch, NULL);
-                executor_set_command(EX_MID_FREQ_CMD, EX_CHANNEL_SELECT, ch, &ch);
+                //executor_set_command(EX_MID_FREQ_CMD, EX_CHANNEL_SELECT, ch, &ch);
                 executor_set_command(EX_MID_FREQ_CMD, EX_FPGA_RESET, ch, NULL);
                 break;
             }
@@ -705,7 +735,7 @@ int8_t executor_set_enable_command(uint8_t ch)
                 //executor_set_command(EX_MID_FREQ_CMD, EX_BANDWITH, ch, &poal_config->rf_para[ch].mid_bw);
                 executor_set_command(EX_MID_FREQ_CMD, EX_SMOOTH_TIME, ch, &poal_config->multi_freq_fregment_para[ch].smooth_time);
                 executor_set_command(EX_MID_FREQ_CMD, EX_FPGA_CALIBRATE, ch, NULL);
-                executor_set_command(EX_MID_FREQ_CMD, EX_CHANNEL_SELECT, ch, &ch);
+               // executor_set_command(EX_MID_FREQ_CMD, EX_CHANNEL_SELECT, ch, &ch);
                 executor_set_command(EX_MID_FREQ_CMD, EX_FPGA_RESET, ch, NULL);
                 break;
             default:
@@ -757,6 +787,7 @@ void executor_init(void)
     printf_note("clear all sub ch\n");
     uint8_t enable =0;
     for(i = 0; i< MAX_SIGNAL_CHANNEL_NUM; i++){
+        printf_note("clear all sub ch %d\n", i);
         executor_set_command(EX_MID_FREQ_CMD, EX_SUB_CH_ONOFF, i, &enable);
     }
     sem_init(&(work_sem.notify_deal), 0, 0);

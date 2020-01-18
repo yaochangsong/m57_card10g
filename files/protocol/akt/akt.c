@@ -79,7 +79,7 @@ static int akt_convert_oal_config(uint8_t ch, uint8_t cmd)
             uint8_t method_id;
             /* 解调参数 （带宽、解调方式）转换*/
             sig_cnt = pakt_config->decode_param[ch].freq_band_cnt; 
-            printf_info("sig_cnt=%d\n", sig_cnt);
+            printf_note("sig_cnt=%d\n", sig_cnt);
             poal_config->multi_freq_point_param[ch].freq_point_cnt = sig_cnt;
             for(i = 0; i < sig_cnt; i++){
                 if((method_id = akt_decode_method_convert(pakt_config->decode_param[ch].sig_ch[i].decode_method_id)) == -1){
@@ -387,7 +387,7 @@ static int akt_execute_set_command(void *cl)
         err_code = RET_CODE_LOCAL_CTRL_MODE;
         goto set_exit;
     }
-    printf_note("set bussiness code[%x]\n", header->code);
+    printf_note("set bussiness code[0x%x]\n", header->code);
     switch (header->code)
     {
         case OUTPUT_ENABLE_PARAM:
@@ -601,7 +601,7 @@ static int akt_execute_set_command(void *cl)
             /* 子通道解调开关 */
             executor_set_command(EX_MID_FREQ_CMD, EX_SUB_CH_ONOFF, sub_ch, &enable);
             printf_note("wz_threshold_bandwidth[%u],enable=%d\n", poal_config->ctrl_para.wz_threshold_bandwidth,enable);
-            //poal_config->ctrl_para.wz_threshold_bandwidth = 1000000; //debug
+            
             /* 通道IQ使能 */
             if(enable){
                 /* NOTE:The parameter must be a MAIN channel, not a subchannel */
@@ -688,10 +688,6 @@ static int akt_execute_set_command(void *cl)
                 #if defined(SUPPORT_XWFS)
                 ret = xwfs_stop_save_file(sis.filepath);
                 #endif
-                /* 中频带宽设置恢复到中频带宽初始值，定频模式下的中频带宽 */
-                config_read_by_cmd(EX_MID_FREQ_CMD, EX_BANDWITH,ch, &old_bandwidth);
-                printf_note("restore bandwidth:%uHz\n", old_bandwidth);
-                executor_set_command(EX_MID_FREQ_CMD, EX_BANDWITH, ch, &old_bandwidth);
             }else{
                 printf_err("error cmd\n");
                 err_code = RET_CODE_PARAMTER_ERR;

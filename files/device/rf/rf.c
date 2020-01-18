@@ -1158,7 +1158,7 @@ uint8_t rf_set_interface(uint8_t cmd,uint8_t ch,void *data){
             }else{
                 break;
             }
-            printf_note("[**RF**]ch=%d, middle_freq=%llu\n",ch, *(uint64_t*)data);
+            printf_info("[**RF**]ch=%d, middle_freq=%llu\n",ch, *(uint64_t*)data);
 #ifdef SUPPORT_RF_ADRV9009
             gpio_select_rf_channel(*(uint64_t*)data);
             adrv9009_iio_set_freq(*(uint64_t*)data);
@@ -1171,7 +1171,7 @@ uint8_t rf_set_interface(uint8_t cmd,uint8_t ch,void *data){
             break; 
         }
          case EX_RF_MID_BW :   {
-            printf_note("[**RF**]ch=%d, middle bw=%u\n", ch, *(uint32_t *) data);
+            printf_info("[**RF**]ch=%d, middle bw=%u\n", ch, *(uint32_t *) data);
             #ifdef  SUPPORT_RF_SPI
             //uint32_t filter=htobe32(*(uint32_t *)data) >> 24;
             uint32_t filter=*(uint32_t *)data;
@@ -1184,7 +1184,7 @@ uint8_t rf_set_interface(uint8_t cmd,uint8_t ch,void *data){
 
         case EX_RF_MODE_CODE :{
             noise_mode = *((uint8_t *)data);
-            printf_note("[**RF**]ch=%d, noise_mode=%d\n", ch, noise_mode);
+            printf_info("[**RF**]ch=%d, noise_mode=%d\n", ch, noise_mode);
         #if defined(SUPPORT_PLATFORM_ARCH_ARM)
             #ifdef SUPPORT_RF_ADRV9009
             #elif defined(SUPPORT_RF_SPI)
@@ -1365,14 +1365,18 @@ void spi_close(void)
 int8_t rf_init(void)
 {
     int ret = -1;
-    printf_note("rf init!\n");
+    printf_note("rf init...!\n");
 #ifdef SUPPORT_RF_ADRV9009
     adrv9009_iio_init();
 #endif
 #if defined(SUPPORT_RF_SPI)
   ret = spi_init();
-  ret = spi_clock_init();
+  ret = spi_clock_init_before();
+  /* 等待时钟稳定 */
+  usleep(10000);
   ret = spi_adc_init();
+  /* 复位时钟 */
+  ret = spi_clock_init_after();
 #endif
     return ret;
 }

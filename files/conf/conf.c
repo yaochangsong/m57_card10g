@@ -49,6 +49,7 @@ void config_init(void)
     config.calibrationfile = safe_strdup(CALIBRATION_FILE);
     config.daemon = -1;
     config.oal_config.work_mode = OAL_NULL_MODE;
+    config.oal_config.ctrl_para.wz_threshold_bandwidth = 10000000; /* 万兆默认阀值; >=该值，用万兆传输 */
     dao_read_create_config_file(config.configfile, &config);
 }
 
@@ -285,46 +286,49 @@ int8_t config_write_data(exec_cmd cmd, uint8_t type, uint8_t ch, void *data)
 }
 
 
-int8_t config_read_by_cmd(exec_cmd cmd, uint8_t type, uint8_t ch, void *data)
+int8_t config_read_by_cmd(exec_cmd cmd, uint8_t type, uint8_t ch, void *data, ...)
 {
-    printf_debug("config_read_by_cmd[%d]\n", cmd);
     struct poal_config *poal_config = &(config_get_config()->oal_config);
-    
+    int ret=  -1;
+    va_list argp;
+    va_start (argp, data);
+    printf_debug("config_read_by_cmd[%d]\n", cmd);
     if(data == NULL){
-        return -1;
+        goto exit;
     }
      switch(cmd)
      {
+        uint32_t index = va_arg(argp, uint32_t);
         case EX_MID_FREQ_CMD:
         {
             switch(type)
             {
                 case EX_MUTE_SW:
-                    *(uint8_t *)data = poal_config->multi_freq_point_param[ch].points[0].noise_en;
+                    *(uint8_t *)data = poal_config->multi_freq_point_param[ch].points[index].noise_en;
                     break;
                 case EX_MUTE_THRE:
-                     *(int8_t *)data = poal_config->multi_freq_point_param[ch].points[0].noise_thrh;
+                     *(int8_t *)data = poal_config->multi_freq_point_param[ch].points[index].noise_thrh;
                     break;
                 case EX_DEC_METHOD:
-                     *(uint8_t *)data = poal_config->multi_freq_point_param[ch].points[0].d_method;
+                     *(uint8_t *)data = poal_config->multi_freq_point_param[ch].points[index].d_method;
                     break;
                 case EX_DEC_BW:
-                     *(uint32_t *)data = poal_config->multi_freq_point_param[ch].points[0].d_bandwith;
+                     *(uint32_t *)data = poal_config->multi_freq_point_param[ch].points[index].d_bandwith;
                     break;
                 case EX_AUDIO_SAMPLE_RATE:
                      *(float *)data = poal_config->multi_freq_point_param[ch].audio_sample_rate;
                     break;
                 case EX_MID_FREQ:
-                    *(uint64_t *)data = poal_config->multi_freq_point_param[ch].points[0].center_freq;
+                    *(uint64_t *)data = poal_config->multi_freq_point_param[ch].points[index].center_freq;
                     break;
                 case EX_BANDWITH:
                 {
-                    *(uint32_t *)data = poal_config->multi_freq_point_param[ch].points[0].bandwidth;
+                    *(uint32_t *)data = poal_config->multi_freq_point_param[ch].points[index].bandwidth;
                     break;
                 }
                 default:
                     printf_err("not surpport type\n");
-                    return -1;
+                    goto exit;
             }
             break;
         }
@@ -346,9 +350,9 @@ int8_t config_read_by_cmd(exec_cmd cmd, uint8_t type, uint8_t ch, void *data)
                     }
                     printf_debug("ch=%d, rf middle bw=%u\n",ch, poal_config->rf_para[ch].mid_bw);
                     if(*(int32_t *)data == 0){
-                        return -1;
+                        goto exit;
                     }
-                    /* Update sideband rate based on bandwidth */
+                    /* Update sideband rate based on bandwidth 
                     for(int i = 0; i<sizeof(scanbw->bindwidth_hz)/sizeof(uint32_t); i++){
                         if(*(int32_t *)data == scanbw->bindwidth_hz[i]){
                             scanbw->work_sideband_rate = scanbw->sideband_rate[i];
@@ -356,6 +360,7 @@ int8_t config_read_by_cmd(exec_cmd cmd, uint8_t type, uint8_t ch, void *data)
                             break;
                         }
                     }
+                    */
                 }
                     break;
                 case EX_RF_MODE_CODE:
@@ -369,7 +374,7 @@ int8_t config_read_by_cmd(exec_cmd cmd, uint8_t type, uint8_t ch, void *data)
                     break;
                 default:
                     printf_err("not surpport type\n");
-                    return -1;
+                    goto exit;
             }
             break;
         }
@@ -395,7 +400,7 @@ int8_t config_read_by_cmd(exec_cmd cmd, uint8_t type, uint8_t ch, void *data)
                     break;
                 default:
                     printf_err("not surpport type\n");
-                    return -1;
+                    goto exit;
             }
             break;
         }
@@ -405,27 +410,45 @@ int8_t config_read_by_cmd(exec_cmd cmd, uint8_t type, uint8_t ch, void *data)
              {
                 case EX_CTRL_LOCAL_REMOTE:
                     break;
-                case EX_CTRL_SIDEBAND:{
+                case EX_CTRL_SIDEBAND:
+                {
                     struct scan_bindwidth_info *scanbw;
                     scanbw = &poal_config->ctrl_para.scan_bw; 
-                    *(float *)data = scanbw->work_sideband_rate;
-                    if(*(float *)data == 0){
-                        return -1;
+                    uint32_t bw = va_arg(argp, uint32_t);
+                    int found = 0;
+                     for(int i = 0; i<sizeof(scanbw->bindwidth_hz)/sizeof(uint32_t); i++){
+                        if(scanbw->bindwidth_hz[i] == bw){
+                            *(float *)data = scanbw->sideband_rate[i];
+                            scanbw->work_sideband_rate = scanbw->sideband_rate[i];
+                            printf_note("--find side rate:%f, %f\n",*(float *)data,  scanbw->sideband_rate[i]);
+                            found = 1;
+                            break;
+                        }
                     }
-                }
+                    if(found == 1){
+                        ret = 0;
+                        printf_note("find side rate:%f, bw=%u\n",*(float *)data,  bw);
+                    }else{
+                        *(float *)data = 0.0;
+                        printf_warn("not find side rate, bw=%u\n",  bw);
+                        goto exit;
+                    }
                     break;
+                }
                 default:
                     printf_err("not surpport type\n");
-                    return -1;
+                    goto exit;
              }
              break;
         }
         default:
             printf_err("invalid set data[%d]\n", cmd);
-            return -1;
+            goto exit;
      }
-     
-    return 0;
+     ret = 0;
+exit:
+    va_end(argp);
+    return ret;
 }
 
 

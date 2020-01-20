@@ -75,9 +75,11 @@ extern pthread_mutex_t spi_mutex;
 
 extern int spi_init(void);
 extern int spi_adc_init(void);
-extern int spi_clock_init(void);
+extern int spi_clock_init_before(void);
+extern int spi_clock_init_after(void);
 extern ssize_t spi_rf_get_command(rf_spi_get_cmd_code cmd, void *data);
 extern ssize_t spi_rf_set_command(rf_spi_set_cmd_code cmd, void *data);
-extern int spi_clock_init_after(void);
+extern int spi_clock_check(void);
+
 
 #endif

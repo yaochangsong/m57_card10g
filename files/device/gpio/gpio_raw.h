@@ -5,7 +5,8 @@
 #define SW_TO_AD_MODE()         gpio_raw_write_value(GPIO_FUNC_ADC, 0)
 #define SW_TO_BACKTRACE_MODE()  gpio_raw_write_value(GPIO_FUNC_ADC, 1)
 enum gpio_func_code{
-    GPIO_FUNC_ADC = 0x01,
+    GPIO_FUNC_ADC           = 0x01,
+    GPIO_FUNC_ADC_STATUS    = 0x02,
 };
     
 

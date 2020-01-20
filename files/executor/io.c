@@ -36,6 +36,16 @@ static struct  band_table_t bandtable[] ={
     {0,       0, 175000000},
 }; 
 
+static struct  band_table_t iq_bandtable[] ={
+    {198208, 130,   5000},
+    {197408, 128,   25000},
+    {197008, 128,   50000},
+    {196808, 0,     100000},
+    {196708, 0,     250000},
+    {196658, 0,     500000},
+}; 
+
+
 static void  io_compute_extract_factor_by_fftsize(uint32_t anays_band,uint32_t *extract, uint32_t *extract_filter)
 {
     int found = 0;
@@ -364,6 +374,70 @@ int32_t io_set_subch_bandwidth(uint32_t subch, uint32_t bandwidth)
     memcpy(odata.data,&band_factor,sizeof(band_factor));
     ret = ioctl(io_ctrl_fd, IOCTL_SUB_CH_BANDWIDTH, &odata);
     printf_debug("[**REGISTER**]ch:%d, SubChannle Set Bandwidth=%u, factor=0x%x ret=%d\n",subch, bandwidth, band_factor, ret);
+#endif
+    return ret;
+}
+
+/*设置子通道解调方式*/
+int32_t io_set_subch_dec_method(uint32_t subch, uint8_t dec_method){
+    int32_t ret = 0;
+    struct  ioctl_data_t odata;
+    uint32_t d_method = 0;
+    static int32_t old_ch=-1;
+    static uint32_t old_val=0;
+   
+#if defined(SUPPORT_SPECTRUM_KERNEL) 
+    if(dec_method == DQ_MODE_AM){
+        d_method = IO_DQ_MODE_AM;
+    }else if(dec_method == DQ_MODE_FM) {
+        d_method = IO_DQ_MODE_FM;
+    }else if(dec_method == DQ_MODE_LSB) {
+        d_method = IO_DQ_MODE_LSB;
+    }else if(dec_method == DQ_MODE_CW){
+        d_method = IO_DQ_MODE_CW;
+    }else if(dec_method == DQ_MODE_IQ) {
+        d_method = IO_DQ_MODE_IQ;
+    }else{
+        printf_warn("decode method not support:%d\n",dec_method);
+        return -1;
+    }
+     if((old_val == d_method) && (subch == old_ch)){
+        /* 避免重复设置相同参数 */
+        return ret;
+    }
+    old_val = d_method;
+    old_ch = subch;
+    odata.ch = subch;
+    memcpy(odata.data,&d_method,sizeof(d_method));
+    printf_note("[**REGISTER**]subch:%d, Set Decode method:%u, d_method=0x%x\n", subch, dec_method, d_method);
+    ret = ioctl(io_ctrl_fd, IOCTL_SUB_CH_DECODE_TYPE, &odata);
+#endif
+    return ret;
+
+}
+
+/*根据带宽设置子通道滤波器系数*/
+int32_t io_set_subch_filter_coeff(uint32_t subch, uint32_t bandwidth)
+{
+    int32_t ret = 0;
+    uint32_t band_factor, filter_factor;
+    struct  ioctl_data_t odata;
+    
+    static uint32_t old_val = 0;
+    static int32_t old_ch=-1;
+    
+    if((old_val == bandwidth) && (subch == old_ch)){
+        /* 避免重复设置相同参数 */
+        return ret;
+    }
+    old_val = bandwidth;
+    old_ch = subch;
+#if defined(SUPPORT_SPECTRUM_KERNEL) 
+    io_compute_extract_factor_by_fftsize(bandwidth,&band_factor, &filter_factor);
+    odata.ch = subch;
+    memcpy(odata.data,&filter_factor,sizeof(filter_factor));
+    ret = ioctl(io_ctrl_fd, IOCTL_SUB_CH_FILTER_COEFF, &odata);
+    printf_note("[**REGISTER**]subch:%d, SubChannle Set Bandwidth=%u, filter_factor=0x%x ret=%d\n",subch, bandwidth, filter_factor, ret);
 #endif
     return ret;
 }

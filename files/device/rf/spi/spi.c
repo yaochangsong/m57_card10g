@@ -348,6 +348,21 @@ int spi_clock_init_after(void)
     return ret;
 }
 
+int spi_clock_check(void)
+{
+    int value;
+    if(gpio_raw_read_value(GPIO_FUNC_ADC_STATUS, &value)!= 0){
+        printf_err("SPI CLOCK Check Faild!\n");
+        return -1;
+    }
+    if(value != 1){
+        printf_err("SPI CLOCK Check Faild!\n");
+        return -1;
+    }
+    printf_note("SPI CLOCK Check OK!\n");
+    return 0;
+}
+
 
 int spi_adc_init(void)
 {

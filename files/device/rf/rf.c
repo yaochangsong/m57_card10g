@@ -1370,13 +1370,15 @@ int8_t rf_init(void)
     adrv9009_iio_init();
 #endif
 #if defined(SUPPORT_RF_SPI)
-  ret = spi_init();
-  ret = spi_clock_init_before();
-  /* 等待时钟稳定 */
-  usleep(10000);
-  ret = spi_adc_init();
-  /* 复位时钟 */
-  ret = spi_clock_init_after();
+    ret = spi_init();
+    ret = spi_clock_init_before();
+    /* 等待时钟稳定 */
+    usleep(10000);
+    ret = spi_adc_init();
+    /* 复位时钟 */
+    ret = spi_clock_init_after();
+    usleep(10000);
+    ret = spi_clock_check();
 #endif
     return ret;
 }

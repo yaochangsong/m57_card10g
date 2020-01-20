@@ -420,7 +420,6 @@ int8_t config_read_by_cmd(exec_cmd cmd, uint8_t type, uint8_t ch, void *data, ..
                         if(scanbw->bindwidth_hz[i] == bw){
                             *(float *)data = scanbw->sideband_rate[i];
                             scanbw->work_sideband_rate = scanbw->sideband_rate[i];
-                            printf_note("--find side rate:%f, %f\n",*(float *)data,  scanbw->sideband_rate[i]);
                             found = 1;
                             break;
                         }

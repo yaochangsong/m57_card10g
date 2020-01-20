@@ -16,9 +16,8 @@
 
 static int io_ctrl_fd = -1;
 
-static struct  band_table_t bandtable[] ={
-    //{0x70fa0, 0, 5000},
-   // {0xf07d0, 0, 5000},
+/* 窄带表：解调方式为IQ系数表 */
+static struct  band_table_t iq_nbandtable[] ={
     {0x70320, 0, 5000},
     {0x70320, 0, 25000},
     {0x70190, 0, 50000},
@@ -31,12 +30,10 @@ static struct  band_table_t bandtable[] ={
     {0x30004, 0, 10000000},
     {0x70000, 0, 20000000},
     {0x30000, 0, 40000000},
-    {0x10000, 0, 80000000},
-    {0,       0, 160000000},
-    {0,       0, 175000000},
 }; 
 
-static struct  band_table_t iq_bandtable[] ={
+/* 窄带表：解调方式为非IQ系数表 */
+static struct  band_table_t nbandtable[] ={
     {198208, 130,   5000},
     {197408, 128,   25000},
     {197008, 128,   50000},
@@ -44,31 +41,45 @@ static struct  band_table_t iq_bandtable[] ={
     {196708, 0,     250000},
     {196658, 0,     500000},
 }; 
+/* 宽带系数表 */
+static struct  band_table_t bandtable[] ={
+    {0x70000, 0, 20000000},
+    {0x30000, 0, 40000000},
+    {0x10000, 0, 80000000},
+    {0,       0, 160000000},
+    {0,       0, 175000000},
 
+}; 
 
-static void  io_compute_extract_factor_by_fftsize(uint32_t anays_band,uint32_t *extract, uint32_t *extract_filter)
+static void  io_get_bandwidth_factor(uint32_t anays_band,               /* 输入参数：带宽 */
+                                            uint32_t *bw_factor,        /* 输出参数：带宽系数 */
+                                            uint32_t *filter_factor,    /* 输出参数：滤波器系数 */
+                                            struct  band_table_t *table,/* 输入参数：系数表 */
+                                            uint32_t table_len          /* 输入参数：系数表长度 */
+                                            )
 {
     int found = 0;
     uint32_t i;
-    if(anays_band == 0){
-        *extract = bandtable[0].extract_factor;
-        *extract_filter = bandtable[0].filter_factor;
-        printf_info("band=0, set default: extract=%d, extract_filter=%d\n", *extract, *extract_filter);
+    if(anays_band == 0 || table_len == 0){
+        *bw_factor = table[0].extract_factor;
+        *filter_factor = table[0].filter_factor;
+        printf_info("band=0, set default: extract=%d, extract_filter=%d\n", *bw_factor, *filter_factor);
     }
-    for(i = 0; i<sizeof(bandtable)/sizeof(struct  band_table_t); i++){
-        if(bandtable[i].band == anays_band){
-            *extract = bandtable[i].extract_factor;
-            *extract_filter = bandtable[i].filter_factor;
+    for(i = 0; i<table_len; i++){
+        if(table[i].band == anays_band){
+            *bw_factor = table[i].extract_factor;
+            *filter_factor = table[i].filter_factor;
             found = 1;
             break;
         }
     }
     if(found == 0){
-        *extract = bandtable[i-1].extract_factor;
-        *extract_filter = bandtable[i-1].filter_factor;
-        printf_info("[%u]not find band table, set default: extract=%d, extract_filter=%d\n", anays_band, *extract, *extract_filter);
+        *bw_factor = table[i-1].extract_factor;
+        *filter_factor = table[i-1].filter_factor;
+        printf_info("[%u]not find band table, set default: extract=%d, extract_filter=%d\n", anays_band, *bw_factor, *filter_factor);
     }
 }
+
 
 int io_set_udp_client_info(void *arg)
 {
@@ -165,8 +176,13 @@ int32_t io_set_bandwidth(uint32_t ch, uint32_t bandwidth){
     uint32_t set_factor,band_factor, filter_factor;
     static int32_t old_ch=-1;
     static uint32_t old_val=0;
+    struct  band_table_t *table;
+    uint32_t table_len = 0;
 #if defined(SUPPORT_SPECTRUM_KERNEL) 
-    io_compute_extract_factor_by_fftsize(bandwidth,&band_factor, &filter_factor);
+    table= &bandtable;
+    table_len = sizeof(bandtable)/sizeof(struct  band_table_t);
+    io_get_bandwidth_factor(bandwidth, &band_factor,&filter_factor, table, table_len);
+
     set_factor = band_factor|0x1000000;
     if((old_val == set_factor) && (ch == old_ch)){
         /* 避免重复设置相同参数 */
@@ -187,12 +203,11 @@ int32_t io_set_bandwidth(uint32_t ch, uint32_t bandwidth){
 int32_t io_set_side_rate(uint32_t ch, float *rate){
     #define RATE_GAIN 100
     int32_t ret = 0;
-    static int32_t old_ch=-1;
     static uint32_t old_val=0;
     uint32_t irate = 0;
 #if defined(SUPPORT_SPECTRUM_KERNEL) 
     irate = (uint32_t)(*(float *)rate * (float)RATE_GAIN);
-    if((irate == old_val) && (ch == old_ch)){
+    if(irate == old_val){
         /* 避免重复设置相同参数 */
         return ret;
     }
@@ -211,8 +226,12 @@ int32_t io_set_dec_bandwidth(uint32_t ch, uint32_t dec_bandwidth){
     uint32_t set_factor, band_factor, filter_factor;
     static int32_t old_ch=-1;
     static uint32_t old_val=0;
+    struct  band_table_t *table;
+    uint32_t table_len = 0;
 #if defined(SUPPORT_SPECTRUM_KERNEL) 
-    io_compute_extract_factor_by_fftsize(dec_bandwidth,&band_factor, &filter_factor);
+    table= &nbandtable;
+    table_len = sizeof(nbandtable)/sizeof(struct  band_table_t);
+    io_get_bandwidth_factor(dec_bandwidth, &band_factor,&filter_factor, table, table_len);
     set_factor = band_factor|0x2000000;
     if((old_val == set_factor) && (ch == old_ch)){
         /* 避免重复设置相同参数 */
@@ -236,14 +255,18 @@ int32_t io_set_dec_method(uint32_t ch, uint8_t dec_method){
     static uint32_t old_val=0;
    
 #if defined(SUPPORT_SPECTRUM_KERNEL) 
-    if(dec_method == DQ_MODE_AM){
+    if(dec_method == IO_DQ_MODE_AM){
         d_method = 0x4000000;
-    }else if(dec_method == DQ_MODE_FM) {
+    }else if(dec_method == IO_DQ_MODE_FM) {
         d_method = 0x4000001;
-    }else if(dec_method == DQ_MODE_LSB) {
+    }else if(dec_method == IO_DQ_MODE_LSB) {
         d_method = 0x4000002;
-    }else if(dec_method == DQ_MODE_USB) {
+    }else if(dec_method == IO_DQ_MODE_USB) {
         d_method = 0x4000002;
+    }else if(dec_method == IO_DQ_MODE_CW) {
+        d_method = 0x4000003;
+    }else if(dec_method == IO_DQ_MODE_IQ) {
+        d_method = 0x4000007;
     }else{
         printf_warn("decode method not support:%d\n",dec_method);
         return -1;
@@ -352,12 +375,14 @@ int32_t io_set_subch_onoff(uint32_t subch, uint8_t onoff)
     return ret;
 }
 
-/*设置子通道解调带宽因子*/
-int32_t io_set_subch_bandwidth(uint32_t subch, uint32_t bandwidth)
+/*设置子通道解调带宽因子, 不同解调方式，带宽系数表不一样*/
+int32_t io_set_subch_bandwidth(uint32_t subch, uint32_t bandwidth, uint8_t dec_method)
 {
     int32_t ret = 0;
     uint32_t band_factor, filter_factor;
     struct  ioctl_data_t odata;
+    struct  band_table_t *table;
+    uint32_t table_len = 0;
     
     static uint32_t old_val = 0;
     static int32_t old_ch=-1;
@@ -369,11 +394,26 @@ int32_t io_set_subch_bandwidth(uint32_t subch, uint32_t bandwidth)
     old_val = bandwidth;
     old_ch = subch;
 #if defined(SUPPORT_SPECTRUM_KERNEL) 
-    io_compute_extract_factor_by_fftsize(bandwidth,&band_factor, &filter_factor);
+    if(dec_method == DQ_MODE_IQ){
+        table= &iq_nbandtable;
+        table_len = sizeof(iq_nbandtable)/sizeof(struct  band_table_t);
+        
+    }else{
+        table= &nbandtable;
+        table_len = sizeof(nbandtable)/sizeof(struct  band_table_t);
+    }
+    io_get_bandwidth_factor(bandwidth, &band_factor,&filter_factor, table, table_len);
+    /*设置子通道带宽系数*/
     odata.ch = subch;
     memcpy(odata.data,&band_factor,sizeof(band_factor));
     ret = ioctl(io_ctrl_fd, IOCTL_SUB_CH_BANDWIDTH, &odata);
-    printf_debug("[**REGISTER**]ch:%d, SubChannle Set Bandwidth=%u, factor=0x%x ret=%d\n",subch, bandwidth, band_factor, ret);
+
+    /*设置子通道滤波器系数*/
+    odata.ch = subch;
+    memcpy(odata.data,&filter_factor,sizeof(filter_factor));
+    ret = ioctl(io_ctrl_fd, IOCTL_SUB_CH_FILTER_COEFF, &odata);
+    printf_note("[**REGISTER**]ch:%d, SubChannle Set Bandwidth=%u, factor=0x%x[%u], filter_factor=0x%x[%u],dec_method=%d,table_len=%d, ret=%d\n",
+                    subch, bandwidth, band_factor, band_factor,filter_factor,filter_factor, dec_method,  table_len, ret);
 #endif
     return ret;
 }
@@ -387,20 +427,7 @@ int32_t io_set_subch_dec_method(uint32_t subch, uint8_t dec_method){
     static uint32_t old_val=0;
    
 #if defined(SUPPORT_SPECTRUM_KERNEL) 
-    if(dec_method == DQ_MODE_AM){
-        d_method = IO_DQ_MODE_AM;
-    }else if(dec_method == DQ_MODE_FM) {
-        d_method = IO_DQ_MODE_FM;
-    }else if(dec_method == DQ_MODE_LSB) {
-        d_method = IO_DQ_MODE_LSB;
-    }else if(dec_method == DQ_MODE_CW){
-        d_method = IO_DQ_MODE_CW;
-    }else if(dec_method == DQ_MODE_IQ) {
-        d_method = IO_DQ_MODE_IQ;
-    }else{
-        printf_warn("decode method not support:%d\n",dec_method);
-        return -1;
-    }
+    d_method = dec_method;
      if((old_val == d_method) && (subch == old_ch)){
         /* 避免重复设置相同参数 */
         return ret;
@@ -415,33 +442,6 @@ int32_t io_set_subch_dec_method(uint32_t subch, uint8_t dec_method){
     return ret;
 
 }
-
-/*根据带宽设置子通道滤波器系数*/
-int32_t io_set_subch_filter_coeff(uint32_t subch, uint32_t bandwidth)
-{
-    int32_t ret = 0;
-    uint32_t band_factor, filter_factor;
-    struct  ioctl_data_t odata;
-    
-    static uint32_t old_val = 0;
-    static int32_t old_ch=-1;
-    
-    if((old_val == bandwidth) && (subch == old_ch)){
-        /* 避免重复设置相同参数 */
-        return ret;
-    }
-    old_val = bandwidth;
-    old_ch = subch;
-#if defined(SUPPORT_SPECTRUM_KERNEL) 
-    io_compute_extract_factor_by_fftsize(bandwidth,&band_factor, &filter_factor);
-    odata.ch = subch;
-    memcpy(odata.data,&filter_factor,sizeof(filter_factor));
-    ret = ioctl(io_ctrl_fd, IOCTL_SUB_CH_FILTER_COEFF, &odata);
-    printf_note("[**REGISTER**]subch:%d, SubChannle Set Bandwidth=%u, filter_factor=0x%x ret=%d\n",subch, bandwidth, filter_factor, ret);
-#endif
-    return ret;
-}
-
 
 static void io_set_common_param(uint8_t type, uint8_t *buf,uint32_t buf_len)
 {

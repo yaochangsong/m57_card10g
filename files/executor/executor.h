@@ -47,7 +47,10 @@ enum {
     EX_FPGA_CALIBRATE,         /*FPGA校准*/
     EX_SUB_CH_DEC_BW,          /* 子通道解调带宽 */
     EX_SUB_CH_MID_FREQ,        /* 子通道解调中心频率 */
-    EX_SUB_CH_ONOFF            /* 子通道开关 */
+    EX_SUB_CH_DEC_METHOD,      /* 子通道解调方式 */
+    EX_SUB_CH_MUTE_THRE,       /* 子通道静噪门限 */
+    EX_SUB_CH_ONOFF,           /* 子通道开关 */
+    
 };
 
 /* executor: enable paramter */

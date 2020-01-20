@@ -128,6 +128,8 @@ static  int8_t  executor_fragment_scan(uint32_t fregment_num,uint8_t ch, work_mo
             return -1;
     }
     executor_set_command(EX_MID_FREQ_CMD, EX_BANDWITH, ch, &scan_bw);
+    /* 根据带宽设置边带率 */
+    executor_set_command(EX_CTRL_CMD, EX_CTRL_SIDEBAND, ch, &scan_bw);
     fftsize= poal_config->multi_freq_fregment_para[ch].fregment[fregment_num].fft_size;
     executor_set_command(EX_MID_FREQ_CMD, EX_FFT_SIZE,  ch, &fftsize);
     
@@ -193,8 +195,6 @@ static  int8_t  executor_fragment_scan(uint32_t fregment_num,uint8_t ch, work_mo
     #if defined(SUPPORT_SPECTRUM_KERNEL)
         executor_set_command(EX_WORK_MODE_CMD, mode, ch, &header_param);
         io_set_enable_command(PSD_MODE_ENABLE, ch, header_param.fft_size);
-        /* 根据带宽设置边带率 */
-        executor_set_command(EX_CTRL_CMD, EX_CTRL_SIDEBAND, ch, &header_param.bandwidth);
         executor_wait_kernel_deal();
     #elif defined (SUPPORT_SPECTRUM_USER)
         if(is_spectrum_aditool_debug() == false){
@@ -475,7 +475,7 @@ static int8_t executor_set_kernel_command(uint8_t type, uint8_t ch, void *data, 
             middle_freq = *(uint64_t *)data;
             bindwidth = va_arg(ap, uint32_t);
             d_method = (uint8_t)va_arg(ap, uint32_t);
-            printf_warn("EX_DEC_RAW_DATA: ch=%d, middle_freq=%llu, bindwidth=%u, d_method=%d\n", ch, middle_freq, bindwidth, d_method);
+            //printf_warn("EX_DEC_RAW_DATA: ch=%d, middle_freq=%llu, bindwidth=%u, d_method=%d\n", ch, middle_freq, bindwidth, d_method);
             io_set_dec_parameter(ch, middle_freq, d_method, bindwidth);
             break;
         }
@@ -533,7 +533,9 @@ static int8_t executor_set_kernel_command(uint8_t type, uint8_t ch, void *data, 
         }
         case EX_SUB_CH_DEC_BW:
         {
-            io_set_subch_bandwidth(ch, *(uint32_t *)data);
+            uint32_t  dec_method;
+            dec_method = (uint32_t)va_arg(ap, uint32_t);
+            io_set_subch_bandwidth(ch, *(uint32_t *)data, (uint8_t)dec_method);
             break;
         }
         case EX_SUB_CH_MID_FREQ:
@@ -541,6 +543,15 @@ static int8_t executor_set_kernel_command(uint8_t type, uint8_t ch, void *data, 
             uint64_t  middle_freq;
             middle_freq = va_arg(ap, uint64_t);
             io_set_subch_dec_middle_freq(ch, *(uint64_t *)data, middle_freq);
+            break;
+        }
+        case EX_SUB_CH_DEC_METHOD:
+        {
+            io_set_subch_dec_method(ch, *(uint8_t *)data);
+            break;
+        }
+        case EX_SUB_CH_MUTE_THRE:
+        {
             break;
         }
         default:

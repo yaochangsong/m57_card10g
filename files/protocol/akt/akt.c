@@ -93,7 +93,7 @@ static int akt_convert_oal_config(uint8_t ch, uint8_t cmd)
                 /* 不在需要解调中心频率，除非窄带解调 */
                 printf_info("ch:%d,subch:%d, d_bw:%u\n", ch, i,poal_config->multi_freq_point_param[ch].points[i].d_bandwith);
                 printf_info("ch:%d,d_method:%u\n", ch, poal_config->multi_freq_point_param[ch].points[i].d_method);
-                printf_info("ch:%d,center_freq:%u\n", ch, poal_config->multi_freq_point_param[ch].points[i].center_freq);
+                printf_info("ch:%d,center_freq:%llu\n", ch, poal_config->multi_freq_point_param[ch].points[i].center_freq);
             }
             break;
         }
@@ -106,6 +106,8 @@ static int akt_convert_oal_config(uint8_t ch, uint8_t cmd)
             sub_channel_array->sub_ch[ch].center_freq = pakt_config->sub_channel[ch].freq;
             sub_channel_array->sub_ch[ch].d_method = akt_decode_method_convert(pakt_config->sub_channel[ch].decode_method_id);
             sub_channel_array->sub_ch[ch].d_bandwith = pakt_config->sub_channel[ch].bandwidth;
+            printf_info("ch:%d,d_method:%u, raw dmethod:%d\n", ch, sub_channel_array->sub_ch[ch].d_method, pakt_config->sub_channel[ch].decode_method_id);
+            printf_info("center_freq:%llu, d_bandwith=%u\n", sub_channel_array->sub_ch[ch].center_freq, sub_channel_array->sub_ch[ch].d_bandwith);
        }
             break;
        case OUTPUT_ENABLE_PARAM:
@@ -565,14 +567,21 @@ static int akt_execute_set_command(void *cl)
                 err_code = RET_CODE_PARAMTER_ERR;
                 goto set_exit;
             }
-            printf_note("oal ch=%d,sub_ch=%d, freq=%llu, method_id=%d, bandwidth=%u\n", sub_channel_array->cid, sub_channel_array->sub_ch[sub_ch].index,
-                       sub_channel_array->sub_ch[sub_ch].center_freq, sub_channel_array->sub_ch[sub_ch].d_method, 
-                       sub_channel_array->sub_ch[sub_ch].d_bandwith);
+            printf_note("oal ch=%d,sub_ch=%d, freq=%llu, method_id=%d, bandwidth=%u\n", 
+                        sub_channel_array->cid, sub_channel_array->sub_ch[sub_ch].index,
+                        sub_channel_array->sub_ch[sub_ch].center_freq, sub_channel_array->sub_ch[sub_ch].d_method, 
+                        sub_channel_array->sub_ch[sub_ch].d_bandwith);
             /* 解调中心频率需要工作中心频率计算 */
             executor_set_command(EX_MID_FREQ_CMD, EX_SUB_CH_MID_FREQ, sub_ch,
                 &sub_channel_array->sub_ch[sub_ch].center_freq,/* 解调频率*/
                 poal_config->multi_freq_point_param[ch].points[sub_ch].center_freq); /* 频点工作频率 */
-            executor_set_command(EX_MID_FREQ_CMD, EX_SUB_CH_DEC_BW, sub_ch, &sub_channel_array->sub_ch[sub_ch].d_bandwith);/* 解调带宽 */
+            /* 解调带宽, 不同解调方式，带宽系数表不一样*/
+            executor_set_command(EX_MID_FREQ_CMD, EX_SUB_CH_DEC_BW, sub_ch, 
+                &sub_channel_array->sub_ch[sub_ch].d_bandwith,
+                sub_channel_array->sub_ch[sub_ch].d_method);
+            /* 子通道解调方式 */
+            executor_set_command(EX_MID_FREQ_CMD, EX_SUB_CH_DEC_METHOD, sub_ch, 
+                &sub_channel_array->sub_ch[sub_ch].d_method);
             break;
         }
         case SUB_SIGNAL_OUTPUT_ENABLE_CMD:
@@ -592,7 +601,7 @@ static int akt_execute_set_command(void *cl)
                 goto set_exit;
             }
             io_set_enable_command(IQ_MODE_DISABLE, ch, 0);
-            printf_warn("ch:%d, sub_ch=%d, au_en:%d,iq_en:%d, %d\n", ch,sub_ch, poal_config->sub_ch_enable.audio_en, poal_config->sub_ch_enable.iq_en);
+            printf_note("ch:%d, sub_ch=%d, au_en:%d,iq_en:%d, %d\n", ch,sub_ch, poal_config->sub_ch_enable.audio_en, poal_config->sub_ch_enable.iq_en);
             enable = (poal_config->sub_ch_enable.iq_en == 0 ? 0 : 1);
             /* 子通道解调开关 */
             executor_set_command(EX_MID_FREQ_CMD, EX_SUB_CH_ONOFF, sub_ch, &enable);
@@ -613,10 +622,10 @@ static int akt_execute_set_command(void *cl)
                 if(poal_config->ctrl_para.wz_threshold_bandwidth <=  sub_channel_array->sub_ch[sub_ch].d_bandwith){
                    io_set_1ge_net_onoff(0);/* 关闭千兆传输 */
                    io_set_10ge_net_onoff(1); /* 开启万兆传输 */
-                    printf_warn("d_bandwith[%u] is more than threshold[%u], Data is't sent by the Gigabit, but by 10 Gigabit\n", 
+                   printf_note("d_bandwith[%u] >= threshold[%u], Data is't sent by the Gigabit, but by 10 Gigabit\n", 
                         sub_channel_array->sub_ch[sub_ch].d_bandwith, poal_config->ctrl_para.wz_threshold_bandwidth);
                 }else{
-                   printf_warn("Data is sent by the Gigabit, NOT by 10 Gigabit\n");
+                   printf_note("Data is sent by the Gigabit, NOT by 10 Gigabit\n");
                    io_set_1ge_net_onoff(1);/* 开启千兆传输 */
                    io_set_10ge_net_onoff(0); /* 关闭万兆传输 */
                 }

@@ -565,17 +565,13 @@ static int akt_execute_set_command(void *cl)
                 err_code = RET_CODE_PARAMTER_ERR;
                 goto set_exit;
             }
-            /* 关闭所有子通道数据 */
-            //uint8_t enable =0;
-            //for(int i = 0; i< MAX_SIGNAL_CHANNEL_NUM; i++){
-            //    executor_set_command(EX_MID_FREQ_CMD, EX_SUB_CH_ONOFF, i, &enable);
-            //}
             printf_note("oal ch=%d,sub_ch=%d, freq=%llu, method_id=%d, bandwidth=%u\n", sub_channel_array->cid, sub_channel_array->sub_ch[sub_ch].index,
                        sub_channel_array->sub_ch[sub_ch].center_freq, sub_channel_array->sub_ch[sub_ch].d_method, 
                        sub_channel_array->sub_ch[sub_ch].d_bandwith);
+            /* 解调中心频率需要工作中心频率计算 */
             executor_set_command(EX_MID_FREQ_CMD, EX_SUB_CH_MID_FREQ, sub_ch,
                 &sub_channel_array->sub_ch[sub_ch].center_freq,/* 解调频率*/
-                poal_config->multi_freq_point_param[ch].points[0].center_freq); /* 工作频点1工作频率 */
+                poal_config->multi_freq_point_param[ch].points[sub_ch].center_freq); /* 频点工作频率 */
             executor_set_command(EX_MID_FREQ_CMD, EX_SUB_CH_DEC_BW, sub_ch, &sub_channel_array->sub_ch[sub_ch].d_bandwith);/* 解调带宽 */
             break;
         }

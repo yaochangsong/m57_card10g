@@ -203,14 +203,6 @@ typedef enum _DQ_MODE_CODE{
     DQ_MODE_USB = 0x05,
 }DQ_MODE_CODE;
 
-typedef enum _DQ_MODE_FPGA_CODE{
-    FPGA_DQ_MODE_AM = 0x00,
-    FPGA_DQ_MODE_FM = 0x01,
-    FPGA_DQ_MODE_SSB = 0x02,
-    FPGA_DQ_MODE_CW  = 0x03,
-    FPGA_DQ_MODE_IQ  = 0x07,
-}DQ_MODE_FPGA_CODE;
-
 
 //table 16 page 28
 typedef enum _WINDOW_TYPE {

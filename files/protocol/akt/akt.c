@@ -351,10 +351,10 @@ int akt_add_udp_client(void *cl_info)
     struct udp_client_info ucli[UDP_CLIENT_NUM];
     SNIFFER_DATA_REPORT_ST *ci = (SNIFFER_DATA_REPORT_ST *)cl_info;
     memset(ucli, 0, sizeof(struct udp_client_info)*UDP_CLIENT_NUM);
-    
+#ifdef SUPPORT_NET_WZ
     printf_note("cid=%x, ipaddr=%x, port=%d, type=%d,wz_ipaddr=%x, wz_port=%d\n",
         ci->cid, ci->ipaddr, ci->port,ci->type, ci->wz_ipaddr, ci->wz_port);
-    
+#endif
     list_for_each_entry_safe(cl_list, list_tmp, &srv->clients, list){
         ucli[index].cid = cl_list->ch;
         ucli[index].ipaddr = ntohl(cl_list->peer_addr.sin_addr.s_addr);
@@ -362,9 +362,10 @@ int akt_add_udp_client(void *cl_info)
 #ifdef SUPPORT_NET_WZ
         ucli[index].wz_ipaddr = ci->wz_ipaddr;
         ucli[index].wz_port = ci->wz_port;
-#endif
         printf_note("akt kernel add client index=%d, cid=%d, [ip:%x][port:%d][10g_ipaddr=0x%x][10g_port=%d], online\n", 
                         index, ucli[index].cid, ucli[index].ipaddr, ucli[index].port, ucli[index].wz_ipaddr, ucli[index].wz_port);
+        
+#endif
         index ++;
         if(index >= UDP_CLIENT_NUM){
             break;
@@ -486,8 +487,10 @@ static int akt_execute_set_command(void *cl)
             net_para.port = ntohs(net_para.port);
             //net_para.ipaddr = ntohs(net_para.ipaddr);
             net_para.ipaddr =  tcp_client.sin_addr.s_addr;
+            #ifdef SUPPORT_NET_WZ
             net_para.wz_ipaddr = ntohl(tcp_client.sin_addr.s_addr)+(1 << 8);
             net_para.wz_port = net_para.port;
+            #endif
             /* EndTest */
             client.sin_port = net_para.port;
             client.sin_addr.s_addr = net_para.ipaddr;//ntohl(net_para.sin_addr.s_addr);
@@ -605,7 +608,6 @@ static int akt_execute_set_command(void *cl)
             enable = (poal_config->sub_ch_enable.iq_en == 0 ? 0 : 1);
             /* 子通道解调开关 */
             executor_set_command(EX_MID_FREQ_CMD, EX_SUB_CH_ONOFF, sub_ch, &enable);
-            printf_note("wz_threshold_bandwidth[%u],enable=%d\n", poal_config->ctrl_para.wz_threshold_bandwidth,enable);
             
             /* 通道IQ使能 */
             if(enable){
@@ -615,6 +617,7 @@ static int akt_execute_set_command(void *cl)
                 io_set_enable_command(IQ_MODE_DISABLE, ch, 0);
             }
             #ifdef SUPPORT_NET_WZ
+                printf_note("wz_threshold_bandwidth[%u],enable=%d\n", poal_config->ctrl_para.wz_threshold_bandwidth,enable);
                 /* 判断解调带宽是否大于万兆传输阈值；大于等于则使用万兆传输（关闭千兆），否则使用千兆传输（关闭万兆） */
                 struct sub_channel_freq_para_st *sub_channel_array;
                 sub_channel_array = &poal_config->sub_channel_para[ch];

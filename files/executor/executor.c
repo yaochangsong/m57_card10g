@@ -76,7 +76,9 @@ int executor_tcp_disconnect(void *cl)
     /* client is 0 */
     if(index == 0){
         SW_TO_AD_MODE();            /* 切换到默认AD转换工作模式 */
+        #ifdef SUPPORT_NET_WZ
         io_set_10ge_net_onoff(0);   /* 客户端离线，关闭万兆传输 */
+        #endif
     }
     
 }

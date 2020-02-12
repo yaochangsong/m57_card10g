@@ -284,7 +284,7 @@ void safe_free(void *p)
     }
 }
 
-int32_t inline diff_time(void)
+int32_t  diff_time(void)
 {
     static struct timeval oldTime; 
     struct timeval newTime; 

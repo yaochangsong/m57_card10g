@@ -137,7 +137,7 @@ endif
 
 #dao lib
 SUB_LIBS :=  lib/libubox/libubox.a
-SUB_LIBS += lib/ulfius/src/libulfius.so
+#SUB_LIBS += lib/ulfius/src/libulfius.so
 ifneq ($(findstring json,$(SUPPORT_DAO)),)
 	SUB_LIBS += dao/json/libjson.a
 	C_VAR += -DSUPPORT_DAO_JSON

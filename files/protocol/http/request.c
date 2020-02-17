@@ -28,20 +28,132 @@
 #include "request_file.h"
 #include "executor/io.h"
 #include "utils/memshare.h"
-
-
+#include "cmd.h"
 
 static struct request_info http_req_cmd[] = {
-    {"/file/*.*",               BLK_FILE_DOWNLOAD_CMD,          file_download},
-    {"/file/download",          BLK_FILE_DOWNLOAD_CMD,          file_download},
-    {"/file/startstore",        BLK_FILE_START_STORE_CMD,       file_startstore},
-    {"/file/stopstore",         BLK_FILE_STOP_STORE_CMD,        file_stopstore},
-    {"/file/search",            BLK_FILE_SEARCH_CMD,            file_search},
-    {"/file/startbacktrace",    BLK_FILE_START_BACKTRACE_CMD,   file_start_backtrace},
-    {"/file/stopbacktrace",     BLK_FILE_STOP_BACKTRACE_CMD,    file_stop_backtrace},
-    {"/file/delete",            BLK_FILE_DELETE_CMD,            file_delete},
+    /* 磁盘操作 */
+    {"GET",     "/disk/@filename",               DISPATCH_DOWNLOAD_CMD,    file_download},
+    {"DELETE",  "/disk/@filename",                      -1,                file_delete},
+    {"GET",     "/disk/startstore",                     -1,                file_startstore},
+    {"GET",     "/disk/stopstore",                      -1,                file_stopstore},
+    {"GET",     "/disk/search",                         -1,                file_search},
+    {"GET",     "/disk/startbacktrace",                 -1,                file_start_backtrace},
+    {"GET",     "/disk/stopbacktrace",                  -1,                file_stop_backtrace},
+    /* 模式参数设置 */
+    {"POST",    "/mode/mutiPoint/@ch",                  -1,                cmd_muti_point},
+    {"POST",    "/mode/multiBand/@ch",                  -1,                cmd_multi_band},
+    {"POST",    "/demodulation/@ch/@subch",             -1,                cmd_demodulation},
+    /* 中频参数设置 */
+    {"PUT",     "/if/@type/@ch/@subch/@value",          -1,                cmd_if_single_value_set},
+    {"PUT",     "/if/@type/@ch/@value",                 -1,                cmd_if_single_value_set},
+    {"POST",    "/if/@type/@ch/@subch",                 -1,                cmd_if_multi_value_set},
+    {"POST",    "/if/@type/@ch",                        -1,                cmd_if_multi_value_set},
+    /* 射频参数设置 */
+    {"PUT",     "/rf/@type/@ch/@subch/@value",          -1,                cmd_rf_single_value_set},
+    {"PUT",     "/rf/@type/@ch/@value",                 -1,                cmd_rf_single_value_set},
+    {"POST",    "/rf/@ch/@subch",                       -1,                cmd_rf_multi_value_set},
+    {"POST",    "/rf/@ch",                              -1,                cmd_rf_multi_value_set},
+    /* 使能控制 */
+    {"PUT",     "/enable/@ch/@subch/@type/@value",      -1,                cmd_subch_enable_set},
+    {"PUT",     "/enable/@ch/@type/@value",             -1,                cmd_ch_enable_set},
+
 };
 
+#define URL_SEPARATOR "/"
+static bool url_param_num_is_equal(const char * url, const char * url_format)
+{
+    char * saveptr = NULL, * cur_word = NULL, * url_cpy = NULL, * url_cpy_addr = NULL;
+    char * saveptr_prefix = NULL, * cur_word_format = NULL, * url_format_cpy = NULL, * url_format_cpy_addr = NULL;
+    int url_format_param_num = 0, url_param_num= 0;
+    int ret = false;
+    if(url == NULL || url_format == NULL)
+        return -1;
+    url_cpy = url_cpy_addr = strdup(url);
+    url_format_cpy = url_format_cpy_addr = strdup(url_format);
+    cur_word = strtok_r( url_cpy, URL_SEPARATOR, &saveptr );
+    while (cur_word != NULL){
+        cur_word = strtok_r( NULL, URL_SEPARATOR, &saveptr );
+        url_param_num ++;
+    }
+    cur_word_format = strtok_r( url_format_cpy, URL_SEPARATOR, &saveptr_prefix );
+    while (cur_word_format != NULL){
+        cur_word_format = strtok_r( NULL, URL_SEPARATOR, &saveptr_prefix );
+        url_format_param_num ++;
+    }
+    if(url_format_param_num == url_param_num){
+        ret =  true;
+    }
+    printf_debug("url_format_param_num=%d, url_param_num=%d\n", url_format_param_num, url_param_num);
+    free(url_cpy_addr);
+    free(url_format_cpy_addr);
+    url_cpy_addr = NULL;
+    url_format_cpy_addr = NULL;
+    return ret;
+}
+
+int parse_format_url(struct uh_client *cl, const char * url, const char * url_format)
+{
+    char * saveptr = NULL, * cur_word = NULL, * url_cpy = NULL, * url_cpy_addr = NULL;
+    char * saveptr_prefix = NULL, * cur_word_format = NULL, * url_format_cpy = NULL, * url_format_cpy_addr = NULL;
+    char concat_url_param[64];
+    char *s;
+    int index = 0;
+    int ret = 0;
+    url = cl->get_path(cl);
+    if(url == NULL || url_format == NULL)
+        return -1;
+    if(url_param_num_is_equal(url, url_format) == false){
+        return -1;
+    }
+    url_cpy = url_cpy_addr = strdup(url);
+    url_format_cpy = url_format_cpy_addr = strdup(url_format);
+    s = strchr(url_format_cpy, ':');
+    if (s == NULL) {
+        s = strchr(url_format_cpy, '@');
+        /* 在url_format中没有变量参数 */
+        if (s == NULL) {
+            if (strcmp(url_cpy, url_format_cpy) == 0){
+                ret = 0;    /* 匹配 */
+            }else{
+                ret = -1;    /* 未匹配 */
+            }
+            goto exit;
+        }
+    }
+    cur_word = strtok_r( url_cpy, URL_SEPARATOR, &saveptr );
+    cur_word_format = strtok_r( url_format_cpy, URL_SEPARATOR, &saveptr_prefix );
+    while (cur_word_format != NULL && cur_word != NULL){
+        //printf("cur_word=%s, cur_word_format=%s\n",cur_word, cur_word_format);
+        if (strcmp(cur_word, cur_word_format) != 0) {
+            if (cur_word_format[0] == ':' || cur_word_format[0] == '@'){
+                //printf_note("%s=%s\n",cur_word_format+1, cur_word);
+                /* 若是文件参数filename */
+                if(!strcmp(cur_word_format+1, "filename")){
+                    /* 判断是否为有效文件名称 */
+                    if(strchr(cur_word, '.') == NULL){
+                        printf_note("%s is command\n", cur_word);
+                        ret = -1;
+                        break;
+                    }
+                }
+                sprintf(concat_url_param, "%s,%s", cur_word_format+1, cur_word);
+                cl->parse_resetful_var(cl, concat_url_param);
+            }else{
+                ret = -1;
+                break;
+            }
+        }
+        cur_word = strtok_r( NULL, URL_SEPARATOR, &saveptr );
+        cur_word_format = strtok_r( NULL, URL_SEPARATOR, &saveptr_prefix );
+    }
+    url_cpy = url_cpy_addr = strdup(url);
+exit:
+    free(url_cpy_addr);
+    free(url_format_cpy_addr);
+    url_cpy_addr = NULL;
+    url_format_cpy_addr = NULL;
+    return ret;
+}
 
 size_t refill_buffer_file(void)
 {
@@ -95,37 +207,34 @@ ssize_t http_request_fill_path_info(struct uh_client *cl, const char *filename, 
 int http_on_request(struct uh_client *cl)
 {
     const char *path, *filename = NULL;
-
+    int ret = -1;
+    char err_msg[256]={"Undefined"};
     path = cl->get_path(cl);
     if(path ==NULL)
-        return UH_REQUEST_CONTINUE;
+        return UH_REQUEST_DONE;
 
     printf_note("accept path: %s\n", path);
     
-    /* Check if the request path is a file request cmd */
+    /* Check the request path  */
     for(int i = 0; i<sizeof(http_req_cmd)/sizeof(struct request_info); i++){
-        if(!strcmp(http_req_cmd[i].path, path)){
-            cl->dispatch.cmd = http_req_cmd[i].cmd;
-            filename = cl->get_var(cl, "filename");
-            printf_info("http request cmd: path=%s, cmd=%d\n", path, cl->dispatch.cmd);
-            break;
+        if(strcmp(cl->get_method(cl), http_req_cmd[i].method)){
+            continue;
         }
-        /* NOTE: compate "/file/" path and *.* */
-        if((memcmp(path, http_req_cmd[i].path, 6) ==0) && strrchr(path, '.') && strrchr(http_req_cmd[i].path, '.')){
-            cl->dispatch.cmd = http_req_cmd[i].cmd;
-            filename = strrchr(path, '/')+1;
-            printf_info("http download source: path=%s,filename=%s, cmd=%d\n", path, filename, cl->dispatch.cmd);
-            break;
+        if(parse_format_url(cl, path, http_req_cmd[i].path) == 0){
+            if(http_req_cmd[i].dispatch_cmd == -1){
+                 if(!http_req_cmd[i].action || (ret = http_req_cmd[i].action(cl, err_msg)) != 0){
+                    printf_note("action result: %d, %s\n", ret, err_msg);
+                    cl->send_error_json(cl, ret, err_msg);
+                 }else{
+                    cl->send_error_json(cl, 0, "OK");
+                 }
+                 return UH_REQUEST_DONE;
+            }else{
+                cl->dispatch.cmd = http_req_cmd[i].dispatch_cmd;
+                return UH_REQUEST_CONTINUE;
+            }
         }
     }
-    if(filename != NULL){
-        strncpy(cl->dispatch.file.filename, filename, sizeof(cl->dispatch.file.filename));
-        strncpy(cl->dispatch.file.path, path, sizeof(cl->dispatch.file.path));
-        cl->dispatch.file.path[sizeof(cl->dispatch.file.path) -1] = 0;
-        printf_note("filename=%s,file.path=%s\n",filename, cl->dispatch.file.path);
-    }
-    printf_note("dispatch.cmd=%d\n",cl->dispatch.cmd);
-    
     return UH_REQUEST_CONTINUE;
 }
 
@@ -134,7 +243,7 @@ int http_request_action(struct uh_client *cl)
 {
     int found = 0;
     for(int i = 0; i<ARRAY_SIZE(http_req_cmd); i++){
-        if(cl->dispatch.cmd == http_req_cmd[i].cmd){
+        if(cl->dispatch.cmd == http_req_cmd[i].dispatch_cmd){
             http_req_cmd[i].action(cl, NULL);
             found = 1;
             break;
@@ -151,11 +260,18 @@ bool http_requset_handle_cmd(struct uh_client *cl, const char *path)
 {
     struct path_info pi;
     ssize_t err;
-    char *filename = cl->dispatch.file.filename;
-    printf_note("dispatch.cmd=%d, filename=%s\n",cl->dispatch.cmd, filename);
+    char *filename =NULL ; //= cl->dispatch.file.filename;
     switch(cl->dispatch.cmd)
     {
-        case BLK_FILE_DOWNLOAD_CMD:
+        case DISPATCH_DOWNLOAD_CMD:
+            filename = cl->get_restful_var(cl, "filename");
+            if(filename == NULL)
+                return false;
+            /* 判断是否为有效文件 */
+            if(strchr(filename, '.') == NULL){
+                return false;
+            }
+            printf_note("dispatch.cmd=%d, filename=%s\n",cl->dispatch.cmd, filename);
             err = http_request_fill_path_info(cl, filename, &pi);
             if(err != 0){
                 printf_warn("err code=%d\n",err);
@@ -167,16 +283,6 @@ bool http_requset_handle_cmd(struct uh_client *cl, const char *path)
             }
             lseek(xwfs_get_fd(), 0, SEEK_SET);
             uh_blk_file_response_header(cl, &pi); 
-            http_request_action(cl);
-            break;
-        case BLK_FILE_START_STORE_CMD:
-        case BLK_FILE_START_BACKTRACE_CMD:
-            http_request_action(cl);
-            break;
-        case BLK_FILE_STOP_STORE_CMD:
-        case BLK_FILE_SEARCH_CMD:
-        case BLK_FILE_STOP_BACKTRACE_CMD:
-        case BLK_FILE_DELETE_CMD:
             http_request_action(cl);
             break;
     }

@@ -19,19 +19,17 @@
 #include <stdbool.h>
 #include "client.h"
 
+
 enum {
-    BLK_FILE_DOWNLOAD_CMD =1,
-    BLK_FILE_START_STORE_CMD,
-    BLK_FILE_STOP_STORE_CMD,
-    BLK_FILE_SEARCH_CMD,
-    BLK_FILE_START_BACKTRACE_CMD,
-    BLK_FILE_STOP_BACKTRACE_CMD,
-    BLK_FILE_DELETE_CMD,
+    DISPATCH_DOWNLOAD_CMD =1,
 };
 
+
 struct request_info {
+    char *method;
     char *path;
-    int cmd;
+    //int cmd;
+    int dispatch_cmd;
     int (*action)(struct uh_client *cl, void *arg);
 };
 

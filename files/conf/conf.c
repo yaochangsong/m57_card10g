@@ -40,6 +40,7 @@ void config_init(void)
     config.oal_config.network.netmask = saddr.sin_addr.s_addr;
     config.oal_config.network.port = 1325;
     #endif
+    memset(&config, 0, sizeof(config));
     if(get_mac(mac, sizeof(mac)) != -1){
         memcpy(config.oal_config.network.mac, mac, sizeof(config.oal_config.network.mac));
     }

@@ -40,7 +40,9 @@ static const char *const http_versions[] = {
 static const char *const http_methods[] = {
     [UH_HTTP_METHOD_GET] = "GET",
     [UH_HTTP_METHOD_POST] = "POST",
-    [UH_HTTP_METHOD_HEAD] = "HEAD"
+    [UH_HTTP_METHOD_HEAD] = "HEAD",
+    [UH_HTTP_METHOD_PUT] =  "PUT",
+    [UH_HTTP_METHOD_DELETE] = "DELETE"
 };
 
 static inline void client_send(struct uh_client *cl, const void *data, int len)
@@ -52,6 +54,7 @@ static void client_send_header(struct uh_client *cl, int code, const char *summa
 {
     cl->printf(cl, "%s %03i %s\r\n", http_versions[cl->request.version], code, summary);
     cl->printf(cl, "Server: Libuhttpd %s\r\n", UHTTPD_VERSION_STRING);
+    cl->printf(cl, "Connection: keep-alive\r\n");
     if (length < 0) {
         cl->printf(cl, "Transfer-Encoding: chunked\r\n");
     } else {
@@ -106,6 +109,105 @@ static void client_send_error(struct uh_client *cl, int code, const char *summar
     cl->request_done(cl);
 }
 
+static void client_send_error_json(struct uh_client *cl, int err_code, const char *message)
+{
+    va_list arg;
+    int len = -1;
+    char buffer[128];
+    len = snprintf(buffer, sizeof(buffer),"{");
+    len += snprintf(buffer+len, sizeof(buffer),"\"code\" : %d", err_code);
+    if(message)
+        len += snprintf(buffer+len, sizeof(buffer),",\"message\":\"%s\"", message);
+    len += snprintf(buffer+len, sizeof(buffer),"}");
+    cl->send_header(cl, 200, "OK", len);
+    cl->printf(cl, "Content-Type: text/json\r\n\r\n");
+    cl->printf(cl, "%s", buffer);
+    cl->request_done(cl);
+}
+
+
+static void client_send_json(struct uh_client *cl, int err_code, const char *message, const char *content)
+{
+    #define JSON_CNT_LEN 1024
+    int len = -1;
+    char *buffer;
+    buffer = (char *)malloc(JSON_CNT_LEN);
+    if(buffer == NULL){
+        printf_err("malloc error!!\n");
+        cl->send_error_json(cl, 500, "Internal Server Error, No memory");
+        return;
+    }
+    len = sprintf(buffer,"{");
+    len += sprintf(buffer+len, "\"code\" : %d", err_code);
+    if(message)
+        len += sprintf(buffer+len, ",\"message\"%s", message);
+    if(content){
+        if((JSON_CNT_LEN - len) < (strlen(content)+1)){
+            buffer = (char *)realloc(buffer, JSON_CNT_LEN+ strlen(content)+10);
+            if(buffer == NULL){
+                cl->send_error_json(cl, 500, "Internal Server Error, No memory");
+                return;
+            }
+        }
+        len += sprintf(buffer+len, ",%s", content);
+    }
+    len += sprintf(buffer+len,"}");
+    printf_note("json len:%d\n", len);
+    cl->send_header(cl, 200, "OK", len);
+    cl->printf(cl, "Content-Type: text/json\r\n\r\n");
+    cl->printf(cl, "%s", buffer);
+    cl->request_done(cl);
+    free(buffer);
+}
+
+static int clinet_srv_send_request(struct uh_client *cl)
+{
+    #define HTTP_HEADER_LEN 256
+    char *send_buffer;
+    int j = 0;
+    int ret = -1;
+    enum http_method method = cl->srv_request.method;
+    char *path = cl->srv_request.path;
+    char *host = cl->srv_request.host;
+    char *data= cl->srv_request.data;
+    int data_len = cl->srv_request.content_length;
+    char *http_headers = (char*)malloc(HTTP_HEADER_LEN);
+    if(http_headers == NULL)
+        return -1;
+    switch(method){
+        case UH_HTTP_METHOD_GET:
+            break;
+        case UH_HTTP_METHOD_POST:
+            j = sprintf(http_headers,"%s", http_methods[method]);
+            j += sprintf(http_headers+j," %s", path);
+            j += sprintf(http_headers+j," HTTP/1.1\r\n");
+            j += sprintf(http_headers+j,"Host: %s\r\n", host);
+            j += sprintf(http_headers+j,"Connection: keep-alive\r\n");
+            j += sprintf(http_headers+j,"Content-Length: %d\r\n", data_len);
+            j += sprintf(http_headers+j,"Content-Type: application/json\r\n");
+            if(j > HTTP_HEADER_LEN){
+                printf("the head is %d is more than buffer len %d\n", j, HTTP_HEADER_LEN);
+                return -1;
+            }
+            if(HTTP_HEADER_LEN - j < data_len){
+                http_headers=(char*)realloc(http_headers, HTTP_HEADER_LEN+data_len);
+                if(http_headers == NULL){
+                    goto exit;
+                }
+            }
+            
+            sprintf(http_headers+j, "\r\n%s", data);
+            cl->printf(cl, http_headers);
+            break;
+        default:
+            break;
+    }
+exit:
+    free(http_headers);
+    http_headers = NULL;
+    return ret;
+}
+
 static inline const char *client_get_version(struct uh_client *cl)
 {
     return http_versions[cl->request.version];
@@ -145,6 +247,12 @@ const char *client_get_var(struct uh_client *cl, const char *name)
 {
     return kvlist_get(&cl->request.var, name);
 }
+
+const char *client_get_restful_var(struct uh_client *cl, const char *name)
+{
+    return kvlist_get(&cl->request.resetful_var, name);
+}
+
 
 static inline const char *client_get_header(struct uh_client *cl, const char *name)
 {
@@ -203,8 +311,8 @@ static void post_post_done(struct uh_client *cl)
         cl->srv->on_error404(cl);
         return;
     }
-
-    cl->send_error(cl, 404, "Not Found", "The requested PATH %s was not found on this server.", path);
+    cl->send_error_json(cl, 404, "Not Found");
+    //cl->send_error(cl, 404, "Not Found", "The requested PATH %s was not found on this server.", path);
 }
 
 static void post_data_free(struct uh_client *cl)
@@ -222,6 +330,8 @@ static void uh_handle_request(struct uh_client *cl)
 
         switch (cl->request.method) {
         case UH_HTTP_METHOD_GET:
+        case UH_HTTP_METHOD_DELETE:
+        case UH_HTTP_METHOD_PUT:
             if (cl->srv->on_request(cl) == UH_REQUEST_DONE)
                 return;
             break;
@@ -231,10 +341,12 @@ static void uh_handle_request(struct uh_client *cl)
             d->free = post_data_free;
             d->body = calloc(1, UH_POST_DATA_BUF_SIZE);
             if (!d->body)
-                cl->send_error(cl, 500, "Internal Server Error", "No memory");
+                cl->send_error_json(cl, 500, "Internal Server Error,No memory");
+                //cl->send_error(cl, 500, "Internal Server Error", "No memory");
             return;
         default:
-            cl->send_error(cl, 400, "Bad Request", "Invalid Request");
+            cl->send_error_json(cl, 400, "Bad Request,Invalid Request");
+            //cl->send_error(cl, 400, "Bad Request", "Invalid Request");
             return;
         }
     }
@@ -253,8 +365,8 @@ static void uh_handle_request(struct uh_client *cl)
         cl->srv->on_error404(cl);
         return;
     }
-
-    cl->send_error(cl, 404, "Not Found", "The requested PATH %s was not found on this server.", path);
+    cl->send_error_json(cl, 404, "Not Found");
+    //cl->send_error(cl, 404, "Not Found", "The requested PATH %s was not found on this server.", path);
 }
 
 static inline void connection_close(struct uh_client *cl)
@@ -267,6 +379,7 @@ static inline void connection_close(struct uh_client *cl)
 static inline void keepalive_cb(struct uloop_timeout *timeout)
 {
     struct uh_client *cl = container_of(timeout, struct uh_client, timeout);
+    printf_warn("keepalive_cb###\n");
 
     connection_close(cl);
 }
@@ -303,11 +416,13 @@ static void client_request_done(struct uh_client *cl)
     kvlist_init(&cl->request.url, hdr_get_len);
     kvlist_init(&cl->request.var, hdr_get_len);
     kvlist_init(&cl->request.header, hdr_get_len);
+    kvlist_init(&cl->request.resetful_var, hdr_get_len);
     uloop_timeout_set(&cl->timeout, UHTTPD_CONNECTION_TIMEOUT * 1000);
 }
 
 static void client_free(struct uh_client *cl)
 {
+    printf_warn("free######");
     if (cl) {
         dispatch_done(cl);
         uloop_timeout_cancel(&cl->timeout);
@@ -331,6 +446,20 @@ static void client_free(struct uh_client *cl)
     }
 }
 
+static void parse_resetful_var(struct uh_client *cl, char *str)
+{
+    struct kvlist *kv = &cl->request.resetful_var;
+    char *k, *v;
+
+    k = str;
+    v = strchr(k, ',');
+    if (v)
+        *v++ = 0;
+
+    if (*k && v)
+        kvlist_set(kv, k, v);
+}
+
 static void parse_var(struct uh_client *cl, char *query)
 {
     struct kvlist *kv = &cl->request.var;
@@ -350,6 +479,7 @@ static void parse_var(struct uh_client *cl, char *query)
             kvlist_set(kv, k, v);
     }
 }
+
 
 static int client_parse_request(struct uh_client *cl, char *data)
 {
@@ -588,6 +718,7 @@ void uh_client_notify_state(struct uh_client *cl)
 static inline void client_notify_state(struct ustream *s)
 {
     struct uh_client *cl = container_of(s, struct uh_client, sfd.stream);
+    printf_warn("notify######");
 
     uh_client_notify_state(cl);
 }
@@ -633,17 +764,22 @@ void uh_accept_client(struct uh_server *srv, bool ssl)
     kvlist_init(&cl->request.url, hdr_get_len);
     kvlist_init(&cl->request.var, hdr_get_len);
     kvlist_init(&cl->request.header, hdr_get_len);
+    kvlist_init(&cl->request.resetful_var, hdr_get_len);
     
     cl->srv = srv;
     cl->srv->nclients++;
 
     cl->free = client_free;
     cl->send_error = client_send_error;
+    cl->send_error_json =  client_send_error_json;
+    cl->send_json = client_send_json;
     cl->send_header = client_send_header;
     cl->append_header = client_append_header;
     cl->header_end = client_header_end;
     cl->redirect = client_redirect;
     cl->request_done = client_request_done;
+    cl->srv_send_request = clinet_srv_send_request;
+    cl->parse_resetful_var = parse_resetful_var;
 
     cl->send = client_send;
     cl->printf = uh_printf;
@@ -657,6 +793,7 @@ void uh_accept_client(struct uh_server *srv, bool ssl)
     cl->get_peer_addr = client_get_peer_addr;
     cl->get_peer_port = client_get_peer_port;
     cl->get_url = client_get_url;
+    cl->get_restful_var = client_get_restful_var;
     cl->get_path = client_get_path;
     cl->get_query = client_get_query;
     cl->get_var = client_get_var;

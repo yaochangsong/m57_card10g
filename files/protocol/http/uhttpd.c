@@ -25,7 +25,8 @@
 #include "uhttpd.h"
 //#include "uh_ssl.h"
 #include "log/log.h"
- 
+
+static struct uh_server *uh_srv;
 static void uh_set_docroot(struct uh_server *srv, const char *docroot)
 {
     free(srv->docroot);
@@ -41,7 +42,7 @@ static void uh_set_index_file(struct uh_server *srv, const char *index_file)
 static void uh_server_free(struct uh_server *srv)
 {
     struct uh_client *cl, *tmp;
-    
+    printf_warn("free!!!!!!");
     if (srv) {
         close(srv->fd.fd);
         uloop_fd_delete(&srv->fd);
@@ -54,6 +55,17 @@ static void uh_server_free(struct uh_server *srv)
         free(srv->index_file);
     }
 }
+
+int uh_dump_all_client(void)
+{
+    struct uh_client *cl_list, *list_tmp;
+    list_for_each_entry_safe(cl_list, list_tmp, &uh_srv->clients, list){
+            
+            //cl_list->printf(cl_list, "Find http ipaddree on list:%s, port=%d\r\n\r\n",  cl_list->get_peer_addr(cl_list), cl_list->get_peer_port(cl_list));
+            printf_warn("Find http ipaddree on list:%s, port=%d\n",  cl_list->get_peer_addr(cl_list), cl_list->get_peer_port(cl_list));
+    }
+}
+
 
 static void uh_accept_cb(struct uloop_fd *fd, unsigned int events)
 {
@@ -109,7 +121,7 @@ struct uh_server *uh_server_new(const char *host, int port)
     }
 
     uh_server_init(srv, sock);
-
+    uh_srv = srv;
     return srv;
     
 err:

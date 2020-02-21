@@ -44,13 +44,13 @@ static struct request_info http_req_cmd[] = {
     {"POST",    "/mode/multiBand/@ch",                  -1,                cmd_multi_band},
     {"POST",    "/demodulation/@ch/@subch",             -1,                cmd_demodulation},
     /* 中频参数设置 */
-    {"PUT",     "/if/@type/@ch/@subch/@value",          -1,                cmd_if_single_value_set},
-    {"PUT",     "/if/@type/@ch/@value",                 -1,                cmd_if_single_value_set},
-    {"POST",    "/if/@type/@ch/@subch",                 -1,                cmd_if_multi_value_set},
-    {"POST",    "/if/@type/@ch",                        -1,                cmd_if_multi_value_set},
+    {"PUT",     "/if/@ch/@subch/@type/@value",          -1,                cmd_if_single_value_set},
+    {"PUT",     "/if/@ch/@type/@value",                 -1,                cmd_if_single_value_set},
+    {"POST",    "/if/@ch/@subch",                       -1,                cmd_if_multi_value_set},
+    {"POST",    "/if/@ch",                              -1,                cmd_if_multi_value_set},
     /* 射频参数设置 */
-    {"PUT",     "/rf/@type/@ch/@subch/@value",          -1,                cmd_rf_single_value_set},
-    {"PUT",     "/rf/@type/@ch/@value",                 -1,                cmd_rf_single_value_set},
+    {"PUT",     "/rf/@ch/@subch/@type/@value",          -1,                cmd_rf_single_value_set},
+    {"PUT",     "/rf/@ch/@type/@value",                 -1,                cmd_rf_single_value_set},
     {"POST",    "/rf/@ch/@subch",                       -1,                cmd_rf_multi_value_set},
     {"POST",    "/rf/@ch",                              -1,                cmd_rf_multi_value_set},
     /* 使能控制 */

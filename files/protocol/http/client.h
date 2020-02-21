@@ -78,6 +78,7 @@ struct http_srv_request {
     char *host;
     char *data;
     int content_length;
+    int  result_code;  /* 0: false, 1: ok  -1: wait */
 };
 
 
@@ -127,7 +128,8 @@ struct uh_client {
     void (*header_end)(struct uh_client *cl);
     void (*redirect)(struct uh_client *cl, int code, const char *fmt, ...);
     void (*request_done)(struct uh_client *cl);
-    int  (*srv_send_request)(struct uh_client *cl);/* add by ycs */
+    //int  (*srv_send_request)(struct uh_client *cl);/* add by ycs */
+    int  (*srv_send_post)(char *path, char *data);
     void (*parse_resetful_var)(struct uh_client *cl, char *str);
     
     void (*send)(struct uh_client *cl, const void *data, int len);

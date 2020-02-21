@@ -171,6 +171,8 @@ static int clinet_srv_send_request(struct uh_client *cl)
     char *host = cl->srv_request.host;
     char *data= cl->srv_request.data;
     int data_len = cl->srv_request.content_length;
+    /* reset result code */
+    cl->srv_request.result_code = -1;
     char *http_headers = (char*)malloc(HTTP_HEADER_LEN);
     if(http_headers == NULL)
         return -1;
@@ -186,7 +188,7 @@ static int clinet_srv_send_request(struct uh_client *cl)
             j += sprintf(http_headers+j,"Content-Length: %d\r\n", data_len);
             j += sprintf(http_headers+j,"Content-Type: application/json\r\n");
             if(j > HTTP_HEADER_LEN){
-                printf("the head is %d is more than buffer len %d\n", j, HTTP_HEADER_LEN);
+                printf_err("the head is %d is more than buffer len %d\n", j, HTTP_HEADER_LEN);
                 return -1;
             }
             if(HTTP_HEADER_LEN - j < data_len){
@@ -195,7 +197,7 @@ static int clinet_srv_send_request(struct uh_client *cl)
                     goto exit;
                 }
             }
-            
+            printf_note("http_headers:%s\n", http_headers);
             sprintf(http_headers+j, "\r\n%s", data);
             cl->printf(cl, http_headers);
             break;
@@ -206,6 +208,28 @@ exit:
     free(http_headers);
     http_headers = NULL;
     return ret;
+}
+
+int clinet_srv_send_post(char *path, char *data)
+{
+    struct uh_client *cl_list, *list_tmp;
+    char host[64] = {0};
+    if(get_uh_srv() == NULL)
+        return -1;
+    printf_note("path:%s\n", path);
+    list_for_each_entry_safe(cl_list, list_tmp, &get_uh_srv()->clients, list){
+        printf_note("send post on list:%s, port=%d\n",  cl_list->get_peer_addr(cl_list), cl_list->get_peer_port(cl_list));
+        snprintf(host, sizeof(host), "%s:%d", cl_list->get_peer_addr(cl_list), cl_list->get_peer_port(cl_list));
+        printf_note("host:%s\n", host);
+        cl_list->srv_request.method = UH_HTTP_METHOD_POST;
+        cl_list->srv_request.host = &host[0];
+        cl_list->srv_request.path = path;
+        cl_list->srv_request.data = data;
+        cl_list->srv_request.content_length = strlen(data);
+        printf_note("srv host:%s\n", cl_list->srv_request.host);
+        clinet_srv_send_request(cl_list);
+    }
+    return 0;
 }
 
 static inline const char *client_get_version(struct uh_client *cl)
@@ -413,6 +437,7 @@ static void client_request_done(struct uh_client *cl)
 
     memset(&cl->request, 0, sizeof(cl->request));
     memset(&cl->dispatch, 0, sizeof(cl->dispatch));
+    memset(&cl->srv_request, 0, sizeof(cl->srv_request));
     kvlist_init(&cl->request.url, hdr_get_len);
     kvlist_init(&cl->request.var, hdr_get_len);
     kvlist_init(&cl->request.header, hdr_get_len);
@@ -525,6 +550,39 @@ static int client_parse_request(struct uh_client *cl, char *data)
     return CLIENT_STATE_HEADER;
 }
 
+static int client_srv_parse_response(struct uh_client *cl, const char *data)
+{
+    /* HTTP/1.1 200 OK */
+    char *code, *status, *version, *p;
+    char *data_copy= NULL, *data_copy_tmp = NULL; 
+    int h_method, h_version;
+    
+    data_copy_tmp = data_copy = strdup(data);
+    version = strtok(data_copy, " ");
+    code = strtok(NULL, " ");
+    status = strtok(NULL, " ");
+    if (!code || !status || !version)
+        return -1;
+    h_version = find_idx(http_versions, ARRAY_SIZE(http_versions), version);
+    if (h_version < 0) {
+        return -1;
+    }
+    p = strstr(code, '200');
+    if(p){
+        cl->srv_request.result_code = 1;
+        printf_note("client: %s:%d response ok: %s\n", status);
+    }else{
+        cl->srv_request.result_code = 0;
+        printf_note("client: %s:%d response false: %s\n", status);
+    }
+    
+    if(data_copy_tmp)
+        free(data_copy_tmp);
+    data_copy_tmp = NULL;
+    
+    return 0;
+}
+
 static bool client_init_cb(struct uh_client *cl, char *buf, int len)
 {
     char *newline;
@@ -538,12 +596,20 @@ static bool client_init_cb(struct uh_client *cl, char *buf, int len)
         return true;
     }
 
-    *newline = 0;
+    *newline = 0;    
+    
+    if(client_srv_parse_response(cl, buf) == 0){
+        /* if data is response, return */
+        ustream_consume(cl->us, newline + 2 - buf);
+        cl->state = CLIENT_STATE_HEADER;
+        return true;
+    }
     
     cl->state = client_parse_request(cl, buf);
     ustream_consume(cl->us, newline + 2 - buf);
     if (cl->state == CLIENT_STATE_DONE)
-        cl->send_error(cl, 400, "Bad Request", NULL);
+        cl->send_error_json(cl, 400, "Bad Request");
+        //cl->send_error(cl, 400, "Bad Request", NULL);
 
     return true;
 }
@@ -778,7 +844,7 @@ void uh_accept_client(struct uh_server *srv, bool ssl)
     cl->header_end = client_header_end;
     cl->redirect = client_redirect;
     cl->request_done = client_request_done;
-    cl->srv_send_request = clinet_srv_send_request;
+    cl->srv_send_post = clinet_srv_send_post;
     cl->parse_resetful_var = parse_resetful_var;
 
     cl->send = client_send;

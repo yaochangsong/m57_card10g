@@ -27,6 +27,11 @@
 #include "log/log.h"
 
 static struct uh_server *uh_srv;
+
+struct uh_server * get_uh_srv(void)
+{
+    return uh_srv;
+}
 static void uh_set_docroot(struct uh_server *srv, const char *docroot)
 {
     free(srv->docroot);

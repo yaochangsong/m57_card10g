@@ -282,12 +282,11 @@ error:
 */
 int cmd_if_multi_value_set(struct uh_client *cl, void *arg)
 {
-    char *type, *ch, *subch;
+    char *ch, *subch;
     int itype;
-    type = cl->get_restful_var(cl, "type");
     ch = cl->get_restful_var(cl, "ch");
     subch = cl->get_restful_var(cl, "subch");
-    printf_note("rf type=%s,ch = %s, subch=%s\n", type, ch, subch);
+    printf_note("rf ch = %s, subch=%s\n", ch, subch);
     printf_note("%s\n", cl->dispatch.body);
     return 0;
 }
@@ -335,10 +334,9 @@ int cmd_rf_single_value_set(struct uh_client *cl, void *arg)
 int cmd_rf_multi_value_set(struct uh_client *cl, void *arg)
 {
     char *type, *ch, *subch;
-    type = cl->get_restful_var(cl, "type");
     ch = cl->get_restful_var(cl, "ch");
     subch = cl->get_restful_var(cl, "subch");
-    printf_note("rf type=%s,ch = %s, subch=%s\n", type, ch, subch);
+    printf_note("rf ch = %s, subch=%s\n", ch, subch);
     printf_note("%s\n", cl->dispatch.body);
     return 0;
 }

@@ -18,7 +18,7 @@
 struct gpio_node_info gpio_node[] ={
     /* pin   direction  default gpio value   func_code    func_name    fd */
     {63,      "out",       0,               GPIO_FUNC_ADC,          "ADC&Backtrace gpio ctrl",    -1 },  /* low:  adc ; high : backtrace*/
-    {62,      "in",        1,               GPIO_FUNC_ADC_STATUS,   "ADC Status",                 -1 },
+    {62,      "in",        -1,               GPIO_FUNC_ADC_STATUS,   "ADC Status",                 -1 },
 };
 
 static int gpio_export(int pin_number)
@@ -119,10 +119,12 @@ int gpio_raw_init(void)
                 ret = -1;
                 continue;
             }
-            if(gpio_write(ptr[i].pin_num, ptr[i].value) == -1){
-                printf_err("GPIO write: %s faild\n", ptr[i].func_name);
-                ret = -1;
-                continue;
+            if(ptr[i].value >= 0){
+                if(gpio_write(ptr[i].pin_num, ptr[i].value) == -1){
+                    printf_err("GPIO write: %s faild\n", ptr[i].func_name);
+                    ret = -1;
+                    continue;
+                }
             }
             printf_note("GPIO init OK[%s]\n", ptr[i].func_name);
             if(ptr[i].func_code == GPIO_FUNC_ADC){
@@ -144,10 +146,15 @@ int gpio_raw_write_value(enum gpio_func_code func_code, int value)
             if(gpio_set_direction(ptr[i].pin_num, "out") == -1){
                 printf_err("GPIO set direction: %s faild\n", ptr[i].func_name);
             }
-            if(gpio_write(ptr[i].pin_num, value) == -1){
-                printf_warn("write gpio %s: %d faild!\n", ptr[i].func_name, value);
+            if(ptr[i].value >= 0){
+                if(gpio_write(ptr[i].pin_num, value) == -1){
+                    printf_warn("write gpio %s: %d faild!\n", ptr[i].func_name, value);
+                    return -1;
+                }
+            }else{
                 return -1;
             }
+            
             printf_note("write gpio %s[%d]: %d OK!\n", ptr[i].func_name, ptr[i].pin_num,value);
             found = 1;
             break;

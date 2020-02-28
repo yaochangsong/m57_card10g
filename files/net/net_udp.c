@@ -47,7 +47,7 @@ void udp_client_dump(void)
        }
 }
 
-void udp_add_client(struct sockaddr_in *addr, int ch)
+void udp_add_client_to_list(struct sockaddr_in *addr, int ch)
 {
     struct net_udp_client *cl = NULL;
     struct net_udp_client *cl_list, *list_tmp;
@@ -83,7 +83,7 @@ void udp_add_client(struct sockaddr_in *addr, int ch)
     cl->srv = srv;
     cl->srv->nclients++;
 
-    printf_note("Add New UDP Client addr: %s:%d, total client: %d\n", cl->get_peer_addr(cl), cl->get_peer_port(cl), cl->srv->nclients);
+    printf_note("Add New UDP Client addr to list: %s:%d, total client: %d\n", cl->get_peer_addr(cl), cl->get_peer_port(cl), cl->srv->nclients);
 
 }
 
@@ -130,36 +130,35 @@ static void udp_read_cb(struct uloop_fd *fd, unsigned int events)
         return;
     }
 
+#if 0
     struct net_udp_client *cl_list, *list_tmp;
     list_for_each_entry_safe(cl_list, list_tmp, &srv->clients, list){
-        if(memcmp(&cl_list->peer_addr.sin_addr, &addr.sin_addr, sizeof(addr.sin_addr)) == 0){
-            printf_debug("Find ipaddree on list:%s， tag=%d\n",  cl_list->get_peer_addr(cl_list), cl_list->tag);
+        if(memcmp(&cl_list->peer_addr.sin_addr, &addr.sin_addr, sizeof(addr.sin_addr)) == 0 &&
+            cl_list->peer_addr.sin_port == addr.sin_port){
+            printf_note("Find UDP ipaddree on list:%s:%d tag=%d\n",  cl_list->get_peer_addr(cl_list), cl_list->peer_addr.sin_port, cl_list->tag);
             cl = cl_list;
             goto udp_handle;
         }
     }
-    if(srv->nclients > MAX_CLINET_NUM){
-        printf_warn("server client is full\n");
-        struct net_udp_client cl_tmp;
-        cl = &cl_tmp;
-    }else{
-        cl = calloc(1, sizeof(struct net_udp_client));
-        if (!cl) {
-            printf_err("calloc\n");
-            return;
-        }
-        memcpy(&cl->peer_addr, &addr, sizeof(addr));
-        cl->get_peer_addr = udp_get_peer_addr;
-        cl->get_peer_port = udp_get_peer_port;
-
-        list_add(&cl->list, &srv->clients);
-        cl->srv = srv;
-        cl->srv->nclients++;
-        printf_note("Receive New UDP data From: %s:%d\n", cl->get_peer_addr(cl), cl->get_peer_port(cl));
+#endif
+    cl = calloc(1, sizeof(struct net_udp_client));
+    if (!cl) {
+        printf_err("calloc\n");
+        return;
     }
-udp_handle:
-    if(cl != NULL)
+    memcpy(&cl->peer_addr, &addr, sizeof(addr));
+    cl->get_peer_addr = udp_get_peer_addr;
+    cl->get_peer_port = udp_get_peer_port;
+
+    //list_add(&cl->list, &srv->clients);
+    cl->srv = srv;
+    //cl->srv->nclients++;
+    printf_note("Receive New UDP data From: %s:%d\n", cl->get_peer_addr(cl), cl->get_peer_port(cl));
+    if(cl != NULL){
         poal_udp_handle_request(cl, data, n);
+        printf_note("Deal Over Free UDP: %s:%d\n", cl->get_peer_addr(cl), cl->get_peer_port(cl));
+        free(cl);
+    }
 }
 
 struct net_udp_server *udp_server_new(const char *host, int port)

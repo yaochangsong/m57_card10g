@@ -1,5 +1,5 @@
 #arch: x86 arm
-SUPPORT_PLAT_FORM_ARCH=arm
+SUPPORT_PLAT_FORM_ARCH=x86
 #debug
 SUPPORT_GDB_DEBUG=n
 
@@ -7,7 +7,7 @@ SUPPORT_GDB_DEBUG=n
 SUPPORT_PROTOCAL="http akt"
 
 #data store format support: json xml
-SUPPORT_DAO="xml"
+SUPPORT_DAO="json"
 
 #remote or local control
 SUPPORT_REMOTE_LOCAL_CTRL_EN=n

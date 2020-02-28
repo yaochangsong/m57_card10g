@@ -42,28 +42,36 @@ static void executor_send_config_data_to_clent(void *data)
     poal_send_active_to_all_client(send_data, send_data_len);
 }
 
-int executor_tcp_disconnect(void *cl)
+int executor_tcp_disconnect_notify(void *cl)
 {
     #define UDP_CLIENT_NUM 8
     struct net_udp_client *cl_list, *list_tmp;
     struct net_udp_server *srv = get_udp_server();
     struct net_tcp_client *tcp_cl = (struct net_tcp_client *)cl;
-    int index = 0;
+    int index = 0, find = 0;
     struct udp_client_info ucli[UDP_CLIENT_NUM];
+    struct poal_config *poal_config = &(config_get_config()->oal_config);
     memset(ucli, 0, sizeof(struct udp_client_info)*UDP_CLIENT_NUM);
-    
+    if(tcp_find_client(&tcp_cl->peer_addr)){
+        find = 1;
+        return 0;
+    }
    /* release udp client */
+    printf_info("disconnet tcp client%s:%d\n", inet_ntoa(tcp_cl->peer_addr.sin_addr), tcp_cl->peer_addr.sin_port);
     list_for_each_entry_safe(cl_list, list_tmp, &srv->clients, list){
+        printf_info("udp client list %s:%d\n", inet_ntoa(cl_list->peer_addr.sin_addr), cl_list->peer_addr.sin_port);
         if(memcmp(&cl_list->peer_addr.sin_addr, &tcp_cl->peer_addr.sin_addr, sizeof(tcp_cl->peer_addr.sin_addr)) == 0){
-           printf_note("del udp client %s:%d\n", inet_ntoa(cl_list->peer_addr.sin_addr), cl_list->peer_addr.sin_port);
+           printf_info("del udp client %s:%d\n", inet_ntoa(cl_list->peer_addr.sin_addr), cl_list->peer_addr.sin_port);
            udp_free(cl_list);
         }
     }
+
     /* reload udp client */
     list_for_each_entry_safe(cl_list, list_tmp, &srv->clients, list){
         ucli[index].cid = cl_list->ch;
+        /* UDP链表以大端模式存储客户端地址信息；内部以小端模式处理；注意转换 */
         ucli[index].ipaddr = ntohl(cl_list->peer_addr.sin_addr.s_addr);
-        ucli[index].port = cl_list->peer_addr.sin_port;
+        ucli[index].port = ntohs(cl_list->peer_addr.sin_port);
         printf_note("reload client index=%d, cid=%d, [ip:%x][port:%d][10g_ipaddr=0x%x][10g_port=%d], online\n", 
                         index, ucli[index].cid, ucli[index].ipaddr, ucli[index].port);
         index ++;
@@ -71,14 +79,18 @@ int executor_tcp_disconnect(void *cl)
             break;
         }
     }
-    printf_note("disconnect, free udp, remain udp client: %d\n", (index > 0 ? (index -1) : index));
+    printf_note("disconnect, free udp, remain udp client: %d\n", index);
     io_set_udp_client_info(ucli);
     /* client is 0 */
     if(index == 0){
-        SW_TO_AD_MODE();            /* 切换到默认AD转换工作模式 */
+        xwfs_stop_backtrace(NULL);  /* 停止回溯 ，回到正常状态*/
         #ifdef SUPPORT_NET_WZ
         io_set_10ge_net_onoff(0);   /* 客户端离线，关闭万兆传输 */
         #endif
+        /* 所有客户端离线，关闭相关使能，线程复位到等待状态 */
+        memset(&poal_config->enable, 0, sizeof(poal_config->enable));
+        memset(&poal_config->sub_ch_enable, 0, sizeof(poal_config->enable));
+        poal_config->enable.bit_reset = true; /* reset(stop) all working task */
     }
     
 }
@@ -161,23 +173,23 @@ static  int8_t  executor_fragment_scan(uint32_t fregment_num,uint8_t ch, work_mo
         printf_debug("Bandwidth Scan [%d][%u]......\n", i, scan_bw);
         if(i < scan_count){
             /* 计算扫描中心频率 */
-            m_freq = s_freq + i * scan_bw + scan_bw/2;
+            m_freq = (uint64_t)(s_freq + (uint64_t)i * (uint64_t)scan_bw + scan_bw/2);
             left_band = scan_bw;
         }
         else{
         #if defined (SUPPORT_SPECTRUM_USER)
             /*spectrum is more than one fragment */
             if(scan_count > 0){
-                m_freq = s_freq + i * scan_bw + scan_bw/2;
+                m_freq = (uint64_t)(s_freq + (uint64_t)i * (uint64_t)scan_bw + scan_bw/2);
                 left_band = scan_bw;
             }else{
                 left_band = e_freq - s_freq - i * scan_bw;
-                m_freq = s_freq + i * scan_bw + left_band/2;
+                m_freq = (uint64_t)(s_freq + (uint64_t)i * (uint64_t)scan_bw + left_band/2);
             }
         #else
             /* 若不是整数，需计算剩余带宽中心频率 */
             left_band = e_freq - s_freq - i * scan_bw;
-            m_freq = s_freq + i * scan_bw + left_band/2;
+            m_freq = (uint64_t)(s_freq + (uint64_t)i * (uint64_t)scan_bw + left_band/2);
         #endif
         }
         header_param.ch = ch;
@@ -367,15 +379,15 @@ loop:   printf_note("######wait to deal work######\n");
                 case OAL_FAST_SCAN_MODE:
                 case OAL_MULTI_ZONE_SCAN_MODE:
                 {   
-                    printf_note("scan segment count: %d\n", poal_config->multi_freq_fregment_para[ch].freq_segment_cnt);
+                   // printf_debug("scan segment count: %d\n", poal_config->multi_freq_fregment_para[ch].freq_segment_cnt);
                     if(poal_config->multi_freq_fregment_para[ch].freq_segment_cnt == 0){
                         sleep(1);
                         goto loop;
                     }
                     if(poal_config->enable.psd_en || poal_config->enable.spec_analy_en){
                         for(j = 0; j < poal_config->multi_freq_fregment_para[ch].freq_segment_cnt; j++){
-                            printf_debug("Segment Scan [%d]\n", j);
                             if(executor_fragment_scan(j, ch, poal_config->work_mode) == -1){
+                                io_set_enable_command(PSD_MODE_DISABLE, ch, 0);
                                 usleep(1000);
                                 goto loop;
                             }
@@ -390,7 +402,7 @@ loop:   printf_note("######wait to deal work######\n");
                 case OAL_FIXED_FREQ_ANYS_MODE:
                 case OAL_MULTI_POINT_SCAN_MODE:
                 {
-                    printf_info("start point scan: points_count=%d\n", poal_config->multi_freq_point_param[ch].freq_point_cnt);
+                    //printf_info("start point scan: points_count=%d\n", poal_config->multi_freq_point_param[ch].freq_point_cnt);
                     if(poal_config->multi_freq_point_param[ch].freq_point_cnt == 0){
                         sleep(1);
                         goto loop;
@@ -398,6 +410,8 @@ loop:   printf_note("######wait to deal work######\n");
 
                     if(poal_config->enable.bit_en || poal_config->sub_ch_enable.bit_en){
                         if(executor_points_scan(ch, poal_config->work_mode) == -1){
+                            io_set_enable_command(PSD_MODE_DISABLE, ch, 0);
+                            io_set_enable_command(AUDIO_MODE_DISABLE, ch, 0);
                             usleep(1000);
                             goto loop;
                         }
@@ -572,8 +586,7 @@ static int8_t executor_set_ctrl_command(uint8_t type, uint8_t ch, void *data, va
             bandwidth = *(uint32_t *)data;
             /* 根据带宽获取边带率 */
             if(config_read_by_cmd(EX_CTRL_CMD, EX_CTRL_SIDEBAND,ch, &side_rate, bandwidth) == -1){
-                printf_err("!!!!!!!!!!!!!SideRate Is Not Set In Config File[bandwidth=%u]!!!!!!!!!!!!!\n", bandwidth);
-                return -1;
+                printf_note("!!!SideRate Is Not Set In Config File[bandwidth=%u],user default siderate=%f!!!\n", bandwidth, side_rate);
             }
             /* 设置边带率 */
             io_set_side_rate(ch, &side_rate);
@@ -763,6 +776,7 @@ void executor_timer_task1_cb(struct uloop_timeout *t)
     spectrum_send_fft_data_interval();
 #endif
     uh_dump_all_client();
+    clinet_srv_send_post("/test/1", "{\"data\":null}");
     uloop_timeout_set(t, 5000);
 }
 void executor_timer_task_init(void)
@@ -794,9 +808,12 @@ void executor_init(void)
     for(i = 0; i<MAX_RADIO_CHANNEL_NUM ; i++){
         io_set_enable_command(PSD_MODE_DISABLE, i, 0);
         io_set_enable_command(AUDIO_MODE_DISABLE, i, 0);
-        io_set_enable_command(FREQUENCY_BAND_ENABLE_DISABLE, i, 0);
+        //io_set_enable_command(FREQUENCY_BAND_ENABLE_DISABLE, i, 0);
         //executor_set_command(EX_RF_FREQ_CMD, EX_RF_ATTENUATION, 0, &poal_config->rf_para[i].attenuation);
     }
+#ifdef SUPPORT_NET_WZ
+    io_set_10ge_net_onoff(0); /* 关闭万兆传输 */
+#endif
     printf_note("clear all sub ch\n");
     uint8_t enable =0;
     for(i = 0; i< MAX_SIGNAL_CHANNEL_NUM; i++){

@@ -43,6 +43,7 @@ enum {
     EX_FFT_SIZE,               /*FFT 点数*/
     EX_FRAME_DROP_CNT,         /*丢帧次数*/
     EX_CHANNEL_SELECT,         /*通道选择*/
+    EX_FILL_RF_PARAM,          /*填充中频参数*/
     EX_FPGA_RESET,             /*FPGA复位*/
     EX_FPGA_CALIBRATE,         /*FPGA校准*/
     EX_SUB_CH_DEC_BW,          /* 子通道解调带宽 */
@@ -171,7 +172,7 @@ struct spectrum_header_param{
 
 extern struct sem_st work_sem;
 extern void executor_init(void);
-extern int executor_tcp_disconnect(void *cl);
+extern int executor_tcp_disconnect_notify(void *cl);
 //extern int8_t executor_set_command(exec_cmd cmd, uint8_t type, uint8_t ch,  void *data);
 extern int8_t executor_get_command(exec_cmd cmd, uint8_t type, uint8_t ch,  void *data);
 extern int8_t executor_set_enable_command(uint8_t ch);

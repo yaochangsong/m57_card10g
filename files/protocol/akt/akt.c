@@ -41,9 +41,10 @@ int8_t akt_decode_method_convert(uint8_t method)
     }else if(method == DQ_MODE_IQ) {
         d_method = IO_DQ_MODE_IQ;
     }else{
-        printf_err("decode method not support:%d\n",method);
-        return -1;
+        printf_err("decode method not support:%d, use iq\n",method);
+        return IO_DQ_MODE_IQ;
     }
+    printf_note("method convert:%d ===> %d\n",method, d_method);
     return d_method;
 }
 
@@ -358,7 +359,7 @@ int akt_add_udp_client(void *cl_info)
     list_for_each_entry_safe(cl_list, list_tmp, &srv->clients, list){
         ucli[index].cid = cl_list->ch;
         ucli[index].ipaddr = ntohl(cl_list->peer_addr.sin_addr.s_addr);
-        ucli[index].port = cl_list->peer_addr.sin_port;
+        ucli[index].port = ntohs(cl_list->peer_addr.sin_port);
 #ifdef SUPPORT_NET_WZ
         ucli[index].wz_ipaddr = ci->wz_ipaddr;
         ucli[index].wz_port = ci->wz_port;
@@ -482,23 +483,31 @@ static int akt_execute_set_command(void *cl)
             net_para.cid = ch;
             memcpy(&net_para, header->buf, sizeof(SNIFFER_DATA_REPORT_ST));
             /* Test */
+        #if 0
             tcp_get_peer_addr_port(cl, &tcp_client);
             printf_note("tcp connection from: %s:%d\n", inet_ntoa(tcp_client.sin_addr), ntohs(tcp_client.sin_port));
-            net_para.port = ntohs(net_para.port);
+            //net_para.port = ntohs(net_para.port);
             //net_para.ipaddr = ntohs(net_para.ipaddr);
             net_para.ipaddr =  tcp_client.sin_addr.s_addr;
             #ifdef SUPPORT_NET_WZ
             net_para.wz_ipaddr = ntohl(tcp_client.sin_addr.s_addr)+(1 << 8);
-            net_para.wz_port = net_para.port;
+            net_para.wz_port = ntohs(net_para.port);
             #endif
+        #else
+             #ifdef SUPPORT_NET_WZ
+            //net_para.wz_ipaddr = net_para.wz_ipaddr;
+            //net_para.wz_port = net_para.port;  
+            net_para.wz_ipaddr = ntohl(net_para.wz_ipaddr);
+            net_para.wz_port = ntohs(net_para.wz_port);    /* debug test*/
+            #endif
+        #endif
             /* EndTest */
             client.sin_port = net_para.port;
             client.sin_addr.s_addr = net_para.ipaddr;//ntohl(net_para.sin_addr.s_addr);
-
-            printf_note("ipstr=%s, port=%d, type=%d\n",
-                inet_ntoa(client.sin_addr),  client.sin_port, net_para.type);
-    
-            udp_add_client(&client, ch);
+            //printf_note("udp client ipstr=%s, port=%d, type=%d\n",
+            //    inet_ntoa(client.sin_addr),  client.sin_port, net_para.type);
+            /* UDP链表以大端模式存储客户端地址信息；内部以小端模式处理；注意转换 */
+            udp_add_client_to_list(&client, ch);
             akt_add_udp_client(&net_para);
             break;
         }
@@ -534,6 +543,13 @@ static int akt_execute_set_command(void *cl)
             check_valid_channel(header->buf[0]);
             poal_config->rf_para[ch].gain_ctrl_method = header->buf[1];
             executor_set_command(EX_RF_FREQ_CMD, EX_RF_GAIN_MODE, ch, &poal_config->rf_para[ch].gain_ctrl_method);
+            break;
+        case RF_AGC_CMD:
+            check_valid_channel(header->buf[0]);
+            poal_config->rf_para[ch].agc_ctrl_time = *((uint16_t *)(header->buf + 1));
+            poal_config->rf_para[ch].agc_mid_freq_out_level = *((uint8_t *)(header->buf + 3));
+            printf_info("agc_ctrl_time:%d, agc_mid_freq_out_level=%d\n", 
+                        poal_config->rf_para[ch].agc_ctrl_time, poal_config->rf_para[ch].agc_mid_freq_out_level);
             break;
         case MID_FREQ_ATTENUATION_CMD:
             check_valid_channel(header->buf[0]);
@@ -606,16 +622,7 @@ static int akt_execute_set_command(void *cl)
             io_set_enable_command(IQ_MODE_DISABLE, ch, 0);
             printf_note("ch:%d, sub_ch=%d, au_en:%d,iq_en:%d, %d\n", ch,sub_ch, poal_config->sub_ch_enable.audio_en, poal_config->sub_ch_enable.iq_en);
             enable = (poal_config->sub_ch_enable.iq_en == 0 ? 0 : 1);
-            /* 子通道解调开关 */
-            executor_set_command(EX_MID_FREQ_CMD, EX_SUB_CH_ONOFF, sub_ch, &enable);
             
-            /* 通道IQ使能 */
-            if(enable){
-                /* NOTE:The parameter must be a MAIN channel, not a subchannel */
-                io_set_enable_command(IQ_MODE_ENABLE, ch, 0);
-            }else{
-                io_set_enable_command(IQ_MODE_DISABLE, ch, 0);
-            }
             #ifdef SUPPORT_NET_WZ
                 printf_note("wz_threshold_bandwidth[%u],enable=%d\n", poal_config->ctrl_para.wz_threshold_bandwidth,enable);
                 /* 判断解调带宽是否大于万兆传输阈值；大于等于则使用万兆传输（关闭千兆），否则使用千兆传输（关闭万兆） */
@@ -623,16 +630,29 @@ static int akt_execute_set_command(void *cl)
                 sub_channel_array = &poal_config->sub_channel_para[ch];
                 printf_note("sub_channel_array->sub_ch[sub_ch].d_bandwith[%u]\n", sub_channel_array->sub_ch[sub_ch].d_bandwith);
                 if(poal_config->ctrl_para.wz_threshold_bandwidth <=  sub_channel_array->sub_ch[sub_ch].d_bandwith){
-                   io_set_1ge_net_onoff(0);/* 关闭千兆传输 */
-                   io_set_10ge_net_onoff(1); /* 开启万兆传输 */
+                    io_set_1ge_net_onoff(0);/* 关闭IQ千兆传输 */
+                    if(enable)
+                        io_set_10ge_net_onoff(1); /* 开启IQ万兆传输 */
+                    else
+                        io_set_10ge_net_onoff(0); /* 关闭IQ万兆传输 */
+                    
                    printf_note("d_bandwith[%u] >= threshold[%u], Data is't sent by the Gigabit, but by 10 Gigabit\n", 
                         sub_channel_array->sub_ch[sub_ch].d_bandwith, poal_config->ctrl_para.wz_threshold_bandwidth);
                 }else{
                    printf_note("Data is sent by the Gigabit, NOT by 10 Gigabit\n");
-                   io_set_1ge_net_onoff(1);/* 开启千兆传输 */
-                   io_set_10ge_net_onoff(0); /* 关闭万兆传输 */
+                   io_set_1ge_net_onoff(1);/* 开启IQ千兆传输 */
+                   io_set_10ge_net_onoff(0); /* 关闭IQ万兆传输 */
                 }
             #endif
+            /* 通道IQ使能 */
+            if(enable){
+                /* NOTE:The parameter must be a MAIN channel, not a subchannel */
+                io_set_enable_command(IQ_MODE_ENABLE, ch, 0);
+            }else{
+                io_set_enable_command(IQ_MODE_DISABLE, ch, 0);
+            }
+           /* 子通道解调开关 */
+            executor_set_command(EX_MID_FREQ_CMD, EX_SUB_CH_ONOFF, sub_ch, &enable);
             break;
         }
 #ifdef SUPPORT_NET_WZ
@@ -936,13 +956,13 @@ static int akt_execute_net_command(void)
     struct in_addr ipdata;
 
     memcpy(netinfo.mac, poal_config->network.mac, sizeof(netinfo.mac));
-    netinfo.ipaddr = poal_config->network.ipaddress;
-    netinfo.gateway = poal_config->network.gateway;
-    netinfo.mask = poal_config->network.netmask;
-    netinfo.port = poal_config->network.port;
-    netinfo.status = 1;
-    ipdata.s_addr = netinfo.ipaddr;
-    printf_debug("mac:%x%x%x%x%x%x, ipaddr=%x[%s], gateway=%x\n", netinfo.mac[0],netinfo.mac[1],netinfo.mac[2],netinfo.mac[3],netinfo.mac[4],netinfo.mac[5],
+    netinfo.ipaddr = htonl(poal_config->network.ipaddress);
+    netinfo.gateway = htonl(poal_config->network.gateway);
+    netinfo.mask = htonl(poal_config->network.netmask);
+    netinfo.port = htons(poal_config->network.port);
+    netinfo.status = 0;
+    ipdata.s_addr = poal_config->network.ipaddress;
+    printf_note("mac:%x%x%x%x%x%x, ipaddr=%x[%s], gateway=%x\n", netinfo.mac[0],netinfo.mac[1],netinfo.mac[2],netinfo.mac[3],netinfo.mac[4],netinfo.mac[5],
                                                             netinfo.ipaddr, inet_ntoa(ipdata), netinfo.gateway);
     memcpy(akt_get_response_data.payload_data, &netinfo, sizeof(DEVICE_NET_INFO_ST));
     akt_get_response_data.header.len = sizeof(DEVICE_NET_INFO_ST);
@@ -975,20 +995,24 @@ bool akt_execute_method(int *code, void *cl)
     {
         case SET_CMD_REQ:
         {
+            update_tcp_keepalive(cl);
             err_code = akt_execute_set_command(cl);
             break;
         }
         case QUERY_CMD_REQ:
         {
+            update_tcp_keepalive(cl);
             err_code = akt_execute_get_command();
             break;
         }
         case NET_CTRL_CMD:
         {
             if(header->code == HEART_BEAT_MSG_REQ){
+                update_tcp_keepalive(cl);
                 akt_get_response_data.header.len = 0;
             } else if(header->code == DISCOVER_LAN_DEV_PARAM){
-                printf_info("discove ...\n");
+                printf_note("discover ...\n");
+                err_code = akt_execute_net_command();
             }else{
                 err_code = akt_execute_net_command();
             }
@@ -1007,7 +1031,6 @@ bool akt_execute_method(int *code, void *cl)
             err_code = RET_CODE_PARAMTER_ERR;
             break;
     }
-    io_set_refresh_keepalive_time(0);
     *code = err_code;
     if(err_code == RET_CODE_SUCCSESS)
         return true;
@@ -1157,6 +1180,10 @@ int akt_assamble_response_data(uint8_t **buf, int err_code)
             printf_info("response heartbeat code\n");
             response_data->header.operation = req_header->operation;
             response_data->header.code = HEART_BEAT_MSG_RSP;
+        }else if(req_header->code == DISCOVER_LAN_DEV_PARAM){
+            printf_note("response discover...\n");
+            response_data->header.operation = req_header->operation;
+            response_data->header.code = req_header->code;
         }
     }else{
         response_data->header.code = req_header->code;

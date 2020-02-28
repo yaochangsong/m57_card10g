@@ -16,8 +16,8 @@
 ******************************************************************************/
 
 #include "config.h"
-#include "../mxml-3.0/config.h"
-#include "../mxml-3.0/mxml-private.h"
+#include "../../mxml-3.0/config.h"
+#include "../../mxml-3.0/mxml-private.h"
 #ifndef _WIN32
 #  include <unistd.h>
 #endif /* !_WIN32 */

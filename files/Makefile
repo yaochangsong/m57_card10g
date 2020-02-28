@@ -139,9 +139,11 @@ endif
 SUB_LIBS :=  lib/libubox/libubox.a
 ifneq ($(findstring json,$(SUPPORT_DAO)),)
 	SUB_LIBS += dao/json/libjson.a
+	SOURCE_DIR += dao/oal/json
 	C_VAR += -DSUPPORT_DAO_JSON
 else ifneq ($(findstring xml,$(SUPPORT_DAO)),)
 	SUB_LIBS += dao/mxml-3.0/libmxml.a
+	SOURCE_DIR += dao/oal/xml
 	C_VAR += -DSUPPORT_DAO_XML
 endif
 

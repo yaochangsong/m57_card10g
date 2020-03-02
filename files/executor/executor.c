@@ -479,7 +479,7 @@ static int8_t executor_set_kernel_command(uint8_t type, uint8_t ch, void *data, 
         {
             uint64_t  middle_freq;
             middle_freq = va_arg(ap, uint64_t);
-            printf_warn("ch=%d, dec_middle=%llu, middle_freq=%llu\n", ch, *(uint64_t *)data, middle_freq);
+            printf_note("ch=%d, dec_middle=%llu, middle_freq=%llu\n", ch, *(uint64_t *)data, middle_freq);
             io_set_dec_middle_freq(ch, *(uint64_t *)data, middle_freq);
             break;
         }
@@ -524,7 +524,7 @@ static int8_t executor_set_kernel_command(uint8_t type, uint8_t ch, void *data, 
         }
         case EX_BANDWITH:
         {
-            printf_debug("ch:%d, bw:%u\n", ch, *(uint32_t *)data);
+            printf_note("ch:%d, bw:%u\n", ch, *(uint32_t *)data);
             io_set_bandwidth(ch, *(uint32_t *)data);
             //io_set_side_rate(1.28);
             break;

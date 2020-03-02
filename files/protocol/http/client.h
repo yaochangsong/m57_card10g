@@ -94,8 +94,6 @@ struct dispatch {
 
     struct {
         int fd;
-        char filename[64];
-        char path[FILE_PATH_MAX_LEN];/* add by ycs */
     } file;
     int cmd; /* add by ycs */
     int post_len;

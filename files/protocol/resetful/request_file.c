@@ -66,7 +66,7 @@ static int file_reload_buffer(char *filename)
 int file_startstore(struct uh_client *cl, void *arg)
 {
     printf_note("startstore\n");
-   // sleep(5);
+   // sleep(5);error:
     return 0;
 }
 
@@ -248,12 +248,13 @@ loop:
     return nread;
 }
 
-int file_download(struct uh_client *cl, void *arg)
+int file_download(struct uh_client *cl, char *filename)
 {
     
     static char buf[4096];
-    char *filename = cl->dispatch.file.filename;
     int r, i;
+    if(filename == NULL)
+        return -1;
 
     printf_info("download:name=%s, cmd=%d\n", filename, cl->dispatch.cmd);
     while (cl->us->w.data_bytes < 256) {

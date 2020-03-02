@@ -306,7 +306,7 @@ static void post_post_done(struct uh_client *cl)
         if (handle_file_request(cl, path))
             return;
     }else{
-         if(http_requset_handle_cmd(cl, path)){
+         if(http_dispatch_requset_handle(cl, path)){
             return;
          }
     }
@@ -360,7 +360,7 @@ static void uh_handle_request(struct uh_client *cl)
             return;
     }else{
          printf_info("path = %s, blk act=%d\n", path, cl->dispatch.cmd);
-         if(http_requset_handle_cmd(cl, path)){
+         if(http_dispatch_requset_handle(cl, path)){
             return;
          }
     }
@@ -369,8 +369,7 @@ static void uh_handle_request(struct uh_client *cl)
         cl->srv->on_error404(cl);
         return;
     }
-    cl->send_error_json(cl, 404, "Not Found");
-    //cl->send_error(cl, 404, "Not Found", "The requested PATH %s was not found on this server.", path);
+    cl->send_error(cl, 404, "Not Found", "The requested PATH %s was not found on this server.", path);
 }
 
 static inline void connection_close(struct uh_client *cl)

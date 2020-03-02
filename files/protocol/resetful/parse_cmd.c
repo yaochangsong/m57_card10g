@@ -169,73 +169,31 @@ static inline bool str_to_u64(char *str, uint64_t *ivalue, bool(*_check)(int))
     }
     *ivalue = value;
     if(*_check == NULL){
-         printf_note("null func\n");
+         printf_debug("null check func\n");
          return true;
     }
        
     return ((*_check)(value));
 }
 
-bool parse_if_cmd(int cmd, char *value, int ch, int subch)
+static inline bool str_to_s64(char *str, int64_t *ivalue, bool(*_check)(int))
 {
-    struct poal_config *poal_config = &(config_get_config()->oal_config);
-    struct multi_freq_point_para_st *point;
-    point = &poal_config->multi_freq_point_param[ch];
-    printf_note("if cmd:%d\n", cmd);
-    switch(cmd){
-        case EX_MID_FREQ:
-        {
-            uint64_t ivalue;
-            if(str_to_u64(value, &ivalue, NULL) == false){
-                return false;
-            }
-            executor_set_command(EX_MID_FREQ_CMD, cmd, ch,&ivalue,  ivalue);
-            break;
-        }
-        default:
-            break;
+    char *end;
+    int64_t value;
+    
+    if(str == NULL || ivalue == NULL)
+        return false;
+    value = (int64_t) strtoll(str, &end, 10);
+    if (str == end){
+        return false;
     }
-    return true;
-}
-
-bool parse_rf_cmd(int cmd, char *value, int ch, int subch)
-{
-    struct poal_config *poal_config = &(config_get_config()->oal_config);
-    struct multi_freq_point_para_st *point;
-    point = &poal_config->multi_freq_point_param[ch];
-    switch(cmd){
-        case EX_RF_MID_FREQ:
-        {
-            uint64_t ivalue;
-            if(str_to_u64(value, &ivalue, NULL) == false){
-                return false;
-            }
-            executor_set_command(EX_RF_FREQ_CMD, cmd, ch,&ivalue,  ivalue);
-            break;
-        }
-        case EX_RF_MODE_CODE:
-        {
-            int mode;
-            if(str_to_int(value, &mode, NULL) == false){
-                return false;
-            }
-            poal_config->rf_para[ch].rf_mode_code = (uint8_t)mode;
-            executor_set_command(EX_RF_FREQ_CMD, EX_RF_MODE_CODE, ch, &poal_config->rf_para[ch].rf_mode_code);
-            break;
-        }
-        case EX_RF_MID_BW:
-        {
-            uint32_t bw;
-            if(str_to_uint(value, &bw, NULL) == false){
-                return false;
-            }
-            poal_config->rf_para[ch].mid_bw = bw;
-            executor_set_command(EX_RF_FREQ_CMD, EX_RF_MID_BW, ch, &bw);
-            break;
-        }
-        default:
-            break;
+    *ivalue = value;
+    if(*_check == NULL){
+         printf_debug("null check func\n");
+         return true;
     }
+       
+    return ((*_check)(value));
 }
 
 
@@ -324,13 +282,14 @@ error:
 
 }
 
-/*"PUT",     /if/@type/@ch/@subch/@value"
+/*"PUT",     /if/@ch/@subch/@type/@value"
     中频单个参数设置
 */
 int cmd_if_single_value_set(struct uh_client *cl, void **arg)
 {
     char *s_type, *s_ch, *s_subch, *s_value;
     int ch, itype, subch;
+    int64_t value = 0;
     int code = RESP_CODE_OK;
     
     s_type = cl->get_restful_var(cl, "type");
@@ -351,11 +310,17 @@ int cmd_if_single_value_set(struct uh_client *cl, void **arg)
         subch = -1;
     }
 
-    itype = find_idx_safe(if_types, ARRAY_SIZE(if_types), s_type);
-    if(parse_if_cmd(itype, s_value, ch, subch) == false){
-        code = RESP_CODE_EXECMD_ERR;
+    if(s_value == NULL || str_to_s64(s_value, &value, NULL) == false){
+        code = RESP_CODE_PATH_PARAM_ERR;
+        goto error;
     }
-    printf_note("...%d\n", code);
+
+    itype = find_idx_safe(if_types, ARRAY_SIZE(if_types), s_type);
+    if(executor_set_command(EX_MID_FREQ_CMD, itype, ch,&value) != 0){
+        code = RESP_CODE_EXECMD_ERR;
+        goto error;
+    }
+
 error:
     *arg = get_resp_message(code);
     printf_note("...%s\n", arg);
@@ -385,7 +350,7 @@ error:
     return code;
 }
 
-/*"PUT",     /rf/@type/@ch/@subch/@value"
+/*"PUT",     /rf/@ch/@subch/@type/@value"
     射频单个参数设置
     @type： 设置参数类型; 
         mode:射频工作模式
@@ -396,6 +361,7 @@ int cmd_rf_single_value_set(struct uh_client *cl, void **arg)
 {
     char *s_type, *s_ch, *s_subch, *s_value;
     int ch, subch, itype;
+    int64_t value = 0;
     int code = RESP_CODE_OK;
     
     s_type = cl->get_restful_var(cl, "type");
@@ -415,12 +381,18 @@ int cmd_rf_single_value_set(struct uh_client *cl, void **arg)
     }else{
         subch = -1;
     }
+        
+    if(s_value == NULL || str_to_s64(s_value, &value, NULL) == false){
+        code = RESP_CODE_PATH_PARAM_ERR;
+        goto error;
+    }
 
     itype = find_idx_safe(rf_types, ARRAY_SIZE(rf_types), s_type);
-    if(parse_rf_cmd(itype, s_value, ch, subch) == false){
+    if(executor_set_command(EX_RF_FREQ_CMD, itype, ch,&value) != 0){
         code = RESP_CODE_EXECMD_ERR;
         goto error;
     }
+    
 error:
     *arg = get_resp_message(code);
     return code;
@@ -563,6 +535,123 @@ int cmd_subch_enable_set(struct uh_client *cl, void **arg)
     }
 
     printf_note("enable type=%s,ch = %d, subch=%d, enable=%d\n", s_type, ch, subch, enable);
+
+error:
+    *arg = get_resp_message(code);
+    return code;
+}
+
+
+/* "POST",     "/file/store/@ch/@enable/@filename" 
+    文件存储开始/停止
+    @value: 1->enable, 0->disable
+*/
+int cmd_file_store(struct uh_client *cl, void **arg)
+{
+    char *s_ch, *s_enable, *filename;
+    int ch, enable;
+    int code = RESP_CODE_OK;
+
+    s_ch = cl->get_restful_var(cl, "ch");
+    s_enable = cl->get_restful_var(cl, "enable");
+    filename = cl->get_restful_var(cl, "filename");
+    if(str_to_int(s_ch, &ch, check_valid_ch) == false){
+        code = RESP_CODE_CHANNEL_ERR;
+        goto error;
+    }
+    if(str_to_int(s_enable, &enable, check_valid_enable) == false){
+        code = RESP_CODE_PATH_PARAM_ERR;
+        goto error;
+    }
+    file_startstore(cl, NULL);
+error:
+    *arg = get_resp_message(code);
+    return code;
+
+}
+
+/* "GET",     "/file/@filename" 
+    文件下载命令
+    @value: 1->enable, 0->disable
+*/
+int cmd_file_download(struct uh_client *cl, void **arg)
+{
+    char  *filename;
+    int code = RESP_CODE_OK;
+    
+    filename = cl->get_restful_var(cl, "filename");
+    file_download(cl, filename);
+error:
+    *arg = get_resp_message(code);
+    return code;
+
+}
+
+
+/* "DELETE",     "/file/@filename" 
+    文件删除命令
+    @value: 1->enable, 0->disable
+*/
+int cmd_file_delete(struct uh_client *cl, void **arg)
+{
+    char  *filename;
+    int code = RESP_CODE_OK;
+    
+    filename = cl->get_restful_var(cl, "filename");
+
+error:
+    *arg = get_resp_message(code);
+    return code;
+
+}
+
+/* "POST",     "/file/backtrace/@ch/@enable/@filename" 
+    文件开始/停止回溯命令
+    @value: 1->enable, 0->disable
+*/
+int cmd_file_backtrace(struct uh_client *cl, void **arg)
+{
+    char *s_ch, *s_enable, *filename;
+    int ch, enable;
+    int code = RESP_CODE_OK;
+
+    s_ch = cl->get_restful_var(cl, "ch");
+    s_enable = cl->get_restful_var(cl, "enable");
+    filename = cl->get_restful_var(cl, "filename");
+    if(str_to_int(s_ch, &ch, check_valid_ch) == false){
+        code = RESP_CODE_CHANNEL_ERR;
+        goto error;
+    }
+    if(str_to_int(s_enable, &enable, check_valid_enable) == false){
+        code = RESP_CODE_PATH_PARAM_ERR;
+        goto error;
+    }
+    
+error:
+    *arg = get_resp_message(code);
+    return code;
+}
+
+/* "GET",     "/file/list" 
+    获取设备文件列表命令
+*/
+int cmd_file_list(struct uh_client *cl, void **arg)
+{
+    int code = RESP_CODE_OK;
+error:
+    *arg = get_resp_message(code);
+    return code;
+}
+
+/* "GET",     "/file/find/@filename" 
+    获取设备文件列表命令
+*/
+int cmd_file_find(struct uh_client *cl, void **arg)
+{
+    char  *filename;
+    int code = RESP_CODE_OK;
+    
+    filename = cl->get_restful_var(cl, "filename");
 
 error:
     *arg = get_resp_message(code);

@@ -46,7 +46,7 @@ struct file_request_read{
 };
 
 
-extern int file_download(struct uh_client *cl, void *arg);
+extern int file_download(struct uh_client *cl, char *filename);
 extern int file_startstore(struct uh_client *cl, void *arg);
 extern int file_stopstore(struct uh_client *cl, void *arg);
 extern int file_search(struct uh_client *cl, void *arg);

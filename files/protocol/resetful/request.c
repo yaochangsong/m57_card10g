@@ -31,14 +31,14 @@
 #include "parse_cmd.h"
 
 static struct request_info http_req_cmd[] = {
-    /* 磁盘操作 */
-    {"GET",     "/disk/@filename",               DISPATCH_DOWNLOAD_CMD,    file_download},
-    {"DELETE",  "/disk/@filename",                      -1,                file_delete},
-    {"GET",     "/disk/startstore",                     -1,                file_startstore},
-    {"GET",     "/disk/stopstore",                      -1,                file_stopstore},
-    {"GET",     "/disk/search",                         -1,                file_search},
-    {"GET",     "/disk/startbacktrace",                 -1,                file_start_backtrace},
-    {"GET",     "/disk/stopbacktrace",                  -1,                file_stop_backtrace},
+    /* 磁盘文件操作 */
+    {"GET",     "/file/@filename",               DISPATCH_DOWNLOAD_CMD,    cmd_file_download},
+    {"DELETE",  "/file/@filename",                      -1,                cmd_file_delete},
+    {"POST",    "/file/store/@ch/@enable/@filename",    -1,                cmd_file_store},
+    {"POST",    "/file/backtrace/@ch/@enable/@filename",-1,                cmd_file_backtrace},
+    {"GET",     "/file/list",                           -1,                cmd_file_list},
+    {"GET",     "/file/find/@filename",                 -1,                cmd_file_find},
+    
     /* 模式参数设置 */
     {"POST",    "/mode/mutiPoint/@ch",                  -1,                cmd_muti_point},
     {"POST",    "/mode/multiBand/@ch",                  -1,                cmd_multi_band},
@@ -237,6 +237,7 @@ int http_on_request(struct uh_client *cl)
             }
         }
     }
+    cl->dispatch.cmd = 0;
     return UH_REQUEST_CONTINUE;
 }
 
@@ -244,9 +245,12 @@ int http_on_request(struct uh_client *cl)
 int http_request_action(struct uh_client *cl)
 {
     int found = 0;
+    char *err_msg= NULL;
+    int ret = -1;
     for(int i = 0; i<ARRAY_SIZE(http_req_cmd); i++){
         if(cl->dispatch.cmd == http_req_cmd[i].dispatch_cmd){
-            http_req_cmd[i].action(cl, NULL);
+            ret = http_req_cmd[i].action(cl, &err_msg);
+            printf_note("action result: %d, %s\n", ret, err_msg);
             found = 1;
             break;
         }
@@ -258,11 +262,11 @@ int http_request_action(struct uh_client *cl)
     return 0;
 }
 
-bool http_requset_handle_cmd(struct uh_client *cl, const char *path)
+bool http_dispatch_requset_handle(struct uh_client *cl, const char *path)
 {
     struct path_info pi;
     ssize_t err;
-    char *filename =NULL ; //= cl->dispatch.file.filename;
+    char *filename =NULL;
     switch(cl->dispatch.cmd)
     {
         case DISPATCH_DOWNLOAD_CMD:

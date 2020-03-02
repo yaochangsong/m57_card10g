@@ -1143,11 +1143,6 @@ static uint8_t query_rf_temperature(uint8_t ch,int16_t *temperature){
 
 uint8_t rf_set_interface(uint8_t cmd,uint8_t ch,void *data){
     uint8_t ret = -1;
-    uint8_t mgc_gain_value,noise_mode,rf_gain_value,tmp;
-    uint32_t rf_bw;
-    uint64_t rf_freq;
-    uint8_t *precv;
-    RF_TRANSLATE_CMD *pres_cmd;
 
     switch(cmd){
         case EX_RF_MID_FREQ :{
@@ -1158,7 +1153,7 @@ uint8_t rf_set_interface(uint8_t cmd,uint8_t ch,void *data){
             }else{
                 break;
             }
-            printf_info("[**RF**]ch=%d, middle_freq=%llu\n",ch, *(uint64_t*)data);
+            printf_note("[**RF**]ch=%d, middle_freq=%llu\n",ch, *(uint64_t*)data);
 #ifdef SUPPORT_RF_ADRV9009
             gpio_select_rf_channel(*(uint64_t*)data);
             adrv9009_iio_set_freq(*(uint64_t*)data);
@@ -1171,7 +1166,7 @@ uint8_t rf_set_interface(uint8_t cmd,uint8_t ch,void *data){
             break; 
         }
          case EX_RF_MID_BW :   {
-            printf_info("[**RF**]ch=%d, middle bw=%u\n", ch, *(uint32_t *) data);
+            printf_note("[**RF**]ch=%d, middle bw=%u\n", ch, *(uint32_t *) data);
             #ifdef  SUPPORT_RF_SPI
             //uint32_t filter=htobe32(*(uint32_t *)data) >> 24;
             uint32_t filter=*(uint32_t *)data;
@@ -1183,8 +1178,9 @@ uint8_t rf_set_interface(uint8_t cmd,uint8_t ch,void *data){
         }
 
         case EX_RF_MODE_CODE :{
+            uint8_t noise_mode;
             noise_mode = *((uint8_t *)data);
-            printf_info("[**RF**]ch=%d, noise_mode=%d\n", ch, noise_mode);
+            printf_note("[**RF**]ch=%d, noise_mode=%d\n", ch, noise_mode);
         #if defined(SUPPORT_PLATFORM_ARCH_ARM)
             #ifdef SUPPORT_RF_ADRV9009
             #elif defined(SUPPORT_RF_SPI)
@@ -1200,7 +1196,8 @@ uint8_t rf_set_interface(uint8_t cmd,uint8_t ch,void *data){
 
         }
         case EX_RF_MGC_GAIN : {
-            mgc_gain_value = *((uint8_t *)data);
+            int8_t mgc_gain_value;
+            mgc_gain_value = *((int8_t *)data);
             printf_note("[**RF**]ch=%d, mgc_gain_value=%d\n",ch, mgc_gain_value);
         #if defined(SUPPORT_PLATFORM_ARCH_ARM)
             #ifdef SUPPORT_RF_ADRV9009
@@ -1222,7 +1219,8 @@ uint8_t rf_set_interface(uint8_t cmd,uint8_t ch,void *data){
             break; 
         }
         case EX_RF_ATTENUATION :{
-            rf_gain_value = *((uint8_t *)data);
+            int8_t rf_gain_value = 0;
+            rf_gain_value = *((int8_t *)data);
             printf_note("[**RF**]ch=%d, rf_gain_value=%d\n",ch, rf_gain_value);
         #if defined(SUPPORT_PLATFORM_ARCH_ARM)
             #ifdef SUPPORT_RF_ADRV9009
@@ -1249,35 +1247,6 @@ uint8_t rf_set_interface(uint8_t cmd,uint8_t ch,void *data){
 #endif
             break;
         }
- #if 0
-        case EX_RF_AGC_FREQUENCY :{
-            rf_freq = *((uint64_t *)data);
-            printf_debug("[**RF**]ch=%d, agc_freq=%d\n",ch, rf_freq);
-#if defined(SUPPORT_PLATFORM_ARCH_ARM)
-            #ifdef SUPPORT_RF_ADRV9009
-            ret =adrv9009_iio_set_freq(rf_freq);
-            #else
-            ret = send_freq_set_cmd(ch,rf_freq);//设置射频频率
-            #endif
-#endif
-            break; 
-        }
-
-        case EX_RF_AGC_BW :{
-            rf_bw = *((uint32_t *)data);
-            printf_note("[**RF**]ch=%d, rf_bw=%d\n",ch, rf_bw);
-        #if defined(SUPPORT_PLATFORM_ARCH_ARM)
-            #ifdef SUPPORT_RF_ADRV9009
-            #else
-            ret = send_rf_freq_bandwidth_set_cmd(ch,rf_bw);//设置射频带宽
-            #endif
-        #endif
-            break; 
-        }
-        case EX_MID_FREQ:
-            send_mid_freq_attenuation_set_cmd(ch,* (uint32_t *) data);
-        break;
-#endif
 
         default:{
             break;
@@ -1288,9 +1257,6 @@ uint8_t rf_set_interface(uint8_t cmd,uint8_t ch,void *data){
 
 uint8_t rf_read_interface(uint8_t cmd,uint8_t ch,void *data){
     uint8_t ret = -1;
-    uint8_t mgc_gain_value,noise_mode;
-    uint8_t *precv;
-    RF_TRANSLATE_CMD *pres_cmd;
 
     switch(cmd){
         case EX_RF_MID_FREQ : {

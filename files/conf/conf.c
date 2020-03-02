@@ -56,7 +56,7 @@ void config_init(void)
     #if defined (SUPPORT_DAO_XML)
     dao_read_create_config_file(config.configfile, &config);
     #elif defined(SUPPORT_DAO_JSON)
-    json_read_config_file(config.configfile, &config);
+    json_read_config_file(&config);
     #endif
 }
 
@@ -158,7 +158,7 @@ int8_t config_save_batch(exec_cmd cmd, uint8_t type,s_config *config)
      dao_conf_save_batch(cmd,type,config);
         
 #elif defined SUPPORT_DAO_JSON
-    
+    json_write_config_file(config);
 #else
     #error "NOT SUPPORT DAO FORMAT"
 #endif

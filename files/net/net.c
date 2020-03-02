@@ -14,7 +14,7 @@
 ******************************************************************************/
 
 #include "config.h"
-#include "protocol/http/request.h"
+#include "protocol/resetful/request.h"
 
 static void on_accept(struct uh_client *cl)
 {

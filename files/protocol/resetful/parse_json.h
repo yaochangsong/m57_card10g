@@ -9,32 +9,7 @@
 *  permission of Showay Technology Dev Co.,Ltd. (C) 2019
 ******************************************************************************/
 /*****************************************************************************     
-*  Rev 1.0   09 Nov 2019   yaochangsong
+*  Rev 1.0   29 Feb 2020   yaochangsong
 *  Initial revision.
 ******************************************************************************/
-
-#ifndef _REQUSET_H
-#define _REQUSET_H
-
-#include <stdbool.h>
-#include "client.h"
-
-
-enum {
-    DISPATCH_DOWNLOAD_CMD =1,
-};
-
-
-struct request_info {
-    char *method;
-    char *path;
-    //int cmd;
-    int dispatch_cmd;
-    int (*action)(struct uh_client *cl, void *arg);
-};
-
-extern void http_requset_init(void);
-extern int http_request_action(struct uh_client *cl);
-
-#endif
 

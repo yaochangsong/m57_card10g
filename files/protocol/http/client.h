@@ -84,7 +84,7 @@ struct http_srv_request {
 
 struct uh_client;
 
-#include "request_file.h"
+#include "protocol/resetful/request_file.h"
 
 struct dispatch {
     int (*post_data)(struct uh_client *cl, const char *data, int len);
@@ -128,7 +128,6 @@ struct uh_client {
     void (*header_end)(struct uh_client *cl);
     void (*redirect)(struct uh_client *cl, int code, const char *fmt, ...);
     void (*request_done)(struct uh_client *cl);
-    //int  (*srv_send_request)(struct uh_client *cl);/* add by ycs */
     int  (*srv_send_post)(char *path, char *data);
     void (*parse_resetful_var)(struct uh_client *cl, char *str);
     

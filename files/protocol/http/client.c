@@ -112,47 +112,27 @@ static void client_send_error(struct uh_client *cl, int code, const char *summar
 static void client_send_error_json(struct uh_client *cl, int err_code, const char *message)
 {
     va_list arg;
-    int len = -1;
-    char buffer[128];
-    len = snprintf(buffer, sizeof(buffer),"{");
-    len += snprintf(buffer+len, sizeof(buffer),"\"code\" : %d", err_code);
-    if(message)
-        len += snprintf(buffer+len, sizeof(buffer),",\"message\":\"%s\"", message);
-    len += snprintf(buffer+len, sizeof(buffer),"}");
+    int len = 0;
+    char *pjson;
+    pjson = assemble_json_response(err_code, message);
+    len = strlen(pjson);
     cl->send_header(cl, 200, "OK", len);
     cl->printf(cl, "Content-Type: text/json\r\n\r\n");
-    cl->printf(cl, "%s", buffer);
+    cl->printf(cl, "%s", pjson);
     cl->request_done(cl);
+    if(pjson){
+        free(pjson);
+        pjson = NULL;
+    }
 }
 
 
 static void client_send_json(struct uh_client *cl, int err_code, const char *message, const char *content)
 {
-    #define JSON_CNT_LEN 1024
-    int len = -1;
+    int len = 0;
     char *buffer;
-    buffer = (char *)malloc(JSON_CNT_LEN);
-    if(buffer == NULL){
-        printf_err("malloc error!!\n");
-        cl->send_error_json(cl, 500, "Internal Server Error, No memory");
-        return;
-    }
-    len = sprintf(buffer,"{");
-    len += sprintf(buffer+len, "\"code\" : %d", err_code);
-    if(message)
-        len += sprintf(buffer+len, ",\"message\"%s", message);
-    if(content){
-        if((JSON_CNT_LEN - len) < (strlen(content)+1)){
-            buffer = (char *)realloc(buffer, JSON_CNT_LEN+ strlen(content)+10);
-            if(buffer == NULL){
-                cl->send_error_json(cl, 500, "Internal Server Error, No memory");
-                return;
-            }
-        }
-        len += sprintf(buffer+len, ",%s", content);
-    }
-    len += sprintf(buffer+len,"}");
-    printf_note("json len:%d\n", len);
+    buffer = assemble_json_data_response(err_code, message, content);
+    len = strlen(buffer);
     cl->send_header(cl, 200, "OK", len);
     cl->printf(cl, "Content-Type: text/json\r\n\r\n");
     cl->printf(cl, "%s", buffer);

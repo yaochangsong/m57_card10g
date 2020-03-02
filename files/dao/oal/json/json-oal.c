@@ -74,7 +74,7 @@ static int json_write_file(char *filename, cJSON *root)
 }
 
 
-static cJSON* json_read_file(char *filename, cJSON* root)
+static cJSON* json_read_file(const char *filename, cJSON* root)
 {
     long len = 0;
     size_t  temp;
@@ -102,6 +102,11 @@ static cJSON* json_read_file(char *filename, cJSON* root)
     root = cJSON_Parse(JSON_content);
     if (root == NULL)
     {
+        const char *error_ptr = cJSON_GetErrorPtr();
+        if (error_ptr != NULL)
+        {
+            fprintf(stderr, "Error before: %s\n", error_ptr);
+        }
         return NULL;
     }
     free(JSON_content);
@@ -109,29 +114,149 @@ static cJSON* json_read_file(char *filename, cJSON* root)
     return root;
 }
 
-static int json_write_param(char *parents,  char *child, void *data)
+static inline  int json_write_string_param(const char * const grandfather, const char * const parents, const  char * const child, char *data)
 {
     cJSON* root = root_json;
-    if(root == NULL)
+    if(root == NULL || parents == NULL || child == NULL || data == NULL)
         return -1;
-    /* netwaork */
-    struct sockaddr_in saddr;
-    cJSON *item = NULL;
-    item = cJSON_GetObjectItem(root, parents);
-        /*
-    strcpy(cJSON_GetObjectItem(item,child)->valuestring, (char *)data);
-    cJSON_GetObjectItem(found,SS_JSON_NODE_NET_PORT_NAME)->valuedouble = (*(int *)data)&0x0ffff;
-    cJSON_GetObjectItem(found,SS_JSON_NODE_NET_PORT_NAME)->valueint = (*(int *)data)&0x0ffff;
-    */
+    cJSON *grand_object = NULL, *object = NULL;
+    if(grandfather != NULL){
+        grand_object = cJSON_GetObjectItem(root, grandfather);
+        object = cJSON_GetObjectItem(grand_object, parents);
+    }else{
+        object = cJSON_GetObjectItem(root, parents);
+    }
+    strcpy(cJSON_GetObjectItem(object,child)->valuestring, (char *)data);
+    
+    return 0;
+}
+
+static inline  int json_write_double_param(const char * const grandfather, const char * const parents, const char * const child, double data)
+{
+    cJSON* root = root_json;
+    if(root == NULL || parents == NULL || child == NULL)
+        return -1;
+    cJSON *grand_object = NULL, *object = NULL;
+    if(grandfather != NULL){
+        grand_object = cJSON_GetObjectItem(root, grandfather);
+        object = cJSON_GetObjectItem(grand_object, parents);
+    }else{
+        object = cJSON_GetObjectItem(root, parents);
+    }
+    cJSON_GetObjectItem(object,child)->valuedouble = data;
+
+    return 0;
+}
+
+static inline  int json_write_int_param(const char * const grandfather, const char * const parents, const char * const child, int data)
+{
+    cJSON* root = root_json;
+    if(root == NULL || parents == NULL || child == NULL)
+        return -1;
+    cJSON *grand_object = NULL, *object = NULL;
+    if(grandfather != NULL){
+        grand_object = cJSON_GetObjectItem(root, grandfather);
+        object = cJSON_GetObjectItem(grand_object, parents);
+    }else{
+        object = cJSON_GetObjectItem(root, parents);
+    }
+    cJSON_GetObjectItem(object,child)->valuedouble = data;
+    
+    return 0;
 }
 
 
-static int json_parse_config_param(cJSON* root, struct poal_config *config)
+
+
+static inline  int json_write_array_string_param(const char * const parents, const char * const array, int index, const char * const name,  char *data)
+{
+    cJSON* root = root_json;
+    cJSON *grand_object = NULL, *object = NULL, *node= NULL;
+    if(root == NULL || array == NULL || name == NULL || data == NULL)
+        return -1;
+    if(parents != NULL){
+        grand_object = cJSON_GetObjectItem(root, parents);
+        object = cJSON_GetObjectItem(grand_object, array);
+    }else{
+        object = cJSON_GetObjectItem(root, array);
+    }
+    node = cJSON_GetArrayItem(object, index);
+    strcpy(cJSON_GetObjectItem(node,name)->valuestring, data);
+    
+    return 0;
+}
+
+
+static inline  int json_write_array_int_param(const      char *const parents,const    char *const array,int index,const char * const name,  int data)
+{
+    cJSON* root = root_json;
+    cJSON *grand_object = NULL, *object = NULL, *node= NULL;
+    if(root == NULL || array == NULL || name == NULL)
+        return -1;
+    if(parents != NULL){
+        grand_object = cJSON_GetObjectItem(root, parents);
+        object = cJSON_GetObjectItem(grand_object, array);
+    }else{
+        object = cJSON_GetObjectItem(root, array);
+    }
+    node = cJSON_GetArrayItem(object, index);
+    /*  更新不成功 */
+    //cJSON_GetObjectItem(node,name)->valueint = data;
+    cJSON_GetObjectItem(node,name)->valuedouble = (double)data;
+
+    return 0;
+}
+
+static inline  int json_write_array_double_param(const char * const parents, const char * const array, int index, const char * const name,  double data)
+{
+    cJSON* root = root_json;
+    cJSON *grand_object = NULL, *object = NULL, *node= NULL;
+    if(root == NULL || array == NULL || name == NULL)
+        return -1;
+    if(parents != NULL){
+        grand_object = cJSON_GetObjectItem(root, parents);
+        object = cJSON_GetObjectItem(grand_object, array);
+    }else{
+        object = cJSON_GetObjectItem(root, array);
+    }
+    node = cJSON_GetArrayItem(object, index);
+    cJSON_GetObjectItem(node,name)->valuedouble = data;
+    
+    return 0;
+}
+
+static int json_write_config_param(cJSON* root, struct poal_config *config)
+{
+    if(root == NULL || config == NULL){
+        return -1;
+    }
+    struct sockaddr_in saddr;
+    saddr.sin_addr.s_addr = config->network.gateway;
+    json_write_string_param(NULL, "network", "gateway", inet_ntoa(saddr.sin_addr));
+    saddr.sin_addr.s_addr = config->network.ipaddress;
+    json_write_string_param(NULL, "network", "ipaddress", inet_ntoa(saddr.sin_addr));
+    saddr.sin_addr.s_addr = config->network.netmask;
+    json_write_string_param(NULL, "network", "netmask", inet_ntoa(saddr.sin_addr));
+    json_write_int_param(NULL, "network", "port", config->network.port);
+    
+    json_write_string_param("status_parm", "soft_version", "app", config->status_para.softVersion.app);
+/*
+    json_write_array_string_param("spectrum_parm", "rf_parm", 0, "gain_mode", "mannul");
+
+    json_write_array_int_param("spectrum_parm", "rf_parm", 0, "agc_ctrl_time", 1999);
+    json_write_array_int_param("spectrum_parm", "rf_parm", 0, "agc_output_amp_dbm", -111);
+    json_write_array_double_param("calibration_parm", "mgc_gain_freq", 0, "start_freq", 1000000);
+*/
+    return 0;
+}
+
+
+static int json_parse_config_param(const cJSON* root, struct poal_config *config)
 {
     cJSON *value = NULL;
     cJSON *node = NULL;
     
-/* netwaork */
+/* network */
     struct sockaddr_in saddr;
     cJSON *network = NULL;
 
@@ -150,6 +275,29 @@ static int json_parse_config_param(cJSON* root, struct poal_config *config)
         printf_debug("gateway=>value is:%s, %s\n",value->valuestring, inet_ntoa(saddr.sin_addr));
         config->network.gateway = saddr.sin_addr.s_addr;
     }
+    value = cJSON_GetObjectItem(network, "port");
+    if(value!= NULL && cJSON_IsNumber(value)){
+        config->network.port = value->valueint;
+        printf_debug("port=>value is:%d\n",config->network.port);
+    }
+
+/* status_parm */
+    cJSON *status_parm = NULL;
+    status_parm = cJSON_GetObjectItem(root, "status_parm");
+    if(status_parm == NULL){
+        printf_warn("not found json node[%s]\n","status_parm");
+        return -1;
+    }
+    node = cJSON_GetObjectItem(status_parm, "soft_version");
+    if(node != NULL){
+        value = cJSON_GetObjectItem(node, "app");
+        if(value!= NULL && cJSON_IsString(value)){
+            config->status_para.softVersion.app = value->valuestring;
+            printf_debug("app=>value is:%s, %s\n",value->valuestring, config->status_para.softVersion.app);
+
+        }
+    }
+
 
 /* calibration_parm */
     cJSON *calibration = NULL;
@@ -203,6 +351,38 @@ static int json_parse_config_param(cJSON* root, struct poal_config *config)
     /* if_parm */
     /* rf_parm */
     cJSON *rf_parm = NULL;
+    rf_parm = cJSON_GetObjectItemCaseSensitive(spectrum_parm, "rf_parm");
+    printf_debug("rf_parm:\n");
+    cJSON_ArrayForEach(node, rf_parm){
+        value = cJSON_GetObjectItemCaseSensitive(node, "channel");
+        if(cJSON_IsNumber(value)){
+            printfd(" channel:%d, ", value->valueint);
+        }
+        value = cJSON_GetObjectItemCaseSensitive(node, "attenuation");
+        if(cJSON_IsNumber(value)){
+            printfd(" attenuation:%d,", value->valueint);
+        }
+        value = cJSON_GetObjectItemCaseSensitive(node, "mode_code");
+        if(cJSON_IsNumber(value)){
+                printfd(" mode_code:%d,", value->valueint);
+        }
+        value = cJSON_GetObjectItemCaseSensitive(node, "gain_mode");
+        if(cJSON_IsString(value)){
+                printfd(" gain_mode:%s,", value->valuestring);
+        }
+        value = cJSON_GetObjectItemCaseSensitive(node, "agc_ctrl_time");
+        if(cJSON_IsNumber(value)){
+                printfd(" agc_ctrl_time:%d,", value->valueint);
+        }
+        value = cJSON_GetObjectItemCaseSensitive(node, "agc_output_amp_dbm");
+        if(cJSON_IsNumber(value)){
+                printfd(" agc_output_amp_dbm:%d", value->valueint);
+        }
+        printfd("\n");
+    }
+
+    #if 0
+    cJSON *rf_parm = NULL;
     rf_parm = cJSON_GetObjectItem(spectrum_parm, "rf_parm");
     if(rf_parm != NULL){
         printf_debug("rf_parm:\n");
@@ -235,23 +415,51 @@ static int json_parse_config_param(cJSON* root, struct poal_config *config)
             }
             printfd("\n");
         }
+        
     }
+    #endif
     return 0;
 }
 
-int json_read_config_file(char *file, s_config *config)
+int json_read_config_file(const void *config)
 {
-    int ret = -1;
+    char *file;
+    s_config *conf = (struct poal_config *)config;
+    
+    file = conf->configfile;
     if(file == NULL || config == NULL)
         exit(1);
+    
     root_json = json_read_file(file, root_json);
     if(root_json == NULL){
         printf_err("json read error\n", file);
         exit(1);
     }
+    json_print(root_json, 1);
+    if(json_parse_config_param(root_json, &conf->oal_config) == -1){
+        exit(1);
+    }
+
+    return 0;
+}
+
+
+int json_write_config_file(void *config)
+{
+    int ret = -1;
+    char *file;
+    s_config *conf = (struct poal_config *)config;
+    file = conf->configfile;
+    if(file == NULL || config == NULL || root_json == NULL)
+        return -1;
+    
+     //config->oal_config.status_para.softVersion.app = "v111 1";
+     //config->oal_config.network.gateway = 0x0101a8c0;
+     //config->oal_config.network.port = 4311;
+    json_write_config_param(root_json, &conf->oal_config);
     //json_print(root_json, 1);
-    ret = json_parse_config_param(root_json, &config->oal_config);
-    exit(1);
+    ret = json_write_file(file, root_json);
+
     return ret;
 }
 

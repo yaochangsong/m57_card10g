@@ -735,6 +735,7 @@ int8_t io_set_enable_command(uint8_t type, uint8_t ch, uint32_t fftsize)
             break;
         }
     }
+    return 0;
 }
 
 

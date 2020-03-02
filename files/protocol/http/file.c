@@ -29,7 +29,7 @@
 #include "utils.h"
 #include "uhttpd.h"
 #include "log/log.h"
-#include "request.h"
+#include "protocol/resetful/request.h"
 
 
 static const struct mimetype uh_mime_types[] = {
@@ -367,7 +367,6 @@ static void uh_file_data(struct uh_client *cl, struct path_info *pi, int fd)
 
     /* write status */
     uh_file_response_200(cl, &pi->stat);
-    printf_warn("---\n");
 
     cl->printf(cl, "Content-Type: %s\r\n\r\n", uh_file_mime_lookup(pi->name));
 

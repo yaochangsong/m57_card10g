@@ -12,4 +12,11 @@
 *  Rev 1.0   28 Feb. 2020   yaochangsong
 *  Initial revision.
 ******************************************************************************/
+#ifndef _JSON_OAL_H
+#define _JSON_OAL_H
+
+extern int json_write_config_file(void *config);
+extern int json_read_config_file(const void *config);
+
+#endif
 

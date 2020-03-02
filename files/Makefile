@@ -36,7 +36,12 @@ endif
 ifneq ($(findstring http,$(SUPPORT_PROTOCAL)),)
 	SOURCE_DIR := protocol/http
 	C_VAR += -DSUPPORT_PROTOCAL_HTTP
+	ifneq ($(findstring resetful,$(SUPPORT_PROTOCAL)),)
+	SOURCE_DIR += protocol/resetful
+	C_VAR += -DSUPPORT_PROTOCAL_RESETFUL
 endif
+endif
+
 ifneq ($(findstring akt,$(SUPPORT_PROTOCAL)),)
 	SOURCE_DIR += protocol/akt
 	C_VAR += -DSUPPORT_PROTOCAL_AKT

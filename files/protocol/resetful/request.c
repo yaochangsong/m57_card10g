@@ -23,12 +23,12 @@
 
 #include "config.h"
 #include "log/log.h"
-#include "file.h"
+#include "protocol/http/file.h"
 #include "request.h"
 #include "request_file.h"
 #include "executor/io.h"
 #include "utils/memshare.h"
-#include "cmd.h"
+#include "parse_cmd.h"
 
 static struct request_info http_req_cmd[] = {
     /* 磁盘操作 */
@@ -208,7 +208,7 @@ int http_on_request(struct uh_client *cl)
 {
     const char *path, *filename = NULL;
     int ret = -1;
-    char err_msg[256]={"Undefined"};
+    char *err_msg= NULL;
     path = cl->get_path(cl);
     if(path ==NULL)
         return UH_REQUEST_DONE;
@@ -222,11 +222,13 @@ int http_on_request(struct uh_client *cl)
         }
         if(parse_format_url(cl, path, http_req_cmd[i].path) == 0){
             if(http_req_cmd[i].dispatch_cmd == -1){
-                 if(!http_req_cmd[i].action || (ret = http_req_cmd[i].action(cl, err_msg)) != 0){
+                 if(http_req_cmd[i].action){
+                    ret = http_req_cmd[i].action(cl, &err_msg);
                     printf_note("action result: %d, %s\n", ret, err_msg);
-                    cl->send_error_json(cl, ret, err_msg);
-                 }else{
-                    cl->send_error_json(cl, 0, "OK");
+                    if(err_msg){
+                        cl->send_error_json(cl, ret, err_msg);
+                        printf_note("action result: %d, %s\n", ret, err_msg);
+                    }
                  }
                  return UH_REQUEST_DONE;
             }else{

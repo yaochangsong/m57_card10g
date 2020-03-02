@@ -13,18 +13,32 @@
 *  Initial revision.
 ******************************************************************************/
 #include "config.h"
-#include "client.h"
+#include "protocol/http/client.h"
 #include "log/log.h"
 #include "conf/conf.h"
 
 
-enum error_cmd_type {
-    ERROR_PARAM_ERR,
+#define RESP_CODE_OK                0
+#define RESP_CODE_CHANNEL_ERR       -1
+#define RESP_CODE_PATH_PARAM_ERR    -2
+#define RESP_CODE_PARSE_ERR         -3
+#define RESP_CODE_EXECMD_ERR        -4
+
+
+static struct response_err_code {
+    int code;
+    char *message;
 };
 
-static const char *const error_types[] = {
-    [ERROR_PARAM_ERR] = "param error",
+
+static struct response_err_code resp_code[] ={
+    {RESP_CODE_OK,                  "ok"},
+    {RESP_CODE_CHANNEL_ERR,         "channel error"},
+    {RESP_CODE_PATH_PARAM_ERR,      "path param error"},
+    {RESP_CODE_PARSE_ERR,           "parse json error"},
+    {RESP_CODE_EXECMD_ERR,          "execute cmd error"}
 };
+
 
 /* 射频参数类型 */
 static const char *const rf_types[] = {
@@ -83,6 +97,18 @@ static inline int find_idx_safe(const char *const *list, int max, const char *st
     }
 
     return -1;
+}
+
+static inline char *get_resp_message(int code)
+{
+    int i;
+
+    for (i = 0; i < ARRAY_SIZE(resp_code); i++){
+        if(resp_code[i].code == code)
+            return resp_code[i].message;
+    }
+
+    return "undefined err";
 }
 
 static inline bool str_to_int(char *str, int *ivalue, bool(*_check)(int))
@@ -155,6 +181,7 @@ bool parse_if_cmd(int cmd, char *value, int ch, int subch)
     struct poal_config *poal_config = &(config_get_config()->oal_config);
     struct multi_freq_point_para_st *point;
     point = &poal_config->multi_freq_point_param[ch];
+    printf_note("if cmd:%d\n", cmd);
     switch(cmd){
         case EX_MID_FREQ:
         {
@@ -168,6 +195,7 @@ bool parse_if_cmd(int cmd, char *value, int ch, int subch)
         default:
             break;
     }
+    return true;
 }
 
 bool parse_rf_cmd(int cmd, char *value, int ch, int subch)
@@ -212,44 +240,98 @@ bool parse_rf_cmd(int cmd, char *value, int ch, int subch)
 
 
 /* POST /mode/mutiPoint/@ch */
-int cmd_muti_point(struct uh_client *cl, void *arg)
+int cmd_muti_point(struct uh_client *cl, void **arg)
 {
-    char *ch;
-    ch = cl->get_restful_var(cl, "ch");
-    printf_note("ch = %s\n", ch);
+    char *s_ch;
+    int ch;
+    int code = RESP_CODE_OK;
+    
+    s_ch = cl->get_restful_var(cl, "ch");
+    printf_note("ch = %s\n", s_ch);
+    if(str_to_int(s_ch, &ch, check_valid_ch) == false){
+        code = RESP_CODE_CHANNEL_ERR;
+        goto error;
+    }
     printf_note("%s", cl->dispatch.body);
-    return 0;
+    if(parse_json_muti_point(cl->dispatch.body)){
+        code = RESP_CODE_PARSE_ERR;
+        goto error;
+    }
+
+error:
+    *arg = get_resp_message(code);
+    return code;
+
 }
 
 
 /* "POST","/mode/multiBand/@ch" */
-int cmd_multi_band(struct uh_client *cl, void *arg)
+int cmd_multi_band(struct uh_client *cl, void **arg)
 {
-    char *ch;
-    ch = cl->get_restful_var(cl, "ch");
-    printf_note("ch = %s\n", ch);
+    char *s_ch;
+    int ch;
+    int code = RESP_CODE_OK;
+    
+    s_ch = cl->get_restful_var(cl, "ch");
+    printf_note("ch = %s\n", s_ch);
+    if(str_to_int(s_ch, &ch, check_valid_ch) == false){
+        code = RESP_CODE_CHANNEL_ERR;
+        goto error;
+    }
     printf_note("%s\n", cl->dispatch.body);
-    return 0;
+    if(parse_json_multi_band(cl->dispatch.body) != 0){
+        code = RESP_CODE_PARSE_ERR;
+        goto error;
+    }
+error:
+    *arg = get_resp_message(code);
+    return code;
+
 }
 
 /* "POST","/demodulation/@ch/@subch" */
-int cmd_demodulation(struct uh_client *cl, void *arg)
+int cmd_demodulation(struct uh_client *cl, void **arg)
 {
-    char *ch, *subch;
-    ch = cl->get_restful_var(cl, "ch");
-    subch = cl->get_restful_var(cl, "subch");
-    printf_note("ch = %s, subch=%s\n", ch, subch);
+    char *s_ch, *s_subch;
+    int ch, subch;
+    int code = RESP_CODE_OK;
+    
+    s_ch = cl->get_restful_var(cl, "ch");
+    s_subch = cl->get_restful_var(cl, "subch");
+    printf_note("ch = %s, subch=%s\n", s_ch, s_subch);
+    if(str_to_int(s_ch, &ch, check_valid_ch) == false){
+        code = RESP_CODE_CHANNEL_ERR;
+        goto error;
+    }
+    if(s_subch != NULL){
+        if(str_to_int(s_subch, &subch, check_valid_subch) == false){
+            code = RESP_CODE_CHANNEL_ERR;
+            goto error;
+        }
+    }else{
+        code = RESP_CODE_CHANNEL_ERR;
+        goto error;
+    }
     printf_note("%s\n", cl->dispatch.body);
-    return 0;
+    if(parse_json_demodulation(cl->dispatch.body) != 0){
+        code = RESP_CODE_PARSE_ERR;
+        goto error;
+    }
+    
+error:
+    *arg = get_resp_message(code);
+    return code;
+
 }
 
 /*"PUT",     /if/@type/@ch/@subch/@value"
     中频单个参数设置
 */
-int cmd_if_single_value_set(struct uh_client *cl, void *arg)
+int cmd_if_single_value_set(struct uh_client *cl, void **arg)
 {
     char *s_type, *s_ch, *s_subch, *s_value;
     int ch, itype, subch;
+    int code = RESP_CODE_OK;
     
     s_type = cl->get_restful_var(cl, "type");
     s_ch = cl->get_restful_var(cl, "ch");
@@ -257,10 +339,12 @@ int cmd_if_single_value_set(struct uh_client *cl, void *arg)
     s_value = cl->get_restful_var(cl, "value");
     printf_note("if type=%s,ch = %s, subch=%s, value=%s\n", s_type, s_ch, s_subch, s_value);
     if(str_to_int(s_ch, &ch, check_valid_ch) == false){
+        code = RESP_CODE_CHANNEL_ERR;
         goto error;
     }
     if(s_subch != NULL){
         if(str_to_int(s_subch, &subch, check_valid_subch) == false){
+            code = RESP_CODE_CHANNEL_ERR;
             goto error;
         }
     }else{
@@ -269,26 +353,36 @@ int cmd_if_single_value_set(struct uh_client *cl, void *arg)
 
     itype = find_idx_safe(if_types, ARRAY_SIZE(if_types), s_type);
     if(parse_if_cmd(itype, s_value, ch, subch) == false){
-        goto error;
+        code = RESP_CODE_EXECMD_ERR;
     }
-    return 0;
+    printf_note("...%d\n", code);
 error:
-    strcpy(arg, error_types[ERROR_PARAM_ERR]);
-    return -1;
+    *arg = get_resp_message(code);
+    printf_note("...%s\n", arg);
+    return code;
+
 }
 
 /*"POST",     /if/@ch/@subch"
     中频参数批量设置
 */
-int cmd_if_multi_value_set(struct uh_client *cl, void *arg)
+int cmd_if_multi_value_set(struct uh_client *cl, void **arg)
 {
     char *ch, *subch;
     int itype;
+    int code = RESP_CODE_OK;
+    
     ch = cl->get_restful_var(cl, "ch");
     subch = cl->get_restful_var(cl, "subch");
     printf_note("rf ch = %s, subch=%s\n", ch, subch);
     printf_note("%s\n", cl->dispatch.body);
-    return 0;
+    if(parse_json_if_multi_value(cl->dispatch.body) != 0){
+        code = RESP_CODE_PARSE_ERR;
+    }
+    
+error:
+    *arg = get_resp_message(code);
+    return code;
 }
 
 /*"PUT",     /rf/@type/@ch/@subch/@value"
@@ -298,10 +392,11 @@ int cmd_if_multi_value_set(struct uh_client *cl, void *arg)
         gain:增益模式
         
 */
-int cmd_rf_single_value_set(struct uh_client *cl, void *arg)
+int cmd_rf_single_value_set(struct uh_client *cl, void **arg)
 {
     char *s_type, *s_ch, *s_subch, *s_value;
     int ch, subch, itype;
+    int code = RESP_CODE_OK;
     
     s_type = cl->get_restful_var(cl, "type");
     s_ch = cl->get_restful_var(cl, "ch");
@@ -309,10 +404,12 @@ int cmd_rf_single_value_set(struct uh_client *cl, void *arg)
     s_value = cl->get_restful_var(cl, "value");
     printf_note("rf type=%s,ch = %s, subch=%s, value=%s\n", s_type, s_ch, s_subch, s_value);
     if(str_to_int(s_ch, &ch, check_valid_ch) == false){
+        code = RESP_CODE_CHANNEL_ERR;
         goto error;
     }
     if(s_subch != NULL){
         if(str_to_int(s_subch, &subch, check_valid_subch) == false){
+            code = RESP_CODE_CHANNEL_ERR;
             goto error;
         }
     }else{
@@ -321,24 +418,47 @@ int cmd_rf_single_value_set(struct uh_client *cl, void *arg)
 
     itype = find_idx_safe(rf_types, ARRAY_SIZE(rf_types), s_type);
     if(parse_rf_cmd(itype, s_value, ch, subch) == false){
+        code = RESP_CODE_EXECMD_ERR;
         goto error;
     }
-    return 0;
- error:
-    strcpy(arg, error_types[ERROR_PARAM_ERR]);
-    return -1;
+error:
+    *arg = get_resp_message(code);
+    return code;
 }
+
 /*"POST",     /rf/@ch/@subch"
     射频参数批量设置
 */
-int cmd_rf_multi_value_set(struct uh_client *cl, void *arg)
+int cmd_rf_multi_value_set(struct uh_client *cl, void **arg)
 {
-    char *type, *ch, *subch;
-    ch = cl->get_restful_var(cl, "ch");
-    subch = cl->get_restful_var(cl, "subch");
-    printf_note("rf ch = %s, subch=%s\n", ch, subch);
+    char *s_ch, *s_subch;
+    int  ch, subch;
+    int code = RESP_CODE_OK;
+    
+    s_ch = cl->get_restful_var(cl, "ch");
+    s_subch = cl->get_restful_var(cl, "subch");
+    printf_note("rf ch = %s, subch=%s\n", s_subch, s_subch);
+
+    if(str_to_int(s_ch, &ch, check_valid_ch) == false){
+        code = RESP_CODE_CHANNEL_ERR;
+        goto error;
+    }
+    if(s_subch != NULL){
+        if(str_to_int(s_subch, &subch, check_valid_subch) == false){
+            code = RESP_CODE_CHANNEL_ERR;
+            goto error;
+        }
+    }else{
+        subch = -1;
+    }
     printf_note("%s\n", cl->dispatch.body);
-    return 0;
+    if(parse_json_rf_multi_value(cl->dispatch.body) != 0){
+        code = RESP_CODE_PARSE_ERR;
+    }
+    
+error:
+    *arg = get_resp_message(code);
+    return code;
 }
 
 
@@ -347,10 +467,11 @@ int cmd_rf_multi_value_set(struct uh_client *cl, void *arg)
     @type: "psd", "iq", "audio"
     @value: 1->enable, 0->disable
 */
-int cmd_ch_enable_set(struct uh_client *cl, void *arg)
+int cmd_ch_enable_set(struct uh_client *cl, void **arg)
 {
     char *s_type, *s_ch, *s_enable;
     int ch, enable;
+    int code = RESP_CODE_OK;
     struct poal_config *poal_config = &(config_get_config()->oal_config);
     
     s_type = cl->get_restful_var(cl, "type");
@@ -358,9 +479,11 @@ int cmd_ch_enable_set(struct uh_client *cl, void *arg)
     s_enable = cl->get_restful_var(cl, "value");
     printf_note("enable type=%s,ch = %s, value=%s\n", s_type, s_ch, s_enable);
     if(str_to_int(s_ch, &ch, check_valid_ch) == false){
+        code = RESP_CODE_CHANNEL_ERR;
         goto error;
     }
     if(str_to_int(s_enable, &enable, check_valid_enable) == false){
+        code = RESP_CODE_CHANNEL_ERR;
         goto error;
     }
 
@@ -374,14 +497,16 @@ int cmd_ch_enable_set(struct uh_client *cl, void *arg)
     }else if(!strcmp(s_type, "audio")){
         poal_config->enable.audio_en = enable;
     }else{
+        code = RESP_CODE_PATH_PARAM_ERR;
         goto error;
     }
     INTERNEL_ENABLE_BIT_SET(poal_config->enable.bit_en,poal_config->enable);
     executor_set_enable_command(ch);
-    return 0;
+    
 error:
-    strcpy(arg, error_types[ERROR_PARAM_ERR]);
-    return -1;
+    *arg = get_resp_message(code);
+    return code;
+
 }
 
 /* "PUT",     "/enable/@ch/@subch/@type/@value" 
@@ -389,10 +514,11 @@ error:
     @type: "psd", "iq", "audio"
     @value: 1->enable, 0->disable
 */
-int cmd_subch_enable_set(struct uh_client *cl, void *arg)
+int cmd_subch_enable_set(struct uh_client *cl, void **arg)
 {
     char *s_type, *s_ch, *s_subch, *s_enable;
     int ch, subch,enable;
+    int code = RESP_CODE_OK;
     struct poal_config *poal_config = &(config_get_config()->oal_config);
     
     s_type = cl->get_restful_var(cl, "type");
@@ -400,12 +526,15 @@ int cmd_subch_enable_set(struct uh_client *cl, void *arg)
     s_subch = cl->get_restful_var(cl, "subch");
     s_enable = cl->get_restful_var(cl, "value");
     if(str_to_int(s_ch, &ch, check_valid_ch) == false){
+        code = RESP_CODE_CHANNEL_ERR;
         goto error;
     }
     if(str_to_int(s_enable, &enable, check_valid_enable) == false){
+        code = RESP_CODE_PATH_PARAM_ERR;
         goto error;
     }
     if(str_to_int(s_subch, &subch, check_valid_subch) == false){
+        code = RESP_CODE_CHANNEL_ERR;
         goto error;
     }
     poal_config->sub_ch_enable.cid = ch;
@@ -429,15 +558,15 @@ int cmd_subch_enable_set(struct uh_client *cl, void *arg)
     }else if(!strcmp(s_type, "audio")){
         poal_config->sub_ch_enable.audio_en = enable;
     }else{
+        code = RESP_CODE_PATH_PARAM_ERR;
         goto error;
     }
 
     printf_note("enable type=%s,ch = %d, subch=%d, enable=%d\n", s_type, ch, subch, enable);
-    return 0;
-error:
-    strcpy(arg, error_types[ERROR_PARAM_ERR]);
-    return -1;
 
+error:
+    *arg = get_resp_message(code);
+    return code;
 }
 
 

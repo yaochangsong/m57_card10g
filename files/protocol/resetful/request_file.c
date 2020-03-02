@@ -22,7 +22,7 @@
 #include <sys/stat.h>
 #include "config.h"
 #include "log/log.h"
-#include "file.h"
+#include "protocol/http/file.h"
 #include "request_file.h"
 #include "utils/memshare.h"
 

@@ -776,8 +776,7 @@ void executor_timer_task1_cb(struct uloop_timeout *t)
     spectrum_send_fft_data_interval();
 #endif
     uh_dump_all_client();
-    clinet_srv_send_post("/test/1", "{\"data\":null}");
-    uloop_timeout_set(t, 5000);
+    //uloop_timeout_set(t, 5000);
 }
 void executor_timer_task_init(void)
 {

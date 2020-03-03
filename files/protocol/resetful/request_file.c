@@ -22,7 +22,7 @@
 #include <sys/stat.h>
 #include "config.h"
 #include "log/log.h"
-#include "file.h"
+#include "protocol/http/file.h"
 #include "request_file.h"
 #include "utils/memshare.h"
 
@@ -66,43 +66,43 @@ static int file_reload_buffer(char *filename)
 int file_startstore(struct uh_client *cl, void *arg)
 {
     printf_note("startstore\n");
-    sleep(5);
-    return true;
+   // sleep(5);error:
+    return 0;
 }
 
 int file_stopstore(struct uh_client *cl, void *arg)
 {
     printf_note("stopstore\n");
-    sleep(1);
-    return true;
+    //sleep(1);
+    return 0;
 }
 
 int file_search(struct uh_client *cl, void *arg)
 {
     printf_note("search\n");
-    sleep(1);
-    return true;
+   // sleep(1);
+    return 0;
 }
 
 int file_start_backtrace(struct uh_client *cl, void *arg)
 {
     printf_warn("start_backtrace\n");
-    sleep(1);
-    return true;
+   // sleep(1);
+    return 0;
 }
 
 int file_stop_backtrace(struct uh_client *cl, void *arg)
 {
     printf_note("stop backtrace\n");
-    sleep(1);
-    return true;
+   // sleep(1);
+    return 0;
 }
 
 int file_delete(struct uh_client *cl, void *arg)
 {
     printf_note("file_delete\n");
-    sleep(1);
-    return true;
+   // sleep(1);
+    return 0;
 }
 
 int file_disk_format(struct uh_client *cl, void *arg)
@@ -110,7 +110,7 @@ int file_disk_format(struct uh_client *cl, void *arg)
     printf_note("disk format\n");
     xwfs_disk_format(arg);
     //io_set_format_disk(arg);
-    return true;
+    return 0;
 }
 
 
@@ -248,12 +248,13 @@ loop:
     return nread;
 }
 
-int file_download(struct uh_client *cl, void *arg)
+int file_download(struct uh_client *cl, char *filename)
 {
     
     static char buf[4096];
-    char *filename = cl->dispatch.file.filename;
     int r, i;
+    if(filename == NULL)
+        return -1;
 
     printf_info("download:name=%s, cmd=%d\n", filename, cl->dispatch.cmd);
     while (cl->us->w.data_bytes < 256) {

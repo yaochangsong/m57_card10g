@@ -3,12 +3,20 @@
 #include "config.h"
 
 /** Defaults configuration values */
-#ifdef SUPPORT_PLATFORM_ARCH_ARM
-#define DEFAULT_CONFIGFILE "/spectrum.xml"
-#define CALIBRATION_FILE   "/calibration.xml"
-#else
-#define DEFAULT_CONFIGFILE "spectrum.xml"
-#define CALIBRATION_FILE   "calibration.xml"
+#if defined (SUPPORT_DAO_XML)
+    #ifdef SUPPORT_PLATFORM_ARCH_ARM
+    #define DEFAULT_CONFIGFILE "/spectrum.xml"
+    #define CALIBRATION_FILE   "/calibration.xml"
+    #else
+    #define DEFAULT_CONFIGFILE "conf/spectrum.xml"
+    #define CALIBRATION_FILE   "conf/calibration.xml"
+    #endif
+#elif defined(SUPPORT_DAO_JSON)
+    #ifdef SUPPORT_PLATFORM_ARCH_ARM
+    #define DEFAULT_CONFIGFILE "/etc/config.json"
+    #else
+    #define DEFAULT_CONFIGFILE "conf/config.json"
+    #endif
 #endif
 
 /**

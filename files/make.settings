@@ -1,13 +1,13 @@
 #arch: x86 arm
-SUPPORT_PLAT_FORM_ARCH=arm
+SUPPORT_PLAT_FORM_ARCH=x86
 #debug
 SUPPORT_GDB_DEBUG=n
 
 #Protocal Support: http akt xnrp
-SUPPORT_PROTOCAL="http akt"
+SUPPORT_PROTOCAL="http  resetful akt"
 
 #data store format support: json xml
-SUPPORT_DAO="xml"
+SUPPORT_DAO="json"
 
 #remote or local control
 SUPPORT_REMOTE_LOCAL_CTRL_EN=n
@@ -16,7 +16,7 @@ SUPPORT_REMOTE_LOCAL_CTRL_EN=n
 SUPPORT_PROJECT_SSA=n
 
 #project (wbif160m)
-SUPPORT_PROJECT_WBIF160M=y
+SUPPORT_PROJECT_WD_XCR=y
 
 #spectrum fft or kernel
 SUPPORT_SPECTRUM_KERNEL=y

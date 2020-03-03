@@ -16,10 +16,10 @@
     <bandwidthRemoteCtrl>1</bandwidthRemoteCtrl>
     <internalClock>1</internalClock>
     <dataOutPutEn>
-      <enable>1</enable>
+      <enable>0</enable>
       <subChannel>-1</subChannel>
       <psdEnable>0</psdEnable>
-      <audioEnable>1</audioEnable>
+      <audioEnable>0</audioEnable>
       <IQEnable>0</IQEnable>
       <spectrumAnalysisEn>0</spectrumAnalysisEn>
       <directionEn>0</directionEn>

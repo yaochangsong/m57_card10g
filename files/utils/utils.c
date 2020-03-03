@@ -284,7 +284,7 @@ void safe_free(void *p)
     }
 }
 
-int32_t inline diff_time(void)
+int32_t  diff_time(void)
 {
     static struct timeval oldTime; 
     struct timeval newTime; 
@@ -301,6 +301,7 @@ int32_t inline diff_time(void)
     printf_debug("Diff time = %u ms!\n", ntime_ms); 
     return ntime_ms;
 }
+
 
 
 /* system() 存在父进程内存大的话，存在空间申请失败的问题，这里改写system() */

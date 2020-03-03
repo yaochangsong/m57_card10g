@@ -36,7 +36,12 @@ endif
 ifneq ($(findstring http,$(SUPPORT_PROTOCAL)),)
 	SOURCE_DIR := protocol/http
 	C_VAR += -DSUPPORT_PROTOCAL_HTTP
+	ifneq ($(findstring resetful,$(SUPPORT_PROTOCAL)),)
+	SOURCE_DIR += protocol/resetful
+	C_VAR += -DSUPPORT_PROTOCAL_RESETFUL
 endif
+endif
+
 ifneq ($(findstring akt,$(SUPPORT_PROTOCAL)),)
 	SOURCE_DIR += protocol/akt
 	C_VAR += -DSUPPORT_PROTOCAL_AKT
@@ -139,9 +144,11 @@ endif
 SUB_LIBS :=  lib/libubox/libubox.a
 ifneq ($(findstring json,$(SUPPORT_DAO)),)
 	SUB_LIBS += dao/json/libjson.a
+	SOURCE_DIR += dao/oal/json
 	C_VAR += -DSUPPORT_DAO_JSON
 else ifneq ($(findstring xml,$(SUPPORT_DAO)),)
 	SUB_LIBS += dao/mxml-3.0/libmxml.a
+	SOURCE_DIR += dao/oal/xml
 	C_VAR += -DSUPPORT_DAO_XML
 endif
 

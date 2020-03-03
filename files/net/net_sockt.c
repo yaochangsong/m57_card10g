@@ -42,17 +42,19 @@ void tcp_free(struct net_tcp_client *cl)
     printf_info("tcp_free:");
     printf_info(": %s:%d\n", cl->get_peer_addr(cl), cl->get_peer_port(cl));
     if (cl) {
-        executor_tcp_disconnect(cl);
         uloop_timeout_cancel(&cl->timeout);
         ustream_free(&cl->sfd.stream);
         shutdown(cl->sfd.fd.fd, SHUT_RDWR);
         close(cl->sfd.fd.fd);
         list_del(&cl->list);
         cl->srv->nclients--;
+        executor_tcp_disconnect_notify(cl);
        // if (cl->srv->on_client_free)
        // cl->srv->on_client_free(cl);
         free(cl);
     }
+    
+
 }
 
 
@@ -89,10 +91,19 @@ static inline int tcp_get_peer_port(struct net_tcp_client *cl)
 
 static inline void tcp_keepalive_cb(struct uloop_timeout *timeout)
 {
-    printf_debug("keepalive_cb\n");
+    
+    struct net_tcp_client *cl = container_of(timeout, struct net_tcp_client, timeout);
+    printf_note("keepalive: find %s:%d disconnect; free\n", cl->get_peer_addr(cl), cl->get_peer_port(cl));
+    tcp_free(cl);
 }
 
-
+/* 网络连接时，保活定时器更新；此操作为TCP客户端连接 */
+void update_tcp_keepalive(struct net_tcp_client *cl)
+{
+    if(&cl->timeout && (sizeof(struct uloop_timeout) == sizeof(cl->timeout))){
+        uloop_timeout_set(&cl->timeout, TCP_CONNECTION_TIMEOUT * 1000);
+    } 
+}
 
 static void tcp_accept_cb(struct uloop_fd *fd, unsigned int events)
 {
@@ -129,7 +140,7 @@ static void tcp_accept_cb(struct uloop_fd *fd, unsigned int events)
     ustream_fd_init(&cl->sfd, sfd);
 
     cl->timeout.cb = tcp_keepalive_cb;
-    uloop_timeout_set(&cl->timeout, 30 * 1000);
+    uloop_timeout_set(&cl->timeout, TCP_CONNECTION_TIMEOUT * 1000);
 
     list_add(&cl->list, &srv->clients);
     cl->srv = srv;

@@ -14,7 +14,7 @@
 ******************************************************************************/
 
 #include "config.h"
-#include "protocol/http/request.h"
+#include "protocol/resetful/request.h"
 
 static void on_accept(struct uh_client *cl)
 {
@@ -88,8 +88,8 @@ int server_init(void)
 #endif
 #ifdef  SUPPORT_PROTOCAL_HTTP
     struct uh_server *srv = NULL;
-    printf_info("http server init[port:%d]\n", 80);
-    srv = uh_server_new("0.0.0.0", 80);
+    printf_info("http server init[port:%d]\n", 9999);
+    srv = uh_server_new("0.0.0.0", 9999);
     if (!srv)
         return -1;
     srv->on_accept = on_accept;

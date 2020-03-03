@@ -45,9 +45,15 @@
 
 #include "net/net_socket.h"
 #include "net/net_udp.h"
-
+#ifdef SUPPORT_DAO_XML
 #include "dao/mxml-3.0/mxml.h"
-#include "dao/oal/dao_oal.h"
+#include "dao/oal/xml/dao_oal.h"
+#endif
+#ifdef SUPPORT_DAO_JSON
+#include "dao/json/cJSON.h"
+#include "dao/oal/json/json-oal.h"
+#endif
+
 #include "utils/utils.h"
 #include "utils/mempool.h"
 
@@ -82,7 +88,9 @@
 #endif
 #include "device/gpio/gpio.h"
 #include "device/gpio/gpio_raw.h"
-#include "dao/oal/dao_conf.h"
+#ifdef SUPPORT_DAO_XML
+#include "dao/oal/xml/dao_conf.h"
+#endif
 
 
 #ifndef MHZ

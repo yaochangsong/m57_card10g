@@ -40,17 +40,24 @@ void config_init(void)
     config.oal_config.network.netmask = saddr.sin_addr.s_addr;
     config.oal_config.network.port = 1325;
     #endif
+    memset(&config, 0, sizeof(config));
     if(get_mac(mac, sizeof(mac)) != -1){
         memcpy(config.oal_config.network.mac, mac, sizeof(config.oal_config.network.mac));
     }
     printf_debug("mac:%x%x%x%x%x%x\n", mac[0],mac[1],mac[2],mac[3],mac[4],mac[5]);
     printf_debug("config init\n");
     config.configfile = safe_strdup(DEFAULT_CONFIGFILE);
-    config.calibrationfile = safe_strdup(CALIBRATION_FILE);
+    //config.calibrationfile = safe_strdup(CALIBRATION_FILE);
     config.daemon = -1;
     config.oal_config.work_mode = OAL_NULL_MODE;
+    #ifdef SUPPORT_NET_WZ
     config.oal_config.ctrl_para.wz_threshold_bandwidth = 10000000; /* 万兆默认阀值; >=该值，用万兆传输 */
+    #endif
+    #if defined (SUPPORT_DAO_XML)
     dao_read_create_config_file(config.configfile, &config);
+    #elif defined(SUPPORT_DAO_JSON)
+    json_read_config_file(&config);
+    #endif
 }
 
 /** Accessor for the current configuration
@@ -151,7 +158,7 @@ int8_t config_save_batch(exec_cmd cmd, uint8_t type,s_config *config)
      dao_conf_save_batch(cmd,type,config);
         
 #elif defined SUPPORT_DAO_JSON
-    
+    json_write_config_file(config);
 #else
     #error "NOT SUPPORT DAO FORMAT"
 #endif
@@ -412,6 +419,7 @@ int8_t config_read_by_cmd(exec_cmd cmd, uint8_t type, uint8_t ch, void *data, ..
                     break;
                 case EX_CTRL_SIDEBAND:
                 {
+                    #define DEFAULT_SIDEBAND 1.28
                     struct scan_bindwidth_info *scanbw;
                     scanbw = &poal_config->ctrl_para.scan_bw; 
                     uint32_t bw = va_arg(argp, uint32_t);
@@ -426,10 +434,10 @@ int8_t config_read_by_cmd(exec_cmd cmd, uint8_t type, uint8_t ch, void *data, ..
                     }
                     if(found == 1){
                         ret = 0;
-                        printf_note("find side rate:%f, bw=%u\n",*(float *)data,  bw);
+                        printf_info("find side rate:%f, bw=%u\n",*(float *)data,  bw);
                     }else{
-                        *(float *)data = 0.0;
-                        printf_warn("not find side rate, bw=%u\n",  bw);
+                        *(float *)data = DEFAULT_SIDEBAND;
+                        printf_warn("not find side rate, bw=%u, use default sideband=%f\n",  bw, *(float *)data);
                         goto exit;
                     }
                     break;

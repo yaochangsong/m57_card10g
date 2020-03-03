@@ -29,7 +29,7 @@
 #include <libubox/ustream-ssl.h>
 #endif
 
-#define UHTTPD_CONNECTION_TIMEOUT 30
+#define UHTTPD_CONNECTION_TIMEOUT 60
 
 #define UH_POST_DATA_BUF_SIZE   1024
 #define UH_POST_MAX_POST_SIZE   4096
@@ -42,7 +42,9 @@ enum request_status {
 enum http_method {
     UH_HTTP_METHOD_GET,
     UH_HTTP_METHOD_POST,
-    UH_HTTP_METHOD_HEAD
+    UH_HTTP_METHOD_HEAD,
+    UH_HTTP_METHOD_PUT,
+    UH_HTTP_METHOD_DELETE,
 };
 
 enum http_version {
@@ -66,11 +68,23 @@ struct http_request {
     struct kvlist url;
     struct kvlist var;
     struct kvlist header;
+    struct kvlist resetful_var;
 };
+
+struct http_srv_request {
+    enum http_method method;
+    enum http_version version;
+    char *path;
+    char *host;
+    char *data;
+    int content_length;
+    int  result_code;  /* 0: false, 1: ok  -1: wait */
+};
+
 
 struct uh_client;
 
-#include "request_file.h"
+#include "protocol/resetful/request_file.h"
 
 struct dispatch {
     int (*post_data)(struct uh_client *cl, const char *data, int len);
@@ -80,8 +94,6 @@ struct dispatch {
 
     struct {
         int fd;
-        char filename[64];
-        char path[FILE_PATH_MAX_LEN];/* add by ycs */
     } file;
     int cmd; /* add by ycs */
     int post_len;
@@ -99,6 +111,7 @@ struct uh_client {
     struct uloop_timeout timeout;
     enum client_state state;
     struct http_request request;
+    struct http_srv_request srv_request;    /* add by ycs */
     struct sockaddr_in peer_addr;
     struct dispatch dispatch;
     bool connection_close;
@@ -106,11 +119,15 @@ struct uh_client {
 
     void (*free)(struct uh_client *cl);
     void (*send_error)(struct uh_client *cl, int code, const char *summary, const char *fmt, ...);
+    void (*send_error_json)(struct uh_client *cl, int err_code, const char *summary);
+    void (*send_json)(struct uh_client *cl, int err_code, const char *message, const char *content);
     void (*send_header)(struct uh_client *cl, int code, const char *summary, int64_t length);
     void (*append_header)(struct uh_client *cl, const char *name, const char *value);
     void (*header_end)(struct uh_client *cl);
     void (*redirect)(struct uh_client *cl, int code, const char *fmt, ...);
     void (*request_done)(struct uh_client *cl);
+    int  (*srv_send_post)(char *path, char *data);
+    void (*parse_resetful_var)(struct uh_client *cl, char *str);
     
     void (*send)(struct uh_client *cl, const void *data, int len);
     void (*printf)(struct uh_client *cl, const char *format, ...);
@@ -128,6 +145,7 @@ struct uh_client {
     const char *(*get_path)(struct uh_client *cl);
     const char *(*get_query)(struct uh_client *cl);
     const char *(*get_var)(struct uh_client *cl, const char *name);
+    const char *(*get_restful_var)(struct uh_client *cl, const char *name);
     const char *(*get_header)(struct uh_client *cl, const char *name);
     const char *(*get_body)(struct uh_client *cl, int *len);
 };

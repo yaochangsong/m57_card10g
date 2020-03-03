@@ -18,18 +18,18 @@ static int io_ctrl_fd = -1;
 
 /* 窄带表：解调方式为IQ系数表 */
 static struct  band_table_t iq_nbandtable[] ={
-    {0x70320, 0, 5000},
-    {0x70320, 0, 25000},
-    {0x70190, 0, 50000},
-    {0x700c8, 0, 100000},
-    {0x70050, 0, 250000},
-    {0x70028, 0, 500000},
-    {0x70014, 0, 1000000},
-    {0x70008, 0, 2500000},
-    {0x70004, 0, 5000000},
-    {0x30004, 0, 10000000},
-    {0x70000, 0, 20000000},
-    {0x30000, 0, 40000000},
+    {204608, 0, 5000},
+    {198208, 0, 25000},
+    {197408, 0, 50000},
+    {197008, 0, 100000},
+    {196768, 0, 250000},
+    {196688, 0, 500000},
+    {196648, 0, 1000000},
+    {196624, 0, 2500000},
+    {196616, 0, 5000000},
+    {196612, 0, 10000000},
+    {458752, 0, 20000000},
+    {196608, 0, 40000000},
 }; 
 
 /* 窄带表：解调方式为非IQ系数表 */
@@ -43,9 +43,9 @@ static struct  band_table_t nbandtable[] ={
 }; 
 /* 宽带系数表 */
 static struct  band_table_t bandtable[] ={
-    {0x70000, 0, 20000000},
-    {0x30000, 0, 40000000},
-    {0x10000, 0, 80000000},
+    {458752, 0, 20000000},
+    {196608, 0, 40000000},
+    {65536, 0, 80000000},
     {0,       0, 160000000},
     {0,       0, 175000000},
 
@@ -201,7 +201,7 @@ int32_t io_set_bandwidth(uint32_t ch, uint32_t bandwidth){
     @rate: 边带率>0;实际下发边带率为整数；放大100倍（内核不处理浮点数）
 */
 int32_t io_set_side_rate(uint32_t ch, float *rate){
-    #define RATE_GAIN 100
+    #define RATE_GAIN 1000
     int32_t ret = 0;
     static uint32_t old_val=0;
     uint32_t irate = 0;
@@ -394,7 +394,8 @@ int32_t io_set_subch_bandwidth(uint32_t subch, uint32_t bandwidth, uint8_t dec_m
     old_val = bandwidth;
     old_ch = subch;
 #if defined(SUPPORT_SPECTRUM_KERNEL) 
-    if(dec_method == DQ_MODE_IQ){
+    dec_method = IO_DQ_MODE_IQ; //NOTE:: for IQ test
+    if(dec_method == IO_DQ_MODE_IQ){
         table= &iq_nbandtable;
         table_len = sizeof(iq_nbandtable)/sizeof(struct  band_table_t);
         
@@ -482,7 +483,7 @@ void io_set_calibrate_val(uint32_t ch, uint32_t  cal_value)
 {
     static uint32_t old_val = 0, flag = 0;
     
-    if((old_val == cal_value) || (flag == 0)){
+    if((old_val == cal_value) && (flag != 0)){
         /* 避免重复设置相同参数 */
         flag = 1;
         return;
@@ -663,6 +664,13 @@ int8_t io_set_work_mode_command(void *data)
     return 0;
 }
 
+int8_t io_fill_mid_rf_param(void *args)
+{
+    int ret = -1;
+    if (io_ctrl_fd > 0)
+        ret = ioctl(io_ctrl_fd,IOCTL_RF_PARAM,args);
+    return ret;
+}
 
 int8_t io_set_enable_command(uint8_t type, uint8_t ch, uint32_t fftsize)
 {
@@ -727,6 +735,7 @@ int8_t io_set_enable_command(uint8_t type, uint8_t ch, uint32_t fftsize)
             break;
         }
     }
+    return 0;
 }
 
 

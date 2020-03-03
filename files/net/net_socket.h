@@ -5,8 +5,7 @@
 
 #define MAX_RECEIVE_DATA_LEN  1024
 #define MAX_SEND_DATA_LEN  1024
-#define MAX_CLINET_NUM  1000
-
+#define TCP_CONNECTION_TIMEOUT 60
 
 
 struct net_tcp_client {

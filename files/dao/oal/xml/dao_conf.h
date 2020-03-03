@@ -1,10 +1,10 @@
 #ifndef _DAO_CONF_H_
 #define _DAO_CONF_H_
 
-#include "config.h"
+//#define MAX_SIG_CHANNLE 64
+//#define MAX_SIGNAL_CHANNEL_NUM (16)
 
-#define MAX_SIG_CHANNLE 64
-#define MAX_SIGNAL_CHANNEL_NUM (16)
+#include "config.h"
 
 
 #define XMLFILENAME DEFAULT_CONFIGFILE

@@ -1,0 +1,116 @@
+{
+	"version":"1.0",
+	"network" : {
+		"mac":"38:2c:4a:ba:57:1d",
+		"ipaddress":"192.168.1.111",
+		"netmask":"255.255.255.0",
+		"gateway":"192.168.1.1",
+		"port":1234
+	},
+	"control_parm" : {
+		"spectrum_time_interval" :200,
+		"bandwidth_remote_ctrl":1,
+		"internal_clock" : 1
+	},
+	"status_parm" : {
+		"soft_version" : {
+			"app" : "2019.02:26:08"
+		}
+	},
+	"calibration_parm" : {
+		"psd_power_global" : "1510",
+		"psd_fftsize" : [
+			{
+				"fftsize": 512,
+				"value" : 10
+			},{
+				"fftsize": 1024,
+				"value" : 10
+			},{
+				"fftsize": 2048,
+				"value" : 10
+			},{
+				"fftsize": 4096,
+				"value" : 10
+			},{
+				"fftsize": 8192,
+				"value" : 10
+			}
+		],
+		"psd_freq" : [
+			{
+				"start_freq" : 0,
+				"end_freq" : 0,
+				"value" : 0
+			}
+		],
+		"analysis_power_global": -195,
+		"analysis_freq" : [
+			{
+				"start_freq" : 0,
+				"end_freq" : 0,
+				"value" : 0
+			}	
+		],
+		"low_noise_power":-100,
+		"lo_leakage_threshold" : 40,
+		"lo_leakage_renew_data_len" : 0,
+		"lo_leakage" : [
+			{
+				"fftsize": 512,
+				"threshold" : 0,
+				"renew_data_len" : 2
+			},{
+				"fftsize": 1024,
+				"threshold" : 0,
+				"renew_data_len" : 2
+			}
+		],
+		"mgc_gain_global" : 4,
+		"mgc_gain_freq" : [
+			{
+				"start_freq" : 1050000,
+				"end_freq" : 1250000,
+				"value" : 0
+			},{
+				"start_freq" : 1250000,
+				"end_freq" : 1450000,
+				"value" : 0
+			}
+		]
+	},
+	"spectrum_parm" : {
+		"side_bandrate" : [
+			{
+				"bind_width" : 160000000,
+				"rate" : "1.28"
+			},{
+				"bind_width" : 80000000,
+				"rate" : "1.28"
+			},{
+				"bind_width" : 40000000,
+				"rate" : "1.28"
+			},{
+				"bind_width" : 20000000,
+				"rate" : "1.28"
+			}
+		],
+		"if_parm" : [
+			{
+				"channel" : 0,
+				"middle_freq" : 100000000,
+				"bandwith" : 200000000
+			}
+		],
+		"rf_parm" : [
+			{
+				"channel" : 0,
+				"attenuation" : 0,
+				"mode_code" : 2,
+				"gain_mode" : "auto",
+				"agc_ctrl_time" : 1000,
+				"agc_output_amp_dbm" : -20
+			}
+		]
+	}
+}

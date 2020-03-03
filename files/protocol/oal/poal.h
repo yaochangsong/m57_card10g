@@ -1,11 +1,13 @@
 #ifndef _PROTOCOL_OAL_H_
 #define _PROTOCOL_OAL_H_
 
+#define MAX_SIGNAL_CHANNEL_NUM (16)
+#define MAX_SIG_CHANNLE 128
+
 #include "config.h"
 
 #define MAX_RADIO_CHANNEL_NUM 1
-#define MAX_SIGNAL_CHANNEL_NUM (16)
-#define MAX_SIG_CHANNLE 128
+
 #define FILE_PATH_MAX_LEN 256
 
 #ifdef SUPPORT_PROTOCAL_XNRP
@@ -188,7 +190,6 @@ struct control_st{
 #endif
 };//__attribute__ ((packed));
 
-
 /*状态参数*/
 
 /*4 获取设备基本信息*/
@@ -208,7 +209,7 @@ struct poal_disk_Node{
 
 struct poal_disk_Info{
     uint16_t diskNum; //?
-    struct dao_disk_Node diskNode;
+    struct poal_disk_Node diskNode;
 }__attribute__ ((packed));     
 
 struct poal_clk_Info{
@@ -229,7 +230,7 @@ struct poal_rf_node{
 
 struct poal_rf_Info{
     uint8_t rfnum;
-    struct dao_rf_node  rfnode;//struct rf_node  rfnode[MAX_SIG_CHANNLE];
+    struct poal_rf_node  rfnode;//struct rf_node  rfnode[MAX_SIG_CHANNLE];
 }__attribute__ ((packed));  
 
 
@@ -248,6 +249,7 @@ struct poal_status_infor{
     struct poal_fpga_Info  fpgaInfo;
     
 }__attribute__ ((packed));
+
 
 struct calibration_specturm_info_st{
     uint32_t start_freq_khz[40];
@@ -314,7 +316,7 @@ struct poal_config{
     struct calibration_info_st cal_level;
     uint8_t (*assamble_response_data)(uint32_t *, void *);
     void (*send_active)(void *);
-};//__attribute__ ((packed));
+};
 
 
 int poal_handle_request(struct net_tcp_client *cl, uint8_t *data, int len);

@@ -6,7 +6,7 @@
 
 #include "config.h"
 
-#define MAX_RADIO_CHANNEL_NUM 1
+#define MAX_RADIO_CHANNEL_NUM 8
 
 #define FILE_PATH_MAX_LEN 256
 

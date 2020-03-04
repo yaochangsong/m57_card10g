@@ -557,7 +557,7 @@ static int json_parse_config_param(const cJSON* root, struct poal_config *config
     /* if_parm */
     cJSON *if_parm = NULL;
     if_parm = cJSON_GetObjectItem(spectrum_parm, "if_parm");
-    if(side_bandrate!=NULL){
+    if(if_parm!=NULL){
         printf_debug("if_parm:\n");
         for(int i = 0; i < cJSON_GetArraySize(if_parm); i++){
             printfd("index:%d ", i);
@@ -565,20 +565,20 @@ static int json_parse_config_param(const cJSON* root, struct poal_config *config
             value = cJSON_GetObjectItem(node, "channel");
             if(cJSON_IsNumber(value)){
                // printfd("channel:%d, ", value->valueint);
-                config->multi_freq_point_param[0].points[i].index=value->valueint;
-                 printfd("channel:%d, ",config->multi_freq_point_param[0].points[i].index);
+                config->multi_freq_point_param[i].points[0].index=value->valueint;
+                 printfd("channel:%d, ",config->multi_freq_point_param[i].points[0].index);
             }
             value = cJSON_GetObjectItem(node, "middle_freq");
             if(cJSON_IsNumber(value)){
                // printfd("middle_freq:%d, ", value->valueint);
-                config->multi_freq_point_param[0].points[i].center_freq=value->valueint;
-                printfd("middle_freq:%d, ",config->multi_freq_point_param[0].points[i].center_freq);
+                config->multi_freq_point_param[i].points[0].center_freq=value->valueint;
+                printfd("middle_freq:%d, ",config->multi_freq_point_param[i].points[0].center_freq);
             } 
             value = cJSON_GetObjectItem(node, "bandwith");
             if(cJSON_IsNumber(value)){
                // printfd("bind_width:%d, ", value->valueint);
-                config->multi_freq_point_param[0].points[i].d_bandwith=value->valueint;
-                 printfd("bind_width:%d, ", config->multi_freq_point_param[0].points[i].d_bandwith);
+                config->multi_freq_point_param[i].points[0].d_bandwith=value->valueint;
+                 printfd("bind_width:%d, ", config->multi_freq_point_param[i].points[0].d_bandwith);
             } 
 
             printfd("\n");

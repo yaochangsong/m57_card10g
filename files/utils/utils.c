@@ -12,6 +12,8 @@
 *  Rev 1.0   09 July 2019   yaochangsong
 *  Initial revision.
 ******************************************************************************/
+#define _GNU_SOURCE
+#include <sched.h>
 #include "config.h"
 #include <sys/ioctl.h>  
 #include <sys/types.h>  
@@ -410,4 +412,38 @@ char *get_version_string(void)
    printf_warn("%s\n", version);
    return version;
 }
+
+
+/* 将线程绑定到某个CPU上 */
+int thread_bind_cpu(int cpuindex)
+{
+    cpu_set_t mask;
+    cpu_set_t get;
+    int j;
+    /* 获取系统CPU的个数 */
+    int cpunum = sysconf(_SC_NPROCESSORS_CONF);
+    printf_note("system has %d processor(s)\n", cpunum);
+    if(cpuindex > cpunum){
+        printf_err("system processor(s) number %d is less than bind index[%d]\n", cpunum, cpuindex);
+        return -1;
+    }
+    CPU_ZERO(&mask);
+    CPU_SET(cpuindex, &mask);
+    if (pthread_setaffinity_np(pthread_self(), sizeof(mask), &mask) < 0) {
+            printf_err("set thread affinity failed\n");
+            return -1;
+    }
+    CPU_ZERO(&get);
+    if (pthread_getaffinity_np(pthread_self(), sizeof(get), &get) < 0) {
+        printf_err("get thread affinity failed\n");
+        return -1;
+    }
+    for (j = 0; j < cpunum; j++) {
+        if (CPU_ISSET(j, &get)) {
+            printf_note("thread %u is running in processor %d\n", pthread_self(), j);
+        }
+    }
+    return 0;
+}
+
 

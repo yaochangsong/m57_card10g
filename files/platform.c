@@ -68,7 +68,6 @@ bool is_spectrum_continuous_mode(void)
     return spectrum_continuous_mode;
 }
 
-
 int main(int argc, char **argv)
 {
     int debug_level = -1;
@@ -137,7 +136,7 @@ if(spectrum_aditool_debug == false){
     #ifdef SUPPORT_RF
     rf_init();
     #endif
-    #ifdef SUPPORT_SPECTRUM_USER
+    #ifdef SUPPORT_SPECTRUM_FFT
     spectrum_init();
     #endif
 }

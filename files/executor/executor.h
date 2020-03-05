@@ -118,8 +118,8 @@ struct sem_st{
     sem_t   kernel_sysn;        /* 频谱分析时，内核处理完数据后，异步消息通知应用层 */
 };
 
-/* 频谱或IQ数据部分变量参数结构体，用作变化的参数传递 */
-struct spectrum_header_param{
+/* 频谱运行中，可能变化的参数 */
+struct spm_run_parm{
     uint32_t scan_bw;
     uint32_t bandwidth;
     uint32_t fft_size;

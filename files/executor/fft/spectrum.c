@@ -126,19 +126,19 @@ static inline bool spectrum_is_more_than_one_fragment(void)
 }
 
 /* get the signal bandwidth */
-static inline uint64_t spectrum_get_signal_bandwidth(struct spectrum_header_param *param)
+static inline uint64_t spectrum_get_signal_bandwidth(struct spm_run_parm *param)
 {
     return (param->e_freq - param->s_freq > 0? (param->e_freq - param->s_freq) : 0);
 }
 
 /* get the signal middle frequency */
-static inline uint64_t spectrum_get_signal_middle_freq(struct spectrum_header_param *param)
+static inline uint64_t spectrum_get_signal_middle_freq(struct spm_run_parm *param)
 {
     return (param->s_freq + spectrum_get_signal_bandwidth(param)/2);
 }
 
 /* get the whole rf work middle frequency, maybe not equal to signal middle frequency */
-static inline uint64_t spectrum_get_work_middle_freq(struct spectrum_header_param *param)
+static inline uint64_t spectrum_get_work_middle_freq(struct spm_run_parm *param)
 {
     uint64_t middle_freq = 0;
     /* If the signal analysis bandwidth exceeds the maximum operating bandwidth of the RF,
@@ -202,8 +202,8 @@ static  void spectrum_send_fft_data(void *fft_data, size_t fft_data_len, void *p
     uint32_t header_len = 0;
 
     /* fill header data len(byte) */
-    struct spectrum_header_param *hparam;
-    hparam = (struct spectrum_header_param *)param;
+    struct spm_run_parm *hparam;
+    hparam = (struct spm_run_parm *)param;
     hparam->data_len = fft_data_len; 
     hparam->type = SPECTRUM_DATUM_FLOAT;
     hparam->ex_type = SPECTRUM_DATUM;
@@ -237,8 +237,8 @@ static inline void spectrum_send_iq_data(void *iq_data, size_t iq_data_len, void
     uint32_t header_len = 0;
 
     /* fill header data len(byte) */
-    struct spectrum_header_param *hparam;
-    hparam = (struct spectrum_header_param *)param;
+    struct spm_run_parm *hparam;
+    hparam = (struct spm_run_parm *)param;
     hparam->data_len = iq_data_len; 
     hparam->type = BASEBAND_DATUM_IQ;
     hparam->ex_type = DEMODULATE_DATUM;
@@ -338,7 +338,7 @@ fft_data_type *spectrum_fft_data_order(struct spectrum_st *ps, uint32_t *result_
 }
 
 
-static int specturm_write_oneframe_iq_data_to_buffer_for_analysis(struct spectrum_header_param *param, void *data, size_t nbyte)
+static int specturm_write_oneframe_iq_data_to_buffer_for_analysis(struct spm_run_parm *param, void *data, size_t nbyte)
 {
     static bool is_sysn_write= false;
     memory_pool_t *iq_mpool = mp_iq_buffer_head;
@@ -370,7 +370,7 @@ static int specturm_write_oneframe_iq_data_to_buffer_for_analysis(struct spectru
             is_sysn_write = false;
             /* save spectrum perameter */
             printf_debug("iq_mpool step:%d\n", memory_pool_step(iq_mpool));
-            memory_pool_write_attr_value(iq_mpool, param, sizeof(struct spectrum_header_param));
+            memory_pool_write_attr_value(iq_mpool, param, sizeof(struct spm_run_parm));
             old_fft_sn = -1;
             return 0;
         }
@@ -378,7 +378,7 @@ static int specturm_write_oneframe_iq_data_to_buffer_for_analysis(struct spectru
     return -1;
 }
 
-static int specturm_write_oneframe_iq_data_to_buffer_for_upload(struct spectrum_header_param *param, void *data, size_t nbyte)
+static int specturm_write_oneframe_iq_data_to_buffer_for_upload(struct spm_run_parm *param, void *data, size_t nbyte)
 {
     static bool is_sysn_write= false;
     memory_pool_t *iq_mpool = mp_iq_upload_buffer_head;
@@ -410,7 +410,7 @@ static int specturm_write_oneframe_iq_data_to_buffer_for_upload(struct spectrum_
             is_sysn_write = false;
             /* save spectrum perameter */
             printf_debug("iq_mpool step:%d\n", memory_pool_step(iq_mpool));
-            memory_pool_write_attr_value(iq_mpool, param, sizeof(struct spectrum_header_param));
+            memory_pool_write_attr_value(iq_mpool, param, sizeof(struct spm_run_parm));
             old_fft_sn = -1;
             return 0;
         }
@@ -420,7 +420,7 @@ static int specturm_write_oneframe_iq_data_to_buffer_for_upload(struct spectrum_
 
 
 /* We use this function to deal FFT spectrum wave in user space */
-void spectrum_psd_user_deal(struct spectrum_header_param *param)
+void spectrum_psd_user_deal(struct spm_run_parm *param)
 {
     struct spectrum_st *ps;
     float resolution;
@@ -475,7 +475,7 @@ void spectrum_psd_user_deal(struct spectrum_header_param *param)
         /* Here we convert float to short integer processing */
         FLOAT_TO_SHORT(ps->fft_float_payload, ps->fft_short_payload, ps->fft_len);
         /*refill header parameter*/
-        memcpy(&ps->param, param, sizeof(struct spectrum_header_param));
+        memcpy(&ps->param, param, sizeof(struct spm_run_parm));
 
         ps->fft_data_ready = true;
 
@@ -636,7 +636,7 @@ void spectrum_middle_freq_leakage_calibration(char *data ,unsigned int len,unsig
     @ return fft result
 */
 void *spectrum_rw_fft_result(fft_result *result, uint64_t s_freq_hz, float freq_resolution, 
-                                    uint32_t fft_size, struct spectrum_header_param *param)
+                                    uint32_t fft_size, struct spm_run_parm *param)
 {
     int i;
     static struct spectrum_fft_result_st s_fft_result, *pfft = NULL;
@@ -716,7 +716,7 @@ int32_t spectrum_send_fft_data_interval(void)
 
 
 /* load specturm analysis paramter */
-static int8_t inline spectrum_get_analysis_paramter(struct spectrum_header_param *param, 
+static int8_t inline spectrum_get_analysis_paramter(struct spm_run_parm *param, 
                                                               uint32_t *_analysis_bw, uint64_t *midd_freq_offset)
 {
     uint32_t analysis_signal_bw;
@@ -836,7 +836,7 @@ void specturm_analysis_deal_thread(void *arg)
     int small_fft_size = 0, big_fft_size = 0;
     uint32_t small_fft_rsb_size = 0, big_fft_rsb_size = 0;
     struct spectrum_st *ps;
-    struct spectrum_header_param *param;
+    struct spm_run_parm *param;
     float resolution;
     uint64_t analysis_midd_freq_offset, bw_fft_size, analysis_signal_start_freq;
     uint32_t analysis_bw; 
@@ -863,7 +863,7 @@ loop:
         printf_note("###STEP1: Write Attr to  Small Pool###\n");
         memory_pool_write_attr_value(fft_small_mpool, memory_pool_get_attr(iq_mpool), memory_pool_get_attr_len(iq_mpool));
         
-        param = (struct spectrum_header_param *)memory_pool_get_attr(fft_small_mpool);
+        param = (struct spm_run_parm *)memory_pool_get_attr(fft_small_mpool);
         printf_note("bandwidth=%uHz, s_freq=%llu, e_freq=%llu\n", param->bandwidth, param->s_freq, param->e_freq);
         
         /* --1step IQ convert 4K(small) fft, and store fft data to small memory pool  */
@@ -951,7 +951,7 @@ void specturm_iq_upload_thread(void *arg)
     int i;
     int count = 0, remainder = 0;
     memory_pool_t *iq_mpool = mp_iq_upload_buffer_head;
-    struct spectrum_header_param *param;
+    struct spm_run_parm *param;
     ps = &_spectrum;
     
     while(1){
@@ -961,7 +961,7 @@ void specturm_iq_upload_thread(void *arg)
         pthread_mutex_unlock(&spectrum_iq_upload_cond_mutex);
         
         printf_note("###sending iq data###\n");
-        param = (struct spectrum_header_param *)memory_pool_get_attr(iq_mpool);
+        param = (struct spm_run_parm *)memory_pool_get_attr(iq_mpool);
         printf_note("iq_byte_len=%d, bandwidth=%uHz, s_freq=%llu, e_freq=%llu\n", ps->iq_byte_len, param->bandwidth, param->s_freq, param->e_freq);
         count = ps->iq_byte_len/IQ_UPLOAD_BUFFER_DATA_SIZE_LEN;
         remainder = ps->iq_byte_len%IQ_UPLOAD_BUFFER_DATA_SIZE_LEN;

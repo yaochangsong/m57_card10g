@@ -435,7 +435,7 @@ int json_read_config_file(const void *config)
         printf_err("json read error\n", file);
         exit(1);
     }
-    json_print(root_json, 1);
+    //json_print(root_json, 1);
     if(json_parse_config_param(root_json, &conf->oal_config) == -1){
         exit(1);
     }

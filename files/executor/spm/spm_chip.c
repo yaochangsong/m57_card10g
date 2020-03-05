@@ -12,21 +12,30 @@
 *  Rev 1.0   21 Feb. 2020   yaochangsong
 *  Initial revision.
 ******************************************************************************/
+#include <math.h>
 #include "config.h"
+#include "spm.h"
 
 typedef int16_t fft_data_type;
 
-static int spm_create(void)
+/* Allocate zeroed out memory */
+static inline void *zalloc(size_t size)
 {
-    spectrum_init();
+	return calloc(1, size);
 }
 
-static ssize_t spm_read_iq_data(void **data)
+
+static int spm_chip_create(void)
+{
+
+}
+
+static ssize_t spm_chip_read_iq_data(void **data)
 {
     
 }
 
-static ssize_t spm_read_fft_data(void **data)
+static ssize_t spm_chip_read_fft_data(void **data)
 {
     
 }
@@ -44,18 +53,18 @@ static  float get_side_band_rate(uint32_t bandwidth)
 }
 
 /* 频谱数据整理 */
-static fft_data_type *spm_data_order(fft_data_type *fft_data, 
+static fft_data_type *spm_chip_data_order(fft_data_type *fft_data, 
                                 size_t fft_len,  
                                 size_t *order_fft_len,
                                 void *arg)
 {
-    struct spectrum_header_param *hparam;
+    struct spm_run_parm *hparam;
     float sigle_side_rate, side_rate;
     uint32_t single_sideband_size;
 
     if(fft_data == NULL || fft_len == 0)
         return NULL;
-    hparam = (struct spectrum_header_param *)arg;
+    hparam = (struct spm_run_parm *)arg;
     /* 1：去边带 */
     /* 获取边带率 */
     side_rate  = get_side_band_rate(hparam->bandwidth);
@@ -69,7 +78,7 @@ static fft_data_type *spm_data_order(fft_data_type *fft_data,
 }
 
 
-static int spm_send_fft_data(void *data, size_t len, void *arg)
+static int spm_chip_send_fft_data(void *data, size_t len, void *arg)
 {
     uint8_t *ptr = NULL, *ptr_header = NULL;
     uint32_t header_len = 0;
@@ -77,8 +86,8 @@ static int spm_send_fft_data(void *data, size_t len, void *arg)
     if(data == NULL || len == 0 || arg == NULL)
         return -1;
 #ifdef SUPPORT_PROTOCAL_AKT
-    struct spectrum_header_param *hparam;
-    hparam = (struct spectrum_header_param *)arg;
+    struct spm_run_parm *hparam;
+    hparam = (struct spm_run_parm *)arg;
     hparam->data_len = len; 
     hparam->type = SPECTRUM_DATUM_FLOAT;
     hparam->ex_type = SPECTRUM_DATUM;
@@ -95,7 +104,7 @@ static int spm_send_fft_data(void *data, size_t len, void *arg)
     safe_free(ptr);
 }
 
-static int spm_send_iq_data(void *data, size_t len, void *arg)
+static int spm_chip_send_iq_data(void *data, size_t len, void *arg)
 {
     uint8_t *ptr = NULL, *ptr_header = NULL;
     uint32_t header_len = 0;
@@ -103,8 +112,8 @@ static int spm_send_iq_data(void *data, size_t len, void *arg)
     if(data == NULL || len == 0 || arg == NULL)
         return -1;
 #ifdef SUPPORT_PROTOCAL_AKT
-    struct spectrum_header_param *hparam;
-    hparam = (struct spectrum_header_param *)arg;
+    struct spm_run_parm *hparam;
+    hparam = (struct spm_run_parm *)arg;
     hparam->data_len = len; 
     hparam->type = BASEBAND_DATUM_IQ;
     hparam->ex_type = DEMODULATE_DATUM;
@@ -121,62 +130,62 @@ static int spm_send_iq_data(void *data, size_t len, void *arg)
     safe_free(ptr);
 }
 
-static int spm_send_cmd(void *cmd, void *data, size_t data_len)
+static int spm_chip_send_cmd(void *cmd, void *data, size_t data_len)
 {
 #ifdef SUPPORT_PROTOCAL_AKT
     poal_send_active_to_all_client((uint8_t *)data, data_len);
 #endif
 }
 
-static int spm_convet_iq_to_fft(void *iq, void *fft, size_t fft_len)
+static int spm_chip_convet_iq_to_fft(void *iq, void *fft, size_t fft_len)
 {
     if(iq == NULL || fft == NULL || fft_len == 0)
         return -1;
-    fft_spectrum_iq_to_fft_handle((short *)iq, fft_len, fft_len*2, (float *)fft);
+    //fft_spectrum_iq_to_fft_handle((short *)iq, fft_len, fft_len*2, (float *)fft);
     return 0;
 }
 
-static int spm_save_data(void *data, size_t len)
+static int spm_chip_save_data(void *data, size_t len)
 {
     return 0;
 }
 
-static int spm_backtrace_data(void *data, size_t len)
+static int spm_chip_backtrace_data(void *data, size_t len)
 {
     return 0;
 }
 
-static int spm_set_psd_analysis_enable(bool enable)
-{
-    return 0;
-}
-
-
-static int spm_get_psd_analysis_result(void *data, size_t len)
+static int spm_chip_set_psd_analysis_enable(bool enable)
 {
     return 0;
 }
 
 
-static int spm_close(void)
+static int spm_chip_get_psd_analysis_result(void *data, size_t len)
+{
+    return 0;
+}
+
+
+static int spm_chip_close(void)
 {
     return 0;
 }
 
 
 static const struct spm_backend_ops spm_ops = {
-    .create = spm_create,
-    .read_iq_data = spm_read_iq_data,
-    .data_order = spm_data_order,
-    .send_fft_data = spm_send_fft_data,
-    .send_iq_data = spm_send_iq_data,
-    .send_cmd = spm_send_cmd,
-    .convet_iq_to_fft = spm_convet_iq_to_fft,
-    .set_psd_analysis_enable = spm_set_psd_analysis_enable,
-    .get_psd_analysis_result = spm_get_psd_analysis_result,
-    .save_data = spm_save_data;
-    .backtrace_data = spm_backtrace_data;
-    .close = spm_close,
+    .create = spm_chip_create,
+    .read_iq_data = spm_chip_read_iq_data,
+    .data_order = spm_chip_data_order,
+    .send_fft_data = spm_chip_send_fft_data,
+    .send_iq_data = spm_chip_send_iq_data,
+    .send_cmd = spm_chip_send_cmd,
+    .convet_iq_to_fft = spm_chip_convet_iq_to_fft,
+    .set_psd_analysis_enable = spm_chip_set_psd_analysis_enable,
+    .get_psd_analysis_result = spm_chip_get_psd_analysis_result,
+    .save_data = spm_chip_save_data,
+    .backtrace_data = spm_chip_backtrace_data,
+    .close = spm_chip_close,
 };
 
 struct spm_context * spm_create_chip_context(void)
@@ -186,13 +195,13 @@ struct spm_context * spm_create_chip_context(void)
     struct spm_context *ctx = zalloc(sizeof(*ctx));
     if (!ctx)
         goto err_set_errno;
+    
     ctx->ops = &spm_ops;
-
-    ctx->pdata = config_get_config()->oal_config;
+    ctx->pdata = &config_get_config()->oal_config;
     
     
 err_set_errno:
     errno = -ret;
-    return NULL;
+    return ctx;
 
 }

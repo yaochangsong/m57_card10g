@@ -21,14 +21,13 @@ pthread_mutex_t set_cmd_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 struct sem_st work_sem;
 
-
 static void executor_send_config_data_to_clent(void *data)
 {
     printf_note("send data to client\n");
-    struct spectrum_header_param *send_param;
+    struct spm_run_parm *send_param;
     uint8_t *send_data = NULL;
     uint32_t send_data_len = 0;
-    send_param = (struct spectrum_header_param *)data;
+    send_param = (struct spm_run_parm *)data;
     printf_note("ch=%d,bandwidth=%u,m_freq=%llu\n", send_param->ch, send_param->bandwidth, send_param->m_freq);
 #ifdef SUPPORT_PROTOCAL_AKT
     DEVICE_SIGNAL_PARAM_ST notify_param;
@@ -110,7 +109,7 @@ static inline int8_t executor_wait_kernel_deal(void)
     return 0;
 }
 
-static  int8_t  executor_fragment_scan(uint32_t fregment_num,uint8_t ch, work_mode_type mode)
+static  int8_t  executor_fragment_scan(uint32_t fregment_num,uint8_t ch, work_mode_type mode, void *args)
 {
     struct poal_config *poal_config = &(config_get_config()->oal_config);
 
@@ -122,7 +121,7 @@ static  int8_t  executor_fragment_scan(uint32_t fregment_num,uint8_t ch, work_mo
     uint32_t header_len = 0;
 
     /* we need assamble pakege for kernel */
-    struct spectrum_header_param header_param;
+    struct spm_run_parm header_param;
     /* 
         Step 1: 扫描次数计算
         扫描次数 = (截止频率 - 开始频�?)/中频扫描带宽，这里中频扫描带宽认为和射频带宽一�?;
@@ -177,7 +176,7 @@ static  int8_t  executor_fragment_scan(uint32_t fregment_num,uint8_t ch, work_mo
             left_band = scan_bw;
         }
         else{
-        #if defined (SUPPORT_SPECTRUM_USER)
+        #if defined (SUPPORT_SPECTRUM_FFT)
             /*spectrum is more than one fragment */
             if(scan_count > 0){
                 m_freq = (uint64_t)(s_freq + (uint64_t)i * (uint64_t)scan_bw + scan_bw/2);
@@ -210,12 +209,15 @@ static  int8_t  executor_fragment_scan(uint32_t fregment_num,uint8_t ch, work_mo
         executor_set_command(EX_WORK_MODE_CMD, mode, ch, &header_param);
         io_set_enable_command(PSD_MODE_ENABLE, ch, header_param.fft_size);
         executor_wait_kernel_deal();
-    #elif defined (SUPPORT_SPECTRUM_USER)
+    #elif defined (SUPPORT_SPECTRUM_FFT)
         if(is_spectrum_aditool_debug() == false){
                 spectrum_psd_user_deal(&header_param);
         }else{
             usleep(500);
         }
+    #elif defined (SUPPORT_SPECTRUM_V2)
+        if(args != NULL)
+            spm_deal(args, &header_param);
     #else
         usleep(500);
     #endif
@@ -232,12 +234,12 @@ static  int8_t  executor_fragment_scan(uint32_t fregment_num,uint8_t ch, work_mo
     return 0;
 }
 
-static inline int8_t  executor_points_scan(uint8_t ch, work_mode_type mode)
+static int8_t  executor_points_scan(uint8_t ch, work_mode_type mode, void *args)
 {
     struct poal_config *poal_config = &(config_get_config()->oal_config);
     uint32_t points_count, i;
     uint64_t c_freq, s_freq, e_freq, m_freq;
-    struct spectrum_header_param header_param;
+    struct spm_run_parm header_param;
     struct multi_freq_point_para_st *point;
     time_t s_time;
     struct io_decode_param_st decode_param;
@@ -298,12 +300,15 @@ static inline int8_t  executor_points_scan(uint8_t ch, work_mode_type mode)
                 io_set_enable_command(PSD_MODE_ENABLE, ch, point->points[i].fft_size);
             }
             executor_wait_kernel_deal();
-#elif defined (SUPPORT_SPECTRUM_USER)
+#elif defined (SUPPORT_SPECTRUM_FFT)
             if(is_spectrum_aditool_debug() == false){
                 spectrum_psd_user_deal(&header_param);
             }else{
                 usleep(500);
             }
+#elif defined (SUPPORT_SPECTRUM_V2)
+            if(args != NULL)
+                spm_deal(args, &header_param);
 #endif
             if((poal_config->enable.bit_en == 0 && poal_config->sub_ch_enable.bit_en == 0) || 
                poal_config->enable.bit_reset == true){
@@ -320,7 +325,7 @@ static inline int8_t  executor_points_scan(uint8_t ch, work_mode_type mode)
 }
 
 
-void executor_work_mode_thread(void *arg)
+void executor_spm_thread(void *arg)
 {
     struct poal_config *poal_config = &(config_get_config()->oal_config);
     uint32_t fft_size;
@@ -328,8 +333,7 @@ void executor_work_mode_thread(void *arg)
     uint8_t sub_ch = poal_config->enable.sub_id;
     uint32_t j;
 
-    
-    
+    thread_bind_cpu(1);
     while(1)
     {
         
@@ -386,7 +390,7 @@ loop:   printf_note("######wait to deal work######\n");
                     }
                     if(poal_config->enable.psd_en || poal_config->enable.spec_analy_en){
                         for(j = 0; j < poal_config->multi_freq_fregment_para[ch].freq_segment_cnt; j++){
-                            if(executor_fragment_scan(j, ch, poal_config->work_mode) == -1){
+                            if(executor_fragment_scan(j, ch, poal_config->work_mode, arg) == -1){
                                 io_set_enable_command(PSD_MODE_DISABLE, ch, 0);
                                 usleep(1000);
                                 goto loop;
@@ -409,7 +413,7 @@ loop:   printf_note("######wait to deal work######\n");
                     }
 
                     if(poal_config->enable.bit_en || poal_config->sub_ch_enable.bit_en){
-                        if(executor_points_scan(ch, poal_config->work_mode) == -1){
+                        if(executor_points_scan(ch, poal_config->work_mode, arg) == -1){
                             io_set_enable_command(PSD_MODE_DISABLE, ch, 0);
                             io_set_enable_command(AUDIO_MODE_DISABLE, ch, 0);
                             usleep(1000);
@@ -772,7 +776,7 @@ int8_t executor_set_enable_command(uint8_t ch)
 
 void executor_timer_task1_cb(struct uloop_timeout *t)
 {
-#ifdef SUPPORT_SPECTRUM_USER
+#ifdef SUPPORT_SPECTRUM_FFT
     spectrum_send_fft_data_interval();
 #endif
     uh_dump_all_client();
@@ -796,7 +800,8 @@ void executor_timer_task_init(void)
 void executor_init(void)
 {
     int ret, i;
-    pthread_t work_id, work_id_iio;
+    pthread_t work_id;
+    void *spmctx;
     struct poal_config *poal_config = &(config_get_config()->oal_config);
     io_init();
 
@@ -821,9 +826,16 @@ void executor_init(void)
     }
     sem_init(&(work_sem.notify_deal), 0, 0);
     sem_init(&(work_sem.kernel_sysn), 0, 0);
-    ret=pthread_create(&work_id,NULL,(void *)executor_work_mode_thread, NULL);
+
+#ifdef SUPPORT_SPECTRUM_V2
+    spmctx = spm_init();
+    if(spmctx == NULL){
+        return;
+    }
+#endif
+    ret=pthread_create(&work_id,NULL,(void *)executor_spm_thread, spmctx);
     if(ret!=0)
-        perror("pthread cread work_id");
+        perror("pthread cread spm");
     pthread_detach(work_id);
 }
 

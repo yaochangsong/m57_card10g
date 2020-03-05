@@ -12,40 +12,26 @@
 *  Rev 1.0   21 Feb. 2020   yaochangsong
 *  Initial revision.
 ******************************************************************************/
-#ifndef _SPM_H_
-#define _SPM_H_
+#ifndef _MQ_H
+#define _MQ_H
 
-typedef float fft_t;
-typedef int16_t iq_t;
-
-
-
-struct spm_backend_ops {
-    int (*create)(void);
-    ssize_t (*read_iq_data)(void **);
-    ssize_t (*read_fft_data)(void **);
-    fft_t *(*data_order)(fft_t *, size_t,  size_t *, void *);
-    int (*send_fft_data)(void *, size_t, void *);
-    int (*send_iq_data)(void *, size_t, void *);
-    int (*send_cmd)(void *, void *, size_t, void *);
-    int (*agc_ctrl)(int, void *);
-    int (*convet_iq_to_fft)(void *, void *, size_t);
-    int (*set_psd_analysis_enable)(bool);
-    int (*get_psd_analysis_result)(void *);
-    int (*save_data)(void *, size_t);
-    int (*backtrace_data)(void *, size_t);
-    int (*close)(void);
-    
+struct _mq_ops {
+    mqd_t (*create)(char *, struct mq_attr*, int );
+    mqd_t (*open_ro)(char *);
+    mqd_t (*open_wo)(char *);
+    int (*send)(mqd_t , void *, size_t);
+    int (*recv)(mqd_t , void **);
+    int (*unlink)(char *);
+    struct mq_attr *(*getattr)(char *);
+    int (*close)(mqd_t );
 };
 
-
-
-struct spm_context {
-    struct poal_config *pdata;
-    const struct spm_backend_ops *ops;
-    const void *run_args;
+struct mq_ctx {
+    mqd_t queue;
+    struct _mq_ops *ops;
 };
-
 
 
 #endif
+
+

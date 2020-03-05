@@ -1308,8 +1308,8 @@ uint8_t *akt_assamble_demodulation_data_extend_frame_header_data(uint32_t *len, 
     }
     printf_debug("ext_hdr->duration=%lu, time_interval_ms=%u\n", ext_hdr->duration,time_interval_ms);
 
-    struct spectrum_header_param *header_param;
-    header_param = (struct spectrum_header_param *)config;
+    struct spm_run_parm *header_param;
+    header_param = (struct spm_run_parm *)config;
     ext_hdr->cid = header_param->ch;
     ext_hdr->center_freq = header_param->m_freq;
     ext_hdr->bandwidth = header_param->bandwidth;
@@ -1374,8 +1374,8 @@ uint8_t *akt_assamble_data_extend_frame_header_data(uint32_t *len, void *config)
     printf_debug("ext_hdr->duration=%lu, time_interval_ms=%u\n", ext_hdr->duration,time_interval_ms);
     ext_hdr->datum_type = 1;
 
-    struct spectrum_header_param *header_param;
-    header_param = (struct spectrum_header_param *)config;
+    struct spm_run_parm *header_param;
+    header_param = (struct spm_run_parm *)config;
     ext_hdr->cid = header_param->ch;
     ext_hdr->center_freq = header_param->m_freq;
     ext_hdr->sn = header_param->fft_sn;
@@ -1426,14 +1426,14 @@ uint8_t * akt_assamble_data_frame_header_data(uint32_t *len, void *config)
 {
     DATUM_PDU_HEADER_ST *package_header;
     static unsigned short seq_num[MAX_RADIO_CHANNEL_NUM] = {0};
-    struct spectrum_header_param *header_param;
+    struct spm_run_parm *header_param;
     static uint8_t head_buf[sizeof(DATUM_PDU_HEADER_ST)+sizeof(DATUM_SPECTRUM_HEADER_ST)+sizeof(DATUM_DEMODULATE_HEADER_ST)];
     uint8_t *pextend;
     uint32_t extend_data_header_len;
     struct timeval tv;
 
     printf_debug("akt_assamble_data_frame_header_data. v3\n");
-    header_param = (struct spectrum_header_param *)config;
+    header_param = (struct spm_run_parm *)config;
     printf_debug("header_param->ex_type:%d\n", header_param->ex_type);
     if(header_param->ex_type == SPECTRUM_DATUM)
         pextend = akt_assamble_data_extend_frame_header_data(&extend_data_header_len, config);

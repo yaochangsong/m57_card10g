@@ -211,7 +211,7 @@ int cmd_muti_point(struct uh_client *cl, void **arg)
         goto error;
     }
     printf_note("%s", cl->dispatch.body);
-    if(parse_json_muti_point(cl->dispatch.body)){
+    if(parse_json_muti_point(cl->dispatch.body,ch)){
         code = RESP_CODE_PARSE_ERR;
         goto error;
     }
@@ -237,7 +237,7 @@ int cmd_multi_band(struct uh_client *cl, void **arg)
         goto error;
     }
     printf_note("%s\n", cl->dispatch.body);
-    if(parse_json_multi_band(cl->dispatch.body) != 0){
+    if(parse_json_multi_band(cl->dispatch.body,ch) != 0){
         code = RESP_CODE_PARSE_ERR;
         goto error;
     }
@@ -271,7 +271,7 @@ int cmd_demodulation(struct uh_client *cl, void **arg)
         goto error;
     }
     printf_note("%s\n", cl->dispatch.body);
-    if(parse_json_demodulation(cl->dispatch.body) != 0){
+    if(parse_json_demodulation(cl->dispatch.body,ch,subch) != 0){
         code = RESP_CODE_PARSE_ERR;
         goto error;
     }

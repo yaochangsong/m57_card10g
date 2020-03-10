@@ -803,7 +803,12 @@ void executor_init(void)
     pthread_t work_id;
     void *spmctx;
     struct poal_config *poal_config = &(config_get_config()->oal_config);
+    
+#if defined(SUPPORT_SPECTRUM_KERNEL) 
     io_init();
+#elif defined(SUPPORT_SPECTRUM_V2) 
+    fpga_io_init();
+#endif
 
     executor_timer_task_init();
     /* set default network */

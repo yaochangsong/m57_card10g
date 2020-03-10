@@ -69,7 +69,7 @@ void spm_send_thread(void *arg)
 
 
 /* 在DMA连续模式下；IQ读取线程 
-   在改模式下，应以最快速度读取发送数据；
+   在该模式下，应以最快速度读取发送数据；
    使能后，不断读取、组包、发送；读取前无需停止DMA。
 */
 
@@ -108,7 +108,7 @@ loop:
         
         len = ctx->ops->read_iq_data(&ptr_iq);
         printf_note("reve handle: [%d]len=%d, ptr=%s\n",ptr_run->data_len, len, ptr_iq);
-       // ctx->ops->send_iq_data(ptr_iq, len, &run);
+        ctx->ops->send_iq_data(ptr_iq, len, &run);
         if(ctx->pdata->enable.iq_en == 0){
             sleep(1);
             goto loop;

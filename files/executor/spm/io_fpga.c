@@ -108,6 +108,11 @@ void fpga_io_init(void)
     fpga_memmap(fd_fpga, &_fpga_reg);
     fpga_reg = &_fpga_reg;
     printf_note("FPGA version:%x\n", fpga_reg->system->version);
-    
+    /* 寄存器默认参数设置 */
+    /* for fpga clock 213.333mhz,1 ms convert times 213333 */
+    fpga_reg->system->time_pulse = 213333*1;
+    fpga_reg->system->data_path_reset = 1;
+    fpga_reg->broad_band->enable = 0xff;
+    fpga_reg->broad_band->signal_carrier = 0;
 }
 

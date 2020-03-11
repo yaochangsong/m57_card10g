@@ -803,11 +803,12 @@ void executor_init(void)
     pthread_t work_id;
     void *spmctx;
     struct poal_config *poal_config = &(config_get_config()->oal_config);
-    
+#if defined(SUPPORT_PLATFORM_ARCH_ARM)
 #if defined(SUPPORT_SPECTRUM_KERNEL) 
     io_init();
 #elif defined(SUPPORT_SPECTRUM_V2) 
     fpga_io_init();
+#endif
 #endif
 
     executor_timer_task_init();
@@ -831,7 +832,6 @@ void executor_init(void)
     }
     sem_init(&(work_sem.notify_deal), 0, 0);
     sem_init(&(work_sem.kernel_sysn), 0, 0);
-
 #ifdef SUPPORT_SPECTRUM_V2
     spmctx = spm_init();
     if(spmctx == NULL){

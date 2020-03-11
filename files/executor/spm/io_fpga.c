@@ -102,6 +102,7 @@ void fpga_io_init(void)
 
     fd_fpga = open(FPGA_REG_DEV, O_RDWR|O_SYNC);
     if (fd_fpga == -1){
+        printf_warn("%s, open error", FPGA_REG_DEV);
         return (-1);
     }
     

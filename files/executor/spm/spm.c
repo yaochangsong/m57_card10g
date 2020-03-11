@@ -41,9 +41,10 @@ void spm_send_thread(void *arg)
     int i = 0, j =0;
     struct spm_context *ctx = NULL;
     
-    thread_bind_cpu(2);
+   // thread_bind_cpu(2);
     ctx = (struct spm_context *)arg;
     struct spm_run_parm hparam;
+    memset(&hparam, 0, sizeof(struct spm_run_parm));
     hparam.data_len = 1; 
     hparam.type = 2;
     hparam.ex_type = 3;
@@ -82,7 +83,7 @@ void spm_iq_handle_thread(void *arg)
     iq_t *ptr_iq = NULL;
     size_t  len = 0;
 
-    thread_bind_cpu(3);
+    //thread_bind_cpu(0);
     ctx = (struct spm_context *)arg;
 loop:
     printf_warn("######Wait IQ enable######\n");
@@ -150,8 +151,9 @@ void *spm_init(void)
 {
     static pthread_t send_thread_id, recv_thread_id;
     int ret;
-    
     struct spm_context *ctx = NULL;
+    
+#if defined(SUPPORT_PLATFORM_ARCH_ARM)
 #if defined(SUPPORT_SPECTRUM_CHIP)
     ctx = spm_create_chip_context();
 #elif defined (SUPPORT_SPECTRUM_FPGA)
@@ -175,7 +177,8 @@ void *spm_init(void)
     if(ret!=0)
         perror("pthread cread spm");
     pthread_detach(recv_thread_id);
-
+    
+#endif /* SUPPORT_PLATFORM_ARCH_ARM */
     return (void *)ctx;
 }
 

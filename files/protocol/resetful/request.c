@@ -300,7 +300,7 @@ bool http_dispatch_requset_handle(struct uh_client *cl, const char *path)
 
 void http_requset_init(void)
 {
-    file_handle_init();
+    //file_handle_init();
     //refill_buffer_file();
 }
 

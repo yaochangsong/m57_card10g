@@ -61,95 +61,84 @@ static int32_t  diff_time_us(void)
 
 
 
-static struct _spm_stream spm_stream[STREAM_NUM];
-
+static struct _spm_stream spm_stream[STREAM_NUM] = {
+        {DMA_IQ_DEV,  -1, NULL, DMA_BUFFER_SIZE, "IQ Stream"},
+        {DMA_FFT_DEV, -1, NULL, DMA_BUFFER_SIZE, "FFT Stream"},
+        {DMA_ADC_DEV, -1, NULL, DMA_BUFFER_SIZE, "ADC Stream"},
+};
 
 static int spm_create(void)
 {
-    struct _spm_stream **pstream;
+    struct _spm_stream *pstream;
     dma_status status;
-    pstream = &spm_stream;
+    pstream = spm_stream;
     int i = 0;
 
-    pstream[STREAM_FFT]->id = open(DMA_FFT_DEV, O_RDWR);
-    pstream[STREAM_IQ]->id = open(DMA_IQ_DEV, O_RDWR);
-    pstream[STREAM_ADC]->id = open(DMA_ADC_DEV, O_RDWR);
-    if( pstream[STREAM_FFT]->id < 0 || 
-        pstream[STREAM_IQ]->id < 0 || 
-        pstream[STREAM_ADC]->id < 0) {
-        fprintf(stderr, "mmap: %s\n", strerror(errno));
-        exit(-1);
-    }
-
+    printf_note("SPM init.\n");
     for(i = 0; i< STREAM_NUM ; i++){
-        pstream[i]->len = DMA_BUFFER_SIZE;
-        ioctl(pstream[i]->id, IOCTL_DMA_INIT_BUFFER, &pstream[i]->len);
-        pstream[i]->ptr = mmap(NULL, DMA_BUFFER_SIZE, PROT_READ | PROT_WRITE,MAP_SHARED, pstream[i]->id, 0);
-        if (pstream[i]->ptr == (void*) -1) {
+        pstream[i].id = open(pstream[i].devname, O_RDWR);
+        if( pstream[i].id < 0){
+            fprintf(stderr, "open:%s, %s\n", pstream[i].devname, strerror(errno));
+            exit(-1);
+        }
+        ioctl(pstream[i].id, IOCTL_DMA_INIT_BUFFER, &pstream[i].len);
+        pstream[i].ptr = mmap(NULL, DMA_BUFFER_SIZE, PROT_READ | PROT_WRITE,MAP_SHARED, pstream[i].id, 0);
+        if (pstream[i].ptr == (void*) -1) {
             fprintf(stderr, "mmap: %s\n", strerror(errno));
             exit(-1);
         }
-        if(i == STREAM_FFT)
-            pstream[i]->name = "FFT Stream";
-        else if(i == STREAM_IQ)
-            pstream[i]->name = "IQ Stream";
-        else if(i == STREAM_ADC)
-            pstream[i]->name = "ADC Stream";
-        else{
-            printf_err("Unknown Stream!!\n");
-            return -1;
-        }
-            
-        ioctl(pstream[i]->id, IOCTL_DMA_GET_STATUS, &status);
-        printf_note("DMA get [%s] status:%s[%d]\n", pstream[i]->name,
+        printf_note("create stream[%s]: dev:%s, ptr=%p, len=%d\n", 
+            pstream[i].name, pstream[i].devname, pstream[i].ptr, pstream[i].len);
+        
+        ioctl(pstream[i].id, IOCTL_DMA_GET_STATUS, &status);
+        printf_note("DMA get [%s] status:%s[%d]\n", pstream[i].name,
             status == DMA_STATUS_IDLE ? "idle" : "busy", status);
     }
-
     return 0;
 }
 
 static ssize_t spm_read_iq_data(void **data)
 {
-    struct _spm_stream **pstream;
+    struct _spm_stream *pstream;
     dma_status status;
-    pstream = &spm_stream;
+    pstream = spm_stream;
     read_info info;
     size_t readn = 0;
 
     memset(&info, 0, sizeof(read_info));
     
-    ioctl(pstream[STREAM_IQ]->id, IOCTL_DMA_GET_STATUS, &status);
-    printf_note("DMA get [%s] status:%s[%d]\n", pstream[STREAM_IQ]->name,
+    ioctl(pstream[STREAM_IQ].id, IOCTL_DMA_GET_STATUS, &status);
+    printf_note("DMA get [%s] status:%s[%d]\n", pstream[STREAM_IQ].name,
             status == DMA_STATUS_IDLE ? "idle" : "busy", status);
     
-    ioctl(pstream[STREAM_IQ]->id, IOCTL_DMA_GET_ASYN_READ_INFO, &info);
+    ioctl(pstream[STREAM_IQ].id, IOCTL_DMA_GET_ASYN_READ_INFO, &info);
     printf_note("read status:%d, block_num:%d\n", info.status, info.block_num);
     
     readn = info.blocks[0].length;
-    *data = pstream[STREAM_IQ]->ptr + info.blocks[0].offset;
-    
+    *data = pstream[STREAM_IQ].ptr + info.blocks[0].offset;
+    printf_note("readn:%d\n", readn);
     return readn;
 }
 
 static ssize_t spm_read_fft_data(void **data)
 {
-    struct _spm_stream **pstream;
+    struct _spm_stream *pstream;
     dma_status status;
-    pstream = &spm_stream;
+    pstream = spm_stream;
     read_info info;
     size_t readn = 0;
 
     memset(&info, 0, sizeof(read_info));
     
-    ioctl(pstream[STREAM_FFT]->id, IOCTL_DMA_GET_STATUS, &status);
-    printf_note("DMA get [%s] status:%s[%d]\n", pstream[STREAM_FFT]->name,
+    ioctl(pstream[STREAM_FFT].id, IOCTL_DMA_GET_STATUS, &status);
+    printf_note("DMA get [%s] status:%s[%d]\n", pstream[STREAM_FFT].name,
             status == DMA_STATUS_IDLE ? "idle" : "busy", status);
     
-    ioctl(pstream[STREAM_FFT]->id, IOCTL_DMA_GET_ASYN_READ_INFO, &info);
+    ioctl(pstream[STREAM_FFT].id, IOCTL_DMA_GET_ASYN_READ_INFO, &info);
     printf_note("read status:%d, block_num:%d\n", info.status, info.block_num);
     
     readn = info.blocks[0].length;
-    *data = pstream[STREAM_FFT]->ptr + info.blocks[0].offset;
+    *data = pstream[STREAM_FFT].ptr + info.blocks[0].offset;
     
     return readn;
 
@@ -197,7 +186,7 @@ static int spm_send_fft_data(void *data, size_t len, void *arg)
 {
     uint8_t *ptr = NULL, *ptr_header = NULL;
     uint32_t header_len = 0;
-    struct _spm_stream **pstream = &spm_stream;
+    struct _spm_stream *pstream = spm_stream;
 
     if(data == NULL || len == 0 || arg == NULL)
         return -1;
@@ -219,15 +208,17 @@ static int spm_send_fft_data(void *data, size_t len, void *arg)
     udp_send_data(ptr, header_len + len);
     safe_free(ptr);
     /* 设置DMA已读数据块长度 */
-    ioctl(pstream[STREAM_FFT]->id, IOCTL_DMA_SET_ASYN_READ_INFO, &len);
-    return 0;
+    ioctl(pstream[STREAM_FFT].id, IOCTL_DMA_SET_ASYN_READ_INFO, &len);
+    printf_note("send over %d\n", len);
+    
+    return (header_len + len);
 }
 
 static int spm_send_iq_data(void *data, size_t len, void *arg)
 {
     uint8_t *ptr = NULL, *ptr_header = NULL;
     uint32_t header_len = 0;
-    struct _spm_stream **pstream = &spm_stream;
+    struct _spm_stream *pstream = spm_stream;
 
     if(data == NULL || len == 0 || arg == NULL)
         return -1;
@@ -255,7 +246,9 @@ static int spm_send_iq_data(void *data, size_t len, void *arg)
     udp_send_data(ptr, header_len + len);
     safe_free(ptr);
     /* 设置DMA已读数据块长度 */
-    ioctl(pstream[STREAM_IQ]->id, IOCTL_DMA_SET_ASYN_READ_INFO, &len);
+    ioctl(pstream[STREAM_IQ].id, IOCTL_DMA_SET_ASYN_READ_INFO, &len);
+    printf_note("send over %d\n", len);
+    
     return (header_len + len);
 }
 
@@ -385,18 +378,18 @@ exit_mode:
 
 static int spm_close(void)
 {
-    struct _spm_stream **pstream = &spm_stream;
+    struct _spm_stream *pstream = spm_stream;
 
-    close(pstream[STREAM_FFT]->id);
-    close(pstream[STREAM_IQ]->id);
-    close(pstream[STREAM_ADC]->id);
+    close(pstream[STREAM_FFT].id);
+    close(pstream[STREAM_IQ].id);
+    close(pstream[STREAM_ADC].id);
     printf_note("close\n");
     return 0;
 }
 
 static int spm_stream_start(int ch, uint32_t len,uint8_t continuous, enum stream_type type)
 {
-    struct _spm_stream **pstream = &spm_stream;
+    struct _spm_stream *pstream = spm_stream;
     IOCTL_DMA_START_PARA para;
     if(continuous)
         para.mode = DMA_MODE_CONTINUOUS;
@@ -404,15 +397,15 @@ static int spm_stream_start(int ch, uint32_t len,uint8_t continuous, enum stream
         para.mode = DMA_MODE_ONCE;
         para.trans_len = len;
     }
-    ioctl(pstream[type]->id, IOCTL_DMA_ASYN_READ_START, &para);
+    ioctl(pstream[type].id, IOCTL_DMA_ASYN_READ_START, &para);
     
     return 0;
 }
 
 static int spm_stream_stop(int ch, uint32_t len,uint8_t continuous,enum stream_type type)
 {
-    struct _spm_stream **pstream = &spm_stream;
-    ioctl(pstream[type]->id, IOCTL_DMA_ASYN_READ_STOP, NULL);
+    struct _spm_stream *pstream = spm_stream;
+    ioctl(pstream[type].id, IOCTL_DMA_ASYN_READ_STOP, NULL);
     
     return 0;
 }

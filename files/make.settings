@@ -63,7 +63,7 @@ else
 	SUPPORT_RF=y
     SUPPORT_RF_SPI=y
     #万兆
-    SUPPORT_NET_WZ=y
+    SUPPORT_NET_WZ=n
 	ifneq ($(findstring y,$(SUPPORT_PROJECT_SSA)),)
 		SUPPORT_RF_ADRV9009=y
 		#iio

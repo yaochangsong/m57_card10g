@@ -70,6 +70,7 @@ enum stream_type {
 };
 
 struct _spm_stream {
+    char *devname;      /* 流设备节点名称 */
     int id;             /* 频谱流类型描述符 */
     uint8_t *ptr;       /* 频谱流数据buffer指针 */
     uint32_t len;       /* 频谱流数据buffer长度 */

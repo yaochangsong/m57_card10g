@@ -253,9 +253,9 @@ typedef enum _io_dq_method_code{
 #endif
 
 extern void io_init(void);
-extern int8_t io_set_enable_command(uint8_t type, uint8_t ch, uint32_t fftsize);
+extern int8_t io_set_enable_command(uint8_t type, int ch, int subch, uint32_t fftsize);
 extern int8_t io_set_work_mode_command(void *data);
-extern int8_t io_set_para_command(uint8_t type, uint8_t ch, void *data);
+extern int8_t io_set_para_command(uint8_t type, int ch, void *data);
 extern int16_t io_get_adc_temperature(void);
 extern int32_t io_get_agc_thresh_val(int ch);
 extern void io_set_dq_param(void *pdata);

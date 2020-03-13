@@ -619,7 +619,7 @@ static int akt_execute_set_command(void *cl)
                 err_code = RET_CODE_PARAMTER_NOT_SET;
                 goto set_exit;
             }
-            io_set_enable_command(IQ_MODE_DISABLE, ch, 0);
+           // io_set_enable_command(IQ_MODE_DISABLE, ch, 0);
             printf_note("ch:%d, sub_ch=%d, au_en:%d,iq_en:%d, %d\n", ch,sub_ch, poal_config->sub_ch_enable.audio_en, poal_config->sub_ch_enable.iq_en);
             enable = (poal_config->sub_ch_enable.iq_en == 0 ? 0 : 1);
             
@@ -647,12 +647,10 @@ static int akt_execute_set_command(void *cl)
             /* 通道IQ使能 */
             if(enable){
                 /* NOTE:The parameter must be a MAIN channel, not a subchannel */
-                io_set_enable_command(IQ_MODE_ENABLE, ch, 0);
+                io_set_enable_command(IQ_MODE_ENABLE, -1, sub_ch, 0);
             }else{
-                io_set_enable_command(IQ_MODE_DISABLE, ch, 0);
+                io_set_enable_command(IQ_MODE_DISABLE, -1,sub_ch, 0);
             }
-           /* 子通道解调开关 */
-            executor_set_command(EX_MID_FREQ_CMD, EX_SUB_CH_ONOFF, sub_ch, &enable);
             break;
         }
 #ifdef SUPPORT_NET_WZ
@@ -736,10 +734,14 @@ static int akt_execute_set_command(void *cl)
             if(bis.cmd == 1){/* start backtrace iq file */
                 printf_note("Start backtrace file:%s, bandwidth=%u\n", bis.filepath, bis.bandwidth);
                 executor_set_command(EX_MID_FREQ_CMD, EX_BANDWITH, ch, &bis.bandwidth);
+                #if defined(SUPPORT_XWFS)
                 ret = xwfs_start_backtrace(bis.filepath);
+                #endif
             }else if(bis.cmd == 0){/* stop backtrace iq file */
                 printf_note("Stop backtrace file:%s\n", bis.filepath);
+                #if defined(SUPPORT_XWFS)
                 ret = xwfs_stop_backtrace(bis.filepath);
+                #endif
             }else{
                 printf_err("error cmd\n");
                 err_code = RET_CODE_PARAMTER_ERR;

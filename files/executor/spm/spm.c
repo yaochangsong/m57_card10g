@@ -48,7 +48,7 @@ void spm_send_thread(void *arg)
     hparam.data_len = 1; 
     hparam.type = 2;
     hparam.ex_type = 3;
-    
+    sleep(1);
     for(;;){
         ctx->pdata->enable.iq_en = 1;
         j = 10;
@@ -81,7 +81,7 @@ void spm_iq_handle_thread(void *arg)
     struct spm_run_parm *ptr_run, run;
     struct spm_context *ctx = NULL;
     iq_t *ptr_iq = NULL;
-    size_t  len = 0;
+    ssize_t  len = 0, i;
 
     //thread_bind_cpu(0);
     ctx = (struct spm_context *)arg;
@@ -97,89 +97,131 @@ loop:
         goto loop;
     }
     memset(&run, 0, sizeof(run));
+    //io_set_enable_command(IQ_MODE_ENABLE, -1, 0, 0);
+    /* int ch, uint32_t len,uint8_t continuous, enum stream_type type */
+    printf_note("######start read iq data######\n");
     do{
         /* mquene NONBLOCK read,非阻塞方式从队列获取运行数据信息 */
         nbyte = mqctx->ops->recv(mqctx->queue, &ptr);
         if(nbyte >= 0 && ptr != NULL){
             ptr_run = (struct spm_run_parm *)ptr;
-            printf_note("reve:[%d]%d, %d, %d\n", nbyte, ptr_run->data_len, ptr_run->type, ptr_run->ex_type);
+            printf_note("reve:[%d]ch:%d, s_freq:%llu, e_freq:%llu, bandwidth=%u\n", nbyte, 
+                ptr_run->ch, ptr_run->s_freq, ptr_run->e_freq, ptr_run->bandwidth);
             memcpy(&run, ptr_run, sizeof(run));
             free(ptr);
         }
         
         len = ctx->ops->read_iq_data(&ptr_iq);
-        printf_note("reve handle: [%d]len=%d, ptr=%s\n",ptr_run->data_len, len, ptr_iq);
-        ctx->ops->send_iq_data(ptr_iq, len, &run);
+        if(len < 0)
+            continue;
+        printf_note("reve handle: [%d]len=%d, ptr=%p\n",ptr_run->data_len, len, ptr_iq);
+        if(len > 0){
+            for(i = 0; i < 16; i++){
+               printfn("%x ", ptr_iq[i]);
+            }
+            printfn("\n----------[%d]---------\n", len);
+        }
+        if(len > 0){
+            ctx->ops->send_iq_data(ptr_iq, len, &run);
+        }
         if(ctx->pdata->enable.iq_en == 0){
             sleep(1);
             goto loop;
         }
         sleep(1);
     }while(1);
+    
 }
-
-
 
 
 void spm_deal(struct spm_context *ctx, void *args)
 {   
     struct spm_context *pctx = ctx;
-    struct spm_backend_ops *ops = pctx->ops;
-    
-    
-    if(pctx == NULL || ops == NULL){
+    int i;
+
+    if(pctx == NULL){
         printf_err("spm is not init!!\n");
         return;
     }
-    
-    pctx->pdata->enable.iq_en = 1;
     pctx->run_args = args;
     if(pctx->pdata->enable.iq_en){
+        struct spm_run_parm *ptr_run;
+        ptr_run = (struct spm_run_parm *)args;
+        printf_note("send:ch:%d, s_freq:%llu, e_freq:%llu, bandwidth=%u\n", 
+                ptr_run->ch, ptr_run->s_freq, ptr_run->e_freq, ptr_run->bandwidth);
         spm_iq_deal_notify(&args);
     }else if(pctx->pdata->enable.psd_en){
         fft_t *ptr = NULL, *ord_ptr = NULL;
-        size_t  len = 0, ord_len = 0;
-        len = ops->read_fft_data(&ptr);
-        printf_note("len=%d, ptr=%s", len, ptr);
-        ord_ptr = ops->data_order(&ptr, len, &ord_len, args);
-        ops->send_fft_data(ord_ptr, ord_len, args);
+        ssize_t  len = 0;
+        size_t ord_len = 0;
+
+        len = pctx->ops->read_fft_data(&ptr);
+        if(len < 0){
+            return;
+        }
+        if(len > 0){
+            for(i = 0; i < 16; i++){
+               printfd("%x ", ptr[i]);
+            }
+            printfd("\n----------[%d]---------\n", len);
+            ord_ptr = pctx->ops->data_order(ptr, len, &ord_len, args);
+            pctx->ops->send_fft_data(ord_ptr, ord_len, args);
+            //pctx->ops->stream_stop(STREAM_FFT);
+        }
     }
+    //sleep(1);
 }
 
+static struct spm_context *spmctx = NULL;
+
+struct spm_context *get_spm_ctx(void)
+{
+    return spmctx;
+}
 
 void *spm_init(void)
 {
     static pthread_t send_thread_id, recv_thread_id;
     int ret;
-    struct spm_context *ctx = NULL;
-    
+
 #if defined(SUPPORT_PLATFORM_ARCH_ARM)
 #if defined(SUPPORT_SPECTRUM_CHIP)
-    ctx = spm_create_chip_context();
+    spmctx = spm_create_chip_context();
 #elif defined (SUPPORT_SPECTRUM_FPGA)
-    ctx = spm_create_fpga_context();
+    spmctx = spm_create_fpga_context();
 #endif
-    if(ctx != NULL)
-        ctx->ops->create();
-    if(ctx == NULL){
+    if(spmctx != NULL){
+        spmctx->ops->create();
+    }
+
+    if(spmctx == NULL){
         printf_warn("spm create failed\n");
+        return NULL;
     }
 
     mqctx = mq_create_ctx(SPM_MQ_NAME, NULL, -1);
+    mqctx->ops->getattr(SPM_MQ_NAME);
 
-    ctx->run_args = NULL;
-    ret=pthread_create(&send_thread_id,NULL,(void *)spm_send_thread, ctx);
-    if(ret!=0)
-        perror("pthread cread spm");
-    pthread_detach(send_thread_id);
+    spmctx->run_args = NULL;
+    //ret=pthread_create(&send_thread_id,NULL,(void *)spm_send_thread, spmctx);
+    //if(ret!=0)
+    //    perror("pthread cread spm");
+    //pthread_detach(send_thread_id);
 
-    ret=pthread_create(&recv_thread_id,NULL,(void *)spm_iq_handle_thread, ctx);
+    ret=pthread_create(&recv_thread_id,NULL,(void *)spm_iq_handle_thread, spmctx);
     if(ret!=0)
         perror("pthread cread spm");
     pthread_detach(recv_thread_id);
     
 #endif /* SUPPORT_PLATFORM_ARCH_ARM */
-    return (void *)ctx;
+    return (void *)spmctx;
+}
+
+int spm_close(void)
+{
+    if(spmctx){
+        spmctx->ops->close();
+    }
 }
 
 

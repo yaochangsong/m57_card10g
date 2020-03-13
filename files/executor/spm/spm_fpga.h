@@ -62,13 +62,6 @@ typedef struct _IOCTL_DMA_START_PARA_
 }IOCTL_DMA_START_PARA;
 
 
-enum stream_type {
-    STREAM_IQ = 0,
-    STREAM_FFT,
-    STREAM_ADC,
-    STREAM_NUM,
-};
-
 struct _spm_stream {
     char *devname;      /* 流设备节点名称 */
     int id;             /* 频谱流类型描述符 */

@@ -14,6 +14,8 @@
 ******************************************************************************/
 #include "config.h"
 #include "spm/io_fpga.h"
+#include "spm/spm.h"
+
 
 static int io_ctrl_fd = -1;
 
@@ -388,10 +390,13 @@ int32_t io_set_subch_onoff(uint32_t subch, uint8_t onoff)
     memcpy(odata.data,&onoff,sizeof(onoff));
     ret = ioctl(io_ctrl_fd, IOCTL_SUB_CH_ONOFF, &odata);
 #elif defined(SUPPORT_SPECTRUM_V2) 
-    get_fpga_reg()->narrow_band[subch]->enable = onoff;
+    if(onoff)
+        get_fpga_reg()->narrow_band[subch]->enable |= 0x01;
+    else
+        get_fpga_reg()->narrow_band[subch]->enable &= 0x01;
 #endif
 #endif
-    printf_note("[**REGISTER**]ch:%d, SubChannle Set OnOff=%d, ret=%d\n",subch, onoff);
+    printf_debug("[**REGISTER**]ch:%d, SubChannle Set OnOff=%d, ret=%d\n",subch, onoff);
     return ret;
 }
 
@@ -644,52 +649,85 @@ static void io_dma_dev_disable(uint32_t ch,uint8_t type)
 }
 
 
-static void io_set_dma_SPECTRUM_out_en(uint8_t ch, uint32_t trans_len,uint8_t continuous)
+static void io_set_dma_SPECTRUM_out_en(int ch, int subch, uint32_t trans_len,uint8_t continuous)
 {
     printf_debug("SPECTRUM out enable: ch[%d]output en\n",ch);
+#if defined(SUPPORT_SPECTRUM_KERNEL)
     io_dma_dev_disable(ch,IO_SPECTRUM_TYPE);
     io_dma_dev_enable(ch,IO_SPECTRUM_TYPE,continuous);
     io_dma_dev_trans_len(ch,IO_SPECTRUM_TYPE, trans_len);
+#elif defined(SUPPORT_SPECTRUM_V2)
+    if(ch >= 0)
+        get_fpga_reg()->broad_band->enable |= 0x02;
+    get_spm_ctx()->ops->stream_start(trans_len, continuous, STREAM_FFT);
+#endif
 }
 
-static void io_set_dma_SPECTRUM_out_disable(uint8_t ch)
-{
-    io_dma_dev_disable(ch, IO_SPECTRUM_TYPE);
-}
-
-
-static void io_set_IQ_out_disable(uint8_t ch)
-{
-    io_dma_dev_disable(ch, IO_IQ_TYPE);
-}
-
-static void io_set_IQ_out_en(uint8_t ch,uint32_t trans_len,uint8_t continuous)
+static void io_set_dma_SPECTRUM_out_disable(int ch, int subch)
 {
 #if defined(SUPPORT_SPECTRUM_KERNEL)
-    printf_debug("SPECTRUM out enable: ch[%d]output en, trans_len=0x%u\n",ch, trans_len);
-    io_dma_dev_disable(ch,IO_IQ_TYPE);
-    io_dma_dev_enable(ch,IO_IQ_TYPE,continuous);
-    io_dma_dev_trans_len(ch,IO_IQ_TYPE, trans_len);
+    io_dma_dev_disable(ch, IO_SPECTRUM_TYPE);
+#elif defined(SUPPORT_SPECTRUM_V2)
+    if(ch >= 0)
+        get_fpga_reg()->broad_band->enable &= ~0x02;
+    get_spm_ctx()->ops->stream_stop(STREAM_FFT);
+#endif
+
+}
+
+
+static void io_set_IQ_out_disable(int ch, int subch)
+{
+    if(subch >= 0){
+        io_set_subch_onoff(subch, 0);
+    }
+#if defined(SUPPORT_SPECTRUM_KERNEL)
+    io_dma_dev_disable(ch, IO_IQ_TYPE);
 #elif defined(SUPPORT_SPECTRUM_V2) 
-    
+    get_spm_ctx()->ops->stream_stop(STREAM_IQ);
+ #endif
+
+}
+
+static void io_set_IQ_out_en(int ch, int subch, uint32_t trans_len,uint8_t continuous)
+{
+    if(subch >= 0){
+        io_set_subch_onoff(subch, 1);
+    }
+#if defined(SUPPORT_SPECTRUM_KERNEL)
+    printf_debug("SPECTRUM out enable: ch[%d]output en, trans_len=0x%u\n",ch, trans_len);
+    io_dma_dev_disable(0,IO_IQ_TYPE);
+    io_dma_dev_enable(0,IO_IQ_TYPE,continuous);
+    io_dma_dev_trans_len(0,IO_IQ_TYPE, trans_len);
+#elif defined(SUPPORT_SPECTRUM_V2) 
+    get_spm_ctx()->ops->stream_start(trans_len, continuous, STREAM_IQ);
  #endif
 }
 
 
-static void io_set_dma_DQ_out_en(uint8_t ch,uint32_t trans_len,uint8_t continuous)
+static void io_set_dma_DQ_out_en(int ch, int subch, uint32_t trans_len,uint8_t continuous)
 {
+#if defined(SUPPORT_SPECTRUM_KERNEL)
     io_dma_dev_disable(ch,IO_DQ_TYPE);
     io_dma_dev_enable(ch,IO_DQ_TYPE,continuous);
     io_dma_dev_trans_len(ch,IO_DQ_TYPE, trans_len);
+#elif defined(SUPPORT_SPECTRUM_V2) 
+    
+#endif
 }
 
-static void  io_set_dma_DQ_out_dis(uint8_t ch)
+static void  io_set_dma_DQ_out_dis(int ch, int subch)
 {
+#if defined(SUPPORT_SPECTRUM_KERNEL)
     io_dma_dev_disable(ch,IO_DQ_TYPE);
+#elif defined(SUPPORT_SPECTRUM_V2) 
+
+#endif
+
 }
 
 
-int8_t io_set_para_command(uint8_t type, uint8_t ch, void *data)
+int8_t io_set_para_command(uint8_t type, int ch, void *data)
 {
     int ret = 0;
     struct poal_config *poal_config = &(config_get_config()->oal_config);
@@ -735,45 +773,45 @@ int8_t io_fill_mid_rf_param(void *args)
     return ret;
 }
 
-int8_t io_set_enable_command(uint8_t type, uint8_t ch, uint32_t fftsize)
+int8_t io_set_enable_command(uint8_t type, int ch, int subc_ch, uint32_t fftsize)
 {
     struct poal_config *poal_config = &(config_get_config()->oal_config);
     switch(type)
     {
         case PSD_MODE_ENABLE:
         {
-            io_set_dma_SPECTRUM_out_en(ch,fftsize*2,0);
+            io_set_dma_SPECTRUM_out_en(ch, subc_ch, fftsize*2,0);
             break;
         }
         case PSD_MODE_DISABLE:
         {
-            io_set_dma_SPECTRUM_out_disable(ch);
+            io_set_dma_SPECTRUM_out_disable(ch, subc_ch);
             break;
         }
         case AUDIO_MODE_ENABLE:
         {
             if(fftsize == 0)
-                io_set_dma_DQ_out_en(ch, 512, 1);
+                io_set_dma_DQ_out_en(ch, subc_ch, 512, 1);
             else
-                io_set_dma_DQ_out_en(ch, fftsize, 1);
+                io_set_dma_DQ_out_en(ch, subc_ch,fftsize, 1);
             break;
         }
         case AUDIO_MODE_DISABLE:
         {
-            io_set_dma_DQ_out_dis(ch);
+            io_set_dma_DQ_out_dis(ch, subc_ch);
             break;
         }
         case IQ_MODE_ENABLE:
         {
             if(fftsize == 0)
-                io_set_IQ_out_en(ch, 512, 1);
+                io_set_IQ_out_en(ch, subc_ch, 512, 1);
             else
-                io_set_IQ_out_en(ch, fftsize, 1);
+                io_set_IQ_out_en(ch, subc_ch, fftsize, 1);
             break;
         }
         case IQ_MODE_DISABLE:
         {
-            io_set_IQ_out_disable(ch);
+            io_set_IQ_out_disable(ch, subc_ch);
             break;
         }
         case SPCTRUM_MODE_ANALYSIS_ENABLE:

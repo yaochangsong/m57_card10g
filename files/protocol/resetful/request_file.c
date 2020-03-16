@@ -57,7 +57,9 @@ static char *file_get_read_buffer_pointer()
 
 static int file_reload_buffer(char *filename)
 {
+#if defined(SUPPORT_XWFS)
     return xwfs_refresh_disk_file_buffer((void*)filename);
+#endif
    // return io_set_refresh_disk_file_buffer((void*)filename);
 }
 
@@ -108,7 +110,9 @@ int file_delete(struct uh_client *cl, void *arg)
 int file_disk_format(struct uh_client *cl, void *arg)
 {
     printf_note("disk format\n");
+#if defined(SUPPORT_XWFS)
     xwfs_disk_format(arg);
+#endif
     //io_set_format_disk(arg);
     return 0;
 }
@@ -170,7 +174,9 @@ int file_read_attr_info(const char *name, void *info)
     if(name == NULL || info == NULL)
         return -1;
     strcpy((char *)info, name);
+#if defined(SUPPORT_XWFS)
     ret = xwfs_get_file_info(info);//io_get_read_file_info(info);
+#endif
     return ret;
 }
 
@@ -208,6 +214,7 @@ static ssize_t file_read(const char *filename, uint8_t *ptr, int n)
     ssize_t nread;
     int64_t nleft;
     
+#if defined(SUPPORT_XWFS)
     nleft = fr->st_size - fr->offset_size;
     printf_debug("n=%d, nleft=%llx, st_size:0x%llx, offset_size:0x%llx\n", 
         n, nleft, fr->st_size, fr->offset_size);
@@ -245,6 +252,7 @@ loop:
     }
     if(ret >= 0)
         printf_note("reload buffer,ret=%d,nread=%d, offset_size=0x%llx\n",ret, nread, fr->offset_size);
+#endif /* SUPPORT_XWFS */
     return nread;
 }
 

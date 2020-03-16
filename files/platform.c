@@ -129,8 +129,9 @@ int main(int argc, char **argv)
     executor_init();
 #if defined(SUPPORT_XWFS)
     xwfs_init();
-#endif
     http_requset_init();
+#endif
+    
 
 if(spectrum_aditool_debug == false){
     #ifdef SUPPORT_RF
@@ -146,6 +147,7 @@ if(spectrum_aditool_debug == false){
     }
     uloop_run();
 done:
+    executor_close();
     uloop_done();
     return 0;
 }

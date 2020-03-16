@@ -18,6 +18,12 @@
 typedef float fft_t;
 typedef int16_t iq_t;
 
+enum stream_type {
+    STREAM_IQ = 0,
+    STREAM_FFT,
+    STREAM_ADC,
+    STREAM_NUM,
+};
 
 
 struct spm_backend_ops {
@@ -34,6 +40,8 @@ struct spm_backend_ops {
     int (*get_psd_analysis_result)(void *);
     int (*save_data)(void *, size_t);
     int (*backtrace_data)(void *, size_t);
+    int (*stream_start)(uint32_t ,uint8_t , int);
+    int (*stream_stop)(uint8_t);
     int (*close)(void);
     
 };
@@ -46,6 +54,9 @@ struct spm_context {
     const void *run_args;
 };
 
-
+extern void *spm_init(void);
+extern struct spm_context *get_spm_ctx(void);
+extern void spm_deal(struct spm_context *ctx, void *args);
+extern int spm_close(void);
 
 #endif

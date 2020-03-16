@@ -515,18 +515,8 @@ int cmd_subch_enable_set(struct uh_client *cl, void **arg)
     if(!strcmp(s_type, "psd")){
         poal_config->sub_ch_enable.psd_en = enable;
     }else if(!strcmp(s_type, "iq")){
-        
         poal_config->sub_ch_enable.iq_en = enable;
-        /* 先关闭 */
-        io_set_enable_command(IQ_MODE_DISABLE, ch, 0);
         executor_set_command(EX_MID_FREQ_CMD, EX_SUB_CH_ONOFF, subch, &enable);
-        /* 通道IQ使能 */
-        if(enable){
-            /* NOTE:The parameter must be a MAIN channel, not a subchannel */
-            io_set_enable_command(IQ_MODE_ENABLE, ch, 0);
-        }else{
-            io_set_enable_command(IQ_MODE_DISABLE, ch, 0);
-        }
     }else if(!strcmp(s_type, "audio")){
         poal_config->sub_ch_enable.audio_en = enable;
     }else{

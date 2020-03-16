@@ -110,7 +110,7 @@ static int _mq_unlink(char *qname)
 
     int ret = mq_unlink(qname);
     if (0 != ret) {
-        printf_err("mq_unlink error: %s", strerror(errno));
+        printf_err("mq_unlink error: %s\n", strerror(errno));
     }
     
     return ret;

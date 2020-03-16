@@ -278,6 +278,7 @@ bool http_dispatch_requset_handle(struct uh_client *cl, const char *path)
                 return false;
             }
             printf_note("dispatch.cmd=%d, filename=%s\n",cl->dispatch.cmd, filename);
+#if defined(SUPPORT_XWFS)
             err = http_request_fill_path_info(cl, filename, &pi);
             if(err != 0){
                 printf_warn("err code=%d\n",err);
@@ -289,6 +290,7 @@ bool http_dispatch_requset_handle(struct uh_client *cl, const char *path)
             }
             lseek(xwfs_get_fd(), 0, SEEK_SET);
             uh_blk_file_response_header(cl, &pi); 
+ #endif
             http_request_action(cl);
             break;
     }

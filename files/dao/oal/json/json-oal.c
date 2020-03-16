@@ -227,26 +227,135 @@ static inline  int json_write_array_double_param(const char * const parents, con
 
 static int json_write_config_param(cJSON* root, struct poal_config *config)
 {
-    if(root == NULL || config == NULL){
-        return -1;
-    }
+
+    cJSON* node;
+    cJSON* group;
+
+    cJSON *network = NULL;
     struct sockaddr_in saddr;
+
+    
+    /*network*/
     saddr.sin_addr.s_addr = config->network.gateway;
     json_write_string_param(NULL, "network", "gateway", inet_ntoa(saddr.sin_addr));
+    network = cJSON_GetObjectItem(root, "network");
+    node = cJSON_GetObjectItem(network, "gateway");
+    printf_debug("gatewayis:%s\n",node->valuestring);
+
     saddr.sin_addr.s_addr = config->network.ipaddress;
     json_write_string_param(NULL, "network", "ipaddress", inet_ntoa(saddr.sin_addr));
+    node = cJSON_GetObjectItem(network, "ipaddress");
+    printf_debug("ipaddress is:%s\n",node->valuestring);
+    
     saddr.sin_addr.s_addr = config->network.netmask;
     json_write_string_param(NULL, "network", "netmask", inet_ntoa(saddr.sin_addr));
-    json_write_int_param(NULL, "network", "port", config->network.port);
-    
-    json_write_string_param("status_parm", "soft_version", "app", config->status_para.softVersion.app);
-/*
-    json_write_array_string_param("spectrum_parm", "rf_parm", 0, "gain_mode", "mannul");
+    node = cJSON_GetObjectItem(network, "netmask");
+    printf_debug("netmask:%s\n",node->valuestring);
 
-    json_write_array_int_param("spectrum_parm", "rf_parm", 0, "agc_ctrl_time", 1999);
-    json_write_array_int_param("spectrum_parm", "rf_parm", 0, "agc_output_amp_dbm", -111);
-    json_write_array_double_param("calibration_parm", "mgc_gain_freq", 0, "start_freq", 1000000);
-*/
+    
+    json_write_double_param(NULL, "network", "port", config->network.port);
+    node = cJSON_GetObjectItem(network, "port");
+    printf_debug("port is:%d\n",node->valueint);
+
+    char temp[30]={0};
+    sprintf(temp,"%02x:%02x:%02x:%02x:%02x:%02x\n", config->network.mac[0],config->network.mac[1],
+    config->network.mac[2],config->network.mac[3],config->network.mac[4],config->network.mac[5]);
+    json_write_int_param(NULL, "network", "mac", temp);
+    node = cJSON_GetObjectItem(network, "mac");
+    printf_debug("mac is:%s\n",node->valuestring);
+
+    /*control_parm*/
+     json_write_int_param(NULL, "control_parm", "spectrum_time_interval", config->ctrl_para.spectrum_time_interval);
+     json_write_int_param(NULL, "control_parm", "bandwidth_remote_ctrl", config->ctrl_para.remote_local);
+      json_write_int_param(NULL, "control_parm", "internal_clock", config->ctrl_para.internal_clock);
+    /*status_parm*/
+    json_write_string_param("status_parm", "soft_version", "app", config->status_para.softVersion.app);
+
+   /*calibration_parm */
+   json_write_int_param(NULL, "calibration_parm", "psd_power_global",config->cal_level.specturm.global_roughly_power_lever);
+       /* psd_fftsize */
+     int i=0;
+
+     for(i=0;i<5;i++)
+     {
+         json_write_array_int_param("calibration_parm", "psd_fftsize", i, "fftsize", config->cal_level.cali_fft.fftsize[i]);
+         json_write_array_int_param("calibration_parm", "psd_fftsize", i, "value", config->cal_level.cali_fft.cali_value[i]);
+        
+     }
+
+       /* psd_freq */
+     for(i=0;i<1;i++)
+     {
+         json_write_array_int_param("calibration_parm", "psd_freq", i, "start_freq", config->cal_level.specturm.start_freq_khz[i]);
+         json_write_array_int_param("calibration_parm", "psd_freq", i, "end_freq", config->cal_level.specturm.end_freq_khz[i]);
+         json_write_array_int_param("calibration_parm", "psd_freq", i, "value", config->cal_level.specturm.power_level[i]);
+     }
+
+      /* analysis_power_global */
+     json_write_int_param(NULL, "calibration_parm", "analysis_power_global",config->cal_level.analysis.global_roughly_power_lever);
+     for(i=0;i<1;i++)
+     {
+         json_write_array_int_param("calibration_parm", "analysis_freq", i, "start_freq", config->cal_level.analysis.start_freq_khz[i]);
+         json_write_array_int_param("calibration_parm", "analysis_freq", i, "end_freq", config->cal_level.analysis.end_freq_khz[i]);
+         json_write_array_int_param("calibration_parm", "analysis_freq", i, "value", config->cal_level.analysis.power_level[i]);
+     }
+
+     /* low_noise_power */
+     json_write_int_param(NULL, "calibration_parm", "low_noise_power",config->cal_level.low_noise.global_power_val);
+      /* lo_leakage_threshold */
+     json_write_int_param(NULL, "calibration_parm", "lo_leakage_threshold",config->cal_level.lo_leakage.global_threshold);
+      /* lo_leakage_renew_data_len */
+     json_write_int_param(NULL, "calibration_parm", "lo_leakage_renew_data_len",config->cal_level.lo_leakage.global_renew_data_len);
+
+     /* lo_leakage */
+     for(i=0;i<2;i++)
+     {
+
+         json_write_array_int_param("calibration_parm", "lo_leakage", i, "fftsize", config->cal_level.lo_leakage.fft_size[i]);
+         json_write_array_int_param("calibration_parm", "lo_leakage", i, "threshold",config->cal_level.lo_leakage.threshold[i]);
+         json_write_array_int_param("calibration_parm", "lo_leakage", i, "renew_data_len",config->cal_level.lo_leakage.renew_data_len[i]);
+     }
+
+      /* mgc_gain_global */  
+     json_write_int_param(NULL, "calibration_parm", "mgc_gain_global",config->cal_level.mgc.global_gain_val);
+      /* mgc_gain_freq */
+     for(i=0;i<2;i++)
+     {
+
+         json_write_array_int_param("calibration_parm", "mgc_gain_freq", i, "start_freq", config->cal_level.mgc.start_freq_khz[i]);
+         json_write_array_int_param("calibration_parm", "mgc_gain_freq", i, "end_freq",config->cal_level.mgc.end_freq_khz[i]);
+         json_write_array_int_param("calibration_parm", "mgc_gain_freq", i, "value",config->cal_level.mgc.gain_val[i]);
+     }
+
+     /* spectrum_parm */
+          /* side_bandrate */
+     for(i=0;i<4;i++)
+     {
+
+         json_write_array_int_param("spectrum_parm", "side_bandrate", i,"rate",config->ctrl_para.scan_bw.sideband_rate[i]);
+         json_write_array_int_param("spectrum_parm", "side_bandrate", i, "bind_width",config->ctrl_para.scan_bw.bindwidth_hz[i]);
+     }
+
+       /*if_parm*/
+     for(i=0;i<1;i++)
+     {
+
+         json_write_array_int_param("spectrum_parm", "if_parm", i,"channel",config->multi_freq_point_param[i].points[0].index);
+         json_write_array_int_param("spectrum_parm", "if_parm", i, "middle_freq",config->multi_freq_point_param[i].points[0].center_freq);
+         json_write_array_int_param("spectrum_parm", "if_parm", i, "bandwith",config->multi_freq_point_param[i].points[0].d_bandwith);
+     }
+     /*rf_parm*/
+     for(i=0;i<1;i++)
+     {
+
+         json_write_array_int_param("spectrum_parm", "rf_parm", i,"channel",config->rf_para[i].cid);
+         json_write_array_int_param("spectrum_parm", "rf_parm", i, "attenuation",config->rf_para[i].attenuation);
+         json_write_array_int_param("spectrum_parm", "rf_parm", i,"mode_code",config->rf_para[i].rf_mode_code);
+         json_write_array_int_param("spectrum_parm", "rf_parm", i, "gain_mode",config->rf_para[i].gain_ctrl_method);
+         json_write_array_int_param("spectrum_parm", "rf_parm", i,"agc_ctrl_time",config->rf_para[i].agc_ctrl_time);
+         json_write_array_int_param("spectrum_parm", "rf_parm", i, "agc_output_amp_dbm",config->rf_para[i].agc_mid_freq_out_level);
+     }
+
     return 0;
 }
 
@@ -321,6 +430,28 @@ static int json_parse_config_param(const cJSON* root, struct poal_config *config
     printf_debug("解析mac=%02x%02x%02x%02x%02x%02x\n",config->network.mac[0],config->network.mac[1],config->network.mac[2],
     config->network.mac[3],config->network.mac[4],config->network.mac[5]);
     }
+    /*control_parm*/
+    cJSON *control_parm = NULL;
+    control_parm = cJSON_GetObjectItem(root, "control_parm");
+    if(control_parm == NULL){
+        printf_warn("not found json node[%s]\n","network");
+        return -1;
+    }
+    value = cJSON_GetObjectItem(control_parm, "spectrum_time_interval");
+    if(value!= NULL && cJSON_IsNumber(value)){
+        config->ctrl_para.spectrum_time_interval=value->valueint;
+        printf_debug("aspectrum_time_intervalis:%d, \n",config->ctrl_para.spectrum_time_interval);
+    }
+    value = cJSON_GetObjectItem(control_parm, "bandwidth_remote_ctrl");
+    if(value!= NULL && cJSON_IsNumber(value)){
+        config->ctrl_para.remote_local=value->valueint;
+        printf_debug("aspectrum_time_intervalis:%d, \n",config->ctrl_para.remote_local);
+    }
+    value = cJSON_GetObjectItem(control_parm, "internal_clock");
+    if(value!= NULL && cJSON_IsNumber(value)){
+        config->ctrl_para.internal_clock=value->valueint;
+        printf_debug("aspectrum_time_intervalis:%d, \n",config->ctrl_para.internal_clock);
+    }
 
 /* status_parm */
     cJSON *status_parm = NULL;
@@ -358,6 +489,7 @@ static int json_parse_config_param(const cJSON* root, struct poal_config *config
             printfd("index:%d ", i);
             node = cJSON_GetArrayItem(psd_fftsize, i);
             value = cJSON_GetObjectItem(node, "fftsize");
+            if(cJSON_IsNumber(value))
             {
                 //printfd("fftsize:%d, ", value->valueint);
                 config->cal_level.cali_fft.fftsize[i]=value->valueint;
@@ -696,15 +828,13 @@ int json_read_config_file(const void *config)
         printf_err("json read error\n", file);
         exit(1);
     }
-    //json_print(root_json, 1);
+    json_print(root_json, 1);
     if(json_parse_config_param(root_json, &conf->oal_config) == -1){
         exit(1);
     }
 
     return 0;
 }
-
-
 int json_write_config_file(void *config)
 {
     int ret = -1;
@@ -713,17 +843,129 @@ int json_write_config_file(void *config)
     file = conf->configfile;
     if(file == NULL || config == NULL || root_json == NULL)
         return -1;
-    
-     //config->oal_config.status_para.softVersion.app = "v111 1";
-     //config->oal_config.network.gateway = 0x0101a8c0;
-     //config->oal_config.network.port = 4311;
-    json_write_config_param(root_json, &conf->oal_config);
+
+   /* struct sockaddr_in saddr;
+
+    saddr.sin_addr.s_addr=inet_addr("111.111.111.111");    
+     conf->oal_config.network.ipaddress = saddr.sin_addr.s_addr;
+      printf_debug("%0x\n",conf->oal_config.network.ipaddress);
+
+
+    saddr.sin_addr.s_addr=inet_addr("111.111.111.111");
+    conf->oal_config.network.gateway = saddr.sin_addr.s_addr;
+    printf_debug("%0x\n",conf->oal_config.network.gateway);
+
+    saddr.sin_addr.s_addr=inet_addr("111.111.111.111");
+    conf->oal_config.network.netmask = saddr.sin_addr.s_addr;
+    printf_debug("%0x\n",conf->oal_config.network.netmask);
+    conf->oal_config.network.port = 888;
+
+    int i=0;
+
+
+     conf->oal_config.status_para.softVersion.app = "v111 1";
+   
+
+     
+     conf->oal_config.ctrl_para.spectrum_time_interval=888;
+     conf->oal_config.ctrl_para.remote_local=88;
+      conf->oal_config.ctrl_para.internal_clock=88;
+
+     
+     /*calibration_parm */
+     // conf->oal_config.cal_level.specturm.global_roughly_power_lever=888;
+         /* psd_fftsize */
+   
+       /*  conf->oal_config.cal_level.cali_fft.fftsize[2]=888;
+         conf->oal_config.cal_level.cali_fft.cali_value[2]=888;
+          
+
+        for(i=0;i<5;i++)
+       {
+            conf->oal_config.cal_level.cali_fft.fftsize[i]=888;
+            conf->oal_config.cal_level.cali_fft.cali_value[i]=888;
+       }
+         /* psd_freq */
+       /*for(i=0;i<1;i++)
+       {
+            conf->oal_config.cal_level.specturm.start_freq_khz[i]=888;
+            conf->oal_config.cal_level.specturm.end_freq_khz[i]=888;
+            conf->oal_config.cal_level.specturm.power_level[i]=888;
+       }
+     
+        /* analysis_power_global */
+       //conf->oal_config.cal_level.analysis.global_roughly_power_lever=888;
+      /* for(i=0;i<1;i++)
+       {
+            conf->oal_config.cal_level.analysis.start_freq_khz[i]=888;
+            conf->oal_config.cal_level.analysis.end_freq_khz[i]=888;
+           conf->oal_config.cal_level.analysis.power_level[i]=888;
+       }
+     
+       /* low_noise_power */
+      // conf->oal_config.cal_level.low_noise.global_power_val=888;
+        /* lo_leakage_threshold */
+      // conf->oal_config.cal_level.lo_leakage.global_threshold=888;
+        /* lo_leakage_renew_data_len */
+      // conf->oal_config.cal_level.lo_leakage.global_renew_data_len=888;
+     
+       /* lo_leakage */
+      /* for(i=0;i<2;i++)
+       {
+     
+           conf->oal_config.cal_level.lo_leakage.fft_size[i]=888;
+          conf->oal_config.cal_level.lo_leakage.threshold[i]=888;
+          conf->oal_config.cal_level.lo_leakage.renew_data_len[i]=888;
+       }
+     
+        /* mgc_gain_global */  
+      /*conf->oal_config.cal_level.mgc.global_gain_val=888;
+        /* mgc_gain_freq */
+      /* for(i=0;i<2;i++)
+       {
+     
+           conf->oal_config.cal_level.mgc.start_freq_khz[i]=888;
+           conf->oal_config.cal_level.mgc.end_freq_khz[i]=888;
+           conf->oal_config.cal_level.mgc.gain_val[i]=888;
+       }
+     
+       /* spectrum_parm */
+            /* side_bandrate */
+      /* for(i=0;i<4;i++)
+       {
+     
+           conf->oal_config.ctrl_para.scan_bw.sideband_rate[i]=888;
+           conf->oal_config.ctrl_para.scan_bw.bindwidth_hz[i]=888;
+       }
+     
+         /*if_parm*/
+       /*for(i=0;i<1;i++)
+       {
+     
+          conf->oal_config.multi_freq_point_param[i].points[0].index=8;
+           conf->oal_config.multi_freq_point_param[i].points[0].center_freq=888;
+           conf->oal_config.multi_freq_point_param[i].points[0].d_bandwith=888;
+       }
+       /*rf_parm*/
+       /*for(i=0;i<1;i++)
+       {
+     
+           conf->oal_config.rf_para[i].cid=8;
+           conf->oal_config.rf_para[i].attenuation=88;
+           conf->oal_config.rf_para[i].rf_mode_code=88;
+           conf->oal_config.rf_para[i].gain_ctrl_method=88;
+           conf->oal_config.rf_para[i].agc_ctrl_time=88;
+          conf->oal_config.rf_para[i].agc_mid_freq_out_level=88;
+       }*/
+
+
+
+     json_write_config_param(root_json, &conf->oal_config);
     //json_print(root_json, 1);
     ret = json_write_file(file, root_json);
 
     return ret;
 }
-
 
 
 

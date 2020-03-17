@@ -120,11 +120,12 @@ static  int8_t  executor_fragment_scan(uint32_t fregment_num,uint8_t ch, work_mo
     uint32_t scan_bw, left_band, fftsize;
     uint32_t scan_count, i;
     uint8_t is_remainder = 0;
-    uint8_t *header_buf;
-    uint32_t header_len = 0;
 
-    /* we need assamble pakege for kernel */
-    struct spm_run_parm header_param;
+    struct spm_context *spmctx;
+    struct spm_run_parm *r_args;
+    spmctx = (struct spm_context *)args;
+    r_args = spmctx->run_args;
+
     /* 
         Step 1: 扫描次数计算
         扫描次数 = (截止频率 - 开始频�?)/中频扫描带宽，这里中频扫描带宽认为和射频带宽一�?;
@@ -165,8 +166,8 @@ static  int8_t  executor_fragment_scan(uint32_t fregment_num,uint8_t ch, work_mo
     }
     if((scan_count == 0) && (is_remainder == 0))
         return -1;
-    printf_info("e_freq=%llu, s_freq=%llu, fftsize=%u\n", e_freq, s_freq, fftsize);
-    printf_info("###scan_bw =%u,scan_count=%d, is_remainder=%d\n", scan_bw, scan_count, is_remainder);
+    printf_note("e_freq=%llu, s_freq=%llu, fftsize=%u\n", e_freq, s_freq, fftsize);
+    printf_note("###scan_bw =%u,scan_count=%d, is_remainder=%d\n", scan_bw, scan_count, is_remainder);
     //executor_set_command(EX_RF_FREQ_CMD,  EX_RF_MID_BW, ch, &scan_bw);
     /* 
            Step 2: 根据扫描带宽�?从开始频率到截止频率循环扫描
@@ -194,33 +195,36 @@ static  int8_t  executor_fragment_scan(uint32_t fregment_num,uint8_t ch, work_mo
             m_freq = (uint64_t)(s_freq + (uint64_t)i * (uint64_t)scan_bw + left_band/2);
         #endif
         }
-        header_param.ch = ch;
-        header_param.s_freq = s_freq;
-        header_param.e_freq = e_freq;
-        header_param.bandwidth = left_band;
-        header_param.fft_sn = i;
-        header_param.total_fft = scan_count + is_remainder;
-        header_param.m_freq = m_freq;
-        header_param.fft_size = fftsize;
-        header_param.mode = mode;
-        header_param.freq_resolution = poal_config->multi_freq_fregment_para[ch].fregment[fregment_num].freq_resolution;
+        r_args->ch = ch;
+        r_args->s_freq = s_freq;
+        r_args->e_freq = e_freq;
+        r_args->bandwidth = left_band;
+        r_args->fft_sn = i;
+        r_args->total_fft = scan_count + is_remainder;
+        r_args->m_freq = m_freq;
+        r_args->fft_size = fftsize;
+        r_args->mode = mode;
+        r_args->freq_resolution = poal_config->multi_freq_fregment_para[ch].fregment[fregment_num].freq_resolution;
         /* 为避免在一定带宽下，中心频率过小导致起始频率<0，设置前需要对中频做判断 */
         m_freq =  middle_freq_resetting(scan_bw, m_freq);
         executor_set_command(EX_RF_FREQ_CMD, EX_RF_MID_FREQ, ch, &m_freq);
 #ifdef SUPPORT_PLATFORM_ARCH_ARM
+        io_set_enable_command(PSD_MODE_ENABLE, ch, -1, r_args->fft_size);
     #if defined(SUPPORT_SPECTRUM_KERNEL)
-        executor_set_command(EX_WORK_MODE_CMD, mode, ch, &header_param);
-        io_set_enable_command(PSD_MODE_ENABLE, ch, -1, header_param.fft_size);
+        executor_set_command(EX_WORK_MODE_CMD, mode, ch, r_args);
         executor_wait_kernel_deal();
     #elif defined (SUPPORT_SPECTRUM_FFT)
         if(is_spectrum_aditool_debug() == false){
-                spectrum_psd_user_deal(&header_param);
+                spectrum_psd_user_deal(r_args);
         }else{
             usleep(500);
         }
     #elif defined (SUPPORT_SPECTRUM_V2)
         if(args != NULL)
-            spm_deal(args, &header_param);
+            spm_deal(args, r_args);
+        if(poal_config->enable.psd_en){
+            io_set_enable_command(PSD_MODE_DISABLE, ch, -1, r_args->fft_size);
+        }
     #else
         usleep(500);
     #endif
@@ -242,7 +246,6 @@ static int8_t  executor_points_scan(uint8_t ch, work_mode_type mode, void *args)
     struct poal_config *poal_config = &(config_get_config()->oal_config);
     uint32_t points_count, i;
     uint64_t c_freq, s_freq, e_freq, m_freq;
-    //struct spm_run_parm header_param;
     struct spm_context *spmctx;
     struct spm_run_parm *r_args;
     struct multi_freq_point_para_st *point;
@@ -276,7 +279,7 @@ static int8_t  executor_points_scan(uint8_t ch, work_mode_type mode, void *args)
         printf_info("rf scan bandwidth=%u, middlebw=%u, m_freq=%llu, freq_resolution=%f\n",r_args->scan_bw,r_args->bandwidth , r_args->m_freq, r_args->freq_resolution);
         executor_set_command(EX_RF_FREQ_CMD,  EX_RF_MID_FREQ, ch, &point->points[i].center_freq);
         executor_set_command(EX_MID_FREQ_CMD, EX_BANDWITH, ch, &point->points[ch].bandwidth);
-        //executor_set_command(EX_RF_FREQ_CMD,  EX_RF_MID_BW,   ch, &header_param.scan_bw);
+        //executor_set_command(EX_RF_FREQ_CMD,  EX_RF_MID_BW,   ch, &r_args->.scan_bw);
 #ifndef SUPPORT_SPECTRUM_FFT
         executor_set_command(EX_MID_FREQ_CMD, EX_MID_FREQ,    ch, &point->points[i].center_freq);
         executor_set_command(EX_MID_FREQ_CMD, EX_FFT_SIZE, ch, &point->points[i].fft_size);
@@ -286,7 +289,7 @@ static int8_t  executor_points_scan(uint8_t ch, work_mode_type mode, void *args)
         executor_set_command(EX_WORK_MODE_CMD,mode, ch, r_args);
         #endif
         /* notify client that some paramter has changed */
-       // poal_config->send_active((void *)&header_param);
+       // poal_config->send_active((void *)r_args);
         /* 解调参数: 音频 */
         printf_note("enable.audio_en=%d, residence_time=%u,points_count=%u\n",poal_config->enable.audio_en,point->residence_time, points_count);
         if(poal_config->enable.audio_en){
@@ -540,7 +543,7 @@ static int8_t executor_set_kernel_command(uint8_t type, uint8_t ch, void *data, 
         }
         case EX_BANDWITH:
         {
-            printf_note("ch:%d, bw:%u\n", ch, *(uint32_t *)data);
+            printf_debug("ch:%d, bw:%u\n", ch, *(uint32_t *)data);
             io_set_bandwidth(ch, *(uint32_t *)data);
             //io_set_side_rate(1.28);
             break;

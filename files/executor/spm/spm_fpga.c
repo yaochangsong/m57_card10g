@@ -214,7 +214,7 @@ static fft_t *spm_data_order(fft_t *fft_data,
        __                     __                             ___
          \                   /              ==》             /   \
           \_______  ________/                     _________/     \_________
-                  \/                             /                         \
+                  \/                                                      
                  |边带  |
     */
     memcpy((uint8_t *)run_args->fft_ptr,                (uint8_t *)(fft_data+fft_len -order_len/2) , order_len);

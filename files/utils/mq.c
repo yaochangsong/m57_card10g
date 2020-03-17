@@ -54,7 +54,7 @@ static inline struct mq_attr *_mq_getattr(char *qname)
 {
     static struct mq_attr attr;
     int ret;
-    printf_note("#######%s\n",qname);
+    
     mqd_t queue = mq_open(qname, O_RDONLY);
     if (-1 == queue) {
         printf_err("mq_open error: %s", strerror(errno));

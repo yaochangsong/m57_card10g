@@ -117,3 +117,8 @@ void fpga_io_init(void)
     fpga_reg->broad_band->signal_carrier = 0;
 }
 
+void fpga_io_close(void)
+{
+    fpga_unmemmap(fpga_reg);
+}
+

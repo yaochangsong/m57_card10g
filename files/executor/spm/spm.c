@@ -138,12 +138,12 @@ void spm_deal(struct spm_context *ctx, void *args)
 {   
     struct spm_context *pctx = ctx;
     int i;
+    uint8_t fft_buf[65536] = {0};
 
     if(pctx == NULL){
         printf_err("spm is not init!!\n");
         return;
     }
-    pctx->run_args = args;
     if(pctx->pdata->enable.iq_en){
         struct spm_run_parm *ptr_run;
         ptr_run = (struct spm_run_parm *)args;
@@ -152,24 +152,21 @@ void spm_deal(struct spm_context *ctx, void *args)
         spm_iq_deal_notify(&args);
     }else if(pctx->pdata->enable.psd_en){
         fft_t *ptr = NULL, *ord_ptr = NULL;
-        ssize_t  len = 0;
-        size_t ord_len = 0;
+        ssize_t  byte_len = 0; /* fft byte size len */
+        size_t fft_len = 0, fft_ord_len = 0;
 
-        len = pctx->ops->read_fft_data(&ptr);
-        if(len < 0){
+        byte_len = pctx->ops->read_fft_data(&ptr);
+        if(byte_len < 0){
             return;
         }
-        if(len > 0){
-            for(i = 0; i < 16; i++){
-               printfd("%x ", ptr[i]);
-            }
-            printfd("\n----------[%d]---------\n", len);
-            ord_ptr = pctx->ops->data_order(ptr, len, &ord_len, args);
-            pctx->ops->send_fft_data(ord_ptr, ord_len, args);
-            //pctx->ops->stream_stop(STREAM_FFT);
+        if(byte_len > 0){
+            fft_len = byte_len/sizeof(fft_t);
+            printf_debug("size_len=%u, fft_len=%u\n", byte_len, fft_len);
+            ord_ptr = pctx->ops->data_order(ptr, fft_len, &fft_ord_len, args);
+            if(ord_ptr)
+                pctx->ops->send_fft_data(ord_ptr, fft_ord_len, args);
         }
     }
-    //sleep(1);
 }
 
 static struct spm_context *spmctx = NULL;
@@ -202,7 +199,8 @@ void *spm_init(void)
     mqctx = mq_create_ctx(SPM_MQ_NAME, NULL, -1);
     mqctx->ops->getattr(SPM_MQ_NAME);
 
-    spmctx->run_args = NULL;
+    spmctx->run_args = calloc(1, sizeof(struct spm_run_parm));
+    spmctx->run_args->fft_ptr = calloc(1, 32*1024*sizeof(fft_t));/* MAX FFT size */
     //ret=pthread_create(&send_thread_id,NULL,(void *)spm_send_thread, spmctx);
     //if(ret!=0)
     //    perror("pthread cread spm");
@@ -220,7 +218,7 @@ void *spm_init(void)
 int spm_close(void)
 {
     if(spmctx){
-        spmctx->ops->close();
+        spmctx->ops->close(spmctx);
     }
 }
 

@@ -618,12 +618,12 @@ void io_set_fft_size(uint32_t ch, uint32_t fft_size)
     }else if(fft_size == FFT_SIZE_32768){
         factor = 0xf;
     }
-    if(io_ctrl_fd<=0){
-        return;
-    }
     printf_note("[**REGISTER**][ch:%d]Set FFT Size=%u, factor=%u[0x%x]\n", ch, fft_size,factor, factor);
 #if defined(SUPPORT_PLATFORM_ARCH_ARM)
 #if defined(SUPPORT_SPECTRUM_KERNEL)
+    if(io_ctrl_fd<=0){
+        return;
+    }
     ioctl(io_ctrl_fd,IOCTL_FFT_SIZE_CH0,factor);
 #elif defined(SUPPORT_SPECTRUM_V2) 
     get_fpga_reg()->broad_band->fft_lenth = factor;
@@ -655,11 +655,11 @@ static void io_set_dma_SPECTRUM_out_en(int ch, int subch, uint32_t trans_len,uin
 #if defined(SUPPORT_SPECTRUM_KERNEL)
     io_dma_dev_disable(ch,IO_SPECTRUM_TYPE);
     io_dma_dev_enable(ch,IO_SPECTRUM_TYPE,continuous);
-    io_dma_dev_trans_len(ch,IO_SPECTRUM_TYPE, trans_len);
+    io_dma_dev_trans_len(ch,IO_SPECTRUM_TYPE, trans_len*2);
 #elif defined(SUPPORT_SPECTRUM_V2)
-    if(ch >= 0)
-        get_fpga_reg()->broad_band->enable |= 0x02;
-    get_spm_ctx()->ops->stream_start(trans_len, continuous, STREAM_FFT);
+    //if(ch >= 0)
+    //    get_fpga_reg()->broad_band->enable |= 0x02;
+    get_spm_ctx()->ops->stream_start(trans_len*sizeof(fft_t), continuous, STREAM_FFT);
 #endif
 }
 
@@ -668,8 +668,8 @@ static void io_set_dma_SPECTRUM_out_disable(int ch, int subch)
 #if defined(SUPPORT_SPECTRUM_KERNEL)
     io_dma_dev_disable(ch, IO_SPECTRUM_TYPE);
 #elif defined(SUPPORT_SPECTRUM_V2)
-    if(ch >= 0)
-        get_fpga_reg()->broad_band->enable &= ~0x02;
+    //if(ch >= 0)
+    //    get_fpga_reg()->broad_band->enable &= ~0x02;
     get_spm_ctx()->ops->stream_stop(STREAM_FFT);
 #endif
 
@@ -685,7 +685,7 @@ static void io_set_IQ_out_disable(int ch, int subch)
     io_dma_dev_disable(ch, IO_IQ_TYPE);
 #elif defined(SUPPORT_SPECTRUM_V2) 
     get_spm_ctx()->ops->stream_stop(STREAM_IQ);
- #endif
+ #endif 
 
 }
 
@@ -780,7 +780,7 @@ int8_t io_set_enable_command(uint8_t type, int ch, int subc_ch, uint32_t fftsize
     {
         case PSD_MODE_ENABLE:
         {
-            io_set_dma_SPECTRUM_out_en(ch, subc_ch, fftsize*2,0);
+            io_set_dma_SPECTRUM_out_en(ch, subc_ch, fftsize,0);
             break;
         }
         case PSD_MODE_DISABLE:

@@ -161,7 +161,7 @@ static ssize_t spm_stream_read(enum stream_type type, void **data)
     printf_debug("DMA get [%s] status:%s[%d]\n", pstream[type].name, dma_str_status(status), status);
     readn = info.blocks[0].length;
     *data = pstream[type].ptr + info.blocks[0].offset;
-    printf_debug("readn:%d\n", readn);
+    printf_debug("%s, readn:%d\n", pstream[type].name, readn);
 
     return readn;
 }

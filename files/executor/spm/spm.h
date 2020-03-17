@@ -18,6 +18,8 @@
 typedef int16_t fft_t;
 typedef int16_t iq_t;
 
+#define MAX_FFT_SIZE  (32768)
+
 enum stream_type {
     STREAM_IQ = 0,
     STREAM_FFT,

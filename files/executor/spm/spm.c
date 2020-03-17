@@ -19,18 +19,18 @@
 #include "spm.h"
 #include "utils/mq.h"
 
-struct mq_ctx *mqctx;
-#define SPM_MQ_NAME "/spmmq"
+//struct mq_ctx *mqctx;
+//#define SPM_MQ_NAME "/spmmq"
 
 static pthread_cond_t spm_iq_cond = PTHREAD_COND_INITIALIZER;
 static pthread_mutex_t spm_iq_cond_mutex = PTHREAD_MUTEX_INITIALIZER;
 
-void spm_iq_deal_notify(void *arg)
+static inline void spm_iq_deal_notify(void *arg)
 {
     if(arg == NULL)
         return;
     /* NONBLOCK send*/
-    mqctx->ops->send(mqctx->queue, arg, sizeof(struct spm_run_parm));
+    //mqctx->ops->send(mqctx->queue, arg, sizeof(struct spm_run_parm));
     /* 通知IQ处理线程开始处理IQ数据 */
     pthread_cond_signal(&spm_iq_cond);
 }
@@ -78,7 +78,7 @@ void spm_iq_handle_thread(void *arg)
 {
     void *ptr = NULL;
     ssize_t nbyte = 0;
-    struct spm_run_parm *ptr_run, run;
+    struct spm_run_parm *ptr_run = NULL, run;
     struct spm_context *ctx = NULL;
     iq_t *ptr_iq = NULL;
     ssize_t  len = 0, i;
@@ -91,44 +91,41 @@ loop:
     pthread_mutex_lock(&spm_iq_cond_mutex);
     pthread_cond_wait(&spm_iq_cond, &spm_iq_cond_mutex);
     pthread_mutex_unlock(&spm_iq_cond_mutex);
-    if(ctx->pdata->enable.iq_en == 0){
-        printf_warn("IQ is not enabled!![%d]\n", ctx->pdata->enable.iq_en);
+    if(ctx->pdata->sub_ch_enable.iq_en == 0){
+        printf_warn("IQ is not enabled!![%d]\n", ctx->pdata->sub_ch_enable.iq_en);
         sleep(1);
         goto loop;
     }
     memset(&run, 0, sizeof(run));
-    //io_set_enable_command(IQ_MODE_ENABLE, -1, 0, 0);
-    /* int ch, uint32_t len,uint8_t continuous, enum stream_type type */
-    printf_note("######start read iq data######\n");
+    memcpy(&run, ctx->run_args, sizeof(run));
     do{
+        #if 0
         /* mquene NONBLOCK read,非阻塞方式从队列获取运行数据信息 */
         nbyte = mqctx->ops->recv(mqctx->queue, &ptr);
         if(nbyte >= 0 && ptr != NULL){
             ptr_run = (struct spm_run_parm *)ptr;
+            ptr_run = ctx->run_args;
             printf_note("reve:[%d]ch:%d, s_freq:%llu, e_freq:%llu, bandwidth=%u\n", nbyte, 
                 ptr_run->ch, ptr_run->s_freq, ptr_run->e_freq, ptr_run->bandwidth);
             memcpy(&run, ptr_run, sizeof(run));
             free(ptr);
         }
+        #endif
         
         len = ctx->ops->read_iq_data(&ptr_iq);
-        if(len < 0)
-            continue;
-        printf_note("reve handle: [%d]len=%d, ptr=%p\n",ptr_run->data_len, len, ptr_iq);
+        
+        printf_note("reve handle: len=%d, ptr=%p\n", len, ptr_iq);
         if(len > 0){
             for(i = 0; i < 16; i++){
-               printfn("%x ", ptr_iq[i]);
+               printfd("%x ", ptr_iq[i]);
             }
-            printfn("\n----------[%d]---------\n", len);
-        }
-        if(len > 0){
+            printfd("\n----------[%d]---------\n", len);
             ctx->ops->send_iq_data(ptr_iq, len, &run);
         }
-        if(ctx->pdata->enable.iq_en == 0){
+        if(ctx->pdata->sub_ch_enable.iq_en == 0){
             sleep(1);
             goto loop;
         }
-        sleep(1);
     }while(1);
     
 }
@@ -137,20 +134,19 @@ loop:
 void spm_deal(struct spm_context *ctx, void *args)
 {   
     struct spm_context *pctx = ctx;
-    int i;
-    uint8_t fft_buf[65536] = {0};
 
     if(pctx == NULL){
         printf_err("spm is not init!!\n");
         return;
     }
-    if(pctx->pdata->enable.iq_en){
+    if(pctx->pdata->sub_ch_enable.iq_en){
         struct spm_run_parm *ptr_run;
         ptr_run = (struct spm_run_parm *)args;
-        printf_note("send:ch:%d, s_freq:%llu, e_freq:%llu, bandwidth=%u\n", 
+        printf_info("send:ch:%d, s_freq:%llu, e_freq:%llu, bandwidth=%u\n", 
                 ptr_run->ch, ptr_run->s_freq, ptr_run->e_freq, ptr_run->bandwidth);
         spm_iq_deal_notify(&args);
-    }else if(pctx->pdata->enable.psd_en){
+    }
+    if(pctx->pdata->enable.psd_en){
         fft_t *ptr = NULL, *ord_ptr = NULL;
         ssize_t  byte_len = 0; /* fft byte size len */
         size_t fft_len = 0, fft_ord_len = 0;
@@ -196,15 +192,11 @@ void *spm_init(void)
         return NULL;
     }
 
-    mqctx = mq_create_ctx(SPM_MQ_NAME, NULL, -1);
-    mqctx->ops->getattr(SPM_MQ_NAME);
+    //mqctx = mq_create_ctx(SPM_MQ_NAME, NULL, -1);
+    //mqctx->ops->getattr(SPM_MQ_NAME);
 
     spmctx->run_args = calloc(1, sizeof(struct spm_run_parm));
-    spmctx->run_args->fft_ptr = calloc(1, 32*1024*sizeof(fft_t));/* MAX FFT size */
-    //ret=pthread_create(&send_thread_id,NULL,(void *)spm_send_thread, spmctx);
-    //if(ret!=0)
-    //    perror("pthread cread spm");
-    //pthread_detach(send_thread_id);
+    spmctx->run_args->fft_ptr = calloc(1, MAX_FFT_SIZE*sizeof(fft_t));
 
     ret=pthread_create(&recv_thread_id,NULL,(void *)spm_iq_handle_thread, spmctx);
     if(ret!=0)

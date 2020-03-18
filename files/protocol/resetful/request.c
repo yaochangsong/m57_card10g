@@ -56,10 +56,12 @@ static struct request_info http_req_cmd[] = {
     /* 使能控制 */
     {"PUT",     "/enable/@ch/@subch/@type/@value",      -1,                cmd_subch_enable_set},
     {"PUT",     "/enable/@ch/@type/@value",             -1,                cmd_ch_enable_set},
-
+    /* 心跳 */
+    {"GET",     "/ping",                                -1,                cmd_ping},
 };
 
 #define URL_SEPARATOR "/"
+/* 比较模板url和请求url参数个数是否相等 */
 static bool url_param_num_is_equal(const char * url, const char * url_format)
 {
     char * saveptr = NULL, * cur_word = NULL, * url_cpy = NULL, * url_cpy_addr = NULL;
@@ -91,6 +93,7 @@ static bool url_param_num_is_equal(const char * url, const char * url_format)
     return ret;
 }
 
+/* 分析模板url和请求url是否一致，若一直获取参数 */
 int parse_format_url(struct uh_client *cl, const char * url, const char * url_format)
 {
     char * saveptr = NULL, * cur_word = NULL, * url_cpy = NULL, * url_cpy_addr = NULL;
@@ -107,6 +110,7 @@ int parse_format_url(struct uh_client *cl, const char * url, const char * url_fo
     }
     url_cpy = url_cpy_addr = strdup(url);
     url_format_cpy = url_format_cpy_addr = strdup(url_format);
+    printf_debug("url_format_cpy=%s\n",url_format_cpy);
     s = strchr(url_format_cpy, ':');
     if (s == NULL) {
         s = strchr(url_format_cpy, '@');
@@ -123,15 +127,16 @@ int parse_format_url(struct uh_client *cl, const char * url, const char * url_fo
     cur_word = strtok_r( url_cpy, URL_SEPARATOR, &saveptr );
     cur_word_format = strtok_r( url_format_cpy, URL_SEPARATOR, &saveptr_prefix );
     while (cur_word_format != NULL && cur_word != NULL){
-        //printf("cur_word=%s, cur_word_format=%s\n",cur_word, cur_word_format);
+        printf_debug("cur_word=%s, cur_word_format=%s\n",cur_word, cur_word_format);
         if (strcmp(cur_word, cur_word_format) != 0) {
+            /* 判断模板是否有参数 */
             if (cur_word_format[0] == ':' || cur_word_format[0] == '@'){
                 //printf_note("%s=%s\n",cur_word_format+1, cur_word);
-                /* 若是文件参数filename */
+                /* 判断参数是否为文件，filename */
                 if(!strcmp(cur_word_format+1, "filename")){
                     /* 判断是否为有效文件名称 */
                     if(strchr(cur_word, '.') == NULL){
-                        printf_note("%s is command\n", cur_word);
+                        printf_debug("%s is command\n", cur_word);
                         ret = -1;
                         break;
                     }
@@ -208,7 +213,7 @@ int http_on_request(struct uh_client *cl)
 {
     const char *path, *filename = NULL;
     int ret = -1;
-    char *err_msg= NULL;
+    char *err_msg= NULL, *content=NULL;
     path = cl->get_path(cl);
     if(path ==NULL)
         return UH_REQUEST_DONE;
@@ -223,11 +228,10 @@ int http_on_request(struct uh_client *cl)
         if(parse_format_url(cl, path, http_req_cmd[i].path) == 0){
             if(http_req_cmd[i].dispatch_cmd == -1){
                  if(http_req_cmd[i].action){
-                    ret = http_req_cmd[i].action(cl, &err_msg);
+                    ret = http_req_cmd[i].action(cl, &err_msg, &content);
                     printf_note("action result: %d, %s\n", ret, err_msg);
                     if(err_msg){
-                        cl->send_error_json(cl, ret, err_msg);
-                        printf_note("action result: %d, %s\n", ret, err_msg);
+                        cl->send_json(cl, ret, err_msg, content);
                     }
                  }
                  return UH_REQUEST_DONE;
@@ -249,7 +253,7 @@ int http_request_action(struct uh_client *cl)
     int ret = -1;
     for(int i = 0; i<ARRAY_SIZE(http_req_cmd); i++){
         if(cl->dispatch.cmd == http_req_cmd[i].dispatch_cmd){
-            ret = http_req_cmd[i].action(cl, &err_msg);
+            ret = http_req_cmd[i].action(cl, &err_msg, NULL);
             printf_note("action result: %d, %s\n", ret, err_msg);
             found = 1;
             break;

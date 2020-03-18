@@ -16,7 +16,7 @@
 
 static cJSON* root_json = NULL;
 
-static int json_print(cJSON *root, int do_format)
+int json_print(cJSON *root, int do_format)
 {
     if(root == NULL){
         return -1;
@@ -843,123 +843,7 @@ int json_write_config_file(void *config)
     file = conf->configfile;
     if(file == NULL || config == NULL || root_json == NULL)
         return -1;
-
-   /* struct sockaddr_in saddr;
-
-    saddr.sin_addr.s_addr=inet_addr("111.111.111.111");    
-     conf->oal_config.network.ipaddress = saddr.sin_addr.s_addr;
-      printf_debug("%0x\n",conf->oal_config.network.ipaddress);
-
-
-    saddr.sin_addr.s_addr=inet_addr("111.111.111.111");
-    conf->oal_config.network.gateway = saddr.sin_addr.s_addr;
-    printf_debug("%0x\n",conf->oal_config.network.gateway);
-
-    saddr.sin_addr.s_addr=inet_addr("111.111.111.111");
-    conf->oal_config.network.netmask = saddr.sin_addr.s_addr;
-    printf_debug("%0x\n",conf->oal_config.network.netmask);
-    conf->oal_config.network.port = 888;
-
-    int i=0;
-
-
-     conf->oal_config.status_para.softVersion.app = "v111 1";
-   
-
-     
-     conf->oal_config.ctrl_para.spectrum_time_interval=888;
-     conf->oal_config.ctrl_para.remote_local=88;
-      conf->oal_config.ctrl_para.internal_clock=88;
-
-     
-     /*calibration_parm */
-     // conf->oal_config.cal_level.specturm.global_roughly_power_lever=888;
-         /* psd_fftsize */
-   
-       /*  conf->oal_config.cal_level.cali_fft.fftsize[2]=888;
-         conf->oal_config.cal_level.cali_fft.cali_value[2]=888;
-          
-
-        for(i=0;i<5;i++)
-       {
-            conf->oal_config.cal_level.cali_fft.fftsize[i]=888;
-            conf->oal_config.cal_level.cali_fft.cali_value[i]=888;
-       }
-         /* psd_freq */
-       /*for(i=0;i<1;i++)
-       {
-            conf->oal_config.cal_level.specturm.start_freq_khz[i]=888;
-            conf->oal_config.cal_level.specturm.end_freq_khz[i]=888;
-            conf->oal_config.cal_level.specturm.power_level[i]=888;
-       }
-     
-        /* analysis_power_global */
-       //conf->oal_config.cal_level.analysis.global_roughly_power_lever=888;
-      /* for(i=0;i<1;i++)
-       {
-            conf->oal_config.cal_level.analysis.start_freq_khz[i]=888;
-            conf->oal_config.cal_level.analysis.end_freq_khz[i]=888;
-           conf->oal_config.cal_level.analysis.power_level[i]=888;
-       }
-     
-       /* low_noise_power */
-      // conf->oal_config.cal_level.low_noise.global_power_val=888;
-        /* lo_leakage_threshold */
-      // conf->oal_config.cal_level.lo_leakage.global_threshold=888;
-        /* lo_leakage_renew_data_len */
-      // conf->oal_config.cal_level.lo_leakage.global_renew_data_len=888;
-     
-       /* lo_leakage */
-      /* for(i=0;i<2;i++)
-       {
-     
-           conf->oal_config.cal_level.lo_leakage.fft_size[i]=888;
-          conf->oal_config.cal_level.lo_leakage.threshold[i]=888;
-          conf->oal_config.cal_level.lo_leakage.renew_data_len[i]=888;
-       }
-     
-        /* mgc_gain_global */  
-      /*conf->oal_config.cal_level.mgc.global_gain_val=888;
-        /* mgc_gain_freq */
-      /* for(i=0;i<2;i++)
-       {
-     
-           conf->oal_config.cal_level.mgc.start_freq_khz[i]=888;
-           conf->oal_config.cal_level.mgc.end_freq_khz[i]=888;
-           conf->oal_config.cal_level.mgc.gain_val[i]=888;
-       }
-     
-       /* spectrum_parm */
-            /* side_bandrate */
-      /* for(i=0;i<4;i++)
-       {
-     
-           conf->oal_config.ctrl_para.scan_bw.sideband_rate[i]=888;
-           conf->oal_config.ctrl_para.scan_bw.bindwidth_hz[i]=888;
-       }
-     
-         /*if_parm*/
-       /*for(i=0;i<1;i++)
-       {
-     
-          conf->oal_config.multi_freq_point_param[i].points[0].index=8;
-           conf->oal_config.multi_freq_point_param[i].points[0].center_freq=888;
-           conf->oal_config.multi_freq_point_param[i].points[0].d_bandwith=888;
-       }
-       /*rf_parm*/
-       /*for(i=0;i<1;i++)
-       {
-     
-           conf->oal_config.rf_para[i].cid=8;
-           conf->oal_config.rf_para[i].attenuation=88;
-           conf->oal_config.rf_para[i].rf_mode_code=88;
-           conf->oal_config.rf_para[i].gain_ctrl_method=88;
-           conf->oal_config.rf_para[i].agc_ctrl_time=88;
-          conf->oal_config.rf_para[i].agc_mid_freq_out_level=88;
-       }*/
-
-
-
+    
      json_write_config_param(root_json, &conf->oal_config);
     //json_print(root_json, 1);
     ret = json_write_file(file, root_json);

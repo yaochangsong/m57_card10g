@@ -466,6 +466,7 @@ static int8_t executor_get_kernel_command(uint8_t type, uint8_t ch, void *data)
 
 static int8_t executor_set_kernel_command(uint8_t type, uint8_t ch, void *data, va_list ap)
 {
+    struct poal_config *poal_config = &(config_get_config()->oal_config);
     switch(type)
      {
         case EX_CHANNEL_SELECT:

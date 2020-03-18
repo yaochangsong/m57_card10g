@@ -102,7 +102,7 @@ int32_t io_set_local_10g_net(uint32_t ip, uint16_t port)
         uint32_t local_ip_10g;
         uint16_t local_port_10g;
     };
-
+#if defined(SUPPORT_SPECTRUM_KERNEL) 
     int32_t ret = 0;
     if(io_ctrl_fd<=0){
         return 0;
@@ -114,6 +114,7 @@ int32_t io_set_local_10g_net(uint32_t ip, uint16_t port)
     nl.local_port_10g = port;
     printf_note("ipaddress[0x%x], port=%d\n", nl.local_ip_10g, nl.local_port_10g);
     ret = ioctl(io_ctrl_fd,IOCTL_NET_10G_LOCAL_SET,&nl);
+#endif
     return ret;
 }
 
@@ -122,7 +123,9 @@ int32_t io_set_10ge_net_onoff(uint8_t onoff)
 {
     int32_t ret = 0;
     printf_note("[**NET**]10GE net %s\n", onoff == 0 ? "off":"on");
+#if defined(SUPPORT_SPECTRUM_KERNEL) 
     ret = ioctl(io_ctrl_fd,IOCTL_NET_10G_ONOFF_SET,&onoff);
+#endif
     return ret;
 }
 
@@ -132,7 +135,7 @@ int32_t io_set_1ge_net_onoff(uint8_t onoff)
 {
     int32_t ret = 0;
     printf_note("[**NET**]1GE net %s\n", onoff == 0 ? "off":"on");
-#if defined(SUPPORT_PLATFORM_ARCH_ARM)
+#if defined(SUPPORT_SPECTRUM_KERNEL)
     ret = ioctl(io_ctrl_fd,IOCTL_NET_1G_IQ_ONOFF_SET,&onoff);
 #endif
     return ret;
@@ -618,12 +621,12 @@ void io_set_fft_size(uint32_t ch, uint32_t fft_size)
     }else if(fft_size == FFT_SIZE_32768){
         factor = 0xf;
     }
-    if(io_ctrl_fd<=0){
-        return;
-    }
     printf_note("[**REGISTER**][ch:%d]Set FFT Size=%u, factor=%u[0x%x]\n", ch, fft_size,factor, factor);
 #if defined(SUPPORT_PLATFORM_ARCH_ARM)
 #if defined(SUPPORT_SPECTRUM_KERNEL)
+    if(io_ctrl_fd<=0){
+        return;
+    }
     ioctl(io_ctrl_fd,IOCTL_FFT_SIZE_CH0,factor);
 #elif defined(SUPPORT_SPECTRUM_V2) 
     get_fpga_reg()->broad_band->fft_lenth = factor;
@@ -655,11 +658,11 @@ static void io_set_dma_SPECTRUM_out_en(int ch, int subch, uint32_t trans_len,uin
 #if defined(SUPPORT_SPECTRUM_KERNEL)
     io_dma_dev_disable(ch,IO_SPECTRUM_TYPE);
     io_dma_dev_enable(ch,IO_SPECTRUM_TYPE,continuous);
-    io_dma_dev_trans_len(ch,IO_SPECTRUM_TYPE, trans_len);
+    io_dma_dev_trans_len(ch,IO_SPECTRUM_TYPE, trans_len*2);
 #elif defined(SUPPORT_SPECTRUM_V2)
-    if(ch >= 0)
-        get_fpga_reg()->broad_band->enable |= 0x02;
-    get_spm_ctx()->ops->stream_start(trans_len, continuous, STREAM_FFT);
+    //if(ch >= 0)
+    //    get_fpga_reg()->broad_band->enable |= 0x02;
+    get_spm_ctx()->ops->stream_start(trans_len*sizeof(fft_t), continuous, STREAM_FFT);
 #endif
 }
 
@@ -668,8 +671,8 @@ static void io_set_dma_SPECTRUM_out_disable(int ch, int subch)
 #if defined(SUPPORT_SPECTRUM_KERNEL)
     io_dma_dev_disable(ch, IO_SPECTRUM_TYPE);
 #elif defined(SUPPORT_SPECTRUM_V2)
-    if(ch >= 0)
-        get_fpga_reg()->broad_band->enable &= ~0x02;
+    //if(ch >= 0)
+    //    get_fpga_reg()->broad_band->enable &= ~0x02;
     get_spm_ctx()->ops->stream_stop(STREAM_FFT);
 #endif
 
@@ -685,7 +688,7 @@ static void io_set_IQ_out_disable(int ch, int subch)
     io_dma_dev_disable(ch, IO_IQ_TYPE);
 #elif defined(SUPPORT_SPECTRUM_V2) 
     get_spm_ctx()->ops->stream_stop(STREAM_IQ);
- #endif
+ #endif 
 
 }
 
@@ -780,7 +783,7 @@ int8_t io_set_enable_command(uint8_t type, int ch, int subc_ch, uint32_t fftsize
     {
         case PSD_MODE_ENABLE:
         {
-            io_set_dma_SPECTRUM_out_en(ch, subc_ch, fftsize*2,0);
+            io_set_dma_SPECTRUM_out_en(ch, subc_ch, fftsize,0);
             break;
         }
         case PSD_MODE_DISABLE:

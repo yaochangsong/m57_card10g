@@ -156,11 +156,13 @@ static ssize_t spm_stream_read(enum stream_type type, void **data)
             printf_warn("iq data is overrun\n");
         }
     }while(info.status == READ_BUFFER_STATUS_PENDING);
-    
+        
+    ioctl(pstream[type].id, IOCTL_DMA_GET_STATUS, &status);
+    printf_debug("DMA get [%s] status:%s[%d]\n", pstream[type].name, dma_str_status(status), status);
     readn = info.blocks[0].length;
     *data = pstream[type].ptr + info.blocks[0].offset;
-    printf_debug("readn:%d\n", readn);
-    
+    printf_debug("%s, readn:%d\n", pstream[type].name, readn);
+
     return readn;
 }
 
@@ -192,61 +194,71 @@ static fft_t *spm_data_order(fft_t *fft_data,
                                 size_t *order_fft_len,
                                 void *arg)
 {
-    struct spm_run_parm *hparam;
+    struct spm_run_parm *run_args;
     float sigle_side_rate, side_rate;
     uint32_t single_sideband_size;
     int i;
+    size_t order_len = 0;
 
     if(fft_data == NULL || fft_len == 0)
         return NULL;
-    hparam = (struct spm_run_parm *)arg;
-    /* 1：去边带 */
-    /* 获取边带率 */
-    side_rate  = get_side_band_rate(hparam->bandwidth);
-    sigle_side_rate = (1.0-1.0/side_rate)/2.0;
-    printf_debug("side_rate=%f, sigle_side_rate = %f\n", side_rate, sigle_side_rate);
+    run_args = (struct spm_run_parm *)arg;
     
-    single_sideband_size = fft_len*sigle_side_rate;
-    single_sideband_size = alignment_down(single_sideband_size, sizeof(fft_t));
-    printf_debug("a single_sideband_size = %u\n", single_sideband_size);
-    *order_fft_len = fft_len - 2 * single_sideband_size;
-
-    return  fft_data + single_sideband_size;
+    /* 获取边带率 */
+    side_rate  = get_side_band_rate(run_args->bandwidth);
+    /* 去边带后FFT长度 */
+    order_len = (size_t)((float)(fft_len) / side_rate);
+    /* 信号倒谱 */
+    /*
+       原始信号（注意去除中间边带）：==>真实输出信号；
+       __                     __                             ___
+         \                   /              ==》             /   \
+          \_______  ________/                     _________/     \_________
+                  \/                                                      
+                 |边带  |
+    */
+    memcpy((uint8_t *)run_args->fft_ptr,                (uint8_t *)(fft_data+fft_len -order_len/2) , order_len);
+    memcpy((uint8_t *)(run_args->fft_ptr+order_len),    (uint8_t *)fft_data , order_len);
+    *order_fft_len = order_len;
+    
+    return (fft_t *)run_args->fft_ptr;
 }
 
 
-static int spm_send_fft_data(void *data, size_t len, void *arg)
+static int spm_send_fft_data(void *data, size_t fft_len, void *arg)
 {
     uint8_t *ptr = NULL, *ptr_header = NULL;
     uint32_t header_len = 0;
+    size_t data_byte_size = 0;
     struct _spm_stream *pstream = spm_stream;
 
     printf_debug("start send fft\n");
-    if(data == NULL || len == 0 || arg == NULL)
+    if(data == NULL || fft_len == 0 || arg == NULL)
         return -1;
+    data_byte_size = fft_len * sizeof(fft_t);
 #ifdef SUPPORT_PROTOCAL_AKT
     struct spm_run_parm *hparam;
     hparam = (struct spm_run_parm *)arg;
-    hparam->data_len = len; 
+    hparam->data_len = data_byte_size; 
     hparam->type = SPECTRUM_DATUM_FLOAT;
     hparam->ex_type = SPECTRUM_DATUM;
     ptr_header = akt_assamble_data_frame_header_data(&header_len, arg);
 #endif
-
-    ptr = (uint8_t *)safe_malloc(header_len+ len+2);
+    
+    ptr = (uint8_t *)safe_malloc(header_len+ data_byte_size+2);
     if (!ptr){
         printf_err("malloc failed\n");
         return -1;
     }
-    memcpy(ptr, ptr_header, header_len);
-    memcpy(ptr+header_len, data, len);
 
-    udp_send_data(ptr, header_len + len);
+    memcpy(ptr, ptr_header, header_len);
+    memcpy(ptr+header_len, data, data_byte_size);
+    udp_send_data(ptr, header_len + data_byte_size);
     safe_free(ptr);
     /* 设置DMA已读数据块长度 */
-    ioctl(pstream[STREAM_FFT].id, IOCTL_DMA_SET_ASYN_READ_INFO, &len);
+    //ioctl(pstream[STREAM_FFT].id, IOCTL_DMA_SET_ASYN_READ_INFO, &data_byte_size);
 
-    return (header_len + len);
+    return (header_len + data_byte_size);
 }
 
 static int spm_send_iq_data(void *data, size_t len, void *arg)
@@ -418,7 +430,7 @@ static int spm_stream_start(uint32_t len,uint8_t continuous, enum stream_type ty
     struct _spm_stream *pstream = spm_stream;
     IOCTL_DMA_START_PARA para;
     
-    printf_debug("stream type:%d, start, continuous[%d]\n", type, continuous);
+    printf_debug("stream type:%d, start, continuous[%d], len=%u\n", type, continuous, len);
 
     if(continuous)
         para.mode = DMA_MODE_CONTINUOUS;
@@ -440,7 +452,7 @@ static int spm_stream_stop(enum stream_type type)
     return 0;
 }
 
-static int _spm_close(void)
+static int _spm_close(struct spm_context *ctx)
 {
     struct _spm_stream *pstream = spm_stream;
     int i;
@@ -449,6 +461,8 @@ static int _spm_close(void)
         spm_stream_stop(i);
         close(pstream[i].id);
     }
+    safe_free(ctx->run_args->fft_ptr);
+    safe_free(ctx->run_args);
     printf_note("close..\n");
     return 0;
 }

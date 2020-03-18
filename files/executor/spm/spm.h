@@ -15,8 +15,10 @@
 #ifndef _SPM_H_
 #define _SPM_H_
 
-typedef float fft_t;
+typedef int16_t fft_t;
 typedef int16_t iq_t;
+
+#define MAX_FFT_SIZE  (32768)
 
 enum stream_type {
     STREAM_IQ = 0,
@@ -42,7 +44,7 @@ struct spm_backend_ops {
     int (*backtrace_data)(void *, size_t);
     int (*stream_start)(uint32_t ,uint8_t , int);
     int (*stream_stop)(uint8_t);
-    int (*close)(void);
+    int (*close)(void *);
     
 };
 
@@ -51,7 +53,7 @@ struct spm_backend_ops {
 struct spm_context {
     struct poal_config *pdata;
     const struct spm_backend_ops *ops;
-    const void *run_args;
+    struct spm_run_parm *run_args;
 };
 
 extern void *spm_init(void);

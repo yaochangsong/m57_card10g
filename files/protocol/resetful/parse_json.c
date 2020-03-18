@@ -13,15 +13,17 @@
 *  Initial revision.
 ******************************************************************************/
 #include "config.h"
+#include "parse_cmd.h"
+
 
 int parse_json_rf_multi_value(const char * const body)
 {
-    return 0;
+    return RESP_CODE_OK;
 }
 
 int parse_json_if_multi_value(const char * const body)
 {  
-    return 0;
+    return RESP_CODE_OK;
 
 }
 
@@ -39,7 +41,7 @@ int parse_json_multi_band(const char * const body,uint8_t cid)
         {
             fprintf(stderr, "Error before: %s\n", error_ptr);
         }
-        return -1;
+        return RESP_CODE_PARSE_ERR;
     }
     config->multi_freq_fregment_para[cid].cid=cid;
      printfd("cid:%d,\n", config->multi_freq_fregment_para[cid].cid);
@@ -112,7 +114,7 @@ int parse_json_multi_band(const char * const body,uint8_t cid)
          
     }    
     printfd("\n*****************解析完成************\n");
-    return 0;
+    return RESP_CODE_OK;
 }
 
 int parse_json_muti_point(const char * const body,uint8_t cid)
@@ -128,7 +130,7 @@ int parse_json_muti_point(const char * const body,uint8_t cid)
         {
             fprintf(stderr, "Error before: %s\n", error_ptr);
         }
-        return -1;
+        return RESP_CODE_PARSE_ERR;
     }
     config->multi_freq_point_param[cid].cid=cid;
     printfd("channel:%d,\n", config->multi_freq_point_param[cid].cid);
@@ -233,7 +235,7 @@ int parse_json_muti_point(const char * const body,uint8_t cid)
          
     }  
     printfd("\n*****************解析完成************\n");
-    return 0;
+    return RESP_CODE_OK;
 }
 int parse_json_demodulation(const char * const body,uint8_t cid,uint8_t subid )
 {
@@ -248,7 +250,7 @@ int parse_json_demodulation(const char * const body,uint8_t cid,uint8_t subid )
         {
             fprintf(stderr, "Error before: %s\n", error_ptr);
         }
-        return -1;
+        return RESP_CODE_PARSE_ERR;
     }
     config->sub_channel_para[cid].cid=cid;
      printfd("cid:%d, subid:%d\n", config->sub_channel_para[cid].cid,subid);
@@ -295,9 +297,148 @@ int parse_json_demodulation(const char * const body,uint8_t cid,uint8_t subid )
          printfd("muteThreshold:%d,\n", config->sub_channel_para[cid].sub_ch[subid].noise_thrh);
 
     }
+    
+    struct sub_channel_freq_para_st *sub_channel_array;
+    sub_channel_array = &config->sub_channel_para[cid];
+    /* 解调中心频率需要工作中心频率计算 */
+    executor_set_command(EX_MID_FREQ_CMD, EX_SUB_CH_MID_FREQ, subid,
+        &sub_channel_array->sub_ch[subid].center_freq,/* 解调频率*/
+        config->multi_freq_point_param[cid].points[subid].center_freq); /* 频点工作频率 */
+    /* 解调带宽, 不同解调方式，带宽系数表不一样*/
+    executor_set_command(EX_MID_FREQ_CMD, EX_SUB_CH_DEC_BW, subid, 
+        &sub_channel_array->sub_ch[subid].d_bandwith,
+        sub_channel_array->sub_ch[subid].d_method);
+    /* 子通道解调方式 */
+    executor_set_command(EX_MID_FREQ_CMD, EX_SUB_CH_DEC_METHOD, subid, 
+        &sub_channel_array->sub_ch[subid].d_method);
 
-    return 0;
+    return RESP_CODE_OK;
 }
+
+int parse_json_file_backtrace(const char * const body, uint8_t ch,  uint8_t enable, char  *filename)
+{
+    struct poal_config *config = &(config_get_config()->oal_config);
+    uint32_t bandwidth;
+    int ret = 0;
+    cJSON *node, *value;
+    cJSON *root = cJSON_Parse(body);
+    if (root == NULL){
+        const char *error_ptr = cJSON_GetErrorPtr();
+        if (error_ptr != NULL){
+            fprintf(stderr, "Error before: %s\n", error_ptr);
+        }
+        return RESP_CODE_PARSE_ERR;
+    }
+
+    value = cJSON_GetObjectItem(root, "bandwith");
+    if(value!=NULL&&cJSON_IsNumber(value)){
+         bandwidth=value->valuedouble;
+         printf_debug("store bandwidth:%u\n", bandwidth);
+
+    }
+#if defined(SUPPORT_XWFS)
+    if(enable)
+        ret = xwfs_start_backtrace(filename);
+    else
+        ret = xwfs_stop_backtrace(filename);
+#endif
+    if(ret != 0)
+        return RESP_CODE_EXECMD_ERR;
+    else
+        return RESP_CODE_OK;
+}
+
+int parse_json_file_store(const char * const body, uint8_t ch,  uint8_t enable, char  *filename)
+{
+    struct poal_config *config = &(config_get_config()->oal_config);
+    uint32_t bandwidth;
+    int ret = 0;
+    cJSON *node, *value;
+    cJSON *root = cJSON_Parse(body);
+    if (root == NULL){
+        const char *error_ptr = cJSON_GetErrorPtr();
+        if (error_ptr != NULL){
+            fprintf(stderr, "Error before: %s\n", error_ptr);
+        }
+        return RESP_CODE_PARSE_ERR;
+    }
+
+    value = cJSON_GetObjectItem(root, "bandwith");
+    if(value!=NULL&&cJSON_IsNumber(value)){
+         bandwidth=value->valuedouble;
+         printf_debug("store bandwidth:%u\n", bandwidth);
+
+    }
+    executor_set_command(EX_MID_FREQ_CMD, EX_BANDWITH, ch, &bandwidth);
+#if defined(SUPPORT_XWFS)
+    if(enable)
+        ret = xwfs_start_save_file(filename);
+    else
+        ret = xwfs_stop_save_file(filename);
+#endif
+    if(ret != 0)
+        return RESP_CODE_EXECMD_ERR;
+    else
+        return RESP_CODE_OK;
+}
+
+char *assemble_json_file_list(void)
+{
+    char *str_json = NULL;
+    int i;
+    struct file_list{
+        char *filename;
+        size_t size;
+        time_t ctime;
+    };
+    struct file_list fl[] = {
+        {"test1.wav", "1201MByte", 14684468},
+        {"test2.wav", "120MByte",  14684461},
+    };
+    cJSON *root = cJSON_CreateObject();
+    cJSON *array = cJSON_CreateArray();
+    cJSON* item = NULL;
+
+    cJSON_AddNumberToObject(root, "number", ARRAY_SIZE(fl));
+    for(i = 0; i < ARRAY_SIZE(fl); i++){
+        cJSON_AddItemToArray(array, item = cJSON_CreateObject());
+        cJSON_AddStringToObject(item, "filename", fl[i].filename);
+        cJSON_AddStringToObject(item, "size", fl[i].size);
+        cJSON_AddNumberToObject(item, "createTime", fl[i].ctime);
+    }
+    cJSON_AddItemToObject(root, "list", array);
+    json_print(root, 1);
+    str_json = cJSON_PrintUnformatted(root);
+    
+    return str_json;
+}
+
+char *assemble_json_find_file(char *filename)
+{
+    char *str_json = NULL;
+    int i;
+    struct file_list{
+        char *filename;
+        size_t size;
+        time_t ctime;
+    };
+    struct file_list fl[] = {
+        {"test1.wav", "1201MByte", 14684468},
+    };
+    cJSON *root = cJSON_CreateObject();
+    cJSON* item = cJSON_CreateObject();
+    
+    cJSON_AddStringToObject(root, "filename", filename);
+    cJSON_AddStringToObject(root, "size", fl[i].size);
+    cJSON_AddNumberToObject(root, "createTime", fl[i].ctime);
+    
+    json_print(root, 1);
+    str_json = cJSON_PrintUnformatted(root);
+    
+    return str_json;
+}
+
+
 
 
 /* NOTE: 调用该函数后，需要free返回指针 */

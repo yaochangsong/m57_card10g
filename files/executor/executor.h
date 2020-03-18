@@ -136,6 +136,7 @@ struct spm_run_parm{
     uint8_t d_method;           /* 解调类型 */
     uint8_t type;               /* 数据类型： 频谱数据/IQ数据/音频数据 */
     uint8_t ex_type;            /* 扩展帧类型： 频谱帧/解调帧 */
+    void *fft_ptr;              /* fft数据缓冲区 */
 };
 
 

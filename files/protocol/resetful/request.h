@@ -29,7 +29,7 @@ struct request_info {
     char *method;
     char *path;
     int dispatch_cmd;
-    int (*action)(struct uh_client *cl, void **arg);
+    int (*action)(struct uh_client *cl, void **err_msg, void **);
 };
 
 extern void http_requset_init(void);

@@ -9,31 +9,29 @@
 *  permission of Showay Technology Dev Co.,Ltd. (C) 2019
 ******************************************************************************/
 /*****************************************************************************     
-*  Rev 1.0   09 Nov 2019   yaochangsong
+*  Rev 1.0   21 Feb. 2020   yaochangsong
 *  Initial revision.
 ******************************************************************************/
+#ifndef _MQ_H
+#define _MQ_H
 
-#ifndef _REQUSET_H
-#define _REQUSET_H
-
-#include <stdbool.h>
-#include "protocol/http/client.h"
-
-
-enum {
-    DISPATCH_DOWNLOAD_CMD =1,
+struct _mq_ops {
+    mqd_t (*create)(char *, struct mq_attr*, int );
+    mqd_t (*open_ro)(char *);
+    mqd_t (*open_wo)(char *);
+    int (*send)(mqd_t , void *, size_t);
+    int (*recv)(mqd_t , void **);
+    int (*unlink)(char *);
+    struct mq_attr *(*getattr)(char *);
+    int (*close)(mqd_t );
 };
 
-
-struct request_info {
-    char *method;
-    char *path;
-    int dispatch_cmd;
-    int (*action)(struct uh_client *cl, void **err_msg, void **);
+struct mq_ctx {
+    mqd_t queue;
+    struct _mq_ops *ops;
 };
 
-extern void http_requset_init(void);
-extern int http_request_action(struct uh_client *cl);
 
 #endif
+
 

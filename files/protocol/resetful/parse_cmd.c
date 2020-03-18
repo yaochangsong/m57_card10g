@@ -16,14 +16,7 @@
 #include "protocol/http/client.h"
 #include "log/log.h"
 #include "conf/conf.h"
-
-
-#define RESP_CODE_OK                0
-#define RESP_CODE_CHANNEL_ERR       -1
-#define RESP_CODE_PATH_PARAM_ERR    -2
-#define RESP_CODE_PARSE_ERR         -3
-#define RESP_CODE_EXECMD_ERR        -4
-
+#include "parse_cmd.h"
 
 static struct response_err_code {
     int code;
@@ -36,7 +29,7 @@ static struct response_err_code resp_code[] ={
     {RESP_CODE_CHANNEL_ERR,         "channel error"},
     {RESP_CODE_PATH_PARAM_ERR,      "path param error"},
     {RESP_CODE_PARSE_ERR,           "parse json error"},
-    {RESP_CODE_EXECMD_ERR,          "execute cmd error"}
+    {RESP_CODE_EXECMD_ERR,          "execute cmd error"},
 };
 
 
@@ -198,7 +191,7 @@ static inline bool str_to_s64(char *str, int64_t *ivalue, bool(*_check)(int))
 
 
 /* POST /mode/mutiPoint/@ch */
-int cmd_muti_point(struct uh_client *cl, void **arg)
+int cmd_muti_point(struct uh_client *cl, void **arg, void **content)
 {
     char *s_ch;
     int ch;
@@ -211,7 +204,7 @@ int cmd_muti_point(struct uh_client *cl, void **arg)
         goto error;
     }
     printf_note("%s", cl->dispatch.body);
-    if(parse_json_muti_point(cl->dispatch.body)){
+    if(parse_json_muti_point(cl->dispatch.body,ch)){
         code = RESP_CODE_PARSE_ERR;
         goto error;
     }
@@ -224,7 +217,7 @@ error:
 
 
 /* "POST","/mode/multiBand/@ch" */
-int cmd_multi_band(struct uh_client *cl, void **arg)
+int cmd_multi_band(struct uh_client *cl, void **arg, void **content)
 {
     char *s_ch;
     int ch;
@@ -237,7 +230,7 @@ int cmd_multi_band(struct uh_client *cl, void **arg)
         goto error;
     }
     printf_note("%s\n", cl->dispatch.body);
-    if(parse_json_multi_band(cl->dispatch.body) != 0){
+    if(parse_json_multi_band(cl->dispatch.body,ch) != 0){
         code = RESP_CODE_PARSE_ERR;
         goto error;
     }
@@ -248,7 +241,7 @@ error:
 }
 
 /* "POST","/demodulation/@ch/@subch" */
-int cmd_demodulation(struct uh_client *cl, void **arg)
+int cmd_demodulation(struct uh_client *cl, void **arg, void **content)
 {
     char *s_ch, *s_subch;
     int ch, subch;
@@ -271,7 +264,7 @@ int cmd_demodulation(struct uh_client *cl, void **arg)
         goto error;
     }
     printf_note("%s\n", cl->dispatch.body);
-    if(parse_json_demodulation(cl->dispatch.body) != 0){
+    if(parse_json_demodulation(cl->dispatch.body,ch,subch) != 0){
         code = RESP_CODE_PARSE_ERR;
         goto error;
     }
@@ -285,7 +278,7 @@ error:
 /*"PUT",     /if/@ch/@subch/@type/@value"
     中频单个参数设置
 */
-int cmd_if_single_value_set(struct uh_client *cl, void **arg)
+int cmd_if_single_value_set(struct uh_client *cl, void **arg, void **content)
 {
     char *s_type, *s_ch, *s_subch, *s_value;
     int ch, itype, subch;
@@ -331,7 +324,7 @@ error:
 /*"POST",     /if/@ch/@subch"
     中频参数批量设置
 */
-int cmd_if_multi_value_set(struct uh_client *cl, void **arg)
+int cmd_if_multi_value_set(struct uh_client *cl, void **arg, void **content)
 {
     char *ch, *subch;
     int itype;
@@ -357,7 +350,7 @@ error:
         gain:增益模式
         
 */
-int cmd_rf_single_value_set(struct uh_client *cl, void **arg)
+int cmd_rf_single_value_set(struct uh_client *cl, void **arg, void **content)
 {
     char *s_type, *s_ch, *s_subch, *s_value;
     int ch, subch, itype;
@@ -401,7 +394,7 @@ error:
 /*"POST",     /rf/@ch/@subch"
     射频参数批量设置
 */
-int cmd_rf_multi_value_set(struct uh_client *cl, void **arg)
+int cmd_rf_multi_value_set(struct uh_client *cl, void **arg, void **content)
 {
     char *s_ch, *s_subch;
     int  ch, subch;
@@ -439,7 +432,7 @@ error:
     @type: "psd", "iq", "audio"
     @value: 1->enable, 0->disable
 */
-int cmd_ch_enable_set(struct uh_client *cl, void **arg)
+int cmd_ch_enable_set(struct uh_client *cl, void **arg, void **content)
 {
     char *s_type, *s_ch, *s_enable;
     int ch, enable;
@@ -486,7 +479,7 @@ error:
     @type: "psd", "iq", "audio"
     @value: 1->enable, 0->disable
 */
-int cmd_subch_enable_set(struct uh_client *cl, void **arg)
+int cmd_subch_enable_set(struct uh_client *cl, void **arg, void **content)
 {
     char *s_type, *s_ch, *s_subch, *s_enable;
     int ch, subch,enable;
@@ -515,18 +508,8 @@ int cmd_subch_enable_set(struct uh_client *cl, void **arg)
     if(!strcmp(s_type, "psd")){
         poal_config->sub_ch_enable.psd_en = enable;
     }else if(!strcmp(s_type, "iq")){
-        
         poal_config->sub_ch_enable.iq_en = enable;
-        /* 先关闭 */
-        io_set_enable_command(IQ_MODE_DISABLE, ch, 0);
         executor_set_command(EX_MID_FREQ_CMD, EX_SUB_CH_ONOFF, subch, &enable);
-        /* 通道IQ使能 */
-        if(enable){
-            /* NOTE:The parameter must be a MAIN channel, not a subchannel */
-            io_set_enable_command(IQ_MODE_ENABLE, ch, 0);
-        }else{
-            io_set_enable_command(IQ_MODE_DISABLE, ch, 0);
-        }
     }else if(!strcmp(s_type, "audio")){
         poal_config->sub_ch_enable.audio_en = enable;
     }else{
@@ -535,6 +518,13 @@ int cmd_subch_enable_set(struct uh_client *cl, void **arg)
     }
 
     printf_note("enable type=%s,ch = %d, subch=%d, enable=%d\n", s_type, ch, subch, enable);
+    /* 通道IQ使能 */
+    if(poal_config->sub_ch_enable.iq_en){
+        /* NOTE:The parameter must be a MAIN channel, not a subchannel */
+        io_set_enable_command(IQ_MODE_ENABLE, -1, subch, 0);
+    }else{
+        io_set_enable_command(IQ_MODE_DISABLE, -1,subch, 0);
+    }
 
 error:
     *arg = get_resp_message(code);
@@ -546,7 +536,7 @@ error:
     文件存储开始/停止
     @value: 1->enable, 0->disable
 */
-int cmd_file_store(struct uh_client *cl, void **arg)
+int cmd_file_store(struct uh_client *cl, void **arg, void **content)
 {
     char *s_ch, *s_enable, *filename;
     int ch, enable;
@@ -563,7 +553,7 @@ int cmd_file_store(struct uh_client *cl, void **arg)
         code = RESP_CODE_PATH_PARAM_ERR;
         goto error;
     }
-    file_startstore(cl, NULL);
+    code = parse_json_file_store(cl->dispatch.body, ch, enable, filename);
 error:
     *arg = get_resp_message(code);
     return code;
@@ -574,13 +564,16 @@ error:
     文件下载命令
     @value: 1->enable, 0->disable
 */
-int cmd_file_download(struct uh_client *cl, void **arg)
+int cmd_file_download(struct uh_client *cl, void **arg, void **content)
 {
     char  *filename;
     int code = RESP_CODE_OK;
     
     filename = cl->get_restful_var(cl, "filename");
+    
+#if defined(SUPPORT_XWFS)
     file_download(cl, filename);
+#endif
 error:
     *arg = get_resp_message(code);
     return code;
@@ -592,24 +585,25 @@ error:
     文件删除命令
     @value: 1->enable, 0->disable
 */
-int cmd_file_delete(struct uh_client *cl, void **arg)
+int cmd_file_delete(struct uh_client *cl, void **arg, void **content)
 {
     char  *filename;
     int code = RESP_CODE_OK;
     
     filename = cl->get_restful_var(cl, "filename");
-
+#if defined(SUPPORT_XWFS)
+    xwfs_delete_file(filename);
+#endif
 error:
     *arg = get_resp_message(code);
     return code;
-
 }
 
 /* "POST",     "/file/backtrace/@ch/@enable/@filename" 
     文件开始/停止回溯命令
     @value: 1->enable, 0->disable
 */
-int cmd_file_backtrace(struct uh_client *cl, void **arg)
+int cmd_file_backtrace(struct uh_client *cl, void **arg, void **content)
 {
     char *s_ch, *s_enable, *filename;
     int ch, enable;
@@ -626,6 +620,7 @@ int cmd_file_backtrace(struct uh_client *cl, void **arg)
         code = RESP_CODE_PATH_PARAM_ERR;
         goto error;
     }
+    parse_json_file_backtrace(cl->dispatch.body, ch, enable, filename);
     
 error:
     *arg = get_resp_message(code);
@@ -635,9 +630,10 @@ error:
 /* "GET",     "/file/list" 
     获取设备文件列表命令
 */
-int cmd_file_list(struct uh_client *cl, void **arg)
+int cmd_file_list(struct uh_client *cl, void **arg, void **content)
 {
     int code = RESP_CODE_OK;
+    *content = assemble_json_file_list();
 error:
     *arg = get_resp_message(code);
     return code;
@@ -646,16 +642,22 @@ error:
 /* "GET",     "/file/find/@filename" 
     获取设备文件列表命令
 */
-int cmd_file_find(struct uh_client *cl, void **arg)
+int cmd_file_find(struct uh_client *cl, void **arg, void **content)
 {
     char  *filename;
     int code = RESP_CODE_OK;
     
     filename = cl->get_restful_var(cl, "filename");
-
+    *content = assemble_json_find_file(filename);
 error:
     *arg = get_resp_message(code);
     return code;
+}
+
+int cmd_ping(struct uh_client *cl, void **arg, void **content)
+{
+    *arg = get_resp_message(RESP_CODE_OK);
+    return RESP_CODE_OK;
 }
 
 

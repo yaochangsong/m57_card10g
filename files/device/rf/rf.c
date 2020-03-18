@@ -1153,7 +1153,7 @@ uint8_t rf_set_interface(uint8_t cmd,uint8_t ch,void *data){
             }else{
                 break;
             }
-            printf_note("[**RF**]ch=%d, middle_freq=%llu\n",ch, *(uint64_t*)data);
+            printf_info("[**RF**]ch=%d, middle_freq=%llu\n",ch, *(uint64_t*)data);
 #ifdef SUPPORT_RF_ADRV9009
             gpio_select_rf_channel(*(uint64_t*)data);
             adrv9009_iio_set_freq(*(uint64_t*)data);

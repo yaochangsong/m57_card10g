@@ -107,10 +107,23 @@ ifneq ($(findstring y,$(SUPPORT_RF_ADRV9361)),)
 	SOURCE_DIR += device/rf/adrv9361
 	C_VAR += -DSUPPORT_RF_ADRV9361
 endif
+
+#
+ifneq ($(findstring y,$(SUPPORT_SPECTRUM_V2)),)
+	SOURCE_DIR += executor/spm
+	C_VAR += -DSUPPORT_SPECTRUM_V2
+	ifneq ($(findstring y,$(SUPPORT_SPECTRUM_FPGA)),)
+		C_VAR += -DSUPPORT_SPECTRUM_FPGA
+	endif
+	ifneq ($(findstring y,$(SUPPORT_SPECTRUM_CHIP)),)
+		C_VAR += -DSUPPORT_SPECTRUM_CHIP
+	endif
+endif
+
 #specturm user
-ifneq ($(findstring y,$(SUPPORT_SPECTRUM_USER)),)
+ifneq ($(findstring y,$(SUPPORT_SPECTRUM_FFT)),)
 	SOURCE_DIR += executor/fft
-	C_VAR += -DSUPPORT_SPECTRUM_USER
+	C_VAR += -DSUPPORT_SPECTRUM_FFT
 endif
 
 #specturm fft analysis
@@ -166,7 +179,7 @@ includedir_so += -I./lib/libfftw3/x86/include
 libdir_so += -L./lib/libiio/x86/lib
 includedir_so += -I./lib/libiio/arm/include
 else
-	ifneq ($(findstring y,$(SUPPORT_SPECTRUM_USER)),)
+	ifneq ($(findstring y,$(SUPPORT_SPECTRUM_FFT)),)
 		libdir_so += -L./lib/libfftw3/arm/lib
 		includedir_so += -I./lib/libfftw3/arm/include
 	endif
@@ -178,11 +191,11 @@ endif
 
 INCLUDE_DIR = -I. -I./ ${includedir_so} 
 
-LDFLAGS = $(SUB_LIBS)  ${libdir_so}  -lpthread  
+LDFLAGS = $(SUB_LIBS)  ${libdir_so}  -lpthread  -lm -lrt
 
 #fft
-ifneq ($(findstring y,$(SUPPORT_SPECTRUM_USER)),)
-	LDFLAGS += -lm -lz -lfftw3f -lxml2
+ifneq ($(findstring y,$(SUPPORT_SPECTRUM_FFT)),)
+	LDFLAGS += -lz -lfftw3f -lxml2
 endif
 
 ifeq ($(CC), gcc)

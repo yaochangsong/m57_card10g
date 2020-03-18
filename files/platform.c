@@ -68,7 +68,6 @@ bool is_spectrum_continuous_mode(void)
     return spectrum_continuous_mode;
 }
 
-
 int main(int argc, char **argv)
 {
     int debug_level = -1;
@@ -130,14 +129,15 @@ int main(int argc, char **argv)
     executor_init();
 #if defined(SUPPORT_XWFS)
     xwfs_init();
-#endif
     http_requset_init();
+#endif
+    
 
 if(spectrum_aditool_debug == false){
     #ifdef SUPPORT_RF
     rf_init();
     #endif
-    #ifdef SUPPORT_SPECTRUM_USER
+    #ifdef SUPPORT_SPECTRUM_FFT
     spectrum_init();
     #endif
 }
@@ -147,6 +147,7 @@ if(spectrum_aditool_debug == false){
     }
     uloop_run();
 done:
+    executor_close();
     uloop_done();
     return 0;
 }

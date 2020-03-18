@@ -21,7 +21,7 @@
 #include <errno.h>
 #include <linux/spi/spidev.h>
 #include <time.h>
-#ifdef SUPPORT_SPECTRUM_USER
+#ifdef SUPPORT_SPECTRUM_FFT
 #include <fftw3.h>
 #endif
 
@@ -60,7 +60,7 @@
 #include "executor/executor.h"
 
 
-#ifdef SUPPORT_SPECTRUM_USER
+#ifdef SUPPORT_SPECTRUM_FFT
 #include "executor/fft/spectrum.h"
 #include "executor/fft/fft.h"
 #endif

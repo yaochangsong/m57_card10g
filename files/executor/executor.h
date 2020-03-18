@@ -118,8 +118,8 @@ struct sem_st{
     sem_t   kernel_sysn;        /* 频谱分析时，内核处理完数据后，异步消息通知应用层 */
 };
 
-/* 频谱或IQ数据部分变量参数结构体，用作变化的参数传递 */
-struct spectrum_header_param{
+/* 频谱运行中，可能变化的参数 */
+struct spm_run_parm{
     uint32_t scan_bw;
     uint32_t bandwidth;
     uint32_t fft_size;
@@ -136,6 +136,7 @@ struct spectrum_header_param{
     uint8_t d_method;           /* 解调类型 */
     uint8_t type;               /* 数据类型： 频谱数据/IQ数据/音频数据 */
     uint8_t ex_type;            /* 扩展帧类型： 频谱帧/解调帧 */
+    void *fft_ptr;              /* fft数据缓冲区 */
 };
 
 
@@ -177,5 +178,6 @@ extern int executor_tcp_disconnect_notify(void *cl);
 extern int8_t executor_get_command(exec_cmd cmd, uint8_t type, uint8_t ch,  void *data);
 extern int8_t executor_set_enable_command(uint8_t ch);
 extern int8_t executor_set_command(exec_cmd cmd, uint8_t type, uint8_t ch,  void *data, ...);
+extern void executor_close(void);
 
 #endif

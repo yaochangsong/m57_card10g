@@ -15,30 +15,50 @@
 #ifndef _SPM_H_
 #define _SPM_H_
 
+typedef int16_t fft_t;
+typedef int16_t iq_t;
+
+#define MAX_FFT_SIZE  (32768)
+
+enum stream_type {
+    STREAM_IQ = 0,
+    STREAM_FFT,
+    STREAM_ADC,
+    STREAM_NUM,
+};
+
+
 struct spm_backend_ops {
     int (*create)(void);
     ssize_t (*read_iq_data)(void **);
     ssize_t (*read_fft_data)(void **);
-    int (*data_order)(void *);
-    fft_data_type *(*spm_data_order)(fft_data_type *fft_data, size_t fft_len, size_t *order_fft_len,void *arg)
-    int (*send_fft_data)(void *data, size_t len, void *);
-    int (*send_iq_data)(void *data, size_t len, void *);
-    int (*send_cmd)(void *cmd, void *data, size_t len, void *);
-    int (*agc_ctrl)(int ch, void *arg);
-    int (*convet_iq_to_fft)(void *ptr_iq, void *ptr_fft, size_t fft_len);
+    fft_t *(*data_order)(fft_t *, size_t,  size_t *, void *);
+    int (*send_fft_data)(void *, size_t, void *);
+    int (*send_iq_data)(void *, size_t, void *);
+    int (*send_cmd)(void *, void *, size_t, void *);
+    int (*agc_ctrl)(int, void *);
+    int (*convet_iq_to_fft)(void *, void *, size_t);
     int (*set_psd_analysis_enable)(bool);
     int (*get_psd_analysis_result)(void *);
-    int (*save_data)(*void);
-    int (*backtrace_data)(void);
-    int (*close)(void);
+    int (*save_data)(void *, size_t);
+    int (*backtrace_data)(void *, size_t);
+    int (*stream_start)(uint32_t ,uint8_t , int);
+    int (*stream_stop)(uint8_t);
+    int (*close)(void *);
     
 };
+
+
 
 struct spm_context {
     struct poal_config *pdata;
     const struct spm_backend_ops *ops;
+    struct spm_run_parm *run_args;
 };
 
-
+extern void *spm_init(void);
+extern struct spm_context *get_spm_ctx(void);
+extern void spm_deal(struct spm_context *ctx, void *args);
+extern int spm_close(void);
 
 #endif

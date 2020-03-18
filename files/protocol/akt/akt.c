@@ -619,7 +619,7 @@ static int akt_execute_set_command(void *cl)
                 err_code = RET_CODE_PARAMTER_NOT_SET;
                 goto set_exit;
             }
-            io_set_enable_command(IQ_MODE_DISABLE, ch, 0);
+           // io_set_enable_command(IQ_MODE_DISABLE, ch, 0);
             printf_note("ch:%d, sub_ch=%d, au_en:%d,iq_en:%d, %d\n", ch,sub_ch, poal_config->sub_ch_enable.audio_en, poal_config->sub_ch_enable.iq_en);
             enable = (poal_config->sub_ch_enable.iq_en == 0 ? 0 : 1);
             
@@ -647,12 +647,10 @@ static int akt_execute_set_command(void *cl)
             /* 通道IQ使能 */
             if(enable){
                 /* NOTE:The parameter must be a MAIN channel, not a subchannel */
-                io_set_enable_command(IQ_MODE_ENABLE, ch, 0);
+                io_set_enable_command(IQ_MODE_ENABLE, -1, sub_ch, 0);
             }else{
-                io_set_enable_command(IQ_MODE_DISABLE, ch, 0);
+                io_set_enable_command(IQ_MODE_DISABLE, -1,sub_ch, 0);
             }
-           /* 子通道解调开关 */
-            executor_set_command(EX_MID_FREQ_CMD, EX_SUB_CH_ONOFF, sub_ch, &enable);
             break;
         }
 #ifdef SUPPORT_NET_WZ
@@ -736,10 +734,14 @@ static int akt_execute_set_command(void *cl)
             if(bis.cmd == 1){/* start backtrace iq file */
                 printf_note("Start backtrace file:%s, bandwidth=%u\n", bis.filepath, bis.bandwidth);
                 executor_set_command(EX_MID_FREQ_CMD, EX_BANDWITH, ch, &bis.bandwidth);
+                #if defined(SUPPORT_XWFS)
                 ret = xwfs_start_backtrace(bis.filepath);
+                #endif
             }else if(bis.cmd == 0){/* stop backtrace iq file */
                 printf_note("Stop backtrace file:%s\n", bis.filepath);
+                #if defined(SUPPORT_XWFS)
                 ret = xwfs_stop_backtrace(bis.filepath);
+                #endif
             }else{
                 printf_err("error cmd\n");
                 err_code = RET_CODE_PARAMTER_ERR;
@@ -1308,8 +1310,8 @@ uint8_t *akt_assamble_demodulation_data_extend_frame_header_data(uint32_t *len, 
     }
     printf_debug("ext_hdr->duration=%lu, time_interval_ms=%u\n", ext_hdr->duration,time_interval_ms);
 
-    struct spectrum_header_param *header_param;
-    header_param = (struct spectrum_header_param *)config;
+    struct spm_run_parm *header_param;
+    header_param = (struct spm_run_parm *)config;
     ext_hdr->cid = header_param->ch;
     ext_hdr->center_freq = header_param->m_freq;
     ext_hdr->bandwidth = header_param->bandwidth;
@@ -1374,8 +1376,8 @@ uint8_t *akt_assamble_data_extend_frame_header_data(uint32_t *len, void *config)
     printf_debug("ext_hdr->duration=%lu, time_interval_ms=%u\n", ext_hdr->duration,time_interval_ms);
     ext_hdr->datum_type = 1;
 
-    struct spectrum_header_param *header_param;
-    header_param = (struct spectrum_header_param *)config;
+    struct spm_run_parm *header_param;
+    header_param = (struct spm_run_parm *)config;
     ext_hdr->cid = header_param->ch;
     ext_hdr->center_freq = header_param->m_freq;
     ext_hdr->sn = header_param->fft_sn;
@@ -1426,14 +1428,14 @@ uint8_t * akt_assamble_data_frame_header_data(uint32_t *len, void *config)
 {
     DATUM_PDU_HEADER_ST *package_header;
     static unsigned short seq_num[MAX_RADIO_CHANNEL_NUM] = {0};
-    struct spectrum_header_param *header_param;
+    struct spm_run_parm *header_param;
     static uint8_t head_buf[sizeof(DATUM_PDU_HEADER_ST)+sizeof(DATUM_SPECTRUM_HEADER_ST)+sizeof(DATUM_DEMODULATE_HEADER_ST)];
     uint8_t *pextend;
     uint32_t extend_data_header_len;
     struct timeval tv;
 
     printf_debug("akt_assamble_data_frame_header_data. v3\n");
-    header_param = (struct spectrum_header_param *)config;
+    header_param = (struct spm_run_parm *)config;
     printf_debug("header_param->ex_type:%d\n", header_param->ex_type);
     if(header_param->ex_type == SPECTRUM_DATUM)
         pextend = akt_assamble_data_extend_frame_header_data(&extend_data_header_len, config);

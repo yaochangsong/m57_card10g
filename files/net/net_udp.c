@@ -153,7 +153,7 @@ static void udp_read_cb(struct uloop_fd *fd, unsigned int events)
     //list_add(&cl->list, &srv->clients);
     cl->srv = srv;
     //cl->srv->nclients++;
-    printf_note("Receive New UDP data From: %s:%d\n", cl->get_peer_addr(cl), cl->get_peer_port(cl));
+    printf_note("Receive New UDP data[%d] From: %s:%d\n", n, cl->get_peer_addr(cl), cl->get_peer_port(cl));
     if(cl != NULL){
         poal_udp_handle_request(cl, data, n);
         printf_note("Deal Over Free UDP: %s:%d\n", cl->get_peer_addr(cl), cl->get_peer_port(cl));

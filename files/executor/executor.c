@@ -13,6 +13,7 @@
 *  Initial revision.
 ******************************************************************************/
 #include "config.h"
+#include "spm/spm.h"
 
 /**
  * Mutex for the set command, used by command setting related functions. 
@@ -21,14 +22,13 @@ pthread_mutex_t set_cmd_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 struct sem_st work_sem;
 
-
 static void executor_send_config_data_to_clent(void *data)
 {
     printf_note("send data to client\n");
-    struct spectrum_header_param *send_param;
+    struct spm_run_parm *send_param;
     uint8_t *send_data = NULL;
     uint32_t send_data_len = 0;
-    send_param = (struct spectrum_header_param *)data;
+    send_param = (struct spm_run_parm *)data;
     printf_note("ch=%d,bandwidth=%u,m_freq=%llu\n", send_param->ch, send_param->bandwidth, send_param->m_freq);
 #ifdef SUPPORT_PROTOCAL_AKT
     DEVICE_SIGNAL_PARAM_ST notify_param;
@@ -83,7 +83,9 @@ int executor_tcp_disconnect_notify(void *cl)
     io_set_udp_client_info(ucli);
     /* client is 0 */
     if(index == 0){
+        #if defined(SUPPORT_XWFS)
         xwfs_stop_backtrace(NULL);  /* 停止回溯 ，回到正常状态*/
+        #endif
         #ifdef SUPPORT_NET_WZ
         io_set_10ge_net_onoff(0);   /* 客户端离线，关闭万兆传输 */
         #endif
@@ -110,7 +112,7 @@ static inline int8_t executor_wait_kernel_deal(void)
     return 0;
 }
 
-static  int8_t  executor_fragment_scan(uint32_t fregment_num,uint8_t ch, work_mode_type mode)
+static  int8_t  executor_fragment_scan(uint32_t fregment_num,uint8_t ch, work_mode_type mode, void *args)
 {
     struct poal_config *poal_config = &(config_get_config()->oal_config);
 
@@ -118,11 +120,12 @@ static  int8_t  executor_fragment_scan(uint32_t fregment_num,uint8_t ch, work_mo
     uint32_t scan_bw, left_band, fftsize;
     uint32_t scan_count, i;
     uint8_t is_remainder = 0;
-    uint8_t *header_buf;
-    uint32_t header_len = 0;
 
-    /* we need assamble pakege for kernel */
-    struct spectrum_header_param header_param;
+    struct spm_context *spmctx;
+    struct spm_run_parm *r_args;
+    spmctx = (struct spm_context *)args;
+    r_args = spmctx->run_args;
+
     /* 
         Step 1: 扫描次数计算
         扫描次数 = (截止频率 - 开始频�?)/中频扫描带宽，这里中频扫描带宽认为和射频带宽一�?;
@@ -163,8 +166,8 @@ static  int8_t  executor_fragment_scan(uint32_t fregment_num,uint8_t ch, work_mo
     }
     if((scan_count == 0) && (is_remainder == 0))
         return -1;
-    printf_info("e_freq=%llu, s_freq=%llu, fftsize=%u\n", e_freq, s_freq, fftsize);
-    printf_info("###scan_bw =%u,scan_count=%d, is_remainder=%d\n", scan_bw, scan_count, is_remainder);
+    printf_note("e_freq=%llu, s_freq=%llu, fftsize=%u\n", e_freq, s_freq, fftsize);
+    printf_note("###scan_bw =%u,scan_count=%d, is_remainder=%d\n", scan_bw, scan_count, is_remainder);
     //executor_set_command(EX_RF_FREQ_CMD,  EX_RF_MID_BW, ch, &scan_bw);
     /* 
            Step 2: 根据扫描带宽�?从开始频率到截止频率循环扫描
@@ -177,7 +180,7 @@ static  int8_t  executor_fragment_scan(uint32_t fregment_num,uint8_t ch, work_mo
             left_band = scan_bw;
         }
         else{
-        #if defined (SUPPORT_SPECTRUM_USER)
+        #if defined (SUPPORT_SPECTRUM_FFT)
             /*spectrum is more than one fragment */
             if(scan_count > 0){
                 m_freq = (uint64_t)(s_freq + (uint64_t)i * (uint64_t)scan_bw + scan_bw/2);
@@ -192,29 +195,35 @@ static  int8_t  executor_fragment_scan(uint32_t fregment_num,uint8_t ch, work_mo
             m_freq = (uint64_t)(s_freq + (uint64_t)i * (uint64_t)scan_bw + left_band/2);
         #endif
         }
-        header_param.ch = ch;
-        header_param.s_freq = s_freq;
-        header_param.e_freq = e_freq;
-        header_param.bandwidth = left_band;
-        header_param.fft_sn = i;
-        header_param.total_fft = scan_count + is_remainder;
-        header_param.m_freq = m_freq;
-        header_param.fft_size = fftsize;
-        header_param.mode = mode;
-        header_param.freq_resolution = poal_config->multi_freq_fregment_para[ch].fregment[fregment_num].freq_resolution;
+        r_args->ch = ch;
+        r_args->s_freq = s_freq;
+        r_args->e_freq = e_freq;
+        r_args->bandwidth = left_band;
+        r_args->fft_sn = i;
+        r_args->total_fft = scan_count + is_remainder;
+        r_args->m_freq = m_freq;
+        r_args->fft_size = fftsize;
+        r_args->mode = mode;
+        r_args->freq_resolution = poal_config->multi_freq_fregment_para[ch].fregment[fregment_num].freq_resolution;
         /* 为避免在一定带宽下，中心频率过小导致起始频率<0，设置前需要对中频做判断 */
         m_freq =  middle_freq_resetting(scan_bw, m_freq);
         executor_set_command(EX_RF_FREQ_CMD, EX_RF_MID_FREQ, ch, &m_freq);
 #ifdef SUPPORT_PLATFORM_ARCH_ARM
+        io_set_enable_command(PSD_MODE_ENABLE, ch, -1, r_args->fft_size);
     #if defined(SUPPORT_SPECTRUM_KERNEL)
-        executor_set_command(EX_WORK_MODE_CMD, mode, ch, &header_param);
-        io_set_enable_command(PSD_MODE_ENABLE, ch, header_param.fft_size);
+        executor_set_command(EX_WORK_MODE_CMD, mode, ch, r_args);
         executor_wait_kernel_deal();
-    #elif defined (SUPPORT_SPECTRUM_USER)
+    #elif defined (SUPPORT_SPECTRUM_FFT)
         if(is_spectrum_aditool_debug() == false){
-                spectrum_psd_user_deal(&header_param);
+                spectrum_psd_user_deal(r_args);
         }else{
             usleep(500);
+        }
+    #elif defined (SUPPORT_SPECTRUM_V2)
+        if(args != NULL)
+            spm_deal(args, r_args);
+        if(poal_config->enable.psd_en){
+            io_set_enable_command(PSD_MODE_DISABLE, ch, -1, r_args->fft_size);
         }
     #else
         usleep(500);
@@ -232,15 +241,18 @@ static  int8_t  executor_fragment_scan(uint32_t fregment_num,uint8_t ch, work_mo
     return 0;
 }
 
-static inline int8_t  executor_points_scan(uint8_t ch, work_mode_type mode)
+static int8_t  executor_points_scan(uint8_t ch, work_mode_type mode, void *args)
 {
     struct poal_config *poal_config = &(config_get_config()->oal_config);
     uint32_t points_count, i;
     uint64_t c_freq, s_freq, e_freq, m_freq;
-    struct spectrum_header_param header_param;
+    struct spm_context *spmctx;
+    struct spm_run_parm *r_args;
     struct multi_freq_point_para_st *point;
     time_t s_time;
     struct io_decode_param_st decode_param;
+    spmctx = (struct spm_context *)args;
+    r_args = spmctx->run_args;
 
     point = &poal_config->multi_freq_point_param[ch];
     points_count = point->freq_point_cnt;
@@ -250,32 +262,34 @@ static inline int8_t  executor_points_scan(uint8_t ch, work_mode_type mode)
         printf_info("Scan Point [%d]......\n", i);
         s_freq = point->points[i].center_freq - point->points[i].bandwidth/2;
         e_freq = point->points[i].center_freq + point->points[i].bandwidth/2;
-        header_param.ch = ch;
-        header_param.fft_sn = i;
-        header_param.s_freq = s_freq;
-        header_param.e_freq = e_freq;
-        header_param.total_fft = points_count;
-        header_param.fft_size = point->points[i].fft_size;
-        header_param.bandwidth = point->points[i].bandwidth;
-        header_param.m_freq = point->points[i].center_freq;
-        header_param.mode = mode;
-        header_param.d_method = point->points[i].d_method;
-        header_param.scan_bw = point->points[i].bandwidth;
+        r_args->ch = ch;
+        r_args->fft_sn = i;
+        r_args->s_freq = s_freq;
+        r_args->e_freq = e_freq;
+        r_args->total_fft = points_count;
+        r_args->fft_size = point->points[i].fft_size;
+        r_args->bandwidth = point->points[i].bandwidth;
+        r_args->m_freq = point->points[i].center_freq;
+        r_args->mode = mode;
+        r_args->d_method = point->points[i].d_method;
+        r_args->scan_bw = point->points[i].bandwidth;
 
-        header_param.freq_resolution = (float)point->points[i].bandwidth * BAND_FACTOR / (float)point->points[i].fft_size;
-        printf_info("ch=%d, s_freq=%llu, e_freq=%llu, fft_size=%u, d_method=%d\n", ch, s_freq, e_freq, header_param.fft_size,header_param.d_method);
-        printf_info("rf scan bandwidth=%u, middlebw=%u, m_freq=%llu, freq_resolution=%f\n",header_param.scan_bw,header_param.bandwidth , header_param.m_freq, header_param.freq_resolution);
+        r_args->freq_resolution = (float)point->points[i].bandwidth * BAND_FACTOR / (float)point->points[i].fft_size;
+        printf_info("ch=%d, s_freq=%llu, e_freq=%llu, fft_size=%u, d_method=%d\n", ch, s_freq, e_freq, r_args->fft_size,r_args->d_method);
+        printf_info("rf scan bandwidth=%u, middlebw=%u, m_freq=%llu, freq_resolution=%f\n",r_args->scan_bw,r_args->bandwidth , r_args->m_freq, r_args->freq_resolution);
         executor_set_command(EX_RF_FREQ_CMD,  EX_RF_MID_FREQ, ch, &point->points[i].center_freq);
         executor_set_command(EX_MID_FREQ_CMD, EX_BANDWITH, ch, &point->points[ch].bandwidth);
-        //executor_set_command(EX_RF_FREQ_CMD,  EX_RF_MID_BW,   ch, &header_param.scan_bw);
-#if defined(SUPPORT_SPECTRUM_KERNEL)
+        //executor_set_command(EX_RF_FREQ_CMD,  EX_RF_MID_BW,   ch, &r_args->.scan_bw);
+#ifndef SUPPORT_SPECTRUM_FFT
         executor_set_command(EX_MID_FREQ_CMD, EX_MID_FREQ,    ch, &point->points[i].center_freq);
         executor_set_command(EX_MID_FREQ_CMD, EX_FFT_SIZE, ch, &point->points[i].fft_size);
         /* 根据带宽设置边带率 */
-        executor_set_command(EX_CTRL_CMD, EX_CTRL_SIDEBAND, ch, &header_param.scan_bw);
-        executor_set_command(EX_WORK_MODE_CMD,mode, ch, &header_param);
+        executor_set_command(EX_CTRL_CMD, EX_CTRL_SIDEBAND, ch, &r_args->scan_bw);
+        #if defined(SUPPORT_SPECTRUM_KERNEL)
+        executor_set_command(EX_WORK_MODE_CMD,mode, ch, r_args);
+        #endif
         /* notify client that some paramter has changed */
-       // poal_config->send_active((void *)&header_param);
+       // poal_config->send_active((void *)r_args);
         /* 解调参数: 音频 */
         printf_note("enable.audio_en=%d, residence_time=%u,points_count=%u\n",poal_config->enable.audio_en,point->residence_time, points_count);
         if(poal_config->enable.audio_en){
@@ -286,23 +300,29 @@ static inline int8_t  executor_points_scan(uint8_t ch, work_mode_type mode)
             executor_set_command(EX_MID_FREQ_CMD, EX_DEC_BW, ch, &point->points[i].d_bandwith);
             executor_set_command(EX_MID_FREQ_CMD, EX_DEC_RAW_DATA, ch, &point->points[i].center_freq, 
                                 point->points[i].d_bandwith, point->points[i].raw_d_method);
-            io_set_enable_command(AUDIO_MODE_ENABLE, ch, 0);
+            io_set_enable_command(AUDIO_MODE_ENABLE, ch, -1, 0);
         }else{
-            io_set_enable_command(AUDIO_MODE_DISABLE, ch, 0);
+            io_set_enable_command(AUDIO_MODE_DISABLE, ch, -1, 0);
         }
 #endif
         s_time = time(NULL);
         do{
-#if defined(SUPPORT_SPECTRUM_KERNEL)
             if(poal_config->enable.psd_en){
-                io_set_enable_command(PSD_MODE_ENABLE, ch, point->points[i].fft_size);
+                io_set_enable_command(PSD_MODE_ENABLE, ch, -1, point->points[i].fft_size);
             }
+#if defined(SUPPORT_SPECTRUM_KERNEL)
             executor_wait_kernel_deal();
-#elif defined (SUPPORT_SPECTRUM_USER)
+#elif defined (SUPPORT_SPECTRUM_FFT)
             if(is_spectrum_aditool_debug() == false){
-                spectrum_psd_user_deal(&header_param);
+                spectrum_psd_user_deal(r_args);
             }else{
                 usleep(500);
+            }
+#elif defined (SUPPORT_SPECTRUM_V2)
+            if(args != NULL)
+                spm_deal(args, r_args);
+            if(poal_config->enable.psd_en){
+                io_set_enable_command(PSD_MODE_DISABLE, ch, -1, point->points[i].fft_size);
             }
 #endif
             if((poal_config->enable.bit_en == 0 && poal_config->sub_ch_enable.bit_en == 0) || 
@@ -320,7 +340,7 @@ static inline int8_t  executor_points_scan(uint8_t ch, work_mode_type mode)
 }
 
 
-void executor_work_mode_thread(void *arg)
+void executor_spm_thread(void *arg)
 {
     struct poal_config *poal_config = &(config_get_config()->oal_config);
     uint32_t fft_size;
@@ -328,8 +348,7 @@ void executor_work_mode_thread(void *arg)
     uint8_t sub_ch = poal_config->enable.sub_id;
     uint32_t j;
 
-    
-    
+    thread_bind_cpu(1);
     while(1)
     {
         
@@ -386,14 +405,14 @@ loop:   printf_note("######wait to deal work######\n");
                     }
                     if(poal_config->enable.psd_en || poal_config->enable.spec_analy_en){
                         for(j = 0; j < poal_config->multi_freq_fregment_para[ch].freq_segment_cnt; j++){
-                            if(executor_fragment_scan(j, ch, poal_config->work_mode) == -1){
-                                io_set_enable_command(PSD_MODE_DISABLE, ch, 0);
+                            if(executor_fragment_scan(j, ch, poal_config->work_mode, arg) == -1){
+                                io_set_enable_command(PSD_MODE_DISABLE, ch, -1, 0);
                                 usleep(1000);
                                 goto loop;
                             }
                         }
                     }else{
-                        io_set_enable_command(PSD_MODE_DISABLE, ch, 0);
+                        io_set_enable_command(PSD_MODE_DISABLE, ch, -1, 0);
                         sleep(1);
                         goto loop;
                     }
@@ -409,15 +428,15 @@ loop:   printf_note("######wait to deal work######\n");
                     }
 
                     if(poal_config->enable.bit_en || poal_config->sub_ch_enable.bit_en){
-                        if(executor_points_scan(ch, poal_config->work_mode) == -1){
-                            io_set_enable_command(PSD_MODE_DISABLE, ch, 0);
-                            io_set_enable_command(AUDIO_MODE_DISABLE, ch, 0);
+                        if(executor_points_scan(ch, poal_config->work_mode, arg) == -1){
+                            io_set_enable_command(PSD_MODE_DISABLE, ch, -1,  0);
+                            io_set_enable_command(AUDIO_MODE_DISABLE, ch, -1, 0);
                             usleep(1000);
                             goto loop;
                         }
                     }else{
-                        io_set_enable_command(PSD_MODE_DISABLE, ch, 0);
-                        io_set_enable_command(AUDIO_MODE_DISABLE, ch, 0);
+                        io_set_enable_command(PSD_MODE_DISABLE, ch, -1, 0);
+                        io_set_enable_command(AUDIO_MODE_DISABLE, ch, -1, 0);
                         sleep(1);
                         goto loop;
                     }
@@ -447,6 +466,7 @@ static int8_t executor_get_kernel_command(uint8_t type, uint8_t ch, void *data)
 
 static int8_t executor_set_kernel_command(uint8_t type, uint8_t ch, void *data, va_list ap)
 {
+    struct poal_config *poal_config = &(config_get_config()->oal_config);
     switch(type)
      {
         case EX_CHANNEL_SELECT:
@@ -524,7 +544,7 @@ static int8_t executor_set_kernel_command(uint8_t type, uint8_t ch, void *data, 
         }
         case EX_BANDWITH:
         {
-            printf_note("ch:%d, bw:%u\n", ch, *(uint32_t *)data);
+            printf_debug("ch:%d, bw:%u\n", ch, *(uint32_t *)data);
             io_set_bandwidth(ch, *(uint32_t *)data);
             //io_set_side_rate(1.28);
             break;
@@ -772,7 +792,7 @@ int8_t executor_set_enable_command(uint8_t ch)
 
 void executor_timer_task1_cb(struct uloop_timeout *t)
 {
-#ifdef SUPPORT_SPECTRUM_USER
+#ifdef SUPPORT_SPECTRUM_FFT
     spectrum_send_fft_data_interval();
 #endif
     uh_dump_all_client();
@@ -796,17 +816,30 @@ void executor_timer_task_init(void)
 void executor_init(void)
 {
     int ret, i;
-    pthread_t work_id, work_id_iio;
+    pthread_t work_id;
+    void *spmctx;
     struct poal_config *poal_config = &(config_get_config()->oal_config);
+#if defined(SUPPORT_PLATFORM_ARCH_ARM)
+#if defined(SUPPORT_SPECTRUM_KERNEL) 
     io_init();
+#elif defined(SUPPORT_SPECTRUM_V2) 
+    fpga_io_init();
+    spmctx = spm_init();
+    if(spmctx == NULL){
+        printf_err("spm create failed\n");
+        exit(-1);
+    }
+#endif
+#endif /* SUPPORT_PLATFORM_ARCH_ARM */
+
 
     executor_timer_task_init();
     /* set default network */
     executor_set_command(EX_NETWORK_CMD, 0, 0, NULL);
     /* shutdown all channel */
     for(i = 0; i<MAX_RADIO_CHANNEL_NUM ; i++){
-        io_set_enable_command(PSD_MODE_DISABLE, i, 0);
-        io_set_enable_command(AUDIO_MODE_DISABLE, i, 0);
+        io_set_enable_command(PSD_MODE_DISABLE, i, -1, 0);
+        io_set_enable_command(AUDIO_MODE_DISABLE, i, -1, 0);
         //io_set_enable_command(FREQUENCY_BAND_ENABLE_DISABLE, i, 0);
         //executor_set_command(EX_RF_FREQ_CMD, EX_RF_ATTENUATION, 0, &poal_config->rf_para[i].attenuation);
     }
@@ -816,16 +849,24 @@ void executor_init(void)
     printf_note("clear all sub ch\n");
     uint8_t enable =0;
     for(i = 0; i< MAX_SIGNAL_CHANNEL_NUM; i++){
-        printf_note("clear all sub ch %d\n", i);
+        printf_debug("clear all sub ch %d\n", i);
         executor_set_command(EX_MID_FREQ_CMD, EX_SUB_CH_ONOFF, i, &enable);
     }
     sem_init(&(work_sem.notify_deal), 0, 0);
     sem_init(&(work_sem.kernel_sysn), 0, 0);
-    ret=pthread_create(&work_id,NULL,(void *)executor_work_mode_thread, NULL);
+
+    ret=pthread_create(&work_id,NULL,(void *)executor_spm_thread, spmctx);
     if(ret!=0)
-        perror("pthread cread work_id");
+        perror("pthread cread spm");
     pthread_detach(work_id);
 }
 
+void executor_close(void)
+{
+#ifdef SUPPORT_SPECTRUM_V2
+    fpga_io_close();
+    spm_close();
+#endif
+}
 
 

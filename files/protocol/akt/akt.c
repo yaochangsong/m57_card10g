@@ -763,7 +763,7 @@ static int akt_execute_set_command(void *cl)
             char filename[FILE_PATH_MAX_LEN];
             memcpy(filename, header->buf, FILE_PATH_MAX_LEN);
             #if defined(SUPPORT_XWFS)
-            ret = xwfs_delete_file();
+            ret = xwfs_delete_file(filename);
             #endif
             printf_note("Delete file:%s, %d\n", filename, ret);
             if(ret != 0){

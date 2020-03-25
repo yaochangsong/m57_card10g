@@ -40,6 +40,8 @@ extern int cmd_file_backtrace(struct uh_client *cl, void **arg, void **content);
 extern int cmd_file_list(struct uh_client *cl, void **arg, void **content);
 extern int cmd_file_find(struct uh_client *cl, void **arg, void **content);
 extern int cmd_ping(struct uh_client *cl, void **arg, void **content);
+extern int cmd_netset(struct uh_client *cl, void **arg, void **content);
+extern int cmd_net_client(struct uh_client *cl, void **arg, void **content);
 
 
 #endif

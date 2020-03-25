@@ -141,7 +141,7 @@ static  int8_t  executor_fragment_scan(uint32_t fregment_num,uint8_t ch, work_mo
     }
 #endif
     if(config_read_by_cmd(EX_RF_FREQ_CMD, EX_RF_MID_BW, ch, &scan_bw) == -1){
-            printf_err("Error read scan bindwidth=%u\n", scan_bw);
+            printf_err("Error read scan bandwidth=%u\n", scan_bw);
             return -1;
     }
     executor_set_command(EX_MID_FREQ_CMD, EX_BANDWITH, ch, &scan_bw);
@@ -616,6 +616,65 @@ static int8_t executor_set_ctrl_command(uint8_t type, uint8_t ch, void *data, va
     return 0;
 }
 
+static int executor_set_all_network(struct network_st *_network)
+{
+    struct in_addr ipaddr, dst_addr, netmask, gateway;
+    struct network_st *network = _network;
+    char *ipstr=NULL;
+    int need_set = 0;
+#ifdef SUPPORT_NET_WZ
+    /* 设置默认板卡万兆ip和端口 */
+    io_set_local_10g_net(ntohl(network->ipaddress), network->port);
+#endif
+    if(get_ipaddress(&ipaddr) != -1){
+        if(ipaddr.s_addr == network->ipaddress){
+            printf_note("ipaddress[%s] is not change!\n", inet_ntoa(ipaddr));
+            goto set_netmask;
+        }
+        printf_note("ipaddress[%s] is changed to: ", inet_ntoa(ipaddr));
+        dst_addr.s_addr = network->ipaddress;
+        need_set ++;
+        printfn("[%s]\n", inet_ntoa(dst_addr));
+#ifdef SUPPORT_LCD
+        lcd_printf(EX_NETWORK_CMD, EX_NETWORK_IP, &network->ipaddress, NULL);
+#endif
+    }
+    
+set_netmask:
+    if(get_netmask(&netmask) != -1){
+         if(netmask.s_addr == network->netmask){
+            printf_note("netmask[%s] is not change!\n", inet_ntoa(netmask));
+            goto set_gateway;
+        }
+        printf_note("netmask[%s] is changed to: ", inet_ntoa(netmask));
+        dst_addr.s_addr = network->netmask;
+        need_set ++;
+        printfn("[%s]\n", inet_ntoa(dst_addr));
+#ifdef SUPPORT_LCD
+        lcd_printf(EX_NETWORK_CMD, EX_NETWORK_MASK, &network->netmask, NULL);
+#endif
+    }
+    
+set_gateway:
+    if(get_gateway(&gateway) != -1){
+         if(gateway.s_addr == network->gateway){
+            printf_note("gateway[%s] is not change!\n", inet_ntoa(gateway));
+            if(need_set != 0)
+                goto set_network;
+            else
+                return -1;
+        }
+        printf_note("gateway[%s] is changed to: ", inet_ntoa(gateway));
+        dst_addr.s_addr = network->gateway;
+        printfn("[%s]\n", inet_ntoa(dst_addr));
+#ifdef SUPPORT_LCD
+        lcd_printf(EX_NETWORK_CMD, EX_NETWORK_MASK, &network->gateway, NULL);
+#endif
+    }
+    
+set_network:
+    return io_set_network_to_interfaces((void *)network);
+}
 
 
 int8_t executor_set_command(exec_cmd cmd, uint8_t type, uint8_t ch,  void *data, ...)
@@ -656,23 +715,8 @@ int8_t executor_set_command(exec_cmd cmd, uint8_t type, uint8_t ch,  void *data,
         }
         case EX_NETWORK_CMD:
         {
-            struct in_addr ipaddr, dst_ipaddr;
-            struct network_st *network = &poal_config->network;
-            char *ipstr=NULL;
-#ifdef SUPPORT_NET_WZ
-            /* 设置万兆ip和端口 */
-            io_set_local_10g_net(ntohl(network->ipaddress), network->port);
-#endif
-            if(get_ipaddress(&ipaddr) != -1){
-                printf_note("ipaddress[%s]\n", inet_ntoa(ipaddr));
-                if(ipaddr.s_addr == network->ipaddress){
-                    printf_note("ipaddress[%s] is not change!\n", inet_ntoa(ipaddr));
-                    break;
-                }
-                dst_ipaddr.s_addr = network->ipaddress;
-                printf_note("ipaddress[%s] is changed to [%s]\n", inet_ntoa(ipaddr), inet_ntoa(dst_ipaddr));
-            }
-            io_set_network_to_interfaces((void *)&poal_config->network);
+            if(type == 0)
+                executor_set_all_network(&poal_config->network);
             break;
         }
         case EX_CTRL_CMD:

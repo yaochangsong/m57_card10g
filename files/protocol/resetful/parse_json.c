@@ -16,6 +16,77 @@
 #include "parse_cmd.h"
 
 
+int parse_json_client_net(int ch, const char * const body)
+{
+    struct poal_config *config = &(config_get_config()->oal_config);
+    cJSON *node, *value;
+    cJSON *root = cJSON_Parse(body);
+    if (root == NULL){
+        const char *error_ptr = cJSON_GetErrorPtr();
+        if (error_ptr != NULL){
+            fprintf(stderr, "Error before: %s\n", error_ptr);
+        }
+        return RESP_CODE_PARSE_ERR;
+    }
+
+    cJSON *client = NULL;
+    struct sockaddr_in sclient;
+    client = cJSON_GetObjectItem(root, "array");
+    if(client!=NULL){
+        for(int i = 0; i < cJSON_GetArraySize(client); i++){
+            node = cJSON_GetArrayItem(client, i);
+            value = cJSON_GetObjectItem(node, "ipaddr");
+            if(value!=NULL&& cJSON_IsString(value)){
+                sclient.sin_addr.s_addr = inet_addr(value->valuestring);
+                printf_note("client addr: %s, 0x%x\n", value->valuestring, sclient.sin_addr.s_addr);
+            }
+            value = cJSON_GetObjectItem(node, "port");
+            if(value!=NULL&& cJSON_IsNumber(value)){
+                sclient.sin_port = ntohs(value->valueint);
+                printf_note("port: %d, 0x%x\n", value->valueint, value->valueint);
+            }
+            udp_add_client_to_list(&sclient, ch);
+        }
+    }
+    
+    return RESP_CODE_OK;
+}
+
+
+int parse_json_net(const char * const body)
+{
+    struct poal_config *config = &(config_get_config()->oal_config);
+    cJSON *root = cJSON_Parse(body);
+    cJSON *node, *value;
+    if (root == NULL)
+    {
+        const char *error_ptr = cJSON_GetErrorPtr();
+        if (error_ptr != NULL)
+        {
+            fprintf(stderr, "Error before: %s\n", error_ptr);
+        }
+        return RESP_CODE_PARSE_ERR;
+    }
+    value = cJSON_GetObjectItem(root, "ipaddr");
+    if(value!=NULL&&cJSON_IsString(value)){
+        config->network.ipaddress = inet_addr(value->valuestring);
+        printf_note("set ipaddr: %s, 0x%x\n", value->valuestring, config->network.ipaddress);
+    }
+    value = cJSON_GetObjectItem(root, "netmask");
+    if(value!=NULL&&cJSON_IsString(value)){
+        config->network.netmask = inet_addr(value->valuestring);
+        printf_note("set netmask: %s, 0x%x\n", value->valuestring, config->network.netmask);
+    }
+    value = cJSON_GetObjectItem(root, "gateway");
+    if(value!=NULL&&cJSON_IsString(value)){
+        config->network.gateway = inet_addr(value->valuestring);
+        printf_note("set gateway: %s, 0x%x\n", value->valuestring, config->network.gateway);
+    }
+    executor_set_command(EX_NETWORK_CMD, 0, 0, NULL);
+    
+    return RESP_CODE_OK;
+}
+
 int parse_json_rf_multi_value(const char * const body)
 {
     return RESP_CODE_OK;
@@ -74,7 +145,7 @@ int parse_json_multi_band(const char * const body,uint8_t cid)
     multi_band = cJSON_GetObjectItem(root, "array");
     if(multi_band!=NULL){
         for(int i = 0; i < cJSON_GetArraySize(multi_band); i++){
-            node = cJSON_GetArrayItem(multi_band, i);            
+            node = cJSON_GetArrayItem(multi_band, i);
             value = cJSON_GetObjectItem(node, "index");
             if(cJSON_IsNumber(value)){
                 subcid=value->valueint;

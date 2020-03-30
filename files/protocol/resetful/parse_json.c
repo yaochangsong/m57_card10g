@@ -184,6 +184,14 @@ int parse_json_multi_band(const char * const body,uint8_t cid)
         }
          
     }    
+    if(config->multi_freq_fregment_para[cid].freq_segment_cnt == 0){
+        config->work_mode = OAL_NULL_MODE;
+        printf_warn("Unknown Work Mode\n");
+    }else if(config->multi_freq_fregment_para[cid].freq_segment_cnt == 1){
+        config->work_mode = OAL_FAST_SCAN_MODE;
+    }else{
+        config->work_mode = OAL_MULTI_ZONE_SCAN_MODE;
+    }
     printfd("\n*****************解析完成************\n");
     return RESP_CODE_OK;
 }
@@ -245,6 +253,7 @@ int parse_json_muti_point(const char * const body,uint8_t cid)
     uint32_t subcid;
     muti_point = cJSON_GetObjectItem(root, "array");
     if(muti_point!=NULL){
+        config->multi_freq_point_param[cid].freq_point_cnt = cJSON_GetArraySize(muti_point);
         for(int i = 0; i < cJSON_GetArraySize(muti_point); i++){
             node = cJSON_GetArrayItem(muti_point, i);            
             value = cJSON_GetObjectItem(node, "index");
@@ -305,6 +314,14 @@ int parse_json_muti_point(const char * const body,uint8_t cid)
         }
          
     }  
+    if(config->multi_freq_point_param[cid].freq_point_cnt == 0){
+        config->work_mode = OAL_NULL_MODE;
+        printf_warn("Unknown Work Mode\n");
+    }else if(config->multi_freq_point_param[cid].freq_point_cnt == 1){
+        config->work_mode = OAL_FAST_SCAN_MODE;
+    }else{
+        config->work_mode = OAL_MULTI_ZONE_SCAN_MODE;
+    }
     printfd("\n*****************解析完成************\n");
     return RESP_CODE_OK;
 }

@@ -1,10 +1,10 @@
 #arch: x86 arm
-SUPPORT_PLAT_FORM_ARCH=x86
+SUPPORT_PLAT_FORM_ARCH=arm
 #debug
 SUPPORT_GDB_DEBUG=n
 
 #Protocal Support: http akt xnrp
-SUPPORT_PROTOCAL="http  resetful akt"
+SUPPORT_PROTOCAL="http  resetful"
 
 #data store format support: json xml
 SUPPORT_DAO="json"
@@ -19,8 +19,8 @@ SUPPORT_PROJECT_SSA=n
 SUPPORT_PROJECT_WD_XCR=y
 
 #spectrum fft or kernel
-SUPPORT_SPECTRUM_V2=n
-SUPPORT_SPECTRUM_FPGA=n
+SUPPORT_SPECTRUM_V2=y
+SUPPORT_SPECTRUM_FPGA=y
 SUPPORT_SPECTRUM_CHIP=n
 #old mode
 SUPPORT_SPECTRUM_KERNEL=n

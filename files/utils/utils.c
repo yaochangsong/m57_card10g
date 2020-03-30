@@ -317,8 +317,7 @@ int read_file(void *pdata, unsigned int data_len, char *filename)
         return -1;
     }
 
-    fread(pdata,1,data_len,file);
-
+    fread(pdata,data_len,1,file);
     fclose(file);
 
     return 0;
@@ -475,13 +474,30 @@ char *get_build_time(void)
     return data;
 }
 
+char *get_jenkins_version(void)
+{
+#ifdef SUPPORT_PLATFORM_ARCH_ARM
+    #define J_FILE_NAME "/etc/VERSION"
+#else
+    #define J_FILE_NAME "conf/VERSION"
+#endif
+
+    static char version[16] = {"0"};
+    
+    read_file(version, sizeof(version)-1, J_FILE_NAME);
+   
+    return version;
+}
+
 char *get_version_string(void)
 {
    static char version[64]={0};
-   sprintf(version, "%s(%s-%s)", PLATFORM_VERSION, get_build_time(), __TIME__);
-   printf_warn("%s\n", version);
+   sprintf(version, "%s(%s-%s)", PLATFORM_VERSION,get_build_time(), __TIME__);
+  // sprintf(version, "%s_%s(%s-%s)", PLATFORM_VERSION,get_jenkins_version(), get_build_time(), __TIME__);
+   printf_debug("%s\n", version);
    return version;
 }
+
 
 
 /* 将线程绑定到某个CPU上 */

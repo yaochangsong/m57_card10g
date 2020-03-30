@@ -26,6 +26,7 @@
 #include "config.h"
 #include "spm.h"
 #include "spm_fpga.h"
+#include "../../protocol/resetful/data_frame.h"
 
 static int spm_stream_stop(enum stream_type type);
 
@@ -225,6 +226,7 @@ static fft_t *spm_data_order(fft_t *fft_data,
 }
 
 
+
 static int spm_send_fft_data(void *data, size_t fft_len, void *arg)
 {
     uint8_t *ptr = NULL, *ptr_header = NULL;
@@ -236,15 +238,21 @@ static int spm_send_fft_data(void *data, size_t fft_len, void *arg)
     if(data == NULL || fft_len == 0 || arg == NULL)
         return -1;
     data_byte_size = fft_len * sizeof(fft_t);
-#ifdef SUPPORT_PROTOCAL_AKT
+#if (defined SUPPORT_PROTOCAL_AKT)
     struct spm_run_parm *hparam;
     hparam = (struct spm_run_parm *)arg;
     hparam->data_len = data_byte_size; 
     hparam->type = SPECTRUM_DATUM_FLOAT;
     hparam->ex_type = SPECTRUM_DATUM;
     ptr_header = akt_assamble_data_frame_header_data(&header_len, arg);
+#elif defined(SUPPORT_PROTOCAL_RESETFUL)
+    struct spm_run_parm *hparam;
+    hparam = (struct spm_run_parm *)arg;
+    hparam->data_len = data_byte_size; 
+    hparam->type = DEFH_DTYPE_FLOAT;
+    hparam->ex_type = DFH_EX_TYPE_PSD;
+    ptr_header = resetful_assamble_frame_data(&header_len, arg);
 #endif
-    
     ptr = (uint8_t *)safe_malloc(header_len+ data_byte_size+2);
     if (!ptr){
         printf_err("malloc failed\n");

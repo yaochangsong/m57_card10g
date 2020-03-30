@@ -114,6 +114,8 @@ int spi_init(void)
     for(int i = 0; i< ARRAY_SIZE(spi_node); i++){
         if(ptr[i].name != NULL){
             ptr[i].fd =  open(ptr[i].name,O_RDWR);
+             if(ptr[i].func_code == SPI_FUNC_RF)   
+                mode = SPI_CPOL|SPI_CPHA ;
             if(ioctl(ptr[i].fd, SPI_IOC_WR_MODE,&mode) <0){
                 printf_err("can't set spi mode\n");
                 continue;
@@ -148,7 +150,7 @@ static ssize_t prase_recv_data(uint8_t cmd, uint8_t *recv_buffer, size_t data_le
     }
     ptr_data += data_len -status_len;
     status = *ptr_data;
-    printf_info("status=%d\n", status);
+    printf_debug("status=%d\n", status);
     return status;
 }
 
@@ -181,18 +183,18 @@ ssize_t spi_rf_set_command(rf_spi_set_cmd_code cmd, void *data)
     if(found == 0 || spi_fd == -1){
         return -1;
     }
-    printf_info("send frame buffer[%d]:", frame_size);
+    printf_debug("send frame buffer[%d]:", frame_size);
     for(int i = 0; i< frame_size; i++)
-        printfi("%02x ", frame_buffer[i]);
-    printfi("\n");
+        printfd("%02x ", frame_buffer[i]);
+    printfd("\n");
     ret = spi_send_data(spi_fd, frame_buffer, frame_size, recv_buffer, recv_size);
     if(ret < 0){
         return NULL;
     }
-    printf_info("receive data buffer[%d]:", recv_size);
+    printf_debug("receive data buffer[%d]:", recv_size);
     for(int i = 0; i< recv_size; i++)
-        printfi("0x%x ", recv_buffer[i]);
-    printfi("\n");
+        printfd("0x%x ", recv_buffer[i]);
+    printfd("\n");
     ret = prase_recv_data(cmd, recv_buffer, data_len, NULL);
     if(ret != 0)
         return -1;
@@ -227,18 +229,18 @@ ssize_t spi_rf_get_command(rf_spi_get_cmd_code cmd, void *data)
     if(found == 0 || spi_fd == -1){
         return -1;
     }
-    printf_info("send frame buffer[%d]:", frame_size);
+    printf_debug("send frame buffer[%d]:", frame_size);
     for(int i = 0; i< frame_size; i++)
-        printfi("0x%x ", frame_buffer[i]);
-    printfi("\n");
+        printfd("0x%x ", frame_buffer[i]);
+    printfd("\n");
     ret = spi_send_data(spi_fd, frame_buffer, frame_size, recv_buffer, recv_size);
     if(ret < 0){
         return -1;
     }
-    printf_info("receive data buffer[%d]:", recv_size);
+    printf_debug("receive data buffer[%d]:", recv_size);
     for(int i = 0; i< recv_size; i++)
-        printfi("0x%x ", recv_buffer[i]);
-    printfi("\n");
+        printfd("0x%x ", recv_buffer[i]);
+    printfd("\n");
     ret = prase_recv_data(cmd, recv_buffer, data_len,data);
     if(ret != 0)
         return -1;

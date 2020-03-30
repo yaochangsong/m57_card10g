@@ -378,8 +378,10 @@ loop:   printf_note("######wait to deal work######\n");
         
         poal_config->enable.bit_reset = false;
         printf_note("-------------------------------------\n");
+        #if (defined SUPPORT_PROTOCAL_AKT) || (defined SUPPORT_PROTOCAL_XNRP) 
         poal_config->assamble_response_data = executor_assamble_header_response_data_cb;
         poal_config->send_active = executor_send_data_to_clent_cb;
+        #endif
         if(poal_config->work_mode == OAL_FAST_SCAN_MODE){
             printf_note("            FastScan             \n");
         }else if(poal_config->work_mode == OAL_MULTI_ZONE_SCAN_MODE){
@@ -506,13 +508,13 @@ static int8_t executor_set_kernel_command(uint8_t type, uint8_t ch, void *data, 
         case EX_DEC_RAW_DATA:
         {
             uint64_t  middle_freq;
-            uint32_t bindwidth;
+            uint32_t bandwidth;
             uint8_t  d_method;
             middle_freq = *(uint64_t *)data;
-            bindwidth = va_arg(ap, uint32_t);
+            bandwidth = va_arg(ap, uint32_t);
             d_method = (uint8_t)va_arg(ap, uint32_t);
-            //printf_warn("EX_DEC_RAW_DATA: ch=%d, middle_freq=%llu, bindwidth=%u, d_method=%d\n", ch, middle_freq, bindwidth, d_method);
-            io_set_dec_parameter(ch, middle_freq, d_method, bindwidth);
+            //printf_warn("EX_DEC_RAW_DATA: ch=%d, middle_freq=%llu, bandwidth=%u, d_method=%d\n", ch, middle_freq, bandwidth, d_method);
+            io_set_dec_parameter(ch, middle_freq, d_method, bandwidth);
             break;
         }
         case EX_SMOOTH_TIME:
@@ -687,11 +689,17 @@ int8_t executor_set_command(exec_cmd cmd, uint8_t type, uint8_t ch,  void *data,
      {
         case EX_MID_FREQ_CMD:
         {
+#ifdef SUPPORT_LCD
+            lcd_printf(cmd, type,data, &ch);
+#endif
             executor_set_kernel_command(type, ch, data, argp);
             break;
         }
         case EX_RF_FREQ_CMD:
         {
+#ifdef SUPPORT_LCD
+            lcd_printf(cmd, type,data, &ch);
+#endif
             rf_set_interface(type, ch, data);
             //executor_set_rf_command(type,ch, data);
             break;
@@ -709,8 +717,10 @@ int8_t executor_set_command(exec_cmd cmd, uint8_t type, uint8_t ch,  void *data,
             char *pbuf= NULL;
             uint32_t len;
             printf_debug("set work mode[%d]\n", type);
+            #if (defined SUPPORT_PROTOCAL_AKT) || (defined SUPPORT_PROTOCAL_XNRP) 
             pbuf = poal_config->assamble_response_data(&len, data);
             io_set_work_mode_command((void *)pbuf);
+            #endif
             break;
         }
         case EX_NETWORK_CMD:

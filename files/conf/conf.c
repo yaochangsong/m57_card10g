@@ -165,6 +165,14 @@ int8_t config_save_batch(exec_cmd cmd, uint8_t type,s_config *config)
     return 0;
 }
 
+int8_t config_save_all(void)
+{
+#ifdef SUPPORT_DAO_JSON
+    json_write_config_file(&config);
+#endif
+}
+
+
 /******************************************************************************
 * FUNCTION:
 *     config_write_data
@@ -227,7 +235,7 @@ int8_t config_write_data(exec_cmd cmd, uint8_t type, uint8_t ch, void *data)
                     poal_config->rf_para[ch].mid_freq = *(int64_t *)data;
                     break;
                 case EX_RF_MID_BW:
-                    poal_config->rf_para[ch].mid_bw = *(int32_t *)data;
+                    poal_config->rf_para[ch].mid_bw = *(uint32_t *)data;
                     break;
                 case EX_RF_MODE_CODE:
                     poal_config->rf_para[ch].rf_mode_code = *(int8_t *)data;

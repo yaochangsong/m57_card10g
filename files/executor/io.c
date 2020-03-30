@@ -526,6 +526,30 @@ void io_set_smooth_time(uint16_t stime)
 #endif
 }
 
+int8_t io_fill_mid_rf_param(uint8_t gain_mode, uint8_t gain_val)
+{
+    int ret = -1;
+#if defined(SUPPORT_SPECTRUM_KERNEL)
+    typedef struct _DEVICE_RF_INFO{
+        uint8_t cid;
+        uint8_t patten_id;
+        uint8_t gain_patten_id;
+        uint16_t gain_val;
+        uint16_t auto_gain_time;
+        int8_t mid_freq_amplitude;
+        uint8_t bandwith_id;
+        uint8_t antenna_sel;
+    }__attribute__ ((packed)) DEVICE_RF_INFO_ST;
+    
+    DEVICE_RF_INFO_ST args;
+    args.gain_patten_id = gain_mode;
+    args.gain_val = gain_val;
+    if (io_ctrl_fd > 0)
+        ret = ioctl(io_ctrl_fd,IOCTL_RF_PARAM, &args);
+#endif
+    return ret;
+}
+
 
 /* 设置FPGA校准值 */
 void io_set_calibrate_val(uint32_t ch, uint32_t  cal_value)
@@ -764,17 +788,6 @@ int8_t io_set_work_mode_command(void *data)
     return 0;
 }
 
-int8_t io_fill_mid_rf_param(void *args)
-{
-    int ret = -1;
-#if defined(SUPPORT_PLATFORM_ARCH_ARM)
-#if defined(SUPPORT_SPECTRUM_KERNEL)
-    if (io_ctrl_fd > 0)
-        ret = ioctl(io_ctrl_fd,IOCTL_RF_PARAM,args);
-#endif
-#endif
-    return ret;
-}
 
 int8_t io_set_enable_command(uint8_t type, int ch, int subc_ch, uint32_t fftsize)
 {

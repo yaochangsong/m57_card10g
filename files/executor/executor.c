@@ -273,12 +273,14 @@ static int8_t  executor_points_scan(uint8_t ch, work_mode_type mode, void *args)
         r_args->mode = mode;
         r_args->d_method = point->points[i].d_method;
         r_args->scan_bw = point->points[i].bandwidth;
+        r_args->gain_mode = poal_config->rf_para[ch].gain_ctrl_method;
+        r_args->gain_value = poal_config->rf_para[ch].mgc_gain_value;
 
         r_args->freq_resolution = (float)point->points[i].bandwidth * BAND_FACTOR / (float)point->points[i].fft_size;
-        printf_info("ch=%d, s_freq=%llu, e_freq=%llu, fft_size=%u, d_method=%d\n", ch, s_freq, e_freq, r_args->fft_size,r_args->d_method);
-        printf_info("rf scan bandwidth=%u, middlebw=%u, m_freq=%llu, freq_resolution=%f\n",r_args->scan_bw,r_args->bandwidth , r_args->m_freq, r_args->freq_resolution);
+        printf_note("ch=%d, s_freq=%llu, e_freq=%llu, fft_size=%u, d_method=%d\n", ch, s_freq, e_freq, r_args->fft_size,r_args->d_method);
+        printf_note("rf scan bandwidth=%u, middlebw=%u, m_freq=%llu, freq_resolution=%f\n",r_args->scan_bw,r_args->bandwidth , r_args->m_freq, r_args->freq_resolution);
         executor_set_command(EX_RF_FREQ_CMD,  EX_RF_MID_FREQ, ch, &point->points[i].center_freq);
-        executor_set_command(EX_MID_FREQ_CMD, EX_BANDWITH, ch, &point->points[ch].bandwidth);
+        executor_set_command(EX_MID_FREQ_CMD, EX_BANDWITH, ch, &point->points[i].bandwidth);
         //executor_set_command(EX_RF_FREQ_CMD,  EX_RF_MID_BW,   ch, &r_args->.scan_bw);
 #ifndef SUPPORT_SPECTRUM_FFT
         executor_set_command(EX_MID_FREQ_CMD, EX_MID_FREQ,    ch, &point->points[i].center_freq);

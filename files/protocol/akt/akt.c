@@ -542,7 +542,7 @@ static int akt_execute_set_command(void *cl)
         case RF_GAIN_MODE_CMD:
             check_valid_channel(header->buf[0]);
             poal_config->rf_para[ch].gain_ctrl_method = header->buf[1];
-            executor_set_command(EX_RF_FREQ_CMD, EX_RF_GAIN_MODE, ch, &poal_config->rf_para[ch].gain_ctrl_method);
+            //executor_set_command(EX_RF_FREQ_CMD, EX_RF_GAIN_MODE, ch, &poal_config->rf_para[ch].gain_ctrl_method);
             break;
         case RF_AGC_CMD:
             check_valid_channel(header->buf[0]);

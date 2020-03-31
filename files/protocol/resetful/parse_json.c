@@ -15,6 +15,70 @@
 #include "config.h"
 #include "parse_cmd.h"
 
+static inline bool str_to_int(char *str, int *ivalue, bool(*_check)(int))
+{
+    char *end;
+    int value;
+    
+    if(str == NULL || ivalue == NULL)
+        return false;
+    
+    value = (int) strtol(str, &end, 10);
+    if (str == end){
+        return false;
+    }
+    *ivalue = value;
+    if(*_check == NULL){
+         printf_note("null func\n");
+         return true;
+    }
+       
+    return ((*_check)(value));
+}
+
+static inline bool str_to_uint(char *str, uint32_t *ivalue, bool(*_check)(int))
+{
+    char *end;
+    uint32_t value;
+    
+    if(str == NULL || ivalue == NULL)
+        return false;
+    
+    value = (uint32_t) strtoul(str, &end, 10);
+    if (str == end){
+        return false;
+    }
+    *ivalue = value;
+    if(*_check == NULL){
+         return true;
+    }
+       
+    return ((*_check)(value));
+}
+
+
+ 
+
+static inline bool str_to_u64(char *str, uint64_t *ivalue, bool(*_check)(int))
+{
+    char *end;
+    uint64_t value;
+    
+    if(str == NULL || ivalue == NULL)
+        return false;
+    value = (uint64_t) strtoull(str, &end, 10);
+    if (str == end){
+        return false;
+    }
+    *ivalue = value;
+    if(*_check == NULL){
+         return true;
+    }
+       
+    return ((*_check)(value));
+}
+
+
 
 int parse_json_client_net(int ch, const char * const body)
 {
@@ -103,6 +167,7 @@ int parse_json_multi_band(const char * const body,uint8_t cid)
      printfd(" \n*************开始解析的body多频段数据消息*****************\n");
      cJSON *node, *value;
      uint32_t subcid;
+     int code = RESP_CODE_OK;
      struct poal_config *config = &(config_get_config()->oal_config);
      cJSON *root = cJSON_Parse(body);
     if (root == NULL)
@@ -153,15 +218,24 @@ int parse_json_multi_band(const char * const body,uint8_t cid)
                  printfd("index:%d,subcid=%d,",config->multi_freq_fregment_para[cid].fregment[subcid].index,subcid);
             }
             value = cJSON_GetObjectItem(node, "startFrequency");
-            printfd("value:%d, ",cJSON_IsNumber(value));
-            if(cJSON_IsNumber(value)){
-                config->multi_freq_fregment_para[cid].fregment[subcid].start_freq=value->valueint;
-                printfd("startFrequency:%d, ",config->multi_freq_fregment_para[cid].fregment[subcid].start_freq);
+            if(cJSON_IsString(value)){
+                uint64_t startFrequency = 0;
+                if(str_to_u64(value->valuestring, &startFrequency, NULL) == false){
+                    code = RESP_CODE_PARSE_ERR;
+                }else{
+                    config->multi_freq_fregment_para[cid].fregment[subcid].start_freq=startFrequency;
+                    printfd("startFrequency:%llu, ",config->multi_freq_fregment_para[cid].fregment[subcid].start_freq);
+                }
             } 
             value = cJSON_GetObjectItem(node, "endFrequency");
-            if(cJSON_IsNumber(value)){
-                config->multi_freq_fregment_para[cid].fregment[subcid].end_freq=value->valueint;
-                 printfd("endFrequency:%d, ", config->multi_freq_fregment_para[cid].fregment[subcid].end_freq);
+            if(cJSON_IsString(value)){
+                uint64_t endFrequency = 0;
+                if(str_to_u64(value->valuestring, &endFrequency, NULL) == false){
+                    code = RESP_CODE_PARSE_ERR;
+                }else{
+                    config->multi_freq_fregment_para[cid].fregment[subcid].end_freq=endFrequency;
+                    printfd("endFrequency:%llu, ", config->multi_freq_fregment_para[cid].fregment[subcid].end_freq);
+                }
             } 
             value = cJSON_GetObjectItem(node, "step");
             if(cJSON_IsNumber(value)){
@@ -169,9 +243,14 @@ int parse_json_multi_band(const char * const body,uint8_t cid)
                  printfd("step:%d, ",config->multi_freq_fregment_para[cid].fregment[subcid].step);
             }
             value = cJSON_GetObjectItem(node, "freqResolution");
-            if(cJSON_IsNumber(value)){
-                config->multi_freq_fregment_para[cid].fregment[subcid].freq_resolution=value->valuedouble;
-                 printfd("freqResolution:%f, ",config->multi_freq_fregment_para[cid].fregment[subcid].freq_resolution);
+            if(cJSON_IsString(value)){
+                uint64_t freqResolution = 0;
+                if(str_to_u64(value->valuestring, &freqResolution, NULL) == false){
+                    code = RESP_CODE_PARSE_ERR;
+                }else{
+                     config->multi_freq_fregment_para[cid].fregment[subcid].freq_resolution=freqResolution;
+                     printfd("freqResolution:%f, ",config->multi_freq_fregment_para[cid].fregment[subcid].freq_resolution);
+                }
             }
             value = cJSON_GetObjectItem(node, "fftSize");
             if(cJSON_IsNumber(value)){
@@ -193,20 +272,19 @@ int parse_json_multi_band(const char * const body,uint8_t cid)
         config->work_mode = OAL_MULTI_ZONE_SCAN_MODE;
     }
     printfd("\n*****************解析完成************\n");
-    return RESP_CODE_OK;
+    return code;
 }
 
 int parse_json_muti_point(const char * const body,uint8_t cid)
 {
-     printfd(" \n*************开始解析的body多频点数据消息*****************\n");
-     cJSON *node, *value;
-     struct poal_config *config = &(config_get_config()->oal_config);
-     cJSON *root = cJSON_Parse(body);
-    if (root == NULL)
-    {
+    printfn(" \n*************开始解析的body多频点数据消息*****************\n");
+    cJSON *node, *value;
+    int code = RESP_CODE_OK;
+    struct poal_config *config = &(config_get_config()->oal_config);
+    cJSON *root = cJSON_Parse(body);
+    if (root == NULL){
         const char *error_ptr = cJSON_GetErrorPtr();
-        if (error_ptr != NULL)
-        {
+        if (error_ptr != NULL){
             fprintf(stderr, "Error before: %s\n", error_ptr);
         }
         return RESP_CODE_PARSE_ERR;
@@ -257,59 +335,74 @@ int parse_json_muti_point(const char * const body,uint8_t cid)
         for(int i = 0; i < cJSON_GetArraySize(muti_point); i++){
             node = cJSON_GetArrayItem(muti_point, i);            
             value = cJSON_GetObjectItem(node, "index");
-            
-
-                 if(cJSON_IsNumber(value)){
-                     config->multi_freq_point_param[cid].points[value->valueint].index=value->valueint;
-                     subcid=value->valueint;
-                     
-                      printfd("index:%d, subcid=%d ",config->multi_freq_point_param[cid].points[subcid].index,subcid);
-                 }
-                 value = cJSON_GetObjectItem(node, "middle_freq");
-                 if(cJSON_IsNumber(value)){
-                     config->multi_freq_point_param[cid].points[subcid].center_freq=value->valueint;
-                     printfd("middle_freq:%d, ",config->multi_freq_point_param[cid].points[subcid].center_freq);
-                 } 
-                 value = cJSON_GetObjectItem(node, "bandwith");
-                 if(cJSON_IsNumber(value)){
-                     config->multi_freq_point_param[cid].points[subcid].d_bandwith=value->valueint;
-                      printfd("bind_width:%d, ", config->multi_freq_point_param[cid].points[subcid].d_bandwith);
-                 } 
-                 value = cJSON_GetObjectItem(node, "freqResolution");
-                 if(cJSON_IsNumber(value)){
-                     config->multi_freq_point_param[cid].points[subcid].freq_resolution=value->valuedouble;
-                      printfd("freqResolution:%f, ",config->multi_freq_point_param[cid].points[subcid].freq_resolution);
-                 }
-                 value = cJSON_GetObjectItem(node, "fftSize");
-                 if(cJSON_IsNumber(value)){
-                     config->multi_freq_point_param[cid].points[subcid].fft_size=value->valueint;
-                      printfd("fftSize:%d, ",config->multi_freq_point_param[cid].points[subcid].fft_size);
-                 }
-                 value = cJSON_GetObjectItem(node, "decMethodId");
-                 if(cJSON_IsNumber(value)){
-                    // printfd("channel:%d, ", value->valueint);
-                     config->multi_freq_point_param[cid].points[subcid].d_method=value->valueint;
-                      printfd("decMethodId:%d, ",config->multi_freq_point_param[cid].points[subcid].d_method);
-                 }
-                 value = cJSON_GetObjectItem(node, "decBandwidth");
-                 if(cJSON_IsNumber(value)){
-                    // printfd("channel:%d, ", value->valueint);
-                     config->multi_freq_point_param[cid].points[subcid].d_bandwith=value->valueint;
-                      printfd("decBandwidth:%d, ",config->multi_freq_point_param[cid].points[subcid].d_bandwith);
-                 }
-                 value = cJSON_GetObjectItem(node, "muteSwitch");
-                 if(cJSON_IsNumber(value)){
-                    // printfd("channel:%d, ", value->valueint);
-                     config->multi_freq_point_param[cid].points[subcid].noise_en=value->valueint;
-                      printfd("muteSwitch:%d, ",config->multi_freq_point_param[cid].points[subcid].noise_en);
-                 }
-                 value = cJSON_GetObjectItem(node, "muteThreshold");
-                 if(cJSON_IsNumber(value)){
-                    // printfd("channel:%d, ", value->valueint);
-                     config->multi_freq_point_param[cid].points[subcid].noise_thrh=value->valueint;
-                      printfd("muteThreshold:%d, ",config->multi_freq_point_param[cid].points[subcid].noise_thrh);
-                 }
-                 printfd("\n");
+            if(cJSON_IsNumber(value)){
+                config->multi_freq_point_param[cid].points[value->valueint].index=value->valueint;
+                subcid=value->valueint;
+                printfn("index:%d, subcid=%d ",config->multi_freq_point_param[cid].points[subcid].index,subcid);
+            }
+            value = cJSON_GetObjectItem(node, "centerFreq");
+            if(cJSON_IsString(value)){
+                uint64_t center_freq = 0;
+                if(str_to_u64(value->valuestring, &center_freq, NULL) == false){
+                    code = RESP_CODE_PARSE_ERR;
+                }else{
+                    config->multi_freq_point_param[cid].points[subcid].center_freq=center_freq;
+                    printfn("middle_freq:%d, ",config->multi_freq_point_param[cid].points[subcid].center_freq);
+                }
+            } 
+            value = cJSON_GetObjectItem(node, "bandwith");
+            if(cJSON_IsString(value)){
+                uint32_t bandwith = 0;
+                if(str_to_uint(value->valuestring, &bandwith, NULL) == false){
+                    code = RESP_CODE_PARSE_ERR;
+                }else{
+                    config->multi_freq_point_param[cid].points[subcid].bandwidth=bandwith;
+                    printfn("bind_width:%u, ", config->multi_freq_point_param[cid].points[subcid].bandwidth);
+                }
+               
+            } 
+            value = cJSON_GetObjectItem(node, "freqResolution");
+            if(cJSON_IsString(value)){
+                uint32_t resolution = 0;
+                if(str_to_uint(value->valuestring, &resolution, NULL) == false){
+                    code = RESP_CODE_PARSE_ERR;
+                }else{
+                    config->multi_freq_point_param[cid].points[subcid].freq_resolution=(float)resolution;
+                    printfn("freqResolution:%f, ",config->multi_freq_point_param[cid].points[subcid].freq_resolution);
+                }
+            }
+             value = cJSON_GetObjectItem(node, "fftSize");
+             if(cJSON_IsNumber(value)){
+                 config->multi_freq_point_param[cid].points[subcid].fft_size=value->valueint;
+                  printfn("fftSize:%u, ",config->multi_freq_point_param[cid].points[subcid].fft_size);
+             }
+             value = cJSON_GetObjectItem(node, "decMethodId");
+             if(cJSON_IsNumber(value)){
+                // printfd("channel:%d, ", value->valueint);
+                 config->multi_freq_point_param[cid].points[subcid].d_method=value->valueint;
+                  printfn("decMethodId:%d, ",config->multi_freq_point_param[cid].points[subcid].d_method);
+             }
+             value = cJSON_GetObjectItem(node, "decBandwidth");
+            if(cJSON_IsString(value)){
+                uint32_t decBandwidth = 0;
+                if(str_to_uint(value->valuestring, &decBandwidth, NULL) == false){
+                    code = RESP_CODE_PARSE_ERR;
+                }else{
+                    config->multi_freq_point_param[cid].points[subcid].d_bandwith=decBandwidth;
+                    printfn("decBandwidth:%u, ",config->multi_freq_point_param[cid].points[subcid].d_bandwith);
+                }
+            }
+             value = cJSON_GetObjectItem(node, "muteSwitch");
+             if(cJSON_IsNumber(value)){
+                 config->multi_freq_point_param[cid].points[subcid].noise_en=value->valueint;
+                  printfn("muteSwitch:%d, ",config->multi_freq_point_param[cid].points[subcid].noise_en);
+             }
+             value = cJSON_GetObjectItem(node, "muteThreshold");
+             if(cJSON_IsNumber(value)){
+                 config->multi_freq_point_param[cid].points[subcid].noise_thrh=value->valueint;
+                  printfn("muteThreshold:%d, ",config->multi_freq_point_param[cid].points[subcid].noise_thrh);
+             }
+             printfn("\n");
                   
         }
          
@@ -318,17 +411,18 @@ int parse_json_muti_point(const char * const body,uint8_t cid)
         config->work_mode = OAL_NULL_MODE;
         printf_warn("Unknown Work Mode\n");
     }else if(config->multi_freq_point_param[cid].freq_point_cnt == 1){
-        config->work_mode = OAL_FAST_SCAN_MODE;
+        config->work_mode = OAL_FIXED_FREQ_ANYS_MODE;
     }else{
-        config->work_mode = OAL_MULTI_ZONE_SCAN_MODE;
+        config->work_mode = OAL_MULTI_POINT_SCAN_MODE;
     }
     printfd("\n*****************解析完成************\n");
-    return RESP_CODE_OK;
+    return code;
 }
 int parse_json_demodulation(const char * const body,uint8_t cid,uint8_t subid )
 {
      printfd(" \n*************开始解析的body解调数据消息*****************\n");
      cJSON *node, *value;
+     int code = RESP_CODE_OK;
      struct poal_config *config = &(config_get_config()->oal_config);
      cJSON *root = cJSON_Parse(body);
     if (root == NULL)
@@ -350,16 +444,24 @@ int parse_json_demodulation(const char * const body,uint8_t cid,uint8_t subid )
 
     }
     value = cJSON_GetObjectItem(root, "centerFreq");
-    if(value!=NULL&&cJSON_IsNumber(value)){
-         config->sub_channel_para[cid].sub_ch[subid].center_freq=value->valueint;
-         printfd("centerFreq:%d,\n", config->sub_channel_para[cid].sub_ch[subid].center_freq);
-
+    if(value!=NULL&&cJSON_IsString(value)){
+        uint64_t center_freq = 0;
+        if(str_to_u64(value->valuestring, &center_freq, NULL) == false){
+            code = RESP_CODE_PARSE_ERR;
+        }else{
+            config->sub_channel_para[cid].sub_ch[subid].center_freq=center_freq;
+            printfd("centerFreq:%d,\n", config->sub_channel_para[cid].sub_ch[subid].center_freq);
+        }
     }
     value = cJSON_GetObjectItem(root, "decBandwidth");
-    if(value!=NULL&&cJSON_IsNumber(value)){
-         config->sub_channel_para[cid].sub_ch[subid].d_bandwith=value->valueint;
-         printfd("decBandwidth:%d,\n", config->sub_channel_para[cid].sub_ch[subid].d_bandwith);
-
+    if(value!=NULL&&cJSON_IsString(value)){
+        uint32_t decBandwidth = 0;
+        if(str_to_uint(value->valuestring, &decBandwidth, NULL) == false){
+            code = RESP_CODE_PARSE_ERR;
+        }else{
+            config->sub_channel_para[cid].sub_ch[subid].d_bandwith=decBandwidth;
+            printfd("decBandwidth:%d,\n", config->sub_channel_para[cid].sub_ch[subid].d_bandwith);
+        }
     }
     value = cJSON_GetObjectItem(root, "fftSize");
     if(value!=NULL&&cJSON_IsNumber(value)){
@@ -400,7 +502,7 @@ int parse_json_demodulation(const char * const body,uint8_t cid,uint8_t subid )
     executor_set_command(EX_MID_FREQ_CMD, EX_SUB_CH_DEC_METHOD, subid, 
         &sub_channel_array->sub_ch[subid].d_method);
 
-    return RESP_CODE_OK;
+    return code;
 }
 
 int parse_json_file_backtrace(const char * const body, uint8_t ch,  uint8_t enable, char  *filename)

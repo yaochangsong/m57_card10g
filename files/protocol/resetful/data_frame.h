@@ -53,9 +53,12 @@ struct data_ex_frame_demodulation_head{
     uint32_t sn;
     uint16_t demodulate_type;
     uint16_t data_type;
+#define  DEFH_DTYPE_BB_IQ   0x04
+#define  DEFH_DTYPE_CH_IQ   0x06
+#define  DEFH_DTYPE_AUDIO   0x08
     uint32_t data_len;
 };
 
-extern uint8_t * resetful_assamble_frame_data(uint32_t *len, void *args);
+extern uint8_t * xw_assamble_frame_data(uint32_t *len, void *args);
 #endif
 

@@ -82,16 +82,16 @@
 	"spectrum_parm" : {
 		"side_bandrate" : [
 			{
-				"bind_width" : 160000000,
+				"bandwidth" : 160000000,
 				"rate" : 1.28
 			},{
-				"bind_width" : 80000000,
+				"bandwidth" : 80000000,
 				"rate" : 1.28
 			},{
-				"bind_width" : 40000000,
+				"bandwidth" : 40000000,
 				"rate" : 1.28
 			},{
-				"bind_width" : 20000000,
+				"bandwidth" : 20000000,
 				"rate" : 1.28
 			}
 		],

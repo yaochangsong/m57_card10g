@@ -49,7 +49,9 @@ static int on_request(struct uh_client *cl)
 
 static int on_request(struct uh_client *cl)
 {
+ #if defined(SUPPORT_PROTOCAL_RESETFUL)
     return http_on_request(cl);
+ #endif
 }
 
 
@@ -79,13 +81,13 @@ int server_init(void)
     tcpsrv = tcp_server_new("0.0.0.0", poal_config->network.port);
     if (!tcpsrv)
         return -1;
-
+#endif
     struct net_udp_server *udpsrv = NULL;
     printf_note("udp server init[port:%d]\n", poal_config->network.port);
     udpsrv = udp_server_new("0.0.0.0",  poal_config->network.port);
     if (!udpsrv)
         return -1;
-#endif
+
 #ifdef  SUPPORT_PROTOCAL_HTTP
     struct uh_server *srv = NULL;
     printf_note("http server init[port:%d]\n", 80);

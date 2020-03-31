@@ -3,8 +3,11 @@ SUPPORT_PLAT_FORM_ARCH=arm
 #debug
 SUPPORT_GDB_DEBUG=n
 
-#Protocal Support: http akt xnrp
-SUPPORT_PROTOCAL="http  resetful"
+#(Command)Protocal Support: http akt resetful
+SUPPORT_PROTOCAL="http resetful"
+#(Data)Protocal: xw akt
+SUPPORT_DATA_PROTOCAL="xw"
+
 
 #data store format support: json xml
 SUPPORT_DAO="json"

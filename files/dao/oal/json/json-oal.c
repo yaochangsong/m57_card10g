@@ -393,15 +393,10 @@ static int json_parse_config_param(const cJSON* root, struct poal_config *config
         if(value!= NULL && cJSON_IsString(value)){
             char *version = get_version_string();
             config->status_para.softVersion.app = value->valuestring;
-            printf_note("----\n");
             if(strcmp(version, config->status_para.softVersion.app)){
-                printf_note("----\n");
                 config->status_para.softVersion.app = version;
-            printf_note("----%s\n", config->status_para.softVersion.app);
                 //json_write_string_param("status_parm", "soft_version", "app", config->status_para.softVersion.app);
-                printf_note("----\n");
                 //json_write_file(config_get_config()->configfile, root);
-                printf_note("----\n");
                 printf_note("renew verson: %s\n", version);
             }
             printf_debug("app=>value is:%s, %s\n",value->valuestring, config->status_para.softVersion.app);
@@ -701,7 +696,7 @@ static int json_parse_config_param(const cJSON* root, struct poal_config *config
             if(cJSON_IsNumber(value)){
                // printfd("bandwidth:%d, ", config->ctrl_para.scan_bw.bindwidth_hz[i]);
                 config->ctrl_para.scan_bw.bindwidth_hz[i]=value->valueint;
-                printfd("bandwidth:%d, ", config->ctrl_para.scan_bw.bindwidth_hz[i]);
+                printfd("bandwidth:%u, ", config->ctrl_para.scan_bw.bindwidth_hz[i]);
             } 
              printfd("\n");
         }

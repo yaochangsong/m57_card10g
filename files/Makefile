@@ -50,6 +50,14 @@ else ifneq ($(findstring akt,$(SUPPORT_PROTOCAL)),)
 	C_VAR += -DSUPPORT_PROTOCAL_XNRP
 endif
 
+ifneq ($(findstring akt,$(SUPPORT_DATA_PROTOCAL)),)
+	C_VAR += -DSUPPORT_DATA_PROTOCAL_AKT
+else ifneq ($(findstring xw,$(SUPPORT_PROTOCAL)),)
+	C_VAR += -DSUPPORT_DATA_PROTOCAL_XW
+endif
+
+
+
 #万兆
 ifneq ($(findstring y,$(SUPPORT_NET_WZ)),)
 	C_VAR += -DSUPPORT_NET_WZ

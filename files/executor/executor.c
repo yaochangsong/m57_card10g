@@ -275,7 +275,6 @@ static int8_t  executor_points_scan(uint8_t ch, work_mode_type mode, void *args)
         r_args->scan_bw = point->points[i].bandwidth;
         r_args->gain_mode = poal_config->rf_para[ch].gain_ctrl_method;
         r_args->gain_value = poal_config->rf_para[ch].mgc_gain_value;
-
         r_args->freq_resolution = (float)point->points[i].bandwidth * BAND_FACTOR / (float)point->points[i].fft_size;
         printf_note("ch=%d, s_freq=%llu, e_freq=%llu, fft_size=%u, d_method=%d\n", ch, s_freq, e_freq, r_args->fft_size,r_args->d_method);
         printf_note("rf scan bandwidth=%u, middlebw=%u, m_freq=%llu, freq_resolution=%f\n",r_args->scan_bw,r_args->bandwidth , r_args->m_freq, r_args->freq_resolution);
@@ -903,9 +902,11 @@ void executor_init(void)
 #endif
     printf_note("clear all sub ch\n");
     uint8_t enable =0;
+    uint8_t default_method = IO_DQ_MODE_IQ;
     for(i = 0; i< MAX_SIGNAL_CHANNEL_NUM; i++){
         printf_debug("clear all sub ch %d\n", i);
         executor_set_command(EX_MID_FREQ_CMD, EX_SUB_CH_ONOFF, i, &enable);
+        executor_set_command(EX_MID_FREQ_CMD, EX_SUB_CH_DEC_METHOD, i, &default_method);
     }
     sem_init(&(work_sem.notify_deal), 0, 0);
     sem_init(&(work_sem.kernel_sysn), 0, 0);

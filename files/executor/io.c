@@ -394,9 +394,10 @@ int32_t io_set_subch_onoff(uint32_t subch, uint8_t onoff)
     ret = ioctl(io_ctrl_fd, IOCTL_SUB_CH_ONOFF, &odata);
 #elif defined(SUPPORT_SPECTRUM_V2) 
     if(onoff)
-        get_fpga_reg()->narrow_band[subch]->enable |= 0x01;
+        get_fpga_reg()->narrow_band[subch]->enable =0x01;
     else
-        get_fpga_reg()->narrow_band[subch]->enable &= 0x01;
+        get_fpga_reg()->narrow_band[subch]->enable = 0x00;
+     printf_debug("subch=%u, onoff=%d, ptr=0x%p\n", subch, onoff, get_fpga_reg()->narrow_band[subch]);
 #endif
 #endif
     printf_debug("[**REGISTER**]ch:%d, SubChannle Set OnOff=%d, ret=%d\n",subch, onoff);
@@ -684,8 +685,6 @@ static void io_set_dma_SPECTRUM_out_en(int ch, int subch, uint32_t trans_len,uin
     io_dma_dev_enable(ch,IO_SPECTRUM_TYPE,continuous);
     io_dma_dev_trans_len(ch,IO_SPECTRUM_TYPE, trans_len*2);
 #elif defined(SUPPORT_SPECTRUM_V2)
-    //if(ch >= 0)
-    //    get_fpga_reg()->broad_band->enable |= 0x02;
     get_spm_ctx()->ops->stream_start(trans_len*sizeof(fft_t), continuous, STREAM_FFT);
 #endif
 }
@@ -695,8 +694,6 @@ static void io_set_dma_SPECTRUM_out_disable(int ch, int subch)
 #if defined(SUPPORT_SPECTRUM_KERNEL)
     io_dma_dev_disable(ch, IO_SPECTRUM_TYPE);
 #elif defined(SUPPORT_SPECTRUM_V2)
-    //if(ch >= 0)
-    //    get_fpga_reg()->broad_band->enable &= ~0x02;
     get_spm_ctx()->ops->stream_stop(STREAM_FFT);
 #endif
 

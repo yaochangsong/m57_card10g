@@ -18,12 +18,35 @@
 #include "config.h"
 #include "spm.h"
 #include "utils/mq.h"
+#include <assert.h>
+
 
 //struct mq_ctx *mqctx;
 //#define SPM_MQ_NAME "/spmmq"
 
 static pthread_cond_t spm_iq_cond = PTHREAD_COND_INITIALIZER;
 static pthread_mutex_t spm_iq_cond_mutex = PTHREAD_MUTEX_INITIALIZER;
+
+static void show_thread_priority(pthread_attr_t *attr,int policy)
+{
+    int priority = sched_get_priority_max(policy);
+    assert(priority!=-1);
+    printf("max_priority=%d\n",priority);
+    priority= sched_get_priority_min(policy);
+    assert(priority!=-1);
+    printf("min_priority=%d\n",priority);
+}
+
+static int get_thread_priority(pthread_attr_t *attr)
+{
+  struct sched_param param;
+  int rs = pthread_attr_getschedparam(attr,&param);
+  assert(rs==0);
+  printf("priority=%d",param.__sched_priority);
+  return param.__sched_priority;
+}
+
+
 
 static inline void spm_iq_deal_notify(void *arg)
 {
@@ -83,8 +106,27 @@ void spm_iq_handle_thread(void *arg)
     iq_t *ptr_iq = NULL;
     ssize_t  len = 0, i;
 
-    //thread_bind_cpu(0);
+    thread_bind_cpu(0);
     ctx = (struct spm_context *)arg;
+#if 0
+    int policy;
+    struct sched_param param;
+    pthread_getschedparam(pthread_self(),&policy,&param);
+    if(policy == SCHED_OTHER)
+        printf("SCHED_OTHER\n");
+    if(policy == SCHED_RR)
+        printf("SCHED_RR \n");
+    if(policy==SCHED_FIFO)
+        printf("SCHED_FIFO\n");
+
+    int priority = sched_get_priority_max(policy);
+    assert(priority!=-1);
+    printf("max_priority=%d\n",priority);
+    priority= sched_get_priority_min(policy);
+    assert(priority!=-1);
+    printf("min_priority=%d\n",priority);
+#endif
+
 loop:
     printf_warn("######Wait IQ enable######\n");
     /* 通过条件变量阻塞方式等待数据使能 */
@@ -114,7 +156,7 @@ loop:
         
         len = ctx->ops->read_iq_data(&ptr_iq);
         
-        printf_note("reve handle: len=%d, ptr=%p\n", len, ptr_iq);
+        printf_debug("reve handle: len=%d, ptr=%p, %d\n", len, ptr_iq, ctx->pdata->sub_ch_enable.iq_en);
         if(len > 0){
             for(i = 0; i < 16; i++){
                printfd("%x ", ptr_iq[i]);
@@ -123,6 +165,7 @@ loop:
             ctx->ops->send_iq_data(ptr_iq, len, &run);
         }
         if(ctx->pdata->sub_ch_enable.iq_en == 0){
+            printf_note("iq disabled %d\n", ctx->pdata->sub_ch_enable.iq_en);
             sleep(1);
             goto loop;
         }
@@ -134,18 +177,35 @@ loop:
 void spm_deal(struct spm_context *ctx, void *args)
 {   
     struct spm_context *pctx = ctx;
-
+    static uint8_t iq_en_dup = 0;
     if(pctx == NULL){
         printf_err("spm is not init!!\n");
         return;
     }
+    
+#if 1
     if(pctx->pdata->sub_ch_enable.iq_en){
         struct spm_run_parm *ptr_run;
         ptr_run = (struct spm_run_parm *)args;
-        printf_info("send:ch:%d, s_freq:%llu, e_freq:%llu, bandwidth=%u\n", 
+        ssize_t  len = 0, i;
+        iq_t *ptr_iq = NULL;
+        
+        len = pctx->ops->read_iq_data(&ptr_iq);
+        printf_debug("reve handle: len=%d, ptr=%p, %d\n", len, ptr_iq, pctx->pdata->sub_ch_enable.iq_en);
+        if(len > 0){
+            pctx->ops->send_iq_data(ptr_iq, len, ptr_run);
+        }
+    }
+#else
+    if(pctx->pdata->sub_ch_enable.iq_en){
+        struct spm_run_parm *ptr_run;
+        ptr_run = (struct spm_run_parm *)args;
+        printf_debug("send:ch:%d, s_freq:%llu, e_freq:%llu, bandwidth=%u\n", 
                 ptr_run->ch, ptr_run->s_freq, ptr_run->e_freq, ptr_run->bandwidth);
+        iq_en_dup = pctx->pdata->sub_ch_enable.iq_en;
         spm_iq_deal_notify(&args);
     }
+#endif
     if(pctx->pdata->enable.psd_en){
         fft_t *ptr = NULL, *ord_ptr = NULL;
         ssize_t  byte_len = 0; /* fft byte size len */
@@ -172,10 +232,23 @@ struct spm_context *get_spm_ctx(void)
     return spmctx;
 }
 
+void thread_attr_set(pthread_attr_t *attr, int policy, int prio)
+{
+    
+    struct sched_param param;
+    pthread_attr_init(attr);
+
+    param.sched_priority = prio;
+    pthread_attr_setschedpolicy(attr,policy);  /* SCHED_FIFO SCHED_RR SCHED_OTHER */
+    pthread_attr_setschedparam(attr,&param);
+    pthread_attr_setinheritsched(attr,PTHREAD_EXPLICIT_SCHED);
+}
+#include "io_fpga.h"
 void *spm_init(void)
 {
     static pthread_t send_thread_id, recv_thread_id;
     int ret;
+    pthread_attr_t attr;
 
 #if defined(SUPPORT_PLATFORM_ARCH_ARM)
 #if defined(SUPPORT_SPECTRUM_CHIP)
@@ -197,7 +270,8 @@ void *spm_init(void)
 
     spmctx->run_args = calloc(1, sizeof(struct spm_run_parm));
     spmctx->run_args->fft_ptr = calloc(1, MAX_FFT_SIZE*sizeof(fft_t));
-
+   // thread_attr_set(&attr,SCHED_OTHER, 0);
+   // ret=pthread_create(&recv_thread_id,&attr,(void *)spm_iq_handle_thread, spmctx);
     ret=pthread_create(&recv_thread_id,NULL,(void *)spm_iq_handle_thread, spmctx);
     if(ret!=0)
         perror("pthread cread spm");

@@ -51,7 +51,7 @@ void config_init(void)
     config.daemon = -1;
     config.oal_config.work_mode = OAL_NULL_MODE;
     #ifdef SUPPORT_NET_WZ
-    config.oal_config.ctrl_para.wz_threshold_bandwidth = 10000000; /* 万兆默认阀值; >=该值，用万兆传输 */
+    config.oal_config.ctrl_para.wz_threshold_bandwidth = 1000000000; /* 万兆默认阀值; >=该值，用万兆传输 */
     #endif
     #if defined (SUPPORT_DAO_XML)
     dao_read_create_config_file(config.configfile, &config);

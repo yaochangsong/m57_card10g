@@ -126,8 +126,7 @@ static inline  int json_write_string_param(const char * const grandfather, const
     }else{
         object = cJSON_GetObjectItem(root, parents);
     }
-    strcpy(cJSON_GetObjectItem(object,child)->valuestring, (char *)data);
-    
+    cJSON_ReplaceItemInObject(object, child, cJSON_CreateString((char *)data));
     return 0;
 }
 
@@ -181,7 +180,8 @@ static inline  int json_write_array_string_param(const char * const parents, con
         object = cJSON_GetObjectItem(root, array);
     }
     node = cJSON_GetArrayItem(object, index);
-    strcpy(cJSON_GetObjectItem(node,name)->valuestring, data);
+    cJSON_ReplaceItemInObject(object, node, cJSON_CreateString((char *)data));
+    //strcpy(cJSON_GetObjectItem(node,name)->valuestring, data);
     
     return 0;
 }
@@ -395,8 +395,8 @@ static int json_parse_config_param(const cJSON* root, struct poal_config *config
             config->status_para.softVersion.app = value->valuestring;
             if(strcmp(version, config->status_para.softVersion.app)){
                 config->status_para.softVersion.app = version;
-                //json_write_string_param("status_parm", "soft_version", "app", config->status_para.softVersion.app);
-                //json_write_file(config_get_config()->configfile, root);
+                json_write_string_param("status_parm", "soft_version", "app", config->status_para.softVersion.app);
+                json_write_file(config_get_config()->configfile, root);
                 printf_note("renew verson: %s\n", version);
             }
             printf_debug("app=>value is:%s, %s\n",value->valuestring, config->status_para.softVersion.app);
@@ -482,7 +482,13 @@ static int json_parse_config_param(const cJSON* root, struct poal_config *config
         config->ctrl_para.internal_clock=value->valueint;
         printf_debug("aspectrum_time_intervalis:%d, \n",config->ctrl_para.internal_clock);
     }
-
+#ifdef SUPPORT_NET_WZ
+    value = cJSON_GetObjectItem(control_parm, "net10g_threshold_bandwidth");
+    if(value!= NULL && cJSON_IsNumber(value)){
+        config->ctrl_para.wz_threshold_bandwidth=value->valuedouble;
+        printf_debug("net 10g threshold bandwidth:%uHz, \n",config->ctrl_para.wz_threshold_bandwidth);
+    }
+#endif
 /* calibration_parm */
     cJSON *calibration = NULL;
     calibration = cJSON_GetObjectItem(root, "calibration_parm");

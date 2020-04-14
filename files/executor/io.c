@@ -400,7 +400,7 @@ int32_t io_set_subch_onoff(uint32_t subch, uint8_t onoff)
      printf_debug("subch=%u, onoff=%d, ptr=0x%p\n", subch, onoff, get_fpga_reg()->narrow_band[subch]);
 #endif
 #endif
-    printf_debug("[**REGISTER**]ch:%d, SubChannle Set OnOff=%d, ret=%d\n",subch, onoff);
+    printf_debug("[**REGISTER**]ch:%d, SubChannle Set OnOff=%d\n",subch, onoff);
     return ret;
 }
 

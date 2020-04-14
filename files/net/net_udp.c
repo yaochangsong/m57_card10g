@@ -21,7 +21,7 @@ void udp_free(struct net_udp_client *cl)
 {
     printf_note("udp_free\n");
     if (cl) {
-        printf_debug("close\n");
+        printf_note("close\n");
         list_del(&cl->list);
         cl->srv->nclients--;
         free(cl);
@@ -100,8 +100,8 @@ int udp_send_data(uint8_t  *data, uint32_t data_len)
             udp_send_data_to_client(cl_list, data, data_len);
         }
         else{/* client is unconnect */
-            printf_warn("**Tcp Client is Exit!! Stop Send Data And free udp Clinet**\n");
-            udp_free(cl_list);
+            printf_warn("**Tcp Client is Exit!! Stop Send Data to Clinet**\n");
+           // udp_free(cl_list);
             ret = -1;
         } 
 #else

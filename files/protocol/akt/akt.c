@@ -29,7 +29,7 @@ int akt_get_device_id(void)
 int8_t akt_decode_method_convert(uint8_t method)
 {
     uint8_t d_method;
-    
+
     if(method == DQ_MODE_AM){
         d_method = IO_DQ_MODE_AM;
     }else if(method == DQ_MODE_FM) {
@@ -108,10 +108,11 @@ static int akt_convert_oal_config(uint8_t ch, uint8_t cmd)
             poal_config->cid = cid;
             sub_channel_array->sub_ch[ch].index = ch;
             sub_channel_array->sub_ch[ch].center_freq = pakt_config->sub_channel[ch].freq;
+            sub_channel_array->sub_ch[ch].raw_d_method = pakt_config->sub_channel[ch].decode_method_id;
             sub_channel_array->sub_ch[ch].d_method = akt_decode_method_convert(pakt_config->sub_channel[ch].decode_method_id);
             sub_channel_array->sub_ch[ch].d_bandwith = pakt_config->sub_channel[ch].bandwidth;
             printf_info("cid:%d, subch:%d\n", cid,ch);
-            printf_info("subch:%d,d_method:%u, raw dmethod:%d\n", ch, sub_channel_array->sub_ch[ch].d_method, pakt_config->sub_channel[ch].decode_method_id);
+            printf_info("subch:%d,d_method:%u, raw dmethod:%d\n", ch, sub_channel_array->sub_ch[ch].raw_d_method, sub_channel_array->sub_ch[ch].d_method, sub_channel_array->sub_ch[ch].raw_d_method);
             printf_info("center_freq:%llu, d_bandwith=%u\n", sub_channel_array->sub_ch[ch].center_freq, sub_channel_array->sub_ch[ch].d_bandwith);
        }
             break;
@@ -161,6 +162,8 @@ static int akt_convert_oal_config(uint8_t ch, uint8_t cmd)
                     if(point->points[sig_cnt].bandwidth == 0){
                         point->points[sig_cnt].bandwidth = BAND_WITH_20M;
                     }
+                    point->points[sig_cnt].raw_d_method = pakt_config->decode_param[ch].sig_ch[sig_cnt].decode_method_id;
+                    point->points[sig_cnt].d_method = akt_decode_method_convert(point->points[sig_cnt].raw_d_method);
                     point->points[sig_cnt].fft_size = pakt_config->fft[ch].fft_size;
                     if(point->points[sig_cnt].fft_size > 0){
                         point->points[sig_cnt].freq_resolution = ((float)point->points[sig_cnt].bandwidth/(float)point->points[sig_cnt].fft_size)*BAND_FACTOR;
@@ -168,6 +171,7 @@ static int akt_convert_oal_config(uint8_t ch, uint8_t cmd)
                     }
                      /* smooth */
                     point->smooth_time = pakt_config->smooth[ch].smooth;
+                    printf_note("raw_d_method:%d, d_method:%u\n",point->points[sig_cnt].raw_d_method, point->points[sig_cnt].d_method);
                     printf_note("residence_time:%u\n",point->residence_time);
                     printf_note("freq_point_cnt:%u\n",point->freq_point_cnt);
                     printf_note("ch:%d, sig_cnt:%d,center_freq:%u\n", ch,sig_cnt,point->points[sig_cnt].center_freq);
@@ -275,7 +279,7 @@ static int akt_convert_oal_config(uint8_t ch, uint8_t cmd)
                         printf_info("[%d]center_freq:%u\n",i, point->points[i].center_freq);
                         printf_info("[%d]bandwidth:%u\n",i, point->points[i].bandwidth);
                         printf_info("[%d]fft_size:%u\n",i, point->points[i].fft_size);
-                        printf_info("[%d]d_method:%u\n",i, point->points[i].d_method);
+                        printf_info("[%d]raw_d_method:%d,d_method:%u\n",i,point->points[i].raw_d_method, point->points[i].d_method);
                         printf_info("[%d]d_bandwith:%u\n",i, point->points[i].d_bandwith);
                     }
                 }
@@ -545,7 +549,7 @@ static int akt_execute_set_command(void *cl)
                 2: Normal working mode
                 3: Low noise mode of operation
             */
-            poal_config->rf_para[ch].rf_mode_code = header->buf[1] + 1; /* need to convert */
+            poal_config->rf_para[ch].rf_mode_code = header->buf[1];
             executor_set_command(EX_RF_FREQ_CMD, EX_RF_MODE_CODE, ch, &poal_config->rf_para[ch].rf_mode_code);
             break;
         case RF_GAIN_MODE_CMD:
@@ -659,6 +663,7 @@ static int akt_execute_set_command(void *cl)
             }else{
                 io_set_enable_command(IQ_MODE_DISABLE, -1,sub_ch, 0);
             }
+            executor_set_enable_command(ch);
             break;
         }
 #ifdef SUPPORT_NET_WZ

@@ -106,7 +106,7 @@ void spm_iq_handle_thread(void *arg)
     iq_t *ptr_iq = NULL;
     ssize_t  len = 0, i;
 
-    thread_bind_cpu(0);
+   // thread_bind_cpu(1);
     ctx = (struct spm_context *)arg;
 #if 0
     int policy;

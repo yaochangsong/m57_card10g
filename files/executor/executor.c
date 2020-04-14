@@ -251,6 +251,7 @@ static int8_t  executor_points_scan(uint8_t ch, work_mode_type mode, void *args)
     struct multi_freq_point_para_st *point;
     time_t s_time;
     struct io_decode_param_st decode_param;
+    int8_t subch = 0;
     spmctx = (struct spm_context *)args;
     r_args = spmctx->run_args;
 
@@ -271,7 +272,12 @@ static int8_t  executor_points_scan(uint8_t ch, work_mode_type mode, void *args)
         r_args->bandwidth = point->points[i].bandwidth;
         r_args->m_freq = point->points[i].center_freq;
         r_args->mode = mode;
-        r_args->d_method = point->points[i].d_method;
+        if(poal_config->sub_ch_enable.iq_en){
+            subch = poal_config->sub_ch_enable.sub_id ;
+            r_args->d_method = poal_config->sub_channel_para[ch].sub_ch[subch].raw_d_method;
+        }else{
+            r_args->d_method = point->points[i].raw_d_method;
+        }
         r_args->scan_bw = point->points[i].bandwidth;
         r_args->gain_mode = poal_config->rf_para[ch].gain_ctrl_method;
         r_args->gain_value = poal_config->rf_para[ch].mgc_gain_value;
@@ -349,7 +355,7 @@ void executor_spm_thread(void *arg)
     uint8_t sub_ch = poal_config->enable.sub_id;
     uint32_t j;
 
-    thread_bind_cpu(1);
+    //thread_bind_cpu(1);
     while(1)
     {
         
@@ -831,7 +837,7 @@ int8_t executor_set_enable_command(uint8_t ch)
                 executor_set_command(EX_RF_FREQ_CMD, EX_RF_ATTENUATION, ch, &poal_config->rf_para[ch].attenuation);
                 executor_set_command(EX_RF_FREQ_CMD, EX_RF_MGC_GAIN, ch, &poal_config->rf_para[ch].mgc_gain_value);
                 //executor_set_command(EX_MID_FREQ_CMD, EX_BANDWITH, ch, &poal_config->rf_para[ch].mid_bw);
-                executor_set_command(EX_MID_FREQ_CMD, EX_SMOOTH_TIME, ch, &poal_config->multi_freq_fregment_para[ch].smooth_time);
+                executor_set_command(EX_MID_FREQ_CMD, EX_SMOOTH_TIME, ch, &poal_config->multi_freq_point_param[ch].smooth_time);
                 executor_set_command(EX_MID_FREQ_CMD, EX_FPGA_CALIBRATE, ch, NULL);
                // executor_set_command(EX_MID_FREQ_CMD, EX_CHANNEL_SELECT, ch, &ch);
                 executor_set_command(EX_MID_FREQ_CMD, EX_FPGA_RESET, ch, NULL);

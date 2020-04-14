@@ -275,13 +275,14 @@ static int spm_send_iq_data(void *data, size_t len, void *arg)
     uint8_t *ptr = NULL, *ptr_header = NULL;
     uint32_t header_len = 0;
     struct _spm_stream *pstream = spm_stream;
-
+    
     if(data == NULL || len == 0 || arg == NULL)
         return -1;
 #ifdef SUPPORT_DATA_PROTOCAL_AKT
     struct spm_run_parm *hparam;
     hparam = (struct spm_run_parm *)arg;
     hparam->data_len = len; 
+   // hparam->data_len = SEND_BYTE;
     hparam->type = BASEBAND_DATUM_IQ;
     hparam->ex_type = DEMODULATE_DATUM;
     ptr_header = akt_assamble_data_frame_header_data(&header_len, arg);
@@ -307,13 +308,13 @@ static int spm_send_iq_data(void *data, size_t len, void *arg)
         printf_err("malloc failed\n");
         return -1;
     }
+
     memcpy(ptr, ptr_header, header_len);
     memcpy(ptr+header_len, data, len);
     udp_send_data(ptr, header_len + len);
     safe_free(ptr);
     /* 设置DMA已读数据块长度 */
     ioctl(pstream[STREAM_IQ].id, IOCTL_DMA_SET_ASYN_READ_INFO, &len);
-    printf_note("send over %d\n", len);
     
     return (header_len + len);
 }

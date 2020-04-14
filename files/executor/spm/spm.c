@@ -169,6 +169,7 @@ loop:
             sleep(1);
             goto loop;
         }
+        usleep(1000);
     }while(1);
     
 }
@@ -183,7 +184,7 @@ void spm_deal(struct spm_context *ctx, void *args)
         return;
     }
     
-#if 1
+#if 0
     if(pctx->pdata->sub_ch_enable.iq_en){
         struct spm_run_parm *ptr_run;
         ptr_run = (struct spm_run_parm *)args;
@@ -223,6 +224,7 @@ void spm_deal(struct spm_context *ctx, void *args)
                 pctx->ops->send_fft_data(ord_ptr, fft_ord_len, args);
         }
     }
+    usleep(10);
 }
 
 static struct spm_context *spmctx = NULL;

@@ -275,14 +275,16 @@ static int spm_send_iq_data(void *data, size_t len, void *arg)
     uint8_t *ptr = NULL, *ptr_header = NULL;
     uint32_t header_len = 0;
     struct _spm_stream *pstream = spm_stream;
+    #define SEND_BYTE 512
     
     if(data == NULL || len == 0 || arg == NULL)
         return -1;
+    
 #ifdef SUPPORT_DATA_PROTOCAL_AKT
     struct spm_run_parm *hparam;
     hparam = (struct spm_run_parm *)arg;
-    hparam->data_len = len; 
-   // hparam->data_len = SEND_BYTE;
+    //hparam->data_len = len; 
+    hparam->data_len = SEND_BYTE;
     hparam->type = BASEBAND_DATUM_IQ;
     hparam->ex_type = DEMODULATE_DATUM;
     ptr_header = akt_assamble_data_frame_header_data(&header_len, arg);
@@ -296,13 +298,7 @@ static int spm_send_iq_data(void *data, size_t len, void *arg)
     if(ptr_header == NULL)
         return -1;
 #endif
-
     #if 0
-    if(ptr_header == NULL)
-        return -1;
-    udp_send_data(ptr_header, header_len);
-    udp_send_data(data, len);
-    #endif
     ptr = (uint8_t *)safe_malloc(header_len+ len);
     if (!ptr){
         printf_err("malloc failed\n");
@@ -315,7 +311,26 @@ static int spm_send_iq_data(void *data, size_t len, void *arg)
     safe_free(ptr);
     /* 设置DMA已读数据块长度 */
     ioctl(pstream[STREAM_IQ].id, IOCTL_DMA_SET_ASYN_READ_INFO, &len);
-    
+    #else
+    int i, index,sbyte;
+    uint8_t *pdata;
+    ptr = (uint8_t *)safe_malloc(header_len+ SEND_BYTE);
+    if (!ptr){
+        printf_err("malloc failed\n");
+        return -1;
+    }
+    index = len / SEND_BYTE;
+    sbyte = index * SEND_BYTE;
+    pdata = data;
+    memcpy(ptr, ptr_header, header_len);
+    for(i = 0; i<index; i++){
+        memcpy(ptr+header_len, pdata, SEND_BYTE);
+        udp_send_data(ptr, header_len + SEND_BYTE);
+        pdata += SEND_BYTE;
+    }
+    safe_free(ptr);
+    ioctl(pstream[STREAM_IQ].id, IOCTL_DMA_SET_ASYN_READ_INFO, &sbyte);
+    #endif
     return (header_len + len);
 }
 

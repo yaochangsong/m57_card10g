@@ -477,15 +477,14 @@ char *get_build_time(void)
 char *get_jenkins_version(void)
 {
 #ifdef SUPPORT_PLATFORM_ARCH_ARM
-    #define J_FILE_NAME "/etc/VERSION"
+    #define J_FILE_NAME "/etc/JENKINS_VERSION"
 #else
-    #define J_FILE_NAME "conf/VERSION"
+    #define J_FILE_NAME "conf/JENKINS_VERSION"
 #endif
-
     static char version[16] = {"0"};
     
-    read_file(version, sizeof(version)-1, J_FILE_NAME);
-   
+    read_file(version, sizeof(version), J_FILE_NAME);
+    version[sizeof(version)-1] = 0;
     return version;
 }
 

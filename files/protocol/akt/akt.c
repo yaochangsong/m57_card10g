@@ -26,10 +26,31 @@ int akt_get_device_id(void)
     return 0;
 }
 
+static inline bool hxstr_to_int(char *str, int *ivalue, bool(*_check)(int))
+{
+    char *end;
+    int value;
+    
+    if(str == NULL || ivalue == NULL)
+        return false;
+    
+    value = (int) strtol(str, &end, 16);
+    if (str == end){
+        return false;
+    }
+    *ivalue = value;
+    if(*_check == NULL){
+         printf_note("null func\n");
+         return true;
+    }
+       
+    return ((*_check)(value));
+}
+
 int8_t akt_decode_method_convert(uint8_t method)
 {
     uint8_t d_method;
-
+    
     if(method == DQ_MODE_AM){
         d_method = IO_DQ_MODE_AM;
     }else if(method == DQ_MODE_FM) {
@@ -470,6 +491,22 @@ static int akt_execute_set_command(void *cl)
         }
         case RCV_NET_PARAM:
         {
+            DEVICE_NET_INFO_ST netinfo;
+            memcpy(&netinfo, header->buf, sizeof(DEVICE_NET_INFO_ST));
+            poal_config->network.ipaddress = netinfo.ipaddr;
+            poal_config->network.netmask =netinfo.mask;
+            poal_config->network.gateway = netinfo.gateway;
+            
+            printf_note("ipaddr=0x%x, mask=0x%x, gateway=0x%x, port=%d\n", 
+                poal_config->network.ipaddress, poal_config->network.netmask, poal_config->network.gateway, poal_config->network.port);
+            config_save_all();
+            executor_set_command(EX_NETWORK_CMD, EX_NETWORK_1G, 0, NULL);
+            if(poal_config->network.port != ntohs(netinfo.port)){
+                /* 修改端口重启app */
+                poal_config->network.port = ntohs(netinfo.port);
+                io_restart_app();
+            }
+            
           break;
         }
         case RCV_RF_PARAM:
@@ -673,6 +710,21 @@ static int akt_execute_set_command(void *cl)
             printf_note("wz_threshold_bandwidth  %u\n", poal_config->ctrl_para.wz_threshold_bandwidth);
             break;
         }
+        case SET_NET_WZ_NETWORK_CMD:
+        {   
+            DEVICE_NET_INFO_ST netinfo;
+            memcpy(&netinfo, header->buf, sizeof(DEVICE_NET_INFO_ST));
+            poal_config->network_10g.ipaddress = netinfo.ipaddr;
+            poal_config->network_10g.netmask =netinfo.mask;
+            poal_config->network_10g.gateway = netinfo.gateway;
+            poal_config->network.port = ntohs(netinfo.port);
+            
+            printf_note("ipaddr=0x%x, mask=0x%x, gateway=0x%x, port=%d\n", 
+                poal_config->network_10g.ipaddress, poal_config->network_10g.netmask, poal_config->network_10g.gateway, poal_config->network_10g.port);
+            config_save_all();
+            executor_set_command(EX_NETWORK_CMD, EX_NETWORK_10G, 0, NULL);
+            break;
+        }
 #endif
         case SPCTRUM_PARAM_CMD:
         {
@@ -783,6 +835,11 @@ static int akt_execute_set_command(void *cl)
                 err_code = akt_err_code_check(ret);
                 goto set_exit;
             }
+            break;
+        }
+        case DISK_FORMAT_CMD:
+        {
+            file_disk_format(NULL, NULL);
             break;
         }
         default:
@@ -898,6 +955,29 @@ static int akt_execute_get_command(void)
         #endif
         }
         case SOFTWARE_VERSION_CMD:
+        {
+            struct poal_config *poal_config = &(config_get_config()->oal_config);
+            struct _soft_info{
+                uint8_t num;
+                uint16_t name;
+                uint64_t btime;
+                uint8_t ver;
+            }__attribute__ ((packed));
+            
+            struct _soft_info info;
+            info.num = 1;
+            printf_note("device sn=%s\n", poal_config->status_para.device_sn);
+            if(hxstr_to_int(poal_config->status_para.device_sn, &info.name, NULL)){
+                printf_note("device sn=0x%x", info.name);
+            }else{
+                info.name = 0;
+            }
+            info.btime = 0;
+            info.ver = 0x10;
+
+            memcpy(akt_get_response_data.payload_data, &info, sizeof(info));
+            akt_get_response_data.header.len = sizeof(info);
+        }
             break;
         /* disk cmd */
         case STORAGE_STATUS_CMD:

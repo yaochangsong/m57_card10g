@@ -245,7 +245,7 @@ int8_t k600_scanf(uint8_t *pdata, int32_t total_len)
                 ipstr= inet_ntoa(ip);
                 printf_note("ipstr=%s ipaddr=0x%x, 0x%x\n", ipstr,  ip.s_addr, ipaddr);
                 config_write_data(EX_NETWORK_CMD, EX_NETWORK_IP, 0, &ipaddr);
-                executor_set_command(EX_NETWORK_CMD, 0, 0, NULL);
+                executor_set_command(EX_NETWORK_CMD, EX_NETWORK_1G, 0, NULL);
             }
             break;
             case SCREEN_NETMASK_ADDR1:
@@ -263,7 +263,7 @@ int8_t k600_scanf(uint8_t *pdata, int32_t total_len)
                 ipstr= inet_ntoa(ip);
                 printf_note("subnetmaskstr=%s subnetmask=%x\n", ipstr,  ip.s_addr);
                 config_write_data(EX_NETWORK_CMD, EX_NETWORK_MASK, 0, &subnetmask);
-                executor_set_command(EX_NETWORK_CMD, 0, 0, NULL);
+                executor_set_command(EX_NETWORK_CMD, EX_NETWORK_1G, 0, NULL);
 
             }
             break;
@@ -282,7 +282,7 @@ int8_t k600_scanf(uint8_t *pdata, int32_t total_len)
                 ipstr= inet_ntoa(ip);
                 printf_note("gatewaystr=%s gateway=%x\n", ipstr,  ip.s_addr);
                 config_write_data(EX_NETWORK_CMD,  EX_NETWORK_GW, 0, &gateway);
-                executor_set_command(EX_NETWORK_CMD,  EX_NETWORK_GW, 0, NULL);
+                executor_set_command(EX_NETWORK_CMD,  EX_NETWORK_1G, 0, NULL);
 
             }
             break;

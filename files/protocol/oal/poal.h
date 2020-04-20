@@ -6,7 +6,7 @@
 
 #include "config.h"
 
-#define MAX_RADIO_CHANNEL_NUM 8
+#define MAX_RADIO_CHANNEL_NUM 1
 
 #define FILE_PATH_MAX_LEN 256
 
@@ -255,7 +255,7 @@ struct poal_status_infor{
     struct poal_ad_Info   adInfo;  
     struct poal_rf_Info   rfInfo;
     struct poal_fpga_Info  fpgaInfo;
-    
+    char *device_sn;
 }__attribute__ ((packed));
 
 
@@ -319,6 +319,9 @@ struct poal_config{
     struct multi_freq_fregment_para_st  multi_freq_fregment_para[MAX_RADIO_CHANNEL_NUM];
     struct rf_para_st rf_para[MAX_RADIO_CHANNEL_NUM];
     struct network_st network;
+    #ifdef SUPPORT_NET_WZ
+    struct network_st network_10g;
+    #endif
     struct control_st ctrl_para;
     struct poal_status_infor status_para; 
     struct calibration_info_st cal_level;

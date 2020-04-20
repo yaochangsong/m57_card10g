@@ -34,7 +34,7 @@
 #define DMA_ANGLE_MAP_OFFSET  (DMA_CH_SIZE*2)
 #define MAX_QUEUE_LEN (128)
 #define MIN_QUEUE_LEN (50)
-#define DEFAULT_FFT_TIMEOUT (8)
+#define DEFAULT_FFT_TIMEOUT (2)
 #define KILL_THREAD_TIMEOUT (DEFAULT_FFT_TIMEOUT+2)
 #define BAND_WITH_20M (20000000ULL)
 #define BAND_WITH_10M (10000000ULL)
@@ -173,6 +173,7 @@ typedef enum _BUSINESS_CODE{
     SEARCH_FILE_STATUS_CMD=0x12,
     STORAGE_DELETE_POLICY_CMD=0x13,
     STORAGE_DELETE_FILE_CMD=0x14,
+    DISK_FORMAT_CMD=0x27,
     NOTIFY_SIGNALl_STATUS=0x1b,
     AUDIO_SAMPLE_RATE=0x1d,
     CONTRL_CHANNEL_POWER=0x1e,
@@ -181,6 +182,7 @@ typedef enum _BUSINESS_CODE{
     SPCTRUM_GET_RESULT_CMD=0x1a,
 #ifdef SUPPORT_NET_WZ
     SET_NET_WZ_THRESHOLD_CMD=0x16,
+    SET_NET_WZ_NETWORK_CMD=0x26,
 #endif
 }BUSINESS_CODE;
 
@@ -315,19 +317,6 @@ typedef struct _DEVICE_NET_INFO{
     uint16_t port;
     uint8_t status;
 }__attribute__ ((packed)) DEVICE_NET_INFO_ST;
-
-//table 10 page 25
-typedef struct _DEVICE_RF_INFO{
-    uint8_t cid;
-    uint8_t patten_id;
-    uint8_t gain_patten_id;
-    uint16_t gain_val;
-    uint16_t auto_gain_time;
-    int8_t mid_freq_amplitude;
-    uint8_t bandwith_id;
-    uint8_t antenna_sel;
-}__attribute__ ((packed)) DEVICE_RF_INFO_ST;
-
 
 
 //table 11 page 26
@@ -523,13 +512,6 @@ typedef union  _RF_PARAMETERS{
     MULTI_SCAN_PARAM_ST multi_freq_zone_anys;
     MULTI_SERH_PARAM_ST multi_freq_point_anys;
 }__attribute__ ((packed)) RF_PARAMETERS;
-
-typedef struct  _CH_PARAMETERS {
-    uint8_t cid;
-    WORK_MODE_TYPE mode;
-    DEVICE_RF_INFO_ST rf_parameter;
-    RF_PARAMETERS mode_parameter;
-}__attribute__ ((packed)) CH_PARAMETERS;
 
 
 typedef struct _DIRECTION_MULTI_ZONE_CHANNEL_PARAM{

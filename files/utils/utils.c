@@ -317,7 +317,8 @@ int read_file(void *pdata, unsigned int data_len, char *filename)
         return -1;
     }
 
-    fread(pdata,data_len,1,file);
+    //fread(pdata,data_len,1,file);
+    fread(pdata,1,data_len,file);
     fclose(file);
 
     return 0;

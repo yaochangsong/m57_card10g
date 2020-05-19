@@ -70,6 +70,10 @@
 #if defined (SUPPORT_RF_SPI)
 #include "device/rf/spi/spi.h"
 #endif
+#if defined (SUPPORT_GPS)
+#include "device/gps/gps_com.h"
+#endif
+
 #if defined (SUPPORT_RF_ADRV9009)
 #include "device/rf/adrv9009/adrv9009-iiostream.h"
 #endif

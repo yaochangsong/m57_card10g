@@ -658,6 +658,16 @@ void io_set_fft_size(uint32_t ch, uint32_t fft_size)
 #endif
 }
 
+void io_set_fpga_sys_time(uint32_t time)
+{
+#if defined(SUPPORT_SPECTRUM_KERNEL)
+    if(io_ctrl_fd<=0){
+        return;
+    }
+    ioctl(io_ctrl_fd,IOCTL_SET_SYS_TIME,time);
+#endif
+}
+
 static void io_dma_dev_disable(uint32_t ch,uint8_t type)
 {
     uint32_t ctrl_val = 0;
@@ -1060,6 +1070,15 @@ int32_t io_set_assamble_kernel_header_response_data(void *data){
 #else
 #define do_system(cmd)
 #endif
+
+uint8_t  io_restart_app(void)
+{
+    printf_debug("restart app\n");
+    sleep(1);
+    do_system("/etc/init.d/platform.sh restart &");
+    sleep(1);
+}
+
 
 uint8_t  io_set_network_to_interfaces(void *netinfo)
 {

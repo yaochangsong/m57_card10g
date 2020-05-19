@@ -82,6 +82,41 @@ ctrl_mode_param config_get_control_mode(void)
     return CTRL_MODE_REMOTE;
 }
 
+void config_save_cache(exec_cmd cmd, uint8_t type, int8_t ch, void *data)
+{
+    uint8_t status;
+    struct poal_config *poal_config = &(config_get_config()->oal_config);
+     switch(cmd)
+     {
+        case EX_STATUS_CMD:
+        {
+            switch(type){
+                case EX_CLK_STATUS:
+                {
+                    status = ((*(uint8_t *)data) == 0) ? 0 : 1;
+                    printf_debug("clock status: %d, %d\n", *(uint8_t *)data, status);
+                    poal_config->status_para.clkInfo.status = status;
+                }
+                    break;
+                case EX_AD_STATUS:
+                {
+                    status = ((*(uint8_t *)data) == 0) ? 0 : 1;
+                    printf_debug("ad status: %d, %d\n", *(uint8_t *)data, status);
+                    poal_config->status_para.adInfo.status = status;
+                }
+                    break;
+                case EX_DISK_STATUS:
+                    status = ((*(uint8_t *)data) == 0) ? 0 : 1;
+                    printf_debug("disk status: %d, %d\n", *(uint8_t *)data, status);
+                    poal_config->status_para.diskInfo.diskNode.status = status;
+                    break;
+                    
+            }
+            break;
+        }
+     }
+}
+
 bool config_get_is_internal_clock(void)
 {
     if(config.oal_config.ctrl_para.internal_clock == 0){
@@ -463,6 +498,21 @@ int8_t config_read_by_cmd(exec_cmd cmd, uint8_t type, uint8_t ch, void *data, ..
                     goto exit;
              }
              break;
+        }
+        case EX_STATUS_CMD:
+        {
+            switch(type){
+                case EX_CLK_STATUS:
+                    *(uint8_t *)data = poal_config->status_para.clkInfo.status;
+                    break;
+                case EX_AD_STATUS:
+                    *(uint8_t *)data = poal_config->status_para.adInfo.status;
+                    break;
+                case EX_DISK_STATUS:
+                     *(uint8_t *)data = poal_config->status_para.diskInfo.diskNode.status;
+                    break;
+            }
+            break;
         }
         default:
             printf_err("invalid set data[%d]\n", cmd);

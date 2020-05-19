@@ -109,6 +109,14 @@ int main(int argc, char **argv)
     printf_warn("VERSION:%s\n",get_version_string());
     config_init();
     uloop_init();
+if(spectrum_aditool_debug == false){
+    #ifdef SUPPORT_RF
+    rf_init();
+    #endif
+    #ifdef SUPPORT_SPECTRUM_USER
+    spectrum_init();
+    #endif
+}
 #ifdef SUPPORT_UART
     uart_init();
 #endif
@@ -123,24 +131,14 @@ int main(int argc, char **argv)
 #ifdef SUPPORT_AMBIENT_TEMP_HUMIDITY
     temp_humidity_init();
 #endif 
-#ifdef SUPPORT_LCD
-    init_lcd();
-#endif
     executor_init();
 #if defined(SUPPORT_XWFS)
     xwfs_init();
-    http_requset_init();
 #endif
-    
-
-if(spectrum_aditool_debug == false){
-    #ifdef SUPPORT_RF
-    rf_init();
-    #endif
-    #ifdef SUPPORT_SPECTRUM_FFT
-    spectrum_init();
-    #endif
-}
+#ifdef SUPPORT_LCD
+    init_lcd();
+#endif
+    http_requset_init();
     if(server_init() == -1){
         printf_err("server init fail!\n");
         goto done;

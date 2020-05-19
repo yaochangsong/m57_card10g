@@ -637,6 +637,7 @@ static int executor_set_1g_network(struct network_st *_network)
 {
     struct in_addr ipaddr, dst_addr, netmask, gateway;
     struct network_st *network = _network;
+    uint32_t host_addr;
     char *ipstr=NULL;
     int need_set = 0;
     if(get_ipaddress(&ipaddr) != -1){
@@ -649,7 +650,8 @@ static int executor_set_1g_network(struct network_st *_network)
         need_set ++;
         printfn("[%s]\n", inet_ntoa(dst_addr));
 #ifdef SUPPORT_LCD
-        lcd_printf(EX_NETWORK_CMD, EX_NETWORK_IP, &network->ipaddress, NULL);
+        host_addr = ntohl(network->ipaddress);
+        lcd_printf(EX_NETWORK_CMD, EX_NETWORK_IP, &host_addr, NULL);
 #endif
     }
     
@@ -664,7 +666,8 @@ set_netmask:
         need_set ++;
         printfn("[%s]\n", inet_ntoa(dst_addr));
 #ifdef SUPPORT_LCD
-        lcd_printf(EX_NETWORK_CMD, EX_NETWORK_MASK, &network->netmask, NULL);
+        host_addr = ntohl(network->netmask);
+        lcd_printf(EX_NETWORK_CMD, EX_NETWORK_MASK, &host_addr, NULL);
 #endif
     }
     
@@ -681,7 +684,8 @@ set_gateway:
         dst_addr.s_addr = network->gateway;
         printfn("[%s]\n", inet_ntoa(dst_addr));
 #ifdef SUPPORT_LCD
-        lcd_printf(EX_NETWORK_CMD, EX_NETWORK_MASK, &network->gateway, NULL);
+        host_addr = ntohl(network->gateway);
+        lcd_printf(EX_NETWORK_CMD, EX_NETWORK_GW, &host_addr, NULL);
 #endif
     }
     
@@ -694,6 +698,7 @@ int8_t executor_set_command(exec_cmd cmd, uint8_t type, uint8_t ch,  void *data,
 {
      struct poal_config *poal_config = &(config_get_config()->oal_config);
      va_list argp;
+     uint8_t ch_dup = ch +1;
      LOCK_SET_COMMAND();
      va_start (argp, data);
      switch(cmd)
@@ -701,7 +706,7 @@ int8_t executor_set_command(exec_cmd cmd, uint8_t type, uint8_t ch,  void *data,
         case EX_MID_FREQ_CMD:
         {
 #ifdef SUPPORT_LCD
-            lcd_printf(cmd, type,data, &ch);
+            lcd_printf(cmd, type,data, &ch_dup);
 #endif
             executor_set_kernel_command(type, ch, data, argp);
             break;
@@ -709,7 +714,7 @@ int8_t executor_set_command(exec_cmd cmd, uint8_t type, uint8_t ch,  void *data,
         case EX_RF_FREQ_CMD:
         {
 #ifdef SUPPORT_LCD
-            lcd_printf(cmd, type,data, &ch);
+            lcd_printf(cmd, type,data, &ch_dup);
 #endif
             rf_set_interface(type, ch, data);
             //executor_set_rf_command(type,ch, data);

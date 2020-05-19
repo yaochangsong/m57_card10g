@@ -213,6 +213,7 @@ struct poal_soft_version{
 struct poal_disk_Node{
     uint32_t totalSpace;
     uint32_t freeSpace;
+    uint8_t status;
 }__attribute__ ((packed));
 
 struct poal_disk_Info{

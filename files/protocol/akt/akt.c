@@ -492,6 +492,7 @@ static int akt_execute_set_command(void *cl)
         case RCV_NET_PARAM:
         {
             DEVICE_NET_INFO_ST netinfo;
+            bool restart = false;
             memcpy(&netinfo, header->buf, sizeof(DEVICE_NET_INFO_ST));
             poal_config->network.ipaddress = netinfo.ipaddr;
             poal_config->network.netmask =netinfo.mask;
@@ -499,14 +500,15 @@ static int akt_execute_set_command(void *cl)
             
             printf_note("ipaddr=0x%x, mask=0x%x, gateway=0x%x, port=%d\n", 
                 poal_config->network.ipaddress, poal_config->network.netmask, poal_config->network.gateway, poal_config->network.port);
-            config_save_all();
             executor_set_command(EX_NETWORK_CMD, EX_NETWORK_1G, 0, NULL);
             if(poal_config->network.port != ntohs(netinfo.port)){
                 /* 修改端口重启app */
                 poal_config->network.port = ntohs(netinfo.port);
-                io_restart_app();
+                restart = true;
             }
-            
+            config_save_all();
+            if(restart)
+                io_restart_app();
           break;
         }
         case RCV_RF_PARAM:
@@ -528,7 +530,7 @@ static int akt_execute_set_command(void *cl)
             net_para.cid = ch;
             memcpy(&net_para, header->buf, sizeof(SNIFFER_DATA_REPORT_ST));
             /* Test */
-        #if 1
+        #if 0
             tcp_get_peer_addr_port(cl, &tcp_client);
             printf_note("tcp connection from: %s:%d\n", inet_ntoa(tcp_client.sin_addr), ntohs(tcp_client.sin_port));
             //net_para.port = ntohs(net_para.port);
@@ -563,6 +565,7 @@ static int akt_execute_set_command(void *cl)
             poal_config->multi_freq_point_param[ch].audio_sample_rate = *((float *)(header->buf+1));
             rate = (uint32_t)poal_config->multi_freq_point_param[ch].audio_sample_rate;
             executor_set_command(EX_MID_FREQ_CMD, EX_AUDIO_SAMPLE_RATE, ch, &rate);
+            break;
         }
         case MID_FREQ_BANDWIDTH_CMD:
         {
@@ -1043,13 +1046,28 @@ exit:
     return err_code;
 }
 
-static int akt_execute_net_command(void)
+static int akt_execute_net_command(void *client)
 {
     struct poal_config *poal_config = &(config_get_config()->oal_config);
     
     DEVICE_NET_INFO_ST netinfo;
     struct in_addr ipdata;
-
+    struct net_udp_client *cl = NULL;
+    struct sockaddr_in addr;
+    struct discover_net{
+        uint32_t ipaddr;
+        uint16_t port;
+    };
+    /* parse ipaddress&port */
+    struct discover_net dis_net;
+    PDU_CFG_REQ_HEADER_ST *header;
+    header = &akt_header;
+    memcpy(&dis_net, header->buf, sizeof(struct discover_net));
+    printf_note("ipaddr = 0x%x, port=0x%x[%d]", dis_net.ipaddr, dis_net.port,  dis_net.port);
+    addr.sin_port = dis_net.port;
+    addr.sin_addr.s_addr = dis_net.ipaddr;
+    
+    cl = (struct net_udp_client *)client;
     memcpy(netinfo.mac, poal_config->network.mac, sizeof(netinfo.mac));
     netinfo.ipaddr = htonl(poal_config->network.ipaddress);
     netinfo.gateway = htonl(poal_config->network.gateway);
@@ -1059,6 +1077,7 @@ static int akt_execute_net_command(void)
     ipdata.s_addr = poal_config->network.ipaddress;
     printf_note("mac:%x%x%x%x%x%x, ipaddr=%x[%s], gateway=%x\n", netinfo.mac[0],netinfo.mac[1],netinfo.mac[2],netinfo.mac[3],netinfo.mac[4],netinfo.mac[5],
                                                             netinfo.ipaddr, inet_ntoa(ipdata), netinfo.gateway);
+    memcpy(&cl->discover_peer_addr, &addr, sizeof(addr));
     memcpy(akt_get_response_data.payload_data, &netinfo, sizeof(DEVICE_NET_INFO_ST));
     akt_get_response_data.header.len = sizeof(DEVICE_NET_INFO_ST);
 //    akt_get_response_data.header.operation = QUERY_CMD_RSP;
@@ -1107,9 +1126,9 @@ bool akt_execute_method(int *code, void *cl)
                 akt_get_response_data.header.len = 0;
             } else if(header->code == DISCOVER_LAN_DEV_PARAM){
                 printf_note("discover ...\n");
-                err_code = akt_execute_net_command();
+                err_code = akt_execute_net_command(cl);
             }else{
-                err_code = akt_execute_net_command();
+                err_code = akt_execute_net_command(cl);
             }
             
             break;

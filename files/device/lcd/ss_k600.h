@@ -16,7 +16,7 @@
 #define INT_TO_CHAR(i, c1,c2,c3,c4)         (c1 = (i >> 24)&0xff, c2 = (i >> 16)&0xff, c3 = (i >> 8)&0xff,c4 = i&0xff)
 #define FLOAT_SET_3_PRESION(f) (( (float)( (int)( (f+0.0005)*1000 ) ) )/1000);
 #ifdef SUPPORT_UART
-#define  send_data_by_serial(buf, len)    uart1_send_data(buf, len)#endif
+#define  send_data_by_serial(buf, len)    uart0_send_data(buf, len)#else#define  send_data_by_serial(buf, len)#endif
 
 #define SCREEN_BUTTON_PRESS_DOWN 1
 
@@ -84,15 +84,15 @@ typedef enum _SCREEN_COMMON_DATA1_SUB_ADDR_TYPE {
 	
 
 typedef enum _SCREEN_COMMON_DATA2_SUB_ADDR_TYPE {	
-	SCREEN_LED1_STATUS    = 0x00,
-	SCREEN_LED2_STATUS    = 0x01,
+	SCREEN_LED_CLK_STATUS    = 0x00,	SCREEN_LED1_STATUS    = 0x01,
+#ifdef RF_EIGHT_CHANNEL	SCREEN_LED2_STATUS    = 0x01,
 	SCREEN_LED3_STATUS    = 0x02,
 	SCREEN_LED4_STATUS    = 0x03,
 	SCREEN_LED5_STATUS    = 0x04,
 	SCREEN_LED6_STATUS    = 0x05,
 	SCREEN_LED7_STATUS    = 0x06,
 	SCREEN_LED8_STATUS    = 0x07,
-	SCREEN_LED_CLK_STATUS    = 0x08,
+#endif	//SCREEN_LED_CLK_STATUS    = 0x08,
 	SCREEN_LED_AD_STATUS    = 0x09,
 	SCREEN_CPU_STATUS         = 0x0a,
 	SCREEN_FPGA_STATUS        = 0x0b,

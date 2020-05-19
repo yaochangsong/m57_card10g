@@ -58,39 +58,6 @@ static inline void spm_iq_deal_notify(void *arg)
     pthread_cond_signal(&spm_iq_cond);
 }
 
-void spm_send_thread(void *arg)
-{
-    //char send_buf[46];
-    int i = 0, j =0;
-    struct spm_context *ctx = NULL;
-    
-   // thread_bind_cpu(2);
-    ctx = (struct spm_context *)arg;
-    struct spm_run_parm hparam;
-    memset(&hparam, 0, sizeof(struct spm_run_parm));
-    hparam.data_len = 1; 
-    hparam.type = 2;
-    hparam.ex_type = 3;
-    sleep(1);
-    for(;;){
-        ctx->pdata->enable.iq_en = 1;
-        j = 10;
-        do{
-            /* NONBLOCK send*/
-            hparam.data_len ++;
-            if(ctx->pdata->enable.iq_en){
-                spm_iq_deal_notify(&hparam);
-            }
-            sleep(1);
-            //ctx->pdata->enable.iq_en = !ctx->pdata->enable.iq_en;
-            i ++;
-        }while(j--);
-        ctx->pdata->enable.iq_en  = 0;
-        sleep(10);
-    }
-}
-
-
 
 /* 在DMA连续模式下；IQ读取线程 
    在该模式下，应以最快速度读取发送数据；
@@ -141,19 +108,6 @@ loop:
     memset(&run, 0, sizeof(run));
     memcpy(&run, ctx->run_args, sizeof(run));
     do{
-        #if 0
-        /* mquene NONBLOCK read,非阻塞方式从队列获取运行数据信息 */
-        nbyte = mqctx->ops->recv(mqctx->queue, &ptr);
-        if(nbyte >= 0 && ptr != NULL){
-            ptr_run = (struct spm_run_parm *)ptr;
-            ptr_run = ctx->run_args;
-            printf_note("reve:[%d]ch:%d, s_freq:%llu, e_freq:%llu, bandwidth=%u\n", nbyte, 
-                ptr_run->ch, ptr_run->s_freq, ptr_run->e_freq, ptr_run->bandwidth);
-            memcpy(&run, ptr_run, sizeof(run));
-            free(ptr);
-        }
-        #endif
-        
         len = ctx->ops->read_iq_data(&ptr_iq);
         
         printf_debug("reve handle: len=%d, ptr=%p, %d\n", len, ptr_iq, ctx->pdata->sub_ch_enable.iq_en);
@@ -178,35 +132,17 @@ loop:
 void spm_deal(struct spm_context *ctx, void *args)
 {   
     struct spm_context *pctx = ctx;
-    static uint8_t iq_en_dup = 0;
     if(pctx == NULL){
         printf_err("spm is not init!!\n");
         return;
     }
-    
-#if 0
-    if(pctx->pdata->sub_ch_enable.iq_en){
-        struct spm_run_parm *ptr_run;
-        ptr_run = (struct spm_run_parm *)args;
-        ssize_t  len = 0, i;
-        iq_t *ptr_iq = NULL;
-        
-        len = pctx->ops->read_iq_data(&ptr_iq);
-        printf_debug("reve handle: len=%d, ptr=%p, %d\n", len, ptr_iq, pctx->pdata->sub_ch_enable.iq_en);
-        if(len > 0){
-            pctx->ops->send_iq_data(ptr_iq, len, ptr_run);
-        }
-    }
-#else
     if(pctx->pdata->sub_ch_enable.iq_en){
         struct spm_run_parm *ptr_run;
         ptr_run = (struct spm_run_parm *)args;
         printf_debug("send:ch:%d, s_freq:%llu, e_freq:%llu, bandwidth=%u\n", 
                 ptr_run->ch, ptr_run->s_freq, ptr_run->e_freq, ptr_run->bandwidth);
-        iq_en_dup = pctx->pdata->sub_ch_enable.iq_en;
         spm_iq_deal_notify(&args);
     }
-#endif
     if(pctx->pdata->enable.psd_en){
         fft_t *ptr = NULL, *ord_ptr = NULL;
         ssize_t  byte_len = 0; /* fft byte size len */
@@ -224,7 +160,6 @@ void spm_deal(struct spm_context *ctx, void *args)
                 pctx->ops->send_fft_data(ord_ptr, fft_ord_len, args);
         }
     }
-    usleep(10);
 }
 
 static struct spm_context *spmctx = NULL;

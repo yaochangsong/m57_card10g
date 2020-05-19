@@ -130,7 +130,13 @@ int poal_udp_send_response(struct net_udp_client *cl, uint8_t *data, int len)
         printfd("%02x ", data[i]);
     }
     printfd("\n");
-    sendto(cl->srv->fd.fd, data, len, 0, (struct sockaddr *)&cl->peer_addr, sizeof(struct sockaddr));
+    if((cl->discover_peer_addr.sin_port != 0) && (cl->discover_peer_addr.sin_addr.s_addr != 0)){
+        sendto(cl->srv->fd.fd, data, len, 0, (struct sockaddr *)&cl->discover_peer_addr, sizeof(struct sockaddr));
+        memset(&cl->discover_peer_addr, 0, sizeof(struct sockaddr_in));
+    }else{
+        sendto(cl->srv->fd.fd, data, len, 0, (struct sockaddr *)&cl->peer_addr, sizeof(struct sockaddr));
+    }
+    
     return 0;
 }
 
@@ -157,7 +163,7 @@ int poal_udp_handle_request(struct net_udp_client *cl, uint8_t *data, int len)
         if(send_len > MAX_SEND_DATA_LEN){
             printf_err("%d is too long\n", send_len);
         }
-        udp_send_data_to_client(cl, send_buf, send_len);
+        poal_udp_send_response(cl, send_buf, send_len);
     }else{
         printf_note("error_code = %d\n", error_code);
         poal_udp_send_error_response(cl, error_code);

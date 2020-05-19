@@ -921,6 +921,23 @@ int16_t io_get_adc_temperature(void)
 
 }
 
+uint32_t get_fpga_version(void)
+{
+    int32_t ret = 0;
+    uint32_t args = 0;
+#if defined(SUPPORT_PLATFORM_ARCH_ARM)
+#if defined(SUPPORT_SPECTRUM_KERNEL) 
+    /* filename */
+    ret = ioctl(io_ctrl_fd,IOCTL_GET_FPGA_VERSION,&args);
+#elif defined(SUPPORT_SPECTRUM_V2) 
+    args = get_fpga_reg()->system->version;
+#endif
+#else
+    args=202012;
+#endif
+    return args;
+}
+
 /* ---Disk-related function--- */
 int io_read_more_info_by_name(const char *name, void *info, int32_t (*iofunc)(void *))
 {

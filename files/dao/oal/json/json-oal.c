@@ -401,6 +401,20 @@ static int json_parse_config_param(const cJSON* root, struct poal_config *config
             }
             printf_debug("app=>value is:%s, %s\n",value->valuestring, config->status_para.softVersion.app);
         }
+        value = cJSON_GetObjectItem(node, "fpga");
+        if(value!= NULL && cJSON_IsString(value)){
+            char ver[33] = {0};
+            sprintf(ver, "%u", get_fpga_version());
+            char *version = strdup(ver);
+            config->status_para.softVersion.fpga = value->valuestring;
+            if(strcmp(version, config->status_para.softVersion.fpga)){
+                config->status_para.softVersion.fpga = version;
+                json_write_string_param("status_parm", "soft_version", "fpga", config->status_para.softVersion.fpga);
+                json_write_file(config_get_config()->configfile, root);
+                printf_note("renew fpga verson: %s\n", version);
+            }
+            printf_note("fpga version=>value is:%s, %s\n",value->valuestring, config->status_para.softVersion.fpga);
+        }
     }
     value = cJSON_GetObjectItem(status_parm, "device_sn");
     if(value!= NULL && cJSON_IsString(value)){

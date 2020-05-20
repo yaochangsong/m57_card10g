@@ -933,7 +933,7 @@ uint32_t get_fpga_version(void)
     args = get_fpga_reg()->system->version;
 #endif
 #else
-    args=202012;
+    args=1;
 #endif
     return args;
 }

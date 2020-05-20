@@ -88,9 +88,12 @@ int fpga_unmemmap(FPGA_CONFIG_REG *fpga_reg)
     return 0;
 }
 
-static FPGA_CONFIG_REG *fpga_reg;
+static FPGA_CONFIG_REG *fpga_reg = NULL;
+static bool fpga_init_flag = false;
 FPGA_CONFIG_REG *get_fpga_reg(void)
 {
+    if(fpga_init_flag == false)
+        fpga_io_init();
     return fpga_reg;
 }
 
@@ -115,10 +118,12 @@ void fpga_io_init(void)
     fpga_reg->system->data_path_reset = 1;
     fpga_reg->broad_band->enable = 0xff;
     fpga_reg->broad_band->signal_carrier = 0;
+    fpga_init_flag = true;
 }
 
 void fpga_io_close(void)
 {
     fpga_unmemmap(fpga_reg);
+    fpga_init_flag = false;
 }
 

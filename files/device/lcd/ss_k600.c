@@ -715,7 +715,6 @@ int8_t k600_receive_write_data_from_user(uint8_t data_type, uint8_t data_cmd, vo
                          printf_err("error data\n");
                          return -1;
                     }
-                    printf_note("middle freq: %u, 0x%x\n", idata, idata);
                     idata = htonl(idata);
                     k600_receive_write_act(COMPOSE_16BYTE_BY_8BIT(data_type, data_cmd), &idata, 2);
                 }

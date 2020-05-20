@@ -404,7 +404,7 @@ static int json_parse_config_param(const cJSON* root, struct poal_config *config
         value = cJSON_GetObjectItem(node, "fpga");
         if(value!= NULL && cJSON_IsString(value)){
             char ver[33] = {0};
-            sprintf(ver, "%u", get_fpga_version());
+            sprintf(ver, "%x", get_fpga_version());
             char *version = strdup(ver);
             config->status_para.softVersion.fpga = value->valuestring;
             if(strcmp(version, config->status_para.softVersion.fpga)){

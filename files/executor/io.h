@@ -182,17 +182,6 @@ enum _data_type{
     IO_DQ_TYPE,
 };
 
-
-/* kernel client info */
-typedef struct  _STATION_INFO{
-    uint32_t index;
-    int32_t connfd;
-    struct sockaddr_in client;
-    struct timespec keepalive_time;
-    SNIFFER_DATA_REPORT_ST target_addr[MAX_CHANNEL_NUM];
-}__attribute__ ((packed)) STATION_INFO;
-
-
 struct udp_client_info{
     uint8_t cid;
     uint32_t ipaddr;

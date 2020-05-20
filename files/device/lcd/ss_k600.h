@@ -178,8 +178,6 @@ typedef struct  _SCREEN_SEND_CONTROL_ST{
 typedef struct  _SCREEN_CH_CTRL_DATA_ST{
     uint8_t audio_enable[MAX_RADIO_CHANNEL_NUM];
     uint8_t audio_volume[MAX_RADIO_CHANNEL_NUM];
-//    FIXED_FREQ_ANYS_D_PARAM_ST decode[MAX_CHANNEL_NUM];
-//    DEVICE_RF_INFO_ST rf[MAX_CHANNEL_NUM];
 }__attribute__ ((packed)) SCREEN_CH_CTRL_DATA_ST;     
 
 typedef struct  _SCREEN_NET_CTRL_DATA_ST{

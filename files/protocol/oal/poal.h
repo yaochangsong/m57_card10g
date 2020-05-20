@@ -1,13 +1,7 @@
 #ifndef _PROTOCOL_OAL_H_
 #define _PROTOCOL_OAL_H_
 
-#define MAX_SIGNAL_CHANNEL_NUM (16)
-#define MAX_SIG_CHANNLE 128
-
 #include "config.h"
-
-#define MAX_RADIO_CHANNEL_NUM 1
-
 #define FILE_PATH_MAX_LEN 256
 
 #ifdef SUPPORT_PROTOCAL_XNRP

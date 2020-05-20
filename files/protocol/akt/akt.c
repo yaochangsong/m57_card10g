@@ -522,7 +522,6 @@ static int akt_execute_set_command(void *cl)
         case SNIFFER_DATA_REPORT_PARAM:
         {
             SNIFFER_DATA_REPORT_ST net_para;
-            STATION_INFO sta_info_para = {0};
             struct sockaddr_in client;
             struct sockaddr_in tcp_client;
             struct timespec ts;

@@ -25,7 +25,14 @@
     #define poal_assamble_error_response_data akt_assamble_error_response_data
     #define poal_assamble_send_active_data    akt_assamble_send_active_data
 #else
-    #error "NOT DEFINE PROTOCAL"
+    #define poal_parse_header 
+    #define poal_parse_data   
+    #define poal_execute_method 
+    #define poal_assamble_response_data  
+    #define poal_assamble_error_response_data 
+    #define poal_assamble_send_active_data
+
+    //#error "NOT DEFINE PROTOCAL"
 #endif
 
 
@@ -76,15 +83,16 @@ struct output_en_st{
 /* 频点参数 */
 struct freq_points_st{
     int16_t index;
-    uint8_t  noise_en;
+    uint8_t  noise_en;  /* mute_switch 静噪开关 */
     int8_t noise_thrh;
     uint8_t raw_d_method; /* Original demodulation */
     uint8_t d_method;
     float freq_resolution;
     volatile uint32_t fft_size;
     uint32_t d_bandwith;
-    uint64_t center_freq; /* rf */
+    uint64_t center_freq; /* middle_freq 中心频率 */
     uint64_t bandwidth;   /* rf */
+    int16_t audio_volume;   /* 音频音量 */
 };//__attribute__ ((packed));
 
 
@@ -196,10 +204,10 @@ struct control_st{
 
 
 struct poal_soft_version{
-   const  char* app;
-   const  char* kernel;
-   const  char* uboot;
-   const  char* fpga;
+   char* app;
+   char* kernel;
+   char* uboot;
+   char* fpga;
 }__attribute__ ((packed));           
 
 struct poal_disk_Node{

@@ -394,12 +394,13 @@ int32_t io_set_subch_onoff(uint32_t subch, uint8_t onoff)
     ret = ioctl(io_ctrl_fd, IOCTL_SUB_CH_ONOFF, &odata);
 #elif defined(SUPPORT_SPECTRUM_V2) 
     if(onoff)
-        get_fpga_reg()->narrow_band[subch]->enable |= 0x01;
+        get_fpga_reg()->narrow_band[subch]->enable =0x01;
     else
-        get_fpga_reg()->narrow_band[subch]->enable &= 0x01;
+        get_fpga_reg()->narrow_band[subch]->enable = 0x00;
+     printf_debug("subch=%u, onoff=%d, ptr=0x%p\n", subch, onoff, get_fpga_reg()->narrow_band[subch]);
 #endif
 #endif
-    printf_debug("[**REGISTER**]ch:%d, SubChannle Set OnOff=%d, ret=%d\n",subch, onoff);
+    printf_debug("[**REGISTER**]ch:%d, SubChannle Set OnOff=%d\n",subch, onoff);
     return ret;
 }
 
@@ -524,6 +525,30 @@ void io_set_smooth_time(uint16_t stime)
     get_fpga_reg()->broad_band->fft_mean_time = stime;
 #endif
 #endif
+}
+
+int8_t io_fill_mid_rf_param(uint8_t gain_mode, uint8_t gain_val)
+{
+    int ret = -1;
+#if defined(SUPPORT_SPECTRUM_KERNEL)
+    typedef struct _DEVICE_RF_INFO{
+        uint8_t cid;
+        uint8_t patten_id;
+        uint8_t gain_patten_id;
+        uint16_t gain_val;
+        uint16_t auto_gain_time;
+        int8_t mid_freq_amplitude;
+        uint8_t bandwith_id;
+        uint8_t antenna_sel;
+    }__attribute__ ((packed)) DEVICE_RF_INFO_ST;
+    
+    DEVICE_RF_INFO_ST args;
+    args.gain_patten_id = gain_mode;
+    args.gain_val = gain_val;
+    if (io_ctrl_fd > 0)
+        ret = ioctl(io_ctrl_fd,IOCTL_RF_PARAM, &args);
+#endif
+    return ret;
 }
 
 
@@ -660,8 +685,6 @@ static void io_set_dma_SPECTRUM_out_en(int ch, int subch, uint32_t trans_len,uin
     io_dma_dev_enable(ch,IO_SPECTRUM_TYPE,continuous);
     io_dma_dev_trans_len(ch,IO_SPECTRUM_TYPE, trans_len*2);
 #elif defined(SUPPORT_SPECTRUM_V2)
-    //if(ch >= 0)
-    //    get_fpga_reg()->broad_band->enable |= 0x02;
     get_spm_ctx()->ops->stream_start(trans_len*sizeof(fft_t), continuous, STREAM_FFT);
 #endif
 }
@@ -671,8 +694,6 @@ static void io_set_dma_SPECTRUM_out_disable(int ch, int subch)
 #if defined(SUPPORT_SPECTRUM_KERNEL)
     io_dma_dev_disable(ch, IO_SPECTRUM_TYPE);
 #elif defined(SUPPORT_SPECTRUM_V2)
-    //if(ch >= 0)
-    //    get_fpga_reg()->broad_band->enable &= ~0x02;
     get_spm_ctx()->ops->stream_stop(STREAM_FFT);
 #endif
 
@@ -764,17 +785,6 @@ int8_t io_set_work_mode_command(void *data)
     return 0;
 }
 
-int8_t io_fill_mid_rf_param(void *args)
-{
-    int ret = -1;
-#if defined(SUPPORT_PLATFORM_ARCH_ARM)
-#if defined(SUPPORT_SPECTRUM_KERNEL)
-    if (io_ctrl_fd > 0)
-        ret = ioctl(io_ctrl_fd,IOCTL_RF_PARAM,args);
-#endif
-#endif
-    return ret;
-}
 
 int8_t io_set_enable_command(uint8_t type, int ch, int subc_ch, uint32_t fftsize)
 {

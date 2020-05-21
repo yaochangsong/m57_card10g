@@ -427,6 +427,39 @@ error:
 }
 
 
+int cmd_netset(struct uh_client *cl, void **arg, void **content)
+{
+    int code = RESP_CODE_OK;
+    printf_note("%s\n", cl->dispatch.body);
+    if(parse_json_net(cl->dispatch.body) != 0){
+        code = RESP_CODE_PARSE_ERR;
+    }
+error:
+    *arg = get_resp_message(code);
+    return code;
+}
+
+int cmd_net_client(struct uh_client *cl, void **arg, void **content)
+{
+    char *s_ch;
+    int  ch;
+    int code = RESP_CODE_OK;
+    
+    s_ch = cl->get_restful_var(cl, "ch");
+    if(str_to_int(s_ch, &ch, check_valid_ch) == false){
+        code = RESP_CODE_CHANNEL_ERR;
+        goto error;
+    }
+    printf_note("ch:%d, %s\n", ch, cl->dispatch.body);
+    if(parse_json_client_net(ch, cl->dispatch.body) != 0){
+        code = RESP_CODE_PARSE_ERR;
+    }
+error:
+    *arg = get_resp_message(code);
+    return code;
+}
+
+
 /* "PUT",     "/enable/@ch/@type/@value"
     主通道使能
     @type: "psd", "iq", "audio"

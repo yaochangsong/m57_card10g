@@ -26,6 +26,7 @@
 #include "config.h"
 #include "spm.h"
 #include "spm_fpga.h"
+#include "../../protocol/resetful/data_frame.h"
 
 static int spm_stream_stop(enum stream_type type);
 
@@ -200,8 +201,11 @@ static fft_t *spm_data_order(fft_t *fft_data,
     int i;
     size_t order_len = 0;
 
-    if(fft_data == NULL || fft_len == 0)
+    if(fft_data == NULL || fft_len == 0){
+        printf_note("null data\n");
         return NULL;
+    }
+        
     run_args = (struct spm_run_parm *)arg;
     
     /* 获取边带率 */
@@ -230,34 +234,39 @@ static int spm_send_fft_data(void *data, size_t fft_len, void *arg)
     uint8_t *ptr = NULL, *ptr_header = NULL;
     uint32_t header_len = 0;
     size_t data_byte_size = 0;
-    struct _spm_stream *pstream = spm_stream;
 
-    printf_debug("start send fft\n");
     if(data == NULL || fft_len == 0 || arg == NULL)
         return -1;
     data_byte_size = fft_len * sizeof(fft_t);
-#ifdef SUPPORT_PROTOCAL_AKT
+#if (defined SUPPORT_DATA_PROTOCAL_AKT)
     struct spm_run_parm *hparam;
     hparam = (struct spm_run_parm *)arg;
     hparam->data_len = data_byte_size; 
     hparam->type = SPECTRUM_DATUM_FLOAT;
     hparam->ex_type = SPECTRUM_DATUM;
     ptr_header = akt_assamble_data_frame_header_data(&header_len, arg);
+#elif defined(SUPPORT_DATA_PROTOCAL_XW)
+    struct spm_run_parm *hparam;
+    hparam = (struct spm_run_parm *)arg;
+    hparam->data_len = data_byte_size; 
+    hparam->type = DEFH_DTYPE_FLOAT;
+    hparam->ex_type = DFH_EX_TYPE_PSD;
+    ptr_header = xw_assamble_frame_data(&header_len, arg);
+    if(ptr_header == NULL)
+        return -1;
 #endif
-    
     ptr = (uint8_t *)safe_malloc(header_len+ data_byte_size+2);
     if (!ptr){
         printf_err("malloc failed\n");
         return -1;
     }
-
     memcpy(ptr, ptr_header, header_len);
     memcpy(ptr+header_len, data, data_byte_size);
     udp_send_data(ptr, header_len + data_byte_size);
+#if (defined SUPPORT_DATA_PROTOCAL_XW)
+    safe_free(ptr_header);
+#endif
     safe_free(ptr);
-    /* 设置DMA已读数据块长度 */
-    //ioctl(pstream[STREAM_FFT].id, IOCTL_DMA_SET_ASYN_READ_INFO, &data_byte_size);
-
     return (header_len + data_byte_size);
 }
 
@@ -266,37 +275,62 @@ static int spm_send_iq_data(void *data, size_t len, void *arg)
     uint8_t *ptr = NULL, *ptr_header = NULL;
     uint32_t header_len = 0;
     struct _spm_stream *pstream = spm_stream;
-
-    printf_note("send start %d\n", len);
+    #define SEND_BYTE 512
+    
     if(data == NULL || len == 0 || arg == NULL)
         return -1;
-#ifdef SUPPORT_PROTOCAL_AKT
+    
+#ifdef SUPPORT_DATA_PROTOCAL_AKT
     struct spm_run_parm *hparam;
     hparam = (struct spm_run_parm *)arg;
-    hparam->data_len = len; 
+    //hparam->data_len = len; 
+    hparam->data_len = SEND_BYTE;
     hparam->type = BASEBAND_DATUM_IQ;
     hparam->ex_type = DEMODULATE_DATUM;
     ptr_header = akt_assamble_data_frame_header_data(&header_len, arg);
-#endif
-    #if 0
+#elif defined(SUPPORT_DATA_PROTOCAL_XW)
+    struct spm_run_parm *hparam;
+    hparam = (struct spm_run_parm *)arg;
+    hparam->data_len = len; 
+    hparam->type = DEFH_DTYPE_BB_IQ;
+    hparam->ex_type = DFH_EX_TYPE_DEMO;
+    ptr_header = xw_assamble_frame_data(&header_len, arg);
     if(ptr_header == NULL)
         return -1;
-    udp_send_data(ptr_header, header_len);
-    udp_send_data(data, len);
-    #endif
+#endif
+    #if 0
     ptr = (uint8_t *)safe_malloc(header_len+ len);
     if (!ptr){
         printf_err("malloc failed\n");
         return -1;
     }
+
     memcpy(ptr, ptr_header, header_len);
     memcpy(ptr+header_len, data, len);
     udp_send_data(ptr, header_len + len);
     safe_free(ptr);
     /* 设置DMA已读数据块长度 */
     ioctl(pstream[STREAM_IQ].id, IOCTL_DMA_SET_ASYN_READ_INFO, &len);
-    printf_note("send over %d\n", len);
-    
+    #else
+    int i, index,sbyte;
+    uint8_t *pdata;
+    ptr = (uint8_t *)safe_malloc(header_len+ SEND_BYTE);
+    if (!ptr){
+        printf_err("malloc failed\n");
+        return -1;
+    }
+    index = len / SEND_BYTE;
+    sbyte = index * SEND_BYTE;
+    pdata = data;
+    memcpy(ptr, ptr_header, header_len);
+    for(i = 0; i<index; i++){
+        memcpy(ptr+header_len, pdata, SEND_BYTE);
+        udp_send_data(ptr, header_len + SEND_BYTE);
+        pdata += SEND_BYTE;
+    }
+    safe_free(ptr);
+    ioctl(pstream[STREAM_IQ].id, IOCTL_DMA_SET_ASYN_READ_INFO, &sbyte);
+    #endif
     return (header_len + len);
 }
 

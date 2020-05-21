@@ -14,26 +14,14 @@ static SCREEN_BW_PARA_ST bw_data[] = {
     {SCREEN_BW_10, 150000},
 };
 
-int8_t k600_decode_method_convert_to_standard(uint8_t method)
-{
-    uint8_t d_method;
-    
-    if(method == SCREEN_DECODE_AM){
-        d_method = IO_DQ_MODE_AM;
-    }else if(method == SCREEN_DECODE_FM || method == SCREEN_DECODE_WFM) {
-        d_method = IO_DQ_MODE_FM;
-    }else if(method == SCREEN_DECODE_LSB || method == SCREEN_DECODE_USB) {
-        d_method = IO_DQ_MODE_LSB;
-    }else if(method == SCREEN_DECODE_CW) {
-        d_method = IO_DQ_MODE_CW;
-    }else{
-        printf_err("decode method not support:%d\n",method);
-        return -1;
-    }
-    return d_method;
-}
+static const SCREEN_BW_PARA_ST _rf_bw_table[] = {
+    /* 0：40MHz, 1：175MHz */
+    {SCREEN_BW_0, 40000000},
+    {SCREEN_BW_1, 175000000},
+};
 
-int8_t k600_decode_method_convert_from_standard(uint8_t method)
+
+static int8_t k600_decode_method_convert_from_standard(uint8_t method)
 {
     uint8_t d_method;
     
@@ -152,7 +140,7 @@ int k600_receive_read_cmd_from_user(uint8_t data_type, uint8_t data_cmd)
             printf_debug("channel[%x], action[%x]\n", data_type, data_cmd);
             switch (data_cmd){
             case SCREEN_CHANNEL_BW:
-            case SCREEN_CHANNEL_NOISE_EN:
+            case SCREEN_CHANNEL_RF_BW:
                 case SCREEN_CHANNEL_MODE:
                 case SCREEN_CHANNEL_DECODE_TYPE:
                 case SCREEN_CHANNEL_VOLUME:
@@ -178,8 +166,8 @@ int k600_receive_read_cmd_from_user(uint8_t data_type, uint8_t data_cmd)
 }
 
 
-
-int8_t k600_send_data_to_user(uint8_t *pdata, int32_t total_len)
+/* 接收来自串口屏数据 */
+int8_t k600_scanf(uint8_t *pdata, int32_t total_len)
 {
     SCREEN_READ_CONTROL_ST data, *ptr;
     uint8_t data_type,data_cmd;
@@ -245,16 +233,19 @@ int8_t k600_send_data_to_user(uint8_t *pdata, int32_t total_len)
             case SCREEN_IPADDR3:
             case SCREEN_IPADDR4:
             {
-                uint32_t ipaddr;
-                if(config_read_by_cmd(EX_NETWORK_CMD, EX_NETWORK_IP, 0, &ipaddr) != 0){
-                    return -1;
+                static uint32_t ipaddr = 0;
+                if(ipaddr == 0){
+                    if(config_read_by_cmd(EX_NETWORK_CMD, EX_NETWORK_IP, 0, &ipaddr) != 0){
+                        printf_note("ipaddr=%x\n", ipaddr);
+                        return -1;
+                    }
                 }
                 memcpy((uint8_t *)(&ipaddr) + data_cmd - SCREEN_IPADDR1, &(ptr->data[0]), ptr->datanum);
                 ip.s_addr = ipaddr;
                 ipstr= inet_ntoa(ip);
-                printf_info("ipstr=%s ipaddr=%x\n", ipstr,  ip.s_addr);
+                printf_note("ipstr=%s ipaddr=0x%x, 0x%x\n", ipstr,  ip.s_addr, ipaddr);
                 config_write_data(EX_NETWORK_CMD, EX_NETWORK_IP, 0, &ipaddr);
-                executor_set_command(EX_NETWORK_CMD, EX_NETWORK_IP, 0, NULL);
+                executor_set_command(EX_NETWORK_CMD, 0, 0, NULL);
             }
             break;
             case SCREEN_NETMASK_ADDR1:
@@ -270,9 +261,9 @@ int8_t k600_send_data_to_user(uint8_t *pdata, int32_t total_len)
                 memcpy((uint8_t *)(&subnetmask) + data_cmd - SCREEN_NETMASK_ADDR1, &(ptr->data[0]), ptr->datanum);
                 ip.s_addr = subnetmask;
                 ipstr= inet_ntoa(ip);
-                printf_info("subnetmaskstr=%s subnetmask=%x\n", ipstr,  ip.s_addr);
+                printf_note("subnetmaskstr=%s subnetmask=%x\n", ipstr,  ip.s_addr);
                 config_write_data(EX_NETWORK_CMD, EX_NETWORK_MASK, 0, &subnetmask);
-                executor_set_command(EX_NETWORK_CMD, EX_NETWORK_MASK, 0, NULL);
+                executor_set_command(EX_NETWORK_CMD, 0, 0, NULL);
 
             }
             break;
@@ -289,7 +280,7 @@ int8_t k600_send_data_to_user(uint8_t *pdata, int32_t total_len)
                 memcpy((uint8_t *)(&gateway) + data_cmd - SCREEN_GATEWAY_ADDR1, &(ptr->data[0]), ptr->datanum);
                 ip.s_addr = gateway;
                 ipstr= inet_ntoa(ip);
-                printf_info("gatewaystr=%s gateway=%x\n", ipstr,  ip.s_addr);
+                printf_note("gatewaystr=%s gateway=%x\n", ipstr,  ip.s_addr);
                 config_write_data(EX_NETWORK_CMD,  EX_NETWORK_GW, 0, &gateway);
                 executor_set_command(EX_NETWORK_CMD,  EX_NETWORK_GW, 0, NULL);
 
@@ -299,9 +290,9 @@ int8_t k600_send_data_to_user(uint8_t *pdata, int32_t total_len)
             {   
                 uint16_t port;
                 port = ptr->data[0];
-                printf_debug("port=%d , 0x%x\n", port, ptr->data[0]);
+                printf_note("port=%d , 0x%x\n", port, ptr->data[0]);
                 config_write_data(EX_NETWORK_CMD,  EX_NETWORK_PORT, 0, &port);
-                executor_set_command(EX_NETWORK_CMD,  EX_NETWORK_PORT, 0, NULL);
+                //executor_set_command(EX_NETWORK_CMD,  EX_NETWORK_PORT, 0, NULL);
             }
         }
     }
@@ -319,53 +310,76 @@ int8_t k600_send_data_to_user(uint8_t *pdata, int32_t total_len)
     case SCREEN_CHANNEL8_DATA:
     {
         uint16_t i_data;
-        uint8_t channel = data_type;
+        uint8_t ch = data_type;
+        ch -= 1;/* channel: 0~7 */
         printf_debug("channel[%x], action[%x]\n", data_type, data_cmd);
         switch (data_cmd){
             case SCREEN_CHANNEL_BW:
             {   
                 uint32_t bw;
                 i_data = ptr->data[0];
-                printf_debug("ch = %d, SCREEN_CHANNEL_BW[%d]\n",  channel, i_data);
-                for(uint32_t i = 0; i<sizeof(bw_data)/sizeof(SCREEN_BW_PARA_ST); i++){
+                printf_note("ch = %d, SCREEN_CHANNEL_BW[%d]\n",  ch, i_data);
+                for(uint32_t i = 0; i<ARRAY_SIZE(bw_data); i++){
                     if(bw_data[i].type == (uint8_t)i_data){
-                        printf_debug("rec bw data %uHz\n", bw_data[i].idata);
+                        printf_note("rec bw data %uHz\n", bw_data[i].idata);
                         bw = (uint32_t)(bw_data[i].idata);
+                        config_write_data(EX_MID_FREQ_CMD,  EX_DEC_BW, ch, &bw);
+                        executor_set_command(EX_MID_FREQ_CMD,  EX_DEC_BW, ch, &bw);
                         break;
                     }
                 }
             }
                 break;
-            
+            case SCREEN_CHANNEL_RF_BW: //0：40MHz1：175MHz , 
+            {
+                uint32_t mid_bw;
+                i_data = ptr->data[0];
+                printf_note("ch = %d, rf middle bw[%d]\n",  ch, i_data);
+                for(uint32_t i = 0; i<ARRAY_SIZE(_rf_bw_table); i++){
+                    if(_rf_bw_table[i].type == (uint8_t)i_data){
+                        mid_bw = (uint32_t)(_rf_bw_table[i].idata);
+                        printf_note("rec bw data %uHz\n", mid_bw);
+                        config_write_data(EX_RF_FREQ_CMD,  EX_RF_MID_BW, ch, &mid_bw);
+                        executor_set_command(EX_RF_FREQ_CMD,  EX_RF_MID_BW, ch, &mid_bw);
+                        break;
+                    }
+                }
+                break;
+            }
             case SCREEN_CHANNEL_MODE:
-            case SCREEN_CHANNEL_NOISE_EN:
+            {
+                i_data = ptr->data[0];
+                /*
+                   the spi noise mode setting is different with screen protocal 
+                    so need to be transfer.
+                    1: low distortion mode of operation
+                    2: Normal working mode
+                    3: Low noise mode of operation
+                */
+                printf_note("ch = %d, rf noise mode[%d]\n",  ch, i_data);
+                i_data = i_data + 1;
+                config_write_data(EX_RF_FREQ_CMD,  EX_RF_MODE_CODE, ch, &i_data);
+                executor_set_command(EX_RF_FREQ_CMD, EX_RF_MODE_CODE, ch, &i_data);
+                break;
+            }
             case SCREEN_CHANNEL_DECODE_TYPE:
             {   
                 i_data = ptr->data[0];
-                printf_debug("ch = %d, [%d]\n",  channel, i_data);
-                /* the spi noise mode setting is different with screen protocal 
-                    so need to be transfer.
-                */
-                if(data_cmd == SCREEN_CHANNEL_MODE){
-                    /*
-                        1: low distortion mode of operation
-                        2: Normal working mode
-                        3: Low noise mode of operation
-                    */
-                    i_data = i_data + 1;
-                }else if(data_cmd == SCREEN_CHANNEL_DECODE_TYPE){
-                    if(i_data   == SCREEN_DECODE_AM){
-                        i_data  = DQ_MODE_AM;
-                    }else if(i_data  == SCREEN_DECODE_FM || i_data  == SCREEN_DECODE_WFM){
-                        i_data  = DQ_MODE_FM;
-                    }else if(i_data  == SCREEN_DECODE_CW){
-                        i_data  = DQ_MODE_CW;
-                    }else if(i_data  == SCREEN_DECODE_LSB || i_data == SCREEN_DECODE_USB){
-                        i_data  = DQ_MODE_USB;
-                    }else{
-                        printf_err("error decode type!!\n");
-                    }
+                printf_note("ch = %d,decode type [%d]\n",  ch, i_data);
+                if(i_data   == SCREEN_DECODE_AM){
+                    i_data  = IO_DQ_MODE_AM;
+                }else if(i_data  == SCREEN_DECODE_FM || i_data  == SCREEN_DECODE_WFM){
+                    i_data  = IO_DQ_MODE_FM;
+                }else if(i_data  == SCREEN_DECODE_CW){
+                    i_data  = IO_DQ_MODE_CW;
+                }else if(i_data  == SCREEN_DECODE_LSB || i_data == SCREEN_DECODE_USB){
+                    i_data  = IO_DQ_MODE_USB;
+                }else{
+                    printf_err("error decode type!!\n");
+                    break;
                 }
+                config_write_data(EX_MID_FREQ_CMD,  EX_DEC_METHOD, ch, &i_data);
+                executor_set_command(EX_MID_FREQ_CMD, EX_DEC_METHOD, ch, &i_data);
             }
                 break;
             case SCREEN_CHANNEL_FRQ:
@@ -379,33 +393,49 @@ int8_t k600_send_data_to_user(uint8_t *pdata, int32_t total_len)
                 }
                 printf_debug("fre data[%02x %02x]\n",  ptr->data[0],ptr->data[1]);
                 i_freq_khz = COMPOSE_32BYTE_BY_16BIT(ptr->data[0],ptr->data[1]);
-                printf_debug("ch = %d, SCREEN_CHANNEL_FRQ[%u %x]\n",  channel, i_freq_khz, i_freq_khz);
+                printf_note("ch = %d, frequency[%u %x]\n",  ch, i_freq_khz, i_freq_khz);
+                i_freq_hz = i_freq_khz* 1000; /*KHz -> Hz*/
+                config_write_data(EX_RF_FREQ_CMD,  EX_RF_MID_FREQ, ch, &i_freq_hz);
+                executor_set_command(EX_RF_FREQ_CMD, EX_RF_MID_FREQ, ch, &i_freq_hz);
                 break;
             }
             case SCREEN_CHANNEL_VOLUME:
+            {
+                i_data = ptr->data[0];
+                printf_note("volume: ch = %d, [%d]\n", ch, i_data);
+                break;
+            }
             case SCREEN_CHANNEL_MGC:
             {   
-                i_data = ptr->data[0];
-                printf_debug("ch = %d, [%d]\n", channel, i_data);
+                int8_t mgc_value;
+                mgc_value = ptr->data[0];
+                printf_note("ch = %d, mgc_value = [%d]\n", ch, mgc_value);
+                config_write_data(EX_RF_FREQ_CMD,  EX_RF_MGC_GAIN, ch, &mgc_value);
+                executor_set_command(EX_RF_FREQ_CMD, EX_RF_MGC_GAIN, ch, &mgc_value);
             }
                 break;
             case SCREEN_CHANNEL_AU_CTRL:
             {   
-                uint8_t setdata, clear_data = 0;
+                uint8_t start, clear_data = 0;
                 i_data = ptr->data[0];
-                printf_debug("ch = %d,rec SCREEN_CHANNEL_AU_CTRL[%d]\n", channel, i_data);
-                setdata = (~i_data)&0x01;
-                k600_receive_write_data_from_user(channel, SCREEN_CHANNEL_AU_CTRL, &setdata);
-                k600_receive_write_data_from_user(channel, SCREEN_CHANNEL_AU_BUTTON_CTRL, &clear_data);
+                printf_debug("ch = %d,rec SCREEN_CHANNEL_AU_CTRL[%d]\n", ch, i_data);
+                start = (~i_data)&0x01;
+                k600_receive_write_data_from_user(ch+1, SCREEN_CHANNEL_AU_CTRL, &start);
+                k600_receive_write_data_from_user(ch+1, SCREEN_CHANNEL_AU_BUTTON_CTRL, &clear_data);
+                printf_note("[%s] play\n", start == 0 ? "stop":"start");
+                if(start)
+                    io_set_enable_command(AUDIO_MODE_ENABLE, ch, 0);
+                else
+                    io_set_enable_command(AUDIO_MODE_DISABLE, ch, 0);
             }
                 break;
             case SCREEN_CHANNEL_AU_BUTTON_CTRL:
             {   
                 i_data = ptr->data[0];
-                printf_debug("ch = %d, SCREEN_CHANNEL_AU_BUTTON_CTRL[%d]\n", channel, i_data);
+                printf_debug("ch = %d, SCREEN_CHANNEL_AU_BUTTON_CTRL[%d]\n", ch, i_data);
                 if(i_data == SCREEN_BUTTON_PRESS_DOWN){
                     printf_debug("serial_screen_data_send_read\n");
-                    k600_receive_read_cmd_from_user(channel, SCREEN_CHANNEL_AU_CTRL);
+                    k600_receive_read_cmd_from_user(ch+1, SCREEN_CHANNEL_AU_CTRL);
                 }
             }
                 break;
@@ -546,23 +576,29 @@ int8_t k600_receive_write_data_from_user(uint8_t data_type, uint8_t data_cmd, vo
                 case SCREEN_CHANNEL_BW:
                 {
                     uint16_t _bw = 0;
-                    for(uint32_t i = 0; i<sizeof(bw_data)/sizeof(SCREEN_BW_PARA_ST); i++){
+                    int found = 0;
+                    for(uint32_t i = 0; i< ARRAY_SIZE(bw_data); i++){
                         if(bw_data[i].idata == *(uint32_t *)pdata){
                             _bw = COMPOSE_16BYTE_BY_8BIT(bw_data[i].type, 0);
-                            printf_debug("set cw %d %x\n", bw_data[i].type, _bw);
+                            printf_note("set bandwidth %u =>%d 0x%x\n", bw_data[i].idata, bw_data[i].type, _bw);
                             k600_receive_write_act(COMPOSE_16BYTE_BY_8BIT(data_type, data_cmd), &_bw, 1);
+                            found ++;
                             break;
                         }
                     }
+                    if(found == 0){
+                        printf_warn("bandwidth: %u is not find in table\n", *(uint32_t *)pdata);
+                    }
                 }
                     break;
-                case SCREEN_CHANNEL_NOISE_EN:
+                case SCREEN_CHANNEL_RF_BW:
                 {
                     uint16_t _noise = 0;
                     if(*(uint8_t *)pdata != SCREEN_NOISE_OFF && *(uint8_t *)pdata != SCREEN_NOISE_ON){
                         printf_err("error data\n");
                         return -1;
                     }
+                    printf_note("noise en: %d, 0x%x\n", *(uint8_t *)pdata, *(uint8_t *)pdata);
                     _noise = COMPOSE_16BYTE_BY_8BIT(*(uint8_t *)pdata, 0);
                     k600_receive_write_act(COMPOSE_16BYTE_BY_8BIT(data_type, data_cmd), &_noise, 1);
                 }
@@ -578,6 +614,7 @@ int8_t k600_receive_write_data_from_user(uint8_t data_type, uint8_t data_cmd, vo
                         printf_err("error data\n");
                         return -1;
                     }
+                    printf_note("mode_code: %d, 0x%x\n", *(uint8_t *)pdata, *(uint8_t *)pdata);
                     _data = COMPOSE_16BYTE_BY_8BIT(*(uint8_t *)pdata, 0);
                     k600_receive_write_act(COMPOSE_16BYTE_BY_8BIT(data_type, data_cmd), &_data, 1);
                 }
@@ -596,7 +633,7 @@ int8_t k600_receive_write_data_from_user(uint8_t data_type, uint8_t data_cmd, vo
                 case SCREEN_CHANNEL_MGC:
                 {   
                     uint16_t _data = 0;
-                    printf_debug("%d\n",*(uint8_t *)pdata);
+                    printf_note("data: %d, 0x%x\n", *(uint8_t *)pdata, *(uint8_t *)pdata);
                     _data = COMPOSE_16BYTE_BY_8BIT(*(uint8_t *)pdata, 0);
                     if(data_cmd == SCREEN_CHANNEL_DECODE_TYPE){
                         _data = k600_decode_method_convert_from_standard(_data);
@@ -606,14 +643,14 @@ int8_t k600_receive_write_data_from_user(uint8_t data_type, uint8_t data_cmd, vo
                     break;
                 case SCREEN_CHANNEL_FRQ:
                 {
-                    //float fdata;
                     uint32_t idata;
-                    idata = *(uint32_t *)pdata;
+                     /* hz need convert khz */
+                    idata = *(uint64_t *)pdata/1000;
                     if(idata > 9999999){ /* KHz */
                          printf_err("error data\n");
                          return -1;
                     }
-                    printf_debug("fdata[%u]\n", idata);
+                    printf_note("middle freq: %u, 0x%x\n", idata, idata);
                     idata = htonl(idata);
                     k600_receive_write_act(COMPOSE_16BYTE_BY_8BIT(data_type, data_cmd), &idata, 2);
                 }

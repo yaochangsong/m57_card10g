@@ -141,7 +141,7 @@ static  int8_t  executor_fragment_scan(uint32_t fregment_num,uint8_t ch, work_mo
     }
 #endif
     if(config_read_by_cmd(EX_RF_FREQ_CMD, EX_RF_MID_BW, ch, &scan_bw) == -1){
-            printf_err("Error read scan bindwidth=%u\n", scan_bw);
+            printf_err("Error read scan bandwidth=%u\n", scan_bw);
             return -1;
     }
     executor_set_command(EX_MID_FREQ_CMD, EX_BANDWITH, ch, &scan_bw);
@@ -251,6 +251,7 @@ static int8_t  executor_points_scan(uint8_t ch, work_mode_type mode, void *args)
     struct multi_freq_point_para_st *point;
     time_t s_time;
     struct io_decode_param_st decode_param;
+    int8_t subch = 0;
     spmctx = (struct spm_context *)args;
     r_args = spmctx->run_args;
 
@@ -271,14 +272,20 @@ static int8_t  executor_points_scan(uint8_t ch, work_mode_type mode, void *args)
         r_args->bandwidth = point->points[i].bandwidth;
         r_args->m_freq = point->points[i].center_freq;
         r_args->mode = mode;
-        r_args->d_method = point->points[i].d_method;
+        if(poal_config->sub_ch_enable.iq_en){
+            subch = poal_config->sub_ch_enable.sub_id ;
+            r_args->d_method = poal_config->sub_channel_para[ch].sub_ch[subch].raw_d_method;
+        }else{
+            r_args->d_method = point->points[i].raw_d_method;
+        }
         r_args->scan_bw = point->points[i].bandwidth;
-
+        r_args->gain_mode = poal_config->rf_para[ch].gain_ctrl_method;
+        r_args->gain_value = poal_config->rf_para[ch].mgc_gain_value;
         r_args->freq_resolution = (float)point->points[i].bandwidth * BAND_FACTOR / (float)point->points[i].fft_size;
-        printf_info("ch=%d, s_freq=%llu, e_freq=%llu, fft_size=%u, d_method=%d\n", ch, s_freq, e_freq, r_args->fft_size,r_args->d_method);
-        printf_info("rf scan bandwidth=%u, middlebw=%u, m_freq=%llu, freq_resolution=%f\n",r_args->scan_bw,r_args->bandwidth , r_args->m_freq, r_args->freq_resolution);
+        printf_note("ch=%d, s_freq=%llu, e_freq=%llu, fft_size=%u, d_method=%d\n", ch, s_freq, e_freq, r_args->fft_size,r_args->d_method);
+        printf_note("rf scan bandwidth=%u, middlebw=%u, m_freq=%llu, freq_resolution=%f\n",r_args->scan_bw,r_args->bandwidth , r_args->m_freq, r_args->freq_resolution);
         executor_set_command(EX_RF_FREQ_CMD,  EX_RF_MID_FREQ, ch, &point->points[i].center_freq);
-        executor_set_command(EX_MID_FREQ_CMD, EX_BANDWITH, ch, &point->points[ch].bandwidth);
+        executor_set_command(EX_MID_FREQ_CMD, EX_BANDWITH, ch, &point->points[i].bandwidth);
         //executor_set_command(EX_RF_FREQ_CMD,  EX_RF_MID_BW,   ch, &r_args->.scan_bw);
 #ifndef SUPPORT_SPECTRUM_FFT
         executor_set_command(EX_MID_FREQ_CMD, EX_MID_FREQ,    ch, &point->points[i].center_freq);
@@ -348,7 +355,7 @@ void executor_spm_thread(void *arg)
     uint8_t sub_ch = poal_config->enable.sub_id;
     uint32_t j;
 
-    thread_bind_cpu(1);
+    //thread_bind_cpu(1);
     while(1)
     {
         
@@ -378,8 +385,10 @@ loop:   printf_note("######wait to deal work######\n");
         
         poal_config->enable.bit_reset = false;
         printf_note("-------------------------------------\n");
+        #if (defined SUPPORT_PROTOCAL_AKT) || (defined SUPPORT_PROTOCAL_XNRP) 
         poal_config->assamble_response_data = executor_assamble_header_response_data_cb;
         poal_config->send_active = executor_send_data_to_clent_cb;
+        #endif
         if(poal_config->work_mode == OAL_FAST_SCAN_MODE){
             printf_note("            FastScan             \n");
         }else if(poal_config->work_mode == OAL_MULTI_ZONE_SCAN_MODE){
@@ -506,13 +515,13 @@ static int8_t executor_set_kernel_command(uint8_t type, uint8_t ch, void *data, 
         case EX_DEC_RAW_DATA:
         {
             uint64_t  middle_freq;
-            uint32_t bindwidth;
+            uint32_t bandwidth;
             uint8_t  d_method;
             middle_freq = *(uint64_t *)data;
-            bindwidth = va_arg(ap, uint32_t);
+            bandwidth = va_arg(ap, uint32_t);
             d_method = (uint8_t)va_arg(ap, uint32_t);
-            //printf_warn("EX_DEC_RAW_DATA: ch=%d, middle_freq=%llu, bindwidth=%u, d_method=%d\n", ch, middle_freq, bindwidth, d_method);
-            io_set_dec_parameter(ch, middle_freq, d_method, bindwidth);
+            //printf_warn("EX_DEC_RAW_DATA: ch=%d, middle_freq=%llu, bandwidth=%u, d_method=%d\n", ch, middle_freq, bandwidth, d_method);
+            io_set_dec_parameter(ch, middle_freq, d_method, bandwidth);
             break;
         }
         case EX_SMOOTH_TIME:
@@ -616,6 +625,65 @@ static int8_t executor_set_ctrl_command(uint8_t type, uint8_t ch, void *data, va
     return 0;
 }
 
+static int executor_set_all_network(struct network_st *_network)
+{
+    struct in_addr ipaddr, dst_addr, netmask, gateway;
+    struct network_st *network = _network;
+    char *ipstr=NULL;
+    int need_set = 0;
+#ifdef SUPPORT_NET_WZ
+    /* 设置默认板卡万兆ip和端口 */
+    io_set_local_10g_net(ntohl(network->ipaddress), network->port);
+#endif
+    if(get_ipaddress(&ipaddr) != -1){
+        if(ipaddr.s_addr == network->ipaddress){
+            printf_note("ipaddress[%s] is not change!\n", inet_ntoa(ipaddr));
+            goto set_netmask;
+        }
+        printf_note("ipaddress[%s] is changed to: ", inet_ntoa(ipaddr));
+        dst_addr.s_addr = network->ipaddress;
+        need_set ++;
+        printfn("[%s]\n", inet_ntoa(dst_addr));
+#ifdef SUPPORT_LCD
+        lcd_printf(EX_NETWORK_CMD, EX_NETWORK_IP, &network->ipaddress, NULL);
+#endif
+    }
+    
+set_netmask:
+    if(get_netmask(&netmask) != -1){
+         if(netmask.s_addr == network->netmask){
+            printf_note("netmask[%s] is not change!\n", inet_ntoa(netmask));
+            goto set_gateway;
+        }
+        printf_note("netmask[%s] is changed to: ", inet_ntoa(netmask));
+        dst_addr.s_addr = network->netmask;
+        need_set ++;
+        printfn("[%s]\n", inet_ntoa(dst_addr));
+#ifdef SUPPORT_LCD
+        lcd_printf(EX_NETWORK_CMD, EX_NETWORK_MASK, &network->netmask, NULL);
+#endif
+    }
+    
+set_gateway:
+    if(get_gateway(&gateway) != -1){
+         if(gateway.s_addr == network->gateway){
+            printf_note("gateway[%s] is not change!\n", inet_ntoa(gateway));
+            if(need_set != 0)
+                goto set_network;
+            else
+                return -1;
+        }
+        printf_note("gateway[%s] is changed to: ", inet_ntoa(gateway));
+        dst_addr.s_addr = network->gateway;
+        printfn("[%s]\n", inet_ntoa(dst_addr));
+#ifdef SUPPORT_LCD
+        lcd_printf(EX_NETWORK_CMD, EX_NETWORK_MASK, &network->gateway, NULL);
+#endif
+    }
+    
+set_network:
+    return io_set_network_to_interfaces((void *)network);
+}
 
 
 int8_t executor_set_command(exec_cmd cmd, uint8_t type, uint8_t ch,  void *data, ...)
@@ -628,11 +696,17 @@ int8_t executor_set_command(exec_cmd cmd, uint8_t type, uint8_t ch,  void *data,
      {
         case EX_MID_FREQ_CMD:
         {
+#ifdef SUPPORT_LCD
+            lcd_printf(cmd, type,data, &ch);
+#endif
             executor_set_kernel_command(type, ch, data, argp);
             break;
         }
         case EX_RF_FREQ_CMD:
         {
+#ifdef SUPPORT_LCD
+            lcd_printf(cmd, type,data, &ch);
+#endif
             rf_set_interface(type, ch, data);
             //executor_set_rf_command(type,ch, data);
             break;
@@ -650,30 +724,16 @@ int8_t executor_set_command(exec_cmd cmd, uint8_t type, uint8_t ch,  void *data,
             char *pbuf= NULL;
             uint32_t len;
             printf_debug("set work mode[%d]\n", type);
+            #if (defined SUPPORT_PROTOCAL_AKT) || (defined SUPPORT_PROTOCAL_XNRP) 
             pbuf = poal_config->assamble_response_data(&len, data);
             io_set_work_mode_command((void *)pbuf);
+            #endif
             break;
         }
         case EX_NETWORK_CMD:
         {
-            struct in_addr ipaddr, dst_ipaddr;
-            struct network_st *network = &poal_config->network;
-            char *ipstr=NULL;
-#ifdef SUPPORT_NET_WZ
-            /* 设置万兆ip和端口 */
-            io_set_local_10g_net(ntohl(network->ipaddress), network->port);
-#endif
-            if(get_ipaddress(&ipaddr) == -1){
-                break;
-            }
-            printf_note("ipaddress[%s]\n", inet_ntoa(ipaddr));
-            if(ipaddr.s_addr == network->ipaddress){
-                printf_note("ipaddress[%s] is not change!\n", inet_ntoa(ipaddr));
-                break;
-            }
-            dst_ipaddr.s_addr = network->ipaddress;
-            printf_note("ipaddress[%s] is changed to [%s]\n", inet_ntoa(ipaddr), inet_ntoa(dst_ipaddr));
-            io_set_network_to_interfaces((void *)&poal_config->network);
+            if(type == 0)
+                executor_set_all_network(&poal_config->network);
             break;
         }
         case EX_CTRL_CMD:
@@ -777,7 +837,7 @@ int8_t executor_set_enable_command(uint8_t ch)
                 executor_set_command(EX_RF_FREQ_CMD, EX_RF_ATTENUATION, ch, &poal_config->rf_para[ch].attenuation);
                 executor_set_command(EX_RF_FREQ_CMD, EX_RF_MGC_GAIN, ch, &poal_config->rf_para[ch].mgc_gain_value);
                 //executor_set_command(EX_MID_FREQ_CMD, EX_BANDWITH, ch, &poal_config->rf_para[ch].mid_bw);
-                executor_set_command(EX_MID_FREQ_CMD, EX_SMOOTH_TIME, ch, &poal_config->multi_freq_fregment_para[ch].smooth_time);
+                executor_set_command(EX_MID_FREQ_CMD, EX_SMOOTH_TIME, ch, &poal_config->multi_freq_point_param[ch].smooth_time);
                 executor_set_command(EX_MID_FREQ_CMD, EX_FPGA_CALIBRATE, ch, NULL);
                // executor_set_command(EX_MID_FREQ_CMD, EX_CHANNEL_SELECT, ch, &ch);
                 executor_set_command(EX_MID_FREQ_CMD, EX_FPGA_RESET, ch, NULL);
@@ -848,9 +908,11 @@ void executor_init(void)
 #endif
     printf_note("clear all sub ch\n");
     uint8_t enable =0;
+    uint8_t default_method = IO_DQ_MODE_IQ;
     for(i = 0; i< MAX_SIGNAL_CHANNEL_NUM; i++){
         printf_debug("clear all sub ch %d\n", i);
         executor_set_command(EX_MID_FREQ_CMD, EX_SUB_CH_ONOFF, i, &enable);
+        executor_set_command(EX_MID_FREQ_CMD, EX_SUB_CH_DEC_METHOD, i, &default_method);
     }
     sem_init(&(work_sem.notify_deal), 0, 0);
     sem_init(&(work_sem.kernel_sysn), 0, 0);

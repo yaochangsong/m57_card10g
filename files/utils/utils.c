@@ -63,16 +63,86 @@ int get_ipaddress(struct in_addr *addr)
     if (ioctl(sock, SIOCGIFADDR, &ifr) < 0)
     {
         perror("ioctl");
+        close(sock);
         return -1;
     }
     memcpy(&sin, &ifr.ifr_addr, sizeof(sin));
     temp_ip = inet_ntoa(sin.sin_addr);
     *addr = sin.sin_addr;
     //strcpy(ip,temp_ip);
-    //fprintf(stdout, "eth0: %s\n", temp_ip);
-
+    //fprintf(stdout, "eth0: ip %s\n", temp_ip);
+    close(sock);
     return 0;
 }
+
+int get_netmask(struct in_addr *netmask)
+{
+    int sock;
+    struct sockaddr_in sin;
+    struct ifreq ifr;
+    char *temp_netmask = NULL;
+    
+    sock = socket(AF_INET, SOCK_DGRAM, 0);
+    if (sock == -1)
+    {
+        perror("socket");
+        return -1;                
+    }
+    strncpy(ifr.ifr_name, NETWORK_EHTHERNET_POINT, IFNAMSIZ-1);
+    ifr.ifr_name[IFNAMSIZ - 1] = 0;
+    
+    if (ioctl(sock, SIOCGIFNETMASK, &ifr) < 0)
+    {
+        perror("ioctl");
+        close(sock);
+        return -1;
+    }
+    memcpy(&sin, &ifr.ifr_netmask, sizeof(sin));
+    temp_netmask = inet_ntoa(sin.sin_addr);
+    *netmask = sin.sin_addr;
+    //strcpy(ip,temp_ip);
+   // fprintf(stdout, "netmask: %s\n", temp_netmask);
+    close(sock);
+    return 0;
+}
+
+int get_gateway(struct in_addr * gw)
+{
+    long destination, gateway;
+    char iface[IF_NAMESIZE];
+    char buf[256];
+    FILE * file;
+    struct sockaddr_in sin;
+    char *temp_gw = NULL;
+
+    memset(iface, 0, sizeof(iface));
+    memset(buf, 0, sizeof(buf));
+
+    file = fopen("/proc/net/route", "r");
+    if (!file)
+        return -1;
+
+    while (fgets(buf, sizeof(buf), file)) {
+        if (sscanf(buf, "%s %lx %lx", iface, &destination, &gateway) == 3) {
+            if (destination == 0) { /* default */
+                if(!strcmp(NETWORK_EHTHERNET_POINT, iface)){
+                    sin.sin_addr.s_addr = gateway;
+                    temp_gw = inet_ntoa(sin.sin_addr);
+                    *gw = sin.sin_addr;
+                    //fprintf(stdout, "gateway: %s\n", temp_gw);
+                }
+                fclose(file);
+                return 0;
+            }
+        }
+    }
+
+    /* default route not found */
+    if (file)
+        fclose(file);
+    return -1;
+}
+
 
 int set_ipaddress(char *ipaddr, char *mask,char *gateway)  
 {  
@@ -247,8 +317,7 @@ int read_file(void *pdata, unsigned int data_len, char *filename)
         return -1;
     }
 
-    fread(pdata,1,data_len,file);
-
+    fread(pdata,data_len,1,file);
     fclose(file);
 
     return 0;
@@ -405,13 +474,30 @@ char *get_build_time(void)
     return data;
 }
 
+char *get_jenkins_version(void)
+{
+#ifdef SUPPORT_PLATFORM_ARCH_ARM
+    #define J_FILE_NAME "/etc/VERSION"
+#else
+    #define J_FILE_NAME "conf/VERSION"
+#endif
+
+    static char version[16] = {"0"};
+    
+    read_file(version, sizeof(version)-1, J_FILE_NAME);
+   
+    return version;
+}
+
 char *get_version_string(void)
 {
    static char version[64]={0};
-   sprintf(version, "%s(%s-%s)", PLATFORM_VERSION, get_build_time(), __TIME__);
-   printf_warn("%s\n", version);
+   sprintf(version, "%s(%s-%s)", PLATFORM_VERSION,get_build_time(), __TIME__);
+  // sprintf(version, "%s_%s(%s-%s)", PLATFORM_VERSION,get_jenkins_version(), get_build_time(), __TIME__);
+   printf_debug("%s\n", version);
    return version;
 }
+
 
 
 /* 将线程绑定到某个CPU上 */

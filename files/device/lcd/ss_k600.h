@@ -1,7 +1,6 @@
 #ifndef _DWIN_SS_K600_H
 #define _DWIN_SS_K600_H
 
-#include "config.h"
 
 /* The secreen address Type */
 
@@ -23,7 +22,7 @@
 
 //#define  LOCAL_CONTROL_MODE()     (serial_screen_get_control_mode() == SCREEN_CTRL_LOCAL)
 //#define  REMOTE_CONTROL_MODE()  (serial_screen_get_control_mode() == SCREEN_CTRL_REMOTE)
-
+#include "config.h"
 
 typedef enum _SCREEN_ADDR_RW_TYPE {
     WRITE_SCREEN_ADDR = 0x82,
@@ -45,7 +44,7 @@ typedef enum _SCREEN_ADDR_TYPE {
 
 typedef enum _SCREEN_CHANNEL_ADDR_TYPE {
     SCREEN_CHANNEL_BW      = 0x00,
-    SCREEN_CHANNEL_NOISE_EN = 0x01,
+     SCREEN_CHANNEL_RF_BW      = 0x01,    //SCREEN_CHANNEL_NOISE_EN = 0x01,
     SCREEN_CHANNEL_MODE    = 0x02,
     SCREEN_CHANNEL_DECODE_TYPE = 0x03,
     
@@ -177,8 +176,8 @@ typedef struct  _SCREEN_SEND_CONTROL_ST{
 }__attribute__ ((packed)) SCREEN_SEND_CONTROL_ST;     
 
 typedef struct  _SCREEN_CH_CTRL_DATA_ST{
-    uint8_t audio_enable[MAX_CHANNEL_NUM];
-    uint8_t audio_volume[MAX_CHANNEL_NUM];
+    uint8_t audio_enable[MAX_RADIO_CHANNEL_NUM];
+    uint8_t audio_volume[MAX_RADIO_CHANNEL_NUM];
 //    FIXED_FREQ_ANYS_D_PARAM_ST decode[MAX_CHANNEL_NUM];
 //    DEVICE_RF_INFO_ST rf[MAX_CHANNEL_NUM];
 }__attribute__ ((packed)) SCREEN_CH_CTRL_DATA_ST;     

@@ -126,8 +126,7 @@ static inline  int json_write_string_param(const char * const grandfather, const
     }else{
         object = cJSON_GetObjectItem(root, parents);
     }
-    strcpy(cJSON_GetObjectItem(object,child)->valuestring, (char *)data);
-    
+    cJSON_ReplaceItemInObject(object, child, cJSON_CreateString((char *)data));
     return 0;
 }
 
@@ -181,7 +180,8 @@ static inline  int json_write_array_string_param(const char * const parents, con
         object = cJSON_GetObjectItem(root, array);
     }
     node = cJSON_GetArrayItem(object, index);
-    strcpy(cJSON_GetObjectItem(node,name)->valuestring, data);
+    cJSON_ReplaceItemInObject(object, node, cJSON_CreateString((char *)data));
+    //strcpy(cJSON_GetObjectItem(node,name)->valuestring, data);
     
     return 0;
 }
@@ -331,18 +331,21 @@ static int json_write_config_param(cJSON* root, struct poal_config *config)
           /* side_bandrate */
      for(i=0;i<4;i++)
      {
-
-         json_write_array_int_param("spectrum_parm", "side_bandrate", i,"rate",config->ctrl_para.scan_bw.sideband_rate[i]);
-         json_write_array_int_param("spectrum_parm", "side_bandrate", i, "bind_width",config->ctrl_para.scan_bw.bindwidth_hz[i]);
+         json_write_array_double_param("spectrum_parm", "side_bandrate", i,"rate",config->ctrl_para.scan_bw.sideband_rate[i]);
+         json_write_array_int_param("spectrum_parm", "side_bandrate", i, "bandwidth",config->ctrl_para.scan_bw.bindwidth_hz[i]);
      }
 
        /*if_parm*/
      for(i=0;i<1;i++)
      {
 
-         json_write_array_int_param("spectrum_parm", "if_parm", i,"channel",config->multi_freq_point_param[i].points[0].index);
+         json_write_array_int_param("spectrum_parm", "if_parm", i,"channel",config->multi_freq_point_param[i].cid);
          json_write_array_int_param("spectrum_parm", "if_parm", i, "middle_freq",config->multi_freq_point_param[i].points[0].center_freq);
-         json_write_array_int_param("spectrum_parm", "if_parm", i, "bandwith",config->multi_freq_point_param[i].points[0].d_bandwith);
+         json_write_array_int_param("spectrum_parm", "if_parm", i, "bandwith",config->multi_freq_point_param[i].points[0].bandwidth);
+         json_write_array_int_param("spectrum_parm", "if_parm", i, "dec_bandwith",config->multi_freq_point_param[i].points[0].d_bandwith);
+         json_write_array_int_param("spectrum_parm", "if_parm", i, "dec_method",config->multi_freq_point_param[i].points[0].d_method);
+         json_write_array_int_param("spectrum_parm", "if_parm", i, "mute_switch",config->multi_freq_point_param[i].points[0].noise_en);
+         json_write_array_int_param("spectrum_parm", "if_parm", i, "audio_volume",config->multi_freq_point_param[i].points[0].audio_volume);
      }
      /*rf_parm*/
      for(i=0;i<1;i++)
@@ -354,6 +357,9 @@ static int json_write_config_param(cJSON* root, struct poal_config *config)
          json_write_array_int_param("spectrum_parm", "rf_parm", i, "gain_mode",config->rf_para[i].gain_ctrl_method);
          json_write_array_int_param("spectrum_parm", "rf_parm", i,"agc_ctrl_time",config->rf_para[i].agc_ctrl_time);
          json_write_array_int_param("spectrum_parm", "rf_parm", i, "agc_output_amp_dbm",config->rf_para[i].agc_mid_freq_out_level);
+         json_write_array_int_param("spectrum_parm", "rf_parm", i, "mgc_gain",config->rf_para[i].mgc_gain_value);
+         json_write_array_double_param("spectrum_parm", "rf_parm", i, "middle_freq",config->rf_para[i].mid_freq);
+         json_write_array_int_param("spectrum_parm", "rf_parm", i, "mid_bw",config->rf_para[i].mid_bw);
      }
 
     return 0;
@@ -371,6 +377,30 @@ static int json_parse_config_param(const cJSON* root, struct poal_config *config
 
     if(root == NULL || config == NULL){
         return -1;
+    }
+    
+    /* status_parm */
+    cJSON *status_parm = NULL;
+    status_parm = cJSON_GetObjectItem(root, "status_parm");
+    if(status_parm == NULL){
+        printf_warn("not found json node[%s]\n","status_parm");
+        return -1;
+    }
+
+    node = cJSON_GetObjectItem(status_parm, "soft_version");
+    if(node != NULL){
+        value = cJSON_GetObjectItem(node, "app");
+        if(value!= NULL && cJSON_IsString(value)){
+            char *version = get_version_string();
+            config->status_para.softVersion.app = value->valuestring;
+            if(strcmp(version, config->status_para.softVersion.app)){
+                config->status_para.softVersion.app = version;
+                json_write_string_param("status_parm", "soft_version", "app", config->status_para.softVersion.app);
+                json_write_file(config_get_config()->configfile, root);
+                printf_note("renew verson: %s\n", version);
+            }
+            printf_debug("app=>value is:%s, %s\n",value->valuestring, config->status_para.softVersion.app);
+        }
     }
     
     network = cJSON_GetObjectItem(root, "network");
@@ -452,22 +482,13 @@ static int json_parse_config_param(const cJSON* root, struct poal_config *config
         config->ctrl_para.internal_clock=value->valueint;
         printf_debug("aspectrum_time_intervalis:%d, \n",config->ctrl_para.internal_clock);
     }
-
-/* status_parm */
-    cJSON *status_parm = NULL;
-    status_parm = cJSON_GetObjectItem(root, "status_parm");
-    if(status_parm == NULL){
-        printf_warn("not found json node[%s]\n","status_parm");
-        return -1;
+#ifdef SUPPORT_NET_WZ
+    value = cJSON_GetObjectItem(control_parm, "net10g_threshold_bandwidth");
+    if(value!= NULL && cJSON_IsNumber(value)){
+        config->ctrl_para.wz_threshold_bandwidth=value->valuedouble;
+        printf_debug("net 10g threshold bandwidth:%uHz, \n",config->ctrl_para.wz_threshold_bandwidth);
     }
-    node = cJSON_GetObjectItem(status_parm, "soft_version");
-    if(node != NULL){
-        value = cJSON_GetObjectItem(node, "app");
-        if(value!= NULL && cJSON_IsString(value)){
-            config->status_para.softVersion.app = value->valuestring;
-            printf_debug("app=>value is:%s, %s\n",value->valuestring, config->status_para.softVersion.app);
-        }
-    }
+#endif
 /* calibration_parm */
     cJSON *calibration = NULL;
     calibration = cJSON_GetObjectItem(root, "calibration_parm");
@@ -517,19 +538,19 @@ static int json_parse_config_param(const cJSON* root, struct poal_config *config
             if(cJSON_IsNumber(value)){
                // printfd("start_freq:%d, ", value->valueint);
                 config->cal_level.specturm.start_freq_khz[i]=value->valueint;
-                printfd("start_freq:%d, ", config->cal_level.specturm.start_freq_khz[i]);
+                printfd("start_freq:%u, ", config->cal_level.specturm.start_freq_khz[i]);
             }
             value = cJSON_GetObjectItem(node, "end_freq");
             if(cJSON_IsNumber(value)){
                 //printfd("end_freq:%d, ", value->valueint);
                 config->cal_level.specturm.end_freq_khz[i]=value->valueint;
-                printfd("end_freq:%d, ",  config->cal_level.specturm.start_freq_khz[i]);
+                printfd("end_freq:%u, ",  config->cal_level.specturm.start_freq_khz[i]);
             } 
             value = cJSON_GetObjectItem(node, "value");
              if(cJSON_IsNumber(value)){
                 //printfd("value:%d, ", value->valueint);
                 config->cal_level.specturm.power_level[i]=value->valueint;
-                printfd("value:%d, ", config->cal_level.specturm.start_freq_khz[i]);
+                printfd("value:%d, ", config->cal_level.specturm.power_level[i]);
             } 
             printfd("\n");
         }
@@ -554,13 +575,13 @@ static int json_parse_config_param(const cJSON* root, struct poal_config *config
              if(cJSON_IsNumber(value)){
                  //printfd("start_freq:%d, ", value->valueint);
                  config->cal_level.analysis.start_freq_khz[i]=value->valueint;
-                 printfd("start_freq:%d, ", config->cal_level.analysis.start_freq_khz[i]);
+                 printfd("start_freq:%u, ", config->cal_level.analysis.start_freq_khz[i]);
              }
              value = cJSON_GetObjectItem(node, "end_freq");
              if(cJSON_IsNumber(value)){
                 // printfd("end_freq:%d, ", value->valueint);
                  config->cal_level.analysis.end_freq_khz[i]=value->valueint;
-                 printfd("end_freq:%d, ", config->cal_level.analysis.end_freq_khz[i]);
+                 printfd("end_freq:%u, ", config->cal_level.analysis.end_freq_khz[i]);
              } 
              value = cJSON_GetObjectItem(node, "value");
               if(cJSON_IsNumber(value)){
@@ -638,13 +659,13 @@ static int json_parse_config_param(const cJSON* root, struct poal_config *config
             if(cJSON_IsNumber(value)){
                // printfd("start_freq:%d, ", value->valueint);
                 config->cal_level.mgc.start_freq_khz[i]=value->valueint;
-                 printfd("start_freq:%d, ", config->cal_level.mgc.start_freq_khz[i]);
+                 printfd("start_freq:%u, ", config->cal_level.mgc.start_freq_khz[i]);
             }
             value = cJSON_GetObjectItem(node, "end_freq");
             if(cJSON_IsNumber(value)){
               //  printfd("end_freq:%d, ", value->valueint);
                 config->cal_level.mgc.end_freq_khz[i]=value->valueint;
-                 printfd("end_freq:%d, ", config->cal_level.mgc.end_freq_khz[i]);
+                 printfd("end_freq:%u, ", config->cal_level.mgc.end_freq_khz[i]);
             } 
             value = cJSON_GetObjectItem(node, "value");
              if(cJSON_IsNumber(value)){
@@ -677,11 +698,11 @@ static int json_parse_config_param(const cJSON* root, struct poal_config *config
                 config->ctrl_para.scan_bw.sideband_rate[i]=value->valuedouble;
                 printfd("rate:%f, ", config->ctrl_para.scan_bw.sideband_rate[i]);
             }
-            value = cJSON_GetObjectItem(node, "bind_width");
+            value = cJSON_GetObjectItem(node, "bandwidth");
             if(cJSON_IsNumber(value)){
-               // printfd("bind_width:%d, ", config->ctrl_para.scan_bw.bindwidth_hz[i]);
+               // printfd("bandwidth:%d, ", config->ctrl_para.scan_bw.bindwidth_hz[i]);
                 config->ctrl_para.scan_bw.bindwidth_hz[i]=value->valueint;
-                printfd("bind_width:%d, ", config->ctrl_para.scan_bw.bindwidth_hz[i]);
+                printfd("bandwidth:%u, ", config->ctrl_para.scan_bw.bindwidth_hz[i]);
             } 
              printfd("\n");
         }
@@ -703,14 +724,34 @@ static int json_parse_config_param(const cJSON* root, struct poal_config *config
             value = cJSON_GetObjectItem(node, "middle_freq");
             if(cJSON_IsNumber(value)){
                // printfd("middle_freq:%d, ", value->valueint);
-                config->multi_freq_point_param[i].points[0].center_freq=value->valueint;
+                config->multi_freq_point_param[i].points[0].center_freq=value->valuedouble;
                 printfd("middle_freq:%d, ",config->multi_freq_point_param[i].points[0].center_freq);
             } 
             value = cJSON_GetObjectItem(node, "bandwith");
             if(cJSON_IsNumber(value)){
-               // printfd("bind_width:%d, ", value->valueint);
+               // printfd("bandwidth:%d, ", value->valueint);
                 config->multi_freq_point_param[i].points[0].d_bandwith=value->valueint;
-                 printfd("bind_width:%d, ", config->multi_freq_point_param[i].points[0].d_bandwith);
+                 printfd("bandwidth:%d, ", config->multi_freq_point_param[i].points[0].d_bandwith);
+            } 
+            value = cJSON_GetObjectItem(node, "mute_switch");
+            if(cJSON_IsNumber(value)){
+                config->multi_freq_point_param[i].points[0].noise_en=value->valueint;
+                printfd("noise_en[mute_switch]:%d, ", config->multi_freq_point_param[i].points[0].noise_en);
+            } 
+            value = cJSON_GetObjectItem(node, "dec_method");
+            if(cJSON_IsNumber(value)){
+                config->multi_freq_point_param[i].points[0].d_method=value->valueint;
+                printfd("dec_method:%d, ", config->multi_freq_point_param[i].points[0].d_method);
+            }
+            value = cJSON_GetObjectItem(node, "dec_bandwith");
+            if(cJSON_IsNumber(value)){
+                config->multi_freq_point_param[i].points[0].d_bandwith=value->valueint;
+                printfd("dec_bandwith:%u, ", config->multi_freq_point_param[i].points[0].d_bandwith);
+            } 
+            value = cJSON_GetObjectItem(node, "audio_volume");
+            if(cJSON_IsNumber(value)){
+                config->multi_freq_point_param[i].points[0].audio_volume=value->valueint;
+                printfd("audio_volume:%d, ", config->multi_freq_point_param[i].points[0].audio_volume);
             } 
 
             printfd("\n");
@@ -803,9 +844,23 @@ static int json_parse_config_param(const cJSON* root, struct poal_config *config
             }
             value = cJSON_GetObjectItem(node, "agc_output_amp_dbm");
             if(cJSON_IsNumber(value)){
-                  //  printfd(" agc_output_amp_dbm:%d", value->valueint);
-                    config->rf_para[i].agc_mid_freq_out_level=value->valueint;
-                    printfd(" agc_output_amp_dbm:%d", config->rf_para[i].agc_mid_freq_out_level);
+                config->rf_para[i].agc_mid_freq_out_level=value->valueint;
+                printfd(" agc_output_amp_dbm:%d", config->rf_para[i].agc_mid_freq_out_level);
+            }
+            value = cJSON_GetObjectItem(node, "middle_freq");
+            if(cJSON_IsNumber(value)){
+                config->rf_para[i].mid_freq=value->valuedouble;
+                printfd(" middle_freq:%llu", config->rf_para[i].mid_freq);
+            }
+            value = cJSON_GetObjectItem(node, "mid_bw");
+            if(cJSON_IsNumber(value)){
+                config->rf_para[i].mid_bw=value->valueint;
+                printfd(" mid_bw:%llu", config->rf_para[i].mid_bw);
+            }
+            value = cJSON_GetObjectItem(node, "mgc_gain");
+            if(cJSON_IsNumber(value)){
+                config->rf_para[i].mgc_gain_value=value->valueint;
+                printfd(" mgc_gain:%d", config->rf_para[i].mgc_gain_value);
             }
             printfd("\n");
         }
@@ -839,7 +894,7 @@ int json_write_config_file(void *config)
 {
     int ret = -1;
     char *file;
-    s_config *conf = (struct poal_config *)config;
+    s_config *conf = (struct s_config *)config;
     file = conf->configfile;
     if(file == NULL || config == NULL || root_json == NULL)
         return -1;

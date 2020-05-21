@@ -1133,7 +1133,7 @@ void read_scan_param_info(mxml_node_t *root, void *config)
            scanbw->work_fixed_bindwidth_flag = true;
            scanbw->work_sideband_rate = scanbw->sideband_rate[i];
            scanbw->work_bindwidth_hz = scanbw->bindwidth_hz[i];
-           printf_warn("work fixed bindwidth flag=%d, work bindwidth_hz=%u,work sideband rate=%f\n",scanbw->work_fixed_bindwidth_flag, scanbw->work_bindwidth_hz, scanbw->work_sideband_rate);
+           printf_warn("work fixed bandwidth flag=%d, work bindwidth_hz=%u,work sideband rate=%f\n",scanbw->work_fixed_bindwidth_flag, scanbw->work_bindwidth_hz, scanbw->work_sideband_rate);
             break;
         }else{
             scanbw->work_sideband_rate = scanbw->sideband_rate[i]; /* the last value ; work_bindwidth_hz is set by remote*/

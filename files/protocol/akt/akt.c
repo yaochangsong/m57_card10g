@@ -29,7 +29,7 @@ int akt_get_device_id(void)
 int8_t akt_decode_method_convert(uint8_t method)
 {
     uint8_t d_method;
-    
+
     if(method == DQ_MODE_AM){
         d_method = IO_DQ_MODE_AM;
     }else if(method == DQ_MODE_FM) {
@@ -101,13 +101,18 @@ static int akt_convert_oal_config(uint8_t ch, uint8_t cmd)
        case SUB_SIGNAL_PARAM_CMD:
        {
             struct sub_channel_freq_para_st *sub_channel_array;
-            sub_channel_array = &poal_config->sub_channel_para[poal_config->cid];
-            sub_channel_array->cid = poal_config->cid;
-            sub_channel_array->sub_ch[ch].index = pakt_config->sub_cid;
+            int cid = 0;
+            cid = pakt_config->sub_channel[ch].cid;
+            sub_channel_array = &poal_config->sub_channel_para[cid];
+            sub_channel_array->cid = cid ;
+            poal_config->cid = cid;
+            sub_channel_array->sub_ch[ch].index = ch;
             sub_channel_array->sub_ch[ch].center_freq = pakt_config->sub_channel[ch].freq;
+            sub_channel_array->sub_ch[ch].raw_d_method = pakt_config->sub_channel[ch].decode_method_id;
             sub_channel_array->sub_ch[ch].d_method = akt_decode_method_convert(pakt_config->sub_channel[ch].decode_method_id);
             sub_channel_array->sub_ch[ch].d_bandwith = pakt_config->sub_channel[ch].bandwidth;
-            printf_info("ch:%d,d_method:%u, raw dmethod:%d\n", ch, sub_channel_array->sub_ch[ch].d_method, pakt_config->sub_channel[ch].decode_method_id);
+            printf_info("cid:%d, subch:%d\n", cid,ch);
+            printf_info("subch:%d,d_method:%u, raw dmethod:%d\n", ch, sub_channel_array->sub_ch[ch].raw_d_method, sub_channel_array->sub_ch[ch].d_method, sub_channel_array->sub_ch[ch].raw_d_method);
             printf_info("center_freq:%llu, d_bandwith=%u\n", sub_channel_array->sub_ch[ch].center_freq, sub_channel_array->sub_ch[ch].d_bandwith);
        }
             break;
@@ -131,7 +136,7 @@ static int akt_convert_oal_config(uint8_t ch, uint8_t cmd)
             poal_config->sub_ch_enable.audio_en = convert_enable_mode(pakt_config->sub_channel_enable[ch].en, D_OUT_MASK);
             poal_config->sub_ch_enable.iq_en = convert_enable_mode(pakt_config->sub_channel_enable[ch].en, IQ_OUT_MASK);
             INTERNEL_ENABLE_BIT_SET(poal_config->sub_ch_enable.bit_en,poal_config->sub_ch_enable);
-            printf_info("sub_ch bit_en=%x, sub_ch psd_en=%d, sub_ch audio_en=%d,sub_ch iq_en=%d\n", poal_config->sub_ch_enable.bit_en, 
+            printf_info("sub_ch =%d, bit_en=%x, psd_en=%d, audio_en=%d,iq_en=%d\n",ch, poal_config->sub_ch_enable.bit_en, 
             poal_config->sub_ch_enable.psd_en,poal_config->sub_ch_enable.audio_en,poal_config->sub_ch_enable.iq_en);
             break;
         case DIRECTION_MULTI_FREQ_ZONE_CMD: /* 多频段扫描参数 */
@@ -157,6 +162,8 @@ static int akt_convert_oal_config(uint8_t ch, uint8_t cmd)
                     if(point->points[sig_cnt].bandwidth == 0){
                         point->points[sig_cnt].bandwidth = BAND_WITH_20M;
                     }
+                    point->points[sig_cnt].raw_d_method = pakt_config->decode_param[ch].sig_ch[sig_cnt].decode_method_id;
+                    point->points[sig_cnt].d_method = akt_decode_method_convert(point->points[sig_cnt].raw_d_method);
                     point->points[sig_cnt].fft_size = pakt_config->fft[ch].fft_size;
                     if(point->points[sig_cnt].fft_size > 0){
                         point->points[sig_cnt].freq_resolution = ((float)point->points[sig_cnt].bandwidth/(float)point->points[sig_cnt].fft_size)*BAND_FACTOR;
@@ -164,6 +171,7 @@ static int akt_convert_oal_config(uint8_t ch, uint8_t cmd)
                     }
                      /* smooth */
                     point->smooth_time = pakt_config->smooth[ch].smooth;
+                    printf_note("raw_d_method:%d, d_method:%u\n",point->points[sig_cnt].raw_d_method, point->points[sig_cnt].d_method);
                     printf_note("residence_time:%u\n",point->residence_time);
                     printf_note("freq_point_cnt:%u\n",point->freq_point_cnt);
                     printf_note("ch:%d, sig_cnt:%d,center_freq:%u\n", ch,sig_cnt,point->points[sig_cnt].center_freq);
@@ -271,7 +279,7 @@ static int akt_convert_oal_config(uint8_t ch, uint8_t cmd)
                         printf_info("[%d]center_freq:%u\n",i, point->points[i].center_freq);
                         printf_info("[%d]bandwidth:%u\n",i, point->points[i].bandwidth);
                         printf_info("[%d]fft_size:%u\n",i, point->points[i].fft_size);
-                        printf_info("[%d]d_method:%u\n",i, point->points[i].d_method);
+                        printf_info("[%d]raw_d_method:%d,d_method:%u\n",i,point->points[i].raw_d_method, point->points[i].d_method);
                         printf_info("[%d]d_bandwith:%u\n",i, point->points[i].d_bandwith);
                     }
                 }
@@ -483,7 +491,7 @@ static int akt_execute_set_command(void *cl)
             net_para.cid = ch;
             memcpy(&net_para, header->buf, sizeof(SNIFFER_DATA_REPORT_ST));
             /* Test */
-        #if 0
+        #if 1
             tcp_get_peer_addr_port(cl, &tcp_client);
             printf_note("tcp connection from: %s:%d\n", inet_ntoa(tcp_client.sin_addr), ntohs(tcp_client.sin_port));
             //net_para.port = ntohs(net_para.port);
@@ -536,13 +544,18 @@ static int akt_execute_set_command(void *cl)
             break;
         case RF_WORK_MODE_CMD:
             check_valid_channel(header->buf[0]);
+            /*
+                1: low distortion mode of operation
+                2: Normal working mode
+                3: Low noise mode of operation
+            */
             poal_config->rf_para[ch].rf_mode_code = header->buf[1];
             executor_set_command(EX_RF_FREQ_CMD, EX_RF_MODE_CODE, ch, &poal_config->rf_para[ch].rf_mode_code);
             break;
         case RF_GAIN_MODE_CMD:
             check_valid_channel(header->buf[0]);
             poal_config->rf_para[ch].gain_ctrl_method = header->buf[1];
-            executor_set_command(EX_RF_FREQ_CMD, EX_RF_GAIN_MODE, ch, &poal_config->rf_para[ch].gain_ctrl_method);
+            //executor_set_command(EX_RF_FREQ_CMD, EX_RF_GAIN_MODE, ch, &poal_config->rf_para[ch].gain_ctrl_method);
             break;
         case RF_AGC_CMD:
             check_valid_channel(header->buf[0]);
@@ -570,8 +583,6 @@ static int akt_execute_set_command(void *cl)
         case SUB_SIGNAL_PARAM_CMD:
         {           
             struct sub_channel_freq_para_st *sub_channel_array;
-            sub_channel_array = &poal_config->sub_channel_para[poal_config->cid];
-            
             uint8_t sub_ch;
             sub_ch = *(uint16_t *)(header->buf+1);
             if(sub_ch >= 1)
@@ -582,18 +593,19 @@ static int akt_execute_set_command(void *cl)
                 goto set_exit;
             }
             memcpy(&(pakt_config->sub_channel[sub_ch]), header->buf, sizeof(SUB_SIGNAL_PARAM));
+            sub_channel_array = &poal_config->sub_channel_para[ch];
             if(akt_convert_oal_config(sub_ch, header->code) == -1){
                 err_code = RET_CODE_PARAMTER_ERR;
                 goto set_exit;
             }
-            printf_note("oal ch=%d,sub_ch=%d, freq=%llu, method_id=%d, bandwidth=%u\n", 
-                        sub_channel_array->cid, sub_channel_array->sub_ch[sub_ch].index,
+            printf_note("oal ch=%d,%d,sub_ch=%d,%d, freq=%llu, method_id=%d, bandwidth=%u\n", ch,
+                        sub_channel_array->cid, sub_ch,sub_channel_array->sub_ch[sub_ch].index,
                         sub_channel_array->sub_ch[sub_ch].center_freq, sub_channel_array->sub_ch[sub_ch].d_method, 
                         sub_channel_array->sub_ch[sub_ch].d_bandwith);
             /* 解调中心频率需要工作中心频率计算 */
             executor_set_command(EX_MID_FREQ_CMD, EX_SUB_CH_MID_FREQ, sub_ch,
                 &sub_channel_array->sub_ch[sub_ch].center_freq,/* 解调频率*/
-                poal_config->multi_freq_point_param[ch].points[sub_ch].center_freq); /* 频点工作频率 */
+                poal_config->multi_freq_point_param[ch].points[0].center_freq); /* 频点工作频率 */
             /* 解调带宽, 不同解调方式，带宽系数表不一样*/
             executor_set_command(EX_MID_FREQ_CMD, EX_SUB_CH_DEC_BW, sub_ch, 
                 &sub_channel_array->sub_ch[sub_ch].d_bandwith,
@@ -651,6 +663,7 @@ static int akt_execute_set_command(void *cl)
             }else{
                 io_set_enable_command(IQ_MODE_DISABLE, -1,sub_ch, 0);
             }
+            executor_set_enable_command(ch);
             break;
         }
 #ifdef SUPPORT_NET_WZ
@@ -763,7 +776,7 @@ static int akt_execute_set_command(void *cl)
             char filename[FILE_PATH_MAX_LEN];
             memcpy(filename, header->buf, FILE_PATH_MAX_LEN);
             #if defined(SUPPORT_XWFS)
-            ret = xwfs_delete_file();
+            ret = xwfs_delete_file(filename);
             #endif
             printf_note("Delete file:%s, %d\n", filename, ret);
             if(ret != 0){
@@ -907,7 +920,7 @@ static int akt_execute_get_command(void)
                 err_code = akt_err_code_check(ret);
                 goto exit;
             }
-            printf_note("ret=%d, num=%d, speed=%uKB/s, capacity_bytes=%llu, used_bytes=%llu\n",
+            printf_debug("ret=%d, num=%d, speed=%uKB/s, capacity_bytes=%llu, used_bytes=%llu\n",
                 ret, psi->disk_num, psi->read_write_speed_kbytesps, 
                 psi->disk_capacity[0].disk_capacity_byte, psi->disk_capacity[0].disk_used_byte);
             memcpy(akt_get_response_data.payload_data, psi, st_size);

@@ -426,7 +426,7 @@ static void client_request_done(struct uh_client *cl)
 
 static void client_free(struct uh_client *cl)
 {
-    printf_warn("free######");
+    printf_warn("free######\n");
     if (cl) {
         dispatch_done(cl);
         uloop_timeout_cancel(&cl->timeout);
@@ -574,16 +574,13 @@ static bool client_init_cb(struct uh_client *cl, char *buf, int len)
         ustream_consume(cl->us, 2);
         return true;
     }
-
     *newline = 0;    
-    
     if(client_srv_parse_response(cl, buf) == 0){
         /* if data is response, return */
         ustream_consume(cl->us, newline + 2 - buf);
         cl->state = CLIENT_STATE_HEADER;
         return true;
     }
-    
     cl->state = client_parse_request(cl, buf);
     ustream_consume(cl->us, newline + 2 - buf);
     if (cl->state == CLIENT_STATE_DONE)
@@ -599,11 +596,10 @@ static void client_poll_post_data(struct uh_client *cl)
     struct http_request *r = &cl->request;
     char *buf;
     int len;
-    printf_warn("---cl->state=%d,%d\n", cl->state, CLIENT_STATE_DONE);
+    printf_info("cl->state=%d,%d\n", cl->state, CLIENT_STATE_DONE);
 
     if (cl->state == CLIENT_STATE_DONE)
         return;
-    
 
     while (1) {
         int cur_len;
@@ -625,13 +621,18 @@ static void client_poll_post_data(struct uh_client *cl)
             continue;
         }
     }
-
     if (!r->content_length && cl->state != CLIENT_STATE_DONE) {
         if (cl->dispatch.post_done)
             cl->dispatch.post_done(cl);
-
-        cl->state = CLIENT_STATE_DONE;
+#if 0
+        if(cl->connection_close != true){
+            cl->state = CLIENT_STATE_INIT;
+        }else{
+            cl->state = CLIENT_STATE_DONE;
+        }
+#endif
     }
+
 }
 
 static inline bool client_data_cb(struct uh_client *cl, char *buf, int len)
@@ -695,9 +696,10 @@ static bool client_header_cb(struct uh_client *cl, char *buf, int len)
     client_parse_header(cl, buf);
     line_len = newline + 2 - buf;
     ustream_consume(cl->us, line_len);
-    printf_info("cl->state=%d,%d\n", cl->state, CLIENT_STATE_DATA);
+    printf_debug("cl->state=%d,%d\n", cl->state, CLIENT_STATE_DATA);
     if (cl->state == CLIENT_STATE_DATA)
         return client_data_cb(cl, newline + 2, len - line_len);
+
 
     return true;
 }
@@ -712,9 +714,10 @@ static read_cb_t read_cbs[] = {
 void uh_client_read_cb(struct uh_client *cl)
 {
     struct ustream *us = cl->us;
+    
     char *str;
     int len;
-
+    
     do {
         str = ustream_get_read_buf(us, &len);
         if (!str || !len)
@@ -748,7 +751,6 @@ static void client_ustream_write_cb(struct ustream *s, int bytes)
 void uh_client_notify_state(struct uh_client *cl)
 {
     struct ustream *us = cl->us;
-
     if (!us->write_error) {
         if (cl->state == CLIENT_STATE_DATA)
             return;
@@ -763,7 +765,7 @@ void uh_client_notify_state(struct uh_client *cl)
 static inline void client_notify_state(struct ustream *s)
 {
     struct uh_client *cl = container_of(s, struct uh_client, sfd.stream);
-    printf_warn("notify######");
+    printf_warn("notify######\n");
 
     uh_client_notify_state(cl);
 }

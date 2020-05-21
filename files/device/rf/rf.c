@@ -5,7 +5,6 @@ static int spidevfd[SPI_CONTROL_NUM] =  {-1};
 static int gpiofd[MAX_GPIO_NUM] = {-1};
 
 static int ledfd[MAX_LED_NUM] = {-1};
-static DEVICE_RF_INFO_ST rf_param[MAX_CHANNEL_NUM]={0};
 static RF_FREQ_STATS rf_freq_stats[MAX_CHANNEL_NUM] = {0};
 static pthread_mutex_t mut;
 
@@ -877,37 +876,6 @@ static uint8_t* send_query_cmd(uint8_t ch,uint8_t cmd){
     return precv;
 }
 
-
-static uint8_t config_rf_param(uint8_t ch,DEVICE_RF_INFO_ST param){
-    uint8_t ret ;
-    ret= send_noise_mode_set_cmd(ch,param.patten_id);
-    if(ret >0){
-        printf_err("set noise mode failed,errcode=%d\n",ret);
-        return ret;
-    }
-    if(param.gain_patten_id == MANUAL_GAIN){
-        ret = send_gain_set_cmd(ch,param.gain_val);
-        if(ret >0){
-            printf_err("set gain set  failed,errocode=%d\n",ret);
-            return ret;   
-        }
-    }
-
-    ret = send_rf_freq_bandwidth_set_cmd(ch,param.bandwith_id);
-    if(ret >0){
-        printf_err("set middle freq band set  failed,errocde=%d\n",ret);
-        return ret;   
-    }
-
-    return 0;
-}
-
-
-static void save_rf_parameter(uint8_t ch,  DEVICE_RF_INFO_ST para)
-{
-    rf_param[ch] = para;
-}
-
 static uint8_t send_freq_set_cmd(uint8_t ch,uint64_t freq){
     uint8_t *send_buf,send_len;
     uint8_t i,bytes_num,recv_len;
@@ -1147,19 +1115,32 @@ uint8_t rf_set_interface(uint8_t cmd,uint8_t ch,void *data){
     switch(cmd){
         case EX_RF_MID_FREQ :{
             /* only set once when value changed */
-            static uint64_t old_freq = 0;
+            static uint64_t old_freq = 0;/* Hz */
             if(old_freq != *(uint64_t*)data){
                 old_freq = *(uint64_t*)data;
             }else{
                 break;
             }
-            printf_info("[**RF**]ch=%d, middle_freq=%llu\n",ch, *(uint64_t*)data);
+            printf_note("[**RF**]ch=%d, middle_freq=%llu\n",ch, *(uint64_t*)data);
 #ifdef SUPPORT_RF_ADRV9009
             gpio_select_rf_channel(*(uint64_t*)data);
             adrv9009_iio_set_freq(*(uint64_t*)data);
 #elif defined(SUPPORT_RF_SPI)
-            uint64_t host_freq=htobe64(old_freq) >> 24; //小端转大端（文档中心频率为大端字节序列，5个字节）
-            ret = spi_rf_set_command(SPI_RF_FREQ_SET, &host_freq);
+            uint64_t freq_khz = old_freq/1000;/* NOTE: Hz => KHz */
+            uint64_t host_freq=htobe64(freq_khz) >> 24; //小端转大端（文档中心频率为大端字节序列，5个字节,单位为Hz,实际为Khz）
+            uint64_t recv_freq = 0, recv_freq_htob;
+
+            for(int i = 0; i<3; i++){
+                ret = spi_rf_set_command(SPI_RF_FREQ_SET, &host_freq);
+                usleep(300);
+                recv_freq = 0;
+                ret = spi_rf_get_command(SPI_RF_FREQ_GET, &recv_freq);
+                recv_freq_htob =  (htobe64(recv_freq) >> 24) ;  /* khz */
+                printf_debug("host_freq=%llu, 0x%llx, recv_freq = %llu, 0x%llx, htobe64=0x%llx\n",freq_khz, freq_khz,recv_freq ,recv_freq,recv_freq_htob);
+                if(recv_freq_htob == freq_khz){
+                        break;
+                }
+            }
 #else
             ret = send_freq_set_cmd(ch,*(uint64_t*)data);//设置射频频率
 #endif
@@ -1169,8 +1150,10 @@ uint8_t rf_set_interface(uint8_t cmd,uint8_t ch,void *data){
             printf_note("[**RF**]ch=%d, middle bw=%u\n", ch, *(uint32_t *) data);
             #ifdef  SUPPORT_RF_SPI
             //uint32_t filter=htobe32(*(uint32_t *)data) >> 24;
-            uint32_t filter=*(uint32_t *)data;
-            ret = spi_rf_set_command(RF_MIDDLE_FREQ_BANDWIDTH_FILTER_SET, &filter);
+            uint32_t filter= *(uint32_t *)data;
+            ret = spi_rf_set_command(SPI_RF_MIDFREQ_BW_FILTER_SET, &filter);
+            usleep(300);
+            ret = spi_rf_get_command(SPI_RF_MIDFREQ_BW_FILTER_GET, &filter);
             #else
             send_rf_freq_bandwidth_set_cmd(ch, *(uint32_t *) data);
             #endif
@@ -1180,11 +1163,13 @@ uint8_t rf_set_interface(uint8_t cmd,uint8_t ch,void *data){
         case EX_RF_MODE_CODE :{
             uint8_t noise_mode;
             noise_mode = *((uint8_t *)data);
-            printf_note("[**RF**]ch=%d, noise_mode=%d\n", ch, noise_mode);
+            printf_info("[**RF**]ch=%d, noise_mode=%d\n", ch, noise_mode);
         #if defined(SUPPORT_PLATFORM_ARCH_ARM)
             #ifdef SUPPORT_RF_ADRV9009
             #elif defined(SUPPORT_RF_SPI)
-            ret = spi_rf_set_command(RF_NOISE_MODE_SET, &noise_mode);
+            ret = spi_rf_set_command(SPI_RF_NOISE_MODE_SET, &noise_mode);
+            usleep(300);
+            ret = spi_rf_get_command(SPI_RF_NOISE_MODE_GET, &noise_mode);
             #else
             ret = send_noise_mode_set_cmd(ch,noise_mode);//设置射频接收模式
             #endif
@@ -1202,7 +1187,9 @@ uint8_t rf_set_interface(uint8_t cmd,uint8_t ch,void *data){
         #if defined(SUPPORT_PLATFORM_ARCH_ARM)
             #ifdef SUPPORT_RF_ADRV9009
             #elif defined(SUPPORT_RF_SPI)
-            ret = spi_rf_set_command(MID_FREQ_GAIN_SET, &mgc_gain_value);
+            ret = spi_rf_set_command(SPI_RF_MIDFREQ_GAIN_SET, &mgc_gain_value);
+            usleep(300);
+            ret = spi_rf_get_command(SPI_RF_MIDFREQ_GAIN_GET, &mgc_gain_value);
             #else
             ret = send_mid_freq_attenuation_set_cmd(ch,mgc_gain_value);//设置中频增益
             #endif
@@ -1226,7 +1213,9 @@ uint8_t rf_set_interface(uint8_t cmd,uint8_t ch,void *data){
             #ifdef SUPPORT_RF_ADRV9009
             gpio_select_rf_attenuation(rf_gain_value);
             #elif defined(SUPPORT_RF_SPI)
-            ret = spi_rf_set_command(RF_GAIN_SET, &rf_gain_value);
+            ret = spi_rf_set_command(SPI_RF_GAIN_SET, &rf_gain_value);
+            usleep(300);
+            ret = spi_rf_get_command(SPI_RF_GAIN_GET, &rf_gain_value);
             #else
             ret = send_rf_attenuation_set_cmd(ch,rf_gain_value);//设置射频增益
             #endif

@@ -51,7 +51,7 @@ void config_init(void)
     config.daemon = -1;
     config.oal_config.work_mode = OAL_NULL_MODE;
     #ifdef SUPPORT_NET_WZ
-    config.oal_config.ctrl_para.wz_threshold_bandwidth = 10000000; /* 万兆默认阀值; >=该值，用万兆传输 */
+    config.oal_config.ctrl_para.wz_threshold_bandwidth = 1000000000; /* 万兆默认阀值; >=该值，用万兆传输 */
     #endif
     #if defined (SUPPORT_DAO_XML)
     dao_read_create_config_file(config.configfile, &config);
@@ -165,6 +165,14 @@ int8_t config_save_batch(exec_cmd cmd, uint8_t type,s_config *config)
     return 0;
 }
 
+int8_t config_save_all(void)
+{
+#ifdef SUPPORT_DAO_JSON
+    json_write_config_file(&config);
+#endif
+}
+
+
 /******************************************************************************
 * FUNCTION:
 *     config_write_data
@@ -227,7 +235,7 @@ int8_t config_write_data(exec_cmd cmd, uint8_t type, uint8_t ch, void *data)
                     poal_config->rf_para[ch].mid_freq = *(int64_t *)data;
                     break;
                 case EX_RF_MID_BW:
-                    poal_config->rf_para[ch].mid_bw = *(int32_t *)data;
+                    poal_config->rf_para[ch].mid_bw = *(uint32_t *)data;
                     break;
                 case EX_RF_MODE_CODE:
                     poal_config->rf_para[ch].rf_mode_code = *(int8_t *)data;
@@ -295,6 +303,7 @@ int8_t config_write_data(exec_cmd cmd, uint8_t type, uint8_t ch, void *data)
 
 int8_t config_read_by_cmd(exec_cmd cmd, uint8_t type, uint8_t ch, void *data, ...)
 {
+    #define DEFAULT_BW_HZ (20000000)
     struct poal_config *poal_config = &(config_get_config()->oal_config);
     int ret=  -1;
     va_list argp;
@@ -347,15 +356,19 @@ int8_t config_read_by_cmd(exec_cmd cmd, uint8_t type, uint8_t ch, void *data, ..
                     *(uint64_t *)data = poal_config->rf_para[ch].mid_freq;
                     break;
                 case EX_RF_MID_BW:{
+                    
                     struct scan_bindwidth_info *scanbw;
                     scanbw = &poal_config->ctrl_para.scan_bw; 
                     if(scanbw->work_fixed_bindwidth_flag){
                         *(int32_t *)data = scanbw->work_bindwidth_hz;
                     }
                     else{
-                        *(int32_t *)data = poal_config->rf_para[ch].mid_bw;
+                        if(poal_config->rf_para[ch].mid_bw != 0)
+                            *(int32_t *)data = poal_config->rf_para[ch].mid_bw;
+                        else
+                            *(int32_t *)data = DEFAULT_BW_HZ;
                     }
-                    printf_debug("ch=%d, rf middle bw=%u\n",ch, poal_config->rf_para[ch].mid_bw);
+                    printf_debug("ch=%d, rf middle bw=%u, %u\n",ch, *(int32_t *)data, poal_config->rf_para[ch].mid_bw);
                     if(*(int32_t *)data == 0){
                         goto exit;
                     }
@@ -424,7 +437,10 @@ int8_t config_read_by_cmd(exec_cmd cmd, uint8_t type, uint8_t ch, void *data, ..
                     scanbw = &poal_config->ctrl_para.scan_bw; 
                     uint32_t bw = va_arg(argp, uint32_t);
                     int found = 0;
+                     if(bw == 0)
+                        bw = DEFAULT_BW_HZ;
                      for(int i = 0; i<sizeof(scanbw->bindwidth_hz)/sizeof(uint32_t); i++){
+                        printf_debug("bindwidth_hz=%u, %u\n", scanbw->bindwidth_hz[i], bw);
                         if(scanbw->bindwidth_hz[i] == bw){
                             *(float *)data = scanbw->sideband_rate[i];
                             scanbw->work_sideband_rate = scanbw->sideband_rate[i];
@@ -434,7 +450,7 @@ int8_t config_read_by_cmd(exec_cmd cmd, uint8_t type, uint8_t ch, void *data, ..
                     }
                     if(found == 1){
                         ret = 0;
-                        printf_info("find side rate:%f, bw=%u\n",*(float *)data,  bw);
+                        printf_debug("find side rate:%f, bw=%u\n",*(float *)data,  bw);
                     }else{
                         *(float *)data = DEFAULT_SIDEBAND;
                         printf_warn("not find side rate, bw=%u, use default sideband=%f\n",  bw, *(float *)data);

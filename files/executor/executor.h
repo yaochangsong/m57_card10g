@@ -77,7 +77,11 @@ enum {
     EX_AD_INFO,                /*AD 信息*/
     EX_RF_INFO,                /*射频信息*/
     EX_FPGA_INFO,              /*fpga 信息*/
-    EX_FPGA_TEMPERATURE        /*fpga 温度*/
+    EX_FPGA_TEMPERATURE,       /*fpga 温度*/
+    EX_CLK_STATUS,             /*时钟状态 */
+    EX_AD_STATUS,              /*AD状态 */
+    EX_DISK_STATUS,            /*DISK状态 */
+    EX_CHECK_STATUS,           /*自检状态 */
 };
 
 /* executor: RF paramter */
@@ -99,6 +103,8 @@ enum {
 
 /* network paramters */
 enum {
+    EX_NETWORK_1G,
+    EX_NETWORK_10G,
     EX_NETWORK_IP,               /* IP地址 */
     EX_NETWORK_MASK,
     EX_NETWORK_GW,

@@ -109,9 +109,6 @@ int main(int argc, char **argv)
     printf_warn("VERSION:%s\n",get_version_string());
     config_init();
     uloop_init();
-#ifdef SUPPORT_UART
-    uart_init();
-#endif
     gpio_raw_init();
 #ifdef SUPPORT_PROJECT_SSA
     gpio_init_control();
@@ -119,28 +116,28 @@ int main(int argc, char **argv)
 #ifdef SUPPORT_AUDIO
     audio_init();
 #endif
-
 #ifdef SUPPORT_AMBIENT_TEMP_HUMIDITY
     temp_humidity_init();
 #endif 
-#ifdef SUPPORT_LCD
-    init_lcd();
+    executor_init();    /* DMA频谱初始化需要在时钟初始化之前 */
+ if(spectrum_aditool_debug == false){
+#ifdef SUPPORT_RF
+        rf_init();  /* SPI初始化，时钟/AD初始化 */
 #endif
-    executor_init();
+#ifdef SUPPORT_SPECTRUM_FFT
+        spectrum_init();
+#endif
+    }
+#ifdef SUPPORT_UART
+    uart_init();   /* PL UART依赖时钟 */
+#endif
+#ifdef SUPPORT_LCD
+    init_lcd(); /* 串口屏依赖串口 */
+#endif
 #if defined(SUPPORT_XWFS)
     xwfs_init();
     http_requset_init();
 #endif
-    
-
-if(spectrum_aditool_debug == false){
-    #ifdef SUPPORT_RF
-    rf_init();
-    #endif
-    #ifdef SUPPORT_SPECTRUM_FFT
-    spectrum_init();
-    #endif
-}
     if(server_init() == -1){
         printf_err("server init fail!\n");
         goto done;

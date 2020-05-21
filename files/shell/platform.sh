@@ -2,20 +2,22 @@
 
 start()
 {
-	echo " Start FlatForm."
-    echo 30 > /sys/bus/iio/devices/iio\:device2/in_voltage0_hardwaregain 
-    echo 30 > /sys/bus/iio/devices/iio\:device2/in_voltage1_hardwaregain
-	platform &
+    echo " Start FlatForm."
+ #   insmod /lib/modules/4.6.0-xilinx/extra/dmadrvm.ko
+ #   insmod /lib/modules/4.6.0-xilinx/extra/xwfsm.ko
+    platform &
     sleep 1
-    ifconfig eth0 down                                                 
-    ifconfig eth0 hw ether 02:0a:35:00:00:04                 
-    ifconfig eth0 up
+ #   ifconfig eth0 down                                                 
+ #   ifconfig eth0 hw ether 02:0a:35:00:00:04                 
+ #   ifconfig eth0 up
 }
 
 stop()
 {
 	echo " Stop FlatForm..."
-	killall platform
+	if killall platform > /dev/null 2>&1; then
+		echo "killall platform"
+	fi
 }
 
 case $1 in

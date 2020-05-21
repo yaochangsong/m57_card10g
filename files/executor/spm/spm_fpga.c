@@ -38,27 +38,51 @@ static inline void *zalloc(size_t size)
 }
 
 
-static int32_t  diff_time_us(void)
+static struct timeval *runtimer;
+static int32_t _init_run_timer(uint8_t count)
 {
-    static struct timeval oldTime = {0}; 
+    runtimer = (struct timeval *)malloc(sizeof(struct timeval)*count);
+    memset(runtimer, 0, sizeof(struct timeval)*count);
+    return 0;
+}
+
+static int32_t _get_run_timer(uint8_t index)
+{
+    struct timeval *oldTime; 
     struct timeval newTime; 
     int32_t _t_us, ntime_us; 
+    if(index >= MAX_RADIO_CHANNEL_NUM){
+        return -1;
+    }
 
-    if(oldTime.tv_sec == 0 && oldTime.tv_usec == 0){
-        gettimeofday(&oldTime, NULL);
+    oldTime = runtimer+index;
+     if(oldTime->tv_sec == 0 && oldTime->tv_usec == 0){
+        gettimeofday(oldTime, NULL);
         return 0;
     }
     gettimeofday(&newTime, NULL);
-    _t_us = (newTime.tv_sec - oldTime.tv_sec)*1000000 + (newTime.tv_usec - oldTime.tv_usec); 
-    printf_debug("_t_ms=%d us!\n", _t_us);
+    _t_us = (newTime.tv_sec - oldTime->tv_sec)*1000000 + (newTime.tv_usec - oldTime->tv_usec); 
     if(_t_us > 0)
         ntime_us = _t_us; 
     else 
         ntime_us = 0; 
-    memcpy(&oldTime, &newTime, sizeof(struct timeval)); 
-    printf_debug("Diff time = %u us!\n", ntime_us); 
+    
     return ntime_us;
 }
+
+static int32_t _reset_run_timer(uint8_t index)
+{
+    struct timeval newTime; 
+    struct timeval *oldTime; 
+    if(index >= MAX_RADIO_CHANNEL_NUM){
+        return -1;
+    }
+    gettimeofday(&newTime, NULL);
+    oldTime = runtimer+index;
+    memcpy(oldTime, &newTime, sizeof(struct timeval)); 
+    return 0;
+}
+
 
 static inline const char * get_str_by_code(const char *const *list, int max, int code)
 {
@@ -372,7 +396,7 @@ static int spm_get_psd_analysis_result(void *data, size_t len)
 }
 
 /* 自动增益控制  : 该函数在频谱处理线程中，循环调用。通过不断控制，逐渐逼近设置幅度值 */
-int spm_agc_ctrl(int ch, struct spm_context *ctx)
+static int spm_agc_ctrl(int ch, struct spm_context *ctx)
 {
     /* 
     通过FPGA寄存器参数获取当前信号幅度值；再根据设定值，对信号幅度值做增减 。
@@ -385,52 +409,53 @@ int spm_agc_ctrl(int ch, struct spm_context *ctx)
     */
     
     #define AGC_CTRL_PRECISION      2       /* 控制精度+-2dbm */
-    #define AGC_REF_VAL             1000    /* 信号为0DBm时对应的FPGA幅度值 */
+    #define AGC_REF_VAL             0x5e8    /* 信号为0DBm时对应的FPGA幅度值 */
     #define AGC_MODE                1       /* 自动增益模式 */
     #define MGC_MODE                0       /* 手动增益模式 */
     #define RF_GAIN_THRE            30      /* 增益到达该阀值，开启射频增益/衰减 */
     #define MID_GAIN_THRE           60      /* 增益到达该阀值，开启中频增益 */
-    
-    int nread = 0, ret = -1;
-    uint16_t agc_val = 0;
-    uint32_t dbm_val = 0;
+
+    uint8_t gain_ctrl_method = ctx->pdata->rf_para[ch].gain_ctrl_method;
+    uint16_t agc_ctrl_time= ctx->pdata->rf_para[ch].agc_ctrl_time;
+    int8_t agc_ctrl_dbm = ctx->pdata->rf_para[ch].agc_mid_freq_out_level;
+    int16_t agc_val = 0;
+    int8_t dbm_val = 0;
+    int ret = -1;
     /* 各通道初始dbm为0 */
     static uint8_t cur_dbm[MAX_RADIO_CHANNEL_NUM] = {0};
-    static int8_t ctrl_method = -1;
+    static int8_t ctrl_method[MAX_RADIO_CHANNEL_NUM]={-1};
     uint8_t is_cur_dbm_change = false;
-    
-    if(ctx == NULL)
-        return -1;
 
     /* 当模式变化时， 需要通知内核更新模式信息 */
-    if(ctrl_method != ctx->pdata->rf_para[ch].gain_ctrl_method){
-        ctrl_method = ctx->pdata->rf_para[ch].gain_ctrl_method;
-        if(ctx->pdata->rf_para[ch].gain_ctrl_method == MGC_MODE){
+    if(ctrl_method[ch] != gain_ctrl_method){
+        ctrl_method[ch] = gain_ctrl_method;
+        if(gain_ctrl_method == MGC_MODE){
             goto exit_mode;
         }
     }
+
     /* 非自动模式退出控制 */
-    if(ctx->pdata->rf_para[ch].agc_ctrl_time == 0 ||
-        ctx->pdata->rf_para[ch].gain_ctrl_method != AGC_MODE){
-            return -1;
-    }
-    if(diff_time_us() < ctx->pdata->rf_para[ch].agc_ctrl_time){
+    if(agc_ctrl_time == 0 ||gain_ctrl_method != AGC_MODE){
         return -1;
     }
+    if(_get_run_timer(ch) < agc_ctrl_time){
+        return -1;
+    }
+    _reset_run_timer(ch);
     if((agc_val = io_get_agc_thresh_val(ch)) < 0){
         return -1;
     }
     printf_note("read agc value=%d\n", agc_val);
     dbm_val = (int32_t)(20 * log10((double)agc_val / ((double)AGC_REF_VAL)));
     /* 判断读取的幅度值是否>设置的输出幅度+控制精度 */
-    if(dbm_val > (ctx->pdata->rf_para[ch].agc_mid_freq_out_level+AGC_CTRL_PRECISION)){
+    if(dbm_val > (agc_ctrl_dbm+AGC_CTRL_PRECISION)){
         if(cur_dbm[ch] > 0){
             cur_dbm[ch] --;
             is_cur_dbm_change = true;
         }
             
     /* 判断读取的幅度值是否<设置的输出幅度-控制精度 */
-    }else if(dbm_val > (ctx->pdata->rf_para[ch].agc_mid_freq_out_level-AGC_CTRL_PRECISION)){
+    }else if(dbm_val < (agc_ctrl_dbm-AGC_CTRL_PRECISION)){
         cur_dbm[ch] ++;
         is_cur_dbm_change = true;
     }
@@ -453,7 +478,7 @@ int spm_agc_ctrl(int ch, struct spm_context *ctx)
         ret = executor_set_command(EX_RF_FREQ_CMD, EX_RF_MGC_GAIN, ch, &mid_gain);
     }
 exit_mode:
-    ret = executor_set_command(EX_MID_FREQ_CMD, EX_FILL_RF_PARAM, ch, &cur_dbm[ch], ctx->pdata->rf_para[ch].gain_ctrl_method);
+    ret = executor_set_command(EX_MID_FREQ_CMD, EX_FILL_RF_PARAM, ch, &cur_dbm[ch], gain_ctrl_method);
     return 0;
 }
 
@@ -531,7 +556,7 @@ struct spm_context * spm_create_fpga_context(void)
     
     ctx->ops = &spm_ops;
     ctx->pdata = &config_get_config()->oal_config;
-    
+    _init_run_timer(MAX_RADIO_CHANNEL_NUM);
 err_set_errno:
     errno = -ret;
     return ctx;

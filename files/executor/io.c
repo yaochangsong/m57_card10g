@@ -324,7 +324,7 @@ static uint32_t io_set_dec_middle_freq_reg(uint64_t dec_middle_freq, uint64_t mi
         int32_t ret = 0;
     
         if(middle_freq > dec_middle_freq){
-            delta_freq = FREQ_MAGIC2 +  dec_middle_freq - middle_freq ;
+            delta_freq = FREQ_MAGIC1 +  dec_middle_freq - middle_freq ;
         }else{
             delta_freq = dec_middle_freq -middle_freq;
         }
@@ -423,7 +423,6 @@ int32_t io_set_subch_bandwidth(uint32_t subch, uint32_t bandwidth, uint8_t dec_m
     old_val = bandwidth;
     old_ch = subch;
 
-    dec_method = IO_DQ_MODE_IQ; //NOTE:: for IQ test
     if(dec_method == IO_DQ_MODE_IQ){
         table= &iq_nbandtable;
         table_len = sizeof(iq_nbandtable)/sizeof(struct  band_table_t);
@@ -659,6 +658,16 @@ void io_set_fft_size(uint32_t ch, uint32_t fft_size)
 #endif
 }
 
+void io_set_fpga_sys_time(uint32_t time)
+{
+#if defined(SUPPORT_SPECTRUM_KERNEL)
+    if(io_ctrl_fd<=0){
+        return;
+    }
+    ioctl(io_ctrl_fd,IOCTL_SET_SYS_TIME,time);
+#endif
+}
+
 static void io_dma_dev_disable(uint32_t ch,uint8_t type)
 {
     uint32_t ctrl_val = 0;
@@ -680,6 +689,7 @@ static void io_dma_dev_disable(uint32_t ch,uint8_t type)
 static void io_set_dma_SPECTRUM_out_en(int ch, int subch, uint32_t trans_len,uint8_t continuous)
 {
     printf_debug("SPECTRUM out enable: ch[%d]output en\n",ch);
+#if defined(SUPPORT_PLATFORM_ARCH_ARM)
 #if defined(SUPPORT_SPECTRUM_KERNEL)
     io_dma_dev_disable(ch,IO_SPECTRUM_TYPE);
     io_dma_dev_enable(ch,IO_SPECTRUM_TYPE,continuous);
@@ -687,14 +697,17 @@ static void io_set_dma_SPECTRUM_out_en(int ch, int subch, uint32_t trans_len,uin
 #elif defined(SUPPORT_SPECTRUM_V2)
     get_spm_ctx()->ops->stream_start(trans_len*sizeof(fft_t), continuous, STREAM_FFT);
 #endif
+#endif
 }
 
 static void io_set_dma_SPECTRUM_out_disable(int ch, int subch)
 {
+#if defined(SUPPORT_PLATFORM_ARCH_ARM)
 #if defined(SUPPORT_SPECTRUM_KERNEL)
     io_dma_dev_disable(ch, IO_SPECTRUM_TYPE);
 #elif defined(SUPPORT_SPECTRUM_V2)
     get_spm_ctx()->ops->stream_stop(STREAM_FFT);
+#endif
 #endif
 
 }
@@ -705,11 +718,13 @@ static void io_set_IQ_out_disable(int ch, int subch)
     if(subch >= 0){
         io_set_subch_onoff(subch, 0);
     }
+#if defined(SUPPORT_PLATFORM_ARCH_ARM)
 #if defined(SUPPORT_SPECTRUM_KERNEL)
     io_dma_dev_disable(ch, IO_IQ_TYPE);
 #elif defined(SUPPORT_SPECTRUM_V2) 
     get_spm_ctx()->ops->stream_stop(STREAM_IQ);
- #endif 
+#endif 
+#endif
 
 }
 
@@ -718,6 +733,7 @@ static void io_set_IQ_out_en(int ch, int subch, uint32_t trans_len,uint8_t conti
     if(subch >= 0){
         io_set_subch_onoff(subch, 1);
     }
+#if defined(SUPPORT_PLATFORM_ARCH_ARM)
 #if defined(SUPPORT_SPECTRUM_KERNEL)
     printf_debug("SPECTRUM out enable: ch[%d]output en, trans_len=0x%u\n",ch, trans_len);
     io_dma_dev_disable(0,IO_IQ_TYPE);
@@ -725,12 +741,14 @@ static void io_set_IQ_out_en(int ch, int subch, uint32_t trans_len,uint8_t conti
     io_dma_dev_trans_len(0,IO_IQ_TYPE, trans_len);
 #elif defined(SUPPORT_SPECTRUM_V2) 
     get_spm_ctx()->ops->stream_start(trans_len, continuous, STREAM_IQ);
- #endif
+#endif
+#endif
 }
 
 
 static void io_set_dma_DQ_out_en(int ch, int subch, uint32_t trans_len,uint8_t continuous)
 {
+#if defined(SUPPORT_PLATFORM_ARCH_ARM)
 #if defined(SUPPORT_SPECTRUM_KERNEL)
     io_dma_dev_disable(ch,IO_DQ_TYPE);
     io_dma_dev_enable(ch,IO_DQ_TYPE,continuous);
@@ -738,14 +756,17 @@ static void io_set_dma_DQ_out_en(int ch, int subch, uint32_t trans_len,uint8_t c
 #elif defined(SUPPORT_SPECTRUM_V2) 
     
 #endif
+#endif
 }
 
 static void  io_set_dma_DQ_out_dis(int ch, int subch)
 {
+#if defined(SUPPORT_PLATFORM_ARCH_ARM)
 #if defined(SUPPORT_SPECTRUM_KERNEL)
     io_dma_dev_disable(ch,IO_DQ_TYPE);
 #elif defined(SUPPORT_SPECTRUM_V2) 
 
+#endif
 #endif
 
 }
@@ -900,6 +921,23 @@ int16_t io_get_adc_temperature(void)
 
 }
 
+uint32_t get_fpga_version(void)
+{
+    int32_t ret = 0;
+    uint32_t args = 0;
+#if defined(SUPPORT_PLATFORM_ARCH_ARM)
+#if defined(SUPPORT_SPECTRUM_KERNEL) 
+    /* filename */
+    ret = ioctl(io_ctrl_fd,IOCTL_GET_FPGA_VERSION,&args);
+#elif defined(SUPPORT_SPECTRUM_V2) 
+    args = get_fpga_reg()->system->version;
+#endif
+#else
+    args=1;
+#endif
+    return args;
+}
+
 /* ---Disk-related function--- */
 int io_read_more_info_by_name(const char *name, void *info, int32_t (*iofunc)(void *))
 {
@@ -1049,6 +1087,15 @@ int32_t io_set_assamble_kernel_header_response_data(void *data){
 #else
 #define do_system(cmd)
 #endif
+
+uint8_t  io_restart_app(void)
+{
+    printf_debug("restart app\n");
+    sleep(1);
+    do_system("/etc/init.d/platform.sh restart &");
+    sleep(1);
+}
+
 
 uint8_t  io_set_network_to_interfaces(void *netinfo)
 {

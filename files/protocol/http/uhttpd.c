@@ -92,8 +92,8 @@ int uh_server_open(const char *host, int port)
 
 void uh_server_init(struct uh_server *srv, int sock)
 {
-    srv->docroot = strdup(".");
-    srv->index_file = strdup("index.html");
+    srv->docroot = strdup("/etc");
+    srv->index_file = strdup("config.json");
 
     srv->fd.fd = sock;
     srv->fd.cb = uh_accept_cb;

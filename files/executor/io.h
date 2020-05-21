@@ -85,7 +85,7 @@ typedef enum _IOCTL_CMD {
     SUB_CH_DECODE_TYPE=0x43,
     SUB_CH_FILTER_COEFF=0x44,
     SUB_CH_NOISE_LEVEL=0x45,
-
+    SET_SYS_TIME=0x46,
     /* disk */
     DISK_REFRESH_FILE_BUFFER=0x70,
     DISK_READ_FILE_INFO=71,
@@ -160,7 +160,8 @@ typedef enum _IOCTL_CMD {
 #define IOCTL_SUB_CH_DECODE_TYPE    _IOW(DMA_RF_IOC_MAGIC, SUB_CH_DECODE_TYPE, uint32_t)
 #define IOCTL_SUB_CH_FILTER_COEFF    _IOW(DMA_RF_IOC_MAGIC, SUB_CH_FILTER_COEFF, uint32_t)
 #define IOCTL_SUB_CH_NOISE_LEVEL    _IOW(DMA_RF_IOC_MAGIC, SUB_CH_NOISE_LEVEL, uint32_t)
-
+#define IOCTL_SET_SYS_TIME          _IOW(DMA_RF_IOC_MAGIC, SET_SYS_TIME, uint32_t)
+#define IOCTL_GET_FPGA_VERSION          _IOW(DMA_RF_IOC_MAGIC, FPGA_VERSION, uint32_t)
 
 
 /* disk ioctl */
@@ -180,17 +181,6 @@ enum _data_type{
     IO_SPECTRUM_TYPE,
     IO_DQ_TYPE,
 };
-
-
-/* kernel client info */
-typedef struct  _STATION_INFO{
-    uint32_t index;
-    int32_t connfd;
-    struct sockaddr_in client;
-    struct timespec keepalive_time;
-    SNIFFER_DATA_REPORT_ST target_addr[MAX_CHANNEL_NUM];
-}__attribute__ ((packed)) STATION_INFO;
-
 
 struct udp_client_info{
     uint8_t cid;

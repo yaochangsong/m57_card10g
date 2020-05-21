@@ -1320,7 +1320,8 @@ void spi_close(void)
 int8_t rf_init(void)
 {
     int ret = -1;
-    printf_note("rf init...!\n");
+    uint8_t status = 0;
+    printf_note("RF init...!\n");
 #ifdef SUPPORT_RF_ADRV9009
     adrv9009_iio_init();
 #endif
@@ -1330,10 +1331,16 @@ int8_t rf_init(void)
     /* 等待时钟稳定 */
     usleep(10000);
     ret = spi_adc_init();
+    status = ((ret >= 0) ? 0 : 1);
+    printf_info("AD status:%s\n", status == 0 ? "OK" : "Faild");
+    config_save_cache(EX_STATUS_CMD, EX_AD_STATUS, -1, &status);
     /* 复位时钟 */
     ret = spi_clock_init_after();
     usleep(10000);
     ret = spi_clock_check();
+    status = ((ret == 0) ? 0 : 1);
+    printf_info("Clock status:%s\n", status == 0 ? "OK" : "Faild");
+    config_save_cache(EX_STATUS_CMD, EX_CLK_STATUS, -1, &status);
 #endif
     return ret;
 }

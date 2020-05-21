@@ -401,6 +401,27 @@ static int json_parse_config_param(const cJSON* root, struct poal_config *config
             }
             printf_debug("app=>value is:%s, %s\n",value->valuestring, config->status_para.softVersion.app);
         }
+        value = cJSON_GetObjectItem(node, "fpga");
+        if(value!= NULL && cJSON_IsString(value)){
+            char ver[33] = {0};
+            sprintf(ver, "%x", get_fpga_version());
+            char *version = strdup(ver);
+            config->status_para.softVersion.fpga = value->valuestring;
+            if(strcmp(version, config->status_para.softVersion.fpga)){
+                config->status_para.softVersion.fpga = version;
+                json_write_string_param("status_parm", "soft_version", "fpga", config->status_para.softVersion.fpga);
+                json_write_file(config_get_config()->configfile, root);
+                printf_note("renew fpga verson: %s\n", version);
+            }
+            printf_note("fpga version=>value is:%s, %s\n",value->valuestring, config->status_para.softVersion.fpga);
+        }
+    }
+    value = cJSON_GetObjectItem(status_parm, "device_sn");
+    if(value!= NULL && cJSON_IsString(value)){
+        config->status_para.device_sn = value->valuestring;
+        printf_debug("config->status_para.device_sn=>value is:%s\n",config->status_para.device_sn);
+    }else{
+        config->status_para.device_sn = NULL;
     }
     
     network = cJSON_GetObjectItem(root, "network");
@@ -460,6 +481,37 @@ static int json_parse_config_param(const cJSON* root, struct poal_config *config
     printf_debug("解析mac=%02x%02x%02x%02x%02x%02x\n",config->network.mac[0],config->network.mac[1],config->network.mac[2],
     config->network.mac[3],config->network.mac[4],config->network.mac[5]);
     }
+    #ifdef SUPPORT_NET_WZ
+    /*10g net*/
+    network = cJSON_GetObjectItem(root, "network_10g");
+    if(network == NULL){
+        printf_warn("not found json node[%s]\n","network_10g");
+    }else{
+        value = cJSON_GetObjectItem(network, "ipaddress");
+        if(value!= NULL && cJSON_IsString(value)){
+            saddr.sin_addr.s_addr = inet_addr(value->valuestring);
+            printf_debug("10g ipaddr=>value is:%s, %s\n",value->valuestring, inet_ntoa(saddr.sin_addr));
+            config->network_10g.ipaddress = saddr.sin_addr.s_addr;
+        }
+        value = cJSON_GetObjectItem(network, "netmask");
+        if(value!= NULL && cJSON_IsString(value)){
+            saddr.sin_addr.s_addr = inet_addr(value->valuestring);
+            printf_debug("10g netmask=>value is:%s, %s\n",value->valuestring, inet_ntoa(saddr.sin_addr));
+            config->network_10g.netmask = saddr.sin_addr.s_addr;
+        }
+        value = cJSON_GetObjectItem(network, "gateway");
+        if(value!= NULL && cJSON_IsString(value)){
+            saddr.sin_addr.s_addr = inet_addr(value->valuestring);
+            printf_debug("10g gateway=>value is:%s, %s\n",value->valuestring, inet_ntoa(saddr.sin_addr));
+            config->network_10g.gateway = saddr.sin_addr.s_addr;
+        }
+        value = cJSON_GetObjectItem(network, "port");
+        if(value!= NULL && cJSON_IsNumber(value)){
+            config->network_10g.port = value->valueint;
+            printf_debug("10g port=>value is:%d\n",config->network_10g.port);
+        }
+    }
+    #endif
     /*control_parm*/
     cJSON *control_parm = NULL;
     control_parm = cJSON_GetObjectItem(root, "control_parm");
@@ -855,7 +907,7 @@ static int json_parse_config_param(const cJSON* root, struct poal_config *config
             value = cJSON_GetObjectItem(node, "mid_bw");
             if(cJSON_IsNumber(value)){
                 config->rf_para[i].mid_bw=value->valueint;
-                printfd(" mid_bw:%llu", config->rf_para[i].mid_bw);
+                printfd(" mid_bw:%u", config->rf_para[i].mid_bw);
             }
             value = cJSON_GetObjectItem(node, "mgc_gain");
             if(cJSON_IsNumber(value)){

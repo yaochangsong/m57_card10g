@@ -70,6 +70,10 @@
 #if defined (SUPPORT_RF_SPI)
 #include "device/rf/spi/spi.h"
 #endif
+#if defined (SUPPORT_GPS)
+#include "device/gps/gps_com.h"
+#endif
+
 #if defined (SUPPORT_RF_ADRV9009)
 #include "device/rf/adrv9009/adrv9009-iiostream.h"
 #endif
@@ -99,6 +103,11 @@
 #ifndef GHZ
 #define GHZ(x) ((long long)(x*1000000000.0 + .5))
 #endif
+
+#define MAX_RADIO_CHANNEL_NUM 1         /* 最大射频通道数 */
+#define MAX_SIGNAL_CHANNEL_NUM (16)     /* 最大解调子通道数 */
+#define MAX_SIG_CHANNLE 128             /* 最大频点数 */
+
 
 #define PLATFORM_VERSION  "1.0.0" /* application version */
 

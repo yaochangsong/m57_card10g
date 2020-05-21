@@ -15,7 +15,7 @@ static SCREEN_BW_PARA_ST bw_data[] = {
 };
 
 static const SCREEN_BW_PARA_ST _rf_bw_table[] = {
-    /* 0：40MHz, 1：175MHz */
+    /* 0:40MHz, 1:175MHz */
     {SCREEN_BW_0, 40000000},
     {SCREEN_BW_1, 175000000},
 };
@@ -61,7 +61,7 @@ static int k600_receive_read_act(uint16_t addr, uint8_t short_len)
         printfd("0x%02x ", send_buf[i]);
     }
     printfd("\n");
-    //send_data_by_serial(driver->serial_fd[SERIAL_SCREEN_INDEX], send_buf, send_package->len + 3);
+    send_data_by_serial(send_buf, send_package->len + 3);
     return 0;
 }
 
@@ -165,27 +165,66 @@ int k600_receive_read_cmd_from_user(uint8_t data_type, uint8_t data_cmd)
     return 0;
 }
 
+static size_t k600_read_frame(uint8_t *rev_data, size_t rev_nread, uint8_t *frame_buf, size_t frame_len)
+{
+    #define FRAME_HEADER1 0x5a
+    #define FRAME_HEADER2 0xa5
+    #define FRAME_HEADER_LEN 3
 
-/* 接收来自串口屏数据 */
+    static size_t offset = 0 ;
+    //static uint8_t databuf[FRAME_MAX_LEN]={0};
+    uint8_t *databuf = frame_buf;
+    size_t ret = 0;
+    size_t nread = 0, i;
+
+    nread = rev_nread;
+    if(nread > frame_len)
+        nread = frame_len;
+    memcpy(databuf+offset, rev_data, nread);
+    offset += nread;
+    if(databuf[0] == FRAME_HEADER1 && databuf[1] == FRAME_HEADER2){
+        if((databuf[2] > 0) && ((int)databuf[2] <= (int)(offset-FRAME_HEADER_LEN))){ /* databuf[2] is  data length */
+            printf_note("receive len:%d:\n", offset);
+            for(i = 0; i< offset; i++){
+                printfn(" 0x%x",databuf[i]);
+            }
+            printfn("\n");
+            ret = databuf[2] + FRAME_HEADER_LEN;
+            offset = 0;
+        }
+    }
+    return ret;
+}
+
+
+/* ????????? */
 int8_t k600_scanf(uint8_t *pdata, int32_t total_len)
 {
+    #define FRAME_MAX_LEN 32
     SCREEN_READ_CONTROL_ST data, *ptr;
     uint8_t data_type,data_cmd;
     struct in_addr ip;
     char *ipstr=NULL;
+    static uint8_t frame_buffer[FRAME_MAX_LEN] = {0};
+    int frame_len = 0, copy_len = 0;
 
     if(pdata == NULL){
         return -1;
     }
 
-    memcpy((uint8_t *)&data, pdata, sizeof(SCREEN_READ_CONTROL_ST));
-
-    ptr = (SCREEN_READ_CONTROL_ST *)pdata;
-
+    if ((frame_len = k600_read_frame(pdata, total_len, frame_buffer, FRAME_MAX_LEN)) == 0)
+        return -1;
+    printf_debug("frame_len = %d\n", frame_len);
+    
+    copy_len = min(sizeof(SCREEN_READ_CONTROL_ST), frame_len);
+    printf_debug("copy_len = %d\n", copy_len);
+    memcpy((uint8_t *)&data, frame_buffer, copy_len);
+    memset(frame_buffer, 0, FRAME_MAX_LEN); 
+    ptr = &data;
     ptr->start_flag = htons(ptr->start_flag);
     ptr->addr = htons(ptr->addr);
 
-    printf_debug("start flag[%04x] addr[%04x] len=%d, total_len=%d\n", ptr->start_flag, ptr->addr, ptr->len, total_len);
+    printf_debug("start flag[%04x] addr[%04x] len=%d, total_len=%d\n", ptr->start_flag, ptr->addr, ptr->len, frame_len);
 
     if(ptr->start_flag != SERIAL_SCREEN_STAT_FLAG){
         printf_err("start flag[%04x] error!!\n", ptr->start_flag);
@@ -196,9 +235,9 @@ int8_t k600_scanf(uint8_t *pdata, int32_t total_len)
         printf_err("read type[%02x] error!!\n", ptr->type);
         return -1;
     }
-    printf_debug("len=%d, total_len=%d\n", ptr->len, total_len);
-    if(ptr->len + SERIAL_SCREEN_HEAD_LEN != total_len){
-        printf_err("received data length [%02x] error!!\n", total_len);
+    printf_debug("len=%d, total_len=%d\n", ptr->len, frame_len);
+    if(ptr->len + SERIAL_SCREEN_HEAD_LEN != frame_len){
+        printf_err("received data length [%02x] error!!\n", frame_len);
         return -1;
     }
 
@@ -212,7 +251,7 @@ int8_t k600_scanf(uint8_t *pdata, int32_t total_len)
     data_type = GET_HIGH_8_BIT_16BIT(ptr->addr);
     data_cmd =  GET_LOW_8_BIT_16BIT(ptr->addr);
 
-    printf_debug("received  data_type[%x] cmd[%x]\n", data_type, data_cmd);
+    printf_note("received  data_type[%x] cmd[%x]\n", data_type, data_cmd);
     //if(REMOTE_CONTROL_MODE() && data_type != SCREEN_COMMON_DATA1 && data_cmd != SCREEN_CTRL_TYPE){
     //     printf_err("Remote Control Mode, Ignore Command\n"); 
     //     return 1;
@@ -245,7 +284,7 @@ int8_t k600_scanf(uint8_t *pdata, int32_t total_len)
                 ipstr= inet_ntoa(ip);
                 printf_note("ipstr=%s ipaddr=0x%x, 0x%x\n", ipstr,  ip.s_addr, ipaddr);
                 config_write_data(EX_NETWORK_CMD, EX_NETWORK_IP, 0, &ipaddr);
-                executor_set_command(EX_NETWORK_CMD, 0, 0, NULL);
+                executor_set_command(EX_NETWORK_CMD, EX_NETWORK_1G, 0, NULL);
             }
             break;
             case SCREEN_NETMASK_ADDR1:
@@ -263,7 +302,7 @@ int8_t k600_scanf(uint8_t *pdata, int32_t total_len)
                 ipstr= inet_ntoa(ip);
                 printf_note("subnetmaskstr=%s subnetmask=%x\n", ipstr,  ip.s_addr);
                 config_write_data(EX_NETWORK_CMD, EX_NETWORK_MASK, 0, &subnetmask);
-                executor_set_command(EX_NETWORK_CMD, 0, 0, NULL);
+                executor_set_command(EX_NETWORK_CMD, EX_NETWORK_1G, 0, NULL);
 
             }
             break;
@@ -282,7 +321,7 @@ int8_t k600_scanf(uint8_t *pdata, int32_t total_len)
                 ipstr= inet_ntoa(ip);
                 printf_note("gatewaystr=%s gateway=%x\n", ipstr,  ip.s_addr);
                 config_write_data(EX_NETWORK_CMD,  EX_NETWORK_GW, 0, &gateway);
-                executor_set_command(EX_NETWORK_CMD,  EX_NETWORK_GW, 0, NULL);
+                executor_set_command(EX_NETWORK_CMD,  EX_NETWORK_1G, 0, NULL);
 
             }
             break;
@@ -529,6 +568,7 @@ int8_t k600_receive_write_data_from_user(uint8_t data_type, uint8_t data_cmd, vo
             printf_debug("received cmd[%x]\n", data_type);
             switch (data_cmd){
                 case SCREEN_LED1_STATUS:
+                #ifdef RF_EIGHT_CHANNEL
                 case SCREEN_LED2_STATUS:
                 case SCREEN_LED3_STATUS:
                 case SCREEN_LED4_STATUS:
@@ -536,11 +576,12 @@ int8_t k600_receive_write_data_from_user(uint8_t data_type, uint8_t data_cmd, vo
                 case SCREEN_LED6_STATUS:
                 case SCREEN_LED7_STATUS:
                 case SCREEN_LED8_STATUS:
+                #endif
                 case SCREEN_LED_CLK_STATUS:
                 case SCREEN_LED_AD_STATUS:
                 {
                      if( *(uint8_t *)pdata != 0 && *(uint8_t *)pdata != 1 ) {                         
-                        printf_err("error data\n");
+                        printf_err("error data:%d\n", *(uint8_t *)pdata);
                         return -1;
                      }
                      break;
@@ -591,7 +632,8 @@ int8_t k600_receive_write_data_from_user(uint8_t data_type, uint8_t data_cmd, vo
                     }
                 }
                     break;
-                case SCREEN_CHANNEL_RF_BW:
+                #if 0
+                case SCREEN_CHANNEL_NOISE_EN:
                 {
                     uint16_t _noise = 0;
                     if(*(uint8_t *)pdata != SCREEN_NOISE_OFF && *(uint8_t *)pdata != SCREEN_NOISE_ON){
@@ -599,8 +641,31 @@ int8_t k600_receive_write_data_from_user(uint8_t data_type, uint8_t data_cmd, vo
                         return -1;
                     }
                     printf_note("noise en: %d, 0x%x\n", *(uint8_t *)pdata, *(uint8_t *)pdata);
+                    printf_note("noise en: %d, 0x%x\n", *(uint8_t *)pdata, *(uint8_t *)pdata);
                     _noise = COMPOSE_16BYTE_BY_8BIT(*(uint8_t *)pdata, 0);
                     k600_receive_write_act(COMPOSE_16BYTE_BY_8BIT(data_type, data_cmd), &_noise, 1);
+                }
+                #endif
+                case SCREEN_CHANNEL_RF_BW:
+                {
+                    uint16_t rfbw;
+                    uint8_t type;
+                    int found = 0, i;
+                    for(i = 0; i<ARRAY_SIZE(_rf_bw_table); i++){
+                        if(_rf_bw_table[i].idata == *(uint32_t *)pdata){
+                            type = _rf_bw_table[i].type;
+                            printf_info("rfbw data %uHz [%d]\n",_rf_bw_table[i].idata,  type);
+                            found = 1;
+                            break;
+                        }
+                    }
+                    if(found == 0){
+                        printf_err("%uHz not found in tables\n", *(uint32_t *)pdata);
+                        return -1;
+                    }
+                        
+                    rfbw = COMPOSE_16BYTE_BY_8BIT(type, 0);
+                    k600_receive_write_act(COMPOSE_16BYTE_BY_8BIT(data_type, data_cmd), &rfbw, 1);
                 }
                     break;
                 case SCREEN_CHANNEL_MODE:
@@ -633,7 +698,7 @@ int8_t k600_receive_write_data_from_user(uint8_t data_type, uint8_t data_cmd, vo
                 case SCREEN_CHANNEL_MGC:
                 {   
                     uint16_t _data = 0;
-                    printf_note("data: %d, 0x%x\n", *(uint8_t *)pdata, *(uint8_t *)pdata);
+                    printf_info("data: %d, 0x%x\n", *(uint8_t *)pdata, *(uint8_t *)pdata);
                     _data = COMPOSE_16BYTE_BY_8BIT(*(uint8_t *)pdata, 0);
                     if(data_cmd == SCREEN_CHANNEL_DECODE_TYPE){
                         _data = k600_decode_method_convert_from_standard(_data);
@@ -650,7 +715,6 @@ int8_t k600_receive_write_data_from_user(uint8_t data_type, uint8_t data_cmd, vo
                          printf_err("error data\n");
                          return -1;
                     }
-                    printf_note("middle freq: %u, 0x%x\n", idata, idata);
                     idata = htonl(idata);
                     k600_receive_write_act(COMPOSE_16BYTE_BY_8BIT(data_type, data_cmd), &idata, 2);
                 }

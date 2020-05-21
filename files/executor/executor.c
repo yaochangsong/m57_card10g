@@ -625,16 +625,21 @@ static int8_t executor_set_ctrl_command(uint8_t type, uint8_t ch, void *data, va
     return 0;
 }
 
-static int executor_set_all_network(struct network_st *_network)
+#ifdef SUPPORT_NET_WZ
+static int executor_set_10g_network(struct network_st *_network)
+{
+    /* 设置默认板卡万兆ip和端口 */
+    io_set_local_10g_net(ntohl(_network->ipaddress), _network->port);
+}
+#endif
+
+static int executor_set_1g_network(struct network_st *_network)
 {
     struct in_addr ipaddr, dst_addr, netmask, gateway;
     struct network_st *network = _network;
+    uint32_t host_addr;
     char *ipstr=NULL;
     int need_set = 0;
-#ifdef SUPPORT_NET_WZ
-    /* 设置默认板卡万兆ip和端口 */
-    io_set_local_10g_net(ntohl(network->ipaddress), network->port);
-#endif
     if(get_ipaddress(&ipaddr) != -1){
         if(ipaddr.s_addr == network->ipaddress){
             printf_note("ipaddress[%s] is not change!\n", inet_ntoa(ipaddr));
@@ -645,7 +650,8 @@ static int executor_set_all_network(struct network_st *_network)
         need_set ++;
         printfn("[%s]\n", inet_ntoa(dst_addr));
 #ifdef SUPPORT_LCD
-        lcd_printf(EX_NETWORK_CMD, EX_NETWORK_IP, &network->ipaddress, NULL);
+        host_addr = ntohl(network->ipaddress);
+        lcd_printf(EX_NETWORK_CMD, EX_NETWORK_IP, &host_addr, NULL);
 #endif
     }
     
@@ -660,7 +666,8 @@ set_netmask:
         need_set ++;
         printfn("[%s]\n", inet_ntoa(dst_addr));
 #ifdef SUPPORT_LCD
-        lcd_printf(EX_NETWORK_CMD, EX_NETWORK_MASK, &network->netmask, NULL);
+        host_addr = ntohl(network->netmask);
+        lcd_printf(EX_NETWORK_CMD, EX_NETWORK_MASK, &host_addr, NULL);
 #endif
     }
     
@@ -677,7 +684,8 @@ set_gateway:
         dst_addr.s_addr = network->gateway;
         printfn("[%s]\n", inet_ntoa(dst_addr));
 #ifdef SUPPORT_LCD
-        lcd_printf(EX_NETWORK_CMD, EX_NETWORK_MASK, &network->gateway, NULL);
+        host_addr = ntohl(network->gateway);
+        lcd_printf(EX_NETWORK_CMD, EX_NETWORK_GW, &host_addr, NULL);
 #endif
     }
     
@@ -690,6 +698,7 @@ int8_t executor_set_command(exec_cmd cmd, uint8_t type, uint8_t ch,  void *data,
 {
      struct poal_config *poal_config = &(config_get_config()->oal_config);
      va_list argp;
+     uint8_t ch_dup = ch +1;
      LOCK_SET_COMMAND();
      va_start (argp, data);
      switch(cmd)
@@ -697,7 +706,7 @@ int8_t executor_set_command(exec_cmd cmd, uint8_t type, uint8_t ch,  void *data,
         case EX_MID_FREQ_CMD:
         {
 #ifdef SUPPORT_LCD
-            lcd_printf(cmd, type,data, &ch);
+            lcd_printf(cmd, type,data, &ch_dup);
 #endif
             executor_set_kernel_command(type, ch, data, argp);
             break;
@@ -705,7 +714,7 @@ int8_t executor_set_command(exec_cmd cmd, uint8_t type, uint8_t ch,  void *data,
         case EX_RF_FREQ_CMD:
         {
 #ifdef SUPPORT_LCD
-            lcd_printf(cmd, type,data, &ch);
+            lcd_printf(cmd, type,data, &ch_dup);
 #endif
             rf_set_interface(type, ch, data);
             //executor_set_rf_command(type,ch, data);
@@ -732,8 +741,15 @@ int8_t executor_set_command(exec_cmd cmd, uint8_t type, uint8_t ch,  void *data,
         }
         case EX_NETWORK_CMD:
         {
-            if(type == 0)
-                executor_set_all_network(&poal_config->network);
+            if(type == EX_NETWORK_1G){
+                executor_set_1g_network(&poal_config->network);
+            }
+            
+#ifdef SUPPORT_NET_WZ
+            else if(type == EX_NETWORK_10G){
+                executor_set_10g_network(&poal_config->network_10g);
+            }
+#endif
             break;
         }
         case EX_CTRL_CMD:
@@ -891,11 +907,12 @@ void executor_init(void)
     }
 #endif
 #endif /* SUPPORT_PLATFORM_ARCH_ARM */
-
-
     executor_timer_task_init();
     /* set default network */
-    executor_set_command(EX_NETWORK_CMD, 0, 0, NULL);
+    executor_set_command(EX_NETWORK_CMD, EX_NETWORK_1G, 0, NULL);
+#ifdef SUPPORT_NET_WZ
+    executor_set_command(EX_NETWORK_CMD, EX_NETWORK_10G, 0, NULL);
+#endif
     /* shutdown all channel */
     for(i = 0; i<MAX_RADIO_CHANNEL_NUM ; i++){
         io_set_enable_command(PSD_MODE_DISABLE, i, -1, 0);

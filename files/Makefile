@@ -45,14 +45,14 @@ endif
 ifneq ($(findstring akt,$(SUPPORT_PROTOCAL)),)
 	SOURCE_DIR += protocol/akt
 	C_VAR += -DSUPPORT_PROTOCAL_AKT
-else ifneq ($(findstring akt,$(SUPPORT_PROTOCAL)),)
+else ifneq ($(findstring xnrp,$(SUPPORT_PROTOCAL)),)
 	SOURCE_DIR += protocol/xnrp
 	C_VAR += -DSUPPORT_PROTOCAL_XNRP
 endif
 
 ifneq ($(findstring akt,$(SUPPORT_DATA_PROTOCAL)),)
 	C_VAR += -DSUPPORT_DATA_PROTOCAL_AKT
-else ifneq ($(findstring xw,$(SUPPORT_PROTOCAL)),)
+else ifneq ($(findstring xw,$(SUPPORT_DATA_PROTOCAL)),)
 	C_VAR += -DSUPPORT_DATA_PROTOCAL_XW
 endif
 
@@ -94,6 +94,12 @@ endif
 ifneq ($(findstring y,$(SUPPORT_AUDIO)),)
 	SOURCE_DIR += device/audio
 	C_VAR += -DSUPPORT_AUDIO
+endif
+
+#gps
+ifneq ($(findstring y,$(SUPPORT_GPS)),)
+	SOURCE_DIR += device/gps
+	C_VAR += -DSUPPORT_GPS
 endif
 
 #rf
@@ -224,10 +230,11 @@ MAKE := make
 source = $(wildcard *.c $(ALL_C_FILES))
 objs = $(source:%.c=%.o)
 
-target = platform
+target = platform 
+tools_m = tools
 
-all: $(target)
-
+all: $(target) $(tools_m)
+	
 $(target): $(objs)
 	for dir in $(SUB_LIB_DIRS); \
 	do $(MAKE) -C $$dir all || exit 1; \
@@ -238,7 +245,20 @@ $(target): $(objs)
 %.o:%c
 	$(CC) $(CFLAGS) -c $< $(LDFLAGS)  
 
+$(tools_m): libjson.a dao/json/cJSON.o
+	for dir in tools; \
+	do $(MAKE) -C $$dir all || exit 1; \
+	done
+
+libjson.a:
+	echo Creating $@...
+	$(RM) $@
+	for dir in dao/json/; \
+	do $(MAKE) -C $$dir all || exit 1; \
+	done
+	
 .PHONY: clean
 clean:
 	@for dir in $(SUB_LIB_DIRS); do make -C $$dir clean|| exit 1; done
+	for dir in tools; do make -C $$dir clean|| exit 1; done
 	$(RM) $(objs) $(target) *.bak *~

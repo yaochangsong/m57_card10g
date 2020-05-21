@@ -39,7 +39,7 @@ int memshare_init(void)
         printf_err("memshare init failed!\n");
         return -1;
     }
-    printf_note("Memory mapped at address %p.\n", map_base);
+    printf_info("Memory mapped at address %p.\n", map_base);
     //memset(memshare_get_dma_rx_base(), 0, DMA_SSD_RX_SIZE);
     return 0;
 }

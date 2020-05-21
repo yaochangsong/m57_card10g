@@ -6,6 +6,7 @@ struct net_udp_client {
     struct net_udp_server *srv;
 
     struct sockaddr_in peer_addr;
+    struct sockaddr_in discover_peer_addr;  /* add by ycs for act */
     bool connection_close;
     int response_length;
     int tag;

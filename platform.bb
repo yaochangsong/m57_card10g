@@ -12,6 +12,10 @@ SRC_URI = "file://*.c \
 		  "
 S = "${WORKDIR}"
 
+inherit update-rc.d
+INITSCRIPT_NAME = "platform.sh"
+INITSCRIPT_PARAMS = "start 99 S ."
+
 do_compile() {
 	     oe_runmake
 }
@@ -23,6 +27,7 @@ do_install() {
          install -m 0755 platform ${D}${bindir}
          install -m 0755 shell/platform.sh ${D}/etc/init.d/
          install -m 0755 conf/config.json ${D}/etc/
+         install -m 0755 tools/xjson ${D}${bindir}
 }
 INSANE_SKIP_${PN} = "ldflags"
 INSANE_SKIP_${PN}-dev = "ldflags"

@@ -477,15 +477,15 @@ static int akt_execute_set_command(void *cl)
         {
             check_valid_channel(header->buf[0]);
             memcpy(&(pakt_config->smooth[pakt_config->cid]), header->buf, sizeof(DIRECTION_SMOOTH_PARAM));
-            if(poal_config->work_mode == OAL_FIXED_FREQ_ANYS_MODE || poal_config->work_mode == OAL_MULTI_POINT_SCAN_MODE){
+            //if(poal_config->work_mode == OAL_FIXED_FREQ_ANYS_MODE || poal_config->work_mode == OAL_MULTI_POINT_SCAN_MODE){
                 poal_config->multi_freq_point_param[ch].smooth_time = pakt_config->smooth[ch].smooth;
-            }else if(poal_config->work_mode == OAL_FAST_SCAN_MODE || poal_config->work_mode == OAL_MULTI_ZONE_SCAN_MODE){
+            //}else if(poal_config->work_mode == OAL_FAST_SCAN_MODE || poal_config->work_mode == OAL_MULTI_ZONE_SCAN_MODE){
                 poal_config->multi_freq_fregment_para[ch].smooth_time = pakt_config->smooth[ch].smooth;
-            }else {
-                printf_warn("Work Mode is not set!!\n");
-                 err_code = RET_CODE_INVALID_MODULE;
-                goto set_exit;
-            }
+            //}else {
+            //    printf_warn("Work Mode is not set!!\n");
+            //     err_code = RET_CODE_INVALID_MODULE;
+            //    goto set_exit;
+            //}
             executor_set_command(EX_MID_FREQ_CMD, EX_SMOOTH_TIME, ch, &pakt_config->smooth[ch].smooth);
             break;
         }

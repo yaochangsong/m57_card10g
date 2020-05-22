@@ -29,6 +29,8 @@ do_install() {
          install -m 0755 conf/config.json ${D}/etc/
          install -m 0755 tools/xjson ${D}${bindir}
 }
+
 INSANE_SKIP_${PN} = "ldflags"
 INSANE_SKIP_${PN}-dev = "ldflags"
 INSANE_SKIP_${PN} +="already-stripped"
+FILES_${PN} += "/usr/*"

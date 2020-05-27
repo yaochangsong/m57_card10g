@@ -199,7 +199,7 @@ struct control_st{
     uint32_t wz_threshold_bandwidth;                              /* 万兆信道带宽阀值 ，带宽<该值，使用千兆口；否则使用万兆口传输IQ */
 #endif
     struct residency_policy residency;                            /* 驻留时间策略 */
-    struct calibration_singal_threshold_st singal;
+    struct calibration_singal_threshold_st signal;
 };//__attribute__ ((packed));
 
 /*状态参数*/

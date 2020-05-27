@@ -497,7 +497,7 @@ int8_t config_read_by_cmd(exec_cmd cmd, uint8_t type, uint8_t ch, void *data, ..
                     break;
                 }
                 case EX_CTRL_CALI_SIGAL_THRE:
-                    *(int32_t *)data = poal_config->ctrl_para.singal.threshold;
+                    *(int32_t *)data = poal_config->ctrl_para.signal.threshold;
                     break;
                 default:
                     printf_err("not surpport type\n");

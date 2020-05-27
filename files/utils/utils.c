@@ -484,16 +484,20 @@ char *get_jenkins_version(void)
 #endif
     static char version[16] = {"0"};
     
-    read_file(version, sizeof(version), J_FILE_NAME);
-    version[sizeof(version)-1] = 0;
+    if(read_file(version, sizeof(version), J_FILE_NAME) == 0){
+        version[sizeof(version)-1] = 0;
+    }else{
+        sprintf(version, "debug");
+    }
+    
     return version;
 }
 
 char *get_version_string(void)
 {
-   static char version[64]={0};
-   sprintf(version, "%s(%s-%s)", PLATFORM_VERSION,get_build_time(), __TIME__);
-  // sprintf(version, "%s_%s(%s-%s)", PLATFORM_VERSION,get_jenkins_version(), get_build_time(), __TIME__);
+   static char version[256]={0};
+   //sprintf(version, "%s(%s-%s)", VERSION,get_build_time(), __TIME__);
+   sprintf(version, "%s_%s(%s-%s)-%s", PLATFORM_VERSION,get_jenkins_version(), get_build_time(), __TIME__,VERSION_TAG);
    printf_debug("%s\n", version);
    return version;
 }

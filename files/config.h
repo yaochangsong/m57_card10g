@@ -95,6 +95,7 @@
 #ifdef SUPPORT_DAO_XML
 #include "dao/oal/xml/dao_conf.h"
 #endif
+#include "version.h"
 
 
 #ifndef MHZ

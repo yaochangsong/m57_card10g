@@ -237,7 +237,9 @@ objs = $(source:%.c=%.o)
 target = platform 
 tools_m = tools
 
-all: $(target) $(tools_m)
+commit_tag=$(shell git rev-list --max-count=1 HEAD) 
+
+all: version $(target) $(tools_m) 
 	
 $(target): $(objs)
 	for dir in $(SUB_LIB_DIRS); \
@@ -254,6 +256,12 @@ $(tools_m): libjson.a dao/json/cJSON.o
 	do $(MAKE) -C $$dir all || exit 1; \
 	done
 
+version:
+	@if ! grep "$(commit_tag)" version.h >/dev/null ; then \
+		echo "update version.h $(commit_tag)"       ;    \
+		sed 's/COMMIT_TAG/"$(commit_tag)"/g' version.tpl.h > version.h    ;  \
+	fi
+    
 libjson.a:
 	echo Creating $@...
 	$(RM) $@

@@ -150,6 +150,10 @@ ifneq ($(findstring y,$(SUPPORT_SPECTRUM_KERNEL)),)
 	C_VAR += -DSUPPORT_SPECTRUM_KERNEL
 endif
 
+#
+ifneq ($(findstring y,$(SUPPORT_RESIDENCY_STRATEGY)),)
+	C_VAR += -DSUPPORT_RESIDENCY_STRATEGY
+endif
 
 SOURCE_DIR += log net protocol/oal dao/oal conf executor  utils device  device/gpio 
 

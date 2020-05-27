@@ -17,7 +17,8 @@
 		"spectrum_time_interval":	200,
 		"bandwidth_remote_ctrl":	1,
 		"internal_clock":	1,
-		"net10g_threshold_bandwidth":	10000000
+		"net10g_threshold_bandwidth":	10000000,
+		"singal_threshold" : 90
 	},
 	"status_parm":	{
 		"soft_version":	{

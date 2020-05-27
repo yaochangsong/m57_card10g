@@ -482,7 +482,120 @@ exit_mode:
     return 0;
 }
 
+/*Signal Residency strategy*/
+static long signal_residency_policy(int ch, int policy, bool is_signal)
+{
+    long residence_time = -1; /* 驻留时间:秒， -1为永久驻留 */
+    #define POLICY1_SWITCH      0       /* 策略1：有信号驻留；无信号等3S无信号切换下一个点 */
+    #define POLICY2_PENDING     -1      /* 策略2：有信号，永久驻留，无信号驻留1秒切换      */
+    #define POLICY3_WAIT_TIME   1       /* 策略3： policy>0 有信号按驻留时间驻留切换，无信号驻留NO_SIGAL_WAIT_TIME毫秒立即切换 */
 
+    #define NO_SIGAL_WAIT_TIME  20 /* 无信号驻留时间 */
+    
+    switch(policy){
+        case POLICY2_PENDING:
+            if(is_signal){
+                residence_time = -1; /* 有信号驻留,永久驻留 */
+            }else{
+                residence_time = NO_SIGAL_WAIT_TIME;  /* 无信号驻留20毫秒 */
+            }
+            break;
+        case POLICY1_SWITCH:
+            if(is_signal){
+                residence_time = -1; /* 有信号驻留,永久驻留 */
+            }else{
+                residence_time = 3000;  /* 无信号驻留3秒 */
+            }
+            break;
+        default: 
+            if(is_signal){
+                if(policy > 0)  /* 有信号按驻留时间驻留切换  */
+                    residence_time = policy*1000;
+                else
+                    printf("error policy: %d\n", policy);
+            }else{
+                residence_time = NO_SIGAL_WAIT_TIME;  /* 无信号驻留20毫秒 */
+            }
+    }
+    return residence_time;
+}
+
+bool is_sigal_residency_time_arrived(uint8_t ch, int policy, bool is_signal)
+{
+    long residency_time = 0;
+    residency_time = signal_residency_policy(ch, policy, is_signal);
+    if(_get_run_timer(ch) < residency_time){
+        return false;
+    }
+    _reset_run_timer(ch);
+    return true;
+}
+
+/* 获取信号门限标定值 */
+int32_t _get_singal_threshold(uint8_t ch)
+{
+    int32_t singal_threshold;
+    int8_t ret;
+    ret = config_read_by_cmd(EX_CTRL_CMD, EX_CTRL_CALI_SIGAL_THRE, ch, &singal_threshold);
+    if(ret != 0){
+        printf_err("Read signal threshold error!\n");
+        return -1;
+    }
+        
+    return singal_threshold;
+}
+
+/* 获取信号门限 */
+static int32_t _get_signal_threshold_by_amp(uint8_t ch, int32_t *sigal_thred)
+{
+    int8_t rf_attenuation, m_attenuation;
+    uint16_t threshold_0db, threshold = 0;
+    int ret = 0;
+
+    ret = config_read_by_cmd(EX_RF_FREQ_CMD, EX_RF_MGC_GAIN, ch, &m_attenuation);
+    if(ret != 0){
+        printf_err("Read MGC Gain error\n");
+        return -1;
+    }
+    ret = config_read_by_cmd(EX_RF_FREQ_CMD, EX_RF_ATTENUATION, ch, &rf_attenuation);
+    if(ret != 0){
+        printf_err("Read RF attenuation error\n");
+        return -1;
+    }
+    ret = _get_singal_threshold(ch);
+    if(ret == -1)
+        return -1;
+    threshold_0db = ret;
+    printf_note("rf:%d,mf:%d,0db_th:%d\n",rf_attenuation,m_attenuation,threshold_0db);
+    threshold = threshold_0db * pow(10.0f,(double)(rf_attenuation+m_attenuation)/20);
+    printf_note("threshold = %d\n", threshold);
+    *sigal_thred = threshold;
+    
+    return 0;
+}
+
+/* 判断对应通道是否有信号:      true: 有信号; false:无信号*/
+static int32_t  spm_get_signal_strength(uint8_t ch, bool *is_singal, uint16_t *strength)
+{
+    uint16_t sig_amp = 0;
+    int32_t sigal_thred = 0;
+    int32_t ret;
+    
+    sig_amp = io_get_signal_strength(ch);
+    if(strength != NULL)
+        *strength = sig_amp;
+    ret = _get_signal_threshold_by_amp(ch, &sigal_thred);
+    if(ret == -1)
+        return -1;
+    
+    if(sig_amp > sigal_thred) {
+        *is_singal = true;
+    }else{
+        *is_singal = false;
+    }
+    
+    return 0;
+}
 
 static int spm_stream_start(uint32_t len,uint8_t continuous, enum stream_type type)
 {
@@ -541,6 +654,8 @@ static const struct spm_backend_ops spm_ops = {
     .save_data = spm_save_data,
     .backtrace_data = spm_backtrace_data,
     .agc_ctrl = spm_agc_ctrl,
+    .residency_time_arrived = is_sigal_residency_time_arrived,
+    .signal_strength = spm_get_signal_strength,
     .stream_start = spm_stream_start,
     .stream_stop = spm_stream_stop,
     .close = _spm_close,

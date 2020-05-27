@@ -938,6 +938,28 @@ uint32_t get_fpga_version(void)
     return args;
 }
 
+int16_t io_get_signal_strength(uint8_t ch)
+{
+#if defined(SUPPORT_PLATFORM_ARCH_ARM)
+#if defined(SUPPORT_SPECTRUM_KERNEL) 
+    struct signal_amp_t{
+        uint8_t cid;
+        uint16_t sig_amp;
+    }__attribute__ ((packed));
+
+    struct signal_amp_t sig_amp;
+    sig_amp.cid = ch;
+    if (io_ctrl_fd > 0) {
+        ioctl(io_ctrl_fd,IOCTL_GET_CH_SIGNAL_AMP,&sig_amp);
+        return sig_amp.sig_amp;
+    }
+#elif defined(SUPPORT_SPECTRUM_V2) 
+    return 0;
+#endif
+#endif
+}
+
+
 /* ---Disk-related function--- */
 int io_read_more_info_by_name(const char *name, void *info, int32_t (*iofunc)(void *))
 {

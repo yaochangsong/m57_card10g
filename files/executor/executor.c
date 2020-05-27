@@ -252,6 +252,8 @@ static int8_t  executor_points_scan(uint8_t ch, work_mode_type mode, void *args)
     time_t s_time;
     struct io_decode_param_st decode_param;
     int8_t subch = 0;
+    bool is_residency_time_arrived = false;
+    int32_t policy = poal_config->ctrl_para.residency.policy[ch];
     spmctx = (struct spm_context *)args;
     r_args = spmctx->run_args;
 
@@ -312,6 +314,14 @@ static int8_t  executor_points_scan(uint8_t ch, work_mode_type mode, void *args)
             io_set_enable_command(AUDIO_MODE_DISABLE, ch, -1, 0);
         }
 #endif
+        usleep(20000);
+        uint16_t strength = 0;
+        bool is_signal = false;
+        int32_t ret = -1;
+        ret = spmctx->ops->signal_strength(ch, &is_signal, &strength);
+        if(ret == 0){
+            printf_note("is sigal: %s, strength:%d\n", (is_signal == true ? "Yes":"No"), strength);
+        }
         s_time = time(NULL);
         do{
             if(poal_config->enable.psd_en){
@@ -339,7 +349,13 @@ static int8_t  executor_points_scan(uint8_t ch, work_mode_type mode, void *args)
                     poal_config->enable.bit_reset = false;
                     return -1;
             }
-        }while(time(NULL) < s_time + point->residence_time ||  /* multi-frequency switching */
+            /* 驻留时间是否到达判断;多频点模式下生效 */
+            if(spmctx->ops->residency_time_arrived && (ret == 0) && (points_count > 1)){
+                is_residency_time_arrived = spmctx->ops->residency_time_arrived(ch, policy, is_signal);
+            }else{
+                is_residency_time_arrived = (time(NULL) < s_time + point->residence_time) ? false : true;
+            }
+        }while(is_residency_time_arrived ||  /* multi-frequency switching */
                points_count == 1);                             /* single-frequency station */
     }
     printf_info("Exit points scan function\n");

@@ -761,6 +761,11 @@ static int akt_execute_set_command(void *cl)
             executor_set_command(EX_RF_FREQ_CMD, EX_RF_CALIBRATE, ch, &cal_source);
             break;
         }
+        case FREQ_RESIDENT_MODE:
+            check_valid_channel(header->buf[0]);
+            poal_config->ctrl_para.residency.policy[ch] = (int32_t)*(int16_t *)(header->buf+1);
+            printf_note("Residency Policy, ch=%d, policy=%d\n", ch, poal_config->ctrl_para.residency.policy[ch]);
+            break;
         /* disk cmd */
         case STORAGE_IQ_CMD:
         {

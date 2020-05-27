@@ -170,6 +170,10 @@ struct specturm_analysis_control_st{
 };//__attribute__ ((packed));
 
 
+struct residency_policy{
+    int32_t policy[MAX_RADIO_CHANNEL_NUM];
+};
+
 struct scan_bindwidth_info{
     bool     fixed_bindwidth_flag[8];                            /* 固定扫描带宽标志： ture:使用某固定带宽扫描； false: 根据带宽扫描 */
     uint32_t bindwidth_hz[8];                                /* 扫描带宽 */
@@ -178,6 +182,10 @@ struct scan_bindwidth_info{
     uint32_t work_bindwidth_hz;
     float    work_sideband_rate;
 };//__attribute__ ((packed));
+
+struct calibration_singal_threshold_st{
+    int32_t   threshold;    /* 有无信号门限值 */
+};
 
 /* 控制/配置参数 */
 struct control_st{
@@ -190,6 +198,8 @@ struct control_st{
 #ifdef SUPPORT_NET_WZ
     uint32_t wz_threshold_bandwidth;                              /* 万兆信道带宽阀值 ，带宽<该值，使用千兆口；否则使用万兆口传输IQ */
 #endif
+    struct residency_policy residency;                            /* 驻留时间策略 */
+    struct calibration_singal_threshold_st singal;
 };//__attribute__ ((packed));
 
 /*状态参数*/
@@ -292,7 +302,6 @@ struct calibration_fft_st{
     uint32_t  fftsize[8];
     int32_t   cali_value[8];
 };
-
 
 struct calibration_info_st{
     struct calibration_specturm_info_st specturm;

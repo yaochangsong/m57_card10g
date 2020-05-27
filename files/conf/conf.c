@@ -427,6 +427,9 @@ int8_t config_read_by_cmd(exec_cmd cmd, uint8_t type, uint8_t ch, void *data, ..
                 case EX_RF_MGC_GAIN:
                     *(int8_t *)data = poal_config->rf_para[ch].mgc_gain_value;
                     break;
+                case EX_RF_ATTENUATION:
+                    *(int8_t *)data = poal_config->rf_para[ch].attenuation;
+                    break;
                 default:
                     printf_err("not surpport type\n");
                     goto exit;
@@ -493,6 +496,9 @@ int8_t config_read_by_cmd(exec_cmd cmd, uint8_t type, uint8_t ch, void *data, ..
                     }
                     break;
                 }
+                case EX_CTRL_CALI_SIGAL_THRE:
+                    *(int32_t *)data = poal_config->ctrl_para.singal.threshold;
+                    break;
                 default:
                     printf_err("not surpport type\n");
                     goto exit;

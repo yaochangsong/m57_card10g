@@ -541,6 +541,11 @@ static int json_parse_config_param(const cJSON* root, struct poal_config *config
         printf_debug("net 10g threshold bandwidth:%uHz, \n",config->ctrl_para.wz_threshold_bandwidth);
     }
 #endif
+    value = cJSON_GetObjectItem(control_parm, "singal_threshold");
+    if(value!= NULL && cJSON_IsNumber(value)){
+        config->ctrl_para.singal.threshold=value->valueint;
+        printf_debug("singal.threshold:%d, \n",config->ctrl_para.singal.threshold);
+    }
 /* calibration_parm */
     cJSON *calibration = NULL;
     calibration = cJSON_GetObjectItem(root, "calibration_parm");

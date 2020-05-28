@@ -496,8 +496,11 @@ char *get_jenkins_version(void)
 char *get_version_string(void)
 {
    static char version[256]={0};
-   //sprintf(version, "%s(%s-%s)", VERSION,get_build_time(), __TIME__);
-   sprintf(version, "%s_%s(%s-%s)-%s", PLATFORM_VERSION,get_jenkins_version(), get_build_time(), __TIME__,VERSION_TAG);
+   #ifdef VERSION_TAG
+   snprintf(version, sizeof(version), "%s_%s(%s-%s)-%s", PLATFORM_VERSION,get_jenkins_version(), get_build_time(), __TIME__,VERSION_TAG);
+   #else
+   snprintf(version, sizeof(version), "%s_%s(%s-%s)", PLATFORM_VERSION,get_jenkins_version(), get_build_time(), __TIME__);
+   #endif
    printf_debug("%s\n", version);
    return version;
 }

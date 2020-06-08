@@ -429,6 +429,23 @@ static int json_parse_config_param(const cJSON* root, struct poal_config *config
         printf_warn("not found json node[%s]\n","network");
         return -1;
     }
+    value = cJSON_GetObjectItem(network, "mac");
+    if(value!= NULL && cJSON_IsString(value)){
+        char mac_buf[128] = {0};
+        if(config->network.mac){
+            sprintf(mac_buf, "%02X:%02X:%02X:%02X:%02X:%02X", config->network.mac[0], 
+                                                            config->network.mac[1],
+                                                            config->network.mac[2],
+                                                            config->network.mac[3],
+                                                            config->network.mac[4],
+                                                            config->network.mac[5]);
+            if(strcmp(value->valuestring, mac_buf)){
+                printf_note("renew mac: %s\n", mac_buf);
+                json_write_string_param(NULL, "network", "mac", mac_buf);
+                json_write_file(config_get_config()->configfile, root);
+            }
+        }
+    }
     value = cJSON_GetObjectItem(network, "gateway");
     if(value!= NULL && cJSON_IsString(value)){
         saddr.sin_addr.s_addr = inet_addr(value->valuestring);
@@ -545,6 +562,11 @@ static int json_parse_config_param(const cJSON* root, struct poal_config *config
     if(value!= NULL && cJSON_IsNumber(value)){
         config->ctrl_para.signal.threshold=value->valueint;
         printf_debug("signal.threshold:%d, \n",config->ctrl_para.signal.threshold);
+    }
+	value = cJSON_GetObjectItem(control_parm, "iq_data_length");
+    if(value!= NULL && cJSON_IsNumber(value)){
+        config->ctrl_para.iq_data_length=value->valueint;
+        printf_debug("iq_data_length:%d, \n",config->ctrl_para.iq_data_length);
     }
 /* calibration_parm */
     cJSON *calibration = NULL;

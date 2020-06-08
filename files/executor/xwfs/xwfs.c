@@ -52,7 +52,7 @@ int32_t xwfs_get_file_size_by_name(char *name, void *value, uint32_t value_len){
 
 int32_t xwfs_get_disk_info(void *arg){
     int32_t ret = 0;
-    printf_note("xwfs_get_disk_info\n");
+    printf_debug("xwfs_get_disk_info\n");
     if (xwfs_fd < 0) {
         return -1;
     }
@@ -63,7 +63,7 @@ int32_t xwfs_get_disk_info(void *arg){
 
 int32_t xwfs_get_file_info(void *arg){
     int32_t ret = 0;
-    printf_note("xwfs_get_disk_info\n");
+    printf_debug("xwfs_get_disk_info\n");
     if (xwfs_fd < 0) {
         return -1;
     }
@@ -74,15 +74,13 @@ int32_t xwfs_get_file_info(void *arg){
 
 int32_t xwfs_disk_format(void *arg){
     int32_t ret = 0;
-    printf_note("xwfs_disk_format\n");
+    printf_debug("xwfs_disk_format\n");
     if (xwfs_fd < 0) {
         return -1;
     }
     ret = ioctl(xwfs_fd,IOCTL_XWFS_DISK_FORMAT,arg);
     return ret;
 }
-
-
 
 
 int32_t xwfs_delete_file(void *arg){
@@ -134,14 +132,29 @@ void xwfs_init(void)
 {
     printf_note("xwfs init!\n");
 #if defined(SUPPORT_XWFS)
+    int ret = 0, status = 1;
+    STORAGE_STATUS_RSP_ST *psi;
     if (xwfs_fd > 0) {
         return;
     }
     xwfs_fd = open(XWFS_DISK_DEVICE, O_RDWR);
     if(xwfs_fd < 0) {
         perror("open");
-        return;
+        goto exit;
     }
+    ret = xwfs_get_disk_info(psi);
+    if(ret != 0){
+        printf_note("Disk Check Faild!!\n");
+        status = 1;
+    }else{
+        printf_note("Disk check OK!! num=%d, speed=%uKB/s, capacity_bytes=%llu, used_bytes=%llu\n",
+                    psi->disk_num, psi->read_write_speed_kbytesps, 
+                    psi->disk_capacity[0].disk_capacity_byte, psi->disk_capacity[0].disk_used_byte);
+
+        status = 0;
+    }
+exit:
+    config_save_cache(EX_STATUS_CMD, EX_DISK_STATUS, -1, &status);
 #endif
 }
 

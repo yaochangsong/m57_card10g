@@ -18,7 +18,8 @@
 		"bandwidth_remote_ctrl":	1,
 		"internal_clock":	1,
 		"net10g_threshold_bandwidth":	10000000,
-		"signal_threshold" : 90
+		"signal_threshold" : 90,
+		"iq_data_length":	8192
 	},
 	"status_parm":	{
 		"soft_version":	{

@@ -200,6 +200,7 @@ struct control_st{
 #endif
     struct residency_policy residency;                            /* 驻留时间策略 */
     struct calibration_singal_threshold_st signal;
+	uint32_t iq_data_length;                                      /* iq数据包发送长度*/
 };//__attribute__ ((packed));
 
 /*状态参数*/

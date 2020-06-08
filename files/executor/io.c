@@ -110,7 +110,7 @@ int32_t io_set_local_10g_net(uint32_t ip, uint16_t port)
     
     struct net_10g_local_param_t nl;
     /*万兆设备ip网段在千兆口网段基础上加1,端口和千兆口端口一样*/
-    nl.local_ip_10g = ip+(1 << 8);
+    nl.local_ip_10g = ip;
     nl.local_port_10g = port;
     printf_note("ipaddress[0x%x], port=%d\n", nl.local_ip_10g, nl.local_port_10g);
     ret = ioctl(io_ctrl_fd,IOCTL_NET_10G_LOCAL_SET,&nl);
@@ -838,7 +838,14 @@ int8_t io_set_enable_command(uint8_t type, int ch, int subc_ch, uint32_t fftsize
         case IQ_MODE_ENABLE:
         {
             if(fftsize == 0)
-                io_set_IQ_out_en(ch, subc_ch, 512, 1);
+            {
+                if(poal_config->ctrl_para.iq_data_length == 0)
+                {
+                    printf_warn("iq_data_length not set, use 512\n");
+                    poal_config->ctrl_para.iq_data_length = 512;
+                }    
+                io_set_IQ_out_en(ch, subc_ch, poal_config->ctrl_para.iq_data_length, 1);
+            }  
             else
                 io_set_IQ_out_en(ch, subc_ch, fftsize, 1);
             break;

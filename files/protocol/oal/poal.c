@@ -122,7 +122,7 @@ int poal_handle_request(struct net_tcp_client *cl, uint8_t *data, int len)
 
 int poal_udp_send_response(struct net_udp_client *cl, uint8_t *data, int len)
 {
-    int i;
+    int i, n;
     if(data == NULL){
         return -1;
     }
@@ -131,10 +131,16 @@ int poal_udp_send_response(struct net_udp_client *cl, uint8_t *data, int len)
     }
     printfd("\n");
     if((cl->discover_peer_addr.sin_port != 0) && (cl->discover_peer_addr.sin_addr.s_addr != 0)){
-        sendto(cl->srv->fd.fd, data, len, 0, (struct sockaddr *)&cl->discover_peer_addr, sizeof(struct sockaddr));
+        n = sendto(cl->srv->fd.fd, data, len, 0, (struct sockaddr *)&cl->discover_peer_addr, sizeof(struct sockaddr));
+        if(n < 0){
+            printf_err("n=%d, errno=%d[%s]\n", n, errno, strerror(errno));
+        }
         memset(&cl->discover_peer_addr, 0, sizeof(struct sockaddr_in));
     }else{
-        sendto(cl->srv->fd.fd, data, len, 0, (struct sockaddr *)&cl->peer_addr, sizeof(struct sockaddr));
+        n = sendto(cl->srv->fd.fd, data, len, 0, (struct sockaddr *)&cl->peer_addr, sizeof(struct sockaddr));
+        if(n < 0){
+            printf_err("n=%d, errno=%d[%s]\n", n, errno, strerror(errno));
+        }
     }
     
     return 0;

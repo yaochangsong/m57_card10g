@@ -1070,6 +1070,7 @@ static int akt_execute_net_command(void *client)
     printf_note("ipaddr = 0x%x, port=0x%x[%d]", dis_net.ipaddr, dis_net.port,  dis_net.port);
     addr.sin_port = dis_net.port;
     addr.sin_addr.s_addr = dis_net.ipaddr;
+    addr.sin_family = AF_INET;   /* fixedb bug: Address family not supported by protocol */
     
     cl = (struct net_udp_client *)client;
     memcpy(netinfo.mac, poal_config->network.mac, sizeof(netinfo.mac));

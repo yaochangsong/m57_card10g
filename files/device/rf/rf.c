@@ -1327,20 +1327,6 @@ int8_t rf_init(void)
 #endif
 #if defined(SUPPORT_RF_SPI)
     ret = spi_init();
-    ret = spi_clock_init_before();
-    /* 等待时钟稳定 */
-    usleep(10000);
-    ret = spi_adc_init();
-    status = ((ret >= 0) ? 0 : 1);
-    printf_info("AD status:%s\n", status == 0 ? "OK" : "Faild");
-    config_save_cache(EX_STATUS_CMD, EX_AD_STATUS, -1, &status);
-    /* 复位时钟 */
-    ret = spi_clock_init_after();
-    usleep(10000);
-    ret = spi_clock_check();
-    status = ((ret == 0) ? 0 : 1);
-    printf_info("Clock status:%s\n", status == 0 ? "OK" : "Faild");
-    config_save_cache(EX_STATUS_CMD, EX_CLK_STATUS, -1, &status);
 #endif
     return ret;
 }

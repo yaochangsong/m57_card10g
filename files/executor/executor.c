@@ -967,6 +967,7 @@ void executor_close(void)
     fpga_io_close();
     spm_close();
 #endif
+    clock_adc_close();
 }
 
 

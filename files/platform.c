@@ -122,10 +122,11 @@ int main(int argc, char **argv)
     executor_init();    /* DMA频谱初始化需要在时钟初始化之前 */
  if(spectrum_aditool_debug == false){
 #ifdef SUPPORT_RF
-        rf_init();  /* SPI初始化，时钟/AD初始化 */
+    rf_init();  /* RF初始化， */
 #endif
+    clock_adc_init();   /* 时钟/AD初始化 */
 #ifdef SUPPORT_SPECTRUM_FFT
-        spectrum_init();
+    spectrum_init();
 #endif
     }
 #ifdef SUPPORT_UART

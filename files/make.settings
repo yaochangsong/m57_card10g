@@ -71,6 +71,9 @@ else
 	#rf
 	SUPPORT_RF=y
     SUPPORT_RF_SPI=y
+    #adc clock
+    SUPPORT_CLOCK_ADC_SPI=n
+    SUPPORT_CLOCK_ADC_FPGA=y
     #万兆
     SUPPORT_NET_WZ=n
 	#gps

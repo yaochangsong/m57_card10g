@@ -25,8 +25,7 @@
 #include "clock_adc.h"
 #include "clock_adc_spi.h"
 
-
-struct rf_spi_node_info *_spi_node = NULL;
+extern struct rf_spi_node_info spi_node[3];
 
 static int ca_spi_clock_init_before(void)
 {
@@ -35,16 +34,17 @@ static int ca_spi_clock_init_before(void)
     int found = 0, index = 0;
     uint32_t array_len = 3;
     bool internal_clock = config_get_is_internal_clock();
-    
-    for(int i = 0; i< ARRAY_SIZE(_spi_node); i++){
-        if(_spi_node[i].func_code == SPI_FUNC_CLOCK){
-            spi_fd = _spi_node[i].fd;
+    printf_note(" ARRAY_SIZE(spi_node)=%d\n",  ARRAY_SIZE(spi_node));
+    for(int i = 0; i< ARRAY_SIZE(spi_node); i++){
+        printf_note("spi_node: %d, func_code:%d\n", i, spi_node[i].func_code);
+        if(spi_node[i].func_code == SPI_FUNC_CLOCK){
+            spi_fd = spi_node[i].fd;
             index = i;
             found = 1;
         }
     }
     if(found == 0 || spi_fd == -1){
-        printf_err("SPI CLOCK init Faild!\n");
+        printf_err("SPI CLOCK init Faild!found = %d\n", found);
         return -1;
     }
 
@@ -99,7 +99,7 @@ static int ca_spi_clock_init_before(void)
     ret = spi_send_data(spi_fd, send_buf, array_len, NULL, 0);
     usleep(100);
     
-    printf_note("[%s]SPI CLOCK init OK![%s] Clock\n",  _spi_node[index].info, internal_clock== true ? "Internal" : "External");
+    printf_note("[%s]SPI CLOCK init OK![%s] Clock\n",  spi_node[index].info, internal_clock== true ? "Internal" : "External");
     return ret;
 }
 
@@ -110,9 +110,9 @@ static int ca_spi_clock_init_after(void)
     int found = 0, index = 0;
     uint32_t array_len = 3;
     
-    for(int i = 0; i< ARRAY_SIZE(_spi_node); i++){
-        if(_spi_node[i].func_code == SPI_FUNC_CLOCK){
-            spi_fd = _spi_node[i].fd;
+    for(int i = 0; i< ARRAY_SIZE(spi_node); i++){
+        if(spi_node[i].func_code == SPI_FUNC_CLOCK){
+            spi_fd = spi_node[i].fd;
             index = i;
             found = 1;
         }
@@ -160,9 +160,9 @@ static int ca_spi_adc_init(void)
     int found = 0, index = 0;
     uint32_t array_len = 3;
     
-    for(int i = 0; i< ARRAY_SIZE(_spi_node); i++){
-        if(_spi_node[i].func_code == SPI_FUNC_AD){
-            spi_fd = _spi_node[i].fd;
+    for(int i = 0; i< ARRAY_SIZE(spi_node); i++){
+        if(spi_node[i].func_code == SPI_FUNC_AD){
+            spi_fd = spi_node[i].fd;
             index = i;
             found = 1;
         }
@@ -184,7 +184,7 @@ static int ca_spi_adc_init(void)
         printfd("0x%02x 0x%02x 0x%02x\n",  send_buf[0], send_buf[1], send_buf[2]);
         ret = spi_send_data(spi_fd, send_buf, array_len, NULL, 0);
     }
-    printf_note("[%s]SPI ADC init OK!\n",  _spi_node[index].info);
+    printf_note("[%s]SPI ADC init OK!\n",  spi_node[index].info);
     return ret;
 }
 
@@ -193,20 +193,21 @@ static int ca_spi_init(void)
 {
     int ret = -1;
     uint8_t status = 0;
-    
+
+    printf_note("clock adc spi init...\n");
     ret = ca_spi_clock_init_before();
     /* 等待时钟稳定 */
     usleep(10000);
     ret = ca_spi_adc_init();
     status = ((ret >= 0) ? 0 : 1);
-    printf_info("AD status:%s\n", status == 0 ? "OK" : "Faild");
+    printf_note("AD status:%s\n", status == 0 ? "OK" : "Faild");
     config_save_cache(EX_STATUS_CMD, EX_AD_STATUS, -1, &status);
     /* 复位时钟 */
     ret = ca_spi_clock_init_after();
     usleep(10000);
     ret = ca_spi_clock_check();
     status = ((ret == 0) ? 0 : 1);
-    printf_info("Clock status:%s\n", status == 0 ? "OK" : "Faild");
+    printf_note("Clock status:%s\n", status == 0 ? "OK" : "Faild");
     config_save_cache(EX_STATUS_CMD, EX_CLK_STATUS, -1, &status);
 }
 
@@ -226,9 +227,7 @@ static const struct clock_adc_ops ca_ctx_ops = {
 struct clock_adc_ops * clock_adc_spi_cxt(void)
 {
     int ret = -ENOMEM;
-    
-    _spi_node = spi_get_node();
-    if(_spi_node == NULL){
+    if(-1 == spi_get_node()){
         spi_init();
     }
         

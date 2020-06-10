@@ -338,6 +338,7 @@ static int8_t  executor_points_scan(uint8_t ch, work_mode_type mode, void *args)
                 usleep(500);
             }
 #elif defined (SUPPORT_SPECTRUM_V2)
+            spmctx->ops->agc_ctrl(ch, spmctx);
             if(args != NULL)
                 spm_deal(args, r_args);
             if(poal_config->enable.psd_en){

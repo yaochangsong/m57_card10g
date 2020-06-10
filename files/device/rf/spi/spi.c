@@ -105,9 +105,12 @@ int spi_send_data(int spi_fd, uint8_t *send_buffer, size_t send_len,
     return ret;
 }
 
-void *spi_get_node(void)
+static bool spi_has_inited = false;
+int spi_get_node(void)
 {
-    return &spi_node;
+    if(spi_has_inited == false)
+        return -1;
+    return 0;
 }
 
 int spi_init(void)
@@ -115,7 +118,6 @@ int spi_init(void)
     struct rf_spi_node_info *ptr = &spi_node;
     uint8_t mode = 0;
     uint32_t speed = 4000000;
-    static bool spi_has_inited = false;
 
     if(spi_has_inited == true)
         return 0;

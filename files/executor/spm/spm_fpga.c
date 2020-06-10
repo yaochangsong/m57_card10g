@@ -37,25 +37,31 @@ static inline void *zalloc(size_t size)
 	return calloc(1, size);
 }
 
-
-static struct timeval *runtimer;
-static int32_t _init_run_timer(uint8_t count)
+#define RUN_MAX_TIMER 2
+static struct timeval *runtimer[RUN_MAX_TIMER];
+static int32_t _init_run_timer(uint8_t ch)
 {
-    runtimer = (struct timeval *)malloc(sizeof(struct timeval)*count);
-    memset(runtimer, 0, sizeof(struct timeval)*count);
+    int i;
+    for(i = 0; i< RUN_MAX_TIMER ; i++){
+        runtimer[i] = (struct timeval *)malloc(sizeof(struct timeval)*ch);
+        memset(runtimer[i] , 0, sizeof(struct timeval)*ch);
+    }
+    
     return 0;
 }
 
-static int32_t _get_run_timer(uint8_t index)
+static int32_t _get_run_timer(uint8_t index, uint8_t ch)
 {
     struct timeval *oldTime; 
     struct timeval newTime; 
     int32_t _t_us, ntime_us; 
-    if(index >= MAX_RADIO_CHANNEL_NUM){
+    if(ch >= MAX_RADIO_CHANNEL_NUM){
         return -1;
     }
-
-    oldTime = runtimer+index;
+    if(index >= RUN_MAX_TIMER){
+        return -1;
+    }
+    oldTime = runtimer[index]+ch;
      if(oldTime->tv_sec == 0 && oldTime->tv_usec == 0){
         gettimeofday(oldTime, NULL);
         return 0;
@@ -70,15 +76,18 @@ static int32_t _get_run_timer(uint8_t index)
     return ntime_us;
 }
 
-static int32_t _reset_run_timer(uint8_t index)
+static int32_t _reset_run_timer(uint8_t index, uint8_t ch)
 {
     struct timeval newTime; 
     struct timeval *oldTime; 
-    if(index >= MAX_RADIO_CHANNEL_NUM){
+    if(ch >= MAX_RADIO_CHANNEL_NUM){
+        return -1;
+    }
+    if(index >= RUN_MAX_TIMER){
         return -1;
     }
     gettimeofday(&newTime, NULL);
-    oldTime = runtimer+index;
+    oldTime = runtimer[index]+ch;
     memcpy(oldTime, &newTime, sizeof(struct timeval)); 
     return 0;
 }
@@ -438,14 +447,14 @@ static int spm_agc_ctrl(int ch, struct spm_context *ctx)
     if(agc_ctrl_time == 0 ||gain_ctrl_method != AGC_MODE){
         return -1;
     }
-    if(_get_run_timer(ch) < agc_ctrl_time){
+    if(_get_run_timer(0, ch) < agc_ctrl_time){
         return -1;
     }
-    _reset_run_timer(ch);
+    _reset_run_timer(0, ch);
     if((agc_val = io_get_agc_thresh_val(ch)) < 0){
         return -1;
     }
-    printf_note("read agc value=%d\n", agc_val);
+    printf_info("read agc value=%d\n", agc_val);
     dbm_val = (int32_t)(20 * log10((double)agc_val / ((double)AGC_REF_VAL)));
     /* 判断读取的幅度值是否>设置的输出幅度+控制精度 */
     if(dbm_val > (agc_ctrl_dbm+AGC_CTRL_PRECISION)){
@@ -524,10 +533,10 @@ bool is_sigal_residency_time_arrived(uint8_t ch, int policy, bool is_signal)
 {
     long residency_time = 0;
     residency_time = signal_residency_policy(ch, policy, is_signal);
-    if(_get_run_timer(ch) < residency_time){
+    if(_get_run_timer(1, ch) < residency_time){
         return false;
     }
-    _reset_run_timer(ch);
+    _reset_run_timer(1, ch);
     return true;
 }
 

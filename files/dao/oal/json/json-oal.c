@@ -13,6 +13,7 @@
 *  Initial revision.
 ******************************************************************************/
 #include "config.h"
+extern char *get_version_string(void);
 
 static cJSON* root_json = NULL;
 

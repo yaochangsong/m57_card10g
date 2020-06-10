@@ -483,7 +483,10 @@ char *get_jenkins_version(void)
     #define J_FILE_NAME "conf/JENKINS_VERSION"
 #endif
     static char version[16] = {"0"};
-    
+    if(access(J_FILE_NAME, 0)){
+        sprintf(version, "debug");
+        return version;
+    }
     if(read_file(version, sizeof(version), J_FILE_NAME) == 0){
         version[sizeof(version)-1] = 0;
     }else{

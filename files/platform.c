@@ -12,8 +12,9 @@
 *  Rev 1.0   06 July 2019   yaochangsong
 *  Initial revision.
 ******************************************************************************/
-
 #include "config.h"
+extern char *get_version_string(void);
+
 
 static void usage(const char *prog)
 {
@@ -106,7 +107,8 @@ int main(int argc, char **argv)
         }
     }
     log_init(debug_level);
-    printf_warn("VERSION:%s\n",get_version_string());
+    printf("Platform Start...\n");
+    printf("VERSION:%s\n",get_version_string());
     config_init();
     uloop_init();
     gpio_raw_init();

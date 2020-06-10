@@ -54,5 +54,7 @@ extern uint16_t crc16_caculate(uint8_t *pchMsg, uint16_t wDataLen);
 extern int get_mac(char * mac, int len_limit);
 extern int write_file_in_int16(void *pdata, unsigned int data_len, char *filename);
 extern int32_t  diff_time(void);
+extern char *get_version_string(void);
+
 #endif
 

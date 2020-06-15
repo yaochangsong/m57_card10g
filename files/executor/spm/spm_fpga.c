@@ -109,9 +109,9 @@ static inline const char * get_str_by_code(const char *const *list, int max, int
 
 
 static struct _spm_stream spm_stream[] = {
-//        {DMA_IQ_DEV,  -1, NULL, DMA_BUFFER_SIZE, "IQ Stream"},
+        {DMA_IQ_DEV,  -1, NULL, DMA_BUFFER_SIZE, "IQ Stream"},
         {DMA_FFT_DEV, -1, NULL, DMA_BUFFER_SIZE, "FFT Stream"},
-//        {DMA_ADC_DEV, -1, NULL, DMA_BUFFER_SIZE, "ADC Stream"},
+        {DMA_ADC_DEV, -1, NULL, DMA_BUFFER_SIZE, "ADC Stream"},
 };
 
 static const char *const dma_status_array[] = {
@@ -138,8 +138,8 @@ static int spm_create(void)
         
         pstream[i].id = open(pstream[i].devname, O_RDWR);
         if( pstream[i].id < 0){
-            fprintf(stderr, "open:%s, %s\n", pstream[i].devname, strerror(errno));
-            exit(-1);
+            fprintf(stderr, "[%d]open:%s, %s\n", i, pstream[i].devname, strerror(errno));
+            continue;
         }
         /* first of all, stop stream */
         spm_stream_stop(i);
@@ -157,7 +157,7 @@ static int spm_create(void)
             printf_err("DMA status error: %s[%d], exit!!\n", dma_str_status(status), status);
             exit(-1);
         }
-        printf_note("Create [%s] OK, status:%s[%d]\n", pstream[i].name,dma_str_status(status), status);
+        printf_note("Create %d[%s] OK, status:%s[%d]\n", i, pstream[i].name,dma_str_status(status), status);
     }
     
     return 0;
@@ -170,7 +170,6 @@ static ssize_t spm_stream_read(enum stream_type type, void **data)
     pstream = spm_stream;
     read_info info;
     size_t readn = 0;
-
     memset(&info, 0, sizeof(read_info));
     ioctl(pstream[type].id, IOCTL_DMA_GET_STATUS, &status);
     printf_debug("DMA get [%s] status:%s[%d]\n", pstream[type].name, dma_str_status(status), status);
@@ -189,7 +188,6 @@ static ssize_t spm_stream_read(enum stream_type type, void **data)
         }else if(info.status == READ_BUFFER_STATUS_OVERRUN){
             printf_warn("iq data is overrun\n");
         }
-        usleep(10000);
     }while(info.status == READ_BUFFER_STATUS_PENDING);
         
     ioctl(pstream[type].id, IOCTL_DMA_GET_STATUS, &status);
@@ -488,7 +486,9 @@ static int spm_agc_ctrl(int ch, struct spm_context *ctx)
         ret = executor_set_command(EX_RF_FREQ_CMD, EX_RF_MGC_GAIN, ch, &mid_gain);
     }
 exit_mode:
+    #if defined(SUPPORT_SPECTRUM_KERNEL) 
     ret = executor_set_command(EX_MID_FREQ_CMD, EX_FILL_RF_PARAM, ch, &cur_dbm[ch], gain_ctrl_method);
+    #endif
     return 0;
 }
 
@@ -621,7 +621,6 @@ static int spm_stream_start(uint32_t len,uint8_t continuous, enum stream_type ty
         para.trans_len = len;
     }
     ioctl(pstream[type].id, IOCTL_DMA_ASYN_READ_START, &para);
-    
     return 0;
 }
 

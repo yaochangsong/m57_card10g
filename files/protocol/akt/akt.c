@@ -393,7 +393,6 @@ int akt_add_udp_client(void *cl_info)
         ucli[index].wz_port = ci->wz_port;
         printf_note("akt kernel add client index=%d, cid=%d, [ip:%x][port:%d][10g_ipaddr=0x%x][10g_port=%d], online\n", 
                         index, ucli[index].cid, ucli[index].ipaddr, ucli[index].port, ucli[index].wz_ipaddr, ucli[index].wz_port);
-        
 #endif
         index ++;
         if(index >= UDP_CLIENT_NUM){

@@ -140,7 +140,9 @@ void fpga_io_init(void)
 {
     int fd_fpga;
     static FPGA_CONFIG_REG _fpga_reg;
-
+    
+    if(fpga_init_flag)
+        return;
     fd_fpga = open(FPGA_REG_DEV, O_RDWR|O_SYNC);
     if (fd_fpga == -1){
         printf_warn("%s, open error", FPGA_REG_DEV);
@@ -162,7 +164,7 @@ void fpga_io_init(void)
     usleep(100);
     fpga_reg->broad_band->enable = 0xff;
     usleep(100);
-    fpga_reg->broad_band->band = 0; //16; 200Mhz
+    fpga_reg->broad_band->band = 0; //200Mhz
     usleep(100);
     fpga_reg->broad_band->signal_carrier = 0;
     usleep(100);

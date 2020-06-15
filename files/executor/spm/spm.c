@@ -148,7 +148,6 @@ void spm_deal(struct spm_context *ctx, void *args)
         fft_t *ptr = NULL, *ord_ptr = NULL;
         ssize_t  byte_len = 0; /* fft byte size len */
         size_t fft_len = 0, fft_ord_len = 0;
-
         byte_len = pctx->ops->read_fft_data(&ptr);
         if(byte_len < 0){
             return;

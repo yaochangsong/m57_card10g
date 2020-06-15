@@ -921,7 +921,7 @@ void executor_init(void)
 #if defined(SUPPORT_SPECTRUM_KERNEL) 
     io_init();
 #elif defined(SUPPORT_SPECTRUM_V2) 
-    fpga_io_init();
+    //fpga_io_init();
     spmctx = spm_init();
     if(spmctx == NULL){
         printf_err("spm create failed\n");
@@ -929,7 +929,7 @@ void executor_init(void)
     }
 #endif
 #endif /* SUPPORT_PLATFORM_ARCH_ARM */
-    executor_timer_task_init();
+   // executor_timer_task_init();
     /* set default network */
     executor_set_command(EX_NETWORK_CMD, EX_NETWORK_1G, 0, NULL);
 #ifdef SUPPORT_NET_WZ
@@ -945,6 +945,7 @@ void executor_init(void)
 #ifdef SUPPORT_NET_WZ
     io_set_10ge_net_onoff(0); /* 关闭万兆传输 */
 #endif
+
     printf_note("clear all sub ch\n");
     uint8_t enable =0;
     uint8_t default_method = IO_DQ_MODE_IQ;
@@ -968,7 +969,9 @@ void executor_close(void)
     fpga_io_close();
     spm_close();
 #endif
+#ifdef  SUPPORT_CLOCK_ADC
     clock_adc_close();
+#endif
 }
 
 

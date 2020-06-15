@@ -91,4 +91,7 @@ typedef enum _IOCTL_CMD_
 #define IOCTL_DMA_INIT_BUFFER	_IOW(XWDMA_IOCTL_MAGIC, DMA_INIT_BUFFER, unsigned int)
 #define IOCTL_DMA_DUMP_REGS   _IOW(XWDMA_IOCTL_MAGIC, DMA_DUMP_REGS, unsigned int)
 
+extern struct spm_context * spm_create_fpga_context(void);
+extern struct spm_context * spm_create_chip_context(void);
+
 #endif

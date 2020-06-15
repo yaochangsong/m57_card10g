@@ -19,23 +19,35 @@
 
 #define FPGA_REG_DEV "/dev/mem"
 
-#define FPGA_REG_BASE 0x43c00000
+#include <stdint.h>
+
+#define FPGA_REG_BASE 0xa0000000
 #define SYSTEM_CONFG_REG_OFFSET	0x0
 #define SYSTEM_CONFG_REG_LENGTH 0x100
 #define BROAD_BAND_REG_OFFSET 	0x100
 #define BROAD_BAND_REG_LENGTH 	0x100
-#define NARROW_BAND_REG_BASE 	0x43c01000
+#define NARROW_BAND_REG_BASE 	0xa0001000
 #define NARROW_BAND_REG_LENGTH 	0x100
 #define NARROW_BAND_CHANNEL_MAX_NUM 0x10
 
 typedef struct _SYSTEM_CONFG_REG_
 {
 	uint32_t version;
-	uint32_t data_path_reset;
-	uint32_t time_pulse;
-	uint32_t reserve[0x1D];
-	uint32_t time;
+	uint32_t system_reset;
+
 }SYSTEM_CONFG_REG;
+
+typedef struct _ADC_REG_
+{   
+    uint32_t reserve[0x20];
+	uint32_t DDS_REF;
+	uint32_t RESET;
+	uint32_t DEC;
+	uint32_t dc_offset_cal;
+    uint32_t reserve1[0xc];
+    uint32_t STATE;
+}ADC_REG;
+
 
 typedef struct _BROAD_BAND_REG_
 {
@@ -45,11 +57,11 @@ typedef struct _BROAD_BAND_REG_
 	uint32_t fft_mean_time;
 	uint32_t fft_smooth_type;
 	uint32_t fft_calibration;
-	uint32_t fft_nosise_thresh;
+	uint32_t reserves;
 	uint32_t fft_lenth;
 	uint32_t reserve;
 	uint32_t agc_thresh;
-	uint32_t reserves[0x4];
+	uint32_t reserves1[0x3];
 	uint32_t fir_coeff;
 }BROAD_BAND_REG;
 
@@ -64,12 +76,31 @@ typedef struct _NARROW_BAND_REG_
 	uint32_t noise_level;
 }NARROW_BAND_REG;
 
+
+typedef struct _SIGNAL_REG_
+{
+	uint32_t reserve;
+	uint32_t data_path_reset;
+    uint32_t reserve1[0x2];
+    uint32_t trig;
+    uint32_t reserve2;
+    uint32_t reserve3[0xf];
+    uint32_t current_time;
+    uint32_t current_count;
+    uint32_t trig_time;
+    uint32_t trig_count;
+}SIGNAL_REG;
+
+
 typedef struct _FPGA_CONFIG_REG_
 {
-    SYSTEM_CONFG_REG *system;
-    BROAD_BAND_REG	*broad_band;
-    NARROW_BAND_REG *narrow_band[NARROW_BAND_CHANNEL_MAX_NUM];
+	SYSTEM_CONFG_REG *system;
+    ADC_REG         *adcReg;
+    SIGNAL_REG      *signal;
+	BROAD_BAND_REG  *broad_band;
+	NARROW_BAND_REG *narrow_band[NARROW_BAND_CHANNEL_MAX_NUM];
 }FPGA_CONFIG_REG;
+
 
 extern FPGA_CONFIG_REG *get_fpga_reg(void);
 

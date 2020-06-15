@@ -108,10 +108,10 @@ static inline const char * get_str_by_code(const char *const *list, int max, int
 }
 
 
-static struct _spm_stream spm_stream[STREAM_NUM] = {
-        {DMA_IQ_DEV,  -1, NULL, DMA_BUFFER_SIZE, "IQ Stream"},
+static struct _spm_stream spm_stream[] = {
+//        {DMA_IQ_DEV,  -1, NULL, DMA_BUFFER_SIZE, "IQ Stream"},
         {DMA_FFT_DEV, -1, NULL, DMA_BUFFER_SIZE, "FFT Stream"},
-        {DMA_ADC_DEV, -1, NULL, DMA_BUFFER_SIZE, "ADC Stream"},
+//        {DMA_ADC_DEV, -1, NULL, DMA_BUFFER_SIZE, "ADC Stream"},
 };
 
 static const char *const dma_status_array[] = {
@@ -131,11 +131,11 @@ static int spm_create(void)
     dma_status status;
     pstream = spm_stream;
     int i = 0;
-
-    printf_note("SPM init.\n");
+    printf_note("SPM init.%d\n", ARRAY_SIZE(spm_stream));
     
     /* create stream */
-    for(i = 0; i< STREAM_NUM ; i++){
+    for(i = 0; i< ARRAY_SIZE(spm_stream) ; i++){
+        
         pstream[i].id = open(pstream[i].devname, O_RDWR);
         if( pstream[i].id < 0){
             fprintf(stderr, "open:%s, %s\n", pstream[i].devname, strerror(errno));
@@ -189,6 +189,7 @@ static ssize_t spm_stream_read(enum stream_type type, void **data)
         }else if(info.status == READ_BUFFER_STATUS_OVERRUN){
             printf_warn("iq data is overrun\n");
         }
+        usleep(10000);
     }while(info.status == READ_BUFFER_STATUS_PENDING);
         
     ioctl(pstream[type].id, IOCTL_DMA_GET_STATUS, &status);
@@ -638,7 +639,7 @@ static int _spm_close(struct spm_context *ctx)
     struct _spm_stream *pstream = spm_stream;
     int i;
 
-    for(i = 0; i< STREAM_NUM ; i++){
+    for(i = 0; i< ARRAY_SIZE(spm_stream) ; i++){
         spm_stream_stop(i);
         close(pstream[i].id);
     }
@@ -677,7 +678,6 @@ struct spm_context * spm_create_fpga_context(void)
     struct spm_context *ctx = zalloc(sizeof(*ctx));
     if (!ctx)
         goto err_set_errno;
-    
     ctx->ops = &spm_ops;
     ctx->pdata = &config_get_config()->oal_config;
     _init_run_timer(MAX_RADIO_CHANNEL_NUM);

@@ -8,4 +8,5 @@ static struct clock_adc_t{
         int adc_status;
 };
 
+extern struct clock_adc_ops * clock_adc_fpga_cxt(void);
 #endif

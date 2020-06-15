@@ -14,7 +14,7 @@
 
 
 
-#define BASE_ADDR           0xa00001000
+#define BASE_ADDR           0xa0001000
 #define SPI_RX_FIFO_ADDR    0x20
 #define SPI_TX_FIFO_ADDR    0x24
 #define SPI_STATE_ADDR      0x28
@@ -25,15 +25,15 @@
 #define DC_ADDR             0x8c
 #define STATE_ADDR          0xc0
 
-#define REG_WRITE(base, data) (*(uint32_t *)(base) = data)
+#define REG_WRITE(base, data) (*(uint32_t *)(base) = data, usleep(100))
 #define REG_READ(base)  (*(uint32_t *)(base))
 
-static void apb_spi_setcs(uint32_t base,uint8_t data)
+static void apb_spi_setcs(char * base,uint8_t data)
 {
     REG_WRITE(base + SPI_CS_ADDR,data);
 }
 
-static uint8_t apb_spi_write(uint32_t base,uint8_t *snd_buf,uint8_t *rcv_buf,uint8_t len)
+static uint8_t apb_spi_write(char * base,uint8_t *snd_buf,uint8_t *rcv_buf,uint8_t len)
 {
     uint8_t i;
     for(i=0;i<len;i++)
@@ -51,7 +51,7 @@ static uint8_t apb_spi_write(uint32_t base,uint8_t *snd_buf,uint8_t *rcv_buf,uin
     return 0;
 }
 
-static uint8_t spi_wrapper(uint32_t base,uint16_t addr,uint8_t data,uint8_t cs)
+static uint8_t spi_wrapper(char * base,uint16_t addr,uint8_t data,uint8_t cs)
 {
     uint8_t snd_buf[3];
     uint8_t rcv_buf[3];
@@ -70,28 +70,28 @@ static uint8_t spi_wrapper(uint32_t base,uint16_t addr,uint8_t data,uint8_t cs)
 }
 //--reset--------------------------------------------------
 
-static void dds_reset_set(uint32_t base,uint8_t dat)
+static void dds_reset_set(char * base,uint8_t dat)
 {
     if(dat>0)
       REG_WRITE(base + RESET_ADDR,0x01);
     else
       REG_WRITE(base + RESET_ADDR,0x00);
 }
-static void clock_reset_set(uint32_t base,uint8_t dat)
+static void clock_reset_set(char * base,uint8_t dat)
 {
     if(dat>0)
       REG_WRITE(base + RESET_ADDR,0x03);
     else
       REG_WRITE(base + RESET_ADDR,0x01);
 }
-static void adc_reset_set(uint32_t base,uint8_t dat)
+static void adc_reset_set(char * base,uint8_t dat)
 {
     if(dat>0)
       REG_WRITE(base + RESET_ADDR,0x07);
     else
       REG_WRITE(base + RESET_ADDR,0x03);
 }
-static void logic_reset_set(uint32_t base,uint8_t dat)
+static void logic_reset_set(char * base,uint8_t dat)
 {
     if(dat>0)
       REG_WRITE(base + RESET_ADDR,0x0f);
@@ -99,12 +99,12 @@ static void logic_reset_set(uint32_t base,uint8_t dat)
       REG_WRITE(base + RESET_ADDR,0x07);
 }
 
-static void dc_cal(uint32_t base,uint8_t dat)
+static void dc_cal(char * base,uint8_t dat)
 {
     REG_WRITE(base + DC_ADDR,dat);
 }
 
-static uint32_t logic_state(uint32_t base)
+static uint32_t logic_state(char * base)
 {
     uint32_t state;
     state = REG_READ(base + STATE_ADDR);
@@ -116,7 +116,7 @@ static uint32_t logic_state(uint32_t base)
 #define SCLK_DIVL   0x00
 #define ACLK_DIV    6
 #define DCLK_TYPE   0x08
-static void hmc_7044_init(uint32_t Spi_synth,uint8_t cs)
+static void hmc_7044_init(char * Spi_synth,uint8_t cs)
 {
     printf_note("spi_wrapper begin ......\r\n");
     spi_wrapper(Spi_synth,0x000, 0x01,cs);//reset
@@ -329,7 +329,7 @@ static void hmc_7044_init(uint32_t Spi_synth,uint8_t cs)
     spi_wrapper(Spi_synth,0x001, 0xc0,cs);//sync internal div
     spi_wrapper(Spi_synth,0x001, 0x40,cs);//sync internal div
 };
-void ad_9680_ddc_5g_int(uint32_t Spi_synth,uint8_t cs)
+void ad_9680_ddc_5g_int(char *Spi_synth,uint8_t cs)
 {
     printf_note("%s......\r\n",__FUNCTION__);
     spi_wrapper(Spi_synth, 0x000,0x81,cs);
@@ -367,7 +367,7 @@ void ad_9680_ddc_5g_int(uint32_t Spi_synth,uint8_t cs)
     spi_wrapper(Spi_synth, 0x001,0x02,cs);
     spi_wrapper(Spi_synth, 0x571,0x14,cs);
 }
-static void hmc7044_generate_sync(uint32_t Spi_synth,uint8_t cs)
+static void hmc7044_generate_sync(char *Spi_synth,uint8_t cs)
 {
     spi_wrapper(Spi_synth,0x01, 0x44,cs);//request pluse gen
     spi_wrapper(Spi_synth,0x01, 0x40,cs);
@@ -408,7 +408,7 @@ static int clock_adc_fpga_init(void)
     if(ca_ctx.vir_addr == NULL){
         return -1;
     }
-        
+
     clock_reset_set(ca_ctx.vir_addr,1);
     usleep(10000);
     hmc_7044_init(ca_ctx.vir_addr,0);
@@ -420,7 +420,6 @@ static int clock_adc_fpga_init(void)
     usleep(10000);
     hmc7044_generate_sync(ca_ctx.vir_addr,0);
     usleep(10000);
-
     return 0;
 }
 
@@ -450,7 +449,6 @@ struct clock_adc_ops * clock_adc_fpga_cxt(void)
         goto err_set_errno;
     
     ctx->ops = &ca_ctx_ops;
-    
 err_set_errno:
     errno = -ret;
     return ctx;

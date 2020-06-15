@@ -113,15 +113,17 @@ ifneq ($(findstring y,$(SUPPORT_RF_SPI)),)
 	C_VAR += -DSUPPORT_RF_SPI
 endif
 
-#clock adc spi
-ifneq ($(findstring y,$(SUPPORT_CLOCK_ADC_SPI)),)
+#clock adc
+##clock adc spi
+ifneq ($(findstring y,$(SUPPORT_CLOCK_ADC)),)
 	SOURCE_DIR += device/clock_adc
+	C_VAR += -DSUPPORT_CLOCK_ADC
+endif
+ifneq ($(findstring y,$(SUPPORT_CLOCK_ADC_SPI)),)
 	C_VAR += -DSUPPORT_CLOCK_ADC_SPI
 endif
-
-#clock adc fpga
+##clock adc fpga
 ifneq ($(findstring y,$(SUPPORT_CLOCK_ADC_FPGA)),)
-	SOURCE_DIR += device/clock_adc
 	C_VAR += -DSUPPORT_CLOCK_ADC_FPGA
 endif
 

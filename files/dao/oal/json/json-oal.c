@@ -402,6 +402,8 @@ static int json_parse_config_param(const cJSON* root, struct poal_config *config
             }
             printf_debug("app=>value is:%s, %s\n",value->valuestring, config->status_para.softVersion.app);
         }
+
+        #if 0
         value = cJSON_GetObjectItem(node, "fpga");
         if(value!= NULL && cJSON_IsString(value)){
             char ver[33] = {0};
@@ -416,6 +418,7 @@ static int json_parse_config_param(const cJSON* root, struct poal_config *config
             }
             printf_note("fpga version=>value is:%s, %s\n",value->valuestring, config->status_para.softVersion.fpga);
         }
+        #endif
     }
     value = cJSON_GetObjectItem(status_parm, "device_sn");
     if(value!= NULL && cJSON_IsString(value)){
@@ -496,7 +499,7 @@ static int json_parse_config_param(const cJSON* root, struct poal_config *config
     }
 
    // printf_debug("mactemp=%s\n",mactemp);
-    printf_debug("解析mac=%02x%02x%02x%02x%02x%02x\n",config->network.mac[0],config->network.mac[1],config->network.mac[2],
+    printf_debug("mac=%02x%02x%02x%02x%02x%02x\n",config->network.mac[0],config->network.mac[1],config->network.mac[2],
     config->network.mac[3],config->network.mac[4],config->network.mac[5]);
     }
     #ifdef SUPPORT_NET_WZ
@@ -967,7 +970,6 @@ int json_read_config_file(const void *config)
     if(json_parse_config_param(root_json, &conf->oal_config) == -1){
         exit(1);
     }
-
     return 0;
 }
 int json_write_config_file(void *config)

@@ -19,6 +19,7 @@
 #include "spm.h"
 #include "utils/mq.h"
 #include <assert.h>
+#include "spm_fpga.h"
 
 
 //struct mq_ctx *mqctx;
@@ -186,17 +187,16 @@ void *spm_init(void)
     static pthread_t send_thread_id, recv_thread_id;
     int ret;
     pthread_attr_t attr;
-
 #if defined(SUPPORT_PLATFORM_ARCH_ARM)
 #if defined(SUPPORT_SPECTRUM_CHIP)
     spmctx = spm_create_chip_context();
 #elif defined (SUPPORT_SPECTRUM_FPGA)
     spmctx = spm_create_fpga_context();
 #endif
+
     if(spmctx != NULL){
         spmctx->ops->create();
     }
-
     if(spmctx == NULL){
         printf_warn("spm create failed\n");
         return NULL;

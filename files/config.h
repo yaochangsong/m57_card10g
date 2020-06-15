@@ -106,7 +106,7 @@
 #endif
 
 #define MAX_RADIO_CHANNEL_NUM 1         /* 最大射频通道数 */
-#define MAX_SIGNAL_CHANNEL_NUM (16)     /* 最大解调子通道数 */
+#define MAX_SIGNAL_CHANNEL_NUM (1)     /* 最大解调子通道数 */
 #define MAX_SIG_CHANNLE 128             /* 最大频点数 */
 
 

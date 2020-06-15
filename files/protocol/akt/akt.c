@@ -377,7 +377,6 @@ int akt_add_udp_client(void *cl_info)
     struct net_udp_client *cl_list, *list_tmp;
     struct net_udp_server *srv = get_udp_server();
     int index = 0;
-
     struct udp_client_info ucli[UDP_CLIENT_NUM];
     SNIFFER_DATA_REPORT_ST *ci = (SNIFFER_DATA_REPORT_ST *)cl_info;
     memset(ucli, 0, sizeof(struct udp_client_info)*UDP_CLIENT_NUM);

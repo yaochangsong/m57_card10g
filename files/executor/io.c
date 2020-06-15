@@ -46,12 +46,18 @@ static struct  band_table_t nbandtable[] ={
 }; 
 /* 宽带系数表 */
 static struct  band_table_t bandtable[] ={
+#if defined(SUPPORT_PROJECT_WD_XCR)
+    {458752, 0, 25000000},
+    {196608, 0, 50000000}
+    {65536,  0, 100000000},
+    {0,      0, 200000000},
+#else
     {458752, 0, 20000000},
     {196608, 0, 40000000},
     {65536, 0, 80000000},
     {0,       0, 160000000},
     {0,       0, 175000000},
-
+#endif
 }; 
 
 static void  io_get_bandwidth_factor(uint32_t anays_band,               /* 输入参数：带宽 */
@@ -157,7 +163,7 @@ void io_reset_fpga_data_link(void){
     data = (RESET_ADDR &0xffff)<<16;
     ret = ioctl(io_ctrl_fd,IOCTL_SET_DDC_REGISTER_VALUE,&data);
 #elif defined(SUPPORT_SPECTRUM_V2) 
-    get_fpga_reg()->system->data_path_reset = 1;
+//    get_fpga_reg()->system->data_path_reset = 1;
 #endif
 #endif /* SUPPORT_PLATFORM_ARCH_ARM */
 }

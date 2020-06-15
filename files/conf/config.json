@@ -1,7 +1,7 @@
 {
 	"version":	"1.0",
 	"network":	{
-		"mac":	"38:2c:4a:ba:57:1d",
+		"mac":	"20:04:0F:F7:62:90",
 		"ipaddress":	"192.168.1.111",
 		"netmask":	"255.255.255.0",
 		"gateway":	"192.168.1.1",
@@ -18,12 +18,12 @@
 		"bandwidth_remote_ctrl":	1,
 		"internal_clock":	1,
 		"net10g_threshold_bandwidth":	10000000,
-		"signal_threshold" : 90,
+		"signal_threshold":	90,
 		"iq_data_length":	8192
 	},
 	"status_parm":	{
 		"soft_version":	{
-			"app":	"1.0.0(2020-05-19-19:58:41)",
+			"app":	"1.0.0_debug(2020-06-15-14:29:59)-320c7e9ced9d9c36ad50238267b4cb6aed1a8261 ",
 			"fpga":	"202012"
 		},
 		"device_sn":	"0x0202"

@@ -24,7 +24,6 @@ enum stream_type {
     STREAM_IQ = 0,
     STREAM_FFT,
     STREAM_ADC,
-    STREAM_NUM,
 };
 
 

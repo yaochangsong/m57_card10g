@@ -28,6 +28,7 @@
 #include "spm_fpga.h"
 #include "../../protocol/resetful/data_frame.h"
 
+extern uint8_t * akt_assamble_data_frame_header_data(uint32_t *len, void *config);
 static int spm_stream_stop(enum stream_type type);
 
 

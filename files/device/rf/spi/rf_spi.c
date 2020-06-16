@@ -13,12 +13,23 @@
 *  Initial revision.
 ******************************************************************************/
 #include "config.h"
-#include "spi.h"
+#include "rf_spi.h"
 
-pthread_mutex_t spi_mutex = PTHREAD_MUTEX_INITIALIZER;
+static struct rf_spi_node_info spi_node[] ={
+    /* name path               function code    pin  spifd      pinfd  info */
+    /* petalinux2019.1 */
+    {"/dev/spidev2.0",     SPI_FUNC_RF,     8,   -1,      -1,  "spi rf"},
+//    {"/dev/spidev1.0",     SPI_FUNC_CLOCK,  8,   -1,      -1,  "spi clock 7044 chip"},
+//    {"/dev/spidev1.1",     SPI_FUNC_AD,     8,   -1,      -1,  "spi ad 9690 chip"},
+    /* petalinux2016.4 */
+    //{"/dev/spidev32765.0",     SPI_FUNC_RF,     8,   -1,      -1,  "spi rf"},
+   // {"/dev/spidev32766.0",     SPI_FUNC_CLOCK,  8,   -1,      -1,  "spi clock 7044 chip"},
+    //{"/dev/spidev32766.1",     SPI_FUNC_AD,     8,   -1,      -1,  "spi ad 9690 chip"},
+    {NULL,                     -1              -1,   -1,      -1,  NULL},
+};
 
 
-struct rf_spi_cmd_info spi_cmd[] ={
+static struct rf_spi_cmd_info spi_cmd[] ={
     /* setcmd                 get cmd              send data byte len    receive data(&status) byte len */
     {SPI_RF_FREQ_SET,              SPI_RF_FREQ_GET,                 5,                    7 },
     {SPI_RF_GAIN_SET,              SPI_RF_GAIN_GET,                 1,                    2 },
@@ -32,21 +43,45 @@ struct rf_spi_cmd_info spi_cmd[] ={
 };
 
 
-struct rf_spi_node_info spi_node[] ={
-    /* name path               function code    pin  spifd      pinfd  info */
-#if defined(SUPPORT_PROJECT_WD_XCR)
-#else
-    /* petalinux2019.1 */
-    {"/dev/spidev2.0",     SPI_FUNC_RF,     8,   -1,      -1,  "spi rf"},
-    {"/dev/spidev1.0",     SPI_FUNC_CLOCK,  8,   -1,      -1,  "spi clock 7044 chip"},
-    {"/dev/spidev1.1",     SPI_FUNC_AD,     8,   -1,      -1,  "spi ad 9690 chip"},
-    /* petalinux2016.4 */
-    //{"/dev/spidev32765.0",     SPI_FUNC_RF,     8,   -1,      -1,  "spi rf"},
-   // {"/dev/spidev32766.0",     SPI_FUNC_CLOCK,  8,   -1,      -1,  "spi clock 7044 chip"},
-    //{"/dev/spidev32766.1",     SPI_FUNC_AD,     8,   -1,      -1,  "spi ad 9690 chip"},
-    {NULL,                     -1              -1,   -1,      -1,  NULL},
-#endif
-};
+static bool spi_has_inited = false;
+int spi_rf_get_node(void)
+{
+    if(spi_has_inited == false)
+        return -1;
+    return 0;
+}
+
+int spi_rf_init(void)
+{
+    struct rf_spi_node_info *ptr = &spi_node;
+    uint8_t mode = 0;
+    uint32_t speed = 4000000;
+
+    if(spi_has_inited == true)
+        return 0;
+    for(int i = 0; i< ARRAY_SIZE(spi_node); i++){
+        if(ptr[i].name != NULL){
+            ptr[i].fd =  open(ptr[i].name,O_RDWR);
+             if(ptr[i].func_code == SPI_FUNC_RF)   
+                mode = SPI_CPOL|SPI_CPHA ;
+            if(ioctl(ptr[i].fd, SPI_IOC_WR_MODE,&mode) <0){
+                printf_err("can't set spi mode\n");
+                continue;
+            }
+            printf_note("spi[%s] mode: %d\n", ptr[i].name, mode);
+            if(ioctl(ptr[i].fd,SPI_IOC_WR_MAX_SPEED_HZ, &speed)<0){
+                printf_err("can't set max speed hz\n");
+                continue;
+            }
+            printf_note("spi[%s, %s][fd=%d]max speed: %d Hz (%d KHz)\n", ptr[i].name, ptr[i].info,ptr[i].fd, speed, speed/1000);
+        }
+    }
+    spi_has_inited = true;
+    return 0;
+}
+
+
+
 
 static uint8_t spi_checksum(uint8_t *buffer,uint8_t len){
     uint32_t check_sum = 0;
@@ -78,7 +113,7 @@ static int spi_assemble_send_data(uint8_t *buffer, uint8_t cmd, void *data, size
     return (ptr - buffer);/* RETURN: total frame byte count */
 }
 
-int spi_send_data(int spi_fd, uint8_t *send_buffer, size_t send_len,
+static int spi_send_data(int spi_fd, uint8_t *send_buffer, size_t send_len,
                                     uint8_t *recv_buffer,  size_t recv_len)
 {
     struct spi_ioc_transfer xfer[2];
@@ -106,43 +141,6 @@ int spi_send_data(int spi_fd, uint8_t *send_buffer, size_t send_len,
         printf_err("spi send error:%d, %s\n", ret, strerror(errno));
     }
     return ret;
-}
-
-static bool spi_has_inited = false;
-int spi_get_node(void)
-{
-    if(spi_has_inited == false)
-        return -1;
-    return 0;
-}
-
-int spi_init(void)
-{
-    struct rf_spi_node_info *ptr = &spi_node;
-    uint8_t mode = 0;
-    uint32_t speed = 4000000;
-
-    if(spi_has_inited == true)
-        return 0;
-    for(int i = 0; i< ARRAY_SIZE(spi_node); i++){
-        if(ptr[i].name != NULL){
-            ptr[i].fd =  open(ptr[i].name,O_RDWR);
-             if(ptr[i].func_code == SPI_FUNC_RF)   
-                mode = SPI_CPOL|SPI_CPHA ;
-            if(ioctl(ptr[i].fd, SPI_IOC_WR_MODE,&mode) <0){
-                printf_err("can't set spi mode\n");
-                continue;
-            }
-            printf_note("spi[%s] mode: %d\n", ptr[i].name, mode);
-            if(ioctl(ptr[i].fd,SPI_IOC_WR_MAX_SPEED_HZ, &speed)<0){
-                printf_err("can't set max speed hz\n");
-                continue;
-            }
-            printf_note("spi[%s, %s][fd=%d]max speed: %d Hz (%d KHz)\n", ptr[i].name, ptr[i].info,ptr[i].fd, speed, speed/1000);
-        }
-    }
-    spi_has_inited = true;
-    return 0;
 }
 
 
@@ -260,4 +258,6 @@ ssize_t spi_rf_get_command(rf_spi_get_cmd_code cmd, void *data)
         return -1;
     return 0;
 }
+
+
 

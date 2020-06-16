@@ -70,7 +70,8 @@ else
 	SUPPORT_AUDIO=n
 	#rf
 	SUPPORT_RF=y
-    SUPPORT_RF_SPI=y
+    SUPPORT_RF_SPI=n
+    SUPPORT_RF_FPGA=y
     #adc clock
     SUPPORT_CLOCK_ADC=y
     SUPPORT_CLOCK_ADC_SPI=n

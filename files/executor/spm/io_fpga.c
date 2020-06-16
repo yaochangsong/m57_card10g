@@ -39,52 +39,62 @@ void *memmap(int fd_dev, void *phr_addr, int length)
     return base_addr;
 }
 
+#define SYSTEM_CONFG_4K_LENGTH 0x1000
+
 int fpga_memmap(int fd_dev, FPGA_CONFIG_REG *fpga_reg)
 {
     void *base_addr = NULL;
     int i = 0;
 
-    fpga_reg->system = memmap(fd_dev, 0xa0000000, SYSTEM_CONFG_REG_LENGTH); 
+    fpga_reg->system = memmap(fd_dev, FPGA_SYSETM_BASE, SYSTEM_CONFG_4K_LENGTH); 
     if (!fpga_reg->system)
     {
         printf("mmap failed, NULL pointer!\n");
         return -1;
     }
-    printf("virtual address:0x%x, physical address:0x%x\n", fpga_reg->system, 0xa0000000);
+    printf("virtual address:%p, physical address:0x%x\n", fpga_reg->system, FPGA_SYSETM_BASE);
 
-    fpga_reg->adcReg = memmap(fd_dev, 0xa0001000, SYSTEM_CONFG_REG_LENGTH); 
+    fpga_reg->rfReg = (uint8_t *)fpga_reg->system +CONFG_REG_LEN;
+    if (!fpga_reg->rfReg)
+    {
+        printf("mmap failed, NULL pointer!\n");
+        return -1;
+    }
+    printf("virtual address:%p, physical address:0x%x\n", fpga_reg->rfReg, FPGA_RF_BASE);
+
+    fpga_reg->adcReg = memmap(fd_dev, FPGA_ADC_BASE, SYSTEM_CONFG_REG_LENGTH); 
     if (!fpga_reg->adcReg)
     {
         printf("mmap failed, NULL pointer!\n");
         return -1;
     }
-    printf("virtual address:0x%x, physical address:0x%x\n", fpga_reg->adcReg, 0xa0001000);
+    printf("virtual address:%p, physical address:0x%x\n", fpga_reg->adcReg, FPGA_ADC_BASE);
 
-    fpga_reg->signal = memmap(fd_dev, 0xa0002000, SYSTEM_CONFG_REG_LENGTH); 
+    fpga_reg->signal = memmap(fd_dev, FPGA_SIGNAL_BASE, SYSTEM_CONFG_REG_LENGTH); 
     if (!fpga_reg->signal)
     {
         printf("mmap failed, NULL pointer!\n");
         return -1;
     }
-    printf("virtual address:0x%x, physical address:0x%x\n", fpga_reg->signal, 0xa0002000);
+    printf("virtual address:%p, physical address:0x%x\n", fpga_reg->signal, FPGA_SIGNAL_BASE);
 
-    fpga_reg->broad_band = memmap(fd_dev, 0xa0003000, SYSTEM_CONFG_REG_LENGTH); 
+    fpga_reg->broad_band = memmap(fd_dev, FPGA_BRAOD_BAND_BASE, SYSTEM_CONFG_REG_LENGTH); 
     if (!fpga_reg->broad_band)
     {
         printf("mmap failed, NULL pointer!\n");
         return -1;
     }
-    printf("virtual address:0x%x, physical address:0x%x\n", fpga_reg->broad_band, 0xa0003000);
+    printf("virtual address:%p, physical address:0x%x\n", fpga_reg->broad_band, FPGA_BRAOD_BAND_BASE);
 
 
-    fpga_reg->narrow_band[0] = memmap(fd_dev, 0xa0004000, SYSTEM_CONFG_REG_LENGTH * NARROW_BAND_CHANNEL_MAX_NUM); 
+    fpga_reg->narrow_band[0] = memmap(fd_dev, FPGA_NARROR_BAND_BASE, SYSTEM_CONFG_REG_LENGTH * NARROW_BAND_CHANNEL_MAX_NUM); 
     if (!fpga_reg->narrow_band[0])
     {
         printf("mmap failed, NULL pointer!\n");
         return -1;
     }
-    printf("virtual address:0x%x, physical address:0x%x\n", fpga_reg->narrow_band[0], 0xa0004000);
-    
+    printf("virtual address:%p, physical address:0x%x\n", fpga_reg->narrow_band[0], FPGA_NARROR_BAND_BASE);
+
     return 0;
 }
 
@@ -93,7 +103,7 @@ int fpga_unmemmap(FPGA_CONFIG_REG *fpga_reg)
     int i = 0;
     int ret = 0;
 
-    ret = munmap(fpga_reg->system, SYSTEM_CONFG_REG_LENGTH); 
+    ret = munmap(fpga_reg->system, SYSTEM_CONFG_4K_LENGTH); 
     if (ret)
     {
     	perror("munmap");
@@ -146,7 +156,7 @@ void fpga_io_init(void)
     fd_fpga = open(FPGA_REG_DEV, O_RDWR|O_SYNC);
     if (fd_fpga == -1){
         printf_warn("%s, open error", FPGA_REG_DEV);
-        return (-1);
+        return;
     }
     
     fpga_memmap(fd_fpga, &_fpga_reg);

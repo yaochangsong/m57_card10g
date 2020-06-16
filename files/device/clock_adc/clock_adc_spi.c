@@ -24,9 +24,53 @@
 #include <getopt.h>
 #include "clock_adc.h"
 #include "clock_adc_spi.h"
-#include "../rf/spi/spi.h"
+#include "../rf/spi/rf_spi.h"
+#include "clock_adc_conf.h"
 
-extern struct rf_spi_node_info spi_node[3];
+static struct rf_spi_node_info spi_node[] ={
+    /* name path               function code    pin  spifd      pinfd  info */
+    /* petalinux2019.1 */
+    //{"/dev/spidev2.0",     SPI_FUNC_RF,     8,   -1,      -1,  "spi rf"},
+    {"/dev/spidev1.0",     SPI_FUNC_CLOCK,  8,   -1,      -1,  "spi clock 7044 chip"},
+    {"/dev/spidev1.1",     SPI_FUNC_AD,     8,   -1,      -1,  "spi ad 9690 chip"},
+    /* petalinux2016.4 */
+    //{"/dev/spidev32765.0",     SPI_FUNC_RF,     8,   -1,      -1,  "spi rf"},
+   // {"/dev/spidev32766.0",     SPI_FUNC_CLOCK,  8,   -1,      -1,  "spi clock 7044 chip"},
+    //{"/dev/spidev32766.1",     SPI_FUNC_AD,     8,   -1,      -1,  "spi ad 9690 chip"},
+    {NULL,                     -1              -1,   -1,      -1,  NULL},
+};
+
+
+static int spi_send_data(int spi_fd, uint8_t *send_buffer, size_t send_len,
+                                    uint8_t *recv_buffer,  size_t recv_len)
+{
+    struct spi_ioc_transfer xfer[2];
+    int ret = -1;
+    
+    memset(xfer, 0, sizeof(xfer));
+    if((recv_len > 0) && (recv_buffer != NULL)){
+        memset(recv_buffer, 0, recv_len);
+    }
+
+    xfer[0].tx_buf = (unsigned long) send_buffer;
+    xfer[0].len = send_len;
+    xfer[0].delay_usecs = 2;
+    if((recv_len > 0) && (recv_buffer != NULL)){
+        xfer[1].rx_buf = (unsigned long) recv_buffer;
+        xfer[1].len = recv_len;
+        xfer[1].delay_usecs = 2;
+    }
+    if((recv_len > 0) && (recv_buffer != NULL)){
+        ret = ioctl(spi_fd, SPI_IOC_MESSAGE(2), xfer);
+    }else{
+        ret = ioctl(spi_fd, SPI_IOC_MESSAGE(1), xfer);
+    }
+    if(ret < 0){
+        printf_err("spi send error:%d, %s\n", ret, strerror(errno));
+    }
+    return ret;
+}
+
 
 static int ca_spi_clock_init_before(void)
 {
@@ -212,6 +256,35 @@ static int ca_spi_init(void)
     config_save_cache(EX_STATUS_CMD, EX_CLK_STATUS, -1, &status);
 }
 
+static bool spi_has_inited = false;
+static int _spi_init(void)
+{
+    struct rf_spi_node_info *ptr = &spi_node;
+    uint8_t mode = 0;
+    uint32_t speed = 4000000;
+
+    if(spi_has_inited == true)
+        return 0;
+    for(int i = 0; i< ARRAY_SIZE(spi_node); i++){
+        if(ptr[i].name != NULL){
+            ptr[i].fd =  open(ptr[i].name,O_RDWR);
+            if(ioctl(ptr[i].fd, SPI_IOC_WR_MODE,&mode) <0){
+                printf_err("can't set spi mode\n");
+                continue;
+            }
+            printf_note("spi[%s] mode: %d\n", ptr[i].name, mode);
+            if(ioctl(ptr[i].fd,SPI_IOC_WR_MAX_SPEED_HZ, &speed)<0){
+                printf_err("can't set max speed hz\n");
+                continue;
+            }
+            printf_note("spi[%s, %s][fd=%d]max speed: %d Hz (%d KHz)\n", ptr[i].name, ptr[i].info,ptr[i].fd, speed, speed/1000);
+        }
+    }
+    spi_has_inited = true;
+    return 0;
+}
+
+
 static int ca_spi_close(void)
 {
     return -1;
@@ -224,14 +297,11 @@ static const struct clock_adc_ops ca_ctx_ops = {
 };
 
 
-
 struct clock_adc_ops * clock_adc_spi_cxt(void)
 {
     int ret = -ENOMEM;
-    if(-1 == spi_get_node()){
-        spi_init();
-    }
-        
+    
+     _spi_init();
     struct clock_adc_ctx *ctx = calloc(1, sizeof(*ctx));
     if (!ctx)
         goto err_set_errno;

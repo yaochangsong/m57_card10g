@@ -136,7 +136,6 @@ static int spm_create(void)
     
     /* create stream */
     for(i = 0; i< ARRAY_SIZE(spm_stream) ; i++){
-        
         pstream[i].id = open(pstream[i].devname, O_RDWR);
         if( pstream[i].id < 0){
             fprintf(stderr, "[%d]open:%s, %s\n", i, pstream[i].devname, strerror(errno));
@@ -144,7 +143,6 @@ static int spm_create(void)
         }
         /* first of all, stop stream */
         spm_stream_stop(i);
-        
         ioctl(pstream[i].id, IOCTL_DMA_INIT_BUFFER, &pstream[i].len);
         pstream[i].ptr = mmap(NULL, DMA_BUFFER_SIZE, PROT_READ | PROT_WRITE,MAP_SHARED, pstream[i].id, 0);
         if (pstream[i].ptr == (void*) -1) {

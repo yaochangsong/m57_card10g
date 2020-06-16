@@ -21,7 +21,14 @@
 
 #include <stdint.h>
 
-#define FPGA_REG_BASE 0xa0000000
+#define FPGA_REG_BASE           0xb0000000
+#define FPGA_SYSETM_BASE        FPGA_REG_BASE
+#define FPGA_ADC_BASE 	        (FPGA_REG_BASE+0x1000)
+#define FPGA_SIGNAL_BASE 	    (FPGA_REG_BASE+0x2000)
+#define FPGA_BRAOD_BAND_BASE    (FPGA_REG_BASE+0x3000)
+#define FPGA_NARROR_BAND_BASE   (FPGA_REG_BASE+0x4000)
+#define FPGA_RF_BASE            (FPGA_REG_BASE+0x0100)
+
 #define SYSTEM_CONFG_REG_OFFSET	0x0
 #define SYSTEM_CONFG_REG_LENGTH 0x100
 #define BROAD_BAND_REG_OFFSET 	0x100
@@ -29,6 +36,8 @@
 #define NARROW_BAND_REG_BASE 	0xa0001000
 #define NARROW_BAND_REG_LENGTH 	0x100
 #define NARROW_BAND_CHANNEL_MAX_NUM 0x10
+#define CONFG_REG_LEN 0x100
+
 
 typedef struct _SYSTEM_CONFG_REG_
 {
@@ -91,17 +100,31 @@ typedef struct _SIGNAL_REG_
     uint32_t trig_count;
 }SIGNAL_REG;
 
+typedef struct _RF_REG_
+{
+    uint32_t freq_khz;      //频率控制
+    uint32_t rf_minus;       //射频衰减
+    uint32_t midband_minus;  //中频衰减
+    uint32_t rf_mode;        //射频模式
+    uint32_t mid_band;       //中频带宽
+    uint32_t reserve[0x2];
+    uint32_t input;          //输入选择：0 为外部射频输入，1 为校正源输入
+    uint32_t direct_control; //直采控制数据
+    uint32_t revise_minus;   //校正衰减控制数据
+    uint32_t direct_minus;   //直采衰减控制数据
+}RF_REG;
 
 typedef struct _FPGA_CONFIG_REG_
 {
 	SYSTEM_CONFG_REG *system;
     ADC_REG         *adcReg;
     SIGNAL_REG      *signal;
+    RF_REG          *rfReg;
 	BROAD_BAND_REG  *broad_band;
 	NARROW_BAND_REG *narrow_band[NARROW_BAND_CHANNEL_MAX_NUM];
 }FPGA_CONFIG_REG;
 
 
 extern FPGA_CONFIG_REG *get_fpga_reg(void);
-
+extern void fpga_io_init(void);
 #endif

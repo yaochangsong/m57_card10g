@@ -48,7 +48,7 @@ static struct  band_table_t nbandtable[] ={
 static struct  band_table_t bandtable[] ={
 #if defined(SUPPORT_PROJECT_WD_XCR)
     {458752, 0, 25000000},
-    {196608, 0, 50000000}
+    {196608, 0, 50000000},
     {65536,  0, 100000000},
     {0,      0, 200000000},
 #else

@@ -28,6 +28,7 @@ ifneq ($(findstring x86,$(SUPPORT_PLAT_FORM_ARCH)),)
 	CC?=gcc
 	C_VAR += -DSUPPORT_PLATFORM_ARCH_X86
 else ifneq ($(findstring arm,$(SUPPORT_PLAT_FORM_ARCH)),)
+	#make CC=aarch64-linux-gnu-gcc
 	CC?=arm-linux-gnueabihf-gcc
 	C_VAR += -DSUPPORT_PLATFORM_ARCH_ARM
 endif
@@ -178,6 +179,9 @@ ifneq ($(findstring y,$(SUPPORT_REMOTE_LOCAL_CTRL_EN)),)
 endif
 
 #project
+ifneq ($(findstring y,$(SUPPORT_PROJECT_WD_XCR)),)
+	C_VAR += -DSUPPORT_PROJECT_WD_XCR
+endif
 ifneq ($(findstring y,$(SUPPORT_PROJECT_SSA)),)
 	C_VAR += -DSUPPORT_PROJECT_SSA
 endif

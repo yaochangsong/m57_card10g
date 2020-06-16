@@ -34,6 +34,8 @@ struct rf_spi_cmd_info spi_cmd[] ={
 
 struct rf_spi_node_info spi_node[] ={
     /* name path               function code    pin  spifd      pinfd  info */
+#if defined(SUPPORT_PROJECT_WD_XCR)
+#else
     /* petalinux2019.1 */
     {"/dev/spidev2.0",     SPI_FUNC_RF,     8,   -1,      -1,  "spi rf"},
     {"/dev/spidev1.0",     SPI_FUNC_CLOCK,  8,   -1,      -1,  "spi clock 7044 chip"},
@@ -43,6 +45,7 @@ struct rf_spi_node_info spi_node[] ={
    // {"/dev/spidev32766.0",     SPI_FUNC_CLOCK,  8,   -1,      -1,  "spi clock 7044 chip"},
     //{"/dev/spidev32766.1",     SPI_FUNC_AD,     8,   -1,      -1,  "spi ad 9690 chip"},
     {NULL,                     -1              -1,   -1,      -1,  NULL},
+#endif
 };
 
 static uint8_t spi_checksum(uint8_t *buffer,uint8_t len){

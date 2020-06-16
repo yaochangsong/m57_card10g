@@ -24,6 +24,7 @@
 #include <getopt.h>
 #include "clock_adc.h"
 #include "clock_adc_spi.h"
+#include "../rf/spi/spi.h"
 
 extern struct rf_spi_node_info spi_node[3];
 

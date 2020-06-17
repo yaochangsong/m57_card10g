@@ -85,7 +85,7 @@ static void  io_get_bandwidth_factor(uint32_t anays_band,               /* è¾“å…
     if(found == 0){
         *bw_factor = table[i-1].extract_factor;
         *filter_factor = table[i-1].filter_factor;
-        printf_info("[%u]not find band table, set default: extract=%d, extract_filter=%d\n", anays_band, *bw_factor, *filter_factor);
+        printf_info("[%u]not find band table, set default:[%uHz] extract=%d, extract_filter=%d\n", anays_band, table[i-1].band, *bw_factor, *filter_factor);
     }
 }
 

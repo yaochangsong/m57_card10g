@@ -204,6 +204,7 @@ static  int8_t  executor_fragment_scan(uint32_t fregment_num,uint8_t ch, work_mo
         r_args->m_freq = m_freq;
         r_args->fft_size = fftsize;
         r_args->mode = mode;
+        r_args->scan_bw = scan_bw;
         r_args->freq_resolution = poal_config->multi_freq_fregment_para[ch].fregment[fregment_num].freq_resolution;
         /* 为避免在一定带宽下，中心频率过小导致起始频率<0，设置前需要对中频做判断 */
         m_freq =  middle_freq_resetting(scan_bw, m_freq);

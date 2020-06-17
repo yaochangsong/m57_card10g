@@ -254,6 +254,10 @@ static fft_t *spm_data_order(fft_t *fft_data,
     */
     memcpy((uint8_t *)run_args->fft_ptr,                (uint8_t *)(fft_data+fft_len -order_len/2) , order_len);
     memcpy((uint8_t *)(run_args->fft_ptr+order_len),    (uint8_t *)fft_data , order_len);
+
+    if(run_args->scan_bw > run_args->bandwidth){
+        order_len = (order_len * run_args->bandwidth)/run_args->scan_bw;
+    }
     *order_fft_len = order_len;
     
     return (fft_t *)run_args->fft_ptr;

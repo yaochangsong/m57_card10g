@@ -26,6 +26,7 @@ do_install() {
          install -d ${D}/etc/init.d/
          install -m 0755 platform ${D}${bindir}
          install -m 0755 shell/platform.sh ${D}/etc/init.d/
+         install -m 0755 shell/led.sh ${D}/etc/
          install -m 0755 conf/config.json ${D}/etc/
          install -m 0755 tools/xjson ${D}${bindir}
 }

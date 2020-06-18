@@ -669,7 +669,7 @@ static int akt_execute_set_command(void *cl)
                 goto set_exit;
             }
            // io_set_enable_command(IQ_MODE_DISABLE, ch, 0);
-            printf_note("ch:%d, sub_ch=%d, au_en:%d,iq_en:%d, %d\n", ch,sub_ch, poal_config->sub_ch_enable.audio_en, poal_config->sub_ch_enable.iq_en);
+            printf_note("ch:%d, sub_ch=%d, au_en:%d,iq_en:%d\n", ch,sub_ch, poal_config->sub_ch_enable.audio_en, poal_config->sub_ch_enable.iq_en);
             enable = (poal_config->sub_ch_enable.iq_en == 0 ? 0 : 1);
             
             #ifdef SUPPORT_NET_WZ

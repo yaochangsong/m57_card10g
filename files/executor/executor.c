@@ -951,7 +951,7 @@ void executor_init(void)
     uint8_t enable =0;
     uint8_t default_method = IO_DQ_MODE_IQ;
     for(i = 0; i< MAX_SIGNAL_CHANNEL_NUM; i++){
-        printf_debug("clear all sub ch %d\n", i);
+        printf_debug("clear all sub ch: %d\n", i);
         executor_set_command(EX_MID_FREQ_CMD, EX_SUB_CH_ONOFF, i, &enable);
         executor_set_command(EX_MID_FREQ_CMD, EX_SUB_CH_DEC_METHOD, i, &default_method);
     }

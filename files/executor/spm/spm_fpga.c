@@ -170,6 +170,10 @@ static ssize_t spm_stream_read(enum stream_type type, void **data)
     read_info info;
     size_t readn = 0;
     memset(&info, 0, sizeof(read_info));
+    if(pstream[type].id < 0){
+        printf_warn("stream node:%s not found\n", pstream[type].name);
+        return -1;
+    }
     ioctl(pstream[type].id, IOCTL_DMA_GET_STATUS, &status);
     printf_debug("DMA get [%s] status:%s[%d]\n", pstream[type].name, dma_str_status(status), status);
     if(status == DMA_STATUS_IDLE){

@@ -95,6 +95,10 @@ int fpga_memmap(int fd_dev, FPGA_CONFIG_REG *fpga_reg)
     }
     printf("virtual address:%p, physical address:0x%x\n", fpga_reg->narrow_band[0], FPGA_NARROR_BAND_BASE);
 
+    
+    for (i = 1; i < NARROW_BAND_CHANNEL_MAX_NUM; ++i){
+        fpga_reg->narrow_band[i] = (void *)fpga_reg->narrow_band[0] + NARROW_BAND_REG_LENGTH * i;
+    }
     return 0;
 }
 

@@ -106,6 +106,7 @@ loop:
         sleep(1);
         goto loop;
     }
+    printf_note(">>>>>IQ start\n");
     memset(&run, 0, sizeof(run));
     memcpy(&run, ctx->run_args, sizeof(run));
     do{

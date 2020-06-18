@@ -36,6 +36,7 @@ uint8_t rf_set_interface(uint8_t cmd,uint8_t ch,void *data){
 #elif defined(SUPPORT_RF_FPGA)
             uint32_t freq_khz = old_freq/1000;/* NOTE: Hz => KHz */
             get_fpga_reg()->rfReg->freq_khz = freq_khz;
+            usleep(100);
 #endif
             break; 
         }
@@ -48,6 +49,7 @@ uint8_t rf_set_interface(uint8_t cmd,uint8_t ch,void *data){
             usleep(300);
             ret = spi_rf_get_command(SPI_RF_MIDFREQ_BW_FILTER_GET, &mbw);
 #elif defined(SUPPORT_RF_FPGA)
+            get_fpga_reg()->rfReg->mid_band = 0x03;
             #if 0
             struct rf_bw_reg{
                 uint32_t bw_hz;

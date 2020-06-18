@@ -322,7 +322,11 @@ int32_t io_set_dec_parameter(uint32_t ch, uint64_t dec_middle_freq, uint8_t dec_
 static uint32_t io_set_dec_middle_freq_reg(uint64_t dec_middle_freq, uint64_t middle_freq)
 {
         /* delta_freq = (reg* 204800000)/2^32 ==>  reg= delta_freq*2^32/204800000 */
+#if defined(SUPPORT_PROJECT_WD_XCR)
+#define FREQ_MAGIC1 (256000000)
+#else
 #define FREQ_MAGIC1 (204800000)
+#endif
 #define FREQ_MAGIC2 (0x100000000ULL)  /* 2^32 */
     
         uint64_t delta_freq;
@@ -399,11 +403,11 @@ int32_t io_set_subch_onoff(uint32_t subch, uint8_t onoff)
     memcpy(odata.data,&onoff,sizeof(onoff));
     ret = ioctl(io_ctrl_fd, IOCTL_SUB_CH_ONOFF, &odata);
 #elif defined(SUPPORT_SPECTRUM_V2) 
+    printf_debug("subch=%u, onoff=%d, ptr=%p\n", subch, onoff, get_fpga_reg()->narrow_band[subch]);
     if(onoff)
         get_fpga_reg()->narrow_band[subch]->enable =0x01;
     else
         get_fpga_reg()->narrow_band[subch]->enable = 0x00;
-     printf_debug("subch=%u, onoff=%d, ptr=0x%p\n", subch, onoff, get_fpga_reg()->narrow_band[subch]);
 #endif
 #endif
     printf_debug("[**REGISTER**]ch:%d, SubChannle Set OnOff=%d\n",subch, onoff);

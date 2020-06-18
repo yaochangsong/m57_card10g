@@ -1,59 +1,63 @@
 #!/bin/sh
 
-power()
+
+GPIO_DIR=/sys/class/gpio
+LED_POWER_PIN=419
+LED_WORK_PIN=418
+LED_TRAN_PIN=417
+LED_CHECK_PIN=416
+
+
+_onoff()
 {
-    echo "power $1"
-    if [ "$1" == "on" ]; then
-        echo "echo 0 > /sys/class/leds/led-power/brightness"
+    echo "check $1 $2"
+    if [ "$2" == "on" ]; then
+        echo "echo 1 > $GPIO_DIR/gpio$1/value"
+        echo 1 > $GPIO_DIR/gpio$1/value
     else
-        echo "echo 1 > /sys/class/leds/led-power/brightness"
+        echo "echo 0 > $GPIO_DIR/gpio$1/value"
+        echo 0 > $GPIO_DIR/gpio$1/value
     fi
 }
 
-work()
+_direction_out()
 {
-    echo "work $1"
-    if [ "$1" == "on" ]; then
-        echo "echo 0 > /sys/class/leds/led-work/brightness"
-    else
-        echo "echo 1 > /sys/class/leds/led-work/brightness"
-    fi
+
+	echo "echo out > $GPIO_DIR/gpio$1/direction"
+    echo out > $GPIO_DIR/gpio$1/direction
 }
 
-
-transfer()
+_export()
 {
-    echo "transfer $1"
-    if [ "$1" == "on" ]; then
-        echo "echo 0 > /sys/class/leds/led-transfer/brightness"
-    else
-        echo "echo 1 > /sys/class/leds/led-transfer/brightness"
-    fi
-}
-
-
-check()
-{
-    echo "check $1"
-    if [ "$1" == "on" ]; then
-        echo "echo 0 > /sys/class/leds/led-check/brightness"
-    else
-        echo "echo 1 > /sys/class/leds/led-check/brightness"
-    fi
+	if [ ! -f $GPIO_DIR/gpio$1 ]; then
+		echo "echo $1 > $GPIO_DIR/export"
+        echo $1 > $GPIO_DIR/export
+	fi
+	
 }
 
 case $1 in
+        init)
+			_export $LED_POWER_PIN
+			_export $LED_WORK_PIN
+			_export $LED_TRAN_PIN
+			_export $LED_CHECK_PIN
+            _direction_out $LED_POWER_PIN
+            _direction_out $LED_WORK_PIN
+            _direction_out $LED_TRAN_PIN
+            _direction_out $LED_CHECK_PIN
+                ;;
         power)
-                power $2
+                _onoff $LED_POWER_PIN $2
                 ;;
         work)
-                work $2
+                _onoff $LED_WORK_PIN $2
                 ;;
         transfer)
-                transfer $2
+                _onoff $LED_TRAN_PIN $2
                 ;;
         check)
-                check $2
+                _onoff $LED_CHECK_PIN $2
                 ;;
         *)
                 echo "Usage: $0 {power check transfer check on/off}"

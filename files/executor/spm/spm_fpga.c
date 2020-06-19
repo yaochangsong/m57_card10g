@@ -499,6 +499,22 @@ exit_mode:
     return 0;
 }
 
+static int spm_sample_ctrl(uint64_t freq_hz)
+{
+    uint8_t val = 0;
+    #define _200MHZ 200000000
+    if(freq_hz < _200MHZ){
+        val = 1;    /* 直采开启 */
+    }else{
+        val = 0;    /* 直采关闭 */
+    }
+    printf_debug("samle ctrl:freq_hz =%lluHz, direct %d\n", freq_hz, val);
+    executor_set_command(EX_MID_FREQ_CMD, EX_SAMPLE_CTRL,    0, &val);
+    executor_set_command(EX_RF_FREQ_CMD,  EX_RF_SAMPLE_CTRL, 0, &val);
+    
+    return 0;
+}
+
 /*Signal Residency strategy*/
 static long signal_residency_policy(int ch, int policy, bool is_signal)
 {
@@ -674,6 +690,7 @@ static const struct spm_backend_ops spm_ops = {
     .signal_strength = spm_get_signal_strength,
     .stream_start = spm_stream_start,
     .stream_stop = spm_stream_stop,
+    .sample_ctrl = spm_sample_ctrl,
     .close = _spm_close,
 };
 

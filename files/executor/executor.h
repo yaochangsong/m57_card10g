@@ -51,6 +51,7 @@ enum {
     EX_SUB_CH_DEC_METHOD,      /* 子通道解调方式 */
     EX_SUB_CH_MUTE_THRE,       /* 子通道静噪门限 */
     EX_SUB_CH_ONOFF,           /* 子通道开关 */
+    EX_SAMPLE_CTRL,            /*  0关闭直采，1开启直采*/
     
 };
 
@@ -99,6 +100,7 @@ enum {
     EX_RF_AGC_FREQUENCY,          /*AGC 频率设置*/
     EX_RF_AGC_BW,                 /*AGC 带宽设置*/
     EX_RF_CALIBRATE,              /*校正*/
+    EX_RF_SAMPLE_CTRL             /* 直采控制 0关闭直采，1开启直采 */
 };
 
 /* network paramters */

@@ -48,6 +48,7 @@ struct spm_backend_ops {
     int (*backtrace_data)(void *, size_t);
     int (*stream_start)(uint32_t ,uint8_t , int);
     int (*stream_stop)(uint8_t);
+    int (*sample_ctrl)(uint64_t);
     int (*close)(void *);
     
 };

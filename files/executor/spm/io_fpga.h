@@ -43,6 +43,12 @@ typedef struct _SYSTEM_CONFG_REG_
 {
 	uint32_t version;
 	uint32_t system_reset;
+    uint32_t reserve1[0x2];
+    uint32_t fpga_status;
+    uint32_t board_vi;
+    uint32_t reserve2[0x6];
+    uint32_t if_ch;
+    uint32_t ssd_mode;
 
 }SYSTEM_CONFG_REG;
 

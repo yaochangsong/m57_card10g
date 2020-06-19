@@ -180,6 +180,16 @@ uint8_t rf_set_interface(uint8_t cmd,uint8_t ch,void *data){
 #endif
             break;
         }
+        case EX_RF_SAMPLE_CTRL:
+        {
+#if defined(SUPPORT_RF_FPGA)
+            uint8_t val = 0;
+            val = (*((int8_t *)data) == 0 ? 0 : 0x01);
+            /* 0关闭直采，1开启直采 */
+            get_fpga_reg()->rfReg->direct_control = val;
+#endif
+            break;
+        }
 
         default:{
             break;

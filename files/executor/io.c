@@ -678,6 +678,15 @@ void io_set_fpga_sys_time(uint32_t time)
 #endif
 }
 
+void io_set_fpga_sample_ctrl(uint8_t val)
+{
+#if defined(SUPPORT_PLATFORM_ARCH_ARM)
+#if defined(SUPPORT_SPECTRUM_V2)
+    get_fpga_reg()->system->if_ch = (val == 0 ? 0 : 1);
+#endif
+#endif
+}
+
 static void io_dma_dev_disable(uint32_t ch,uint8_t type)
 {
     uint32_t ctrl_val = 0;

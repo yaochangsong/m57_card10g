@@ -325,6 +325,7 @@ static int8_t  executor_points_scan(uint8_t ch, work_mode_type mode, void *args)
             printf_note("is sigal: %s, strength:%d\n", (is_signal == true ? "Yes":"No"), strength);
         }
 #endif
+        spmctx->ops->sample_ctrl(r_args->m_freq);
         s_time = time(NULL);
         do{
             if(poal_config->enable.psd_en){
@@ -620,6 +621,11 @@ static int8_t executor_set_kernel_command(uint8_t type, uint8_t ch, void *data, 
         }
         case EX_SUB_CH_MUTE_THRE:
         {
+            break;
+        }
+        case EX_SAMPLE_CTRL:
+        {
+            io_set_fpga_sample_ctrl(*(uint8_t *)data);
             break;
         }
         default:

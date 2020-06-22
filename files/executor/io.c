@@ -46,7 +46,7 @@ static struct  band_table_t nbandtable[] ={
 }; 
 /* 宽带系数表 */
 static struct  band_table_t bandtable[] ={
-#if defined(SUPPORT_PROJECT_WD_XCR)
+#if 0//defined(SUPPORT_PROJECT_WD_XCR)
     {458752, 0, 25000000},
     {196608, 0, 50000000},
     {65536,  0, 100000000},
@@ -432,7 +432,7 @@ int32_t io_set_subch_bandwidth(uint32_t subch, uint32_t bandwidth, uint8_t dec_m
     }
     old_val = bandwidth;
     old_ch = subch;
-
+    dec_method = IO_DQ_MODE_IQ; /* TEST */
     if(dec_method == IO_DQ_MODE_IQ){
         table= &iq_nbandtable;
         table_len = sizeof(iq_nbandtable)/sizeof(struct  band_table_t);
@@ -453,12 +453,13 @@ int32_t io_set_subch_bandwidth(uint32_t subch, uint32_t bandwidth, uint8_t dec_m
     odata.ch = subch;
     memcpy(odata.data,&filter_factor,sizeof(filter_factor));
     ret = ioctl(io_ctrl_fd, IOCTL_SUB_CH_FILTER_COEFF, &odata);
-    printf_note("[**REGISTER**]ch:%d, SubChannle Set Bandwidth=%u, factor=0x%x[%u], filter_factor=0x%x[%u],dec_method=%d,table_len=%d, ret=%d\n",
-                    subch, bandwidth, band_factor, band_factor,filter_factor,filter_factor, dec_method,  table_len, ret);
 #elif defined(SUPPORT_SPECTRUM_V2) 
-        get_fpga_reg()->narrow_band[subch]->band = band_factor;
-        get_fpga_reg()->narrow_band[subch]->fir_coeff = filter_factor;
+    get_fpga_reg()->narrow_band[subch]->band = band_factor;
+    get_fpga_reg()->narrow_band[subch]->fir_coeff = filter_factor;
 #endif
+    printf_note("[**REGISTER**]ch:%d, SubChannle Set Bandwidth=%u, factor=0x%x[%u], filter_factor=0x%x[%u],dec_method=%d,table_len=%d, ret=%d\n",
+                subch, bandwidth, band_factor, band_factor,filter_factor,filter_factor, dec_method,  table_len, ret);
+
 #endif /* SUPPORT_PLATFORM_ARCH_ARM */
     return ret;
 }

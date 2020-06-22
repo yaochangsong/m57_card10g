@@ -365,6 +365,6 @@ void fs_init(void)
         return;
     fs_ctx = fs_create_context();
     pthread_bmp_init();
-    _fs_mkdir("/run/media/");
+    //_fs_mkdir("/run/media/");
 }
 

@@ -13,6 +13,8 @@
 *  Initial revision.
 ******************************************************************************/
 #include "config.h"
+#include <stdio.h>
+
 extern char *get_version_string(void);
 
 
@@ -146,6 +148,9 @@ int main(int argc, char **argv)
     xwfs_init();
     http_requset_init();
 #endif
+#if defined(SUPPORT_FS)
+    fs_init();
+#endif
     if(server_init() == -1){
         printf_err("server init fail!\n");
         goto done;
@@ -156,5 +161,3 @@ done:
     uloop_done();
     return 0;
 }
-
-

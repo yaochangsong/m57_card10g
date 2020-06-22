@@ -775,15 +775,31 @@ static int akt_execute_set_command(void *cl)
             if(sis.cmd == 1){/* start add iq file */
                 printf_note("Start add file:%s, bandwidth=%u\n", sis.filepath, sis.bandwidth);
                 executor_set_command(EX_MID_FREQ_CMD, EX_BANDWITH, ch, &sis.bandwidth);
-                #if defined(SUPPORT_XWFS)
+#if defined(SUPPORT_XWFS)
                 ret = xwfs_start_save_file(sis.filepath);
-                #endif
+ #elif defined(SUPPORT_FS)
+                struct fs_context *fs_ctx;
+                fs_ctx = get_fs_ctx();
+                if(fs_ctx == NULL){
+                    printf_warn("NOT FOUND DISK!!\n");
+                    break;
+                }
+                fs_ctx->ops->fs_save_file("test.txt", 1);
+#endif
             }else if(sis.cmd == 0){/* stop add iq file */
                 printf_note("Stop add file:%s\n", sis.filepath);
                 //ret = io_stop_save_file(sis.filepath);
-                #if defined(SUPPORT_XWFS)
+#if defined(SUPPORT_XWFS)
                 ret = xwfs_stop_save_file(sis.filepath);
-                #endif
+ #elif defined(SUPPORT_FS)
+                struct fs_context *fs_ctx;
+                fs_ctx = get_fs_ctx();
+                if(fs_ctx == NULL){
+                    printf_warn("NOT FOUND DISK!!\n");
+                    break;
+                }
+                fs_ctx->ops->fs_save_file("test.txt", 0);
+#endif
             }else{
                 printf_err("error cmd\n");
                 err_code = RET_CODE_PARAMTER_ERR;
@@ -1025,6 +1041,8 @@ static int akt_execute_get_command(void)
             strcpy(fsp.filepath, filename);
             #if defined(SUPPORT_XWFS)
             ret = xwfs_get_file_size_by_name(filename, &f_bg_size, sizeof(ssize_t));//io_read_more_info_by_name(filename, &fsp, io_find_file_info);
+            #elif defined(SUPPORT_FS)
+
             #endif
             printf_note("Find file:%s, fsize=%u ret =%d\n", fsp.filepath, f_bg_size, ret);
             if(ret != 0){
@@ -1065,7 +1083,7 @@ static int akt_execute_net_command(void *client)
     PDU_CFG_REQ_HEADER_ST *header;
     header = &akt_header;
     memcpy(&dis_net, header->buf, sizeof(struct discover_net));
-    printf_note("ipaddr = 0x%x, port=0x%x[%d]", dis_net.ipaddr, dis_net.port,  dis_net.port);
+    printf_note("ipaddr = 0x%x, port=0x%x[%d]\n", dis_net.ipaddr, dis_net.port,  dis_net.port);
     addr.sin_port = dis_net.port;
     addr.sin_addr.s_addr = dis_net.ipaddr;
     addr.sin_family = AF_INET;   /* fixedb bug: Address family not supported by protocol */

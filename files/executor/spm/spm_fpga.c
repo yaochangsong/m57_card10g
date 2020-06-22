@@ -212,6 +212,12 @@ static ssize_t spm_read_fft_data(void **data)
     return spm_stream_read(STREAM_FFT, data);
 }
 
+static ssize_t spm_read_adc_data(void **data)
+{
+    return spm_stream_read(STREAM_ADC, data);
+}
+
+
 static  float get_side_band_rate(uint32_t bandwidth)
 {
     #define DEFAULT_SIDE_BAND_RATE  (1.28)
@@ -676,6 +682,7 @@ static const struct spm_backend_ops spm_ops = {
     .create = spm_create,
     .read_iq_data = spm_read_iq_data,
     .read_fft_data = spm_read_fft_data,
+    .read_adc_data = spm_read_adc_data,
     .data_order = spm_data_order,
     .send_fft_data = spm_send_fft_data,
     .send_iq_data = spm_send_iq_data,

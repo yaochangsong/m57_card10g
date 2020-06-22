@@ -23,7 +23,7 @@
 	},
 	"status_parm":	{
 		"soft_version":	{
-			"app":	"1.0.0_debug(2020-06-15-14:29:59)-320c7e9ced9d9c36ad50238267b4cb6aed1a8261 ",
+			"app":	"1.0.0_debug(2020-06-22-09:33:19)-1f659a9fc2fb37e13535992da6af273d16f595b8 ",
 			"fpga":	"202012"
 		},
 		"device_sn":	"0x0202"

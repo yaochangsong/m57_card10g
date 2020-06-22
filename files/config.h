@@ -53,8 +53,8 @@
 #include "dao/json/cJSON.h"
 #include "dao/oal/json/json-oal.h"
 #endif
-
 #include "utils/utils.h"
+#include "utils/thread.h"
 #include "utils/mempool.h"
 
 #include "executor/executor.h"
@@ -89,6 +89,9 @@
 #endif
 #if defined(SUPPORT_XWFS)
 #include "executor/xwfs/xwfs.h"
+#endif
+#if defined(SUPPORT_FS)
+#include "fs/fs.h"
 #endif
 #include "device/gpio/gpio.h"
 #include "device/gpio/gpio_raw.h"

@@ -9,37 +9,30 @@
 *  permission of Showay Technology Dev Co.,Ltd. (C) 2019
 ******************************************************************************/
 /*****************************************************************************     
-*  Rev 1.0   9 June. 2020   yaochangsong
+*  Rev 1.0   19 June. 2020   yaochangsong
 *  Initial revision.
 ******************************************************************************/
-#include "config.h"
-#include "clock_adc.h"
-#include "clock_adc_spi.h"
-#include "clock_adc_fpga.h"
+#ifndef _FS_H
+#define _FS_H
 
+#include <stdbool.h>
 
-static struct clock_adc_ctx *_ca_ctx = NULL;
+struct fs_ops {
+    bool (*fs_disk_valid)(void);
+    int (*fs_format)(void);
+    int (*fs_mkdir)(char *);
+    ssize_t (*fs_dir)(char *,void **);
+    ssize_t (*fs_save_file)(char *, int);
+    ssize_t (*fs_read_file)(char *);
+    int (*fs_close)(void);
+};
 
+struct fs_context {
+    const struct fs_ops *ops;
+};
 
-int clock_adc_init(void)
-{
-#if defined(SUPPORT_PLATFORM_ARCH_ARM)
-#if defined(SUPPORT_CLOCK_ADC_SPI)
-    _ca_ctx = clock_adc_spi_cxt();
-#elif defined (SUPPORT_CLOCK_ADC_FPGA)
-    _ca_ctx = clock_adc_fpga_cxt();
-#else
-    #error "NOT define clock_adc function!!!!"
-    return -1;
+extern void fs_init(void);
+extern struct fs_context *get_fs_ctx(void);
+extern struct fs_context * fs_create_context(void);
 #endif
-    _ca_ctx->ops->init();
-#endif
-}
 
-int clock_adc_close(void)
-{
-#if defined(SUPPORT_PLATFORM_ARCH_ARM)
-    if(_ca_ctx)
-         _ca_ctx->ops->close();
-#endif
-}

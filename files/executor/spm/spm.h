@@ -31,6 +31,7 @@ struct spm_backend_ops {
     int (*create)(void);
     ssize_t (*read_iq_data)(void **);
     ssize_t (*read_fft_data)(void **);
+    ssize_t (*read_adc_data)(void **);
     fft_t *(*data_order)(fft_t *, size_t,  size_t *, void *);
     int (*send_fft_data)(void *, size_t, void *);
     int (*send_iq_data)(void *, size_t, void *);

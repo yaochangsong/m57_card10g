@@ -70,6 +70,12 @@ ifneq ($(findstring y,$(SUPPORT_XWFS)),)
 	SOURCE_DIR += executor/xwfs
 endif
 
+#fs2.0
+ifneq ($(findstring y,$(SUPPORT_FS)),)
+	C_VAR += -DSUPPORT_FS
+	SOURCE_DIR += fs
+endif
+
 #lcd
 ifneq ($(findstring y,$(SUPPORT_LCD)),)
 	SOURCE_DIR += device/lcd

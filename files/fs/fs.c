@@ -39,6 +39,7 @@
 #include "../executor/spm/spm.h"
 #include "config.h"
 
+#define DMA_BUFFER_SIZE (16 * 1024 * 1024)
 
 static struct _thread_tables{
     char *name;
@@ -57,11 +58,12 @@ struct fs_context *fs_ctx = NULL;
 static bool disk_is_valid = false;
 
 
-static void _thread_data_init(void)
+static inline void _thread_data_init(void)
 {
     memset(&tp, 0, sizeof(struct _thread_pool));
 }
 
+static void  *disk_buffer_ptr  = NULL;
 static inline int _write_fs_disk_init(char *path)
 {
     int fd;
@@ -69,10 +71,12 @@ static inline int _write_fs_disk_init(char *path)
         return -1;
 
     fd = open(path, O_RDWR | O_CREAT | O_TRUNC | O_DIRECT | O_SYNC, 0666);
+    //fd = open(path, O_RDWR | O_CREAT | O_TRUNC, 0666);
     if (fd < 0) {
         printf_err("open %s fail\n", path);
         return -1;
     }
+    posix_memalign((void **)&disk_buffer_ptr, 4096 /*alignment */ , DMA_BUFFER_SIZE + 4096);
     return fd;
 }
 static inline  int _write_disk_run(int fd, size_t size, void *pdata)
@@ -86,12 +90,17 @@ static inline  int _write_disk_run(int fd, size_t size, void *pdata)
         return -1;
 
     //posix_memalign((void **)&user_mem, 4096 /*alignment */ , size + 4096);
-    //posix_memalign((void **)&user_mem, 4096 /*alignment */ , WRITE_UNIT_BYTE + 4096);
+   // posix_memalign((void **)&user_mem, 4096 /*alignment */ , WRITE_UNIT_BYTE + 4096);
     //printf_note("fd=%d, pdata=%p, %p, size=0x%x\n",fd, pdata,user_mem,  size);
 
-    
+    if(size > DMA_BUFFER_SIZE){
+        printf_warn("size is too big: %u\n", size);
+        size = DMA_BUFFER_SIZE;
+    }
+    memcpy(disk_buffer_ptr, pdata, size);
+    //printf_note("pdata=%p, size = 0x%x\n", pdata, size);
     //rc = write(fd, user_mem, WRITE_UNIT_BYTE);
-    rc = write(fd, user_mem, size);
+    rc = write(fd, disk_buffer_ptr, size);
     if (rc < 0){
         perror("write file");
     }
@@ -106,7 +115,7 @@ static inline  void _write_disk_close(int fd)
 }
 
 
-static bool _fs_disk_valid(void)
+static inline bool _fs_disk_valid(void)
 {
     #define DISK_NODE_NAME "/dev/nvme0"
     //if(access(DISK_NODE_NAME)){
@@ -117,26 +126,28 @@ static bool _fs_disk_valid(void)
 }
 
 
-static int _fs_format(void)
+static inline int _fs_format(void)
 {
     if(disk_is_valid == false)
         return -1;
     return safe_system("mkfs.ext3    /dev/sda6");
 }
 
-static int _fs_mkdir(char *dirname)
+static inline int _fs_mkdir(char *dirname)
 {
     if(disk_is_valid == false)
         return -1;
-    if(dirname)
-        mkdir(dirname, 0751);
+    if(dirname && access(dirname, F_OK)){
+        printf("mkdir %s\n", dirname);
+        mkdir(dirname, 0755);
+    }
     
     return 0;
 }
 
-static char *_fs_get_root_dir(void)
+static  inline char *_fs_get_root_dir(void)
 {
-    return "/run/media/nvme0n1";
+    return "/run/media/nvme0n1/data";
 }
 
 
@@ -166,7 +177,7 @@ static ssize_t _fs_dir(char *dirname, void **data)
     return 0;
 }
 
-int _fs_start_save_file_thread(void *arg)
+static int _fs_start_save_file_thread(void *arg)
 {
     typedef int16_t adc_t;
     adc_t *ptr = NULL;
@@ -181,9 +192,10 @@ int _fs_start_save_file_thread(void *arg)
         ret = _write_disk_run(fd, nread, ptr);
         _ctx->ops->read_adc_over_deal(&nread);
     }else{
+        usleep(1000);
         printf("read_adc_data err:%d\n", nread);
     }
-    usleep(1000);
+    //usleep(1000);
 #else
     sleep(1);
 #endif
@@ -280,7 +292,8 @@ void fs_init(void)
         return;
     fs_ctx = fs_create_context();
     pthread_bmp_init();
-    _fs_dir("/run/media/nvme0n1", NULL);
+    _fs_mkdir(_fs_get_root_dir());
+    _fs_dir(_fs_get_root_dir(), NULL);
     //_fs_mkdir("/run/media/");
 }
 

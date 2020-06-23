@@ -171,7 +171,7 @@ static ssize_t _fs_dir(char *dirname, void **data)
         printf_note("path:%s, dirp->d_name = %s, PATH_MAX=%d\n", path, dirp->d_name, PATH_MAX);
         if (stat(path, &stats))
             continue;
-        printf_note("PATH_MAX:%d, (%s)st_size:%u, st_blocks:%u, st_mode:%x, st_mtime=0x%x\n", PATH_MAX, dirp->d_name, stats.st_size, stats.st_blocks, stats.st_mode, stats.st_mtime);
+        printf_note("PATH_MAX:%d, (%s)st_size:%llu, st_blocks:%u, st_mode:%x, st_mtime=0x%x\n", PATH_MAX, dirp->d_name, (off_t)stats.st_size, stats.st_blocks, stats.st_mode, stats.st_mtime);
     }
     closedir(dp);
     return 0;
@@ -294,6 +294,5 @@ void fs_init(void)
     pthread_bmp_init();
     _fs_mkdir(_fs_get_root_dir());
     _fs_dir(_fs_get_root_dir(), NULL);
-    //_fs_mkdir("/run/media/");
 }
 

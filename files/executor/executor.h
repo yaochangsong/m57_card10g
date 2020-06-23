@@ -68,6 +68,8 @@ enum {
     DIRECTION_MODE_ENABLE,       /*测向使能位*/
     DIRECTION_MODE_ENABLE_DISABLE,
     FREQUENCY_BAND_ENABLE_DISABLE,
+    ADC_MODE_ENABLE,
+    ADC_MODE_DISABLE,
 };
 
 /* executor: status paramter */
@@ -182,7 +184,6 @@ struct spm_run_parm{
 #define executor_assamble_header_response_data_cb   
 #define executor_send_data_to_clent_cb              
 #endif
-
 
 extern struct sem_st work_sem;
 extern void executor_init(void);

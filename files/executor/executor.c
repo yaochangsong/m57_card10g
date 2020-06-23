@@ -658,7 +658,7 @@ static int8_t executor_set_ctrl_command(uint8_t type, uint8_t ch, void *data, va
 static int executor_set_10g_network(struct network_st *_network)
 {
     /* 设置默认板卡万兆ip和端口 */
-    io_set_local_10g_net(ntohl(_network->ipaddress), _network->port);
+    io_set_local_10g_net(ntohl(_network->ipaddress), ntohl(_network->netmask),ntohl(_network->gateway),_network->port);
 }
 #endif
 

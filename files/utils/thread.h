@@ -17,7 +17,7 @@
 
 extern void pthread_bmp_init(void);
 extern int pthread_create_detach_loop (const pthread_attr_t *attr, 
-									void *(*start_routine) (void *), 
+									int (*start_routine) (void *), 
 									char *name, void *arg);
 extern void *pthread_cancel_by_name(char *name);
 

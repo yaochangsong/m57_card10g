@@ -20,6 +20,8 @@
 #include <string.h>
 #include <stdio.h>
 #include <pthread.h>
+#include <time.h>
+#include <sys/time.h>
 #include "utils.h"
 
 #define MAX_TEST_BITS 5
@@ -53,30 +55,92 @@ void pthread_bmp_init(void)
     bitmap_zero(tbmp.bitmap, MAX_TEST_BITS);
 }
 
+double difftime_us_val(const struct timeval *start, const struct timeval *end)
+{
+    double d;
+    time_t s;
+    suseconds_t u;
+
+    s = end->tv_sec - start->tv_sec;
+    u = end->tv_usec - start->tv_usec;
+    d = s;
+    d *= 1000000.0;//1 秒 = 10^6 微秒
+    d += u;
+
+    return d;
+}
+
+struct push_arg{
+    struct timeval *ct;
+    uint64_t nbyte;
+    uint64_t count;
+};
+
+
+static void thread_exit_callback(void *arg){  
+    struct timeval *beginTime, endTime;
+    uint64_t nbyte;
+    float speed = 0;
+    double  diff_time_us = 0;
+    float diff_time_s = 0;
+
+    struct push_arg *pargs;
+    pargs = (struct push_arg *)arg;
+    beginTime = pargs->ct;
+    nbyte = pargs->nbyte;
+    fprintf(stderr, ">>start time %ld.%.9ld., nbyte=%llu\n",beginTime->tv_sec, beginTime->tv_usec, nbyte);
+    
+    gettimeofday(&endTime, NULL);
+    fprintf(stderr, ">>end time %ld.%.9ld.\n",endTime.tv_sec, endTime.tv_usec);
+
+    diff_time_us = difftime_us_val(beginTime, &endTime);
+    diff_time_s = diff_time_us/1000000.0;
+    printf(">>diff us=%fus, %fs\n", diff_time_us, diff_time_s);
+    
+     speed = (float)((nbyte / (1024 * 1024)) / diff_time_s);
+     fprintf(stdout,"speed: %.2f MBps, count=%llu\n", speed, pargs->count);
+}  
 
 void *thread_loop (void *s)
 {
+   // thread_bind_cpu(1);
     int stateval;
+    int ret;
+    struct timeval beginTime, endTime;
+    struct push_arg p_args;
     struct thread_args args;
+    
     memcpy(&args, s, sizeof(struct thread_args));
+    
     pthread_detach(pthread_self());
-    //printf("thread name =%s\n", args.name);
-    while(1){
-    stateval = pthread_setcancelstate (PTHREAD_CANCEL_DISABLE , NULL);
-    if (stateval != 0){
-        printf("set cancel state failure\n");
-    }
-    if(args.callback)
-    	args.callback(args.arg);
-    stateval  = pthread_setcancelstate (PTHREAD_CANCEL_ENABLE , NULL);
-    pthread_testcancel();
-    }
+    pthread_cleanup_push(thread_exit_callback,&p_args);
+    gettimeofday(&beginTime, NULL);
 
+    fprintf(stderr, "#######start time %ld.%.9ld.\n",beginTime.tv_sec, beginTime.tv_usec);
+    p_args.ct = &beginTime;
+    p_args.nbyte = 0;
+    p_args.count = 0;
+    while(1){
+        stateval = pthread_setcancelstate (PTHREAD_CANCEL_DISABLE , NULL);
+        if (stateval != 0){
+            printf("set cancel state failure\n");
+        }
+        if(args.callback){
+            ret = args.callback(args.arg);
+            p_args.count ++;
+        }
+        if(ret > 0){
+            p_args.nbyte += ret;
+        }
+        stateval  = pthread_setcancelstate (PTHREAD_CANCEL_ENABLE , NULL);
+        pthread_testcancel();
+    }
+    pthread_cleanup_pop(1);
     return (void *)0;
 }
 
 int pthread_create_detach_loop (const pthread_attr_t *attr, 
-                                        void *(*start_routine) (void *), 
+                                        int (*start_routine) (void *), 
                                         char *name, void *arg)
 {
 
@@ -100,8 +164,6 @@ int pthread_create_detach_loop (const pthread_attr_t *attr,
     tid_index = find_first_zero_bit(thread_bmp, MAX_TEST_BITS);
     tbmp.thread_t[tid_index].name = strdup(name);
 
-
-    printf("find_first_bit：%lu\n", tid_index);
     err = pthread_create (&tbmp.thread_t[tid_index].tid , attr , thread_loop , &args);
     if (err != 0){
         printf("can't create thread: %s\n", strerror(err));
@@ -123,10 +185,10 @@ int pthread_cancel_by_name(char *name)
            // printf("name=%s, index=%d, tid=%u\n", tbmp.thread_t[i].name, i, tbmp.thread_t[i].tid);
             cval = pthread_cancel(tbmp.thread_t[i].tid);
             if(cval !=0){
-                printf("cancel[%s] thread failure\n", name);
+                printf("######cancel[%s] thread failure\n", name);
                 return -1;
             }else{
-                printf("cancel[%s] thread ok\n", name);
+                printf("######cancel[%s] thread ok\n", name);
                 if(tbmp.thread_t[i].name){
                     free(tbmp.thread_t[i].name);
                     tbmp.thread_t[i].name = NULL;
@@ -140,7 +202,7 @@ int pthread_cancel_by_name(char *name)
 }
 
 
-void *thread_test (void *s)
+int thread_test (void *s)
 {
     int i;
     i = *(int *)s;

@@ -31,6 +31,7 @@
 extern uint8_t * akt_assamble_data_frame_header_data(uint32_t *len, void *config);
 static int spm_stream_stop(enum stream_type type);
 
+size_t pagesize = 0;
 
 /* Allocate zeroed out memory */
 static inline void *zalloc(size_t size)
@@ -175,7 +176,8 @@ static ssize_t spm_stream_read(enum stream_type type, void **data)
         return -1;
     }
     ioctl(pstream[type].id, IOCTL_DMA_GET_STATUS, &status);
-    printf_debug("DMA get [%s] status:%s[%d]\n", pstream[type].name, dma_str_status(status), status);
+    if(STREAM_ADC == type)
+        printf_debug("DMA get [%s] status:%s[%d]\n", pstream[type].name, dma_str_status(status), status);
     if(status == DMA_STATUS_IDLE){
         return -1;
     }
@@ -183,21 +185,35 @@ static ssize_t spm_stream_read(enum stream_type type, void **data)
         ioctl(pstream[type].id, IOCTL_DMA_GET_ASYN_READ_INFO, &info);
         printf_debug("read status:%d, block_num:%d\n", info.status, info.block_num);
         if(info.status == READ_BUFFER_STATUS_FAIL){
-            printf_err("read iq data error\n");
+            printf_err("read data error\n");
             exit(-1);
         }else if(info.status == READ_BUFFER_STATUS_PENDING){
             usleep(10);
-            printf_debug("no iq data, waitting\n");
+            printf_debug("no data, waitting\n");
         }else if(info.status == READ_BUFFER_STATUS_OVERRUN){
-            printf_warn("iq data is overrun\n");
+            
+            if(STREAM_ADC == type){
+                printf_warn("adc data is overrun\n");
+            }else{
+                printf_warn("data is overrun\n");
+            }
         }
     }while(info.status == READ_BUFFER_STATUS_PENDING);
         
     ioctl(pstream[type].id, IOCTL_DMA_GET_STATUS, &status);
-    printf_debug("DMA get [%s] status:%s[%d]\n", pstream[type].name, dma_str_status(status), status);
+    if(STREAM_ADC == type){
+        printf_debug("DMA get [%s] status:%s[%d]\n", pstream[type].name, dma_str_status(status), status);
+    }
     readn = info.blocks[0].length;
+     if(STREAM_ADC == type){
+        info.blocks[0].offset = info.blocks[0].offset - info.blocks[0].offset % pagesize;
+        readn = readn - readn % pagesize;
+     }
+    
     *data = pstream[type].ptr + info.blocks[0].offset;
-    printf_debug("%s, readn:%d\n", pstream[type].name, readn);
+    
+    if(STREAM_ADC == type)
+        printf_note("[%p, %p, offset=0x%x]%s, readn:%u\n", *data, pstream[type].ptr, info.blocks[0].offset,  pstream[type].name, readn);
 
     return readn;
 }
@@ -217,6 +233,18 @@ static ssize_t spm_read_adc_data(void **data)
     return spm_stream_read(STREAM_ADC, data);
 }
 
+
+static int spm_read_adc_over_deal(void *arg)
+{
+    unsigned int nwrite_byte;
+    nwrite_byte = *(unsigned int *)arg;
+    
+    struct _spm_stream *pstream = spm_stream;
+    if(pstream){
+        ioctl(pstream[STREAM_ADC].id, IOCTL_DMA_SET_ASYN_READ_INFO, &nwrite_byte);
+    }
+        
+}
 
 static  float get_side_band_rate(uint32_t bandwidth)
 {
@@ -656,7 +684,6 @@ static int spm_stream_start(uint32_t len,uint8_t continuous, enum stream_type ty
 static int spm_stream_stop(enum stream_type type)
 {
     struct _spm_stream *pstream = spm_stream;
-
     ioctl(pstream[type].id, IOCTL_DMA_ASYN_READ_STOP, NULL);
     printf_debug("stream_stop: %d\n", type);
     return 0;
@@ -683,6 +710,7 @@ static const struct spm_backend_ops spm_ops = {
     .read_iq_data = spm_read_iq_data,
     .read_fft_data = spm_read_fft_data,
     .read_adc_data = spm_read_adc_data,
+    .read_adc_over_deal = spm_read_adc_over_deal,
     .data_order = spm_data_order,
     .send_fft_data = spm_send_fft_data,
     .send_iq_data = spm_send_iq_data,
@@ -708,6 +736,7 @@ struct spm_context * spm_create_fpga_context(void)
     struct spm_context *ctx = zalloc(sizeof(*ctx));
     if (!ctx)
         goto err_set_errno;
+    pagesize = getpagesize();
     ctx->ops = &spm_ops;
     ctx->pdata = &config_get_config()->oal_config;
     _init_run_timer(MAX_RADIO_CHANNEL_NUM);

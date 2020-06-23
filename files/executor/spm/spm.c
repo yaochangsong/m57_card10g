@@ -167,6 +167,11 @@ static struct spm_context *spmctx = NULL;
 
 struct spm_context *get_spm_ctx(void)
 {
+    if(spmctx == NULL){
+        printf_err("Spectrum Creat Failed!!\n");
+        exit(1);
+    }
+        
     return spmctx;
 }
 

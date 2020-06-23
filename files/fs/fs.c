@@ -37,6 +37,8 @@
 #include "../log/log.h"
 #include "../utils/utils.h"
 #include "../executor/spm/spm.h"
+#include "config.h"
+
 
 static struct _thread_tables{
     char *name;
@@ -59,166 +61,49 @@ static void _thread_data_init(void)
 {
     memset(&tp, 0, sizeof(struct _thread_pool));
 }
-static int timespec_check(struct timespec *t)
+
+static inline int _write_fs_disk_init(char *path)
 {
-    if ((t->tv_nsec < 0) || (t->tv_nsec >= 1000000000))
+    int fd;
+    if(path == NULL)
         return -1;
-    return 0;
+
+    fd = open(path, O_RDWR | O_CREAT | O_TRUNC | O_DIRECT | O_SYNC, 0666);
+    if (fd < 0) {
+        printf_err("open %s fail\n", path);
+        return -1;
+    }
+    return fd;
 }
-
-static void timespec_sub(struct timespec *t1, struct timespec *t2)
-{
-    if (timespec_check(t1) < 0) {
-        fprintf(stderr, "invalid time #1: %lld.%.9ld.\n",
-        	(long long)t1->tv_sec, t1->tv_nsec);
-        return;
-    }
-    if (timespec_check(t2) < 0) {
-        fprintf(stderr, "invalid time #2: %lld.%.9ld.\n",
-        	(long long)t2->tv_sec, t2->tv_nsec);
-        return;
-    }
-    t1->tv_sec -= t2->tv_sec;
-    t1->tv_nsec -= t2->tv_nsec;
-    if (t1->tv_nsec >= 1000000000) {
-        t1->tv_sec++;
-        t1->tv_nsec -= 1000000000;
-    } else if (t1->tv_nsec < 0) {
-        t1->tv_sec--;
-        t1->tv_nsec += 1000000000;
-    }
-}
-
-
-static int _write_disk(char *filename, size_t size)
+static inline  int _write_disk_run(int fd, size_t size, void *pdata)
 {
     #define     WRITE_UNIT_BYTE 8388608
-    void *user_mem = NULL;
     size_t pagesize = 0;
+    void *user_mem = NULL;
     int rc;
-    struct timespec ts_start, ts_end;
-    float speed = 0;
-    uint32_t total_MB = 0, reminder_MB = 0;
-    uint32_t reminder = 0, count;
+
+    if(size == 0 || pdata == NULL || fd <= 0)
+        return -1;
+
+    //posix_memalign((void **)&user_mem, 4096 /*alignment */ , size + 4096);
+    //posix_memalign((void **)&user_mem, 4096 /*alignment */ , WRITE_UNIT_BYTE + 4096);
+    //printf_note("fd=%d, pdata=%p, %p, size=0x%x\n",fd, pdata,user_mem,  size);
+
     
-   if(size == 0)
-        return -1;
-    count = size / WRITE_UNIT_BYTE;
-    reminder = size % WRITE_UNIT_BYTE;
-    printf_note("filesize:%uByte, count=%u\n", size, count);
-
-    total_MB = (size / (1024 * 1024));
-    reminder_MB = (size % (1024 * 1024));
-    printf_note(" write:filesize:%luByte, block size=%d, count=%dByte, total=%u.%uMB\n", size, WRITE_UNIT_BYTE, count, total_MB, reminder_MB);
-    pagesize=getpagesize();
-    posix_memalign((void **)&user_mem, pagesize /*alignment */ , WRITE_UNIT_BYTE + pagesize);
-    if (!user_mem) {
-        fprintf(stderr, "OOM %lu.\n", pagesize);
-        return -1;
-    }
-
-    int out_fd = open(filename, O_RDWR | O_CREAT | O_TRUNC | O_DIRECT | O_SYNC, 0666);
-    if (out_fd < 0) {
-        printf("open %s fail\n", filename);
-        return -1;
-    }
-
-    rc = clock_gettime(CLOCK_MONOTONIC, &ts_start);
-    while (count--)
-    {
-        rc = write(out_fd, user_mem, WRITE_UNIT_BYTE);
-        if (rc < 0){
-            perror("write file");
-            goto done;
-        }
-        else if(rc != WRITE_UNIT_BYTE)
-        {
-         printf("%s, Write 0x%x != 0x%x.\n", filename, rc, WRITE_UNIT_BYTE);
-        }
-    }
-    if(reminder > 0){
-        rc = write(out_fd, user_mem, reminder);
-        if (rc < 0){
-            perror("write file");
-            goto done;
-        }else if(rc != WRITE_UNIT_BYTE){
-            printf("%s, Write 0x%x != 0x%x.\n", filename, rc, WRITE_UNIT_BYTE);
-        }
+    //rc = write(fd, user_mem, WRITE_UNIT_BYTE);
+    rc = write(fd, user_mem, size);
+    if (rc < 0){
+        perror("write file");
     }
     sync();
-    clock_gettime(CLOCK_MONOTONIC, &ts_end);
-    timespec_sub(&ts_end, &ts_start);
-    float total_t = ts_end.tv_sec + (float)(ts_end.tv_nsec / 1000000000.0);
-    fprintf(stdout,"total time: %.5f sec\n", total_t);
-    speed = (float)(total_MB / total_t);
-    fprintf(stdout,"speed: %.2f MBps\n", speed);
-done:
-    free(user_mem);
-    close(out_fd);
     return 0;
 }
 
-static int _read_disk(char *filename, int size)
+static inline  void _write_disk_close(int fd)
 {
-    void *user_mem = NULL;
-    size_t pagesize = 0;
-    int rc;
-    struct timespec ts_start, ts_end;
-    float speed = 0;
-    uint32_t total_MB = 0;
-    struct stat input_stat;
-    int count = 0;
-
-    pagesize=getpagesize();
-    posix_memalign((void **)&user_mem, pagesize /*alignment */ , size + pagesize);
-    if (!user_mem) {
-        fprintf(stderr, "OOM %lu.\n", pagesize);
-        return -1;
-    }
-
-    int in_fd = open(filename, O_RDONLY | O_DIRECT | O_SYNC, 0666);
-    if (in_fd < 0) {
-        printf("open %s fail\n", filename);
-        return -1;
-    }
-
-    if (fstat(in_fd, &input_stat) < 0) {
-        perror("Unable to get file statistics");
-        rc = 1;
-        goto done;
-    }
-
-    count = input_stat.st_size / size;
-    total_MB = input_stat.st_size / (1024 * 1024);
-    printf("test read: block size=%d, count=%d, total=%u MB\n", size, count, total_MB);
-
-    rc = clock_gettime(CLOCK_MONOTONIC, &ts_start);
-    while (count--)
-    {
-        rc = read(in_fd, user_mem, size);
-        if (rc < 0)
-        {
-            perror("read file");
-            goto done;
-        }
-        else if(rc != size)
-        {
-            printf("%s, Write 0x%x != 0x%x.\n", filename, rc, size);
-        }
-    }
-    clock_gettime(CLOCK_MONOTONIC, &ts_end);
-    timespec_sub(&ts_end, &ts_start);
-    float total_t = ts_end.tv_sec + (float)(ts_end.tv_nsec / 1000000000.0);
-    fprintf(stdout,"total time: %.5f sec\n", total_t);
-    speed = (float)(total_MB / total_t);
-    fprintf(stdout,"speed: %.2f MBps\n", speed);
-
-done:
-    free(user_mem);
-    close(in_fd);
-    return 0;
+    if(fd > 0)
+        close(fd);
 }
-
 
 
 static bool _fs_disk_valid(void)
@@ -249,43 +134,63 @@ static int _fs_mkdir(char *dirname)
     return 0;
 }
 
+static char *_fs_get_root_dir(void)
+{
+    return "/run/media/nvme0n1";
+}
+
+
+
 static ssize_t _fs_dir(char *dirname, void **data)
 {
     DIR *dp;
     struct dirent *dirp;
+    struct stat stats;
+    char path[PATH_MAX];
     if((dp = opendir(dirname))==NULL){
         perror("opendir error");
-        exit(1);
+        return -1;
     }
     while((dirp = readdir(dp))!=NULL){
         if((strcmp(dirp->d_name,".")==0)||(strcmp(dirp->d_name,"..")==0))
             continue;
         printf("%6d:%-19s %5s\n",dirp->d_ino,dirp->d_name,(dirp->d_type==DT_DIR)?("(DIR)"):(""));
+        snprintf(path,PATH_MAX, "%s/%s", dirname, dirp->d_name);
+        path[PATH_MAX] = 0;
+        printf_note("path:%s, dirp->d_name = %s, PATH_MAX=%d\n", path, dirp->d_name, PATH_MAX);
+        if (stat(path, &stats))
+            continue;
+        printf_note("PATH_MAX:%d, (%s)st_size:%u, st_blocks:%u, st_mode:%x, st_mtime=0x%x\n", PATH_MAX, dirp->d_name, stats.st_size, stats.st_blocks, stats.st_mode, stats.st_mtime);
     }
-
     closedir(dp);
     return 0;
 }
 
-
-void *_fs_start_save_file_thread(void *arg)
+int _fs_start_save_file_thread(void *arg)
 {
     typedef int16_t adc_t;
     adc_t *ptr = NULL;
     ssize_t nread = 0; 
-    char filename[256];
-    int stateval;
-    
-    printf_note("start save filename: %s\n", arg);
-#if 0
-    nread = _ctx->ops.read_adc_data(&ptr);
+    int ret, fd;
+#if 1
+    fd = *(int *)arg;
+    struct spm_context *_ctx;
+    _ctx = get_spm_ctx();
+    nread = _ctx->ops->read_adc_data(&ptr);
     if(nread > 0){
-        ret = _write_disk(filename, nread);
+        ret = _write_disk_run(fd, nread, ptr);
+        _ctx->ops->read_adc_over_deal(&nread);
+    }else{
+        printf("read_adc_data err:%d\n", nread);
     }
-#endif
+    usleep(1000);
+#else
     sleep(1);
+#endif
+    return nread;
 
 }
+
 
 /* act = 1: start save file; act = 0: stop save file */
 static ssize_t _fs_save_file(char *filename, int act)
@@ -293,19 +198,29 @@ static ssize_t _fs_save_file(char *filename, int act)
     #define     _START_SAVE     1
     #define     _STOP_SAVE      0
     int ret = -1, i, found = 0, cval;
-
+    static int fd = -1;
+    #define THREAD_NAME "FS_SAVE_FILE"
+    char path[512];
+    
     if(disk_is_valid == false)
         return -1;
     if(filename == NULL)
             return -1;
     
     if(act == _START_SAVE){
-        ret = pthread_create_detach_loop(NULL, _fs_start_save_file_thread, filename, filename);
+        io_set_enable_command(ADC_MODE_ENABLE, -1, -1, 0);
+        snprintf(path, sizeof(path), "%s/%s", _fs_get_root_dir(), filename);
+        fd = _write_fs_disk_init(path);
+        printf("start save file: %s\n", path);
+        ret = pthread_create_detach_loop(NULL, _fs_start_save_file_thread, THREAD_NAME, &fd);
         if(ret != 0){
             perror("pthread cread save file thread!!");
         }
     }else{  /* stop save file */
-        pthread_cancel_by_name(filename);
+        io_set_enable_command(ADC_MODE_DISABLE, -1, -1, 0);
+        printf("stop save file : %s\n", THREAD_NAME);
+        pthread_cancel_by_name(THREAD_NAME);
+        _write_disk_close(fd);
     }
     return ret;
 }
@@ -365,6 +280,7 @@ void fs_init(void)
         return;
     fs_ctx = fs_create_context();
     pthread_bmp_init();
+    _fs_dir("/run/media/nvme0n1", NULL);
     //_fs_mkdir("/run/media/");
 }
 

@@ -784,7 +784,7 @@ static int akt_execute_set_command(void *cl)
                     printf_warn("NOT FOUND DISK!!\n");
                     break;
                 }
-                fs_ctx->ops->fs_save_file("test.txt", 1);
+                fs_ctx->ops->fs_save_file(sis.filepath, 1);
 #endif
             }else if(sis.cmd == 0){/* stop add iq file */
                 printf_note("Stop add file:%s\n", sis.filepath);
@@ -798,7 +798,7 @@ static int akt_execute_set_command(void *cl)
                     printf_warn("NOT FOUND DISK!!\n");
                     break;
                 }
-                fs_ctx->ops->fs_save_file("test.txt", 0);
+                fs_ctx->ops->fs_save_file(sis.filepath, 0);
 #endif
             }else{
                 printf_err("error cmd\n");

@@ -52,11 +52,15 @@ static struct  band_table_t bandtable[] ={
     {65536,  0, 100000000},
     {0,      0, 200000000},
 #else
-    {458752, 0, 20000000},
-    {196608, 0, 40000000},
-    {65536, 0, 80000000},
-    {0,       0, 160000000},
-    {0,       0, 175000000},
+    {458752, 0,  20000000},
+    {458752, 0,  25000000},
+    {196608, 0,  40000000},
+    {196608, 0,  50000000},
+    {65536,  0,  80000000},
+    {65536,  0,  100000000},
+    {0,      0,  160000000},
+    {0,      0,  175000000},
+    {0,      0,  200000000},
 #endif
 }; 
 
@@ -101,8 +105,18 @@ int io_set_udp_client_info(void *arg)
     return ret;
 }
 
+int set_1g_network_ipaddress(char *ipaddr, char *mask,char *gateway)
+{
+    return set_ipaddress(NETWORK_EHTHERNET_POINT, ipaddr, mask,gateway);
+}
+
 #ifdef SUPPORT_NET_WZ
-int32_t io_set_local_10g_net(uint32_t ip, uint16_t port)
+int set_10g_network_ipaddress(char *ipaddr, char *mask,char *gateway)
+{
+    return set_ipaddress(NETWORK_10G_EHTHERNET_POINT, ipaddr, mask,gateway);
+}
+
+int32_t io_set_local_10g_net(uint32_t ip, uint32_t nw,uint32_t gw,uint16_t port)
 {
     struct net_10g_local_param_t{
         uint32_t local_ip_10g;
@@ -120,6 +134,25 @@ int32_t io_set_local_10g_net(uint32_t ip, uint16_t port)
     nl.local_port_10g = port;
     printf_note("ipaddress[0x%x], port=%d\n", nl.local_ip_10g, nl.local_port_10g);
     ret = ioctl(io_ctrl_fd,IOCTL_NET_10G_LOCAL_SET,&nl);
+#else
+    struct in_addr ipaddr, netmask, gateway;
+    char s_ipaddr[16], s_netmask[16], s_gateway[16];
+    ipaddr.s_addr = ip;
+
+    port = port;
+    
+    memcpy(&s_ipaddr, inet_ntoa(ipaddr), sizeof(s_ipaddr));
+    printf_note("set 10g ipaddress[%s], %s\n", inet_ntoa(ipaddr), s_ipaddr);
+
+    netmask.s_addr = nw;
+    memcpy(&s_netmask, inet_ntoa(netmask), sizeof(s_netmask));
+    printf_note("set 10g netmask[%s], %s\n", inet_ntoa(netmask), s_netmask);
+
+    gateway.s_addr = gw;
+    memcpy(&s_gateway, inet_ntoa(gateway), sizeof(s_gateway));
+    printf_note("set 10g gateway[%s], %s\n", inet_ntoa(gateway), s_gateway);
+
+    set_10g_network_ipaddress(s_ipaddr, s_netmask, s_gateway);
 #endif
     return ret;
 }
@@ -720,6 +753,32 @@ static void io_set_dma_SPECTRUM_out_en(int ch, int subch, uint32_t trans_len,uin
 #endif
 }
 
+
+static void io_set_dma_adc_out_en(int ch, int subch, uint32_t trans_len,uint8_t continuous)
+{
+    printf_debug("ADC out enable: output en\n");
+#if defined(SUPPORT_PLATFORM_ARCH_ARM)
+#if defined(SUPPORT_SPECTRUM_KERNEL)
+
+#elif defined(SUPPORT_SPECTRUM_V2)
+    get_spm_ctx()->ops->stream_start(trans_len, continuous, STREAM_ADC);
+#endif
+#endif
+}
+
+static void io_set_dma_adc_out_disable(int ch, int subch)
+{
+    printf_debug("ADC out disable\n",ch);
+#if defined(SUPPORT_PLATFORM_ARCH_ARM)
+#if defined(SUPPORT_SPECTRUM_KERNEL)
+
+#elif defined(SUPPORT_SPECTRUM_V2)
+    get_spm_ctx()->ops->stream_stop(STREAM_ADC);
+#endif
+#endif
+}
+
+
 static void io_set_dma_SPECTRUM_out_disable(int ch, int subch)
 {
 #if defined(SUPPORT_PLATFORM_ARCH_ARM)
@@ -840,6 +899,16 @@ int8_t io_set_enable_command(uint8_t type, int ch, int subc_ch, uint32_t fftsize
         case PSD_MODE_DISABLE:
         {
             io_set_dma_SPECTRUM_out_disable(ch, subc_ch);
+            break;
+        }
+        case ADC_MODE_ENABLE:
+        {
+            io_set_dma_adc_out_en(ch, subc_ch, 512,1);
+            break;
+        }
+        case ADC_MODE_DISABLE:
+        {
+            io_set_dma_adc_out_disable(ch, subc_ch);
             break;
         }
         case AUDIO_MODE_ENABLE:

@@ -144,14 +144,17 @@ int get_gateway(struct in_addr * gw)
 }
 
 
-int set_ipaddress(char *ipaddr, char *mask,char *gateway)  
+int set_ipaddress(char *endpoint, char *ipaddr, char *mask,char *gateway)  
 {  
     int fd;  
     int rc;  
     struct ifreq ifr;   
     struct sockaddr_in *sin;  
     struct rtentry  rt;  
-  
+
+    if(endpoint == NULL || ipaddr == NULL || mask== NULL || gateway == NULL){
+        return -1;
+    }
     fd = socket(AF_INET, SOCK_DGRAM, 0);  
     if(fd < 0)  
     {  
@@ -159,7 +162,7 @@ int set_ipaddress(char *ipaddr, char *mask,char *gateway)
             return -1;       
     }  
     memset(&ifr,0,sizeof(ifr));   
-    strcpy(ifr.ifr_name,NETWORK_EHTHERNET_POINT);   
+    strcpy(ifr.ifr_name,endpoint);   
     sin = (struct sockaddr_in*)&ifr.ifr_addr;       
     sin->sin_family = AF_INET;       
     //IP地址  

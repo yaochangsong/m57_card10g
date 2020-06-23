@@ -22,7 +22,12 @@
 #define MAX_COMMON_PARAM_LEN 512
 
 #ifdef SUPPORT_PLATFORM_ARCH_ARM
+#ifdef SUPPORT_NET_WZ
+#define NETWORK_10G_EHTHERNET_POINT       "eth0"
+#define NETWORK_EHTHERNET_POINT           "eth1"
+#else
 #define NETWORK_EHTHERNET_POINT       "eth0"
+#endif
 #else
 #define NETWORK_EHTHERNET_POINT       "eno1"
 #endif

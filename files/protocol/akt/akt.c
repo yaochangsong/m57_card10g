@@ -498,13 +498,14 @@ static int akt_execute_set_command(void *cl)
             
             printf_note("ipaddr=0x%x, mask=0x%x, gateway=0x%x, port=%d\n", 
                 poal_config->network.ipaddress, poal_config->network.netmask, poal_config->network.gateway, poal_config->network.port);
+            config_save_all();
             executor_set_command(EX_NETWORK_CMD, EX_NETWORK_1G, 0, NULL);
             if(poal_config->network.port != ntohs(netinfo.port)){
                 /* 修改端口重启app */
                 poal_config->network.port = ntohs(netinfo.port);
                 restart = true;
             }
-            config_save_all();
+            
             if(restart)
                 io_restart_app();
           break;

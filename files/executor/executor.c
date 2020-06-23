@@ -771,12 +771,16 @@ int8_t executor_set_command(exec_cmd cmd, uint8_t type, uint8_t ch,  void *data,
         case EX_NETWORK_CMD:
         {
             if(type == EX_NETWORK_1G){
-                executor_set_1g_network(&poal_config->network);
+                safe_system("/etc/network.sh");
+                sleep(1);
+                //executor_set_1g_network(&poal_config->network);
             }
             
 #ifdef SUPPORT_NET_WZ
             else if(type == EX_NETWORK_10G){
-                executor_set_10g_network(&poal_config->network_10g);
+                safe_system("/etc/network.sh");
+                sleep(1);
+                //executor_set_10g_network(&poal_config->network_10g);
             }
 #endif
             break;

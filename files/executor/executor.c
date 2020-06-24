@@ -723,7 +723,10 @@ set_gateway:
     }
     
 set_network:
-    return io_set_network_to_interfaces((void *)network);
+    safe_system("/etc/network.sh &");
+    sleep(1);
+    return 0;
+    //return io_set_network_to_interfaces((void *)network);
 }
 
 
@@ -775,14 +778,12 @@ int8_t executor_set_command(exec_cmd cmd, uint8_t type, uint8_t ch,  void *data,
         case EX_NETWORK_CMD:
         {
             if(type == EX_NETWORK_1G){
-                safe_system("/etc/network.sh");
-                sleep(1);
-                //executor_set_1g_network(&poal_config->network);
+                executor_set_1g_network(&poal_config->network);
             }
             
 #ifdef SUPPORT_NET_WZ
             else if(type == EX_NETWORK_10G){
-                safe_system("/etc/network.sh");
+                safe_system("/etc/network.sh &");
                 sleep(1);
                 //executor_set_10g_network(&poal_config->network_10g);
             }

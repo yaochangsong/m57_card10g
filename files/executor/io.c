@@ -154,7 +154,7 @@ int32_t io_set_local_10g_net(uint32_t ip, uint32_t nw,uint32_t gw,uint16_t port)
 
     set_10g_network_ipaddress(s_ipaddr, s_netmask, s_gateway);
 #endif
-    return ret;
+    return 0;
 }
 
 /* 万兆开关 */

@@ -625,10 +625,28 @@ char *assemble_json_file_list(void)
     return str_json;
 }
 
+static void find_file_list(char *filename, struct stat *stats, cJSON *root)
+{
+    cJSON* item = NULL;
+    if(stats == NULL || filename == NULL || root == NULL)
+        return;
+    cJSON_AddStringToObject(root, "filename", filename);
+    cJSON_AddNumberToObject(root, "size", stats->st_size);
+    cJSON_AddNumberToObject(root, "createTime", stats->st_mtime);
+}
 char *assemble_json_find_file(char *filename)
 {
     char *str_json = NULL;
     int i;
+    
+    cJSON *root = cJSON_CreateObject();
+#if defined(SUPPORT_FS)
+    struct fs_context *fs_ctx;
+    fs_ctx = get_fs_ctx();
+    if(fs_ctx == NULL)
+        return NULL;
+    fs_ctx->ops->fs_find(filename, find_file_list, root);
+#else
     struct file_list{
         char *filename;
         size_t size;
@@ -637,13 +655,10 @@ char *assemble_json_find_file(char *filename)
     struct file_list fl[] = {
         {"test1.wav", "1201MByte", 14684468},
     };
-    cJSON *root = cJSON_CreateObject();
-    cJSON* item = cJSON_CreateObject();
-    
     cJSON_AddStringToObject(root, "filename", filename);
     cJSON_AddStringToObject(root, "size", fl[i].size);
     cJSON_AddNumberToObject(root, "createTime", fl[i].ctime);
-    
+#endif
     json_print(root, 1);
     str_json = cJSON_PrintUnformatted(root);
     

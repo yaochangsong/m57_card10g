@@ -21,6 +21,8 @@ struct fs_ops {
     bool (*fs_disk_valid)(void);
     int (*fs_format)(void);
     int (*fs_mkdir)(char *);
+    int (*fs_delete)(char *);
+    int (*fs_find)(char *,int (*callback) (char *,void *, void *), void *);
     ssize_t (*fs_dir)(char *,  int(*callback) (char *, void *, void *), void *);
     ssize_t (*fs_start_save_file)(char *);
     ssize_t (*fs_stop_save_file)(char *);

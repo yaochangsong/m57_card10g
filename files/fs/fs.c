@@ -95,6 +95,11 @@ static inline  void _write_disk_close(int fd)
         close(fd);
 }
 
+char *fs_get_root_dir(void)
+{
+    return "/run/media/nvme0n1/data";
+}
+
 
 bool _fs_disk_valid(void)
 {
@@ -126,12 +131,72 @@ static inline int _fs_mkdir(char *dirname)
     return 0;
 }
 
-char *fs_get_root_dir(void)
+static inline int _fs_delete(char *filename)
 {
-    return "/run/media/nvme0n1/data";
+    char path[PATH_MAX];
+    int ret = 0;
+    
+    if(disk_is_valid == false)
+        return -1;
+
+    if(filename == NULL)
+        return -1;
+    
+    sprintf(path, "%s/%s", fs_get_root_dir(), filename);
+    path[PATH_MAX] = 0;
+
+    if(remove(path) == 0 ){
+        printf_note("Removed %s.\n", path);
+    }
+    else{
+        perror("remove");
+        ret = -1;
+    }
+        
+    return ret;
 }
 
+static inline int _fs_find(char *filename,  int (*callback) (char *,void *, void *), void *args)
+{
+    char path[PATH_MAX];
+    int ret = 0;
+    DIR *dp;
+    struct dirent *dirp;
+    struct stat stats;
+    char *dirname;
+    
+    if(disk_is_valid == false)
+        return -1;
 
+    if(filename == NULL)
+        return -1;
+
+    dirname = fs_get_root_dir();
+    if((dp = opendir(dirname))==NULL){
+        perror("opendir error");
+        return -1;
+    }
+    while((dirp = readdir(dp))!=NULL){
+        if((strcmp(dirp->d_name,".")==0)||(strcmp(dirp->d_name,"..")==0))
+            continue;
+        printf_debug("%6d:%-19s %5s\n",dirp->d_ino,dirp->d_name,(dirp->d_type==DT_DIR)?("(DIR)"):(""));
+        if(strncmp(filename, dirp->d_name, strlen(dirp->d_name))){
+            continue;
+        }
+        snprintf(path,PATH_MAX, "%s/%s", dirname, dirp->d_name);
+        path[PATH_MAX-1] = 0;
+        printf_debug("path=%s,d_name=%s,PATH_MAX=%d\n", path, dirp->d_name, PATH_MAX);
+        if (stat(path, &stats))
+            continue;
+        if(callback)
+            callback(dirp->d_name, &stats, args);
+        //printf_note("PATH_MAX:%d, (%s)st_size:%llu, st_blocks:%u, st_mode:%x, st_mtime=0x%x\n", PATH_MAX, dirp->d_name, (off_t)stats.st_size, stats.st_blocks, stats.st_mode, stats.st_mtime);
+        break;
+    }
+    closedir(dp);
+        
+    return ret;
+}
 
 static ssize_t _fs_dir(char *dirname, int (*callback) (char *,void *, void *), void *args)
 {
@@ -148,15 +213,15 @@ static ssize_t _fs_dir(char *dirname, int (*callback) (char *,void *, void *), v
     while((dirp = readdir(dp))!=NULL){
         if((strcmp(dirp->d_name,".")==0)||(strcmp(dirp->d_name,"..")==0))
             continue;
-        printf("%6d:%-19s %5s\n",dirp->d_ino,dirp->d_name,(dirp->d_type==DT_DIR)?("(DIR)"):(""));
+        printf_debug("%6d:%-19s %5s\n",dirp->d_ino,dirp->d_name,(dirp->d_type==DT_DIR)?("(DIR)"):(""));
         snprintf(path,PATH_MAX, "%s/%s", dirname, dirp->d_name);
-        path[PATH_MAX] = 0;
-        printf_note("path:%s, dirp->d_name = %s, PATH_MAX=%d\n", path, dirp->d_name, PATH_MAX);
+        path[PATH_MAX-1] = 0;
+        printf_debug("path:%s, dirp->d_name = %s, PATH_MAX=%d\n", path, dirp->d_name, PATH_MAX);
         if (stat(path, &stats))
             continue;
         if(callback)
             callback(dirp->d_name, &stats, args);
-        printf_note("PATH_MAX:%d, (%s)st_size:%llu, st_blocks:%u, st_mode:%x, st_mtime=0x%x\n", PATH_MAX, dirp->d_name, (off_t)stats.st_size, stats.st_blocks, stats.st_mode, stats.st_mtime);
+        printf_debug("PATH_MAX:%d, (%s)st_size:%llu, st_blocks:%u, st_mode:%x, st_mtime=0x%x\n", PATH_MAX, dirp->d_name, (off_t)stats.st_size, stats.st_blocks, stats.st_mode, stats.st_mtime);
     }
     closedir(dp);
     return 0;
@@ -247,6 +312,8 @@ static const struct fs_ops _fs_ops = {
     .fs_format = _fs_format,
     .fs_mkdir = _fs_mkdir,
     .fs_dir = _fs_dir,
+    .fs_delete = _fs_delete,
+    .fs_find = _fs_find,
     .fs_start_save_file = _fs_start_save_file,
     .fs_stop_save_file = _fs_stop_save_file,
     .fs_start_read_raw_file = _fs_start_read_raw_file,

@@ -627,6 +627,15 @@ int cmd_file_delete(struct uh_client *cl, void **arg, void **content)
 #if defined(SUPPORT_XWFS)
     xwfs_delete_file(filename);
 #endif
+#if defined(SUPPORT_FS)
+    struct fs_context *fs_ctx;
+    fs_ctx = get_fs_ctx();
+    if(fs_ctx == NULL){
+        code = RESP_CODE_EXECMD_ERR;
+        goto error;
+    }
+    fs_ctx->ops->fs_delete(filename);
+#endif
 error:
     *arg = get_resp_message(code);
     return code;
@@ -667,6 +676,8 @@ int cmd_file_list(struct uh_client *cl, void **arg, void **content)
 {
     int code = RESP_CODE_OK;
     *content = assemble_json_file_list();
+    if(*content == NULL)
+        code = RESP_CODE_EXECMD_ERR;
 error:
     *arg = get_resp_message(code);
     return code;

@@ -83,7 +83,7 @@ else
     SUPPORT_CLOCK_ADC_SPI=n
     SUPPORT_CLOCK_ADC_FPGA=y
     #万兆
-    SUPPORT_NET_WZ=n
+    SUPPORT_NET_WZ=y
 	#gps
 	SUPPORT_GPS=n
 	ifneq ($(findstring y,$(SUPPORT_PROJECT_SSA)),)

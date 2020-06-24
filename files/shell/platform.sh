@@ -8,6 +8,7 @@ start()
 	/etc/led.sh check on
     /etc/network.sh
     /etc/led.sh work on
+    ln -s /run/media/nvme0n1/data data
 #   insmod /lib/modules/4.6.0-xilinx/extra/dmadrvm.ko
  #   insmod /lib/modules/4.6.0-xilinx/extra/xwfsm.ko
     platform &

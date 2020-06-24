@@ -5,6 +5,7 @@ start()
     echo " Start FlatForm."
 	/etc/led.sh init
     /etc/led.sh power on
+	/etc/led.sh check on
     /etc/network.sh
     /etc/led.sh work on
 #   insmod /lib/modules/4.6.0-xilinx/extra/dmadrvm.ko

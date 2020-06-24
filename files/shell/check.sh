@@ -1,6 +1,7 @@
 #!/bin/sh
 
 proj_name=check.sh
+bin_name=platform
 #devmem 0xb00010c0 32
 ADC_STATE_REG_ADDR=0xb00010c0
 
@@ -67,6 +68,13 @@ self_status_cheak()
 	else
 		log_out "faild status"
 		/etc/led.sh check off
+	fi
+	
+	is_exist $bin_name
+	if [ $? -eq 0 ]; then
+		/etc/led.sh work off
+	else
+		/etc/led.sh work on
 	fi
 }
 

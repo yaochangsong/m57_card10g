@@ -115,7 +115,7 @@ static inline  void _write_disk_close(int fd)
 }
 
 
-static inline bool _fs_disk_valid(void)
+bool _fs_disk_valid(void)
 {
     #define DISK_NODE_NAME "/dev/nvme0"
     //if(access(DISK_NODE_NAME)){
@@ -145,19 +145,21 @@ static inline int _fs_mkdir(char *dirname)
     return 0;
 }
 
-static  inline char *_fs_get_root_dir(void)
+char *fs_get_root_dir(void)
 {
     return "/run/media/nvme0n1/data";
 }
 
 
 
-static ssize_t _fs_dir(char *dirname, void **data)
+static ssize_t _fs_dir(char *dirname, int (*callback) (char *,void *, void *), void *args)
 {
     DIR *dp;
     struct dirent *dirp;
     struct stat stats;
     char path[PATH_MAX];
+    if(dirname == NULL)
+        dirname = fs_get_root_dir();
     if((dp = opendir(dirname))==NULL){
         perror("opendir error");
         return -1;
@@ -171,6 +173,8 @@ static ssize_t _fs_dir(char *dirname, void **data)
         printf_note("path:%s, dirp->d_name = %s, PATH_MAX=%d\n", path, dirp->d_name, PATH_MAX);
         if (stat(path, &stats))
             continue;
+        if(callback)
+            callback(dirp->d_name, &stats, args);
         printf_note("PATH_MAX:%d, (%s)st_size:%llu, st_blocks:%u, st_mode:%x, st_mtime=0x%x\n", PATH_MAX, dirp->d_name, (off_t)stats.st_size, stats.st_blocks, stats.st_mode, stats.st_mtime);
     }
     closedir(dp);
@@ -221,7 +225,7 @@ static ssize_t _fs_save_file(char *filename, int act)
     
     if(act == _START_SAVE){
         io_set_enable_command(ADC_MODE_ENABLE, -1, -1, 0);
-        snprintf(path, sizeof(path), "%s/%s", _fs_get_root_dir(), filename);
+        snprintf(path, sizeof(path), "%s/%s", fs_get_root_dir(), filename);
         fd = _write_fs_disk_init(path);
         printf("start save file: %s\n", path);
         ret = pthread_create_detach_loop(NULL, _fs_start_save_file_thread, THREAD_NAME, &fd);
@@ -292,7 +296,7 @@ void fs_init(void)
         return;
     fs_ctx = fs_create_context();
     pthread_bmp_init();
-    _fs_mkdir(_fs_get_root_dir());
-    _fs_dir(_fs_get_root_dir(), NULL);
+    _fs_mkdir(fs_get_root_dir());
+    _fs_dir(fs_get_root_dir(), NULL, NULL);
 }
 

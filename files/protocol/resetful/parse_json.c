@@ -14,6 +14,10 @@
 ******************************************************************************/
 #include "config.h"
 #include "parse_cmd.h"
+#include <sys/types.h>
+#include <dirent.h>
+
+
 
 static inline bool str_to_int(char *str, int *ivalue, bool(*_check)(int))
 {
@@ -572,6 +576,17 @@ int parse_json_file_store(const char * const body, uint8_t ch,  uint8_t enable, 
         return RESP_CODE_OK;
 }
 
+void creat_file_list(char *filename, struct stat *stats, cJSON *array)
+{
+    cJSON* item = NULL;
+    if(stats == NULL || filename == NULL || array == NULL)
+        return;
+    cJSON_AddItemToArray(array, item = cJSON_CreateObject());
+    cJSON_AddStringToObject(item, "filename", filename);
+    cJSON_AddNumberToObject(item, "size", (off_t)stats->st_size);
+    cJSON_AddNumberToObject(item, "createTime", stats->st_mtime);
+}
+
 char *assemble_json_file_list(void)
 {
     char *str_json = NULL;
@@ -588,7 +603,13 @@ char *assemble_json_file_list(void)
     cJSON *root = cJSON_CreateObject();
     cJSON *array = cJSON_CreateArray();
     cJSON* item = NULL;
-
+#if defined(SUPPORT_FS)
+    struct fs_context *fs_ctx;
+    fs_ctx = get_fs_ctx();
+    if(fs_ctx == NULL)
+        return NULL;
+    fs_ctx->ops->fs_dir(NULL, creat_file_list, array);
+#else
     cJSON_AddNumberToObject(root, "number", ARRAY_SIZE(fl));
     for(i = 0; i < ARRAY_SIZE(fl); i++){
         cJSON_AddItemToArray(array, item = cJSON_CreateObject());
@@ -596,6 +617,7 @@ char *assemble_json_file_list(void)
         cJSON_AddStringToObject(item, "size", fl[i].size);
         cJSON_AddNumberToObject(item, "createTime", fl[i].ctime);
     }
+#endif
     cJSON_AddItemToObject(root, "list", array);
     json_print(root, 1);
     str_json = cJSON_PrintUnformatted(root);

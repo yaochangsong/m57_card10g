@@ -29,6 +29,7 @@
 #define NETWORK_EHTHERNET_POINT       "eth0"
 #endif
 #else
+#define NETWORK_10G_EHTHERNET_POINT   "eno2"
 #define NETWORK_EHTHERNET_POINT       "eno1"
 #endif
 

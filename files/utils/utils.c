@@ -44,20 +44,21 @@ char *safe_strdup(const char *s)
     return (retval);
 }
 
-int get_ipaddress(struct in_addr *addr)
+int get_ipaddress(char *ifname, struct in_addr *addr)
 {
     int sock;
     struct sockaddr_in sin;
     struct ifreq ifr;
 	char *temp_ip = NULL;
-    
+    if(ifname == NULL)
+        return -1;
     sock = socket(AF_INET, SOCK_DGRAM, 0);
     if (sock == -1)
     {
         perror("socket");
         return -1;                
     }
-    strncpy(ifr.ifr_name, NETWORK_EHTHERNET_POINT, IFNAMSIZ-1);
+    strncpy(ifr.ifr_name, ifname, IFNAMSIZ-1);
     ifr.ifr_name[IFNAMSIZ - 1] = 0;
     
     if (ioctl(sock, SIOCGIFADDR, &ifr) < 0)
@@ -75,20 +76,21 @@ int get_ipaddress(struct in_addr *addr)
     return 0;
 }
 
-int get_netmask(struct in_addr *netmask)
+int get_netmask(char *ifname, struct in_addr *netmask)
 {
     int sock;
     struct sockaddr_in sin;
     struct ifreq ifr;
     char *temp_netmask = NULL;
-    
+    if(ifname == NULL)
+        return -1;
     sock = socket(AF_INET, SOCK_DGRAM, 0);
     if (sock == -1)
     {
         perror("socket");
         return -1;                
     }
-    strncpy(ifr.ifr_name, NETWORK_EHTHERNET_POINT, IFNAMSIZ-1);
+    strncpy(ifr.ifr_name, ifname, IFNAMSIZ-1);
     ifr.ifr_name[IFNAMSIZ - 1] = 0;
     
     if (ioctl(sock, SIOCGIFNETMASK, &ifr) < 0)
@@ -106,7 +108,7 @@ int get_netmask(struct in_addr *netmask)
     return 0;
 }
 
-int get_gateway(struct in_addr * gw)
+int get_gateway(char *ifname, struct in_addr * gw)
 {
     long destination, gateway;
     char iface[IF_NAMESIZE];
@@ -114,7 +116,9 @@ int get_gateway(struct in_addr * gw)
     FILE * file;
     struct sockaddr_in sin;
     char *temp_gw = NULL;
-
+    
+    if(ifname == NULL)
+        return -1;
     memset(iface, 0, sizeof(iface));
     memset(buf, 0, sizeof(buf));
 
@@ -125,7 +129,7 @@ int get_gateway(struct in_addr * gw)
     while (fgets(buf, sizeof(buf), file)) {
         if (sscanf(buf, "%s %lx %lx", iface, &destination, &gateway) == 3) {
             if (destination == 0) { /* default */
-                if(!strcmp(NETWORK_EHTHERNET_POINT, iface)){
+                if(!strcmp(ifname, iface)){
                     sin.sin_addr.s_addr = gateway;
                     temp_gw = inet_ntoa(sin.sin_addr);
                     *gw = sin.sin_addr;
@@ -144,7 +148,7 @@ int get_gateway(struct in_addr * gw)
 }
 
 
-int set_ipaddress(char *endpoint, char *ipaddr, char *mask,char *gateway)  
+int set_ipaddress(char *ifname, char *ipaddr, char *mask,char *gateway)  
 {  
     int fd;  
     int rc;  
@@ -152,7 +156,7 @@ int set_ipaddress(char *endpoint, char *ipaddr, char *mask,char *gateway)
     struct sockaddr_in *sin;  
     struct rtentry  rt;  
 
-    if(endpoint == NULL || ipaddr == NULL || mask== NULL || gateway == NULL){
+    if(ifname == NULL || ipaddr == NULL || mask== NULL || gateway == NULL){
         return -1;
     }
     fd = socket(AF_INET, SOCK_DGRAM, 0);  
@@ -162,7 +166,7 @@ int set_ipaddress(char *endpoint, char *ipaddr, char *mask,char *gateway)
             return -1;       
     }  
     memset(&ifr,0,sizeof(ifr));   
-    strcpy(ifr.ifr_name,endpoint);   
+    strcpy(ifr.ifr_name,ifname);   
     sin = (struct sockaddr_in*)&ifr.ifr_addr;       
     sin->sin_family = AF_INET;       
     //IP地址  
@@ -212,20 +216,21 @@ int set_ipaddress(char *endpoint, char *ipaddr, char *mask,char *gateway)
 }  
 
 
-int get_mac(char * mac, int len_limit)    
+int get_mac(char *ifname, char * mac, int len_limit)    
 {
     struct ifreq ifreq;
     int sock;
 
     if(mac ==NULL)
         return -1;
-    
+    if(ifname == NULL)
+        return -1;
     if ((sock = socket (AF_INET, SOCK_STREAM, 0)) < 0)
     {
         perror ("socket");
         return -1;
     }
-    strcpy (ifreq.ifr_name, NETWORK_EHTHERNET_POINT);    
+    strcpy (ifreq.ifr_name, ifname);    
 
     if (ioctl (sock, SIOCGIFHWADDR, &ifreq) < 0)
     {

@@ -11,6 +11,7 @@ struct net_udp_client {
     int response_length;
     int tag;
     int ch; /* channel */
+    char *ifname;
     void (*free)(struct net_udp_client *cl);
     void (*send_error)(struct net_udp_client *cl, int code, const char *summary, const char *fmt, ...);
     void (*send)(struct net_udp_client *cl, const void *data, int len);

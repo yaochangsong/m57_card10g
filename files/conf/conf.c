@@ -41,10 +41,17 @@ void config_init(void)
     config.oal_config.network.port = 1325;
     #endif
     memset(&config, 0, sizeof(config));
-    if(get_mac(mac, sizeof(mac)) != -1){
+    if(get_mac(NETWORK_EHTHERNET_POINT, mac, sizeof(mac)) != -1){
         memcpy(config.oal_config.network.mac, mac, sizeof(config.oal_config.network.mac));
+        printf_debug("1g mac:%x%x%x%x%x%x\n", mac[0],mac[1],mac[2],mac[3],mac[4],mac[5]);
     }
-    printf_debug("mac:%x%x%x%x%x%x\n", mac[0],mac[1],mac[2],mac[3],mac[4],mac[5]);
+#ifdef SUPPORT_NET_WZ
+    if(get_mac(NETWORK_10G_EHTHERNET_POINT, mac, sizeof(mac)) != -1){
+        memcpy(config.oal_config.network_10g.mac, mac, sizeof(config.oal_config.network.mac));
+        printf_debug("10g mac:%x%x%x%x%x%x\n", mac[0],mac[1],mac[2],mac[3],mac[4],mac[5]);
+    }
+#endif
+    
     printf_debug("config init\n");
     config.configfile = safe_strdup(DEFAULT_CONFIGFILE);
     //config.calibrationfile = safe_strdup(CALIBRATION_FILE);

@@ -1090,15 +1090,28 @@ static int akt_execute_net_command(void *client)
     addr.sin_family = AF_INET;   /* fixedb bug: Address family not supported by protocol */
     
     cl = (struct net_udp_client *)client;
-    memcpy(netinfo.mac, poal_config->network.mac, sizeof(netinfo.mac));
-    netinfo.ipaddr = htonl(poal_config->network.ipaddress);
-    netinfo.gateway = htonl(poal_config->network.gateway);
-    netinfo.mask = htonl(poal_config->network.netmask);
-    netinfo.port = htons(poal_config->network.port);
-    netinfo.status = 0;
-    ipdata.s_addr = poal_config->network.ipaddress;
-    printf_note("mac:%x%x%x%x%x%x, ipaddr=%x[%s], gateway=%x\n", netinfo.mac[0],netinfo.mac[1],netinfo.mac[2],netinfo.mac[3],netinfo.mac[4],netinfo.mac[5],
-                                                            netinfo.ipaddr, inet_ntoa(ipdata), netinfo.gateway);
+#ifdef  SUPPORT_NET_WZ
+    if(cl->ifname && !strcmp(cl->ifname, NETWORK_10G_EHTHERNET_POINT)){
+        memcpy(netinfo.mac, poal_config->network_10g.mac, sizeof(netinfo.mac));
+        netinfo.ipaddr = htonl(poal_config->network_10g.ipaddress);
+        netinfo.gateway = htonl(poal_config->network_10g.gateway);
+        netinfo.mask = htonl(poal_config->network_10g.netmask);
+        netinfo.port = htons(poal_config->network_10g.port);
+        netinfo.status = 0;
+        ipdata.s_addr = poal_config->network_10g.ipaddress;
+    }else
+#endif
+    {
+        memcpy(netinfo.mac, poal_config->network.mac, sizeof(netinfo.mac));
+        netinfo.ipaddr = htonl(poal_config->network.ipaddress);
+        netinfo.gateway = htonl(poal_config->network.gateway);
+        netinfo.mask = htonl(poal_config->network.netmask);
+        netinfo.port = htons(poal_config->network.port);
+        netinfo.status = 0;
+        ipdata.s_addr = poal_config->network.ipaddress;
+    }
+    printf_note("ifname:%s,mac:%x%x%x%x%x%x, ipaddr=%x[%s], gateway=%x\n", cl->ifname, netinfo.mac[0],netinfo.mac[1],netinfo.mac[2],netinfo.mac[3],netinfo.mac[4],netinfo.mac[5],
+                                                        netinfo.ipaddr, inet_ntoa(ipdata), netinfo.gateway);
     memcpy(&cl->discover_peer_addr, &addr, sizeof(addr));
     memcpy(akt_get_response_data.payload_data, &netinfo, sizeof(DEVICE_NET_INFO_ST));
     akt_get_response_data.header.len = sizeof(DEVICE_NET_INFO_ST);

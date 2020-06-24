@@ -51,7 +51,7 @@ sgn(a - b) == 0         sgn(a - b) != 0       sgn(a - b) <  0         sgn(a - b)
 
 extern char *safe_strdup(const char *s);
 extern uint16_t crc16_caculate(uint8_t *pchMsg, uint16_t wDataLen);
-extern int get_mac(char * mac, int len_limit);
+extern int get_mac(char *ifname, char * mac, int len_limit);
 extern int write_file_in_int16(void *pdata, unsigned int data_len, char *filename);
 extern int32_t  diff_time(void);
 extern char *get_version_string(void);

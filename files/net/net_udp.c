@@ -7,6 +7,39 @@ struct net_udp_server *get_udp_server(void)
     return g_udp_srv;
 }
 
+static char  *udp_get_ifname(struct net_udp_client *cl)
+{
+    struct in_addr ipaddr, netmask, local_net, peer_net;
+     
+    if(get_netmask(NETWORK_EHTHERNET_POINT, &netmask) != -1){
+        printf_note("===>netmask[0x%x]\n", netmask.s_addr);
+    }
+    if(get_ipaddress(NETWORK_EHTHERNET_POINT, &ipaddr) != -1){
+        local_net.s_addr = ipaddr.s_addr& netmask.s_addr;
+        peer_net.s_addr = cl->peer_addr.sin_addr.s_addr & netmask.s_addr;
+        printf_note("===>ipaddr[0x%x,  net=0x%x]\n", ipaddr.s_addr, ipaddr.s_addr& netmask.s_addr);
+        printf_note("===>peer net=0x%x, ip=0x%x\n",   cl->peer_addr.sin_addr.s_addr & netmask.s_addr, cl->peer_addr.sin_addr.s_addr);
+        if(local_net.s_addr == peer_net.s_addr){
+            return NETWORK_EHTHERNET_POINT;
+        }
+    }
+#ifdef SUPPORT_NET_WZ
+    if(get_netmask(NETWORK_10G_EHTHERNET_POINT, &netmask) != -1){
+        printf_note("===>netmask[0x%x]\n", netmask.s_addr);
+    }
+    if(get_ipaddress(NETWORK_10G_EHTHERNET_POINT, &ipaddr) != -1){
+        local_net.s_addr = ipaddr.s_addr& netmask.s_addr;
+        peer_net.s_addr = cl->peer_addr.sin_addr.s_addr & netmask.s_addr;
+        printf_note("===>ipaddr[0x%x,  net=0x%x]\n", ipaddr.s_addr, ipaddr.s_addr& netmask.s_addr);
+        printf_note("===>peer net=0x%x, ip=0x%x\n",   cl->peer_addr.sin_addr.s_addr & netmask.s_addr, cl->peer_addr.sin_addr.s_addr);
+        if(local_net.s_addr == peer_net.s_addr){
+            return NETWORK_10G_EHTHERNET_POINT;
+        }
+    }
+#endif
+    return NULL;
+}
+
 static inline const char *udp_get_peer_addr(struct net_udp_client *cl)
 {
     return inet_ntoa(cl->peer_addr.sin_addr);
@@ -157,7 +190,8 @@ static void udp_read_cb(struct uloop_fd *fd, unsigned int events)
     //list_add(&cl->list, &srv->clients);
     cl->srv = srv;
     //cl->srv->nclients++;
-    printf_note("Receive New UDP data[%d] From: %s:%d\n", n, cl->get_peer_addr(cl), cl->get_peer_port(cl));
+    cl->ifname = udp_get_ifname(cl);
+    printf_note("Receive New UDP data[%d] From: %s:%d, ifname=%s\n", n, cl->get_peer_addr(cl), cl->get_peer_port(cl), cl->ifname);
     if(cl != NULL){
         poal_udp_handle_request(cl, data, n);
         printf_note("Deal Over Free UDP: %s:%d\n", cl->get_peer_addr(cl), cl->get_peer_port(cl));

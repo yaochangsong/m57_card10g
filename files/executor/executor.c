@@ -673,7 +673,7 @@ static int executor_set_1g_network(struct network_st *_network)
     uint32_t host_addr;
     char *ipstr=NULL;
     int need_set = 0;
-    if(get_ipaddress(&ipaddr) != -1){
+    if(get_ipaddress(NETWORK_EHTHERNET_POINT, &ipaddr) != -1){
         if(ipaddr.s_addr == network->ipaddress){
             printf_note("ipaddress[%s] is not change!\n", inet_ntoa(ipaddr));
             goto set_netmask;
@@ -689,7 +689,7 @@ static int executor_set_1g_network(struct network_st *_network)
     }
     
 set_netmask:
-    if(get_netmask(&netmask) != -1){
+    if(get_netmask(NETWORK_EHTHERNET_POINT, &netmask) != -1){
          if(netmask.s_addr == network->netmask){
             printf_note("netmask[%s] is not change!\n", inet_ntoa(netmask));
             goto set_gateway;
@@ -705,7 +705,7 @@ set_netmask:
     }
     
 set_gateway:
-    if(get_gateway(&gateway) != -1){
+    if(get_gateway(NETWORK_EHTHERNET_POINT, &gateway) != -1){
          if(gateway.s_addr == network->gateway){
             printf_note("gateway[%s] is not change!\n", inet_ntoa(gateway));
             if(need_set != 0)

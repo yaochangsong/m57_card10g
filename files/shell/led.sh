@@ -7,15 +7,19 @@ LED_WORK_PIN=418
 LED_TRAN_PIN=417
 LED_CHECK_PIN=416
 
+log_out()
+{
+	echo "$1" > /dev/null
+}
 
 _onoff()
 {
-    echo "check $1 $2"
+    log_out "check $1 $2"
     if [ "$2" == "on" ]; then
-        echo "echo 1 > $GPIO_DIR/gpio$1/value"
+        log_out "echo 1 > $GPIO_DIR/gpio$1/value"
         echo 1 > $GPIO_DIR/gpio$1/value
     else
-        echo "echo 0 > $GPIO_DIR/gpio$1/value"
+        log_out "echo 0 > $GPIO_DIR/gpio$1/value"
         echo 0 > $GPIO_DIR/gpio$1/value
     fi
 }
@@ -23,14 +27,14 @@ _onoff()
 _direction_out()
 {
 
-	echo "echo out > $GPIO_DIR/gpio$1/direction"
+	log_out "echo out > $GPIO_DIR/gpio$1/direction"
     echo out > $GPIO_DIR/gpio$1/direction
 }
 
 _export()
 {
 	if [ ! -f $GPIO_DIR/gpio$1 ]; then
-		echo "echo $1 > $GPIO_DIR/export"
+		log_out "echo $1 > $GPIO_DIR/export"
         echo $1 > $GPIO_DIR/export
 	fi
 	

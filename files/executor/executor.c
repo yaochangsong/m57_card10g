@@ -385,6 +385,10 @@ void executor_spm_thread(void *arg)
         
 loop:   printf_note("######wait to deal work######\n");
         sem_wait(&work_sem.notify_deal);
+        if(poal_config->enable.bit_en == 0)
+            safe_system("/etc/led.sh transfer off &");
+        else
+            safe_system("/etc/led.sh transfer on &");
         ch = poal_config->enable.cid;
         if(OAL_NULL_MODE == poal_config->work_mode){
             printf_warn("Work Mode not set\n");

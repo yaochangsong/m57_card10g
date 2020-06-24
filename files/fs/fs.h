@@ -22,8 +22,10 @@ struct fs_ops {
     int (*fs_format)(void);
     int (*fs_mkdir)(char *);
     ssize_t (*fs_dir)(char *,  int(*callback) (char *, void *, void *), void *);
-    ssize_t (*fs_save_file)(char *, int);
-    ssize_t (*fs_read_file)(char *);
+    ssize_t (*fs_start_save_file)(char *);
+    ssize_t (*fs_stop_save_file)(char *);
+    ssize_t (*fs_start_read_raw_file)(char *);
+    ssize_t (*fs_stop_read_raw_file)(char *);
     int (*fs_close)(void);
 };
 

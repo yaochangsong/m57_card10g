@@ -41,29 +41,10 @@
 
 #define DMA_BUFFER_SIZE (16 * 1024 * 1024)
 
-static struct _thread_tables{
-    char *name;
-    pthread_t pid;
-    int num;
-};
-
-#define THREAD_MAX_NUM 10
-static struct _thread_pool{
-    struct _thread_tables tb[THREAD_MAX_NUM];
-    int index;
-};
-static struct _thread_pool tp;
-
 struct fs_context *fs_ctx = NULL;
 static bool disk_is_valid = false;
-
-
-static inline void _thread_data_init(void)
-{
-    memset(&tp, 0, sizeof(struct _thread_pool));
-}
-
 static void  *disk_buffer_ptr  = NULL;
+
 static inline int _write_fs_disk_init(char *path)
 {
     int fd;
@@ -117,11 +98,11 @@ static inline  void _write_disk_close(int fd)
 
 bool _fs_disk_valid(void)
 {
-    #define DISK_NODE_NAME "/dev/nvme0"
-    //if(access(DISK_NODE_NAME)){
-    //    printf_note("Disk[%s] is not valid\n", DISK_NODE_NAME);
-   //     return false
-    //}
+    #define DISK_NODE_NAME "/run/media/nvme0n1"
+    if(access(DISK_NODE_NAME, F_OK)){
+        printf_note("Disk node[%s] is not valid\n", DISK_NODE_NAME);
+        return false;
+    }
     return true;
 }
 
@@ -208,14 +189,16 @@ static int _fs_start_save_file_thread(void *arg)
 }
 
 
-/* act = 1: start save file; act = 0: stop save file */
-static ssize_t _fs_save_file(char *filename, int act)
+#define THREAD_NAME "FS_SAVE_FILE"
+static int disk_save_file_fd = -1;
+
+static ssize_t _fs_start_save_file(char *filename)
 {
     #define     _START_SAVE     1
     #define     _STOP_SAVE      0
     int ret = -1, i, found = 0, cval;
-    static int fd = -1;
-    #define THREAD_NAME "FS_SAVE_FILE"
+    
+    
     char path[512];
     
     if(disk_is_valid == false)
@@ -223,25 +206,28 @@ static ssize_t _fs_save_file(char *filename, int act)
     if(filename == NULL)
             return -1;
     
-    if(act == _START_SAVE){
-        io_set_enable_command(ADC_MODE_ENABLE, -1, -1, 0);
-        snprintf(path, sizeof(path), "%s/%s", fs_get_root_dir(), filename);
-        fd = _write_fs_disk_init(path);
-        printf("start save file: %s\n", path);
-        ret = pthread_create_detach_loop(NULL, _fs_start_save_file_thread, THREAD_NAME, &fd);
-        if(ret != 0){
-            perror("pthread cread save file thread!!");
-        }
-    }else{  /* stop save file */
-        io_set_enable_command(ADC_MODE_DISABLE, -1, -1, 0);
-        printf("stop save file : %s\n", THREAD_NAME);
-        pthread_cancel_by_name(THREAD_NAME);
-        _write_disk_close(fd);
+    io_set_enable_command(ADC_MODE_ENABLE, -1, -1, 0);
+    snprintf(path, sizeof(path), "%s/%s", fs_get_root_dir(), filename);
+    disk_save_file_fd = _write_fs_disk_init(path);
+    printf("start save file: %s\n", path);
+    ret = pthread_create_detach_loop(NULL, _fs_start_save_file_thread, THREAD_NAME, &disk_save_file_fd);
+    if(ret != 0){
+        perror("pthread cread save file thread!!");
     }
+    
     return ret;
 }
 
-static ssize_t _fs_read_file(char *filename)
+static ssize_t _fs_stop_save_file(char *filename)
+{
+    io_set_enable_command(ADC_MODE_DISABLE, -1, -1, 0);
+    printf("stop save file : %s\n", THREAD_NAME);
+    pthread_cancel_by_name(THREAD_NAME);
+    _write_disk_close(disk_save_file_fd);
+}
+
+
+static ssize_t _fs_start_read_raw_file(char *filename)
 {
     if(disk_is_valid == false)
         return -1;
@@ -261,8 +247,9 @@ static const struct fs_ops _fs_ops = {
     .fs_format = _fs_format,
     .fs_mkdir = _fs_mkdir,
     .fs_dir = _fs_dir,
-    .fs_save_file = _fs_save_file,
-    .fs_read_file = _fs_read_file,
+    .fs_start_save_file = _fs_start_save_file,
+    .fs_stop_save_file = _fs_stop_save_file,
+    .fs_start_read_raw_file = _fs_start_read_raw_file,
     .fs_close = _fs_close,
 };
 

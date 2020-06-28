@@ -70,6 +70,37 @@ int udp_send_data_to_client(struct net_udp_client *client, uint8_t *data, uint32
     return 0;
 }
 
+int udp_send_vec_data_to_client(struct net_udp_client *client, struct iovec *iov, int iov_len)
+{    
+    struct msghdr msgsent;
+
+    if(client == NULL)
+        return -1;
+
+    msgsent.msg_name = &client->peer_addr;
+    msgsent.msg_namelen = sizeof(client->peer_addr);
+    msgsent.msg_iovlen = iov_len;
+    msgsent.msg_iov = iov;
+    msgsent.msg_control = NULL;
+    msgsent.msg_controllen = 0;
+    printf_debug("send: %s:%d\n", client->get_peer_addr(client), client->get_peer_port(client));
+    sendmsg(client->srv->fd.fd, &msgsent, 0);
+    return 0;
+}
+
+int udp_send_vec_data(struct iovec *iov, int iov_len)
+{
+    struct net_udp_server *srv = get_udp_server();
+    struct net_udp_client *cl_list, *list_tmp;
+    int ret = 0;
+    list_for_each_entry_safe(cl_list, list_tmp, &srv->clients, list){
+        udp_send_vec_data_to_client(cl_list, iov, iov_len);
+    }
+    return ret;
+}
+
+
+
 void udp_client_dump(void)
 {
     struct net_udp_client *cl_list, *list_tmp;

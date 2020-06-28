@@ -328,6 +328,7 @@ static int spm_send_fft_data(void *data, size_t fft_len, void *arg)
     if(ptr_header == NULL)
         return -1;
 #endif
+#if 0
     ptr = (uint8_t *)safe_malloc(header_len+ data_byte_size+2);
     if (!ptr){
         printf_err("malloc failed\n");
@@ -336,10 +337,17 @@ static int spm_send_fft_data(void *data, size_t fft_len, void *arg)
     memcpy(ptr, ptr_header, header_len);
     memcpy(ptr+header_len, data, data_byte_size);
     udp_send_data(ptr, header_len + data_byte_size);
+#endif
+    struct iovec iov[2];
+    iov[0].iov_base = ptr_header;
+    iov[0].iov_len = header_len;
+    iov[1].iov_base = data;
+    iov[1].iov_len = data_byte_size;
+    udp_send_vec_data(iov, 2);
 #if (defined SUPPORT_DATA_PROTOCAL_XW)
     safe_free(ptr_header);
 #endif
-    safe_free(ptr);
+    //safe_free(ptr);
     return (header_len + data_byte_size);
 }
 

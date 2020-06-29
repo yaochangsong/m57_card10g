@@ -30,6 +30,15 @@ typedef enum _read_status_
     READ_BUFFER_STATUS_PENDING = 0x3, //没有可读数据
 }read_status;
 
+typedef enum _write_status_
+{
+    WRITE_BUFFER_STATUS_OK = 0x0,//写数据成功
+    WRITE_BUFFER_STATUS_FAIL = 0x1, //读数据一般错误
+    WRITE_BUFFER_STATUS_EMPTY = 0x2, //写缓冲区空，DMA已传输完所有数据，可能会造成输出不连续
+    WRITE_BUFFER_STATUS_FULL = 0x3, //缓冲区满，用户程序要等待DMA传输数据
+}write_status;
+
+
 typedef struct _block_info_
 {
     unsigned int offset; //可读数据的偏移值，该值加上mmap得到的地址即为数据的虚拟地址
@@ -43,10 +52,19 @@ typedef struct _ready_info_
     block_info blocks[DMA_MAX_BLOCK];
 }read_info;
 
+typedef struct _write_info_ 
+{
+    write_status status;//当前读数据状态
+    unsigned char block_num;//数据块个数
+    block_info blocks[DMA_MAX_BLOCK];
+}write_info;
+
+
 typedef enum _dma_status_ {
     DMA_STATUS_IDLE = 0,   //DMA空闲
     DMA_STATUS_BUSY = 1,    //DMA忙，运行中
     DMA_STATUS_INITIALIZING = 2, //DMA启动过程中
+    DMA_STATUS_PRE_WRITE = 3, //写准备状态，先将DMA buffer填满在启动DMA，避免取到无效数据
 }dma_status;
 
 typedef enum _dma_mode_ {
@@ -73,23 +91,34 @@ struct _spm_stream {
 typedef enum _IOCTL_CMD_ 
 {
     DMA_ASYN_READ_START = 0x1,
-    DMA_ASYN_READ_STOP = 0x2,
-    DMA_GET_ASYN_READ_INFO = 0x3,
-    DMA_SET_ASYN_READ_INFO = 0x4,
-    DMA_GET_STATUS = 0x5,
-    DMA_INIT_BUFFER = 0x6,
-    DMA_DUMP_REGS = 0x7,
+    DMA_ASYN_READ_STOP,
+    DMA_GET_ASYN_READ_INFO,
+    DMA_SET_ASYN_READ_INFO,
+    DMA_ASYN_WRITE_START,
+    DMA_ASYN_WRITE_STOP,
+    DMA_GET_ASYN_WRITE_INFO,
+    DMA_SET_ASYN_WRITE_INFO,    
+    DMA_ASYN_WRITE_FLUSH,
+    DMA_GET_STATUS,
+    DMA_INIT_BUFFER,
+    DMA_DUMP_REGS,
 }FPGA_IOCTL_CMD;
 
 
 #define XWDMA_IOCTL_MAGIC  'k'
 #define IOCTL_DMA_ASYN_READ_START      _IOW(XWDMA_IOCTL_MAGIC, DMA_ASYN_READ_START, unsigned int)
-#define IOCTL_DMA_GET_ASYN_READ_INFO      _IOW(XWDMA_IOCTL_MAGIC, DMA_ASYN_READ_STOP, unsigned int)
-#define IOCTL_DMA_SET_ASYN_READ_INFO   _IOW(XWDMA_IOCTL_MAGIC, DMA_GET_ASYN_READ_INFO, unsigned int)
-#define IOCTL_DMA_ASYN_READ_STOP   _IOW(XWDMA_IOCTL_MAGIC, DMA_SET_ASYN_READ_INFO, unsigned int)
+#define IOCTL_DMA_GET_ASYN_READ_INFO      _IOW(XWDMA_IOCTL_MAGIC, DMA_GET_ASYN_READ_INFO, unsigned int)
+#define IOCTL_DMA_SET_ASYN_READ_INFO   _IOW(XWDMA_IOCTL_MAGIC, DMA_SET_ASYN_READ_INFO, unsigned int)
+#define IOCTL_DMA_ASYN_READ_STOP   _IOW(XWDMA_IOCTL_MAGIC, DMA_ASYN_READ_STOP, unsigned int)
+#define IOCTL_DMA_ASYN_WRITE_START      _IOW(XWDMA_IOCTL_MAGIC, DMA_ASYN_WRITE_START, unsigned int)
+#define IOCTL_DMA_GET_ASYN_WRITE_INFO      _IOW(XWDMA_IOCTL_MAGIC, DMA_GET_ASYN_WRITE_INFO, unsigned int)
+#define IOCTL_DMA_SET_ASYN_WRITE_INFO   _IOW(XWDMA_IOCTL_MAGIC, DMA_SET_ASYN_WRITE_INFO, unsigned int)
+#define IOCTL_DMA_ASYN_WRITE_STOP   _IOW(XWDMA_IOCTL_MAGIC, DMA_ASYN_WRITE_STOP, unsigned int)
+#define IOCTL_DMA_ASYN_WRITE_FLUSH   _IOW(XWDMA_IOCTL_MAGIC, DMA_ASYN_WRITE_FLUSH, unsigned int)
 #define IOCTL_DMA_GET_STATUS	_IOW(XWDMA_IOCTL_MAGIC, DMA_GET_STATUS, unsigned int)
 #define IOCTL_DMA_INIT_BUFFER	_IOW(XWDMA_IOCTL_MAGIC, DMA_INIT_BUFFER, unsigned int)
 #define IOCTL_DMA_DUMP_REGS   _IOW(XWDMA_IOCTL_MAGIC, DMA_DUMP_REGS, unsigned int)
+
 
 extern struct spm_context * spm_create_fpga_context(void);
 extern struct spm_context * spm_create_chip_context(void);

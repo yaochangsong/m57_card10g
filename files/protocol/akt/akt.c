@@ -849,15 +849,22 @@ static int akt_execute_set_command(void *cl)
             int ret = 0;
             char filename[FILE_PATH_MAX_LEN];
             memcpy(filename, header->buf, FILE_PATH_MAX_LEN);
-            #if defined(SUPPORT_XWFS)
+#if defined(SUPPORT_XWFS)
             ret = xwfs_delete_file(filename);
-            #endif
+#elif defined(SUPPORT_FS)
+            struct fs_context *fs_ctx;
+            fs_ctx = get_fs_ctx();
+            if(fs_ctx == NULL){
+                goto set_exit;
+            }
+            fs_ctx->ops->fs_delete(filename);
+#endif
             printf_note("Delete file:%s, %d\n", filename, ret);
             if(ret != 0){
                 err_code = akt_err_code_check(ret);
                 goto set_exit;
             }
-            break;
+
         }
         case DISK_FORMAT_CMD:
         {

@@ -51,13 +51,13 @@ static inline int _write_fs_disk_init(char *path)
     if(path == NULL)
         return -1;
 
-    fd = open(path, O_RDWR | O_CREAT | O_TRUNC | O_DIRECT | O_SYNC, 0666);
-    //fd = open(path, O_RDWR | O_CREAT | O_TRUNC, 0666);
+   // fd = open(path, O_RDWR | O_CREAT | O_TRUNC | O_DIRECT | O_SYNC, 0666);
+    fd = open(path, O_RDWR | O_CREAT | O_TRUNC, 0666);
     if (fd < 0) {
         printf_err("open %s fail\n", path);
         return -1;
     }
-    posix_memalign((void **)&disk_buffer_ptr, 4096 /*alignment */ , DMA_BUFFER_SIZE + 4096);
+    //posix_memalign((void **)&disk_buffer_ptr, 4096 /*alignment */ , DMA_BUFFER_SIZE + 4096);
     return fd;
 }
 static inline  int _write_disk_run(int fd, size_t size, void *pdata)
@@ -74,14 +74,15 @@ static inline  int _write_disk_run(int fd, size_t size, void *pdata)
    // posix_memalign((void **)&user_mem, 4096 /*alignment */ , WRITE_UNIT_BYTE + 4096);
     //printf_note("fd=%d, pdata=%p, %p, size=0x%x\n",fd, pdata,user_mem,  size);
 
-    if(size > DMA_BUFFER_SIZE){
-        printf_warn("size is too big: %u\n", size);
-        size = DMA_BUFFER_SIZE;
-    }
-    memcpy(disk_buffer_ptr, pdata, size);
+    //if(size > DMA_BUFFER_SIZE){
+    //    printf_warn("size is too big: %u\n", size);
+    //    size = DMA_BUFFER_SIZE;
+    //}
+   // memcpy(disk_buffer_ptr, pdata, size);
     //printf_note("pdata=%p, size = 0x%x\n", pdata, size);
     //rc = write(fd, user_mem, WRITE_UNIT_BYTE);
-    rc = write(fd, disk_buffer_ptr, size);
+    //rc = write(fd, disk_buffer_ptr, size);
+    rc = write(fd, pdata, size);
     if (rc < 0){
         perror("write file");
     }

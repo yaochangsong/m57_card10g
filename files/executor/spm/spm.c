@@ -99,13 +99,16 @@ loop:
     printf_warn("######Wait IQ enable######\n");
     /* 通过条件变量阻塞方式等待数据使能 */
     pthread_mutex_lock(&spm_iq_cond_mutex);
-    pthread_cond_wait(&spm_iq_cond, &spm_iq_cond_mutex);
+    while(ctx->pdata->sub_ch_enable.iq_en == 0)
+        pthread_cond_wait(&spm_iq_cond, &spm_iq_cond_mutex);
     pthread_mutex_unlock(&spm_iq_cond_mutex);
+    #if 0
     if(ctx->pdata->sub_ch_enable.iq_en == 0){
         printf_warn("IQ is not enabled!![%d]\n", ctx->pdata->sub_ch_enable.iq_en);
         sleep(1);
         goto loop;
     }
+    #endif
     printf_note(">>>>>IQ start\n");
     memset(&run, 0, sizeof(run));
     memcpy(&run, ctx->run_args, sizeof(run));
@@ -125,7 +128,7 @@ loop:
             sleep(1);
             goto loop;
         }
-        usleep(1000);
+        usleep(1);
     }while(1);
     
 }

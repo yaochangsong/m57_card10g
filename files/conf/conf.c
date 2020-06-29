@@ -506,6 +506,9 @@ int8_t config_read_by_cmd(exec_cmd cmd, uint8_t type, uint8_t ch, void *data, ..
                 case EX_CTRL_CALI_SIGAL_THRE:
                     *(int32_t *)data = poal_config->ctrl_para.signal.threshold;
                     break;
+                case EX_CTRL_IQ_DATA_LENGTH:
+                    *(uint32_t *)data = poal_config->ctrl_para.iq_data_length;
+                    break;
                 default:
                     printf_err("not surpport type\n");
                     goto exit;

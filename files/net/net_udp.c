@@ -83,7 +83,7 @@ int udp_send_vec_data_to_client(struct net_udp_client *client, struct iovec *iov
     msgsent.msg_iov = iov;
     msgsent.msg_control = NULL;
     msgsent.msg_controllen = 0;
-    printf_debug("send: %s:%d\n", client->get_peer_addr(client), client->get_peer_port(client));
+    //printf_debug("send: %s:%d\n", client->get_peer_addr(client), client->get_peer_port(client));
     sendmsg(client->srv->fd.fd, &msgsent, 0);
     return 0;
 }
@@ -99,6 +99,24 @@ int udp_send_vec_data(struct iovec *iov, int iov_len)
     return ret;
 }
 
+int udp_send_vec_data_to_taget_addr(struct iovec *iov, int iov_len)
+{
+    #define SERVER "192.168.1.22"
+    #define PORT 1234 
+    
+    struct net_udp_client client;
+    client.peer_addr.sin_family = AF_INET;
+    client.peer_addr.sin_port = htons(PORT);
+    client.srv =  get_udp_server();
+
+    if(inet_aton(SERVER, &client.peer_addr.sin_addr) == 0){
+        printf_err("error server ip\n");
+        return -1;
+    }
+
+    udp_send_vec_data_to_client(&client, iov, iov_len);
+    return 0;
+}
 
 
 void udp_client_dump(void)
@@ -254,7 +272,6 @@ struct net_udp_server *udp_server_new(const char *host, int port)
     uloop_fd_add(&srv->fd, ULOOP_READ);
     
     INIT_LIST_HEAD(&srv->clients);
-
     return srv;
     
 err:

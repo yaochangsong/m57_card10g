@@ -31,7 +31,10 @@
 extern uint8_t * akt_assamble_data_frame_header_data(uint32_t *len, void *config);
 static int spm_stream_stop(enum stream_type type);
 
+#define DEFAULT_IQ_SEND_BYTE 512
 size_t pagesize = 0;
+size_t iq_send_unit_byte = DEFAULT_IQ_SEND_BYTE;
+
 
 /* Allocate zeroed out memory */
 static inline void *zalloc(size_t size)
@@ -175,12 +178,6 @@ static ssize_t spm_stream_read(enum stream_type type, void **data)
         printf_warn("stream node:%s not found\n", pstream[type].name);
         return -1;
     }
-    ioctl(pstream[type].id, IOCTL_DMA_GET_STATUS, &status);
-    if(STREAM_ADC == type)
-        printf_debug("DMA get [%s] status:%s[%d]\n", pstream[type].name, dma_str_status(status), status);
-    if(status == DMA_STATUS_IDLE){
-        return -1;
-    }
     do{
         ioctl(pstream[type].id, IOCTL_DMA_GET_ASYN_READ_INFO, &info);
         printf_debug("read status:%d, block_num:%d\n", info.status, info.block_num);
@@ -188,10 +185,15 @@ static ssize_t spm_stream_read(enum stream_type type, void **data)
             printf_err("read data error\n");
             exit(-1);
         }else if(info.status == READ_BUFFER_STATUS_PENDING){
-            usleep(10);
+            ioctl(pstream[type].id, IOCTL_DMA_GET_STATUS, &status);
+            //printf_note("DMA get [%s] status:%s[%d]\n", pstream[type].name, dma_str_status(status), status);
+            if(status == DMA_STATUS_IDLE){
+                printf_info("DMA idle!\n");
+                return -1;
+            }
+            usleep(1);
             printf_debug("no data, waitting\n");
         }else if(info.status == READ_BUFFER_STATUS_OVERRUN){
-            
             if(STREAM_ADC == type){
                 printf_warn("adc data is overrun\n");
             }else{
@@ -199,21 +201,9 @@ static ssize_t spm_stream_read(enum stream_type type, void **data)
             }
         }
     }while(info.status == READ_BUFFER_STATUS_PENDING);
-        
-    ioctl(pstream[type].id, IOCTL_DMA_GET_STATUS, &status);
-    if(STREAM_ADC == type){
-        printf_debug("DMA get [%s] status:%s[%d]\n", pstream[type].name, dma_str_status(status), status);
-    }
     readn = info.blocks[0].length;
-     if(STREAM_ADC == type){
-        info.blocks[0].offset = info.blocks[0].offset - info.blocks[0].offset % pagesize;
-        readn = readn - readn % pagesize;
-     }
-    
     *data = pstream[type].ptr + info.blocks[0].offset;
-    
-    if(STREAM_ADC == type)
-        printf_note("[%p, %p, offset=0x%x]%s, readn:%u\n", *data, pstream[type].ptr, info.blocks[0].offset,  pstream[type].name, readn);
+    printf_debug("[%p, %p, offset=0x%x]%s, readn:%u\n", *data, pstream[type].ptr, info.blocks[0].offset,  pstream[type].name, readn);
 
     return readn;
 }
@@ -356,16 +346,17 @@ static int spm_send_iq_data(void *data, size_t len, void *arg)
     uint8_t *ptr = NULL, *ptr_header = NULL;
     uint32_t header_len = 0;
     struct _spm_stream *pstream = spm_stream;
-    #define SEND_BYTE 512
+    size_t _send_byte = (iq_send_unit_byte > 0 ? iq_send_unit_byte : DEFAULT_IQ_SEND_BYTE);
     
     if(data == NULL || len == 0 || arg == NULL)
         return -1;
-    
+
+    if(len < _send_byte)
+        return -1;
 #ifdef SUPPORT_DATA_PROTOCAL_AKT
     struct spm_run_parm *hparam;
     hparam = (struct spm_run_parm *)arg;
-    //hparam->data_len = len; 
-    hparam->data_len = SEND_BYTE;
+    hparam->data_len = _send_byte;
     hparam->type = BASEBAND_DATUM_IQ;
     hparam->ex_type = DEMODULATE_DATUM;
     ptr_header = akt_assamble_data_frame_header_data(&header_len, arg);
@@ -379,39 +370,35 @@ static int spm_send_iq_data(void *data, size_t len, void *arg)
     if(ptr_header == NULL)
         return -1;
 #endif
-    #if 0
-    ptr = (uint8_t *)safe_malloc(header_len+ len);
-    if (!ptr){
-        printf_err("malloc failed\n");
-        return -1;
-    }
-
-    memcpy(ptr, ptr_header, header_len);
-    memcpy(ptr+header_len, data, len);
-    udp_send_data(ptr, header_len + len);
-    safe_free(ptr);
-    /* 设置DMA已读数据块长度 */
-    ioctl(pstream[STREAM_IQ].id, IOCTL_DMA_SET_ASYN_READ_INFO, &len);
-    #else
     int i, index,sbyte;
     uint8_t *pdata;
-    ptr = (uint8_t *)safe_malloc(header_len+ SEND_BYTE);
-    if (!ptr){
-        printf_err("malloc failed\n");
-        return -1;
-    }
-    index = len / SEND_BYTE;
-    sbyte = index * SEND_BYTE;
-    pdata = data;
-    memcpy(ptr, ptr_header, header_len);
+    #if 1
+    struct iovec iov[2];
+    iov[0].iov_base = ptr_header;
+    iov[0].iov_len = header_len;
+    index = len / _send_byte;
+    sbyte = index * _send_byte;
+    pdata = (uint8_t *)data;
     for(i = 0; i<index; i++){
-        memcpy(ptr+header_len, pdata, SEND_BYTE);
-        udp_send_data(ptr, header_len + SEND_BYTE);
-        pdata += SEND_BYTE;
+        iov[1].iov_base = pdata;
+        iov[1].iov_len = _send_byte;
+        udp_send_vec_data(iov, 2);
+        pdata += _send_byte;
     }
-    safe_free(ptr);
-    ioctl(pstream[STREAM_IQ].id, IOCTL_DMA_SET_ASYN_READ_INFO, &sbyte);
+    #else
+    struct iovec iov[1];
+    index = len / _send_byte;
+    sbyte = index * _send_byte;
+    pdata = (uint8_t *)data;
+    for(i = 0; i<index; i++){
+        iov[0].iov_base = pdata;
+        iov[0].iov_len = _send_byte;
+        udp_send_vec_data_to_taget_addr(iov, 1);
+        pdata += _send_byte;
+    }
     #endif
+    
+    ioctl(pstream[STREAM_IQ].id, IOCTL_DMA_SET_ASYN_READ_INFO, &sbyte);
     return (header_len + len);
 }
 
@@ -745,6 +732,13 @@ struct spm_context * spm_create_fpga_context(void)
     if (!ctx)
         goto err_set_errno;
     pagesize = getpagesize();
+    if(config_read_by_cmd(EX_CTRL_CMD, EX_CTRL_IQ_DATA_LENGTH, 0, &iq_send_unit_byte) == -1){
+            printf_note("read iq_send_unit_byte Error, use default[%u]\n", DEFAULT_IQ_SEND_BYTE);
+    }
+    if(iq_send_unit_byte == 0){
+        iq_send_unit_byte = DEFAULT_IQ_SEND_BYTE;
+    }
+    printf_note("iq send unit byte:%u\n", iq_send_unit_byte);
     ctx->ops = &spm_ops;
     ctx->pdata = &config_get_config()->oal_config;
     _init_run_timer(MAX_RADIO_CHANNEL_NUM);

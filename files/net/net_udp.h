@@ -35,5 +35,9 @@ extern int udp_send_data(uint8_t  *data, uint32_t data_len);
 extern int udp_send_data_to_client(struct net_udp_client *client, uint8_t *data, uint32_t data_len);
 extern void udp_add_client_to_list(struct sockaddr_in *addr, int ch);
 extern struct net_udp_server *get_udp_server(void);
+extern int udp_send_vec_data(struct iovec *iov, int iov_len);
+extern int udp_send_vec_data_to_taget_addr(struct iovec *iov, int iov_len);
+
+
 #endif
 

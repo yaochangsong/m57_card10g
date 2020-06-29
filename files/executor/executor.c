@@ -661,8 +661,10 @@ static int8_t executor_set_ctrl_command(uint8_t type, uint8_t ch, void *data, va
 #ifdef SUPPORT_NET_WZ
 static int executor_set_10g_network(struct network_st *_network)
 {
+    safe_system("/etc/network.sh &");
     /* 设置默认板卡万兆ip和端口 */
-    io_set_local_10g_net(ntohl(_network->ipaddress), ntohl(_network->netmask),ntohl(_network->gateway),_network->port);
+    //io_set_local_10g_net(ntohl(_network->ipaddress), ntohl(_network->netmask),ntohl(_network->gateway),_network->port);
+    return 0;
 }
 #endif
 
@@ -723,8 +725,6 @@ set_gateway:
     }
     
 set_network:
-    safe_system("/etc/network.sh &");
-    sleep(1);
     return 0;
     //return io_set_network_to_interfaces((void *)network);
 }
@@ -777,17 +777,9 @@ int8_t executor_set_command(exec_cmd cmd, uint8_t type, uint8_t ch,  void *data,
         }
         case EX_NETWORK_CMD:
         {
-            if(type == EX_NETWORK_1G){
+            if(EX_NETWORK_1G == type)
                 executor_set_1g_network(&poal_config->network);
-            }
-            
-#ifdef SUPPORT_NET_WZ
-            else if(type == EX_NETWORK_10G){
-                safe_system("/etc/network.sh &");
-                sleep(1);
-                //executor_set_10g_network(&poal_config->network_10g);
-            }
-#endif
+            safe_system("/etc/network.sh &");
             break;
         }
         case EX_CTRL_CMD:
@@ -909,22 +901,23 @@ void executor_timer_task1_cb(struct uloop_timeout *t)
 #ifdef SUPPORT_SPECTRUM_FFT
     spectrum_send_fft_data_interval();
 #endif
-    uh_dump_all_client();
-    //uloop_timeout_set(t, 5000);
 }
 void executor_timer_task_init(void)
 {
     static  struct uloop_timeout task1_timeout;
     printf_warn("executor_timer_task\n");
     uloop_timeout_set(&task1_timeout, 5000); /* 5000 ms */
-    if(!is_spectrum_continuous_mode()){
+    task1_timeout.cb = executor_timer_task1_cb;
+    #if 0
+    if(!is_spectrum_continuous_mode()){ 
         printf_note("timer task: fft data send opened:%d\n", is_spectrum_continuous_mode());
         task1_timeout.cb = executor_timer_task1_cb;
-        //uloop_timeout_set(&task1_timeout, 5000); /* 5000 ms */
+        uloop_timeout_set(&task1_timeout, 5000); /* 5000 ms */
         printf_note("executor_timer_task ok\n");
     }else{
         printf_note("timer task: fft data send shutdown:%d\n", is_spectrum_continuous_mode());
     }
+    #endif
 }
 
 void executor_init(void)

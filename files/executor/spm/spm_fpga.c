@@ -659,6 +659,77 @@ static int32_t  spm_get_signal_strength(uint8_t ch, bool *is_singal, uint16_t *s
     return 0;
 }
 
+static int spm_stream_back_start(uint32_t len,uint8_t continuous, enum stream_type type)
+{
+    struct _spm_stream *pstream = spm_stream;
+    IOCTL_DMA_START_PARA para;
+    
+    printf_debug("stream type:%d, back start, continuous[%d], len=%u\n", type, continuous, len);
+
+    if(continuous)
+        para.mode = DMA_MODE_CONTINUOUS;
+    else{
+        para.mode = DMA_MODE_ONCE;
+        para.trans_len = len;
+    }
+    ioctl(pstream[type].id, IOCTL_DMA_ASYN_WRITE_START, &para);
+    return 0;
+}
+
+static int spm_stream_back_stop(enum stream_type type)
+{
+    struct _spm_stream *pstream = spm_stream;
+    ioctl(pstream[type].id, IOCTL_DMA_ASYN_WRITE_STOP, NULL);
+    printf_debug("stream back stop: %d\n", type);
+    sync();
+    return 0;
+}
+
+static int spm_stream_back_running_file(enum stream_type type, char *filename)
+{
+    void *user_mem = NULL, *w_addr = NULL;
+    int i, rc, ret = 0;
+    uint64_t total_Byte = 0;
+    unsigned int size;
+    write_info info;
+    int isDone = 0;
+    int file_fd;
+
+    struct _spm_stream *pstream = spm_stream;
+
+    file_fd = open(filename, O_RDONLY, 0666);
+    if (file_fd < 0) {
+        printf_err("open % fail\n", filename);
+        return -1;
+    }   
+    while (!isDone){
+        ioctl(pstream[type].id, IOCTL_DMA_GET_ASYN_WRITE_INFO, &info);
+        if(info.status != 0)
+            printf_warn("write status:%d, block_num:%d\n", info.status, info.block_num);
+        for(i = 0; i < info.block_num; i++){
+            size = info.blocks[i].length;
+            w_addr = pstream[i].ptr + info.blocks[i].offset;
+            rc = read(file_fd, w_addr, size);
+            if (rc < 0){
+                perror("read file");
+                ret = -1;
+                goto done;
+            }
+            else if(rc == 0){
+                printf_err("read file fail 0x%lx != 0x%lx.\n", rc, size);
+                isDone = 1;
+            }       
+            ioctl(pstream[type].id, IOCTL_DMA_SET_ASYN_WRITE_INFO, &rc);
+            total_Byte += rc;
+        }
+        if(size == 0)
+            usleep(100);
+    }
+done:
+    close(file_fd);
+    return ret;
+}
+
 static int spm_stream_start(uint32_t len,uint8_t continuous, enum stream_type type)
 {
     struct _spm_stream *pstream = spm_stream;
@@ -718,6 +789,9 @@ static const struct spm_backend_ops spm_ops = {
     .agc_ctrl = spm_agc_ctrl,
     .residency_time_arrived = is_sigal_residency_time_arrived,
     .signal_strength = spm_get_signal_strength,
+    .back_running_file = spm_stream_back_running_file,
+    .stream_back_start = spm_stream_back_start,
+    .stream_back_stop = spm_stream_back_stop,
     .stream_start = spm_stream_start,
     .stream_stop = spm_stream_stop,
     .sample_ctrl = spm_sample_ctrl,

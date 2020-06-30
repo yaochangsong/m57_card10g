@@ -133,8 +133,9 @@ static inline const char * dma_str_status(dma_status status)
 static int spm_create(void)
 {
     struct _spm_stream *pstream;
-    dma_status status;
+    ioctl_dma_status status;
     pstream = spm_stream;
+    status.dir = DMA_S2MM;
     int i = 0;
     printf_note("SPM init.%d\n", ARRAY_SIZE(spm_stream));
     
@@ -156,11 +157,11 @@ static int spm_create(void)
         printf_note("create stream[%s]: dev:%s, ptr=%p, len=%d\n", 
             pstream[i].name, pstream[i].devname, pstream[i].ptr, pstream[i].len);
         ioctl(pstream[i].id, IOCTL_DMA_GET_STATUS, &status);
-        if(status != DMA_STATUS_IDLE){
-            printf_err("DMA status error: %s[%d], exit!!\n", dma_str_status(status), status);
+        if(status.status != DMA_STATUS_IDLE){
+            printf_err("DMA status error: %s[%d], exit!!\n", dma_str_status(status.status), status.status);
             exit(-1);
         }
-        printf_note("Create %d[%s] OK, status:%s[%d]\n", i, pstream[i].name,dma_str_status(status), status);
+        printf_note("Create %d[%s] OK, status:%s[%d]\n", i, pstream[i].name,dma_str_status(status.status), status.status);
     }
     
     return 0;
@@ -169,7 +170,8 @@ static int spm_create(void)
 static ssize_t spm_stream_read(enum stream_type type, void **data)
 {
     struct _spm_stream *pstream;
-    dma_status status;
+    ioctl_dma_status status;
+    status.dir = DMA_S2MM;
     pstream = spm_stream;
     read_info info;
     size_t readn = 0;
@@ -186,8 +188,8 @@ static ssize_t spm_stream_read(enum stream_type type, void **data)
             exit(-1);
         }else if(info.status == READ_BUFFER_STATUS_PENDING){
             ioctl(pstream[type].id, IOCTL_DMA_GET_STATUS, &status);
-            //printf_note("DMA get [%s] status:%s[%d]\n", pstream[type].name, dma_str_status(status), status);
-            if(status == DMA_STATUS_IDLE){
+            printf_debug("DMA get [%s] status:%s[%d]\n", pstream[type].name, dma_str_status(status.status), status.status);
+            if(status.status == DMA_STATUS_IDLE){
                 printf_info("DMA idle!\n");
                 return -1;
             }
@@ -327,17 +329,18 @@ static int spm_send_fft_data(void *data, size_t fft_len, void *arg)
     memcpy(ptr, ptr_header, header_len);
     memcpy(ptr+header_len, data, data_byte_size);
     udp_send_data(ptr, header_len + data_byte_size);
-#endif
+    safe_free(ptr);
+#else
     struct iovec iov[2];
     iov[0].iov_base = ptr_header;
     iov[0].iov_len = header_len;
     iov[1].iov_base = data;
     iov[1].iov_len = data_byte_size;
     udp_send_vec_data(iov, 2);
+#endif
 #if (defined SUPPORT_DATA_PROTOCAL_XW)
     safe_free(ptr_header);
 #endif
-    //safe_free(ptr);
     return (header_len + data_byte_size);
 }
 
@@ -370,9 +373,11 @@ static int spm_send_iq_data(void *data, size_t len, void *arg)
     if(ptr_header == NULL)
         return -1;
 #endif
+
+#if 1
+    #if 1
     int i, index,sbyte;
     uint8_t *pdata;
-    #if 1
     struct iovec iov[2];
     iov[0].iov_base = ptr_header;
     iov[0].iov_len = header_len;
@@ -386,6 +391,8 @@ static int spm_send_iq_data(void *data, size_t len, void *arg)
         pdata += _send_byte;
     }
     #else
+    int i, index,sbyte;
+    uint8_t *pdata;
     struct iovec iov[1];
     index = len / _send_byte;
     sbyte = index * _send_byte;
@@ -397,6 +404,25 @@ static int spm_send_iq_data(void *data, size_t len, void *arg)
         pdata += _send_byte;
     }
     #endif
+#else
+    int i, index,sbyte;
+    uint8_t *pdata;
+    ptr = (uint8_t *)safe_malloc(header_len+ _send_byte);
+    if (!ptr){
+        printf_err("malloc failed\n");
+        return -1;
+    }
+    index = len / _send_byte;
+    sbyte = index * _send_byte;
+    pdata = data;
+    memcpy(ptr, ptr_header, header_len);
+    for(i = 0; i<index; i++){
+        memcpy(ptr+header_len, pdata, _send_byte);
+        udp_send_data(ptr, header_len + _send_byte);
+        pdata += _send_byte;
+    }
+    safe_free(ptr);
+#endif
     
     ioctl(pstream[STREAM_IQ].id, IOCTL_DMA_SET_ASYN_READ_INFO, &sbyte);
     return (header_len + len);

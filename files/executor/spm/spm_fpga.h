@@ -59,13 +59,23 @@ typedef struct _write_info_
     block_info blocks[DMA_MAX_BLOCK];
 }write_info;
 
-
 typedef enum _dma_status_ {
     DMA_STATUS_IDLE = 0,   //DMA空闲
     DMA_STATUS_BUSY = 1,    //DMA忙，运行中
     DMA_STATUS_INITIALIZING = 2, //DMA启动过程中
     DMA_STATUS_PRE_WRITE = 3, //写准备状态，先将DMA buffer填满在启动DMA，避免取到无效数据
 }dma_status;
+
+typedef enum _dma_dire_ {
+    DMA_S2MM = 0,   //设备到内存方向
+    DMA_MM2S = 1,   //内存到设备方向
+}dma_dire;
+
+typedef struct _ioctl_dma_status_ {
+    dma_dire dir;
+    dma_status status;
+}ioctl_dma_status;
+
 
 typedef enum _dma_mode_ {
     DMA_MODE_ONCE = 0,         //单次工作模式

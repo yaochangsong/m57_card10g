@@ -261,4 +261,7 @@ extern uint8_t  io_set_network_to_interfaces(void *netinfo);
 extern int32_t io_set_extract_ch0(uint32_t ch, uint32_t bandwith);
 extern int io_read_more_info_by_name(const char *name, void *info, int32_t (*iofunc)(void *));
 extern int32_t io_find_file_info(void *arg);
+extern int32_t io_start_backtrace_file(void *arg);
+extern int32_t io_stop_backtrace_file(void *arg);
+
 #endif

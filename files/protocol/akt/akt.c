@@ -821,14 +821,30 @@ static int akt_execute_set_command(void *cl)
             if(bis.cmd == 1){/* start backtrace iq file */
                 printf_note("Start backtrace file:%s, bandwidth=%u\n", bis.filepath, bis.bandwidth);
                 executor_set_command(EX_MID_FREQ_CMD, EX_BANDWITH, ch, &bis.bandwidth);
-                #if defined(SUPPORT_XWFS)
+#if defined(SUPPORT_XWFS)
                 ret = xwfs_start_backtrace(bis.filepath);
-                #endif
+#elif defined(SUPPORT_FS)
+                struct fs_context *fs_ctx;
+                fs_ctx = get_fs_ctx();
+                if(fs_ctx == NULL){
+                    printf_warn("NOT FOUND DISK!!\n");
+                    break;
+                }
+                fs_ctx->ops->fs_start_read_raw_file(bis.filepath);
+#endif
             }else if(bis.cmd == 0){/* stop backtrace iq file */
                 printf_note("Stop backtrace file:%s\n", bis.filepath);
-                #if defined(SUPPORT_XWFS)
+#if defined(SUPPORT_XWFS)
                 ret = xwfs_stop_backtrace(bis.filepath);
-                #endif
+#elif defined(SUPPORT_FS)
+                struct fs_context *fs_ctx;
+                fs_ctx = get_fs_ctx();
+                if(fs_ctx == NULL){
+                    printf_warn("NOT FOUND DISK!!\n");
+                    break;
+                }
+                fs_ctx->ops->fs_stop_read_raw_file(bis.filepath);
+#endif
             }else{
                 printf_err("error cmd\n");
                 err_code = RET_CODE_PARAMTER_ERR;
@@ -889,6 +905,14 @@ set_exit:
     printf_debug("set cid=%d\n", akt_set_response_data.cid);
     return err_code;
 
+}
+
+static void _find_file_list(char *filename, struct stat *stats, size_t *size)
+{
+    cJSON* item = NULL;
+    if(stats == NULL || size == NULL)
+        return;
+    *size = stats->st_size;
 }
 
 static int akt_execute_get_command(void)
@@ -1050,7 +1074,11 @@ static int akt_execute_get_command(void)
             #if defined(SUPPORT_XWFS)
             ret = xwfs_get_file_size_by_name(filename, &f_bg_size, sizeof(ssize_t));//io_read_more_info_by_name(filename, &fsp, io_find_file_info);
             #elif defined(SUPPORT_FS)
-
+            struct fs_context *fs_ctx;
+            fs_ctx = get_fs_ctx();
+            if(fs_ctx != NULL){
+                fs_ctx->ops->fs_find(filename, _find_file_list, &f_bg_size);
+            }
             #endif
             printf_note("Find file:%s, fsize=%u ret =%d\n", fsp.filepath, f_bg_size, ret);
             if(ret != 0){

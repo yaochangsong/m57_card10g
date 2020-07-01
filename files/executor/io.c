@@ -1153,12 +1153,36 @@ int32_t io_stop_save_file(void *arg){
     return ret;
 }
 
-int32_t io_start_backtrace_file(void *arg){
-    int32_t ret = 0;
+int32_t io_set_backtrace_mode(bool args)
+{
 #if defined(SUPPORT_PLATFORM_ARCH_ARM)
 #if defined(SUPPORT_SPECTRUM_KERNEL) 
-    SW_TO_BACKTRACE_MODE();
+    if(args){
+        SW_TO_BACKTRACE_MODE();
+    }else{
+        SW_TO_AD_MODE();
+    }
+#elif defined(SUPPORT_SPECTRUM_V2) 
+    if(args){
+        get_fpga_reg()->system->ssd_mode = 1;
+    }else{
+        get_fpga_reg()->system->ssd_mode = 0;
+    }
+#endif
+#endif
+
+}
+
+
+int32_t io_start_backtrace_file(void *arg){
+    int32_t ret = 0;
+    io_set_backtrace_mode(true);
+#if defined(SUPPORT_PLATFORM_ARCH_ARM)
+#if defined(SUPPORT_SPECTRUM_KERNEL) 
+    //SW_TO_BACKTRACE_MODE();
     ret = ioctl(io_ctrl_fd,IOCTL_DISK_START_BACKTRACE_FILE_INFO,arg);
+#elif defined(SUPPORT_SPECTRUM_V2) 
+    get_spm_ctx()->ops->stream_back_start(0x1000, 1, STREAM_ADC);
 #endif
 #endif
     return ret;
@@ -1166,11 +1190,13 @@ int32_t io_start_backtrace_file(void *arg){
 
 int32_t io_stop_backtrace_file(void *arg){
     int32_t ret = 0;
-
+    io_set_backtrace_mode(false);
 #if defined(SUPPORT_PLATFORM_ARCH_ARM)
 #if defined(SUPPORT_SPECTRUM_KERNEL) 
-    SW_TO_AD_MODE();
+    //SW_TO_AD_MODE();
     ret = ioctl(io_ctrl_fd,IOCTL_DISK_STOP_BACKTRACE_FILE_INFO,arg);
+#elif defined(SUPPORT_SPECTRUM_V2) 
+    get_spm_ctx()->ops->stream_back_stop(STREAM_ADC);
 #endif
 #endif
     return ret;

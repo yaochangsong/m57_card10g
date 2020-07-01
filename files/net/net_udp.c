@@ -101,8 +101,8 @@ int udp_send_vec_data(struct iovec *iov, int iov_len)
 
 int udp_send_vec_data_to_taget_addr(struct iovec *iov, int iov_len)
 {
-    #define SERVER "192.168.1.22"
-    #define PORT 1234 
+    #define SERVER "192.168.2.11"
+    #define PORT 8888 
     
     struct net_udp_client client;
     client.peer_addr.sin_family = AF_INET;

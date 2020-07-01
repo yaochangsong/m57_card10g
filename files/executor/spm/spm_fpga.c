@@ -149,7 +149,7 @@ static int spm_create(void)
         /* first of all, stop stream */
         spm_stream_stop(i);
         ioctl(pstream[i].id, IOCTL_DMA_INIT_BUFFER, &pstream[i].len);
-        pstream[i].ptr = mmap(NULL, DMA_BUFFER_SIZE, PROT_READ | PROT_WRITE,MAP_SHARED, pstream[i].id, 0);
+        pstream[i].ptr = mmap(NULL, pstream[i].len, PROT_READ | PROT_WRITE,MAP_SHARED, pstream[i].id, 0);
         if (pstream[i].ptr == (void*) -1) {
             fprintf(stderr, "mmap: %s\n", strerror(errno));
             exit(-1);
@@ -188,24 +188,20 @@ static ssize_t spm_stream_read(enum stream_type type, void **data)
             exit(-1);
         }else if(info.status == READ_BUFFER_STATUS_PENDING){
             ioctl(pstream[type].id, IOCTL_DMA_GET_STATUS, &status);
-            printf_debug("DMA get [%s] status:%s[%d]\n", pstream[type].name, dma_str_status(status.status), status.status);
+           // printf_note("DMA get [%s] status:%s[%d]\n", pstream[type].name, dma_str_status(status.status), status.status);
             if(status.status == DMA_STATUS_IDLE){
-                printf_info("DMA idle!\n");
+                printf_warn("[%s]DMA idle!\n", pstream[type].name);
                 return -1;
             }
-            usleep(1);
-            printf_debug("no data, waitting\n");
+            usleep(100);
+            printf_debug("[%s]no data, waitting\n", pstream[type].name);
         }else if(info.status == READ_BUFFER_STATUS_OVERRUN){
-            if(STREAM_ADC == type){
-                printf_warn("adc data is overrun\n");
-            }else{
-                printf_warn("data is overrun\n");
-            }
+            printf_warn("[%s]data is overrun\n", pstream[type].name);
         }
     }while(info.status == READ_BUFFER_STATUS_PENDING);
     readn = info.blocks[0].length;
     *data = pstream[type].ptr + info.blocks[0].offset;
-    printf_debug("[%p, %p, offset=0x%x]%s, readn:%u\n", *data, pstream[type].ptr, info.blocks[0].offset,  pstream[type].name, readn);
+    printf_info("[%p, %p, offset=0x%x]%s, readn:%u\n", *data, pstream[type].ptr, info.blocks[0].offset,  pstream[type].name, readn);
 
     return readn;
 }
@@ -690,7 +686,7 @@ static int spm_stream_back_start(uint32_t len,uint8_t continuous, enum stream_ty
     struct _spm_stream *pstream = spm_stream;
     IOCTL_DMA_START_PARA para;
     
-    printf_debug("stream type:%d, back start, continuous[%d], len=%u\n", type, continuous, len);
+    printf_note("stream type:%d, back start, continuous[%d], len=%u\n", type, continuous, len);
 
     if(continuous)
         para.mode = DMA_MODE_CONTINUOUS;
@@ -706,16 +702,16 @@ static int spm_stream_back_stop(enum stream_type type)
 {
     struct _spm_stream *pstream = spm_stream;
     ioctl(pstream[type].id, IOCTL_DMA_ASYN_WRITE_STOP, NULL);
-    printf_debug("stream back stop: %d\n", type);
+    printf_note("stream back stop: %d\n", type);
     sync();
     return 0;
 }
 
-static int spm_stream_back_running_file(enum stream_type type, char *filename)
+static int spm_stream_back_running_file(enum stream_type type, int fd)
 {
     void *user_mem = NULL, *w_addr = NULL;
     int i, rc, ret = 0;
-    uint64_t total_Byte = 0;
+    ssize_t total_Byte = 0;
     unsigned int size;
     write_info info;
     int isDone = 0;
@@ -723,36 +719,44 @@ static int spm_stream_back_running_file(enum stream_type type, char *filename)
 
     struct _spm_stream *pstream = spm_stream;
 
-    file_fd = open(filename, O_RDONLY, 0666);
-    if (file_fd < 0) {
-        printf_err("open % fail\n", filename);
+    if(fd <= 0)
         return -1;
-    }   
-    while (!isDone){
-        ioctl(pstream[type].id, IOCTL_DMA_GET_ASYN_WRITE_INFO, &info);
-        if(info.status != 0)
-            printf_warn("write status:%d, block_num:%d\n", info.status, info.block_num);
-        for(i = 0; i < info.block_num; i++){
-            size = info.blocks[i].length;
-            w_addr = pstream[i].ptr + info.blocks[i].offset;
-            rc = read(file_fd, w_addr, size);
-            if (rc < 0){
-                perror("read file");
-                ret = -1;
-                goto done;
-            }
-            else if(rc == 0){
-                printf_err("read file fail 0x%lx != 0x%lx.\n", rc, size);
-                isDone = 1;
-            }       
-            ioctl(pstream[type].id, IOCTL_DMA_SET_ASYN_WRITE_INFO, &rc);
-            total_Byte += rc;
-        }
-        if(size == 0)
+    file_fd = fd;
+    ioctl(pstream[type].id, IOCTL_DMA_GET_ASYN_WRITE_INFO, &info);
+    if(info.status != 0){   /* NOT OK */
+        printf_warn("write status:%d, block_num:%d\n", info.status, info.block_num);
+        if(info.status == WRITE_BUFFER_STATUS_FAIL){
+            printf_err("read error!\n");
+            exit(1);
+        }else if (info.status == WRITE_BUFFER_STATUS_EMPTY){
+            printf_warn("write buffer empty\n");
+        }else if (info.status == WRITE_BUFFER_STATUS_FULL){
+            printf_warn("write buffer full\n");
             usleep(100);
+        }else{
+            printf_err("unknown status[0x%x]\n", info.status);
+        }
     }
-done:
-    close(file_fd);
+
+    printf_note("block_num=%d\n", info.block_num);
+    for(i = 0; i < info.block_num; i++){
+        size = info.blocks[i].length;
+        w_addr = pstream[type].ptr + info.blocks[i].offset;
+        printf_note("file_fd=%d,ptr=%p, w_addr=%p, info.blocks[%d].offset=%x, size=%u\n",file_fd,pstream[type].ptr,  w_addr, i, info.blocks[i].offset,  size);
+        rc = read(file_fd, w_addr, size);
+        if (rc < 0){
+            perror("read file");
+            ret = -1;
+            break;
+        }
+        else if(rc == 0){
+            printf_err("read file over.\n");
+        }       
+        ioctl(pstream[type].id, IOCTL_DMA_SET_ASYN_WRITE_INFO, &rc);
+        total_Byte += rc;
+        ret = total_Byte;
+    }
+    printf_note("read...[%d], fd=%d\n", ret, fd);
     return ret;
 }
 

@@ -24,7 +24,7 @@
 #include <sys/time.h>
 #include "utils.h"
 
-#define MAX_TEST_BITS 5
+#define MAX_TEST_BITS 20
 
 static DECLARE_BITMAP(thread_bmp, MAX_TEST_BITS);
 
@@ -42,7 +42,9 @@ static struct thread_bitmaps_t{
 struct thread_args{
     char *name;
     void *arg;
+    void *arg_cb;
     void *(*callback)(void *);
+    void *(*exit_callback)(void *);
 };
 
 
@@ -174,6 +176,81 @@ int pthread_create_detach_loop (const pthread_attr_t *attr,
     
     return 0;
 }
+
+void *thread_loop_cb (void *s)
+{
+   // thread_bind_cpu(1);
+    int stateval;
+    int ret;
+    struct timeval beginTime, endTime;
+    struct push_arg p_args;
+    struct thread_args args;
+    
+    memcpy(&args, s, sizeof(struct thread_args));
+    
+    pthread_detach(pthread_self());
+    pthread_cleanup_push(args.exit_callback, args.arg_cb);
+    gettimeofday(&beginTime, NULL);
+
+    fprintf(stderr, "#######start time %ld.%.9ld.\n",beginTime.tv_sec, beginTime.tv_usec);
+
+    while(1){
+        stateval = pthread_setcancelstate (PTHREAD_CANCEL_DISABLE , NULL);
+        if (stateval != 0){
+            printf("set cancel state failure\n");
+        }
+        if(args.callback){
+            ret = args.callback(args.arg);
+            //p_args.count ++;
+        }
+        if(ret > 0){
+           // p_args.nbyte += ret;
+        }
+        stateval  = pthread_setcancelstate (PTHREAD_CANCEL_ENABLE , NULL);
+        pthread_testcancel();
+    }
+    pthread_cleanup_pop(1);
+    return (void *)0;
+}
+
+int pthread_create_detach (const pthread_attr_t *attr, 
+                                        int (*start_routine) (void *), int (*exit_callback) (void *), 
+                                        char *name, void *arg_st, void *arg_cb)
+{
+
+    struct thread_args args;
+    args.name = name;
+    args.arg = arg_st;
+    args.arg_cb = arg_cb;
+    args.callback = start_routine;
+    args.exit_callback = exit_callback;
+    int err, i;
+    unsigned long   tid_index = 0;
+    if(bitmap_weight(thread_bmp, MAX_TEST_BITS) >= MAX_TEST_BITS){
+        printf("thread number %d = max number %d\n", bitmap_weight(thread_bmp, MAX_TEST_BITS), MAX_TEST_BITS);
+        return -1;
+    }
+    for(i = 0; i< ARRAY_SIZE(tbmp.thread_t); i++){
+        if(tbmp.thread_t[i].name &&  !strcmp(tbmp.thread_t[i].name, name)){
+            printf("[%s]thread is running\n", name);
+            return -1;
+        }
+    }
+
+    tid_index = find_first_zero_bit(thread_bmp, MAX_TEST_BITS);
+    tbmp.thread_t[tid_index].name = strdup(name);
+
+    err = pthread_create (&tbmp.thread_t[tid_index].tid , attr , thread_loop_cb , &args);
+    if (err != 0){
+        printf("can't create thread: %s\n", strerror(err));
+        return -1;
+    }
+    set_bit(tid_index, thread_bmp);
+    usleep(100);
+    
+    return 0;
+}
+
 
 
 int pthread_cancel_by_name(char *name)

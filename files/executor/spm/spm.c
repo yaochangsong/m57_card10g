@@ -115,12 +115,12 @@ loop:
     do{
         len = ctx->ops->read_iq_data(&ptr_iq);
         
-        printf_debug("reve handle: len=%d, ptr=%p, %d\n", len, ptr_iq, ctx->pdata->sub_ch_enable.iq_en);
+       // printf_debug("reve handle: len=%d, ptr=%p, %d\n", len, ptr_iq, ctx->pdata->sub_ch_enable.iq_en);
         if(len > 0){
-            for(i = 0; i < 16; i++){
-               printfd("%x ", ptr_iq[i]);
-            }
-            printfd("\n----------[%d]---------\n", len);
+           // for(i = 0; i < 16; i++){
+           //    printfd("%x ", ptr_iq[i]);
+           // }
+           // printfd("\n----------[%d]---------\n", len);
             ctx->ops->send_iq_data(ptr_iq, len, &run);
         }
         if(ctx->pdata->sub_ch_enable.iq_en == 0){
@@ -152,17 +152,19 @@ void spm_deal(struct spm_context *ctx, void *args)
         fft_t *ptr = NULL, *ord_ptr = NULL;
         ssize_t  byte_len = 0; /* fft byte size len */
         size_t fft_len = 0, fft_ord_len = 0;
+        #if 1
         byte_len = pctx->ops->read_fft_data(&ptr);
         if(byte_len < 0){
             return;
         }
         if(byte_len > 0){
             fft_len = byte_len/sizeof(fft_t);
-            printf_debug("size_len=%u, fft_len=%u\n", byte_len, fft_len);
+             printf_debug("size_len=%u, fft_len=%u\n", byte_len, fft_len);
             ord_ptr = pctx->ops->data_order(ptr, fft_len, &fft_ord_len, args);
             if(ord_ptr)
                 pctx->ops->send_fft_data(ord_ptr, fft_ord_len, args);
         }
+        #endif
     }
 }
 

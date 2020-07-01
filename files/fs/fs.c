@@ -292,13 +292,64 @@ static ssize_t _fs_stop_save_file(char *filename)
     _write_disk_close(disk_save_file_fd);
 }
 
+#define THREAD_FS_BACK_NAME "FS_BACK_FILE"
+
+static ssize_t _fs_start_read_raw_file_loop(void *arg)
+{
+    ssize_t nread = 0; 
+    int  fd;
+    fd = *(int *)arg;
+    
+    nread = get_spm_ctx()->ops->back_running_file(STREAM_ADC, fd);
+    printf_note("nread = %d\n", nread);
+    return nread;
+}
+
+static void fs_read_exit_callback(void *arg){  
+    int fd;
+    fd = *(int *)arg;
+    printf_note("fs read exit, fd= %d\n", fd);
+    if(fd > 0)
+        close(fd);
+}
+
 
 static ssize_t _fs_start_read_raw_file(char *filename)
 {
+    int ret = -1;
+    static int file_fd;
+    char path[512];
     if(disk_is_valid == false)
         return -1;
+#if 1
+    if(filename == NULL)
+        return -1;
+    snprintf(path, sizeof(path), "%s/%s", fs_get_root_dir(), filename);
+    file_fd = open(path, O_RDONLY, 0666);
+    if (file_fd < 0) {
+        printf_err("open % fail\n", path);
+        return -1;
+    } 
+    printf_note("start read file: %s, file_fd=%d\n", path, file_fd);
+    io_start_backtrace_file(NULL);
+    ret =  pthread_create_detach (NULL, _fs_start_read_raw_file_loop, fs_read_exit_callback,  
+                                THREAD_FS_BACK_NAME, &file_fd, &file_fd);
+    if(ret != 0){
+        perror("pthread cread save file thread!!");
+    }
+#endif
     return 0;
 }
+
+static ssize_t _fs_stop_read_raw_file(char *filename)
+{
+    if(disk_is_valid == false)
+        return -1;
+    pthread_cancel_by_name(THREAD_FS_BACK_NAME);
+    io_stop_backtrace_file(NULL);
+    return 0;
+}
+
 
 static int _fs_close(void)
 {
@@ -318,6 +369,7 @@ static const struct fs_ops _fs_ops = {
     .fs_start_save_file = _fs_start_save_file,
     .fs_stop_save_file = _fs_stop_save_file,
     .fs_start_read_raw_file = _fs_start_read_raw_file,
+    .fs_stop_read_raw_file = _fs_stop_read_raw_file,
     .fs_close = _fs_close,
 };
 

@@ -51,8 +51,8 @@ static inline int _write_fs_disk_init(char *path)
     if(path == NULL)
         return -1;
 
-   // fd = open(path, O_RDWR | O_CREAT | O_TRUNC | O_DIRECT | O_SYNC, 0666);
-    fd = open(path, O_RDWR | O_CREAT | O_TRUNC, 0666);
+    fd = open(path, O_RDWR | O_CREAT | O_TRUNC | O_DIRECT | O_SYNC, 0666);
+    //fd = open(path, O_RDWR | O_CREAT | O_TRUNC, 0666);
     if (fd < 0) {
         printf_err("open %s fail\n", path);
         return -1;
@@ -305,7 +305,7 @@ static ssize_t _fs_start_read_raw_file_loop(void *arg)
     return nread;
 }
 
-static void fs_read_exit_callback(void *arg){  
+static void _fs_read_exit_callback(void *arg){  
     int fd;
     fd = *(int *)arg;
     printf_note("fs read exit, fd= %d\n", fd);
@@ -332,7 +332,7 @@ static ssize_t _fs_start_read_raw_file(char *filename)
     } 
     printf_note("start read file: %s, file_fd=%d\n", path, file_fd);
     io_start_backtrace_file(NULL);
-    ret =  pthread_create_detach (NULL, _fs_start_read_raw_file_loop, fs_read_exit_callback,  
+    ret =  pthread_create_detach (NULL, _fs_start_read_raw_file_loop, _fs_read_exit_callback,  
                                 THREAD_FS_BACK_NAME, &file_fd, &file_fd);
     if(ret != 0){
         perror("pthread cread save file thread!!");

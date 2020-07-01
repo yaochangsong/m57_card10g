@@ -13,10 +13,12 @@
 net_1g_ip=`xjson -r -f /etc/config.json -n ipaddress,network`
 net_1g_netmask=`xjson -r -f /etc/config.json -n netmask,network`
 net_1g_gateway=`xjson -r -f /etc/config.json -n gateway,network`
+net_1g_mac="00:0A:35:00:12:AA"
 
 net_10g_ip=`xjson -r -f /etc/config.json -n ipaddress,network_10g`
 net_10g_netmask=`xjson -r -f /etc/config.json -n netmask,network_10g`
 net_10g_gateway=`xjson -r -f /etc/config.json -n gateway,network_10g`
+net_10g_mac="00:0A:35:00:12:AB"
 
 isValidIp() 
 {
@@ -52,12 +54,14 @@ iface eth0 inet static
 address $net_10g_ip
 netmask $net_10g_netmask
 gateway $net_10g_gateway
+hwaddress ether $net_1g_mac
 
 auto eth1
 iface eth1 inet static
 address $net_1g_ip
 netmask $net_1g_netmask
 gateway $net_1g_gateway
+hwaddress ether $net_10g_mac
 EOF
 
 ret=0

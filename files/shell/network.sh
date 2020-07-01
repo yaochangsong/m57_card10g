@@ -66,6 +66,8 @@ cmp -s /etc/network/interfaces /etc/network/.interfaces || ret=1
 if [ $ret -ne 0 ]; then
 	cp /etc/network/.interfaces /etc/network/interfaces
 	echo "network restart..."
-	/etc/init.d/networking restart
+    ip addr flush dev eth0
+    ip addr flush dev eth1
+    /etc/init.d/networking restart
 fi
 

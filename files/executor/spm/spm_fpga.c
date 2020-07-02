@@ -36,6 +36,32 @@ size_t pagesize = 0;
 size_t iq_send_unit_byte = DEFAULT_IQ_SEND_BYTE;
 
 
+FILE *_file_fd;
+static  void init_write_file(char *filename)
+{
+    _file_fd = fopen(filename, "w+b");
+    if(!_file_fd){
+        printf("Open file error!\n");
+    }
+}
+
+static inline int write_file_ascii(int16_t *pdata)
+{
+    char _file_buffer[32] = {0};
+    sprintf(_file_buffer, "%d ", *pdata);
+    fwrite((void *)_file_buffer,strlen(_file_buffer), 1, _file_fd);
+
+    return 0;
+}
+
+static inline int write_lf(void)
+{
+    char lf = '\n';
+    fwrite((void *)&lf,1, 1, _file_fd);
+
+    return 0;
+}
+
 /* Allocate zeroed out memory */
 static inline void *zalloc(size_t size)
 {
@@ -289,10 +315,9 @@ static fft_t *spm_data_order(fft_t *fft_data,
     return (fft_t *)run_args->fft_ptr;
 }
 
-
 static int spm_send_fft_data(void *data, size_t fft_len, void *arg)
 {
-    uint8_t *ptr = NULL, *ptr_header = NULL;
+    uint8_t *ptr_header = NULL;
     uint32_t header_len = 0;
     size_t data_byte_size = 0;
 
@@ -328,10 +353,12 @@ static int spm_send_fft_data(void *data, size_t fft_len, void *arg)
     safe_free(ptr);
 #else
     struct iovec iov[2];
+
     iov[0].iov_base = ptr_header;
     iov[0].iov_len = header_len;
     iov[1].iov_base = data;
     iov[1].iov_len = data_byte_size;
+    
     udp_send_vec_data(iov, 2);
 #endif
 #if (defined SUPPORT_DATA_PROTOCAL_XW)
@@ -724,25 +751,24 @@ static int spm_stream_back_running_file(enum stream_type type, int fd)
     file_fd = fd;
     ioctl(pstream[type].id, IOCTL_DMA_GET_ASYN_WRITE_INFO, &info);
     if(info.status != 0){   /* NOT OK */
-        printf_warn("write status:%d, block_num:%d\n", info.status, info.block_num);
+        printf_debug("write status:%d, block_num:%d\n", info.status, info.block_num);
         if(info.status == WRITE_BUFFER_STATUS_FAIL){
-            printf_err("read error!\n");
+            printf_debug("read error!\n");
             exit(1);
         }else if (info.status == WRITE_BUFFER_STATUS_EMPTY){
-            printf_warn("write buffer empty\n");
+            printf_debug("write buffer empty\n");
         }else if (info.status == WRITE_BUFFER_STATUS_FULL){
-            printf_warn("write buffer full\n");
+            printf_debug("write buffer full\n");
             usleep(100);
         }else{
-            printf_err("unknown status[0x%x]\n", info.status);
+            printf_debug("unknown status[0x%x]\n", info.status);
         }
     }
 
-    printf_note("block_num=%d\n", info.block_num);
     for(i = 0; i < info.block_num; i++){
         size = info.blocks[i].length;
         w_addr = pstream[type].ptr + info.blocks[i].offset;
-        printf_note("file_fd=%d,ptr=%p, w_addr=%p, info.blocks[%d].offset=%x, size=%u\n",file_fd,pstream[type].ptr,  w_addr, i, info.blocks[i].offset,  size);
+       // printf_debug("file_fd=%d,ptr=%p, w_addr=%p, info.blocks[%d].offset=%x, size=%u\n",file_fd,pstream[type].ptr,  w_addr, i, info.blocks[i].offset,  size);
         rc = read(file_fd, w_addr, size);
         if (rc < 0){
             perror("read file");
@@ -750,13 +776,13 @@ static int spm_stream_back_running_file(enum stream_type type, int fd)
             break;
         }
         else if(rc == 0){
-            printf_err("read file over.\n");
+            printf_debug("read file over.\n");
+            return 0;
         }       
         ioctl(pstream[type].id, IOCTL_DMA_SET_ASYN_WRITE_INFO, &rc);
         total_Byte += rc;
         ret = total_Byte;
     }
-    printf_note("read...[%d], fd=%d\n", ret, fd);
     return ret;
 }
 

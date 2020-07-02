@@ -24,5 +24,7 @@ extern int pthread_create_detach (const pthread_attr_t *attr,
                                         char *name, void *arg_st, void *arg_cb);
 
 extern void *pthread_cancel_by_name(char *name);
+extern int pthread_exit_by_name(char *name);
+
 
 #endif

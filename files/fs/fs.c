@@ -301,7 +301,10 @@ static ssize_t _fs_start_read_raw_file_loop(void *arg)
     fd = *(int *)arg;
     
     nread = get_spm_ctx()->ops->back_running_file(STREAM_ADC, fd);
-    printf_note("nread = %d\n", nread);
+    if(nread == 0){
+        printf_note(">>>>>>>read over!!\n");
+        pthread_exit_by_name(THREAD_FS_BACK_NAME);
+    }
     return nread;
 }
 

@@ -210,6 +210,7 @@ void *thread_loop_cb (void *s)
         pthread_testcancel();
     }
     pthread_cleanup_pop(1);
+    
     return (void *)0;
 }
 
@@ -275,6 +276,25 @@ int pthread_cancel_by_name(char *name)
             }
         }
     }
+    return -1;
+}
+
+int pthread_exit_by_name(char *name)
+{
+    int i;
+    for(i = 0; i< ARRAY_SIZE(tbmp.thread_t); i++){
+        if(tbmp.thread_t[i].name &&  !strcmp(tbmp.thread_t[i].name, name)){
+                printf("######[%s] thread exit\n", name);
+                if(tbmp.thread_t[i].name){
+                    free(tbmp.thread_t[i].name);
+                    tbmp.thread_t[i].name = NULL;
+                }
+                clear_bit(i, thread_bmp);
+                pthread_exit(0);
+                return 0;
+        }
+    }
+    printf("NOT find thread %s\n", name);
     return -1;
 }
 

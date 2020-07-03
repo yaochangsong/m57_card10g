@@ -76,24 +76,6 @@ void spm_iq_handle_thread(void *arg)
 
    // thread_bind_cpu(1);
     ctx = (struct spm_context *)arg;
-#if 0
-    int policy;
-    struct sched_param param;
-    pthread_getschedparam(pthread_self(),&policy,&param);
-    if(policy == SCHED_OTHER)
-        printf("SCHED_OTHER\n");
-    if(policy == SCHED_RR)
-        printf("SCHED_RR \n");
-    if(policy==SCHED_FIFO)
-        printf("SCHED_FIFO\n");
-
-    int priority = sched_get_priority_max(policy);
-    assert(priority!=-1);
-    printf("max_priority=%d\n",priority);
-    priority= sched_get_priority_min(policy);
-    assert(priority!=-1);
-    printf("min_priority=%d\n",priority);
-#endif
 
 loop:
     printf_warn("######Wait IQ enable######\n");
@@ -102,13 +84,7 @@ loop:
     while(ctx->pdata->sub_ch_enable.iq_en == 0)
         pthread_cond_wait(&spm_iq_cond, &spm_iq_cond_mutex);
     pthread_mutex_unlock(&spm_iq_cond_mutex);
-    #if 0
-    if(ctx->pdata->sub_ch_enable.iq_en == 0){
-        printf_warn("IQ is not enabled!![%d]\n", ctx->pdata->sub_ch_enable.iq_en);
-        sleep(1);
-        goto loop;
-    }
-    #endif
+    
     printf_note(">>>>>IQ start\n");
     memset(&run, 0, sizeof(run));
     memcpy(&run, ctx->run_args, sizeof(run));
@@ -152,7 +128,6 @@ void spm_deal(struct spm_context *ctx, void *args)
         fft_t *ptr = NULL, *ord_ptr = NULL;
         ssize_t  byte_len = 0; /* fft byte size len */
         size_t fft_len = 0, fft_ord_len = 0;
-        #if 1
         byte_len = pctx->ops->read_fft_data(&ptr);
         if(byte_len < 0){
             return;
@@ -164,7 +139,6 @@ void spm_deal(struct spm_context *ctx, void *args)
             if(ord_ptr)
                 pctx->ops->send_fft_data(ord_ptr, fft_ord_len, args);
         }
-        #endif
     }
 }
 

@@ -12,26 +12,26 @@ static char  *udp_get_ifname(struct net_udp_client *cl)
     struct in_addr ipaddr, netmask, local_net, peer_net;
      
     if(get_netmask(NETWORK_EHTHERNET_POINT, &netmask) != -1){
-        printf_note("===>netmask[0x%x]\n", netmask.s_addr);
+        printf_debug("===>netmask[0x%x]\n", netmask.s_addr);
     }
     if(get_ipaddress(NETWORK_EHTHERNET_POINT, &ipaddr) != -1){
         local_net.s_addr = ipaddr.s_addr& netmask.s_addr;
         peer_net.s_addr = cl->peer_addr.sin_addr.s_addr & netmask.s_addr;
-        printf_note("===>ipaddr[0x%x,  net=0x%x]\n", ipaddr.s_addr, ipaddr.s_addr& netmask.s_addr);
-        printf_note("===>peer net=0x%x, ip=0x%x\n",   cl->peer_addr.sin_addr.s_addr & netmask.s_addr, cl->peer_addr.sin_addr.s_addr);
+        printf_debug("===>ipaddr[0x%x,  net=0x%x]\n", ipaddr.s_addr, ipaddr.s_addr& netmask.s_addr);
+        printf_debug("===>peer net=0x%x, ip=0x%x\n",   cl->peer_addr.sin_addr.s_addr & netmask.s_addr, cl->peer_addr.sin_addr.s_addr);
         if(local_net.s_addr == peer_net.s_addr){
             return NETWORK_EHTHERNET_POINT;
         }
     }
 #ifdef SUPPORT_NET_WZ
     if(get_netmask(NETWORK_10G_EHTHERNET_POINT, &netmask) != -1){
-        printf_note("===>netmask[0x%x]\n", netmask.s_addr);
+        printf_debug("===>netmask[0x%x]\n", netmask.s_addr);
     }
     if(get_ipaddress(NETWORK_10G_EHTHERNET_POINT, &ipaddr) != -1){
         local_net.s_addr = ipaddr.s_addr& netmask.s_addr;
         peer_net.s_addr = cl->peer_addr.sin_addr.s_addr & netmask.s_addr;
-        printf_note("===>ipaddr[0x%x,  net=0x%x]\n", ipaddr.s_addr, ipaddr.s_addr& netmask.s_addr);
-        printf_note("===>peer net=0x%x, ip=0x%x\n",   cl->peer_addr.sin_addr.s_addr & netmask.s_addr, cl->peer_addr.sin_addr.s_addr);
+        printf_debug("===>ipaddr[0x%x,  net=0x%x]\n", ipaddr.s_addr, ipaddr.s_addr& netmask.s_addr);
+        printf_debug("===>peer net=0x%x, ip=0x%x\n",   cl->peer_addr.sin_addr.s_addr & netmask.s_addr, cl->peer_addr.sin_addr.s_addr);
         if(local_net.s_addr == peer_net.s_addr){
             return NETWORK_10G_EHTHERNET_POINT;
         }
@@ -70,7 +70,7 @@ int udp_send_data_to_client(struct net_udp_client *client, uint8_t *data, uint32
     return 0;
 }
 
-int udp_send_vec_data_to_client(struct net_udp_client *client, struct iovec *iov, int iov_len)
+static inline int udp_send_vec_data_to_client(struct net_udp_client *client, struct iovec *iov, int iov_len)
 {    
     struct msghdr msgsent;
 
@@ -102,18 +102,20 @@ int udp_send_vec_data(struct iovec *iov, int iov_len)
 int udp_send_vec_data_to_taget_addr(struct iovec *iov, int iov_len)
 {
     #define SERVER "192.168.2.11"
-    #define PORT 8888 
-    
-    struct net_udp_client client;
-    client.peer_addr.sin_family = AF_INET;
-    client.peer_addr.sin_port = htons(PORT);
-    client.srv =  get_udp_server();
+    #define PORT 1134 
+    static struct net_udp_client client;
+    static bool client_init_flag = false;
+    if(client_init_flag == false){
+        client.peer_addr.sin_family = AF_INET;
+        client.peer_addr.sin_port = htons(PORT);
+        client.srv =  get_udp_server();
 
-    if(inet_aton(SERVER, &client.peer_addr.sin_addr) == 0){
-        printf_err("error server ip\n");
-        return -1;
+        if(inet_aton(SERVER, &client.peer_addr.sin_addr) == 0){
+            printf_err("error server ip\n");
+            return -1;
+        }
+        client_init_flag = true;
     }
-
     udp_send_vec_data_to_client(&client, iov, iov_len);
     return 0;
 }
@@ -259,6 +261,7 @@ struct net_udp_server *udp_server_new(const char *host, int port)
         uh_log_err("usock");
         return NULL;
     }
+    
     printf_debug("sock=%d\n", sock);
     srv = calloc(1, sizeof(struct net_udp_server));
     if (!srv) {

@@ -123,11 +123,13 @@ static inline  int json_write_string_param(const char * const grandfather, const
     cJSON *grand_object = NULL, *object = NULL;
     if(grandfather != NULL){
         grand_object = cJSON_GetObjectItem(root, grandfather);
-        object = cJSON_GetObjectItem(grand_object, parents);
+        if(grand_object != NULL)
+            object = cJSON_GetObjectItem(grand_object, parents);
     }else{
         object = cJSON_GetObjectItem(root, parents);
     }
-    cJSON_ReplaceItemInObject(object, child, cJSON_CreateString((char *)data));
+    if(object != NULL)
+        cJSON_ReplaceItemInObject(object, child, cJSON_CreateString((char *)data));
     return 0;
 }
 
@@ -156,11 +158,13 @@ static inline  int json_write_int_param(const char * const grandfather, const ch
     cJSON *grand_object = NULL, *object = NULL;
     if(grandfather != NULL){
         grand_object = cJSON_GetObjectItem(root, grandfather);
-        object = cJSON_GetObjectItem(grand_object, parents);
+        if(grand_object != NULL)
+            object = cJSON_GetObjectItem(grand_object, parents);
     }else{
         object = cJSON_GetObjectItem(root, parents);
     }
-    cJSON_GetObjectItem(object,child)->valuedouble = data;
+    if(object != NULL)
+        cJSON_GetObjectItem(object,child)->valuedouble = data;
     
     return 0;
 }
@@ -237,6 +241,7 @@ static int json_write_config_param(cJSON* root, struct poal_config *config)
 
     
     /*network*/
+    /* 1g */
     saddr.sin_addr.s_addr = config->network.gateway;
     json_write_string_param(NULL, "network", "gateway", inet_ntoa(saddr.sin_addr));
     network = cJSON_GetObjectItem(root, "network");
@@ -259,11 +264,40 @@ static int json_write_config_param(cJSON* root, struct poal_config *config)
     printf_debug("port is:%d\n",node->valueint);
 
     char temp[30]={0};
-    sprintf(temp,"%02x:%02x:%02x:%02x:%02x:%02x\n", config->network.mac[0],config->network.mac[1],
+    sprintf(temp,"%02x:%02x:%02x:%02x:%02x:%02x", config->network.mac[0],config->network.mac[1],
     config->network.mac[2],config->network.mac[3],config->network.mac[4],config->network.mac[5]);
     json_write_int_param(NULL, "network", "mac", temp);
     node = cJSON_GetObjectItem(network, "mac");
     printf_debug("mac is:%s\n",node->valuestring);
+
+    /* 10g */
+    saddr.sin_addr.s_addr = config->network_10g.gateway;
+    json_write_string_param(NULL, "network_10g", "gateway", inet_ntoa(saddr.sin_addr));
+    network = cJSON_GetObjectItem(root, "network");
+    node = cJSON_GetObjectItem(network, "gateway");
+    printf_debug("10g gatewayis:%s\n",node->valuestring);
+
+    saddr.sin_addr.s_addr = config->network_10g.ipaddress;
+    json_write_string_param(NULL, "network_10g", "ipaddress", inet_ntoa(saddr.sin_addr));
+    node = cJSON_GetObjectItem(network, "ipaddress");
+    printf_debug("10g ipaddress is:%s\n",node->valuestring);
+    
+    saddr.sin_addr.s_addr = config->network_10g.netmask;
+    json_write_string_param(NULL, "network_10g", "netmask", inet_ntoa(saddr.sin_addr));
+    node = cJSON_GetObjectItem(network, "netmask");
+    printf_debug("10g netmask:%s\n",node->valuestring);
+
+    
+    json_write_double_param(NULL, "network_10g", "port", config->network_10g.port);
+    node = cJSON_GetObjectItem(network, "port");
+    printf_debug("10g port is:%d\n",node->valueint);
+
+    
+    sprintf(temp,"%02x:%02x:%02x:%02x:%02x:%02x", config->network_10g.mac[0],config->network_10g.mac[1],
+    config->network.mac[2],config->network_10g.mac[3],config->network_10g.mac[4],config->network_10g.mac[5]);
+    json_write_string_param(NULL, "network_10g", "mac", temp);
+    node = cJSON_GetObjectItem(network, "mac");
+    printf_debug("10g mac is:%s\n",node->valuestring);
 
     /*control_parm*/
      json_write_int_param(NULL, "control_parm", "spectrum_time_interval", config->ctrl_para.spectrum_time_interval);
@@ -980,7 +1014,6 @@ int json_write_config_file(void *config)
     file = conf->configfile;
     if(file == NULL || config == NULL || root_json == NULL)
         return -1;
-    
      json_write_config_param(root_json, &conf->oal_config);
     //json_print(root_json, 1);
     ret = json_write_file(file, root_json);

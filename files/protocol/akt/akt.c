@@ -490,22 +490,45 @@ static int akt_execute_set_command(void *cl)
         case RCV_NET_PARAM:
         {
             DEVICE_NET_INFO_ST netinfo;
+            char ifname[32];
+            static uint16_t port_1g = 0, port_10g = 0;
+            struct net_tcp_client * client = (struct net_tcp_client *)cl;
             bool restart = false;
+           
             memcpy(&netinfo, header->buf, sizeof(DEVICE_NET_INFO_ST));
-            poal_config->network.ipaddress = netinfo.ipaddr;
-            poal_config->network.netmask =netinfo.mask;
-            poal_config->network.gateway = netinfo.gateway;
-            
-            printf_note("ipaddr=0x%x, mask=0x%x, gateway=0x%x, port=%d\n", 
-                poal_config->network.ipaddress, poal_config->network.netmask, poal_config->network.gateway, poal_config->network.port);
-            config_save_all();
-            executor_set_command(EX_NETWORK_CMD, EX_NETWORK_1G, 0, NULL);
-            if(poal_config->network.port != ntohs(netinfo.port)){
-                /* 修改端口重启app */
+            if(get_ifa_name_by_ip(client->get_serv_addr(client), ifname) != 0){
+                err_code = RET_CODE_INTERNAL_ERR;
+                goto set_exit;
+            }
+            #ifdef SUPPORT_NET_WZ
+            if(!strcmp(ifname, NETWORK_10G_EHTHERNET_POINT)){
+                poal_config->network_10g.ipaddress = netinfo.ipaddr;
+                poal_config->network_10g.netmask =netinfo.mask;
+                poal_config->network_10g.gateway = netinfo.gateway;
+                port_10g = poal_config->network_10g.port;
+                poal_config->network_10g.port = ntohs(netinfo.port);
+                if(port_10g != poal_config->network_10g.port){
+                    restart = true;
+                }
+                printf_note("set 10G net ipaddr=0x%x, mask=0x%x, gateway=0x%x, port=%d\n", 
+                    poal_config->network_10g.ipaddress, poal_config->network_10g.netmask, poal_config->network_10g.gateway, poal_config->network_10g.port);
+            } else
+            #endif
+            if(!strcmp(ifname, NETWORK_EHTHERNET_POINT)){
+                poal_config->network.ipaddress = netinfo.ipaddr;
+                poal_config->network.netmask =netinfo.mask;
+                poal_config->network.gateway = netinfo.gateway;
+                port_1g = poal_config->network.port ;
                 poal_config->network.port = ntohs(netinfo.port);
-                restart = true;
+                if(port_1g != poal_config->network.port){
+                    restart = true;
+                }
+                printf_note("set 1G net ipaddr=0x%x, mask=0x%x, gateway=0x%x, port=%d\n", 
+                    poal_config->network.ipaddress, poal_config->network.netmask, poal_config->network.gateway, poal_config->network.port);
             }
             
+            config_save_all();
+            executor_set_command(EX_NETWORK_CMD, EX_NETWORK, 0, NULL);
             if(restart)
                 io_restart_app();
           break;

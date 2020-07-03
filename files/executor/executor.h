@@ -107,6 +107,7 @@ enum {
 
 /* network paramters */
 enum {
+    EX_NETWORK,
     EX_NETWORK_1G,
     EX_NETWORK_10G,
     EX_NETWORK_IP,               /* IP地址 */

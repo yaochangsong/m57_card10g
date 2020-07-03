@@ -777,8 +777,7 @@ int8_t executor_set_command(exec_cmd cmd, uint8_t type, uint8_t ch,  void *data,
         }
         case EX_NETWORK_CMD:
         {
-            if(EX_NETWORK_1G == type)
-                executor_set_1g_network(&poal_config->network);
+            executor_set_1g_network(&poal_config->network);
             safe_system("/etc/network.sh &");
             break;
         }
@@ -940,10 +939,7 @@ void executor_init(void)
 #endif /* SUPPORT_PLATFORM_ARCH_ARM */
    // executor_timer_task_init();
     /* set default network */
-    executor_set_command(EX_NETWORK_CMD, EX_NETWORK_1G, 0, NULL);
-#ifdef SUPPORT_NET_WZ
-    executor_set_command(EX_NETWORK_CMD, EX_NETWORK_10G, 0, NULL);
-#endif
+    executor_set_command(EX_NETWORK_CMD, EX_NETWORK, 0, NULL);
     /* shutdown all channel */
     for(i = 0; i<MAX_RADIO_CHANNEL_NUM ; i++){
         io_set_enable_command(PSD_MODE_DISABLE, i, -1, 0);

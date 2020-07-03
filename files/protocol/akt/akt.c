@@ -1073,14 +1073,6 @@ static int akt_execute_get_command(void)
             strcpy(fsp.filepath, filename);
             #if defined(SUPPORT_XWFS)
             ret = xwfs_get_file_size_by_name(filename, &f_bg_size, sizeof(ssize_t));//io_read_more_info_by_name(filename, &fsp, io_find_file_info);
-            #elif defined(SUPPORT_FS)
-            struct fs_context *fs_ctx;
-            fs_ctx = get_fs_ctx();
-            if(fs_ctx != NULL){
-                fs_ctx->ops->fs_find(filename, _find_file_list, &f_bg_size);
-            }
-            #endif
-            printf_note("Find file:%s, fsize=%u ret =%d\n", fsp.filepath, f_bg_size, ret);
             if(ret != 0){
                 fsp.status = 0;
                 fsp.file_size = 0;
@@ -1088,6 +1080,22 @@ static int akt_execute_get_command(void)
                 fsp.status = 1;
                 fsp.file_size = (uint64_t)f_bg_size*8*1024*1024; /* data block group size is 8MByte */
             }
+            #elif defined(SUPPORT_FS)
+            struct fs_context *fs_ctx;
+            fs_ctx = get_fs_ctx();
+            if(fs_ctx != NULL){
+                fs_ctx->ops->fs_find(filename, _find_file_list, &f_bg_size);
+            }
+            if(ret != 0){
+                fsp.status = 0;
+                fsp.file_size = 0;
+            }else{
+                fsp.status = 1;
+                fsp.file_size = (uint64_t)f_bg_size;
+            }
+            #endif
+            printf_note("Find file:%s, fsize=%u ret =%d\n", fsp.filepath, f_bg_size, ret);
+            
             printf_note("ret=%d, filepath=%s, file_size=[%u bg]%llu, status=%d\n",ret, fsp.filepath, f_bg_size, fsp.file_size, fsp.status);
             memcpy(akt_get_response_data.payload_data, &fsp, sizeof(SEARCH_FILE_STATUS_RSP_ST));
             akt_get_response_data.header.len = sizeof(SEARCH_FILE_STATUS_RSP_ST);

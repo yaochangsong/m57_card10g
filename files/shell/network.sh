@@ -55,6 +55,7 @@ address $net_10g_ip
 netmask $net_10g_netmask
 gateway $net_10g_gateway
 hwaddress ether $net_1g_mac
+mtu 9000
 
 auto eth1
 iface eth1 inet static

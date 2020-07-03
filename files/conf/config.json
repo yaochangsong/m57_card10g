@@ -19,11 +19,11 @@
 		"internal_clock":	1,
 		"net10g_threshold_bandwidth":	10000000,
 		"signal_threshold":	90,
-		"iq_data_length":	512
+		"iq_data_length":	8192
 	},
 	"status_parm":	{
 		"soft_version":	{
-			"app":	"1.0.0_debug(2020-06-22-09:33:19)-1f659a9fc2fb37e13535992da6af273d16f595b8 ",
+			"app":	"1.0.0_debug(2020-06-28-17:39:10)-7fadf25a63014d28066001c1009f73333f3d97d4 ",
 			"fpga":	"202012"
 		},
 		"device_sn":	"0x0202"

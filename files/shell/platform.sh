@@ -9,6 +9,7 @@ start()
     /etc/network.sh
     /etc/led.sh work on
     ln -s /run/media/nvme0n1/data data
+    /etc/check.sh stop
     /etc/check.sh start
 	echo 3 4 1 3 > /proc/sys/kernel/printk
 #   insmod /lib/modules/4.6.0-xilinx/extra/dmadrvm.ko

@@ -89,9 +89,17 @@ int executor_tcp_disconnect_notify(void *cl)
         #ifdef SUPPORT_NET_WZ
         io_set_10ge_net_onoff(0);   /* 客户端离线，关闭万兆传输 */
         #endif
+        /* 关闭所有子通道 */
+        uint8_t enable =0;
+        uint8_t default_method = IO_DQ_MODE_IQ;
+        int i = 0;
+        for(i = 0; i< MAX_SIGNAL_CHANNEL_NUM; i++){
+            executor_set_command(EX_MID_FREQ_CMD, EX_SUB_CH_ONOFF, i, &enable);
+            executor_set_command(EX_MID_FREQ_CMD, EX_SUB_CH_DEC_METHOD, i, &default_method);
+            memset(&poal_config->sub_ch_enable[i], 0, sizeof(struct output_en_st));
+        }
         /* 所有客户端离线，关闭相关使能，线程复位到等待状态 */
         memset(&poal_config->enable, 0, sizeof(poal_config->enable));
-        memset(&poal_config->sub_ch_enable, 0, sizeof(poal_config->enable));
         poal_config->enable.bit_reset = true; /* reset(stop) all working task */
     }
     
@@ -275,9 +283,11 @@ static int8_t  executor_points_scan(uint8_t ch, work_mode_type mode, void *args)
         r_args->bandwidth = point->points[i].bandwidth;
         r_args->m_freq = point->points[i].center_freq;
         r_args->mode = mode;
-        if(poal_config->sub_ch_enable.iq_en){
-            subch = poal_config->sub_ch_enable.sub_id ;
-            r_args->d_method = poal_config->sub_channel_para[ch].sub_ch[subch].raw_d_method;
+        if(subch_bitmap_weight()!=0){
+            if(i < MAX_SIGNAL_CHANNEL_NUM){
+                subch = poal_config->sub_ch_enable[i].sub_id ;
+                r_args->d_method = poal_config->sub_channel_para[ch].sub_ch[subch].raw_d_method;
+            }
         }else{
             r_args->d_method = point->points[i].raw_d_method;
         }
@@ -347,10 +357,9 @@ static int8_t  executor_points_scan(uint8_t ch, work_mode_type mode, void *args)
                 io_set_enable_command(PSD_MODE_DISABLE, ch, -1, point->points[i].fft_size);
             }
 #endif
-            if((poal_config->enable.bit_en == 0 && poal_config->sub_ch_enable.bit_en == 0) || 
+            if((poal_config->enable.bit_en == 0) || 
                poal_config->enable.bit_reset == true){
-                    printf_warn("bit_reset...[%d, %d, %d]\n", poal_config->enable.bit_en, 
-                        poal_config->sub_ch_enable.bit_en, poal_config->enable.bit_reset);
+                    printf_warn("bit_reset...[%d, %d]\n", poal_config->enable.bit_en, poal_config->enable.bit_reset);
                     poal_config->enable.bit_reset = false;
                     return -1;
             }
@@ -401,15 +410,6 @@ loop:   printf_note("######wait to deal work######\n");
                      poal_config->enable.psd_en == 0 ? "Psd Stop" : "Psd Start",
                      poal_config->enable.audio_en == 0 ? "Audio Stop" : "Audio Start",
                      poal_config->enable.iq_en == 0 ? "IQ Stop" : "IQ Start");
-        if(poal_config->sub_ch_enable.bit_en){
-            printf_note("SUB channel, [Channel:%d, sub:%d]%s Work: [%s], [%s], [%s]\n", 
-                                 ch,poal_config->sub_ch_enable.sub_id,
-                                 poal_config->sub_ch_enable.bit_en == 0 ? "SubStop" : "SubStart",
-                                 poal_config->sub_ch_enable.psd_en == 0 ? "Sub Psd Stop" : "Sub Psd Start",
-                                 poal_config->sub_ch_enable.audio_en == 0 ? "Sub Audio Stop" : "Sub Audio Start",
-                                 poal_config->sub_ch_enable.iq_en == 0 ? "Sub IQ Stop" : "Sub IQ Start");
-
-        }
         
         poal_config->enable.bit_reset = false;
         printf_note("-------------------------------------\n");
@@ -464,7 +464,7 @@ loop:   printf_note("######wait to deal work######\n");
                         goto loop;
                     }
 
-                    if(poal_config->enable.bit_en || poal_config->sub_ch_enable.bit_en){
+                    if(poal_config->enable.bit_en){
                         if(executor_points_scan(ch, poal_config->work_mode, arg) == -1){
                             io_set_enable_command(PSD_MODE_DISABLE, ch, -1,  0);
                             io_set_enable_command(AUDIO_MODE_DISABLE, ch, -1, 0);
@@ -947,6 +947,7 @@ void executor_init(void)
         //io_set_enable_command(FREQUENCY_BAND_ENABLE_DISABLE, i, 0);
         //executor_set_command(EX_RF_FREQ_CMD, EX_RF_ATTENUATION, 0, &poal_config->rf_para[i].attenuation);
     }
+    subch_bitmap_init();
 #ifdef SUPPORT_NET_WZ
     io_set_10ge_net_onoff(0); /* 关闭万兆传输 */
 #endif

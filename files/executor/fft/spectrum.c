@@ -107,7 +107,7 @@ static inline  bool specturm_is_psd_enable(void)
 static inline  bool specturm_is_iq_enable(void)
 {
     struct poal_config *poal_config = &(config_get_config()->oal_config);
-    if(poal_config->enable.iq_en == 1 || poal_config->sub_ch_enable.iq_en == 1)
+    if(poal_config->enable.iq_en == 1) //|| poal_config->sub_ch_enable.iq_en == 1
         return true;
     else
         return false;

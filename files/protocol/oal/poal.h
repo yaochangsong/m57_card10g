@@ -320,7 +320,7 @@ struct poal_config{
     struct output_en_st enable;
     struct multi_freq_point_para_st  multi_freq_point_param[MAX_RADIO_CHANNEL_NUM];
     struct sub_channel_freq_para_st sub_channel_para[MAX_RADIO_CHANNEL_NUM];
-    struct output_en_st sub_ch_enable;
+    struct output_en_st sub_ch_enable[MAX_SIGNAL_CHANNEL_NUM];
     struct multi_freq_fregment_para_st  multi_freq_fregment_para[MAX_RADIO_CHANNEL_NUM];
     struct rf_para_st rf_para[MAX_RADIO_CHANNEL_NUM];
     struct network_st network;

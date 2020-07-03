@@ -15,6 +15,7 @@
 #include "config.h"
 #include "spm/io_fpga.h"
 #include "spm/spm.h"
+#include "../utils/bitops.h"
 
 
 static int io_ctrl_fd = -1;
@@ -63,6 +64,28 @@ static struct  band_table_t bandtable[] ={
     {0,      0,  200000000},
 #endif
 }; 
+
+
+static DECLARE_BITMAP(subch_bmp, MAX_SIGNAL_CHANNEL_NUM);
+
+void subch_bitmap_init(void)
+{
+    bitmap_zero(subch_bmp, MAX_SIGNAL_CHANNEL_NUM);
+}
+void subch_bitmap_set(uint8_t subch)
+{
+    set_bit(subch, subch_bmp);
+}
+
+void subch_bitmap_clear(uint8_t subch)
+{
+    clear_bit(subch, subch_bmp);
+}
+
+size_t subch_bitmap_weight(void)
+{
+    return bitmap_weight(subch_bmp, MAX_SIGNAL_CHANNEL_NUM);
+}
 
 static void  io_get_bandwidth_factor(uint32_t anays_band,               /* 输入参数：带宽 */
                                             uint32_t *bw_factor,        /* 输出参数：带宽系数 */
@@ -437,13 +460,17 @@ int32_t io_set_subch_onoff(uint32_t subch, uint8_t onoff)
     ret = ioctl(io_ctrl_fd, IOCTL_SUB_CH_ONOFF, &odata);
 #elif defined(SUPPORT_SPECTRUM_V2) 
     printf_debug("subch=%u, onoff=%d, ptr=%p\n", subch, onoff, get_fpga_reg()->narrow_band[subch]);
-    if(onoff)
+    if(onoff){
+        subch_bitmap_set(subch);
         get_fpga_reg()->narrow_band[subch]->enable =0x01;
-    else
+    }
+    else{
+        subch_bitmap_clear(subch);
         get_fpga_reg()->narrow_band[subch]->enable = 0x00;
+    }
 #endif
 #endif
-    printf_debug("[**REGISTER**]ch:%d, SubChannle Set OnOff=%d\n",subch, onoff);
+    printf_note("[**REGISTER**]ch:%d, SubChannle Set OnOff=%d,subch_bitmap_weight=0x%x\n",subch, onoff, subch_bitmap_weight());
     return ret;
 }
 

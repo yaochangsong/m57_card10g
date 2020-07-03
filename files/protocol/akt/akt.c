@@ -151,14 +151,15 @@ static int akt_convert_oal_config(uint8_t ch, uint8_t cmd)
             printf_info("work_mode=%d\n", poal_config->work_mode);
             break;
         case SUB_SIGNAL_OUTPUT_ENABLE_CMD:
-            poal_config->sub_ch_enable.cid = pakt_config->sub_channel_enable[ch].cid;
-            poal_config->sub_ch_enable.sub_id = pakt_config->sub_channel_enable[ch].signal_ch;
-            poal_config->sub_ch_enable.psd_en = convert_enable_mode(pakt_config->sub_channel_enable[ch].en, SPECTRUM_MASK);
-            poal_config->sub_ch_enable.audio_en = convert_enable_mode(pakt_config->sub_channel_enable[ch].en, D_OUT_MASK);
-            poal_config->sub_ch_enable.iq_en = convert_enable_mode(pakt_config->sub_channel_enable[ch].en, IQ_OUT_MASK);
-            INTERNEL_ENABLE_BIT_SET(poal_config->sub_ch_enable.bit_en,poal_config->sub_ch_enable);
-            printf_info("sub_ch =%d, bit_en=%x, psd_en=%d, audio_en=%d,iq_en=%d\n",ch, poal_config->sub_ch_enable.bit_en, 
-            poal_config->sub_ch_enable.psd_en,poal_config->sub_ch_enable.audio_en,poal_config->sub_ch_enable.iq_en);
+            poal_config->sub_ch_enable[ch].cid = pakt_config->sub_channel_enable[ch].cid;
+            poal_config->sub_ch_enable[ch].sub_id = pakt_config->sub_channel_enable[ch].signal_ch;
+            poal_config->sub_ch_enable[ch].psd_en = convert_enable_mode(pakt_config->sub_channel_enable[ch].en, SPECTRUM_MASK);
+            poal_config->sub_ch_enable[ch].audio_en = convert_enable_mode(pakt_config->sub_channel_enable[ch].en, D_OUT_MASK);
+            poal_config->sub_ch_enable[ch].iq_en = convert_enable_mode(pakt_config->sub_channel_enable[ch].en, IQ_OUT_MASK);
+            INTERNEL_ENABLE_BIT_SET(poal_config->sub_ch_enable[ch].bit_en,poal_config->sub_ch_enable[ch]);
+            printf_note("pakt_config->sub_channel_enable[ch].en = %x\n", pakt_config->sub_channel_enable[ch].en);
+            printf_note("enable subch=%d, sub_ch bit_en=%x, sub_ch psd_en=%d, sub_ch audio_en=%d,sub_ch iq_en=%d\n", ch, poal_config->sub_ch_enable[ch].bit_en, 
+            poal_config->sub_ch_enable[ch].psd_en,poal_config->sub_ch_enable[ch].audio_en,poal_config->sub_ch_enable[ch].iq_en);
             break;
         case DIRECTION_MULTI_FREQ_ZONE_CMD: /* 多频段扫描参数 */
         {
@@ -547,36 +548,24 @@ static int akt_execute_set_command(void *cl)
             struct sockaddr_in client;
             struct sockaddr_in tcp_client;
             struct timespec ts;
+            char ifname[32];
+            struct net_tcp_client * _cl = (struct net_tcp_client *)cl;
+
             check_valid_channel(header->buf[0]);
             net_para.cid = ch;
+            if(get_ifa_name_by_ip(_cl->get_serv_addr(_cl), ifname) != 0){
+                err_code = RET_CODE_INTERNAL_ERR;
+                goto set_exit;
+            }
             memcpy(&net_para, header->buf, sizeof(SNIFFER_DATA_REPORT_ST));
-            /* Test */
-        #if 0
-            tcp_get_peer_addr_port(cl, &tcp_client);
-            printf_note("tcp connection from: %s:%d\n", inet_ntoa(tcp_client.sin_addr), ntohs(tcp_client.sin_port));
-            //net_para.port = ntohs(net_para.port);
-            //net_para.ipaddr = ntohs(net_para.ipaddr);
-            net_para.ipaddr =  tcp_client.sin_addr.s_addr;
-            #ifdef SUPPORT_NET_WZ
-            net_para.wz_ipaddr = ntohl(tcp_client.sin_addr.s_addr)+(1 << 8);
-            net_para.wz_port = ntohs(net_para.port);
-            #endif
-        #else
-             #ifdef SUPPORT_NET_WZ
-            //net_para.wz_ipaddr = net_para.wz_ipaddr;
-            //net_para.wz_port = net_para.port;  
-            net_para.wz_ipaddr = ntohl(net_para.wz_ipaddr);
-            net_para.wz_port = ntohs(net_para.wz_port);    /* debug test*/
-            #endif
-        #endif
             /* EndTest */
             client.sin_port = net_para.port;
             client.sin_addr.s_addr = net_para.ipaddr;//ntohl(net_para.sin_addr.s_addr);
-            //printf_note("udp client ipstr=%s, port=%d, type=%d\n",
-            //    inet_ntoa(client.sin_addr),  client.sin_port, net_para.type);
+            printf_note("[%s]udp client ipstr=%s, port=%d, type=%d\n",ifname, 
+                inet_ntoa(client.sin_addr),  client.sin_port, net_para.type);
             /* UDP链表以大端模式存储客户端地址信息；内部以小端模式处理；注意转换 */
             udp_add_client_to_list(&client, ch);
-            akt_add_udp_client(&net_para);
+            //akt_add_udp_client(&net_para);
             break;
         }
         case AUDIO_SAMPLE_RATE:
@@ -655,7 +644,7 @@ static int akt_execute_set_command(void *cl)
             }
             memcpy(&(pakt_config->sub_channel[sub_ch]), header->buf, sizeof(SUB_SIGNAL_PARAM));
             sub_channel_array = &poal_config->sub_channel_para[ch];
-            if(akt_convert_oal_config(sub_ch, header->code) == -1){
+            if(akt_convert_oal_config(sub_ch, SUB_SIGNAL_PARAM_CMD) == -1){
                 err_code = RET_CODE_PARAMTER_ERR;
                 goto set_exit;
             }
@@ -678,7 +667,8 @@ static int akt_execute_set_command(void *cl)
         }
         case SUB_SIGNAL_OUTPUT_ENABLE_CMD:
         {
-            uint8_t sub_ch, enable = 0;
+            uint8_t sub_ch, enable = 0, i;
+            bool net_10g_threshold_on = false, net_1g_threshold_on = false;
             check_valid_channel(header->buf[0]);
             sub_ch = *(uint16_t *)(header->buf+1);
             if(sub_ch >= 1)
@@ -693,30 +683,9 @@ static int akt_execute_set_command(void *cl)
                 goto set_exit;
             }
            // io_set_enable_command(IQ_MODE_DISABLE, ch, 0);
-            printf_note("ch:%d, sub_ch=%d, au_en:%d,iq_en:%d\n", ch,sub_ch, poal_config->sub_ch_enable.audio_en, poal_config->sub_ch_enable.iq_en);
-            enable = (poal_config->sub_ch_enable.iq_en == 0 ? 0 : 1);
-            
-            #ifdef SUPPORT_NET_WZ
-                printf_note("wz_threshold_bandwidth[%u],enable=%d\n", poal_config->ctrl_para.wz_threshold_bandwidth,enable);
-                /* 判断解调带宽是否大于万兆传输阈值；大于等于则使用万兆传输（关闭千兆），否则使用千兆传输（关闭万兆） */
-                struct sub_channel_freq_para_st *sub_channel_array;
-                sub_channel_array = &poal_config->sub_channel_para[ch];
-                printf_note("sub_channel_array->sub_ch[sub_ch].d_bandwith[%u]\n", sub_channel_array->sub_ch[sub_ch].d_bandwith);
-                if(poal_config->ctrl_para.wz_threshold_bandwidth <=  sub_channel_array->sub_ch[sub_ch].d_bandwith){
-                    io_set_1ge_net_onoff(0);/* 关闭IQ千兆传输 */
-                    if(enable)
-                        io_set_10ge_net_onoff(1); /* 开启IQ万兆传输 */
-                    else
-                        io_set_10ge_net_onoff(0); /* 关闭IQ万兆传输 */
-                    
-                   printf_note("d_bandwith[%u] >= threshold[%u], Data is't sent by the Gigabit, but by 10 Gigabit\n", 
-                        sub_channel_array->sub_ch[sub_ch].d_bandwith, poal_config->ctrl_para.wz_threshold_bandwidth);
-                }else{
-                   printf_note("Data is sent by the Gigabit, NOT by 10 Gigabit\n");
-                   io_set_1ge_net_onoff(1);/* 开启IQ千兆传输 */
-                   io_set_10ge_net_onoff(0); /* 关闭IQ万兆传输 */
-                }
-            #endif
+            printf_note("ch:%d, sub_ch=%d, au_en:%d,iq_en:%d\n", ch,sub_ch, poal_config->sub_ch_enable[sub_ch].audio_en, poal_config->sub_ch_enable[sub_ch].iq_en);
+            enable = (poal_config->sub_ch_enable[sub_ch].iq_en == 0 ? 0 : 1);
+            printf_info("ch:%d, sub_ch=%d, au_en:%d,iq_en:%d, enable=%d\n", ch,sub_ch, poal_config->sub_ch_enable[sub_ch].audio_en, poal_config->sub_ch_enable[sub_ch].iq_en, enable);
             /* 通道IQ使能 */
             if(enable){
                 /* NOTE:The parameter must be a MAIN channel, not a subchannel */
@@ -724,7 +693,7 @@ static int akt_execute_set_command(void *cl)
             }else{
                 io_set_enable_command(IQ_MODE_DISABLE, -1,sub_ch, 0);
             }
-            executor_set_enable_command(ch);
+           // executor_set_enable_command(ch);
             break;
         }
 #ifdef SUPPORT_NET_WZ
@@ -766,8 +735,7 @@ static int akt_execute_set_command(void *cl)
             printf_note("Spctrum Analysis Ctrl  %s\n", enable == false ? "Enable" : "Disable");
             poal_config->enable.spec_analy_en = !enable;
             INTERNEL_ENABLE_BIT_SET(poal_config->enable.bit_en,poal_config->enable);
-            printf_info("sub_ch bit_en=%x, spec_analy_en=%d\n", 
-            poal_config->sub_ch_enable.bit_en, poal_config->enable.spec_analy_en);
+            printf_info("spec_analy_en=%d\n",  poal_config->enable.spec_analy_en);
             executor_set_enable_command(0);
             break;
         }

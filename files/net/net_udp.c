@@ -167,7 +167,7 @@ void udp_add_client_to_list(struct sockaddr_in *addr, int ch)
     cl->srv = srv;
     cl->srv->nclients++;
 
-    printf_note("Add New UDP Client addr to list: %s:%d, total client: %d\n", cl->get_peer_addr(cl), cl->get_peer_port(cl), cl->srv->nclients);
+    printf_note(">>>>>>>>>Add New UDP Client addr to list: %s:%d, total client: %d\n", cl->get_peer_addr(cl), cl->get_peer_port(cl), cl->srv->nclients);
 
 }
 

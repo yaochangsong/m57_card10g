@@ -216,13 +216,13 @@ static ssize_t spm_stream_read(enum stream_type type, void **data)
             ioctl(pstream[type].id, IOCTL_DMA_GET_STATUS, &status);
            // printf_note("DMA get [%s] status:%s[%d]\n", pstream[type].name, dma_str_status(status.status), status.status);
             if(status.status == DMA_STATUS_IDLE){
-                printf_warn("[%s]DMA idle!\n", pstream[type].name);
+                printf_debug("[%s]DMA idle!\n", pstream[type].name);
                 return -1;
             }
             usleep(100);
             printf_debug("[%s]no data, waitting\n", pstream[type].name);
         }else if(info.status == READ_BUFFER_STATUS_OVERRUN){
-            printf_warn("[%s]data is overrun\n", pstream[type].name);
+            printf_debug("[%s]data is overrun\n", pstream[type].name);
         }
     }while(info.status == READ_BUFFER_STATUS_PENDING);
     readn = info.blocks[0].length;
@@ -396,7 +396,6 @@ static int spm_send_iq_data(void *data, size_t len, void *arg)
     if(ptr_header == NULL)
         return -1;
 #endif
-
 #if 1
     #if 1
     int i, index,sbyte;

@@ -222,7 +222,7 @@ static ssize_t spm_stream_read(enum stream_type type, void **data)
             usleep(100);
             printf_debug("[%s]no data, waitting\n", pstream[type].name);
         }else if(info.status == READ_BUFFER_STATUS_OVERRUN){
-            printf_debug("[%s]data is overrun\n", pstream[type].name);
+            printf_warn("[%s]data is overrun\n", pstream[type].name);
         }
     }while(info.status == READ_BUFFER_STATUS_PENDING);
     readn = info.blocks[0].length;

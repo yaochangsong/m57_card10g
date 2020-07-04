@@ -166,7 +166,14 @@ int32_t  config_get_fft_calibration_value(uint32_t fft_size)
 
         }
     }
-    cal_value += poal_config->cal_level.specturm.global_roughly_power_lever;
+    /* 射频模式码; 0：低失真 1：常规 2：低噪声 */
+    if(poal_config->rf_para[0].rf_mode_code == 0){
+        cal_value += poal_config->cal_level.specturm.global_roughly_power_lever_mode1;
+    }else if(poal_config->rf_para[0].rf_mode_code == 2){
+        cal_value += poal_config->cal_level.specturm.global_roughly_power_lever_mode2;
+    }else{
+        cal_value += poal_config->cal_level.specturm.global_roughly_power_lever;
+    }
     printf_note("cal_value=%d\n",cal_value);
     if(found){
         printf_debug("find the fft_mgc calibration value: %d\n",cal_value);

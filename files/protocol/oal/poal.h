@@ -271,6 +271,8 @@ struct calibration_specturm_info_st{
     uint32_t end_freq_khz[40];
     int power_level[40];
     int global_roughly_power_lever;
+    int global_roughly_power_lever_mode1;
+    int global_roughly_power_lever_mode2;
 };//__attribute__ ((packed));
 
 struct calibration_analysis_info_st{

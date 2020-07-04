@@ -745,6 +745,7 @@ void io_set_fpga_sample_ctrl(uint8_t val)
 {
 #if defined(SUPPORT_PLATFORM_ARCH_ARM)
 #if defined(SUPPORT_SPECTRUM_V2)
+    printf_note("[**FPGA**] ifch=%d\n", val);
     get_fpga_reg()->system->if_ch = (val == 0 ? 0 : 1);
 #endif
 #endif

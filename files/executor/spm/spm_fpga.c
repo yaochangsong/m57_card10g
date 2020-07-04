@@ -588,7 +588,7 @@ static int spm_sample_ctrl(uint64_t freq_hz)
     }else{
         val = 0;    /* 直采关闭 */
     }
-    printf_debug("samle ctrl:freq_hz =%lluHz, direct %d\n", freq_hz, val);
+    printf_note("samle ctrl:freq_hz =%lluHz, direct %d\n", freq_hz, val);
     executor_set_command(EX_MID_FREQ_CMD, EX_SAMPLE_CTRL,    0, &val);
     executor_set_command(EX_RF_FREQ_CMD,  EX_RF_SAMPLE_CTRL, 0, &val);
     

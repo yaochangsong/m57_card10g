@@ -217,6 +217,7 @@ static  int8_t  executor_fragment_scan(uint32_t fregment_num,uint8_t ch, work_mo
         /* 为避免在一定带宽下，中心频率过小导致起始频率<0，设置前需要对中频做判断 */
         m_freq =  middle_freq_resetting(scan_bw, m_freq);
         executor_set_command(EX_RF_FREQ_CMD, EX_RF_MID_FREQ, ch, &m_freq);
+        executor_set_command(EX_RF_FREQ_CMD,  EX_RF_LOW_NOISE, ch, &m_freq);
 #ifdef SUPPORT_PLATFORM_ARCH_ARM
         io_set_enable_command(PSD_MODE_ENABLE, ch, -1, r_args->fft_size);
     #if defined(SUPPORT_SPECTRUM_KERNEL)
@@ -298,6 +299,7 @@ static int8_t  executor_points_scan(uint8_t ch, work_mode_type mode, void *args)
         printf_note("ch=%d, s_freq=%llu, e_freq=%llu, fft_size=%u, d_method=%d\n", ch, s_freq, e_freq, r_args->fft_size,r_args->d_method);
         printf_note("rf scan bandwidth=%u, middlebw=%u, m_freq=%llu, freq_resolution=%f\n",r_args->scan_bw,r_args->bandwidth , r_args->m_freq, r_args->freq_resolution);
         executor_set_command(EX_RF_FREQ_CMD,  EX_RF_MID_FREQ, ch, &point->points[i].center_freq);
+        executor_set_command(EX_RF_FREQ_CMD,  EX_RF_LOW_NOISE, ch, &point->points[i].center_freq);
         executor_set_command(EX_MID_FREQ_CMD, EX_BANDWITH, ch, &point->points[i].bandwidth);
         //executor_set_command(EX_RF_FREQ_CMD,  EX_RF_MID_BW,   ch, &r_args->.scan_bw);
 #ifndef SUPPORT_SPECTRUM_FFT

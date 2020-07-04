@@ -102,7 +102,8 @@ enum {
     EX_RF_AGC_FREQUENCY,          /*AGC 频率设置*/
     EX_RF_AGC_BW,                 /*AGC 带宽设置*/
     EX_RF_CALIBRATE,              /*校正*/
-    EX_RF_SAMPLE_CTRL             /* 直采控制 0关闭直采，1开启直采 */
+    EX_RF_SAMPLE_CTRL,             /* 直采控制 0关闭直采，1开启直采 */
+    EX_RF_LOW_NOISE,              /* 低噪放 */
 };
 
 /* network paramters */

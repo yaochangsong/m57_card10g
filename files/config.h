@@ -87,6 +87,10 @@
 #include "device/lcd/ss_k600.h"
 #include "device/lcd/lcd.h"
 #endif
+#if defined(SUPPORT_RS485)
+#include "device/rs485/rs485_com.h"
+#endif
+
 #if defined(SUPPORT_XWFS)
 #include "executor/xwfs/xwfs.h"
 #endif

@@ -69,6 +69,8 @@ else
 	SUPPORT_UART=y
 	#lcd: y n
 	SUPPORT_LCD=n
+    #RS485
+    SUPPORT_RS485=y
 	#ambient temperature&humidity: y n
 	SUPPORT_AMBIENT_TEMP_HUMIDITY=n
 	SUPPORT_TEMP_HUMIDITY_SI7021=n

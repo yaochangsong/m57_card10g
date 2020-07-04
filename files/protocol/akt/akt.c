@@ -589,7 +589,7 @@ static int akt_execute_set_command(void *cl)
         case RF_ATTENUATION_CMD:
             check_valid_channel(header->buf[0]);
             poal_config->rf_para[ch].attenuation = header->buf[1];
-            printf_info("RF_ATTENUATION_CMD:%d\n", poal_config->rf_para[ch].attenuation);
+            printf_note("=>RF_ATTENUATION_CMD:%d\n", poal_config->rf_para[ch].attenuation);
             executor_set_command(EX_RF_FREQ_CMD, EX_RF_ATTENUATION, ch, &poal_config->rf_para[ch].attenuation);
             break;
         case RF_WORK_MODE_CMD:
@@ -600,6 +600,7 @@ static int akt_execute_set_command(void *cl)
                 3: Low noise mode of operation
             */
             poal_config->rf_para[ch].rf_mode_code = header->buf[1];
+            printf_note("=>rf_mode_code = %d\n", poal_config->rf_para[ch].rf_mode_code);
             executor_set_command(EX_RF_FREQ_CMD, EX_RF_MODE_CODE, ch, &poal_config->rf_para[ch].rf_mode_code);
             break;
         case RF_GAIN_MODE_CMD:
@@ -617,6 +618,7 @@ static int akt_execute_set_command(void *cl)
         case MID_FREQ_ATTENUATION_CMD:
             check_valid_channel(header->buf[0]);
             poal_config->rf_para[ch].mgc_gain_value = header->buf[1];
+            printf_note("=>mgc_gain_value:%d\n", poal_config->rf_para[ch].mgc_gain_value);
             executor_set_command(EX_RF_FREQ_CMD, EX_RF_MGC_GAIN, ch, &poal_config->rf_para[ch].mgc_gain_value);
             break;
         case QUIET_NOISE_SWITCH_CMD:

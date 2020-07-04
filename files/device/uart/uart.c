@@ -33,8 +33,12 @@ void gps_timer_task_cb(struct uloop_timeout *t);
 
 struct uart_t uart[2];
 struct uart_info uartinfo[] = {
-   {0, "/dev/ttyUL0", 115200, "ttyUL0 screen", NULL, uart0_read_cb, NULL,              NULL},
-   {1, "/dev/ttyPS0", 9600,   "ttyps0 gps",    NULL, NULL,          gps_timer_task_cb, NULL},
+    /* NOTE:  坑：ttyUL0为PL侧控制，波特率由PL侧设置（默认为115200，不可更改），需要更改连续FPGA同事 */
+#if defined(SUPPORT_RS485)
+   {0, "/dev/ttyUL4", 9600, "ttyUL4 rs485", NULL, NULL, NULL,              NULL},
+#endif
+   {1, "/dev/ttyUL1", 9600,   "ttyUL1 gps",    NULL, NULL,          gps_timer_task_cb, NULL},
+   //{1, "/dev/ttyPS0", 9600,   "ttyps0 gps",    NULL, NULL,          gps_timer_task_cb, NULL},
 };
 
 static void set_speed(int fd, unsigned long speed)
@@ -238,6 +242,39 @@ static void uart0_read_cb(struct uloop_fd *fd, unsigned int events)
     }
 }
 
+int uart0_read_block_timeout(uint8_t *buf, int time_sec_ms)
+{
+
+    int fd = uartinfo[0].fd->fd;
+    int ret = -1;
+    int ms_count = 0, i = 0;
+   
+    if(time_sec_ms < 0)
+        time_sec_ms = 1;
+    do{
+        ret = read(fd, buf, SERIAL_BUF_LEN);
+        if(ret == 0){
+            usleep(1000);
+            if(ms_count++ >= time_sec_ms){
+                printf_warn("read timeout[%d ms]\n", time_sec_ms);
+                break;
+            }
+        }else if(ret < 0){
+            printf_err("read error\n", ret);
+            break;
+        }else{  /* read ok */
+            printfd("uart recv[%d]:\n", ret);
+            for(i = 0; i < ret; i++)
+                printfd("%02x ", buf[i]);
+            printfd("\n");
+            break;
+        }
+    }while(1);
+
+    return ret;
+}
+
+
 long uart0_send_data(uint8_t *buf, uint32_t len)
 {
     return write(uartinfo[0].fd->fd,buf,len);
@@ -355,7 +392,6 @@ void uart_init(void)
     printf_note("Uart init\n");
     usleep(1000);
 #if defined(SUPPORT_UART)
-    #if 1
     int i, fd;
     for(i = 0; i<ARRAY_SIZE(uartinfo); i++){
         fd = uart_init_dev(uartinfo[i].devname, uartinfo[i].baudrate);
@@ -380,26 +416,8 @@ void uart_init(void)
         	}
         }
     }
-
-    
-    #else
-    
-    uart[0].fd.fd = uart_init_dev("/dev/ttyUL0");
-    if(uart[0].fd.fd <=0 ){
-        printf_err("/dev/ttyPS0 serial init failed\n");
-    }
-    uart[0].fd.cb = uart0_read_cb;
-    uloop_fd_add(&uart[0].fd, ULOOP_READ);
-    
-/*
-    uart[1].fd.fd = uart_init_dev("/dev/ttyPS1");
-        if(uart[1].fd.fd <=0 ){
-        printf_err("/dev/ttyPS1 serial init failed\n");
-    }
-    
-    uart[1].fd.cb = uart1_read_cb;
-    
-    uloop_fd_add(&uart[1].fd, ULOOP_READ);*/
-    #endif
+#endif
+#if defined(SUPPORT_RS485)
+    rs485_com_init();
 #endif
 }

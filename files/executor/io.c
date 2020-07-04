@@ -736,6 +736,8 @@ void io_set_fpga_sys_time(uint32_t time)
         return;
     }
     ioctl(io_ctrl_fd,IOCTL_SET_SYS_TIME,time);
+#elif defined(SUPPORT_SPECTRUM_V2) 
+    get_fpga_reg()->signal->current_time = time;
 #endif
 }
 
@@ -1037,12 +1039,58 @@ int16_t io_get_adc_temperature(void)
     }	 
     upset[offset]='\0'; 
     raw_data=atoi(upset);
-    result = ((raw_data * 503.975)/4096) - 273.15;
+    result = ((raw_data * 509.314)/65536.0) - 280.23;
+    //result = ((raw_data * 503.975)/4096) - 273.15;
     close(fd);
 #endif
     return (signed short)result;
 
 }
+
+bool io_get_adc_status(void *args)
+{
+    static FILE * fp = NULL;
+    int status;
+    bool ret;
+    args = args;
+    if(fp == NULL){
+        fp = fopen ("/run/status/adc", "r");
+        if(!fp){
+            printf("Open file error!\n");
+            return false;
+        }
+    }
+    rewind(fp);
+    fscanf(fp, "%d", &status);
+    printf_note("adc status: %d\n", status);
+    
+    ret = (status == 0 ? false : true);
+    return ret;
+}
+
+bool io_get_clock_status(void *args)
+{
+    static FILE * fp = NULL;
+    uint8_t lock_ok=0, external_clk=0;
+    bool ret;
+    
+    if(fp == NULL){
+        fp = fopen ("/run/status/clock", "r");
+        if(!fp){
+            printf("Open file error!\n");
+            return false;
+        }
+    }
+    rewind(fp);
+    fscanf(fp, "%d %d", &external_clk, &lock_ok);
+    printf_note("external_clk:%d, lock_ok: %d\n", external_clk, lock_ok);
+    
+    *(uint8_t *)args = external_clk;
+    ret = (lock_ok == 0 ? false : true);
+    
+    return ret;
+}
+
 
 uint32_t get_fpga_version(void)
 {

@@ -918,11 +918,13 @@ static int akt_execute_get_command(void)
     {
         case DEVICE_SELF_CHECK_CMD:
         {
+            uint8_t lock_ok=0, external_clk=0;
             DEVICE_SELF_CHECK_STATUS_RSP_ST self_check;
-            uint64_t freq_hz;
-            self_check.clk_status = 1;
-            self_check.ad_status = 0;
+            lock_ok = (uint8_t)io_get_clock_status(&external_clk);
+            self_check.ext_clk = (external_clk == 0 ? 0 :1);
+            self_check.ad_status = (io_get_adc_status(NULL) == true ? 1 : 0);
             self_check.pfga_temperature = io_get_adc_temperature();
+            self_check.ch_num = MAX_RADIO_CHANNEL_NUM;
             memcpy(akt_get_response_data.payload_data, &self_check, sizeof(DEVICE_SELF_CHECK_STATUS_RSP_ST));
             akt_get_response_data.header.len = sizeof(DEVICE_SELF_CHECK_STATUS_RSP_ST);
             break;

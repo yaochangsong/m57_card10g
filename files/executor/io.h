@@ -267,5 +267,6 @@ extern int io_read_more_info_by_name(const char *name, void *info, int32_t (*iof
 extern int32_t io_find_file_info(void *arg);
 extern int32_t io_start_backtrace_file(void *arg);
 extern int32_t io_stop_backtrace_file(void *arg);
-
+extern bool io_get_adc_status(void *args);
+extern bool io_get_clock_status(void *args);
 #endif

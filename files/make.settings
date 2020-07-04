@@ -66,7 +66,7 @@ ifneq ($(findstring x86,$(SUPPORT_PLAT_FORM_ARCH)),)
     SUPPORT_RESIDENCY_STRATEGY=y
 else
 	#uart: y n
-	SUPPORT_UART=n
+	SUPPORT_UART=y
 	#lcd: y n
 	SUPPORT_LCD=n
 	#ambient temperature&humidity: y n
@@ -85,7 +85,7 @@ else
     #万兆
     SUPPORT_NET_WZ=y
 	#gps
-	SUPPORT_GPS=n
+	SUPPORT_GPS=y
 	ifneq ($(findstring y,$(SUPPORT_PROJECT_SSA)),)
 		SUPPORT_RF_ADRV9009=y
 		#iio

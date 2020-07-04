@@ -1,7 +1,8 @@
 #!/bin/sh
 
-adc_status_file=/run/status/adc
-clk_status_file=/run/status/clock
+status_dir=/run/status
+adc_status_file=$status_dir/adc
+clk_status_file=$status_dir/clock
 proj_name=check.sh
 bin_name=platform
 #devmem 0xb00010c0 32
@@ -87,6 +88,9 @@ self_status_cheak()
 
 start()
 {
+	if [ ! -d "$status_dir" ]; then
+	  mkdir $status_dir
+	fi
 	while :
 	do
     	sleep 10

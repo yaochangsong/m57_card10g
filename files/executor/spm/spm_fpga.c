@@ -32,8 +32,11 @@ extern uint8_t * akt_assamble_data_frame_header_data(uint32_t *len, void *config
 static int spm_stream_stop(enum stream_type type);
 
 #define DEFAULT_IQ_SEND_BYTE 512
+#define DEFAULT_AGC_REF_VAL  0x5e8
+
 size_t pagesize = 0;
-size_t iq_send_unit_byte = DEFAULT_IQ_SEND_BYTE;
+size_t iq_send_unit_byte = DEFAULT_IQ_SEND_BYTE;    /* IQ发送长度 */
+int32_t agc_ref_val_0dbm = DEFAULT_AGC_REF_VAL;     /* 信号为0DBm时对应的FPGA幅度值 */
 
 
 FILE *_file_fd;
@@ -501,7 +504,7 @@ static int spm_agc_ctrl(int ch, struct spm_context *ctx)
     */
     
     #define AGC_CTRL_PRECISION      2       /* 控制精度+-2dbm */
-    #define AGC_REF_VAL             0x5e8    /* 信号为0DBm时对应的FPGA幅度值 */
+    //#define AGC_REF_VAL             0x5e8 /* 信号为0DBm时对应的FPGA幅度值 */
     #define AGC_MODE                1       /* 自动增益模式 */
     #define MGC_MODE                0       /* 手动增益模式 */
     #define RF_GAIN_THRE            30      /* 增益到达该阀值，开启射频增益/衰减 */
@@ -538,7 +541,7 @@ static int spm_agc_ctrl(int ch, struct spm_context *ctx)
         return -1;
     }
     printf_info("read agc value=%d\n", agc_val);
-    dbm_val = (int32_t)(20 * log10((double)agc_val / ((double)AGC_REF_VAL)));
+    dbm_val = (int32_t)(20 * log10((double)agc_val / ((double)agc_ref_val_0dbm)));
     /* 判断读取的幅度值是否>设置的输出幅度+控制精度 */
     if(dbm_val > (agc_ctrl_dbm+AGC_CTRL_PRECISION)){
         if(cur_dbm[ch] > 0){
@@ -870,6 +873,10 @@ struct spm_context * spm_create_fpga_context(void)
     printf_note("iq send unit byte:%u\n", iq_send_unit_byte);
     ctx->ops = &spm_ops;
     ctx->pdata = &config_get_config()->oal_config;
+    
+    if( config_get_config()->oal_config.ctrl_para.agc_ref_val_0dbm != 0)
+        agc_ref_val_0dbm = config_get_config()->oal_config.ctrl_para.agc_ref_val_0dbm;
+    
     _init_run_timer(MAX_RADIO_CHANNEL_NUM);
 err_set_errno:
     errno = -ret;

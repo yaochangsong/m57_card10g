@@ -470,7 +470,7 @@ int32_t io_set_subch_onoff(uint32_t subch, uint8_t onoff)
     }
 #endif
 #endif
-    printf_note("[**REGISTER**]ch:%d, SubChannle Set OnOff=%d,subch_bitmap_weight=0x%x\n",subch, onoff, subch_bitmap_weight());
+    printf_debug("[**REGISTER**]ch:%d, SubChannle Set OnOff=%d,subch_bitmap_weight=0x%x\n",subch, onoff, subch_bitmap_weight());
     return ret;
 }
 
@@ -1015,36 +1015,25 @@ int32_t io_get_agc_thresh_val(int ch)
 int16_t io_get_adc_temperature(void)
 {
     float result=0; 
+
 #ifdef SUPPORT_PLATFORM_ARCH_ARM
-    char  path[128], upset[20];  
-    char value=0;  
-    int fd = -1, offset;
-    float raw_data=0;
-    
+    static FILE * fp = NULL;
+    int raw_data;
 
-    sprintf(path,"/sys/bus/iio/devices/iio:device0/in_temp0_raw");
-    fd = open(path, O_RDONLY);
-    if (fd < 0)
-    {
-        printf_note("[get_adc_temperature]: Cannot open in_temp0_raw path\n");
-        return -1;
+    if(fp == NULL){
+        fp = fopen ("/sys/bus/iio/devices/iio:device0/in_temp0_ps_temp_raw", "r");
+        if(!fp){
+            printf("Open file error!\n");
+            return false;
+        }
     }
-    offset=0;  
-    while(offset<5)	
-    {  
-        lseek(fd,offset,SEEK_SET);  
-        read(fd,&value,sizeof(char));	 
-        upset[offset]=value;  
-        offset++;  
-    }	 
-    upset[offset]='\0'; 
-    raw_data=atoi(upset);
+    rewind(fp);
+    fscanf(fp, "%d", &raw_data);
+    printf_note("temp: %d\n", raw_data);
     result = ((raw_data * 509.314)/65536.0) - 280.23;
-    //result = ((raw_data * 503.975)/4096) - 273.15;
-    close(fd);
 #endif
-    return (signed short)result;
 
+    return (signed short)result;
 }
 
 bool io_get_adc_status(void *args)

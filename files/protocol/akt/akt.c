@@ -710,7 +710,7 @@ static int akt_execute_set_command(void *cl)
             poal_config->network_10g.ipaddress = netinfo.ipaddr;
             poal_config->network_10g.netmask =netinfo.mask;
             poal_config->network_10g.gateway = netinfo.gateway;
-            poal_config->network.port = ntohs(netinfo.port);
+            poal_config->network_10g.port = ntohs(netinfo.port);
             
             printf_note("ipaddr=0x%x, mask=0x%x, gateway=0x%x, port=%d\n", 
                 poal_config->network_10g.ipaddress, poal_config->network_10g.netmask, poal_config->network_10g.gateway, poal_config->network_10g.port);
@@ -925,6 +925,7 @@ static int akt_execute_get_command(void)
             self_check.ad_status = (io_get_adc_status(NULL) == true ? 1 : 0);
             self_check.pfga_temperature = io_get_adc_temperature();
             self_check.ch_num = MAX_RADIO_CHANNEL_NUM;
+            printf_note("ext_clk:%d, ad_status=%d,pfga_temperature=%d\n", self_check.ext_clk, self_check.ad_status, self_check.pfga_temperature);
             memcpy(akt_get_response_data.payload_data, &self_check, sizeof(DEVICE_SELF_CHECK_STATUS_RSP_ST));
             akt_get_response_data.header.len = sizeof(DEVICE_SELF_CHECK_STATUS_RSP_ST);
             break;

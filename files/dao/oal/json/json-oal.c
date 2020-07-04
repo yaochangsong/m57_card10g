@@ -607,6 +607,12 @@ static int json_parse_config_param(const cJSON* root, struct poal_config *config
         config->ctrl_para.iq_data_length=value->valueint;
         printf_debug("iq_data_length:%d, \n",config->ctrl_para.iq_data_length);
     }
+    value = cJSON_GetObjectItem(control_parm, "agc_ref_val_0dbm");
+    if(value!= NULL && cJSON_IsNumber(value)){
+        config->ctrl_para.agc_ref_val_0dbm=value->valueint;
+        printf_debug("agc_ref_val_0dbm:%d, \n",config->ctrl_para.agc_ref_val_0dbm);
+    }
+    
 /* calibration_parm */
     cJSON *calibration = NULL;
     calibration = cJSON_GetObjectItem(root, "calibration_parm");

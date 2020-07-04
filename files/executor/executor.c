@@ -89,9 +89,17 @@ int executor_tcp_disconnect_notify(void *cl)
         #ifdef SUPPORT_NET_WZ
         io_set_10ge_net_onoff(0);   /* 客户端离线，关闭万兆传输 */
         #endif
+        /* 关闭所有子通道 */
+        uint8_t enable =0;
+        uint8_t default_method = IO_DQ_MODE_IQ;
+        int i = 0;
+        for(i = 0; i< MAX_SIGNAL_CHANNEL_NUM; i++){
+            executor_set_command(EX_MID_FREQ_CMD, EX_SUB_CH_ONOFF, i, &enable);
+            executor_set_command(EX_MID_FREQ_CMD, EX_SUB_CH_DEC_METHOD, i, &default_method);
+            memset(&poal_config->sub_ch_enable[i], 0, sizeof(struct output_en_st));
+        }
         /* 所有客户端离线，关闭相关使能，线程复位到等待状态 */
         memset(&poal_config->enable, 0, sizeof(poal_config->enable));
-        memset(&poal_config->sub_ch_enable, 0, sizeof(poal_config->enable));
         poal_config->enable.bit_reset = true; /* reset(stop) all working task */
     }
     
@@ -204,6 +212,7 @@ static  int8_t  executor_fragment_scan(uint32_t fregment_num,uint8_t ch, work_mo
         r_args->m_freq = m_freq;
         r_args->fft_size = fftsize;
         r_args->mode = mode;
+        r_args->scan_bw = scan_bw;
         r_args->freq_resolution = poal_config->multi_freq_fregment_para[ch].fregment[fregment_num].freq_resolution;
         /* 为避免在一定带宽下，中心频率过小导致起始频率<0，设置前需要对中频做判断 */
         m_freq =  middle_freq_resetting(scan_bw, m_freq);
@@ -252,6 +261,8 @@ static int8_t  executor_points_scan(uint8_t ch, work_mode_type mode, void *args)
     time_t s_time;
     struct io_decode_param_st decode_param;
     int8_t subch = 0;
+    bool residency_time_arrived = false;
+    int32_t policy = poal_config->ctrl_para.residency.policy[ch];
     spmctx = (struct spm_context *)args;
     r_args = spmctx->run_args;
 
@@ -272,9 +283,11 @@ static int8_t  executor_points_scan(uint8_t ch, work_mode_type mode, void *args)
         r_args->bandwidth = point->points[i].bandwidth;
         r_args->m_freq = point->points[i].center_freq;
         r_args->mode = mode;
-        if(poal_config->sub_ch_enable.iq_en){
-            subch = poal_config->sub_ch_enable.sub_id ;
-            r_args->d_method = poal_config->sub_channel_para[ch].sub_ch[subch].raw_d_method;
+        if(subch_bitmap_weight()!=0){
+            if(i < MAX_SIGNAL_CHANNEL_NUM){
+                subch = poal_config->sub_ch_enable[i].sub_id ;
+                r_args->d_method = poal_config->sub_channel_para[ch].sub_ch[subch].raw_d_method;
+            }
         }else{
             r_args->d_method = point->points[i].raw_d_method;
         }
@@ -312,6 +325,17 @@ static int8_t  executor_points_scan(uint8_t ch, work_mode_type mode, void *args)
             io_set_enable_command(AUDIO_MODE_DISABLE, ch, -1, 0);
         }
 #endif
+#if defined (SUPPORT_RESIDENCY_STRATEGY) 
+        usleep(20000);
+        uint16_t strength = 0;
+        bool is_signal = false;
+        int32_t ret = -1;
+        ret = spmctx->ops->signal_strength(ch, &is_signal, &strength);
+        if(ret == 0){
+            printf_note("is sigal: %s, strength:%d\n", (is_signal == true ? "Yes":"No"), strength);
+        }
+#endif
+        spmctx->ops->sample_ctrl(r_args->m_freq);
         s_time = time(NULL);
         do{
             if(poal_config->enable.psd_en){
@@ -326,20 +350,29 @@ static int8_t  executor_points_scan(uint8_t ch, work_mode_type mode, void *args)
                 usleep(500);
             }
 #elif defined (SUPPORT_SPECTRUM_V2)
+            spmctx->ops->agc_ctrl(ch, spmctx);
             if(args != NULL)
                 spm_deal(args, r_args);
             if(poal_config->enable.psd_en){
                 io_set_enable_command(PSD_MODE_DISABLE, ch, -1, point->points[i].fft_size);
             }
 #endif
-            if((poal_config->enable.bit_en == 0 && poal_config->sub_ch_enable.bit_en == 0) || 
+            if((poal_config->enable.bit_en == 0) || 
                poal_config->enable.bit_reset == true){
-                    printf_warn("bit_reset...[%d, %d, %d]\n", poal_config->enable.bit_en, 
-                        poal_config->sub_ch_enable.bit_en, poal_config->enable.bit_reset);
+                    printf_warn("bit_reset...[%d, %d]\n", poal_config->enable.bit_en, poal_config->enable.bit_reset);
                     poal_config->enable.bit_reset = false;
                     return -1;
             }
-        }while(time(NULL) < s_time + point->residence_time ||  /* multi-frequency switching */
+#if defined (SUPPORT_RESIDENCY_STRATEGY) 
+            /* 驻留时间是否到达判断;多频点模式下生效 */
+            if(spmctx->ops->residency_time_arrived && (ret == 0) && (points_count > 1)){
+                residency_time_arrived = spmctx->ops->residency_time_arrived(ch, policy, is_signal);
+            }else
+#endif
+            {
+                residency_time_arrived = (time(NULL) < s_time + point->residence_time) ? false : true;
+            }
+        }while((residency_time_arrived == false) ||  /* multi-frequency switching */
                points_count == 1);                             /* single-frequency station */
     }
     printf_info("Exit points scan function\n");
@@ -361,6 +394,10 @@ void executor_spm_thread(void *arg)
         
 loop:   printf_note("######wait to deal work######\n");
         sem_wait(&work_sem.notify_deal);
+        if(poal_config->enable.bit_en == 0)
+            safe_system("/etc/led.sh transfer off &");
+        else
+            safe_system("/etc/led.sh transfer on &");
         ch = poal_config->enable.cid;
         if(OAL_NULL_MODE == poal_config->work_mode){
             printf_warn("Work Mode not set\n");
@@ -373,15 +410,6 @@ loop:   printf_note("######wait to deal work######\n");
                      poal_config->enable.psd_en == 0 ? "Psd Stop" : "Psd Start",
                      poal_config->enable.audio_en == 0 ? "Audio Stop" : "Audio Start",
                      poal_config->enable.iq_en == 0 ? "IQ Stop" : "IQ Start");
-        if(poal_config->sub_ch_enable.bit_en){
-            printf_note("SUB channel, [Channel:%d, sub:%d]%s Work: [%s], [%s], [%s]\n", 
-                                 ch,poal_config->sub_ch_enable.sub_id,
-                                 poal_config->sub_ch_enable.bit_en == 0 ? "SubStop" : "SubStart",
-                                 poal_config->sub_ch_enable.psd_en == 0 ? "Sub Psd Stop" : "Sub Psd Start",
-                                 poal_config->sub_ch_enable.audio_en == 0 ? "Sub Audio Stop" : "Sub Audio Start",
-                                 poal_config->sub_ch_enable.iq_en == 0 ? "Sub IQ Stop" : "Sub IQ Start");
-
-        }
         
         poal_config->enable.bit_reset = false;
         printf_note("-------------------------------------\n");
@@ -436,7 +464,7 @@ loop:   printf_note("######wait to deal work######\n");
                         goto loop;
                     }
 
-                    if(poal_config->enable.bit_en || poal_config->sub_ch_enable.bit_en){
+                    if(poal_config->enable.bit_en){
                         if(executor_points_scan(ch, poal_config->work_mode, arg) == -1){
                             io_set_enable_command(PSD_MODE_DISABLE, ch, -1,  0);
                             io_set_enable_command(AUDIO_MODE_DISABLE, ch, -1, 0);
@@ -599,6 +627,11 @@ static int8_t executor_set_kernel_command(uint8_t type, uint8_t ch, void *data, 
         {
             break;
         }
+        case EX_SAMPLE_CTRL:
+        {
+            io_set_fpga_sample_ctrl(*(uint8_t *)data);
+            break;
+        }
         default:
             printf_err("not support type[%d]\n", type);
      }
@@ -628,8 +661,10 @@ static int8_t executor_set_ctrl_command(uint8_t type, uint8_t ch, void *data, va
 #ifdef SUPPORT_NET_WZ
 static int executor_set_10g_network(struct network_st *_network)
 {
+    safe_system("/etc/network.sh &");
     /* 设置默认板卡万兆ip和端口 */
-    io_set_local_10g_net(ntohl(_network->ipaddress), _network->port);
+    //io_set_local_10g_net(ntohl(_network->ipaddress), ntohl(_network->netmask),ntohl(_network->gateway),_network->port);
+    return 0;
 }
 #endif
 
@@ -640,7 +675,7 @@ static int executor_set_1g_network(struct network_st *_network)
     uint32_t host_addr;
     char *ipstr=NULL;
     int need_set = 0;
-    if(get_ipaddress(&ipaddr) != -1){
+    if(get_ipaddress(NETWORK_EHTHERNET_POINT, &ipaddr) != -1){
         if(ipaddr.s_addr == network->ipaddress){
             printf_note("ipaddress[%s] is not change!\n", inet_ntoa(ipaddr));
             goto set_netmask;
@@ -656,7 +691,7 @@ static int executor_set_1g_network(struct network_st *_network)
     }
     
 set_netmask:
-    if(get_netmask(&netmask) != -1){
+    if(get_netmask(NETWORK_EHTHERNET_POINT, &netmask) != -1){
          if(netmask.s_addr == network->netmask){
             printf_note("netmask[%s] is not change!\n", inet_ntoa(netmask));
             goto set_gateway;
@@ -672,7 +707,7 @@ set_netmask:
     }
     
 set_gateway:
-    if(get_gateway(&gateway) != -1){
+    if(get_gateway(NETWORK_EHTHERNET_POINT, &gateway) != -1){
          if(gateway.s_addr == network->gateway){
             printf_note("gateway[%s] is not change!\n", inet_ntoa(gateway));
             if(need_set != 0)
@@ -690,7 +725,8 @@ set_gateway:
     }
     
 set_network:
-    return io_set_network_to_interfaces((void *)network);
+    return 0;
+    //return io_set_network_to_interfaces((void *)network);
 }
 
 
@@ -741,15 +777,8 @@ int8_t executor_set_command(exec_cmd cmd, uint8_t type, uint8_t ch,  void *data,
         }
         case EX_NETWORK_CMD:
         {
-            if(type == EX_NETWORK_1G){
-                executor_set_1g_network(&poal_config->network);
-            }
-            
-#ifdef SUPPORT_NET_WZ
-            else if(type == EX_NETWORK_10G){
-                executor_set_10g_network(&poal_config->network_10g);
-            }
-#endif
+            executor_set_1g_network(&poal_config->network);
+            safe_system("/etc/network.sh &");
             break;
         }
         case EX_CTRL_CMD:
@@ -871,22 +900,23 @@ void executor_timer_task1_cb(struct uloop_timeout *t)
 #ifdef SUPPORT_SPECTRUM_FFT
     spectrum_send_fft_data_interval();
 #endif
-    uh_dump_all_client();
-    //uloop_timeout_set(t, 5000);
 }
 void executor_timer_task_init(void)
 {
     static  struct uloop_timeout task1_timeout;
     printf_warn("executor_timer_task\n");
     uloop_timeout_set(&task1_timeout, 5000); /* 5000 ms */
-    if(!is_spectrum_continuous_mode()){
+    task1_timeout.cb = executor_timer_task1_cb;
+    #if 0
+    if(!is_spectrum_continuous_mode()){ 
         printf_note("timer task: fft data send opened:%d\n", is_spectrum_continuous_mode());
         task1_timeout.cb = executor_timer_task1_cb;
-        //uloop_timeout_set(&task1_timeout, 5000); /* 5000 ms */
+        uloop_timeout_set(&task1_timeout, 5000); /* 5000 ms */
         printf_note("executor_timer_task ok\n");
     }else{
         printf_note("timer task: fft data send shutdown:%d\n", is_spectrum_continuous_mode());
     }
+    #endif
 }
 
 void executor_init(void)
@@ -899,7 +929,7 @@ void executor_init(void)
 #if defined(SUPPORT_SPECTRUM_KERNEL) 
     io_init();
 #elif defined(SUPPORT_SPECTRUM_V2) 
-    fpga_io_init();
+    //fpga_io_init();
     spmctx = spm_init();
     if(spmctx == NULL){
         printf_err("spm create failed\n");
@@ -907,12 +937,9 @@ void executor_init(void)
     }
 #endif
 #endif /* SUPPORT_PLATFORM_ARCH_ARM */
-    executor_timer_task_init();
+   // executor_timer_task_init();
     /* set default network */
-    executor_set_command(EX_NETWORK_CMD, EX_NETWORK_1G, 0, NULL);
-#ifdef SUPPORT_NET_WZ
-    executor_set_command(EX_NETWORK_CMD, EX_NETWORK_10G, 0, NULL);
-#endif
+    executor_set_command(EX_NETWORK_CMD, EX_NETWORK, 0, NULL);
     /* shutdown all channel */
     for(i = 0; i<MAX_RADIO_CHANNEL_NUM ; i++){
         io_set_enable_command(PSD_MODE_DISABLE, i, -1, 0);
@@ -920,14 +947,16 @@ void executor_init(void)
         //io_set_enable_command(FREQUENCY_BAND_ENABLE_DISABLE, i, 0);
         //executor_set_command(EX_RF_FREQ_CMD, EX_RF_ATTENUATION, 0, &poal_config->rf_para[i].attenuation);
     }
+    subch_bitmap_init();
 #ifdef SUPPORT_NET_WZ
     io_set_10ge_net_onoff(0); /* 关闭万兆传输 */
 #endif
+
     printf_note("clear all sub ch\n");
     uint8_t enable =0;
     uint8_t default_method = IO_DQ_MODE_IQ;
     for(i = 0; i< MAX_SIGNAL_CHANNEL_NUM; i++){
-        printf_debug("clear all sub ch %d\n", i);
+        printf_debug("clear all sub ch: %d\n", i);
         executor_set_command(EX_MID_FREQ_CMD, EX_SUB_CH_ONOFF, i, &enable);
         executor_set_command(EX_MID_FREQ_CMD, EX_SUB_CH_DEC_METHOD, i, &default_method);
     }
@@ -945,6 +974,9 @@ void executor_close(void)
 #ifdef SUPPORT_SPECTRUM_V2
     fpga_io_close();
     spm_close();
+#endif
+#ifdef  SUPPORT_CLOCK_ADC
+    clock_adc_close();
 #endif
 }
 

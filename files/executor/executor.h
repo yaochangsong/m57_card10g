@@ -51,6 +51,7 @@ enum {
     EX_SUB_CH_DEC_METHOD,      /* 子通道解调方式 */
     EX_SUB_CH_MUTE_THRE,       /* 子通道静噪门限 */
     EX_SUB_CH_ONOFF,           /* 子通道开关 */
+    EX_SAMPLE_CTRL,            /*  0关闭直采，1开启直采*/
     
 };
 
@@ -67,6 +68,8 @@ enum {
     DIRECTION_MODE_ENABLE,       /*测向使能位*/
     DIRECTION_MODE_ENABLE_DISABLE,
     FREQUENCY_BAND_ENABLE_DISABLE,
+    ADC_MODE_ENABLE,
+    ADC_MODE_DISABLE,
 };
 
 /* executor: status paramter */
@@ -99,10 +102,12 @@ enum {
     EX_RF_AGC_FREQUENCY,          /*AGC 频率设置*/
     EX_RF_AGC_BW,                 /*AGC 带宽设置*/
     EX_RF_CALIBRATE,              /*校正*/
+    EX_RF_SAMPLE_CTRL             /* 直采控制 0关闭直采，1开启直采 */
 };
 
 /* network paramters */
 enum {
+    EX_NETWORK,
     EX_NETWORK_1G,
     EX_NETWORK_10G,
     EX_NETWORK_IP,               /* IP地址 */
@@ -117,6 +122,8 @@ enum {
     EX_CTRL_CALIBRATION,         /* 校准控制 */
     EX_CTRL_TIMESET,             /* 时间设置 */
     EX_CTRL_SIDEBAND,            /* 边带率 */
+    EX_CTRL_CALI_SIGAL_THRE,     /* 有无信号门限值 */
+    EX_CTRL_IQ_DATA_LENGTH       /* IQ数据长度 */
 };
 
 struct sem_st{
@@ -179,7 +186,6 @@ struct spm_run_parm{
 #define executor_assamble_header_response_data_cb   
 #define executor_send_data_to_clent_cb              
 #endif
-
 
 extern struct sem_st work_sem;
 extern void executor_init(void);

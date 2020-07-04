@@ -16,9 +16,13 @@
 #include "gpio_raw.h"
 
 struct gpio_node_info gpio_node[] ={
+#if defined(SUPPORT_PROJECT_WD_XCR)
+
+#else
     /* pin   direction  default gpio value   func_code    func_name    fd */
     {63,      "out",       0,               GPIO_FUNC_ADC,          "ADC&Backtrace gpio ctrl",    -1 },  /* low:  adc ; high : backtrace*/
     {62,      "in",        -1,               GPIO_FUNC_ADC_STATUS,   "ADC Status",                 -1 },
+#endif
 };
 
 static int gpio_export(int pin_number)

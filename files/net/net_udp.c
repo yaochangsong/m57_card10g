@@ -7,6 +7,39 @@ struct net_udp_server *get_udp_server(void)
     return g_udp_srv;
 }
 
+static char  *udp_get_ifname(struct net_udp_client *cl)
+{
+    struct in_addr ipaddr, netmask, local_net, peer_net;
+     
+    if(get_netmask(NETWORK_EHTHERNET_POINT, &netmask) != -1){
+        printf_debug("===>netmask[0x%x]\n", netmask.s_addr);
+    }
+    if(get_ipaddress(NETWORK_EHTHERNET_POINT, &ipaddr) != -1){
+        local_net.s_addr = ipaddr.s_addr& netmask.s_addr;
+        peer_net.s_addr = cl->peer_addr.sin_addr.s_addr & netmask.s_addr;
+        printf_debug("===>ipaddr[0x%x,  net=0x%x]\n", ipaddr.s_addr, ipaddr.s_addr& netmask.s_addr);
+        printf_debug("===>peer net=0x%x, ip=0x%x\n",   cl->peer_addr.sin_addr.s_addr & netmask.s_addr, cl->peer_addr.sin_addr.s_addr);
+        if(local_net.s_addr == peer_net.s_addr){
+            return NETWORK_EHTHERNET_POINT;
+        }
+    }
+#ifdef SUPPORT_NET_WZ
+    if(get_netmask(NETWORK_10G_EHTHERNET_POINT, &netmask) != -1){
+        printf_debug("===>netmask[0x%x]\n", netmask.s_addr);
+    }
+    if(get_ipaddress(NETWORK_10G_EHTHERNET_POINT, &ipaddr) != -1){
+        local_net.s_addr = ipaddr.s_addr& netmask.s_addr;
+        peer_net.s_addr = cl->peer_addr.sin_addr.s_addr & netmask.s_addr;
+        printf_debug("===>ipaddr[0x%x,  net=0x%x]\n", ipaddr.s_addr, ipaddr.s_addr& netmask.s_addr);
+        printf_debug("===>peer net=0x%x, ip=0x%x\n",   cl->peer_addr.sin_addr.s_addr & netmask.s_addr, cl->peer_addr.sin_addr.s_addr);
+        if(local_net.s_addr == peer_net.s_addr){
+            return NETWORK_10G_EHTHERNET_POINT;
+        }
+    }
+#endif
+    return NULL;
+}
+
 static inline const char *udp_get_peer_addr(struct net_udp_client *cl)
 {
     return inet_ntoa(cl->peer_addr.sin_addr);
@@ -36,6 +69,57 @@ int udp_send_data_to_client(struct net_udp_client *client, uint8_t *data, uint32
     sendto(client->srv->fd.fd, data, data_len, 0, (struct sockaddr *)&client->peer_addr, sizeof(struct sockaddr));
     return 0;
 }
+
+static inline int udp_send_vec_data_to_client(struct net_udp_client *client, struct iovec *iov, int iov_len)
+{    
+    struct msghdr msgsent;
+
+    if(client == NULL)
+        return -1;
+
+    msgsent.msg_name = &client->peer_addr;
+    msgsent.msg_namelen = sizeof(client->peer_addr);
+    msgsent.msg_iovlen = iov_len;
+    msgsent.msg_iov = iov;
+    msgsent.msg_control = NULL;
+    msgsent.msg_controllen = 0;
+    //printf_debug("send: %s:%d\n", client->get_peer_addr(client), client->get_peer_port(client));
+    sendmsg(client->srv->fd.fd, &msgsent, 0);
+    return 0;
+}
+
+int udp_send_vec_data(struct iovec *iov, int iov_len)
+{
+    struct net_udp_server *srv = get_udp_server();
+    struct net_udp_client *cl_list, *list_tmp;
+    int ret = 0;
+    list_for_each_entry_safe(cl_list, list_tmp, &srv->clients, list){
+        udp_send_vec_data_to_client(cl_list, iov, iov_len);
+    }
+    return ret;
+}
+
+int udp_send_vec_data_to_taget_addr(struct iovec *iov, int iov_len)
+{
+    #define SERVER "192.168.2.11"
+    #define PORT 1134 
+    static struct net_udp_client client;
+    static bool client_init_flag = false;
+    if(client_init_flag == false){
+        client.peer_addr.sin_family = AF_INET;
+        client.peer_addr.sin_port = htons(PORT);
+        client.srv =  get_udp_server();
+
+        if(inet_aton(SERVER, &client.peer_addr.sin_addr) == 0){
+            printf_err("error server ip\n");
+            return -1;
+        }
+        client_init_flag = true;
+    }
+    udp_send_vec_data_to_client(&client, iov, iov_len);
+    return 0;
+}
+
 
 void udp_client_dump(void)
 {
@@ -83,7 +167,7 @@ void udp_add_client_to_list(struct sockaddr_in *addr, int ch)
     cl->srv = srv;
     cl->srv->nclients++;
 
-    printf_note("Add New UDP Client addr to list: %s:%d, total client: %d\n", cl->get_peer_addr(cl), cl->get_peer_port(cl), cl->srv->nclients);
+    printf_note(">>>>>>>>>Add New UDP Client addr to list: %s:%d, total client: %d\n", cl->get_peer_addr(cl), cl->get_peer_port(cl), cl->srv->nclients);
 
 }
 
@@ -157,7 +241,8 @@ static void udp_read_cb(struct uloop_fd *fd, unsigned int events)
     //list_add(&cl->list, &srv->clients);
     cl->srv = srv;
     //cl->srv->nclients++;
-    printf_note("Receive New UDP data[%d] From: %s:%d\n", n, cl->get_peer_addr(cl), cl->get_peer_port(cl));
+    cl->ifname = udp_get_ifname(cl);
+    printf_note("Receive New UDP data[%d] From: %s:%d, ifname=%s\n", n, cl->get_peer_addr(cl), cl->get_peer_port(cl), cl->ifname);
     if(cl != NULL){
         poal_udp_handle_request(cl, data, n);
         printf_note("Deal Over Free UDP: %s:%d\n", cl->get_peer_addr(cl), cl->get_peer_port(cl));
@@ -176,6 +261,7 @@ struct net_udp_server *udp_server_new(const char *host, int port)
         uh_log_err("usock");
         return NULL;
     }
+    
     printf_debug("sock=%d\n", sock);
     srv = calloc(1, sizeof(struct net_udp_server));
     if (!srv) {
@@ -189,7 +275,6 @@ struct net_udp_server *udp_server_new(const char *host, int port)
     uloop_fd_add(&srv->fd, ULOOP_READ);
     
     INIT_LIST_HEAD(&srv->clients);
-
     return srv;
     
 err:

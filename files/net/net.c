@@ -81,6 +81,15 @@ int server_init(void)
     tcpsrv = tcp_server_new("0.0.0.0", poal_config->network.port);
     if (!tcpsrv)
         return -1;
+    
+    if(poal_config->network.port != poal_config->network_10g.port){
+        struct net_tcp_server *tcpsrv_10g = NULL;
+        printf_note("10g tcp server init [port:%d]\n", poal_config->network_10g.port);
+        tcpsrv = tcp_server_new("0.0.0.0", poal_config->network_10g.port);
+        if (!tcpsrv)
+            return -1;
+    }
+
 #endif
     struct net_udp_server *udpsrv = NULL;
     printf_note("udp server init[port:%d]\n", poal_config->network.port);

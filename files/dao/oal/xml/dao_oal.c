@@ -26,6 +26,7 @@
 #  define O_BINARY 0
 #endif /* !O_BINARY */
 
+extern char *get_version_string(void);
 
 mxml_node_t *whole_root;
 mxml_node_t *calibration_root;

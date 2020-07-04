@@ -4,6 +4,8 @@ IFS='='
 config_dir=$1
 ubootname=""
 ubootsize=0
+bootenvname=""
+bootenvsize=0
 kernelname=""
 kernelsize=0
 fsname=""
@@ -16,9 +18,9 @@ kernelfile="image.ub"
 jffs2file="rootfs.jffs2"
 dtbfile="system.dtb"
 
-output_file="burnfile.img"
+output_file="burnfile.bin"
 config_file="../../project-spec/configs/config"
-
+#config_file="config"
 echo "---------------------------------------------------------"
 if [ "$config_dir" != "" ]; then
     config_file="$config_dir/project-spec/configs/config"
@@ -26,7 +28,7 @@ if [ "$config_dir" != "" ]; then
     kernelfile="$config_dir/images/linux/image.ub"
     jffs2file="$config_dir/images/linux/rootfs.jffs2"
     dtbfile="$config_dir/images/linux/system.dtb"
-    output_file="$config_dir/images/linux/burnfile.img"
+    output_file="$config_dir/images/linux/burnfile.bin"
 fi
 block_size=1024
 
@@ -58,6 +60,8 @@ while read k v
         if [ -n "$v" ]; then
             if [ "$v" == "\"boot\"" ]; then
                 ubootname=${k/_NAME/_SIZE}
+            elif [ "$v" == "\"bootenv\""  ]; then
+                bootenvname=${k/_NAME/_SIZE}
             elif [ "$v" == "\"kernel\"" ]; then
                 kernelname=${k/_NAME/_SIZE}
             elif [ "$v" == "\"jffs2\"" ]; then
@@ -68,6 +72,8 @@ while read k v
 
             if [ "$k" == "$ubootname" ]; then
                 ubootsize=$v
+            elif [ "$k" == "$bootenvname" ]; then
+                bootenvsize=$v
             elif [ "$k" == "$kernelname" ]; then
                 kernelsize=$v
             elif [ "$k" == "$fsname" ]; then
@@ -77,25 +83,27 @@ while read k v
             fi
         fi
 done  < $config_file
-echo "ubootsize=$ubootsize, kernelsize=$kernelsize, fssize=$fssize,dtbsize=$dtbsize"
+echo "ubootsize=$ubootsize,bootenvsize=$bootenvsize, kernelsize=$kernelsize, fssize=$fssize,dtbsize=$dtbsize"
 ((ubootsize=$ubootsize))
+((bootenvsize=$bootenvsize))
 ((kernelsize=$kernelsize))
 ((fssize=$fssize))
 ((dtbsize=$dtbsize))
 
 ubootsize=`expr $ubootsize / $block_size`
+bootenvsize=`expr $bootenvsize / $block_size`
 kernelsize=`expr $kernelsize / $block_size`
 fssize=`expr $fssize / $block_size`
 dtbsize=`expr $dtbsize / $block_size`
 
-if [ $ubootsize -eq 0 ] || [ $kernelsize -eq 0 ] || [ $fssize -eq 0 ] || [ $dtbsize -eq 0 ]; then
+if [ $ubootsize -eq 0 ] || [ $bootenvsize -eq 0 ] || [ $kernelsize -eq 0 ] || [ $fssize -eq 0 ] || [ $dtbsize -eq 0 ]; then
     echo ">>>>Make burn file Faild!"
 fi
 uboot_start=0
-kernel_start=`expr $uboot_start + $ubootsize`
-fs_start=`expr $kernel_start + $kernelsize`
-dtb_start=`expr $fs_start + $fssize`
-echo "uboot_start=$uboot_start, kernel_start=$kernel_start, fs_start=$fs_start, dtb_start=$dtb_start"
+kernel_start=`expr $uboot_start + $ubootsize + $bootenvsize`
+dtb_start=`expr $kernel_start + $kernelsize`
+fs_start=`expr $dtb_start + $dtbsize`
+echo "uboot_start=$uboot_start, kernel_start=$kernel_start, dtb_start=$dtb_start, fs_start=$fs_start"
 
 ret=0
 if [ $bootfile != "" ]; then
@@ -108,15 +116,7 @@ fi
 
 if [ $kernelfile != "" ]; then
     echo "dd if=$kernelfile of=$output_file bs=$block_size seek=$kernel_start"
-    dd if=$kernelfile of=$output_file bs=$block_size seek=$kernel_start
-    if [ $? -ne 0 ]; then
-        ret=1
-    fi
-fi
-
-if [ $jffs2file != "" ]; then
-    echo "dd if=$jffs2file of=$output_file bs=$block_size seek=$fs_start"
-    dd if=$jffs2file of=$output_file bs=$block_size seek=$fs_start 
+	dd if=$kernelfile of=$output_file bs=$block_size seek=$kernel_start
     if [ $? -ne 0 ]; then
         ret=1
     fi
@@ -124,12 +124,19 @@ fi
 
 if [ $dtbfile != "" ]; then
     echo "dd if=$dtbfile of=$output_file bs=$block_size seek=$dtb_start"
-    dd if=$dtbfile of=$output_file bs=$block_size seek=$dtb_start
+	dd if=$dtbfile of=$output_file bs=$block_size seek=$dtb_start
     if [ $? -ne 0 ]; then
         ret=1
     fi
 fi
 
+if [ $jffs2file != "" ]; then
+    echo "dd if=$jffs2file of=$output_file bs=$block_size seek=$fs_start"
+    dd if=$jffs2file of=$output_file bs=$block_size seek=$fs_start
+    if [ $? -ne 0 ]; then
+        ret=1
+    fi
+fi
 sync
 
 echo "---------------------------------------------------------"

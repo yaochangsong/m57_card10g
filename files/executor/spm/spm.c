@@ -19,6 +19,9 @@
 #include "spm.h"
 #include "utils/mq.h"
 #include <assert.h>
+#include "spm_fpga.h"
+#include "../io.h"
+
 
 
 //struct mq_ctx *mqctx;
@@ -75,55 +78,35 @@ void spm_iq_handle_thread(void *arg)
 
    // thread_bind_cpu(1);
     ctx = (struct spm_context *)arg;
-#if 0
-    int policy;
-    struct sched_param param;
-    pthread_getschedparam(pthread_self(),&policy,&param);
-    if(policy == SCHED_OTHER)
-        printf("SCHED_OTHER\n");
-    if(policy == SCHED_RR)
-        printf("SCHED_RR \n");
-    if(policy==SCHED_FIFO)
-        printf("SCHED_FIFO\n");
-
-    int priority = sched_get_priority_max(policy);
-    assert(priority!=-1);
-    printf("max_priority=%d\n",priority);
-    priority= sched_get_priority_min(policy);
-    assert(priority!=-1);
-    printf("min_priority=%d\n",priority);
-#endif
 
 loop:
     printf_warn("######Wait IQ enable######\n");
     /* 通过条件变量阻塞方式等待数据使能 */
     pthread_mutex_lock(&spm_iq_cond_mutex);
-    pthread_cond_wait(&spm_iq_cond, &spm_iq_cond_mutex);
+    while(subch_bitmap_weight() == 0)
+        pthread_cond_wait(&spm_iq_cond, &spm_iq_cond_mutex);
     pthread_mutex_unlock(&spm_iq_cond_mutex);
-    if(ctx->pdata->sub_ch_enable.iq_en == 0){
-        printf_warn("IQ is not enabled!![%d]\n", ctx->pdata->sub_ch_enable.iq_en);
-        sleep(1);
-        goto loop;
-    }
+    
+    printf_note(">>>>>IQ start\n");
     memset(&run, 0, sizeof(run));
     memcpy(&run, ctx->run_args, sizeof(run));
     do{
         len = ctx->ops->read_iq_data(&ptr_iq);
         
-        printf_debug("reve handle: len=%d, ptr=%p, %d\n", len, ptr_iq, ctx->pdata->sub_ch_enable.iq_en);
+       // printf_debug("reve handle: len=%d, ptr=%p, %d\n", len, ptr_iq, ctx->pdata->sub_ch_enable.iq_en);
         if(len > 0){
-            for(i = 0; i < 16; i++){
-               printfd("%x ", ptr_iq[i]);
-            }
-            printfd("\n----------[%d]---------\n", len);
+           // for(i = 0; i < 16; i++){
+           //    printfd("%x ", ptr_iq[i]);
+           // }
+           // printfd("\n----------[%d]---------\n", len);
             ctx->ops->send_iq_data(ptr_iq, len, &run);
         }
-        if(ctx->pdata->sub_ch_enable.iq_en == 0){
-            printf_note("iq disabled %d\n", ctx->pdata->sub_ch_enable.iq_en);
+        if(subch_bitmap_weight() == 0){
+            printf_note("iq disabled\n");
             sleep(1);
             goto loop;
         }
-        usleep(1000);
+        usleep(1);
     }while(1);
     
 }
@@ -136,7 +119,7 @@ void spm_deal(struct spm_context *ctx, void *args)
         printf_err("spm is not init!!\n");
         return;
     }
-    if(pctx->pdata->sub_ch_enable.iq_en){
+    if(subch_bitmap_weight() != 0){
         struct spm_run_parm *ptr_run;
         ptr_run = (struct spm_run_parm *)args;
         printf_debug("send:ch:%d, s_freq:%llu, e_freq:%llu, bandwidth=%u\n", 
@@ -147,14 +130,13 @@ void spm_deal(struct spm_context *ctx, void *args)
         fft_t *ptr = NULL, *ord_ptr = NULL;
         ssize_t  byte_len = 0; /* fft byte size len */
         size_t fft_len = 0, fft_ord_len = 0;
-
         byte_len = pctx->ops->read_fft_data(&ptr);
         if(byte_len < 0){
             return;
         }
         if(byte_len > 0){
             fft_len = byte_len/sizeof(fft_t);
-            printf_debug("size_len=%u, fft_len=%u\n", byte_len, fft_len);
+             printf_debug("size_len=%u, fft_len=%u\n", byte_len, fft_len);
             ord_ptr = pctx->ops->data_order(ptr, fft_len, &fft_ord_len, args);
             if(ord_ptr)
                 pctx->ops->send_fft_data(ord_ptr, fft_ord_len, args);
@@ -166,6 +148,11 @@ static struct spm_context *spmctx = NULL;
 
 struct spm_context *get_spm_ctx(void)
 {
+    if(spmctx == NULL){
+        printf_err("Spectrum Creat Failed!!\n");
+        exit(1);
+    }
+        
     return spmctx;
 }
 
@@ -186,17 +173,16 @@ void *spm_init(void)
     static pthread_t send_thread_id, recv_thread_id;
     int ret;
     pthread_attr_t attr;
-
 #if defined(SUPPORT_PLATFORM_ARCH_ARM)
 #if defined(SUPPORT_SPECTRUM_CHIP)
     spmctx = spm_create_chip_context();
 #elif defined (SUPPORT_SPECTRUM_FPGA)
     spmctx = spm_create_fpga_context();
 #endif
+
     if(spmctx != NULL){
         spmctx->ops->create();
     }
-
     if(spmctx == NULL){
         printf_warn("spm create failed\n");
         return NULL;

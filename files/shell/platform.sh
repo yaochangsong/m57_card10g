@@ -3,10 +3,19 @@
 start()
 {
     echo " Start FlatForm."
- #   insmod /lib/modules/4.6.0-xilinx/extra/dmadrvm.ko
+	/etc/led.sh init
+    /etc/led.sh power on
+	/etc/led.sh check on
+    /etc/network.sh
+    /etc/led.sh work on
+    ln -s /run/media/nvme0n1/data data
+    /etc/check.sh stop
+    /etc/check.sh start
+	echo 3 4 1 3 > /proc/sys/kernel/printk
+#   insmod /lib/modules/4.6.0-xilinx/extra/dmadrvm.ko
  #   insmod /lib/modules/4.6.0-xilinx/extra/xwfsm.ko
-    platform &
     sleep 1
+    platform &
  #   ifconfig eth0 down                                                 
  #   ifconfig eth0 hw ether 02:0a:35:00:00:04                 
  #   ifconfig eth0 up
@@ -18,6 +27,7 @@ stop()
 	if killall platform > /dev/null 2>&1; then
 		echo "killall platform"
 	fi
+    /etc/led.sh work off
 }
 
 case $1 in

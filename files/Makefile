@@ -28,6 +28,7 @@ ifneq ($(findstring x86,$(SUPPORT_PLAT_FORM_ARCH)),)
 	CC?=gcc
 	C_VAR += -DSUPPORT_PLATFORM_ARCH_X86
 else ifneq ($(findstring arm,$(SUPPORT_PLAT_FORM_ARCH)),)
+	#make CC=aarch64-linux-gnu-gcc
 	CC?=arm-linux-gnueabihf-gcc
 	C_VAR += -DSUPPORT_PLATFORM_ARCH_ARM
 endif
@@ -67,6 +68,12 @@ endif
 ifneq ($(findstring y,$(SUPPORT_XWFS)),)
 	C_VAR += -DSUPPORT_XWFS
 	SOURCE_DIR += executor/xwfs
+endif
+
+#fs2.0
+ifneq ($(findstring y,$(SUPPORT_FS)),)
+	C_VAR += -DSUPPORT_FS
+	SOURCE_DIR += fs
 endif
 
 #lcd
@@ -112,6 +119,27 @@ ifneq ($(findstring y,$(SUPPORT_RF_SPI)),)
 	SOURCE_DIR += device/rf/spi
 	C_VAR += -DSUPPORT_RF_SPI
 endif
+#rf fpga
+ifneq ($(findstring y,$(SUPPORT_RF_FPGA)),)
+	C_VAR += -DSUPPORT_RF_FPGA
+endif
+
+
+
+#clock adc
+##clock adc spi
+ifneq ($(findstring y,$(SUPPORT_CLOCK_ADC)),)
+	SOURCE_DIR += device/clock_adc
+	C_VAR += -DSUPPORT_CLOCK_ADC
+endif
+ifneq ($(findstring y,$(SUPPORT_CLOCK_ADC_SPI)),)
+	C_VAR += -DSUPPORT_CLOCK_ADC_SPI
+endif
+##clock adc fpga
+ifneq ($(findstring y,$(SUPPORT_CLOCK_ADC_FPGA)),)
+	C_VAR += -DSUPPORT_CLOCK_ADC_FPGA
+endif
+
 
 ifneq ($(findstring y,$(SUPPORT_RF_ADRV9009)),)
 	SOURCE_DIR += device/rf/adrv9009
@@ -150,6 +178,10 @@ ifneq ($(findstring y,$(SUPPORT_SPECTRUM_KERNEL)),)
 	C_VAR += -DSUPPORT_SPECTRUM_KERNEL
 endif
 
+#
+ifneq ($(findstring y,$(SUPPORT_RESIDENCY_STRATEGY)),)
+	C_VAR += -DSUPPORT_RESIDENCY_STRATEGY
+endif
 
 SOURCE_DIR += log net protocol/oal dao/oal conf executor  utils device  device/gpio 
 
@@ -159,6 +191,9 @@ ifneq ($(findstring y,$(SUPPORT_REMOTE_LOCAL_CTRL_EN)),)
 endif
 
 #project
+ifneq ($(findstring y,$(SUPPORT_PROJECT_WD_XCR)),)
+	C_VAR += -DSUPPORT_PROJECT_WD_XCR
+endif
 ifneq ($(findstring y,$(SUPPORT_PROJECT_SSA)),)
 	C_VAR += -DSUPPORT_PROJECT_SSA
 endif
@@ -233,7 +268,9 @@ objs = $(source:%.c=%.o)
 target = platform 
 tools_m = tools
 
-all: $(target) $(tools_m)
+commit_tag=$(shell git rev-list --max-count=1 HEAD) 
+
+all: version $(target) $(tools_m) 
 	
 $(target): $(objs)
 	for dir in $(SUB_LIB_DIRS); \
@@ -250,6 +287,12 @@ $(tools_m): libjson.a dao/json/cJSON.o
 	do $(MAKE) -C $$dir all || exit 1; \
 	done
 
+version:
+	@if ! grep "$(commit_tag)" version.h >/dev/null ; then \
+		echo "update version.h $(commit_tag)"       ;    \
+		sed 's/COMMIT_TAG/"$(commit_tag)"/g' version.tpl.h > version.h    ;  \
+	fi
+    
 libjson.a:
 	echo Creating $@...
 	$(RM) $@

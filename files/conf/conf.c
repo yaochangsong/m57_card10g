@@ -41,10 +41,17 @@ void config_init(void)
     config.oal_config.network.port = 1325;
     #endif
     memset(&config, 0, sizeof(config));
-    if(get_mac(mac, sizeof(mac)) != -1){
+    if(get_mac(NETWORK_EHTHERNET_POINT, mac, sizeof(mac)) != -1){
         memcpy(config.oal_config.network.mac, mac, sizeof(config.oal_config.network.mac));
+        printf_debug("1g mac:%x%x%x%x%x%x\n", mac[0],mac[1],mac[2],mac[3],mac[4],mac[5]);
     }
-    printf_debug("mac:%x%x%x%x%x%x\n", mac[0],mac[1],mac[2],mac[3],mac[4],mac[5]);
+#ifdef SUPPORT_NET_WZ
+    if(get_mac(NETWORK_10G_EHTHERNET_POINT, mac, sizeof(mac)) != -1){
+        memcpy(config.oal_config.network_10g.mac, mac, sizeof(config.oal_config.network.mac));
+        printf_debug("10g mac:%x%x%x%x%x%x\n", mac[0],mac[1],mac[2],mac[3],mac[4],mac[5]);
+    }
+#endif
+    
     printf_debug("config init\n");
     config.configfile = safe_strdup(DEFAULT_CONFIGFILE);
     //config.calibrationfile = safe_strdup(CALIBRATION_FILE);
@@ -427,6 +434,9 @@ int8_t config_read_by_cmd(exec_cmd cmd, uint8_t type, uint8_t ch, void *data, ..
                 case EX_RF_MGC_GAIN:
                     *(int8_t *)data = poal_config->rf_para[ch].mgc_gain_value;
                     break;
+                case EX_RF_ATTENUATION:
+                    *(int8_t *)data = poal_config->rf_para[ch].attenuation;
+                    break;
                 default:
                     printf_err("not surpport type\n");
                     goto exit;
@@ -493,6 +503,12 @@ int8_t config_read_by_cmd(exec_cmd cmd, uint8_t type, uint8_t ch, void *data, ..
                     }
                     break;
                 }
+                case EX_CTRL_CALI_SIGAL_THRE:
+                    *(int32_t *)data = poal_config->ctrl_para.signal.threshold;
+                    break;
+                case EX_CTRL_IQ_DATA_LENGTH:
+                    *(uint32_t *)data = poal_config->ctrl_para.iq_data_length;
+                    break;
                 default:
                     printf_err("not surpport type\n");
                     goto exit;

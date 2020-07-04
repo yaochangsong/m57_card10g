@@ -1,7 +1,7 @@
 {
 	"version":	"1.0",
 	"network":	{
-		"mac":	"38:2c:4a:ba:57:1d",
+		"mac":	"20:04:0F:F7:62:90",
 		"ipaddress":	"192.168.1.111",
 		"netmask":	"255.255.255.0",
 		"gateway":	"192.168.1.1",
@@ -17,11 +17,13 @@
 		"spectrum_time_interval":	200,
 		"bandwidth_remote_ctrl":	1,
 		"internal_clock":	1,
-		"net10g_threshold_bandwidth":	10000000
+		"net10g_threshold_bandwidth":	10000000,
+		"signal_threshold":	90,
+		"iq_data_length":	8192
 	},
 	"status_parm":	{
 		"soft_version":	{
-			"app":	"1.0.0(2020-05-19-19:58:41)",
+			"app":	"1.0.0_debug(2020-06-28-17:39:10)-7fadf25a63014d28066001c1009f73333f3d97d4 ",
 			"fpga":	"202012"
 		},
 		"device_sn":	"0x0202"
@@ -42,13 +44,13 @@
 				"value":	10
 			}, {
 				"fftsize":	8192,
-				"value":	190
+				"value":	10
 			}, {
 				"fftsize":	16384,
-				"value":	240
+				"value":	10
 			}, {
 				"fftsize":	32768,
-				"value":	240
+				"value":	10
 			}],
 		"psd_freq":	[{
 				"start_freq":	0,

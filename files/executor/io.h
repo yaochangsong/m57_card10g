@@ -22,8 +22,14 @@
 #define MAX_COMMON_PARAM_LEN 512
 
 #ifdef SUPPORT_PLATFORM_ARCH_ARM
-#define NETWORK_EHTHERNET_POINT       "eth0"
+#ifdef SUPPORT_NET_WZ
+#define NETWORK_10G_EHTHERNET_POINT       "eth0"
+#define NETWORK_EHTHERNET_POINT           "eth1"
 #else
+#define NETWORK_EHTHERNET_POINT       "eth0"
+#endif
+#else
+#define NETWORK_10G_EHTHERNET_POINT   "eno2"
 #define NETWORK_EHTHERNET_POINT       "eno1"
 #endif
 
@@ -243,6 +249,10 @@ typedef enum _io_dq_method_code{
 #endif
 
 extern void io_init(void);
+extern void subch_bitmap_init(void);
+extern void subch_bitmap_set(uint8_t subch);
+extern void subch_bitmap_clear(uint8_t subch);
+extern size_t subch_bitmap_weight(void);
 extern int8_t io_set_enable_command(uint8_t type, int ch, int subch, uint32_t fftsize);
 extern int8_t io_set_work_mode_command(void *data);
 extern int8_t io_set_para_command(uint8_t type, int ch, void *data);
@@ -255,4 +265,7 @@ extern uint8_t  io_set_network_to_interfaces(void *netinfo);
 extern int32_t io_set_extract_ch0(uint32_t ch, uint32_t bandwith);
 extern int io_read_more_info_by_name(const char *name, void *info, int32_t (*iofunc)(void *));
 extern int32_t io_find_file_info(void *arg);
+extern int32_t io_start_backtrace_file(void *arg);
+extern int32_t io_stop_backtrace_file(void *arg);
+
 #endif

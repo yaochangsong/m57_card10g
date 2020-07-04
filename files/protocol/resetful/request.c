@@ -101,7 +101,7 @@ int parse_format_url(struct uh_client *cl, const char * url, const char * url_fo
 {
     char * saveptr = NULL, * cur_word = NULL, * url_cpy = NULL, * url_cpy_addr = NULL;
     char * saveptr_prefix = NULL, * cur_word_format = NULL, * url_format_cpy = NULL, * url_format_cpy_addr = NULL;
-    char concat_url_param[64];
+    char concat_url_param[512];
     char *s;
     int index = 0;
     int ret = 0;

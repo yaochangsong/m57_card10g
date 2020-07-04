@@ -473,7 +473,7 @@ int8_t xnrp_xml_parse_data(uint8_t classcode, uint8_t methodcode, void *data, ui
 
                      outputenablecontr =(struct dao_data_output_enable_control *) dao_conf_parse_batch(classcode,methodcode,data);
                      struct output_en_st *outputen=&config->enable;
-                     struct output_en_st *suboutputen=&config->sub_ch_enable;
+                     struct output_en_st *suboutputen=&config->sub_ch_enable[0];
                      config->cid=outputenablecontr->channel;
                      if(outputenablecontr->subChannel==(-1))
                      {
@@ -505,13 +505,13 @@ int8_t xnrp_xml_parse_data(uint8_t classcode, uint8_t methodcode, void *data, ui
                          suboutputen->sub_id=outputenablecontr->subChannel;
 
 
-                         printf_debug("config.oal_config.enable.audio_en=%d\n",config->sub_ch_enable.audio_en);
-                         printf_debug("config.oal_config.enable.cid=%d\n",config->sub_ch_enable.cid);
-                         printf_debug("config.oal_config.enable.direction_en=%d\n",config->sub_ch_enable.direction_en);
-                         printf_debug("config.oal_config.enable.iq_en=%d\n",config->sub_ch_enable.iq_en);
-                         printf_debug("config.oal_config.enable.psd_en=%d\n",config->sub_ch_enable.psd_en);
-                         printf_debug("config.oal_config.enable.spec_analy_en=%d\n",config->sub_ch_enable.spec_analy_en);
-                         printf_debug("config.oal_config.enable.sub_id=%d\n",config->sub_ch_enable.sub_id);
+                         printf_debug("config.oal_config.enable.audio_en=%d\n",config->sub_ch_enable[0].audio_en);
+                         printf_debug("config.oal_config.enable.cid=%d\n",config->sub_ch_enable[0].cid);
+                         printf_debug("config.oal_config.enable.direction_en=%d\n",config->sub_ch_enable[0].direction_en);
+                         printf_debug("config.oal_config.enable.iq_en=%d\n",config->sub_ch_enable[0].iq_en);
+                         printf_debug("config.oal_config.enable.psd_en=%d\n",config->sub_ch_enable[0].psd_en);
+                         printf_debug("config.oal_config.enable.spec_analy_en=%d\n",config->sub_ch_enable[0].spec_analy_en);
+                         printf_debug("config.oal_config.enable.sub_id=%d\n",config->sub_ch_enable[0].sub_id);
                      }
                  }else if(methodcode==B_CODE_CONTROL_CONTR_CALIBRATION_CONTR){
                  

@@ -12,8 +12,11 @@
 *  Rev 1.0   06 July 2019   yaochangsong
 *  Initial revision.
 ******************************************************************************/
-
 #include "config.h"
+#include <stdio.h>
+
+extern char *get_version_string(void);
+
 
 static void usage(const char *prog)
 {
@@ -106,7 +109,8 @@ int main(int argc, char **argv)
         }
     }
     log_init(debug_level);
-    printf_warn("VERSION:%s\n",get_version_string());
+    printf("Platform Start...\n");
+    printf("VERSION:%s\n",get_version_string());
     config_init();
     uloop_init();
     gpio_raw_init();
@@ -119,13 +123,19 @@ int main(int argc, char **argv)
 #ifdef SUPPORT_AMBIENT_TEMP_HUMIDITY
     temp_humidity_init();
 #endif 
+    
+#ifdef  SUPPORT_CLOCK_ADC
+    clock_adc_init();   /* 时钟/AD初始化 */
+#endif
+    fpga_io_init();
     executor_init();    /* DMA频谱初始化需要在时钟初始化之前 */
  if(spectrum_aditool_debug == false){
 #ifdef SUPPORT_RF
-        rf_init();  /* SPI初始化，时钟/AD初始化 */
+    rf_init();  /* RF初始化， */
 #endif
+    
 #ifdef SUPPORT_SPECTRUM_FFT
-        spectrum_init();
+    spectrum_init();
 #endif
     }
 #ifdef SUPPORT_UART
@@ -138,6 +148,9 @@ int main(int argc, char **argv)
     xwfs_init();
     http_requset_init();
 #endif
+#if defined(SUPPORT_FS)
+    fs_init();
+#endif
     if(server_init() == -1){
         printf_err("server init fail!\n");
         goto done;
@@ -148,5 +161,3 @@ done:
     uloop_done();
     return 0;
 }
-
-

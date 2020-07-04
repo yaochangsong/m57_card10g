@@ -136,6 +136,7 @@ static cJSON* json_read_file(const char *filename, cJSON* root)
     len = ftell(fp);
     if(0 == len)
     {
+        fclose(fp);
         return NULL;
     }
 

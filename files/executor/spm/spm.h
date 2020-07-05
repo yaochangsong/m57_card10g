@@ -18,7 +18,7 @@
 typedef int16_t fft_t;
 typedef int16_t iq_t;
 
-#define MAX_FFT_SIZE  (32768)
+#define MAX_FFT_SIZE  (64768)
 
 enum stream_type {
     STREAM_IQ = 0,
@@ -54,6 +54,7 @@ struct spm_backend_ops {
     int (*stream_start)(uint32_t ,uint8_t , int);
     int (*stream_stop)(uint8_t);
     int (*sample_ctrl)(uint64_t);
+    int (*spm_scan)(uint64_t *, uint64_t* , uint32_t* , uint32_t *, uint64_t *);
     int (*close)(void *);
     
 };

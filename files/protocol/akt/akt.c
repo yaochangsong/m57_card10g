@@ -582,7 +582,7 @@ static int akt_execute_set_command(void *cl)
             check_valid_channel(header->buf[0]);
             memcpy(&(pakt_config->mid_freq_bandwidth[ch]), header->buf, sizeof(DIRECTION_MID_FREQ_BANDWIDTH_PARAM));
             poal_config->rf_para[ch].mid_bw = *((uint32_t *)(header->buf+1));
-            printf_note("ch=%d, bandwidth:%u\n", ch, poal_config->rf_para[ch].mid_bw);
+            printf_warn("ch=%d, bandwidth:%u\n", ch, poal_config->rf_para[ch].mid_bw);
             executor_set_command(EX_RF_FREQ_CMD, EX_RF_MID_BW, ch, &poal_config->rf_para[ch].mid_bw);
             break;
         }

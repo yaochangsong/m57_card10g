@@ -73,7 +73,7 @@ uint8_t rf_set_interface(uint8_t cmd,uint8_t ch,void *data){
                 printf_note("NOT found bandwidth %uHz in tables,use default[200Mhz]\n", mbw);
                 set_val = 0x03; /* default 200MHz */
             }
-            get_fpga_reg()->rfReg->mid_band = set_val;
+            get_fpga_reg()->rfReg->mid_band = 0x03;//set_val;
 #endif
             break; 
         }

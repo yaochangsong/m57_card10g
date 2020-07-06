@@ -388,7 +388,19 @@ static uint32_t io_set_dec_middle_freq_reg(uint64_t dec_middle_freq, uint64_t mi
         uint64_t delta_freq;
         uint32_t reg;
         int32_t ret = 0;
-    
+#if defined(SUPPORT_DIRECT_SAMPLE)
+        #define FREQ_ThRESHOLD_HZ (100000000)
+        uint32_t bandwidth = 0;
+        if(config_read_by_cmd(EX_MID_FREQ_CMD, EX_BANDWITH, 0, &bandwidth, 0) == -1){
+                printf_err("Error read bandwidth=%u\n", bandwidth);
+                return -1;
+        }
+        printf_note("read bandwidth=%uHz\n", bandwidth);
+        if(bandwidth /2 + dec_middle_freq < FREQ_ThRESHOLD_HZ){
+            reg = (uint32_t)((dec_middle_freq *FREQ_MAGIC2)/FREQ_MAGIC1);
+            return reg;
+        }
+#endif
         if(middle_freq > dec_middle_freq){
             delta_freq = FREQ_MAGIC1 +  dec_middle_freq - middle_freq ;
         }else{

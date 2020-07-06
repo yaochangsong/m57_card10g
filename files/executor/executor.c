@@ -148,105 +148,56 @@ static  int8_t  executor_fragment_scan(uint32_t fregment_num,uint8_t ch, work_mo
         e_freq -= KU_FREQUENCY_OFFSET;
     }
 #endif
+
     if(config_read_by_cmd(EX_RF_FREQ_CMD, EX_RF_MID_BW, ch, &scan_bw) == -1){
             printf_err("Error read scan bandwidth=%u\n", scan_bw);
             return -1;
     }
-    executor_set_command(EX_MID_FREQ_CMD, EX_BANDWITH, ch, &scan_bw);
-    /* 根据带宽设置边带率 */
-    executor_set_command(EX_CTRL_CMD, EX_CTRL_SIDEBAND, ch, &scan_bw);
-    fftsize= poal_config->multi_freq_fregment_para[ch].fregment[fregment_num].fft_size;
-    executor_set_command(EX_MID_FREQ_CMD, EX_FFT_SIZE,  ch, &fftsize);
-    
-    if(e_freq < s_freq || scan_bw <= 0){
-        printf_err("frequency error,c_freq=%llu, scan_bw=%u\n", c_freq, scan_bw);
-        return -1;
-    }
-    /* 频谱分析带宽 */
-    poal_config->ctrl_para.specturm_analysis_param.bandwidth_hz = e_freq - s_freq;
-    
-    c_freq = (e_freq - s_freq);
-    scan_count = c_freq /scan_bw;
 
-    /* 扫描次数不是整数�? 需要向上取�?*/
-    if(c_freq % scan_bw){
-        is_remainder = 1;
-    }
-    if((scan_count == 0) && (is_remainder == 0))
-        return -1;
-    printf_note("e_freq=%llu, s_freq=%llu, fftsize=%u\n", e_freq, s_freq, fftsize);
-    printf_note("###scan_bw =%u,scan_count=%d, is_remainder=%d\n", scan_bw, scan_count, is_remainder);
-    //executor_set_command(EX_RF_FREQ_CMD,  EX_RF_MID_BW, ch, &scan_bw);
-    /* 
-           Step 2: 根据扫描带宽�?从开始频率到截止频率循环扫描
-   */
-    for(i = 0; i < scan_count + is_remainder; i++){
-        printf_debug("Bandwidth Scan [%d][%u]......\n", i, scan_bw);
-        if(i < scan_count){
-            /* 计算扫描中心频率 */
-            m_freq = (uint64_t)(s_freq + (uint64_t)i * (uint64_t)scan_bw + scan_bw/2);
-            left_band = scan_bw;
-        }
-        else{
-        #if defined (SUPPORT_SPECTRUM_FFT)
-            /*spectrum is more than one fragment */
-            if(scan_count > 0){
-                m_freq = (uint64_t)(s_freq + (uint64_t)i * (uint64_t)scan_bw + scan_bw/2);
-                left_band = scan_bw;
-            }else{
-                left_band = e_freq - s_freq - i * scan_bw;
-                m_freq = (uint64_t)(s_freq + (uint64_t)i * (uint64_t)scan_bw + left_band/2);
-            }
-        #else
-            /* 若不是整数，需计算剩余带宽中心频率 */
-            left_band = e_freq - s_freq - i * scan_bw;
-            m_freq = (uint64_t)(s_freq + (uint64_t)i * (uint64_t)scan_bw + left_band/2);
-        #endif
-        }
+    uint64_t _s_freq_hz_offset, _e_freq_hz,_m_freq_hz;
+    uint32_t index = 0, _bw_hz;
+    static uint32_t t_fft = 2;
+    _s_freq_hz_offset = s_freq;
+    _e_freq_hz = e_freq;
+    fftsize= poal_config->multi_freq_fregment_para[ch].fregment[fregment_num].fft_size;
+   // executor_set_command(EX_MID_FREQ_CMD, EX_BANDWITH, ch, &scan_bw);
+    executor_set_command(EX_MID_FREQ_CMD, EX_FFT_SIZE,  ch, &fftsize);
         r_args->ch = ch;
-        r_args->s_freq = s_freq;
-        r_args->e_freq = e_freq;
-        r_args->bandwidth = left_band;
-        r_args->fft_sn = i;
-        r_args->total_fft = scan_count + is_remainder;
-        r_args->m_freq = m_freq;
         r_args->fft_size = fftsize;
         r_args->mode = mode;
+    do{
+        r_args->s_freq_offset = _s_freq_hz_offset;
+        r_args->s_freq = s_freq;
+        spmctx->ops->spm_scan(&_s_freq_hz_offset, &_e_freq_hz, &scan_bw, &_bw_hz, &_m_freq_hz);
+        r_args->e_freq = e_freq;
         r_args->scan_bw = scan_bw;
+        r_args->bandwidth = _bw_hz;
+        r_args->m_freq = r_args->s_freq_offset + _bw_hz/2;
+        r_args->m_freq_s = _m_freq_hz;
+        r_args->fft_sn = index;
+        r_args->total_fft = t_fft;
         r_args->freq_resolution = poal_config->multi_freq_fregment_para[ch].fregment[fregment_num].freq_resolution;
-        /* 为避免在一定带宽下，中心频率过小导致起始频率<0，设置前需要对中频做判断 */
-        m_freq =  middle_freq_resetting(scan_bw, m_freq);
-        executor_set_command(EX_RF_FREQ_CMD, EX_RF_MID_FREQ, ch, &m_freq);
-        executor_set_command(EX_RF_FREQ_CMD,  EX_RF_LOW_NOISE, ch, &m_freq);
-#ifdef SUPPORT_PLATFORM_ARCH_ARM
-        io_set_enable_command(PSD_MODE_ENABLE, ch, -1, r_args->fft_size);
-    #if defined(SUPPORT_SPECTRUM_KERNEL)
-        executor_set_command(EX_WORK_MODE_CMD, mode, ch, r_args);
-        executor_wait_kernel_deal();
-    #elif defined (SUPPORT_SPECTRUM_FFT)
-        if(is_spectrum_aditool_debug() == false){
-                spectrum_psd_user_deal(r_args);
-        }else{
-            usleep(500);
+        printf_note("[%d]s_freq=%llu, e_freq=%llu, scan_bw=%u, bandwidth=%u,m_freq=%llu, m_freq_s=%llu\n", 
+            index, r_args->s_freq, r_args->e_freq, r_args->scan_bw, r_args->bandwidth, r_args->m_freq, r_args->m_freq_s);
+        executor_set_command(EX_RF_FREQ_CMD, EX_RF_MID_FREQ, ch, &_m_freq_hz);
+        usleep(1000);
+        executor_set_command(EX_RF_FREQ_CMD, EX_RF_LOW_NOISE, ch, &_m_freq_hz);
+        index ++;
+        if(poal_config->enable.psd_en){
+            io_set_enable_command(PSD_MODE_ENABLE, ch, -1, r_args->fft_size);
         }
-    #elif defined (SUPPORT_SPECTRUM_V2)
-        if(args != NULL)
-            spm_deal(args, r_args);
+        spm_deal(args, r_args);
         if(poal_config->enable.psd_en){
             io_set_enable_command(PSD_MODE_DISABLE, ch, -1, r_args->fft_size);
         }
-    #else
-        usleep(500);
-    #endif
-#else
-    
-#endif
         if(poal_config->enable.bit_reset == true){
             poal_config->enable.bit_reset = false;
             printf_note("receive reset task sigal......\n");
             return -1;
         }
-    }
+    }while(_s_freq_hz_offset < _e_freq_hz);
+    t_fft = index;
+
     printf_debug("Exit fregment scan function\n");
     return 0;
 }
@@ -864,7 +815,7 @@ int8_t executor_set_enable_command(uint8_t ch)
                 /* 中频带宽和射频带宽一�?*/
                 //executor_set_command(EX_MID_FREQ_CMD, EX_CHANNEL_SELECT, ch, &ch);
                 executor_set_command(EX_MID_FREQ_CMD, EX_SMOOTH_TIME, ch,&frp->smooth_time);
-                executor_set_command(EX_MID_FREQ_CMD, EX_BANDWITH, ch,&bw);
+                //executor_set_command(EX_MID_FREQ_CMD, EX_BANDWITH, ch,&bw);
                 executor_set_command(EX_MID_FREQ_CMD, EX_FPGA_CALIBRATE, ch, NULL);
                 executor_set_command(EX_MID_FREQ_CMD, EX_FPGA_RESET, ch, NULL);
                 break;

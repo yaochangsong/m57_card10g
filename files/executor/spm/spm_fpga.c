@@ -196,7 +196,7 @@ static int spm_create(void)
     return 0;
 }
 
-static ssize_t spm_stream_read(enum stream_type type, void **data)
+static ssize_t spm_stream_read(enum stream_type type, volatile void **data)
 {
     struct _spm_stream *pstream;
     ioctl_dma_status status;
@@ -230,7 +230,7 @@ static ssize_t spm_stream_read(enum stream_type type, void **data)
     }while(info.status == READ_BUFFER_STATUS_PENDING);
     readn = info.blocks[0].length;
     *data = pstream[type].ptr + info.blocks[0].offset;
-    printf_info("[%p, %p, offset=0x%x]%s, readn:%u\n", *data, pstream[type].ptr, info.blocks[0].offset,  pstream[type].name, readn);
+    printf_debug("[%p, %p, offset=0x%x]%s, readn:%u\n", *data, pstream[type].ptr, info.blocks[0].offset,  pstream[type].name, readn);
 
     return readn;
 }
@@ -265,7 +265,7 @@ static int spm_read_adc_over_deal(void *arg)
 
 static  float get_side_band_rate(uint32_t bandwidth)
 {
-    #define DEFAULT_SIDE_BAND_RATE  (1.28)
+    #define DEFAULT_SIDE_BAND_RATE  (1.462857)//(1.28)  256/175
     float side_rate = 0.0;
      /* 根据带宽获取边带率 */
     if(config_read_by_cmd(EX_CTRL_CMD, EX_CTRL_SIDEBAND,0, &side_rate, bandwidth) == -1){
@@ -276,7 +276,7 @@ static  float get_side_band_rate(uint32_t bandwidth)
 }
 
 /* 频谱数据整理 */
-static fft_t *spm_data_order(fft_t *fft_data, 
+static fft_t *spm_data_order(volatile fft_t *fft_data, 
                                 size_t fft_len,  
                                 size_t *order_fft_len,
                                 void *arg)
@@ -284,6 +284,8 @@ static fft_t *spm_data_order(fft_t *fft_data,
     struct spm_run_parm *run_args;
     float sigle_side_rate, side_rate;
     uint32_t single_sideband_size;
+    uint32_t offset = 0;
+    uint64_t start_freq_hz = 0;
     int i;
     size_t order_len = 0;
 
@@ -293,11 +295,11 @@ static fft_t *spm_data_order(fft_t *fft_data,
     }
         
     run_args = (struct spm_run_parm *)arg;
-    
     /* 获取边带率 */
-    side_rate  = get_side_band_rate(run_args->bandwidth);
+    side_rate  =  get_side_band_rate(run_args->scan_bw);
     /* 去边带后FFT长度 */
     order_len = (size_t)((float)(fft_len) / side_rate);
+    // printf_warn("run_args->fft_ptr=%p, fft_data=%p, order_len=%u, fft_len=%u, side_rate=%f\n", run_args->fft_ptr, fft_data, order_len,fft_len, side_rate);
     /* 信号倒谱 */
     /*
        原始信号（注意去除中间边带）：==>真实输出信号；
@@ -307,15 +309,27 @@ static fft_t *spm_data_order(fft_t *fft_data,
                   \/                                                      
                  |边带  |
     */
+   // void *psrc = (void *)(fft_data+fft_len -(order_len/2));
+   #if 1
+    fft_t *pdst = calloc(1, 32*1024*2);
+    memcpy((uint8_t *)pdst,                 (uint8_t *)(fft_data) , fft_len*2);
+    memcpy((uint8_t *)run_args->fft_ptr,    (uint8_t *)(pdst+ fft_len -order_len/2 ), order_len);
+    memcpy((uint8_t *)(run_args->fft_ptr+order_len),    (uint8_t *)pdst , order_len);
+    free(pdst);
+    #else
     memcpy((uint8_t *)run_args->fft_ptr,                (uint8_t *)(fft_data+fft_len -order_len/2) , order_len);
     memcpy((uint8_t *)(run_args->fft_ptr+order_len),    (uint8_t *)fft_data , order_len);
-
+    #endif
+    //printf_warn(">>>side_rate = %f, scan_bw = %u, bandwidth = %u\n", side_rate, run_args->scan_bw, run_args->bandwidth);
     if(run_args->scan_bw > run_args->bandwidth){
         order_len = (order_len * run_args->bandwidth)/run_args->scan_bw;
+        start_freq_hz = run_args->s_freq_offset - (run_args->m_freq_s - run_args->scan_bw/2);
+        offset = (order_len * start_freq_hz)/run_args->scan_bw;
     }
     *order_fft_len = order_len;
-    
-    return (fft_t *)run_args->fft_ptr;
+    //printf_warn(">>>order_len=%u, offset = %u, start_freq_hz=%llu, s_freq_offset=%llu, m_freq=%llu, scan_bw=%u\n", 
+    //    order_len, offset, start_freq_hz, run_args->s_freq_offset, run_args->m_freq, run_args->scan_bw);
+    return (fft_t *)run_args->fft_ptr + offset;
 }
 
 static int spm_send_fft_data(void *data, size_t fft_len, void *arg)
@@ -489,6 +503,61 @@ static int spm_get_psd_analysis_result(void *data, size_t len)
 {
     return 0;
 }
+
+static int spm_scan(uint64_t *s_freq_offset, uint64_t *e_freq, uint32_t *scan_bw, uint32_t *bw, uint64_t *m_freq)
+{
+    uint64_t _m_freq;
+    uint64_t _s_freq, _e_freq;
+    uint32_t _scan_bw, _bw;
+    #define DIRECT_FREQ_THR (200000000)
+   
+
+    _s_freq = *s_freq_offset;
+    _e_freq = *e_freq;
+    _scan_bw = *scan_bw;
+    // printf_warn(">>_s_freq = %llu,_e_freq=%llu, scan_bw=%u\n", _s_freq, _e_freq, scan_bw);
+#if defined(SUPPORT_DIRECT_SAMPLE)
+    #define DIRECT_MID_FREQ_HZ (128000000)
+    if(_s_freq < DIRECT_FREQ_THR ){
+        if(_e_freq < DIRECT_FREQ_THR){
+            _bw = _e_freq - _s_freq;
+            *s_freq_offset = _e_freq;
+            //printf_warn("DIRECT_FREQ_THR _bw=%llu, *s_freq_offset=%llu\n", _bw, *s_freq_offset);
+        }else{
+            _bw = DIRECT_FREQ_THR - _s_freq;
+            //_e_freq = 
+            *s_freq_offset = DIRECT_FREQ_THR;
+           // printf_warn("DIRECT_FREQ_THR _bw=%llu, *s_freq_offset=%llu\n", _bw, *s_freq_offset);
+        }
+        *scan_bw = DIRECT_FREQ_THR;
+        *bw = _bw;
+        _m_freq = DIRECT_MID_FREQ_HZ;
+    }else
+#endif
+    {
+        _scan_bw = 175000000;
+        if((_e_freq - _s_freq)/_scan_bw > 0){
+            _bw = _scan_bw;
+            *s_freq_offset = _s_freq + _scan_bw;
+           // printf_warn("RF _bw=%llu, *s_freq_offset=%llu\n", _bw, *s_freq_offset);
+        }else{
+            _bw = _e_freq - _s_freq;
+            *s_freq_offset = _e_freq;
+             //printf_warn("RF _bw=%llu,_e_freq=%llu,_s_freq=%llu, *s_freq_offset=%llu\n", 
+              //  _bw, _e_freq,_s_freq,  *s_freq_offset);
+        }
+        *scan_bw = _scan_bw;
+        _m_freq = _s_freq + _scan_bw/2;
+        *bw = _bw;
+       // printf_warn("_m_freq=%llu, _bw=%llu\n", _m_freq, _bw);
+    }
+    *m_freq = _m_freq;
+    //printf_warn(">>>s_freq_offset=%llu, _bw=%llu[%llu], _m_freq=%llu[%llu]\n", *s_freq_offset,  _bw,*bw, _m_freq, *m_freq);
+
+    return 0;
+}
+
+
 
 /* 自动增益控制  : 该函数在频谱处理线程中，循环调用。通过不断控制，逐渐逼近设置幅度值 */
 static int spm_agc_ctrl(int ch, struct spm_context *ctx)
@@ -853,6 +922,7 @@ static const struct spm_backend_ops spm_ops = {
     .stream_start = spm_stream_start,
     .stream_stop = spm_stream_stop,
     .sample_ctrl = spm_sample_ctrl,
+    .spm_scan = spm_scan,
     .close = _spm_close,
 };
 

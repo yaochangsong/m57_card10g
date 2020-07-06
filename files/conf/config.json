@@ -89,7 +89,13 @@
 			}]
 	},
 	"spectrum_parm":	{
-		"side_bandrate":	[{
+		    "side_bandrate":	[{
+				"bandwidth":    200000000,
+				"rate": 1.28
+			}, {
+				"bandwidth":    175000000,
+				"rate": 1.462857
+			},{
 				"bandwidth":	160000000,
 				"rate":	1.28
 			}, {

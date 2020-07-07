@@ -25,15 +25,17 @@
 #define DC_ADDR             0x8c
 #define STATE_ADDR          0xc0
 
-#define REG_WRITE(base, data) (*(uint32_t *)(base) = data, usleep(100))
-#define REG_READ(base)  (*(uint32_t *)(base))
+//#define REG_WRITE(base, data) (*(volatile uint32_t *)(base) = data, usleep(100))
+#define REG_WRITE(base, data) (*(volatile uint32_t *)(base) = data, usleep(100))
+#define REG_READ(base)  (*(volatile uint32_t *)(base))
 
-static void apb_spi_setcs(char * base,uint8_t data)
+
+static void apb_spi_setcs(volatile char * base,uint8_t data)
 {
     REG_WRITE(base + SPI_CS_ADDR,data);
 }
 
-static uint8_t apb_spi_write(char * base,uint8_t *snd_buf,uint8_t *rcv_buf,uint8_t len)
+static uint8_t apb_spi_write(volatile char * base,uint8_t *snd_buf,uint8_t *rcv_buf,uint8_t len)
 {
     uint8_t i;
     for(i=0;i<len;i++)
@@ -51,7 +53,7 @@ static uint8_t apb_spi_write(char * base,uint8_t *snd_buf,uint8_t *rcv_buf,uint8
     return 0;
 }
 
-static uint8_t spi_wrapper(char * base,uint16_t addr,uint8_t data,uint8_t cs)
+static uint8_t spi_wrapper(volatile char * base,uint16_t addr,uint8_t data,uint8_t cs)
 {
     uint8_t snd_buf[3];
     uint8_t rcv_buf[3];
@@ -70,28 +72,28 @@ static uint8_t spi_wrapper(char * base,uint16_t addr,uint8_t data,uint8_t cs)
 }
 //--reset--------------------------------------------------
 
-static void dds_reset_set(char * base,uint8_t dat)
+static void dds_reset_set(volatile char * base,uint8_t dat)
 {
     if(dat>0)
       REG_WRITE(base + RESET_ADDR,0x01);
     else
       REG_WRITE(base + RESET_ADDR,0x00);
 }
-static void clock_reset_set(char * base,uint8_t dat)
+static void clock_reset_set(volatile char * base,uint8_t dat)
 {
     if(dat>0)
       REG_WRITE(base + RESET_ADDR,0x03);
     else
       REG_WRITE(base + RESET_ADDR,0x01);
 }
-static void adc_reset_set(char * base,uint8_t dat)
+static void adc_reset_set(volatile char * base,uint8_t dat)
 {
     if(dat>0)
       REG_WRITE(base + RESET_ADDR,0x07);
     else
       REG_WRITE(base + RESET_ADDR,0x03);
 }
-static void logic_reset_set(char * base,uint8_t dat)
+static void logic_reset_set(volatile char * base,uint8_t dat)
 {
     if(dat>0)
       REG_WRITE(base + RESET_ADDR,0x0f);
@@ -99,12 +101,12 @@ static void logic_reset_set(char * base,uint8_t dat)
       REG_WRITE(base + RESET_ADDR,0x07);
 }
 
-static void dc_cal(char * base,uint8_t dat)
+static void dc_cal(volatile char * base,uint8_t dat)
 {
     REG_WRITE(base + DC_ADDR,dat);
 }
 
-static uint32_t logic_state(char * base)
+static uint32_t logic_state(volatile char * base)
 {
     uint32_t state;
     state = REG_READ(base + STATE_ADDR);
@@ -116,7 +118,7 @@ static uint32_t logic_state(char * base)
 #define SCLK_DIVL   0x00
 #define ACLK_DIV    6
 #define DCLK_TYPE   0x08
-static void hmc_7044_init(char * Spi_synth,uint8_t cs)
+static void hmc_7044_init(volatile char * Spi_synth,uint8_t cs)
 {
     printf_note("spi_wrapper begin ......\r\n");
     spi_wrapper(Spi_synth,0x000, 0x01,cs);//reset
@@ -329,7 +331,7 @@ static void hmc_7044_init(char * Spi_synth,uint8_t cs)
     spi_wrapper(Spi_synth,0x001, 0xc0,cs);//sync internal div
     spi_wrapper(Spi_synth,0x001, 0x40,cs);//sync internal div
 };
-void ad_9680_ddc_5g_int(char *Spi_synth,uint8_t cs)
+void ad_9680_ddc_5g_int(volatile char *Spi_synth,uint8_t cs)
 {
     printf_note("%s......\r\n",__FUNCTION__);
     spi_wrapper(Spi_synth, 0x000,0x81,cs);
@@ -353,7 +355,7 @@ void ad_9680_ddc_5g_int(char *Spi_synth,uint8_t cs)
     spi_wrapper(Spi_synth, 0x330,0x03,cs);// 03
     spi_wrapper(Spi_synth, 0x331,0x00,cs);//ddc1 b
     spi_wrapper(Spi_synth, 0x334,0x00,cs);//nco1 f/fs*4096
-    spi_wrapper(Spi_synth, 0x335,0x0c,cs);//nco1 f/fs*4096
+    spi_wrapper(Spi_synth, 0x335,0x04,cs);//nco1 f/fs*4096
     spi_wrapper(Spi_synth, 0x340,0x00,cs);//nco1 phase
     spi_wrapper(Spi_synth, 0x341,0x00,cs);
 

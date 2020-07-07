@@ -29,6 +29,94 @@
 #define REG_WRITE(base, data) (*(volatile uint32_t *)(base) = data, usleep(100))
 #define REG_READ(base)  (*(volatile uint32_t *)(base))
 
+uint8_t apb_i2c_write(uint32_t base,uint8_t data)
+{
+	uint8_t tmp;
+	REG_WRITE(base + 0x04,data);
+	REG_WRITE(base + 0x0c,0x04);
+	while(REG_READ(base + 0x08) & 0x02)usleep(10);
+	tmp = REG_READ(base + 0x08)&0x01;
+	return tmp;
+}
+
+uint8_t apb_i2c_read(uint32_t base,uint8_t ack)
+{
+	uint8_t tmp;
+	if(ack)
+		REG_WRITE(base + 0x0c,0x03 | 0x08);
+	else
+		REG_WRITE(base + 0x0c,0x03);
+	while(REG_READ(base + 0x08) & 0x02)usleep(10);
+	tmp = REG_READ(base + 0x00);
+	return tmp;
+}
+
+void apb_i2c_start(uint32_t base)
+{
+	REG_WRITE(base + 0x0c,0x01);
+	while(REG_READ(base + 0x08) & 0x02)usleep(10);
+}
+
+void apb_i2c_stop(uint32_t base)
+{
+	REG_WRITE(base + 0x0c,0x02);
+	while(REG_READ(base + 0x08) & 0x02)usleep(10);
+}
+
+uint8_t i2c_write(uint32_t base_addr,uint8_t saddr,uint16_t addr,uint8_t alen,uint8_t data)
+{
+    uint8_t wbuf[4];
+    uint8_t i;
+    uint8_t status;
+    wbuf[0] = saddr&0xfe;
+    if(alen>1)
+    {
+    	wbuf[1] = (addr&0xff00)>>8;
+    	wbuf[2] = addr&0xff;
+        wbuf[3] = data;
+    }
+    else
+    {
+    	wbuf[1] = addr&0xff;
+    	wbuf[2] = data;
+    }
+    status = 0;
+    apb_i2c_start(base_addr);
+    for(i=0;i<(alen+2);i++)
+    {
+    	status += apb_i2c_write(base_addr,wbuf[i]);
+    }
+    apb_i2c_stop(base_addr);
+    return status;
+}
+
+uint8_t i2c_read(uint32_t base_addr,uint8_t saddr,uint16_t addr,uint8_t alen,uint8_t *data)
+{
+    uint8_t wbuf[3];
+    uint8_t i;
+    uint8_t status;
+    wbuf[0] = saddr&0xfe;
+    if(alen>1)
+    {
+    	wbuf[1] = (addr&0xff00)>>8;
+    	wbuf[2] = addr&0xff;
+    }
+    else
+    {
+    	wbuf[1] = addr&0xff;
+    }
+    status = 0;
+    apb_i2c_start(base_addr);
+    for(i=0;i<(alen+1);i++)
+    {
+    	status +=apb_i2c_write(base_addr,wbuf[i]);
+    }
+    apb_i2c_start(base_addr);
+    apb_i2c_write(base_addr,wbuf[0]+1);
+    *data = apb_i2c_read(base_addr,1);
+    apb_i2c_stop(base_addr);
+    return status;
+}
 
 static void apb_spi_setcs(volatile char * base,uint8_t data)
 {
@@ -70,48 +158,45 @@ static uint8_t spi_wrapper(volatile char * base,uint16_t addr,uint8_t data,uint8
     //xil_printf("clock data2 is %x\r\n",rcv_buf[2]);
     return rcv_buf[2];
 }
-//--reset--------------------------------------------------
 
-static void dds_reset_set(volatile char * base,uint8_t dat)
+#if 0
+//--eeprom---------------------------------------------
+void eeprom_test(void)
 {
-    if(dat>0)
-      REG_WRITE(base + RESET_ADDR,0x01);
-    else
-      REG_WRITE(base + RESET_ADDR,0x00);
-}
-static void clock_reset_set(volatile char * base,uint8_t dat)
+	u8 wdata,rdata;
+	u16 addr;
+	for(addr=0;addr<10;addr++)
+    {
+    	wdata = addr&0xff;
+        i2c_write(BASE_ADDR,0xa4,addr,1,wdata);
+    	usleep(100000);
+    	i2c_read(BASE_ADDR,0xa4,addr,1,&rdata);
+    	xil_printf("i = %x--%x\r\n",addr,rdata);
+    }
+};
+#endif
+//--volume set--------------------------------------------------
+uint8_t i2c_buf_write(uint32_t base_addr,uint8_t alen,uint8_t *data)
 {
-    if(dat>0)
-      REG_WRITE(base + RESET_ADDR,0x03);
-    else
-      REG_WRITE(base + RESET_ADDR,0x01);
-}
-static void adc_reset_set(volatile char * base,uint8_t dat)
-{
-    if(dat>0)
-      REG_WRITE(base + RESET_ADDR,0x07);
-    else
-      REG_WRITE(base + RESET_ADDR,0x03);
-}
-static void logic_reset_set(volatile char * base,uint8_t dat)
-{
-    if(dat>0)
-      REG_WRITE(base + RESET_ADDR,0x0f);
-    else
-      REG_WRITE(base + RESET_ADDR,0x07);
-}
-
-static void dc_cal(volatile char * base,uint8_t dat)
-{
-    REG_WRITE(base + DC_ADDR,dat);
+	uint8_t i;
+	uint8_t status;
+	apb_i2c_start(base_addr);
+    for(i=0;i<(alen);i++)
+    {
+    	status += apb_i2c_write(base_addr,data[i]);
+    }
+    apb_i2c_stop(base_addr);
+    return status;
 }
 
-static uint32_t logic_state(volatile char * base)
+void volume_set(uint32_t base,uint8_t dat)//dat 0~100
 {
-    uint32_t state;
-    state = REG_READ(base + STATE_ADDR);
-    return	state;
-}
+	uint8_t buf[2];
+    buf[0] = 0x9a;
+    buf[1] = 0xc0 + 31*dat/100;
+    i2c_buf_write(base,2,buf);
+};
+
 
 #define RCLK_DIV    24
 #define SCLK_DIVH   0x06
@@ -331,6 +416,14 @@ static void hmc_7044_init(volatile char * Spi_synth,uint8_t cs)
     spi_wrapper(Spi_synth,0x001, 0xc0,cs);//sync internal div
     spi_wrapper(Spi_synth,0x001, 0x40,cs);//sync internal div
 };
+
+static void hmc7044_generate_sync(char *Spi_synth,uint8_t cs)
+{
+    spi_wrapper(Spi_synth,0x01, 0x44,cs);//request pluse gen
+    spi_wrapper(Spi_synth,0x01, 0x40,cs);
+    printf_note("gen pluse \r\n");
+}
+
 void ad_9680_ddc_5g_int(volatile char *Spi_synth,uint8_t cs)
 {
     printf_note("%s......\r\n",__FUNCTION__);
@@ -341,7 +434,15 @@ void ad_9680_ddc_5g_int(volatile char *Spi_synth,uint8_t cs)
     spi_wrapper(Spi_synth, 0x03f,0x80,cs);
     spi_wrapper(Spi_synth, 0x040,0xbf,cs);
     spi_wrapper(Spi_synth, 0x571,0x15,cs);
-    spi_wrapper(Spi_synth, 0x016,0x6c,cs);//50 temination
+    spi_wrapper(Spi_synth, 0x018,0x40,cs);
+    spi_wrapper(Spi_synth, 0x019,0x50,cs);
+    spi_wrapper(Spi_synth, 0x01a,0x09,cs);
+    spi_wrapper(Spi_synth, 0x11a,0x00,cs);
+    spi_wrapper(Spi_synth, 0x935,0x04,cs);
+    spi_wrapper(Spi_synth, 0x025,0x0a,cs);
+    spi_wrapper(Spi_synth, 0x030,0x18,cs);
+    spi_wrapper(Spi_synth, 0x934,0x1f,cs);
+    spi_wrapper(Spi_synth, 0x016,0x00,cs);   
     spi_wrapper(Spi_synth, 0x200,0x02,cs);//ddc0 & ddc1
     spi_wrapper(Spi_synth, 0x201,0x01,cs);//dec 2
 //----ddc0 mode
@@ -369,12 +470,56 @@ void ad_9680_ddc_5g_int(volatile char *Spi_synth,uint8_t cs)
     spi_wrapper(Spi_synth, 0x001,0x02,cs);
     spi_wrapper(Spi_synth, 0x571,0x14,cs);
 }
-static void hmc7044_generate_sync(char *Spi_synth,uint8_t cs)
+
+//--reset--------------------------------------------------
+static void dds_reset_set(volatile char * base,uint8_t dat)
 {
-    spi_wrapper(Spi_synth,0x01, 0x44,cs);//request pluse gen
-    spi_wrapper(Spi_synth,0x01, 0x40,cs);
-    printf_note("gen pluse \r\n");
+    if(dat>0)
+      REG_WRITE(base + RESET_ADDR,0x01);
+    else
+      REG_WRITE(base + RESET_ADDR,0x00);
 }
+static void clock_reset_set(volatile char * base,uint8_t dat)
+{
+    if(dat>0)
+      REG_WRITE(base + RESET_ADDR,0x03);
+    else
+      REG_WRITE(base + RESET_ADDR,0x01);
+}
+static void adc_reset_set(volatile char * base,uint8_t dat)
+{
+    if(dat>0)
+      REG_WRITE(base + RESET_ADDR,0x07);
+    else
+      REG_WRITE(base + RESET_ADDR,0x03);
+}
+static void logic_reset_set(volatile char * base,uint8_t dat)
+{
+    if(dat>0)
+      REG_WRITE(base + RESET_ADDR,0x0f);
+    else
+      REG_WRITE(base + RESET_ADDR,0x07);
+}
+
+
+static uint32_t logic_state(volatile char * base)
+{
+    uint32_t state;
+    state = REG_READ(base + STATE_ADDR);
+    return	state;
+}
+
+uint32_t get_dc_offset(uint32_t base)
+{
+    return REG_READ(base + 0x8c);
+}
+
+void set_dc_offset(uint32_t base,uint32_t dat)
+{
+    REG_WRITE(base + 0x8c,dat);
+}
+
+
 
 
 static void *_memmap(int fd_dev, void *phr_addr, int length)

@@ -137,7 +137,7 @@ int fpga_unmemmap(FPGA_CONFIG_REG *fpga_reg)
         return -1;
     }
 
-    ret = munmap(fpga_reg->narrow_band, SYSTEM_CONFG_REG_LENGTH); 
+    ret = munmap(fpga_reg->narrow_band[0], SYSTEM_CONFG_REG_LENGTH); 
     if (ret)
     {
     	perror("munmap");

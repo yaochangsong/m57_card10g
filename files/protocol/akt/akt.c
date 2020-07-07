@@ -873,7 +873,7 @@ static int akt_execute_set_command(void *cl)
                 err_code = akt_err_code_check(ret);
                 goto set_exit;
             }
-
+            break;
         }
         case DISK_FORMAT_CMD:
         {

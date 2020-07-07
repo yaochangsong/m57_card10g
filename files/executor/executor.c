@@ -169,6 +169,7 @@ static  int8_t  executor_fragment_scan(uint32_t fregment_num,uint8_t ch, work_mo
         r_args->s_freq_offset = _s_freq_hz_offset;
         r_args->s_freq = s_freq;
         spmctx->ops->spm_scan(&_s_freq_hz_offset, &_e_freq_hz, &scan_bw, &_bw_hz, &_m_freq_hz);
+        printf_debug("[%d] s_freq_offset=%lluHz,scan_bw=%uHz _bw_hz=%u, _m_freq_hz=%lluHz\n", index, r_args->s_freq_offset, scan_bw, _bw_hz, _m_freq_hz);
         r_args->e_freq = e_freq;
         r_args->scan_bw = scan_bw;
         r_args->bandwidth = _bw_hz;
@@ -177,10 +178,9 @@ static  int8_t  executor_fragment_scan(uint32_t fregment_num,uint8_t ch, work_mo
         r_args->fft_sn = index;
         r_args->total_fft = t_fft;
         r_args->freq_resolution = poal_config->multi_freq_fregment_para[ch].fregment[fregment_num].freq_resolution;
-        printf_note("[%d]s_freq=%llu, e_freq=%llu, scan_bw=%u, bandwidth=%u,m_freq=%llu, m_freq_s=%llu\n", 
+        printf_debug("[%d]s_freq=%llu, e_freq=%llu, scan_bw=%u, bandwidth=%u,m_freq=%llu, m_freq_s=%llu\n", 
             index, r_args->s_freq, r_args->e_freq, r_args->scan_bw, r_args->bandwidth, r_args->m_freq, r_args->m_freq_s);
         executor_set_command(EX_RF_FREQ_CMD, EX_RF_MID_FREQ, ch, &_m_freq_hz);
-        usleep(1000);
         executor_set_command(EX_RF_FREQ_CMD, EX_RF_LOW_NOISE, ch, &_m_freq_hz);
         index ++;
         if(poal_config->enable.psd_en){

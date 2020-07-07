@@ -1019,6 +1019,7 @@ int32_t io_get_agc_thresh_val(int ch)
     }
 #elif defined(SUPPORT_SPECTRUM_V2) 
     agc_val = get_fpga_reg()->broad_band->agc_thresh;
+    printf_note("222222 agc_val:%d\n",get_fpga_reg()->broad_band->agc_thresh);
 #endif
 #endif
     return agc_val;

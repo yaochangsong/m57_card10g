@@ -150,10 +150,14 @@ int fpga_unmemmap(FPGA_CONFIG_REG *fpga_reg)
 
 static FPGA_CONFIG_REG *fpga_reg = NULL;
 static bool fpga_init_flag = false;
+
+
 FPGA_CONFIG_REG *get_fpga_reg(void)
 {
     if(fpga_init_flag == false)
         fpga_io_init();
+
+    
     return fpga_reg;
 }
 
@@ -165,6 +169,7 @@ void fpga_io_init(void)
     
     if(fpga_init_flag)
         return;
+
     fd_fpga = open(FPGA_REG_DEV, O_RDWR|O_SYNC);
     if (fd_fpga == -1){
         printf_warn("%s, open error", FPGA_REG_DEV);

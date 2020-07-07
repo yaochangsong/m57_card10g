@@ -138,7 +138,7 @@ void spm_deal(struct spm_context *ctx, void *args)
         }
         if(byte_len > 0){
             fft_len = byte_len/sizeof(fft_t);
-             printf_warn("size_len=%u, fft_len=%u, ptr=%p,%p, %p\n", byte_len, fft_len, ptr,ptr_run, ptr_run->fft_ptr);
+             printf_debug("size_len=%u, fft_len=%u, ptr=%p,%p, %p\n", byte_len, fft_len, ptr,ptr_run, ptr_run->fft_ptr);
             ord_ptr = pctx->ops->data_order(ptr, fft_len, &fft_ord_len, args);
             if(ord_ptr)
                 pctx->ops->send_fft_data(ord_ptr, fft_ord_len, args);

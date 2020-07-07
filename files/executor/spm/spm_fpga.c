@@ -299,6 +299,7 @@ static fft_t *spm_data_order(volatile fft_t *fft_data,
     side_rate  =  get_side_band_rate(run_args->scan_bw);
     /* 去边带后FFT长度 */
     order_len = (size_t)((float)(fft_len) / side_rate);
+    printf_debug("side_rate = %f[fft_len:%u, order_len=%u], scan_bw=%u\n", side_rate, fft_len, order_len, run_args->scan_bw);
     // printf_warn("run_args->fft_ptr=%p, fft_data=%p, order_len=%u, fft_len=%u, side_rate=%f\n", run_args->fft_ptr, fft_data, order_len,fft_len, side_rate);
     /* 信号倒谱 */
     /*
@@ -313,8 +314,8 @@ static fft_t *spm_data_order(volatile fft_t *fft_data,
    #if 1
     fft_t *pdst = calloc(1, 32*1024*2);
     memcpy((uint8_t *)pdst,                 (uint8_t *)(fft_data) , fft_len*2);
-    memcpy((uint8_t *)run_args->fft_ptr,    (uint8_t *)(pdst+ fft_len -order_len/2 ), order_len);
-    memcpy((uint8_t *)(run_args->fft_ptr+order_len),    (uint8_t *)pdst , order_len);
+    memcpy((uint8_t *)run_args->fft_ptr,    (uint8_t *)(pdst+ fft_len -order_len/2 ), order_len*2);
+    memcpy((uint8_t *)(run_args->fft_ptr+order_len),    (uint8_t *)pdst , order_len*2);
     free(pdst);
     #else
     memcpy((uint8_t *)run_args->fft_ptr,                (uint8_t *)(fft_data+fft_len -order_len/2) , order_len);
@@ -327,8 +328,8 @@ static fft_t *spm_data_order(volatile fft_t *fft_data,
         offset = (order_len * start_freq_hz)/run_args->scan_bw;
     }
     *order_fft_len = order_len;
-    //printf_warn(">>>order_len=%u, offset = %u, start_freq_hz=%llu, s_freq_offset=%llu, m_freq=%llu, scan_bw=%u\n", 
-    //    order_len, offset, start_freq_hz, run_args->s_freq_offset, run_args->m_freq, run_args->scan_bw);
+    printf_debug("order_len=%u, offset = %u, start_freq_hz=%llu, s_freq_offset=%llu, m_freq=%llu, scan_bw=%u\n", 
+        order_len, offset, start_freq_hz, run_args->s_freq_offset, run_args->m_freq_s, run_args->scan_bw);
     return (fft_t *)run_args->fft_ptr + offset;
 }
 
@@ -375,7 +376,7 @@ static int spm_send_fft_data(void *data, size_t fft_len, void *arg)
     iov[0].iov_len = header_len;
     iov[1].iov_base = data;
     iov[1].iov_len = data_byte_size;
-    
+
     udp_send_vec_data(iov, 2);
 #endif
 #if (defined SUPPORT_DATA_PROTOCAL_XW)
@@ -515,19 +516,15 @@ static int spm_scan(uint64_t *s_freq_offset, uint64_t *e_freq, uint32_t *scan_bw
     _s_freq = *s_freq_offset;
     _e_freq = *e_freq;
     _scan_bw = *scan_bw;
-    // printf_warn(">>_s_freq = %llu,_e_freq=%llu, scan_bw=%u\n", _s_freq, _e_freq, scan_bw);
 #if defined(SUPPORT_DIRECT_SAMPLE)
     #define DIRECT_MID_FREQ_HZ (128000000)
     if(_s_freq < DIRECT_FREQ_THR ){
         if(_e_freq < DIRECT_FREQ_THR){
             _bw = _e_freq - _s_freq;
             *s_freq_offset = _e_freq;
-            //printf_warn("DIRECT_FREQ_THR _bw=%llu, *s_freq_offset=%llu\n", _bw, *s_freq_offset);
         }else{
             _bw = DIRECT_FREQ_THR - _s_freq;
-            //_e_freq = 
             *s_freq_offset = DIRECT_FREQ_THR;
-           // printf_warn("DIRECT_FREQ_THR _bw=%llu, *s_freq_offset=%llu\n", _bw, *s_freq_offset);
         }
         *scan_bw = DIRECT_FREQ_THR;
         *bw = _bw;
@@ -539,20 +536,15 @@ static int spm_scan(uint64_t *s_freq_offset, uint64_t *e_freq, uint32_t *scan_bw
         if((_e_freq - _s_freq)/_scan_bw > 0){
             _bw = _scan_bw;
             *s_freq_offset = _s_freq + _scan_bw;
-           // printf_warn("RF _bw=%llu, *s_freq_offset=%llu\n", _bw, *s_freq_offset);
         }else{
             _bw = _e_freq - _s_freq;
             *s_freq_offset = _e_freq;
-             //printf_warn("RF _bw=%llu,_e_freq=%llu,_s_freq=%llu, *s_freq_offset=%llu\n", 
-              //  _bw, _e_freq,_s_freq,  *s_freq_offset);
         }
         *scan_bw = _scan_bw;
         _m_freq = _s_freq + _scan_bw/2;
         *bw = _bw;
-       // printf_warn("_m_freq=%llu, _bw=%llu\n", _m_freq, _bw);
     }
     *m_freq = _m_freq;
-    //printf_warn(">>>s_freq_offset=%llu, _bw=%llu[%llu], _m_freq=%llu[%llu]\n", *s_freq_offset,  _bw,*bw, _m_freq, *m_freq);
 
     return 0;
 }

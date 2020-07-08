@@ -124,7 +124,7 @@ typedef struct _RF_REG_
 
 typedef struct _AUDIO_REG_
 {
-    uint32_t volume;      //音量大小控制       byte 0 = 0x9a; byte 1 = 0xc0 + 32*dat/100;  dat为0-100的音量值
+    uint32_t volume;      //音量大小控制       byte 0 = 0x9a; byte 1 = 0xc0 + 31*dat/100;  dat为0-100的音量值
 }AUDIO_REG;
 
 typedef struct _FPGA_CONFIG_REG_

@@ -433,11 +433,10 @@ static ssize_t _fs_start_read_raw_file(char *filename)
 #if 1
     if(filename == NULL)
         return -1;
-    get_frequency_band_from_str(filename,&band,&freq);
-    //config_write_data
-    printf_note("wirte freq:%lu band:%u !\n",freq,band);
-    config_write_data(EX_MID_FREQ_CMD,  EX_MID_FREQ, ch, &freq);
-    config_write_data(EX_MID_FREQ_CMD,  EX_BANDWITH, ch, &band);
+    //get_frequency_band_from_str(filename,&band,&freq);
+    //printf_note("wirte freq:%lu band:%u !\n",freq,band);
+    //config_write_data(EX_MID_FREQ_CMD,  EX_MID_FREQ, ch, &freq);
+    //config_write_data(EX_MID_FREQ_CMD,  EX_BANDWITH, ch, &band);
     snprintf(path, sizeof(path), "%s/%s", fs_get_root_dir(), filename);
     file_fd = open(path, O_RDONLY, 0666);
     if (file_fd < 0) {

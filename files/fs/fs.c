@@ -235,9 +235,24 @@ bool _fs_disk_info(struct statfs *diskInfo)
 
 static inline int _fs_format(void)
 {
-    if(disk_is_valid == false)
-        return -1;
-    return safe_system("mkfs.ext3    /dev/sda6");
+	#define DISK_DEVICE_NAME "/dev/nvme0n1"
+	#define DISK_NODE_NAME "/run/media/nvme0n1"
+    char cmd[128];
+	int ret;
+
+    snprintf(cmd, sizeof(cmd), "umount %s",DISK_NODE_NAME);
+    ret = safe_system(cmd);
+    if(!ret)
+    	printf_err("unmount %s failed\n", DISK_NODE_NAME);
+	snprintf(cmd, sizeof(cmd), "mkfs.ext2 %s",DISK_DEVICE_NAME);
+	ret = safe_system(cmd);    
+	if(!ret)
+    	printf_err("mkfs.ext2 %s failed\n", DISK_NODE_NAME);
+	snprintf(cmd, sizeof(cmd), "mount %s %s",DISK_DEVICE_NAME, DISK_NODE_NAME);
+	ret = safe_system(cmd);
+	if(!ret)
+    	printf_err("mount %s %s failed\n", DISK_DEVICE_NAME, DISK_NODE_NAME);
+    return ret;
 }
 
 static inline int _fs_mkdir(char *dirname)

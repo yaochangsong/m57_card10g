@@ -215,12 +215,44 @@ bool _fs_disk_valid(void)
     return true;
 }
 
+bool _fs_disk_info(struct statfs *diskInfo)
+{
+    #define DISK_NODE_NAME "/run/media/nvme0n1"
+    
+    if(access(DISK_NODE_NAME, F_OK)){
+        printf_note("Disk node[%s] is not valid\n", DISK_NODE_NAME);
+        return false;
+    }
+
+	if(!statfs(DISK_NODE_NAME, diskInfo))
+	{
+		printf_note("Disk node[%s] is unknown filesystem\n", DISK_NODE_NAME);
+        return false;
+	}
+    
+    return true;
+}
 
 static inline int _fs_format(void)
 {
-    if(disk_is_valid == false)
-        return -1;
-    return safe_system("mkfs.ext3    /dev/sda6");
+	#define DISK_DEVICE_NAME "/dev/nvme0n1"
+	#define DISK_NODE_NAME "/run/media/nvme0n1"
+    char cmd[128];
+	int ret;
+
+    snprintf(cmd, sizeof(cmd), "umount %s",DISK_NODE_NAME);
+    ret = safe_system(cmd);
+    if(!ret)
+    	printf_err("unmount %s failed\n", DISK_NODE_NAME);
+	snprintf(cmd, sizeof(cmd), "mkfs.ext2 %s",DISK_DEVICE_NAME);
+	ret = safe_system(cmd);    
+	if(!ret)
+    	printf_err("mkfs.ext2 %s failed\n", DISK_NODE_NAME);
+	snprintf(cmd, sizeof(cmd), "mount %s %s",DISK_DEVICE_NAME, DISK_NODE_NAME);
+	ret = safe_system(cmd);
+	if(!ret)
+    	printf_err("mount %s %s failed\n", DISK_DEVICE_NAME, DISK_NODE_NAME);
+    return ret;
 }
 
 static inline int _fs_mkdir(char *dirname)
@@ -473,6 +505,7 @@ static int _fs_close(void)
 }
 
 static const struct fs_ops _fs_ops = {
+    .fs_disk_info = _fs_disk_info,
     .fs_disk_valid = _fs_disk_valid,
     .fs_format = _fs_format,
     .fs_mkdir = _fs_mkdir,

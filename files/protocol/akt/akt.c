@@ -877,7 +877,22 @@ static int akt_execute_set_command(void *cl)
         }
         case DISK_FORMAT_CMD:
         {
+			#if defined(SUPPORT_XWFS)
             file_disk_format(NULL, NULL);
+           	#elif defined(SUPPORT_FS)
+           	int ret;
+            struct fs_context *fs_ctx;
+			pthread_t work_id;
+            fs_ctx = get_fs_ctx();
+            //需要增加协议返回当前格式化的状态
+            ret=pthread_create(&work_id,NULL,(void *)fs_ctx->ops->fs_format(), NULL);
+    		if(ret!=0)
+        		perror("pthread cread format disk");
+    		pthread_detach(work_id);
+            //ret = fs_ctx->ops->fs_format();
+            //if(ret)
+            //	printf_err("format failed.\n");
+            #endif
             break;
         }
         default:
@@ -927,6 +942,8 @@ static int akt_execute_get_command(void)
             self_check.ad_status = (io_get_adc_status(NULL) == true ? 1 : 0);
             self_check.pfga_temperature = io_get_adc_temperature();
             self_check.ch_num = MAX_RADIO_CHANNEL_NUM;
+            //self_check.t_s[0].ch_status = 
+            //self_check.t_s[0].rf_temperature = 
             printf_note("ext_clk:%d, ad_status=%d,pfga_temperature=%d\n", self_check.ext_clk, self_check.ad_status, self_check.pfga_temperature);
             memcpy(akt_get_response_data.payload_data, &self_check, sizeof(DEVICE_SELF_CHECK_STATUS_RSP_ST));
             akt_get_response_data.header.len = sizeof(DEVICE_SELF_CHECK_STATUS_RSP_ST);
@@ -1043,12 +1060,21 @@ static int akt_execute_get_command(void)
             }
             #if defined(SUPPORT_XWFS)
             ret = xwfs_get_disk_info(psi);
-            #endif
+            #elif defined(SUPPORT_FS)
+            struct fs_context *fs_ctx;
+            struct statfs diskInfo;
+            fs_ctx = get_fs_ctx();
+            ret = fs_ctx->ops->fs_disk_info(&diskInfo);
             printf_info("Get disk info: %d\n", ret);
             if(ret != 0){
                 err_code = akt_err_code_check(ret);
                 goto exit;
             }
+            psi->disk_num = 1;
+		    psi->read_write_speed_kbytesps = 0;  //按照写速度换算约等于1.8G
+		    psi->disk_capacity[0].disk_capacity_byte = diskInfo.f_bsize * diskInfo.f_blocks;
+		    psi->disk_capacity[0].disk_used_byte = diskInfo.f_bsize * (diskInfo.f_blocks - diskInfo.f_bfree);
+		    #endif
             printf_debug("ret=%d, num=%d, speed=%uKB/s, capacity_bytes=%llu, used_bytes=%llu\n",
                 ret, psi->disk_num, psi->read_write_speed_kbytesps, 
                 psi->disk_capacity[0].disk_capacity_byte, psi->disk_capacity[0].disk_used_byte);

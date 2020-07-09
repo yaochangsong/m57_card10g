@@ -16,8 +16,10 @@
 #define _FS_H
 
 #include <stdbool.h>
+#include <sys/statfs.h>
 
 struct fs_ops {
+	bool (*fs_disk_info)(struct statfs *diskInfo);
     bool (*fs_disk_valid)(void);
     int (*fs_format)(void);
     int (*fs_mkdir)(char *);

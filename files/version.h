@@ -1,6 +1,6 @@
 #ifndef VERSION_H_
 #define VERSION_H_
 
-#define VERSION_TAG  "9d7835a1b47c05ea56bd7847718768aec09153c4 "
+#define VERSION_TAG  "300b8e54c6ada389c3312f61f5f0adcfd4f17737 "
 
 #endif   // end of define VERSION_H_

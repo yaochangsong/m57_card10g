@@ -215,6 +215,23 @@ bool _fs_disk_valid(void)
     return true;
 }
 
+bool _fs_disk_info(struct statfs *diskInfo)
+{
+    #define DISK_NODE_NAME "/run/media/nvme0n1"
+    
+    if(access(DISK_NODE_NAME, F_OK)){
+        printf_note("Disk node[%s] is not valid\n", DISK_NODE_NAME);
+        return false;
+    }
+
+	if(!statfs(DISK_NODE_NAME, diskInfo))
+	{
+		printf_note("Disk node[%s] is unknown filesystem\n", DISK_NODE_NAME);
+        return false;
+	}
+    
+    return true;
+}
 
 static inline int _fs_format(void)
 {
@@ -473,6 +490,7 @@ static int _fs_close(void)
 }
 
 static const struct fs_ops _fs_ops = {
+    .fs_disk_info = _fs_disk_info,
     .fs_disk_valid = _fs_disk_valid,
     .fs_format = _fs_format,
     .fs_mkdir = _fs_mkdir,

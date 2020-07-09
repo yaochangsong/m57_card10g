@@ -1043,12 +1043,21 @@ static int akt_execute_get_command(void)
             }
             #if defined(SUPPORT_XWFS)
             ret = xwfs_get_disk_info(psi);
-            #endif
+            #elif defined(SUPPORT_FS)
+            struct fs_context *fs_ctx;
+            struct statfs diskInfo;
+            fs_ctx = get_fs_ctx();
+            ret = fs_ctx->ops->fs_disk_info(&diskInfo);
             printf_info("Get disk info: %d\n", ret);
             if(ret != 0){
                 err_code = akt_err_code_check(ret);
                 goto exit;
             }
+            psi->disk_num = 1;
+		    psi->read_write_speed_kbytesps = 1887436;  //按照写速度换算约等于1.8G
+		    psi->disk_capacity[0].disk_capacity_byte = diskInfo.f_bsize * diskInfo.f_blocks;
+		    psi->disk_capacity[0].disk_used_byte = diskInfo.f_bsize * (diskInfo.f_blocks - diskInfo.f_bfree);
+			#endif
             printf_debug("ret=%d, num=%d, speed=%uKB/s, capacity_bytes=%llu, used_bytes=%llu\n",
                 ret, psi->disk_num, psi->read_write_speed_kbytesps, 
                 psi->disk_capacity[0].disk_capacity_byte, psi->disk_capacity[0].disk_used_byte);

@@ -160,7 +160,7 @@ static  int8_t  executor_fragment_scan(uint32_t fregment_num,uint8_t ch, work_mo
     _s_freq_hz_offset = s_freq;
     _e_freq_hz = e_freq;
     fftsize= poal_config->multi_freq_fregment_para[ch].fregment[fregment_num].fft_size;
-   // executor_set_command(EX_MID_FREQ_CMD, EX_BANDWITH, ch, &scan_bw);
+    executor_set_command(EX_MID_FREQ_CMD, EX_BANDWITH, ch, &scan_bw);
     executor_set_command(EX_MID_FREQ_CMD, EX_FFT_SIZE,  ch, &fftsize);
         r_args->ch = ch;
         r_args->fft_size = fftsize;
@@ -183,6 +183,7 @@ static  int8_t  executor_fragment_scan(uint32_t fregment_num,uint8_t ch, work_mo
         executor_set_command(EX_RF_FREQ_CMD, EX_RF_MID_FREQ, ch, &_m_freq_hz);
         executor_set_command(EX_RF_FREQ_CMD, EX_RF_LOW_NOISE, ch, &_m_freq_hz);
         index ++;
+        spmctx->ops->sample_ctrl(r_args->m_freq_s);
         if(poal_config->enable.psd_en){
             io_set_enable_command(PSD_MODE_ENABLE, ch, -1, r_args->fft_size);
         }

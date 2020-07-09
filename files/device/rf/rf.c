@@ -35,6 +35,12 @@ uint8_t rf_set_interface(uint8_t cmd,uint8_t ch,void *data){
             }
 #elif defined(SUPPORT_RF_FPGA)
             uint32_t freq_khz = old_freq/1000;/* NOTE: Hz => KHz */
+#if defined(SUPPORT_DIRECT_SAMPLE)
+            #define DIRECT_FREQ_THR (200000000)
+            if(old_freq < DIRECT_FREQ_THR ){
+                break; 
+            }
+#endif
             get_fpga_reg()->rfReg->freq_khz = freq_khz;
             usleep(2000);
 #endif

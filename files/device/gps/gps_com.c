@@ -328,6 +328,80 @@ uint32_t gps_get_utc_hms(void)
     return (uint32_t)i_hms;
 }
 
+uint16_t gps_format_days_to_fpga(uint8_t year, uint8_t month, uint8_t day)
+{
+    int i = 0;
+    uint16_t days = 0;
+    uint32_t real_year = year + 2000;
+    bool is_leap_year = false;
+    if((real_year % 4 == 0 && real_year % 100 != 0) || (real_year % 400 == 0))
+    {
+        is_leap_year = true;
+    }
+
+    for(i = 1; i <= 12; i++)
+    {
+        if(i < month)
+        {
+            switch(i)
+            {
+                case 1:
+                case 3:
+                case 5:
+                case 7:
+                case 8:
+                case 10:
+                case 12:
+                    days += 31;
+                    break;
+                case 2:
+                    if(is_leap_year)
+                       days += 29;
+                    else
+                       days += 28;
+                    break;
+                case 4:
+                case 6:
+                case 9:
+                case 11:
+                   days += 30;
+                    break;
+            }
+        }
+        else
+        {
+            days += day;
+            break;
+        }
+    }
+
+    return days;
+}
+
+uint32_t gps_get_format_date(void)
+{
+    /* get time for fpga */
+    uint32_t i_hms,i_ymd, date_to_fpga;
+    uint8_t h, m, s, d, M, y;
+    uint16_t days;
+    i_hms = (uint32_t)g_gps_info.utc_hms;
+    i_ymd = (uint32_t)g_gps_info.utc_ymd;
+    h = (i_hms / 10000) % 10000 + 8;   //utc
+    m = (i_hms / 100) % 100;
+    s = i_hms % 100;
+    
+    d = (i_ymd / 10000) % 10000;
+    M = (i_ymd / 100) % 100;
+    y = i_ymd % 100;
+    days = gps_format_days_to_fpga(y, M, d);
+    printf_note("format fpga date:y(%d),m(%d),d(%d), days(%d)\n",y,M,d,days);
+    
+    date_to_fpga = (s & 0x3f) | (m & 0x3f) << 6 | (h & 0x3f) << 12 | (days & 0x1ff) << 18 | (y & 0x3f) << 27;
+    printf_note("date_to_fpga:0x%b\n",date_to_fpga);
+    return date_to_fpga;
+}
+
+
 int gps_get_latitude(void)
 {
     int32_t latitude;

@@ -23,6 +23,6 @@ extern uint32_t gps_get_utc_hms(void);
 extern int gps_parse_recv_msg(char *str, size_t nbyte);
 extern uint32_t gps_get_utc_hms(void);
 extern int gps_get_date_cmdstring(char *cmdbuf);
-
+extern uint32_t gps_get_format_date(void);
 
 #endif

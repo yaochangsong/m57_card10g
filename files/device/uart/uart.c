@@ -334,7 +334,7 @@ void gps_timer_task_cb(struct uloop_timeout *t)
 
 		if (gps_parse_recv_msg(buf, nread) == 0)
 		{
-			io_set_fpga_sys_time(gps_get_utc_hms());
+			io_set_fpga_sys_time(gps_get_format_date());
 			memset(cmdbuf, 0, sizeof(cmdbuf));
 			if(0 == gps_get_date_cmdstring(cmdbuf))
 			{
@@ -354,11 +354,9 @@ void gps_timer_task_cb(struct uloop_timeout *t)
 	{
 		if((nread < 0) && (EAGAIN != errno) && (EINTR != errno))
 		{
-			
 			printf("gps fd err!\r\n");
 			close( uartinfo[1].fd->fd);
 			uartinfo[1].fd->fd = uart_init_dev(uartinfo[1].devname, uartinfo[1].baudrate);
-
 		}
 	}
 
@@ -383,7 +381,8 @@ void uart_timer_task_init(int index)
     }
     
     uartinfo[index].timeout->cb = uartinfo[index].timeout_hander;
-    uloop_timeout_set(uartinfo[index].timeout, UART_HANDER_TIMROUT); 
+    uartinfo[index].timeout->pending = false;
+    uloop_timeout_set(uartinfo[index].timeout, UART_HANDER_TIMROUT);
 }
 
 

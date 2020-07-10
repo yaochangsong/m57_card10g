@@ -30,8 +30,6 @@
 	},
 	"calibration_parm":	{
 		"psd_power_global":	1000,
-		"psd_power_global_mode1":	1000,
-		"psd_power_global_mode2":	1000,
 		"psd_fftsize":	[{
 				"fftsize":	512,
 				"value":	10
@@ -56,8 +54,8 @@
 			}],
 		"psd_freq":	[{
 				"start_freq":	0,
-				"end_freq":	0,
-				"value":	0
+				"end_freq":	200000,
+				"value":	-100
 			}],
 		"analysis_power_global":	-195,
 		"analysis_freq":	[{

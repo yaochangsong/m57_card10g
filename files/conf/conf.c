@@ -151,22 +151,43 @@ uint32_t  config_get_fft_size(uint8_t ch)
     return fftsize;
 }
 
-int32_t  config_get_fft_calibration_value(uint32_t fft_size)
+int32_t  config_get_fft_calibration_value(uint32_t fft_size, uint64_t m_freq)
 {
     struct poal_config *poal_config = &(config_get_config()->oal_config);
     int i;
-    int32_t cal_value=0,found = 0;
-    for(i=0;i<sizeof(poal_config->cal_level.cali_fft.fftsize)/sizeof(uint32_t);i++)
-    {
-        if(fft_size==poal_config->cal_level.cali_fft.fftsize[i])
+    int32_t cal_value=0,freq_cal_value=0, found = 0, freq_found = 0;
+
+    if(fft_size > 0){
+        for(i=0;i<sizeof(poal_config->cal_level.cali_fft.fftsize)/sizeof(uint32_t);i++)
         {
-            cal_value=poal_config->cal_level.cali_fft.cali_value[i];
-            found=1;
-            break;
+            if(fft_size==poal_config->cal_level.cali_fft.fftsize[i])
+            {
+                cal_value=poal_config->cal_level.cali_fft.cali_value[i];
+                found=1;
+                break;
+            }
         }
     }
+    
+    if(m_freq > 0){
+        for(i = 0; i< sizeof(poal_config->cal_level.specturm.start_freq_khz)/sizeof(uint32_t); i++){
+            //printfd("start_freq:%u, ", poal_config->cal_level.specturm.start_freq_khz[i]);
+            if((m_freq >= (uint64_t)poal_config->cal_level.specturm.start_freq_khz[i]*1000) && 
+                (m_freq < (uint64_t)poal_config->cal_level.specturm.end_freq_khz[i]*1000)){
+                freq_cal_value = poal_config->cal_level.specturm.power_level[i];
+                cal_value += freq_cal_value;
+                freq_found = 1;
+                break;
+            }
+        }
+    }
+    
+    if(freq_found){
+        printf_warn("find the calibration level: %llu, %d\n", m_freq, cal_value);
+    }
+
     cal_value += poal_config->cal_level.specturm.global_roughly_power_lever;
-    printf_warn("cal_value=%d\n",cal_value);
+    printf_warn("m_freq=%lluHz, cal_value=%d\n",m_freq, cal_value);
     if(found){
         printf_debug("find the fft_mgc calibration value: %d\n",cal_value);
     }else{
@@ -490,11 +511,12 @@ int8_t config_read_by_cmd(exec_cmd cmd, uint8_t type, uint8_t ch, void *data, ..
                      if(bw == 0)
                         bw = DEFAULT_BW_HZ;
                      for(int i = 0; i<sizeof(scanbw->bindwidth_hz)/sizeof(uint32_t); i++){
-                        printf_debug("bindwidth_hz=%u, %u\n", scanbw->bindwidth_hz[i], bw);
                         if(scanbw->bindwidth_hz[i] == bw){
-                            *(float *)data = scanbw->sideband_rate[i];
-                            scanbw->work_sideband_rate = scanbw->sideband_rate[i];
-                            found = 1;
+                            if(f_sgn(scanbw->sideband_rate[i]) > 0){
+                                *(float *)data = scanbw->sideband_rate[i];
+                                scanbw->work_sideband_rate = scanbw->sideband_rate[i];
+                                found = 1;
+                            }
                             break;
                         }
                     }

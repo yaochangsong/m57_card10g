@@ -182,7 +182,7 @@ static  int8_t  executor_fragment_scan(uint32_t fregment_num,uint8_t ch, work_mo
             index, r_args->s_freq, r_args->e_freq, r_args->scan_bw, r_args->bandwidth, r_args->m_freq, r_args->m_freq_s);
         executor_set_command(EX_RF_FREQ_CMD, EX_RF_MID_FREQ, ch, &_m_freq_hz);
         executor_set_command(EX_RF_FREQ_CMD, EX_RF_LOW_NOISE, ch, &_m_freq_hz);
-        //spmctx->ops->sample_ctrl(r_args->m_freq);
+        executor_set_command(EX_MID_FREQ_CMD, EX_FPGA_CALIBRATE, ch, &fftsize, _m_freq_hz);
         index ++;
         spmctx->ops->sample_ctrl(r_args->m_freq_s);
         if(poal_config->enable.psd_en){
@@ -222,8 +222,8 @@ static int8_t  executor_points_scan(uint8_t ch, work_mode_type mode, void *args)
 
     point = &poal_config->multi_freq_point_param[ch];
     points_count = point->freq_point_cnt;
-
-    printf_info("residence_time=%d, points_count=%d\n", point->residence_time, points_count);
+    executor_set_command(EX_MID_FREQ_CMD, EX_FPGA_CALIBRATE, ch, &point->points[0].fft_size, 0);
+    printf_note("residence_time=%d, points_count=%d\n", point->residence_time, points_count);
     for(i = 0; i < points_count; i++){
         printf_info("Scan Point [%d]......\n", i);
         s_freq = point->points[i].center_freq - point->points[i].bandwidth/2;
@@ -549,7 +549,15 @@ static int8_t executor_set_kernel_command(uint8_t type, uint8_t ch, void *data, 
         case EX_FPGA_CALIBRATE:
         {
             int32_t  value = 0;
-            value = config_get_fft_calibration_value(config_get_fft_size(ch));
+            uint8_t  d_method;
+            uint32_t fftsize;
+            uint64_t m_freq = 0;
+
+            if(data !=NULL){
+                fftsize = *(uint32_t *)data;
+            }
+            m_freq = (uint64_t)va_arg(ap, uint64_t);
+            value = config_get_fft_calibration_value(fftsize, m_freq);
             printf_note("ch:%d, fft calibration value:%d\n", ch, value);
             io_set_calibrate_val(ch, (uint32_t)value);
             break;
@@ -801,7 +809,7 @@ int8_t executor_set_enable_command(uint8_t ch)
                 //executor_set_command(EX_MID_FREQ_CMD, EX_BANDWITH, ch, &poal_config->rf_para[ch].mid_bw);
                 //executor_set_command(EX_MID_FREQ_CMD, EX_CHANNEL_SELECT, ch, &ch);
                 executor_set_command(EX_MID_FREQ_CMD, EX_SMOOTH_TIME, ch, &poal_config->multi_freq_point_param[ch].smooth_time);
-                executor_set_command(EX_MID_FREQ_CMD, EX_FPGA_CALIBRATE, ch, NULL);
+                //executor_set_command(EX_MID_FREQ_CMD, EX_FPGA_CALIBRATE, ch, NULL);
                 break;
             }
             case OAL_FAST_SCAN_MODE:
@@ -818,7 +826,7 @@ int8_t executor_set_enable_command(uint8_t ch)
                 //executor_set_command(EX_MID_FREQ_CMD, EX_CHANNEL_SELECT, ch, &ch);
                 executor_set_command(EX_MID_FREQ_CMD, EX_SMOOTH_TIME, ch,&frp->smooth_time);
                 //executor_set_command(EX_MID_FREQ_CMD, EX_BANDWITH, ch,&bw);
-                executor_set_command(EX_MID_FREQ_CMD, EX_FPGA_CALIBRATE, ch, NULL);
+               // executor_set_command(EX_MID_FREQ_CMD, EX_FPGA_CALIBRATE, ch, NULL);
                 executor_set_command(EX_MID_FREQ_CMD, EX_FPGA_RESET, ch, NULL);
                 break;
             }
@@ -828,7 +836,7 @@ int8_t executor_set_enable_command(uint8_t ch)
                 executor_set_command(EX_RF_FREQ_CMD, EX_RF_ATTENUATION, ch, &poal_config->rf_para[ch].attenuation);
                 executor_set_command(EX_RF_FREQ_CMD, EX_RF_MGC_GAIN, ch, &poal_config->rf_para[ch].mgc_gain_value);
                 executor_set_command(EX_MID_FREQ_CMD, EX_SMOOTH_TIME, ch, &poal_config->multi_freq_fregment_para[ch].smooth_time);
-                executor_set_command(EX_MID_FREQ_CMD, EX_FPGA_CALIBRATE, ch, NULL);
+                //executor_set_command(EX_MID_FREQ_CMD, EX_FPGA_CALIBRATE, ch, NULL);
                 //executor_set_command(EX_MID_FREQ_CMD, EX_CHANNEL_SELECT, ch, &ch);
                 executor_set_command(EX_MID_FREQ_CMD, EX_FPGA_RESET, ch, NULL);
                 break;
@@ -838,7 +846,7 @@ int8_t executor_set_enable_command(uint8_t ch)
                 executor_set_command(EX_RF_FREQ_CMD, EX_RF_MGC_GAIN, ch, &poal_config->rf_para[ch].mgc_gain_value);
                 //executor_set_command(EX_MID_FREQ_CMD, EX_BANDWITH, ch, &poal_config->rf_para[ch].mid_bw);
                 executor_set_command(EX_MID_FREQ_CMD, EX_SMOOTH_TIME, ch, &poal_config->multi_freq_point_param[ch].smooth_time);
-                executor_set_command(EX_MID_FREQ_CMD, EX_FPGA_CALIBRATE, ch, NULL);
+                //executor_set_command(EX_MID_FREQ_CMD, EX_FPGA_CALIBRATE, ch, NULL);
                // executor_set_command(EX_MID_FREQ_CMD, EX_CHANNEL_SELECT, ch, &ch);
                 executor_set_command(EX_MID_FREQ_CMD, EX_FPGA_RESET, ch, NULL);
                 break;

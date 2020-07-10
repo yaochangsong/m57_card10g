@@ -182,7 +182,7 @@ static  int8_t  executor_fragment_scan(uint32_t fregment_num,uint8_t ch, work_mo
             index, r_args->s_freq, r_args->e_freq, r_args->scan_bw, r_args->bandwidth, r_args->m_freq, r_args->m_freq_s);
         executor_set_command(EX_RF_FREQ_CMD, EX_RF_MID_FREQ, ch, &_m_freq_hz);
         executor_set_command(EX_RF_FREQ_CMD, EX_RF_LOW_NOISE, ch, &_m_freq_hz);
-        spmctx->ops->sample_ctrl(r_args->m_freq);
+        //spmctx->ops->sample_ctrl(r_args->m_freq);
         index ++;
         spmctx->ops->sample_ctrl(r_args->m_freq_s);
         if(poal_config->enable.psd_en){

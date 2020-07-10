@@ -31,6 +31,8 @@
 extern uint8_t * akt_assamble_data_frame_header_data(uint32_t *len, void *config);
 static int spm_stream_stop(enum stream_type type);
 
+#define DIRECT_FREQ_THR (200000000) /* 直采截止频率 */
+#define DIRECT_BANDWIDTH (256000000)
 #define DEFAULT_IQ_SEND_BYTE 512
 #define DEFAULT_AGC_REF_VAL  0x5e8
 
@@ -265,7 +267,7 @@ static int spm_read_adc_over_deal(void *arg)
 
 static  float get_side_band_rate(uint32_t bandwidth)
 {
-    #define DEFAULT_SIDE_BAND_RATE  (1.462857)//(1.28)  256/175
+    #define DEFAULT_SIDE_BAND_RATE  (1.28)
     float side_rate = 0.0;
      /* 根据带宽获取边带率 */
     if(config_read_by_cmd(EX_CTRL_CMD, EX_CTRL_SIDEBAND,0, &side_rate, bandwidth) == -1){
@@ -321,12 +323,20 @@ static fft_t *spm_data_order(volatile fft_t *fft_data,
     memcpy((uint8_t *)run_args->fft_ptr,                (uint8_t *)(fft_data+fft_len -order_len/2) , order_len);
     memcpy((uint8_t *)(run_args->fft_ptr+order_len),    (uint8_t *)fft_data , order_len);
     #endif
-    //printf_warn(">>>side_rate = %f, scan_bw = %u, bandwidth = %u\n", side_rate, run_args->scan_bw, run_args->bandwidth);
-    if(run_args->scan_bw > run_args->bandwidth){
-        order_len = (order_len * run_args->bandwidth)/run_args->scan_bw;
-        start_freq_hz = run_args->s_freq_offset - (run_args->m_freq_s - run_args->scan_bw/2);
-        offset = (order_len * start_freq_hz)/run_args->scan_bw;
-    }
+     if(run_args->mode == OAL_FAST_SCAN_MODE || run_args->mode ==OAL_MULTI_ZONE_SCAN_MODE){
+#if defined(SUPPORT_DIRECT_SAMPLE)
+        if((run_args->m_freq_s < DIRECT_FREQ_THR) && (run_args->m_freq_s > 0)){
+            order_len = (fft_len * run_args->bandwidth)/DIRECT_BANDWIDTH;//run_args->scan_bw;
+            offset = (run_args->s_freq_offset-28000000)*fft_len/DIRECT_BANDWIDTH;
+            printf_warn("s_freq_offset=%llu,fft_len=%u,order_len=%u, offset=%u, bandwidth=%u\n",run_args->s_freq_offset,fft_len, order_len, offset, run_args->bandwidth);
+        }else
+#endif
+         if(run_args->scan_bw > run_args->bandwidth){
+             order_len = (order_len * run_args->bandwidth)/run_args->scan_bw;
+             start_freq_hz = run_args->s_freq_offset - (run_args->m_freq_s - run_args->scan_bw/2);
+             offset = (order_len * start_freq_hz)/run_args->scan_bw;
+         }
+     }
     *order_fft_len = order_len;
     printf_debug("order_len=%u, offset = %u, start_freq_hz=%llu, s_freq_offset=%llu, m_freq=%llu, scan_bw=%u\n", 
         order_len, offset, start_freq_hz, run_args->s_freq_offset, run_args->m_freq_s, run_args->scan_bw);
@@ -510,9 +520,7 @@ static int spm_scan(uint64_t *s_freq_offset, uint64_t *e_freq, uint32_t *scan_bw
     uint64_t _m_freq;
     uint64_t _s_freq, _e_freq;
     uint32_t _scan_bw, _bw;
-    #define DIRECT_FREQ_THR (200000000)
-   
-
+    
     _s_freq = *s_freq_offset;
     _e_freq = *e_freq;
     _scan_bw = *scan_bw;

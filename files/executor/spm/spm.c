@@ -199,7 +199,6 @@ void *spm_init(void)
         printf("malloc failed\n");
         exit(1);
     }
-    printf("=====>spmctx=%p, spmctx->run_args->fft_ptr=%p\n", spmctx, spmctx->run_args->fft_ptr);
    // thread_attr_set(&attr,SCHED_OTHER, 0);
    // ret=pthread_create(&recv_thread_id,&attr,(void *)spm_iq_handle_thread, spmctx);
     ret=pthread_create(&recv_thread_id,NULL,(void *)spm_iq_handle_thread, spmctx);

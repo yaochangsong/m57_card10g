@@ -426,11 +426,11 @@ static uint32_t io_set_dec_middle_freq_reg(uint64_t dec_middle_freq, uint64_t mi
         int32_t ret = 0;
 #if defined(SUPPORT_DIRECT_SAMPLE)
         #define FREQ_ThRESHOLD_HZ (100000000)
-        uint32_t bandwidth = 0;
-        if(config_read_by_cmd(EX_MID_FREQ_CMD, EX_BANDWITH, 0, &bandwidth, 0) == -1){
-                printf_err("Error read bandwidth=%u\n", bandwidth);
-                return -1;
-        }
+       // uint32_t bandwidth = 0;
+       // if(config_read_by_cmd(EX_MID_FREQ_CMD, EX_BANDWITH, 0, &bandwidth, 0) == -1){
+       //         printf_err("Error read bandwidth=%u\n", bandwidth);
+       //         return -1;
+       // }
 #define DIRECT_FREQ_THR (200000000)
         if(dec_middle_freq< DIRECT_FREQ_THR ){
             uint32_t reg;

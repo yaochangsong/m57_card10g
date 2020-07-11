@@ -653,9 +653,6 @@ static int spm_agc_ctrl(int ch, struct spm_context *ctx)
         }
             
     /* 判断读取的幅度值是否<设置的输出幅度-控制精度 */
-    }else if(dbm_val < (agc_ctrl_dbm-AGC_CTRL_PRECISION)){
-        cur_dbm[ch] ++;
-        is_cur_dbm_change = true;
     }
 
     
@@ -676,7 +673,7 @@ static int spm_agc_ctrl(int ch, struct spm_context *ctx)
             rf_gain = RF_GAIN_THRE;
             mid_gain = RF_GAIN_THRE;
         }
-        
+        usleep(500);
         ret = executor_set_command(EX_RF_FREQ_CMD, EX_RF_ATTENUATION, ch, &rf_gain);
         usleep(500);
         ret = executor_set_command(EX_RF_FREQ_CMD, EX_RF_MGC_GAIN, ch, &mid_gain);

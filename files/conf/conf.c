@@ -156,6 +156,7 @@ int32_t  config_get_fft_calibration_value(uint32_t fft_size, uint64_t m_freq)
     struct poal_config *poal_config = &(config_get_config()->oal_config);
     int i;
     int32_t cal_value=0,freq_cal_value=0, found = 0, freq_found = 0;
+    uint32_t _fft = 0, _start_freq_khz = 0, _end_freq_khz = 0;
 
     if(fft_size > 0){
         for(i=0;i<sizeof(poal_config->cal_level.cali_fft.fftsize)/sizeof(uint32_t);i++)
@@ -170,14 +171,20 @@ int32_t  config_get_fft_calibration_value(uint32_t fft_size, uint64_t m_freq)
     }
     
     if(m_freq > 0){
-        for(i = 0; i< sizeof(poal_config->cal_level.specturm.start_freq_khz)/sizeof(uint32_t); i++){
-            //printfd("start_freq:%u, ", poal_config->cal_level.specturm.start_freq_khz[i]);
-            if((m_freq >= (uint64_t)poal_config->cal_level.specturm.start_freq_khz[i]*1000) && 
-                (m_freq < (uint64_t)poal_config->cal_level.specturm.end_freq_khz[i]*1000)){
-                freq_cal_value = poal_config->cal_level.specturm.power_level[i];
-                cal_value += freq_cal_value;
-                freq_found = 1;
+        for(i = 0; i< ARRAY_SIZE(poal_config->cal_level.spm_level.cal_node); i++){
+            _fft = poal_config->cal_level.spm_level.cal_node[i].fft;
+            _start_freq_khz = poal_config->cal_level.spm_level.cal_node[i].start_freq_khz;
+            _end_freq_khz = poal_config->cal_level.spm_level.cal_node[i].end_freq_khz;
+            if(_fft == 0 && _start_freq_khz ==0 && _end_freq_khz == 0){
                 break;
+            }
+            printf_debug("[%d], _fft=%u[%u],m_freq=%u, _start_freq_khz=%u, _end_freq_khz=%u\n", i, _fft,fft_size, m_freq,  _start_freq_khz, _end_freq_khz);
+            if(_fft == fft_size || _fft == 0){
+                if((m_freq >= _start_freq_khz*1000) &&  (m_freq < _end_freq_khz *1000)){
+                    freq_cal_value = poal_config->cal_level.spm_level.cal_node[i].power_level;
+                    cal_value += freq_cal_value;
+                    freq_found = 1;
+                }
             }
         }
     }

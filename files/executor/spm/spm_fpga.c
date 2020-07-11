@@ -103,7 +103,10 @@ static int32_t _get_run_timer(uint8_t index, uint8_t ch)
         return 0;
     }
     gettimeofday(&newTime, NULL);
+    //printf("newTime:%ld,%ld\n",newTime.tv_sec, newTime.tv_usec);
+    //printf("oldTime:%ld,%ld\n",oldTime->tv_sec, oldTime->tv_usec);
     _t_us = (newTime.tv_sec - oldTime->tv_sec)*1000000 + (newTime.tv_usec - oldTime->tv_usec); 
+    //printf("_t_us:%d\n",_t_us);
     if(_t_us > 0)
         ntime_us = _t_us; 
     else 
@@ -713,8 +716,9 @@ static long signal_residency_policy(int ch, int policy, bool is_signal)
 bool is_sigal_residency_time_arrived(uint8_t ch, int policy, bool is_signal)
 {
     long residency_time = 0;
+    //printf("is_signal:%d, policy:%d\n",is_signal,policy);
     residency_time = signal_residency_policy(ch, policy, is_signal);
-    if(_get_run_timer(1, ch) < residency_time){
+    if(_get_run_timer(1, ch) < residency_time*1000){
         return false;
     }
     _reset_run_timer(1, ch);

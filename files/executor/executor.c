@@ -216,7 +216,8 @@ static int8_t  executor_points_scan(uint8_t ch, work_mode_type mode, void *args)
     struct io_decode_param_st decode_param;
     int8_t subch = 0;
     bool residency_time_arrived = false;
-    int32_t policy = poal_config->ctrl_para.residency.policy[ch];
+    //int32_t policy = poal_config->ctrl_para.residency.policy[ch];
+    int32_t policy = poal_config->multi_freq_point_param[ch].residence_time;
     spmctx = (struct spm_context *)args;
     r_args = spmctx->run_args;
 
@@ -286,6 +287,7 @@ static int8_t  executor_points_scan(uint8_t ch, work_mode_type mode, void *args)
         bool is_signal = false;
         int32_t ret = -1;
         ret = spmctx->ops->signal_strength(ch, &is_signal, &strength);
+        //is_signal = true;
         if(ret == 0){
             printf_note("is sigal: %s, strength:%d\n", (is_signal == true ? "Yes":"No"), strength);
         }

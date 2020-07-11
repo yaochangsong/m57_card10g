@@ -33,6 +33,7 @@ do_install() {
          install -m 0755 shell/reset-button.sh ${D}/etc/
          install -m 0755 conf/config.json ${D}/etc/
          install -m 0755 tools/xjson ${D}${bindir}
+         install -m 0755 tools/reset-button  ${D}${bindir}
 }
 
 INSANE_SKIP_${PN} = "ldflags"

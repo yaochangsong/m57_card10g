@@ -98,9 +98,9 @@ typedef struct _SIGNAL_REG_
 {
 	uint32_t reserve;
 	uint32_t data_path_reset;
-    uint32_t reserve1[0x2];
+    uint32_t reserve1[0x3];
     uint32_t trig;
-    uint32_t reserve2;
+    uint32_t reserve2[0x7];
     uint32_t reserve3[0xf];
     uint32_t current_time;
     uint32_t current_count;

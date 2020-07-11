@@ -163,7 +163,7 @@
 				"mgc_gain":	30,
 				"agc_ctrl_time":	1000,
 				"agc_output_amp_dbm":	-20,
-				"agc_ref_val_0dbm" : 1512
+				"agc_ref_val_0dbm" : 11740
 			}]
 	}
 }

@@ -40,6 +40,7 @@ struct fs_context {
 extern void fs_init(void);
 extern char *fs_get_root_dir(void);
 extern struct fs_context *get_fs_ctx(void);
+extern struct fs_context *get_fs_ctx_ex(void);
 extern struct fs_context * fs_create_context(void);
 #endif
 

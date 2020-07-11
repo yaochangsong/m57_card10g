@@ -224,7 +224,7 @@ bool _fs_disk_info(struct statfs *diskInfo)
         return false;
     }
 
-	if(!statfs(DISK_NODE_NAME, diskInfo))
+	if(statfs(DISK_NODE_NAME, diskInfo))
 	{
 		printf_note("Disk node[%s] is unknown filesystem\n", DISK_NODE_NAME);
         return false;
@@ -524,6 +524,14 @@ struct fs_context *get_fs_ctx(void)
 {
     if(disk_is_valid == false)
         return NULL;
+    if(fs_ctx == NULL){
+        fs_ctx = fs_create_context();
+    }
+    return fs_ctx;
+}
+
+struct fs_context *get_fs_ctx_ex(void)
+{
     if(fs_ctx == NULL){
         fs_ctx = fs_create_context();
     }

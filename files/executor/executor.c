@@ -271,14 +271,20 @@ static int8_t  executor_points_scan(uint8_t ch, work_mode_type mode, void *args)
         if(poal_config->enable.audio_en){
             printf_note("ch=%d, i=%d, center_freq=%llu, d_method=%d, d_bandwith=%u\n",ch, i,
                 point->points[i].center_freq, point->points[i].d_method, point->points[i].d_bandwith);
-            executor_set_command(EX_MID_FREQ_CMD, EX_DEC_MID_FREQ, ch,&point->points[i].center_freq,  point->points[i].center_freq);
-            executor_set_command(EX_MID_FREQ_CMD, EX_DEC_METHOD, ch, &point->points[i].d_method);
-            executor_set_command(EX_MID_FREQ_CMD, EX_DEC_BW, ch, &point->points[i].d_bandwith);
+            
+            
             executor_set_command(EX_MID_FREQ_CMD, EX_DEC_RAW_DATA, ch, &point->points[i].center_freq, 
                                 point->points[i].d_bandwith, point->points[i].raw_d_method);
-            io_set_enable_command(AUDIO_MODE_ENABLE, ch, -1, 0);
+            
+            
+            executor_set_command(EX_MID_FREQ_CMD, EX_DEC_METHOD, CONFG_AUDIO_CHANNEL, &point->points[i].d_method);
+            executor_set_command(EX_MID_FREQ_CMD, EX_DEC_BW, CONFG_AUDIO_CHANNEL, &point->points[i].d_bandwith);
+            executor_set_command(EX_MID_FREQ_CMD, EX_DEC_MID_FREQ, CONFG_AUDIO_CHANNEL,&point->points[i].center_freq,point->points[i].center_freq);
+
+            executor_set_command(EX_MID_FREQ_CMD, EX_MUTE_THRE, CONFG_AUDIO_CHANNEL,&point->points[i].noise_thrh,point->points[i].noise_en);
+            io_set_enable_command(AUDIO_MODE_ENABLE, ch, CONFG_AUDIO_CHANNEL, 0);  //音频通道开关
         }else{
-            io_set_enable_command(AUDIO_MODE_DISABLE, ch, -1, 0);
+            io_set_enable_command(AUDIO_MODE_DISABLE, ch, CONFG_AUDIO_CHANNEL, 0);  //音频通道开关
         }
 #endif
 #if defined (SUPPORT_RESIDENCY_STRATEGY) 
@@ -475,6 +481,8 @@ static int8_t executor_set_kernel_command(uint8_t type, uint8_t ch, void *data, 
         }
         case EX_MUTE_THRE:
         {
+            uint32_t noise_en  = va_arg(ap, uint32_t);
+            io_set_noise(ch,noise_en,*(int8_t *)data);
             break;
         }
         case EX_MID_FREQ:

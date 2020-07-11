@@ -247,7 +247,7 @@ int32_t io_set_bandwidth(uint32_t ch, uint32_t bandwidth){
     struct  band_table_t *table;
     uint32_t table_len = 0;
 
-    table= &bandtable;
+    table= bandtable;
     table_len = sizeof(bandtable)/sizeof(struct  band_table_t);
     io_get_bandwidth_factor(bandwidth, &band_factor,&filter_factor, table, table_len);
     if((old_val == band_factor) && (ch == old_ch)){
@@ -270,6 +270,25 @@ int32_t io_set_bandwidth(uint32_t ch, uint32_t bandwidth){
 
 }
 
+int32_t io_set_noise(uint32_t ch, uint32_t noise_en,int8_t noise_level_tmp){
+        uint32_t  noise_level;
+        if(noise_en == 1)
+        {
+            if(noise_level_tmp > 0)
+            {
+                noise_level_tmp = 0;
+            }
+            noise_level =  (uint32_t)(16000.0 * pow(10.0, (double)(noise_level_tmp / 20.0)));
+        }
+        else 
+        {
+            noise_level = 0;
+        }
+        printf_note("[**REGISTER**]ch:%d, Set noise_level:%ld noise_en:%d noise_level_tmp:%d\n", ch,noise_level,noise_en,noise_level_tmp);
+        get_fpga_reg()->narrow_band[ch]->noise_level = noise_level;
+        
+        
+}
 /*根据边带率,设置数据长度 
     @rate: 边带率>0;实际下发边带率为整数；放大100倍（内核不处理浮点数）
 */
@@ -304,7 +323,7 @@ int32_t io_set_dec_bandwidth(uint32_t ch, uint32_t dec_bandwidth){
     struct  band_table_t *table;
     uint32_t table_len = 0;
 
-    table= &nbandtable;
+    table= nbandtable;
     table_len = sizeof(nbandtable)/sizeof(struct  band_table_t);
     io_get_bandwidth_factor(dec_bandwidth, &band_factor,&filter_factor, table, table_len);
     set_factor = band_factor|0x2000000;
@@ -319,6 +338,8 @@ int32_t io_set_dec_bandwidth(uint32_t ch, uint32_t dec_bandwidth){
 #if defined(SUPPORT_SPECTRUM_KERNEL) 
     ret = ioctl(io_ctrl_fd, IOCTL_EXTRACT_CH0, set_factor);
 #elif defined(SUPPORT_SPECTRUM_V2) 
+    get_fpga_reg()->narrow_band[ch]->band = band_factor;   //0x30190
+    printf_note("narrow_band[%d]->band:%x\n",ch,band_factor);
     printf_warn("NOT DEFINE...\n");
 #endif
 #endif
@@ -362,6 +383,7 @@ int32_t io_set_dec_method(uint32_t ch, uint8_t dec_method){
 #if defined(SUPPORT_SPECTRUM_KERNEL) 
     ret = ioctl(io_ctrl_fd,IOCTL_EXTRACT_CH0,d_method);
 #elif defined(SUPPORT_SPECTRUM_V2) 
+get_fpga_reg()->narrow_band[ch]->decode_type = dec_method;
     printf_warn("NOT DEFINE...\n");
 #endif
 #endif
@@ -445,7 +467,7 @@ int32_t io_set_dec_middle_freq(uint32_t ch, uint64_t dec_middle_freq, uint64_t m
 #if defined(SUPPORT_SPECTRUM_KERNEL) 
     ret = ioctl(io_ctrl_fd, IOCTL_DECODE_MID_FREQ, reg);
 #elif defined(SUPPORT_SPECTRUM_V2) 
-    get_fpga_reg()->broad_band->signal_carrier = reg;
+    get_fpga_reg()->narrow_band[ch]->signal_carrier = reg;
 #endif
 #endif
     printf_debug("[**REGISTER**]ch:%d, MiddleFreq =%llu, Decode MiddleFreq:%llu, reg=0x%x\n", ch, middle_freq, dec_middle_freq, reg);
@@ -970,14 +992,17 @@ int8_t io_set_enable_command(uint8_t type, int ch, int subc_ch, uint32_t fftsize
         case AUDIO_MODE_ENABLE:
         {
             if(fftsize == 0)
-                io_set_dma_DQ_out_en(ch, subc_ch, 512, 1);
+                //io_set_dma_DQ_out_en(ch, subc_ch, 512, 1);
+                io_set_IQ_out_en(ch, subc_ch,512, 1);
             else
-                io_set_dma_DQ_out_en(ch, subc_ch,fftsize, 1);
+                //io_set_dma_DQ_out_en(ch, subc_ch,fftsize, 1);
+                io_set_IQ_out_en(ch, subc_ch,fftsize, 1);
             break;
         }
         case AUDIO_MODE_DISABLE:
         {
-            io_set_dma_DQ_out_dis(ch, subc_ch);
+            //io_set_dma_DQ_out_dis(ch, subc_ch);
+            io_set_IQ_out_disable(ch, subc_ch);
             break;
         }
         case IQ_MODE_ENABLE:

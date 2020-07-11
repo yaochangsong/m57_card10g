@@ -66,6 +66,7 @@ static inline void spm_iq_deal_notify(void *arg)
    在该模式下，应以最快速度读取发送数据；
    使能后，不断读取、组包、发送；读取前无需停止DMA。
 */
+   static char notify;
 
 void spm_iq_handle_thread(void *arg)
 {
@@ -75,15 +76,16 @@ void spm_iq_handle_thread(void *arg)
     struct spm_context *ctx = NULL;
     iq_t *ptr_iq = NULL;
     ssize_t  len = 0, i;
-
+    struct poal_config *poal_config = &(config_get_config()->oal_config);
    // thread_bind_cpu(1);
     ctx = (struct spm_context *)arg;
 
 loop:
     printf_warn("######Wait IQ enable######\n");
+    notify = 1;
     /* 通过条件变量阻塞方式等待数据使能 */
     pthread_mutex_lock(&spm_iq_cond_mutex);
-    while(subch_bitmap_weight() == 0)
+    while(subch_bitmap_weight() == 0 && poal_config->enable.audio_en == 0)
         pthread_cond_wait(&spm_iq_cond, &spm_iq_cond_mutex);
     pthread_mutex_unlock(&spm_iq_cond_mutex);
     
@@ -101,7 +103,7 @@ loop:
            // printfd("\n----------[%d]---------\n", len);
             ctx->ops->send_iq_data(ptr_iq, len, &run);
         }
-        if(subch_bitmap_weight() == 0){
+        if(subch_bitmap_weight() == 0 && poal_config->enable.audio_en == 0){
             printf_note("iq disabled\n");
             sleep(1);
             goto loop;
@@ -115,16 +117,29 @@ loop:
 void spm_deal(struct spm_context *ctx, void *args)
 {   
     struct spm_context *pctx = ctx;
+    struct poal_config *poal_config = &(config_get_config()->oal_config);
+    
     if(pctx == NULL){
         printf_err("spm is not init!!\n");
         return;
     }
-    if(subch_bitmap_weight() != 0){
+    if(subch_bitmap_weight() != 0 || poal_config->enable.audio_en != 0){
+  
         struct spm_run_parm *ptr_run;
         ptr_run = (struct spm_run_parm *)args;
         printf_debug("send:ch:%d, s_freq:%llu, e_freq:%llu, bandwidth=%u\n", 
                 ptr_run->ch, ptr_run->s_freq, ptr_run->e_freq, ptr_run->bandwidth);
-        spm_iq_deal_notify(&args);
+        
+        //usleep(10);
+        if(notify == 1)
+        {
+          printf_note("send:ch:%d, s_freq:%llu, e_freq:%llu, bandwidth=%u\n", 
+          ptr_run->ch, ptr_run->s_freq, ptr_run->e_freq, ptr_run->bandwidth);
+          notify =0;
+          sleep(1);
+          spm_iq_deal_notify(&args);
+        }
+        
     }
     if(pctx->pdata->enable.psd_en){
         volatile fft_t *ptr = NULL, *ord_ptr = NULL;

@@ -442,6 +442,18 @@ static int akt_execute_set_command(void *cl)
             executor_set_enable_command(ch);
             break;
         }
+        case QUIET_NOISE_THRESHOLD_CMD:
+        {
+            check_valid_channel(header->buf[0]);
+            poal_config->multi_freq_point_param[ch].points[0].noise_thrh = header->buf[1];
+            break;
+        }
+        case QUIET_NOISE_SWITCH_CMD:
+        {
+            check_valid_channel(header->buf[0]);
+            poal_config->multi_freq_point_param[ch].points[0].noise_en = header->buf[1];
+            break;
+        }
         case DIRECTION_FREQ_POINT_REQ_CMD:
         {
             check_valid_channel(header->buf[0]);
@@ -620,8 +632,6 @@ static int akt_execute_set_command(void *cl)
             poal_config->rf_para[ch].mgc_gain_value = header->buf[1];
             printf_note("=>mgc_gain_value:%d\n", poal_config->rf_para[ch].mgc_gain_value);
             executor_set_command(EX_RF_FREQ_CMD, EX_RF_MGC_GAIN, ch, &poal_config->rf_para[ch].mgc_gain_value);
-            break;
-        case QUIET_NOISE_SWITCH_CMD:
             break;
         case SAMPLE_CONTROL_FFT_CMD:
             check_valid_channel(header->buf[0]);

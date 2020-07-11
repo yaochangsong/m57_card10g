@@ -113,8 +113,9 @@
 #endif
 
 #define MAX_RADIO_CHANNEL_NUM 1         /* 最大射频通道数 */
-#define MAX_SIGNAL_CHANNEL_NUM (16)     /* 最大解调子通道数 */
+#define MAX_SIGNAL_CHANNEL_NUM (17)     /* 最大解调子通道数 */
 #define MAX_SIG_CHANNLE 128             /* 最大频点数 */
+#define CONFG_AUDIO_CHANNEL   16
 
 
 #define PLATFORM_VERSION  "1.0.0" /* application version */

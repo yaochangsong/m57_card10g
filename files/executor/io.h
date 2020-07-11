@@ -269,4 +269,5 @@ extern int32_t io_start_backtrace_file(void *arg);
 extern int32_t io_stop_backtrace_file(void *arg);
 extern bool io_get_adc_status(void *args);
 extern bool io_get_clock_status(void *args);
+extern int32_t io_set_noise(uint32_t ch, uint32_t noise_en,int8_t noise_level_tmp);
 #endif

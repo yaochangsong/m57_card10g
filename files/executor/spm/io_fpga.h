@@ -120,6 +120,7 @@ typedef struct _RF_REG_
     uint32_t direct_control; //直采控制数据
     uint32_t revise_minus;   //校正衰减控制数据
     uint32_t direct_minus;   //直采衰减控制数据
+    int32_t  temperature;    //射频温度
 }RF_REG;
 
 typedef struct _AUDIO_REG_

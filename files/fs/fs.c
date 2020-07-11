@@ -224,7 +224,7 @@ bool _fs_disk_info(struct statfs *diskInfo)
         return false;
     }
 
-	if(!statfs(DISK_NODE_NAME, diskInfo))
+	if(statfs(DISK_NODE_NAME, diskInfo))
 	{
 		printf_note("Disk node[%s] is unknown filesystem\n", DISK_NODE_NAME);
         return false;

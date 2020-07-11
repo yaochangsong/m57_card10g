@@ -275,6 +275,19 @@ struct calibration_specturm_info_st{
     int global_roughly_power_lever_mode2;
 };//__attribute__ ((packed));
 
+struct calibration_specturm_node_st{
+    uint32_t start_freq_khz;
+    uint32_t end_freq_khz;
+    int power_level;
+    uint32_t fft;
+}__attribute__ ((packed));
+
+struct calibration_specturm_v2_st{
+    struct calibration_specturm_node_st cal_node[32];
+    int global_roughly_power_lever;
+}__attribute__ ((packed));
+
+
 struct calibration_analysis_info_st{
     uint32_t start_freq_khz[40];
     uint32_t end_freq_khz[40];
@@ -309,6 +322,7 @@ struct calibration_fft_st{
 
 struct calibration_info_st{
     struct calibration_specturm_info_st specturm;
+    struct calibration_specturm_v2_st   spm_level;
     struct calibration_analysis_info_st analysis;
     struct calibration_low_noise_info_st low_noise;
     struct calibration_lo_leakage_info_st lo_leakage;

@@ -102,7 +102,8 @@ enum {
     EX_RF_AGC_FREQUENCY,          /*AGC 频率设置*/
     EX_RF_AGC_BW,                 /*AGC 带宽设置*/
     EX_RF_CALIBRATE,              /*校正*/
-    EX_RF_SAMPLE_CTRL             /* 直采控制 0关闭直采，1开启直采 */
+    EX_RF_SAMPLE_CTRL,             /* 直采控制 0关闭直采，1开启直采 */
+    EX_RF_LOW_NOISE,              /* 低噪放 */
 };
 
 /* network paramters */
@@ -134,13 +135,15 @@ struct sem_st{
 /* 频谱运行中，可能变化的参数 */
 struct spm_run_parm{
     uint32_t scan_bw;
-    uint32_t bandwidth;
+    uint32_t bandwidth;         /*显示频谱带宽*/
     uint32_t fft_size;
     uint32_t fft_sn;
     uint32_t total_fft;
     uint64_t s_freq;             /* 开始频率 */
+    uint64_t s_freq_offset;      /* 开始频率偏移 */
     uint64_t e_freq;             /* 截止频率 */
-    uint64_t m_freq;             /* 中心频率 */
+    uint64_t m_freq;             /* 频谱显示中心频率 */
+    uint64_t m_freq_s;           /* 频谱扫描实际中心频率 */
     float freq_resolution;       /* 分辨率 */
     uint8_t ch;
     uint8_t datum_type;          /* 0x00：字符型 0x01：短整型 0x02 浮点型 */

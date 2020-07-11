@@ -388,7 +388,19 @@ static uint32_t io_set_dec_middle_freq_reg(uint64_t dec_middle_freq, uint64_t mi
         uint64_t delta_freq;
         uint32_t reg;
         int32_t ret = 0;
-    
+#if defined(SUPPORT_DIRECT_SAMPLE)
+        #define FREQ_ThRESHOLD_HZ (100000000)
+        uint32_t bandwidth = 0;
+        if(config_read_by_cmd(EX_MID_FREQ_CMD, EX_BANDWITH, 0, &bandwidth, 0) == -1){
+                printf_err("Error read bandwidth=%u\n", bandwidth);
+                return -1;
+        }
+        printf_note("read bandwidth=%uHz\n", bandwidth);
+        if(bandwidth /2 + dec_middle_freq < FREQ_ThRESHOLD_HZ){
+            reg = (uint32_t)((dec_middle_freq *FREQ_MAGIC2)/FREQ_MAGIC1);
+            return reg;
+        }
+#endif
         if(middle_freq > dec_middle_freq){
             delta_freq = FREQ_MAGIC1 +  dec_middle_freq - middle_freq ;
         }else{
@@ -470,7 +482,7 @@ int32_t io_set_subch_onoff(uint32_t subch, uint8_t onoff)
     }
 #endif
 #endif
-    printf_note("[**REGISTER**]ch:%d, SubChannle Set OnOff=%d,subch_bitmap_weight=0x%x\n",subch, onoff, subch_bitmap_weight());
+    printf_debug("[**REGISTER**]ch:%d, SubChannle Set OnOff=%d,subch_bitmap_weight=0x%x\n",subch, onoff, subch_bitmap_weight());
     return ret;
 }
 
@@ -736,6 +748,8 @@ void io_set_fpga_sys_time(uint32_t time)
         return;
     }
     ioctl(io_ctrl_fd,IOCTL_SET_SYS_TIME,time);
+#elif defined(SUPPORT_SPECTRUM_V2) 
+    get_fpga_reg()->signal->current_time = time;
 #endif
 }
 
@@ -743,6 +757,7 @@ void io_set_fpga_sample_ctrl(uint8_t val)
 {
 #if defined(SUPPORT_PLATFORM_ARCH_ARM)
 #if defined(SUPPORT_SPECTRUM_V2)
+    printf_note("[**FPGA**] ifch=%d\n", val);
     get_fpga_reg()->system->if_ch = (val == 0 ? 0 : 1);
 #endif
 #endif
@@ -1004,6 +1019,7 @@ int32_t io_get_agc_thresh_val(int ch)
     }
 #elif defined(SUPPORT_SPECTRUM_V2) 
     agc_val = get_fpga_reg()->broad_band->agc_thresh;
+    printf_note("222222 agc_val:%d\n",get_fpga_reg()->broad_band->agc_thresh);
 #endif
 #endif
     return agc_val;
@@ -1013,36 +1029,71 @@ int32_t io_get_agc_thresh_val(int ch)
 int16_t io_get_adc_temperature(void)
 {
     float result=0; 
+
 #ifdef SUPPORT_PLATFORM_ARCH_ARM
-    char  path[128], upset[20];  
-    char value=0;  
-    int fd = -1, offset;
-    float raw_data=0;
-    
+    static FILE * fp = NULL;
+    int raw_data;
 
-    sprintf(path,"/sys/bus/iio/devices/iio:device0/in_temp0_raw");
-    fd = open(path, O_RDONLY);
-    if (fd < 0)
-    {
-        printf_note("[get_adc_temperature]: Cannot open in_temp0_raw path\n");
-        return -1;
+    if(fp == NULL){
+        fp = fopen ("/sys/bus/iio/devices/iio:device0/in_temp0_ps_temp_raw", "r");
+        if(!fp){
+            printf("Open file error!\n");
+            return false;
+        }
     }
-    offset=0;  
-    while(offset<5)	
-    {  
-        lseek(fd,offset,SEEK_SET);  
-        read(fd,&value,sizeof(char));	 
-        upset[offset]=value;  
-        offset++;  
-    }	 
-    upset[offset]='\0'; 
-    raw_data=atoi(upset);
-    result = ((raw_data * 503.975)/4096) - 273.15;
-    close(fd);
+    rewind(fp);
+    fscanf(fp, "%d", &raw_data);
+    printf_note("temp: %d\n", raw_data);
+    result = ((raw_data * 509.314)/65536.0) - 280.23;
 #endif
-    return (signed short)result;
 
+    return (signed short)result;
 }
+
+bool io_get_adc_status(void *args)
+{
+    static FILE * fp = NULL;
+    int status;
+    bool ret;
+    args = args;
+    if(fp == NULL){
+        fp = fopen ("/run/status/adc", "r");
+        if(!fp){
+            printf("Open file error!\n");
+            return false;
+        }
+    }
+    rewind(fp);
+    fscanf(fp, "%d", &status);
+    printf_note("adc status: %d\n", status);
+    
+    ret = (status == 0 ? false : true);
+    return ret;
+}
+
+bool io_get_clock_status(void *args)
+{
+    static FILE * fp = NULL;
+    uint8_t lock_ok=0, external_clk=0;
+    bool ret;
+    
+    if(fp == NULL){
+        fp = fopen ("/run/status/clock", "r");
+        if(!fp){
+            printf("Open file error!\n");
+            return false;
+        }
+    }
+    rewind(fp);
+    fscanf(fp, "%d %d", &external_clk, &lock_ok);
+    printf_note("external_clk:%d, lock_ok: %d\n", external_clk, lock_ok);
+    
+    *(uint8_t *)args = external_clk;
+    ret = (lock_ok == 0 ? false : true);
+    
+    return ret;
+}
+
 
 uint32_t get_fpga_version(void)
 {

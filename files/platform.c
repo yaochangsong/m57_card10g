@@ -128,7 +128,7 @@ int main(int argc, char **argv)
     clock_adc_init();   /* 时钟/AD初始化 */
 #endif
     fpga_io_init();
-    executor_init();    /* DMA频谱初始化需要在时钟初始化之前 */
+    executor_init();   
  if(spectrum_aditool_debug == false){
 #ifdef SUPPORT_RF
     rf_init();  /* RF初始化， */

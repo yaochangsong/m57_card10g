@@ -45,6 +45,109 @@ struct fs_context *fs_ctx = NULL;
 static bool disk_is_valid = false;
 static void  *disk_buffer_ptr  = NULL;
 
+
+
+static int get_frequency_band_from_str(const char *str,uint32_t *band,uint64_t *freq)
+{
+    int cnt = 0,first = 1;
+    int fre_con1 = 0,fre_con2 = 0;
+    int band_con1 = 0,band_con2 = 0;
+    int con1_start = 1,con2_start = 1;
+    int con3_start = 1,con4_start = 1;
+    int freq_unit = 1;//1--G 0--M
+    uint64_t frq_data = 0;
+    double  frq_tmp ;
+    uint32_t band_data = 0;
+
+    char fre_str[20] = "0";
+    char band_str[20] = "0";
+    printf_note("str:%s\n",str);
+    
+    if(str==NULL)
+        return -1;
+    
+    while(1)
+    {
+        /*
+        if(*(str+cnt) != '\0')
+            printf("data:%c\n",*(str+cnt)); */
+        
+        if(*(str+cnt) == '\0')
+            break;
+        
+        if(*(str+cnt) == 'F' && con1_start == 1)
+        {
+            fre_con1 = cnt;
+            con1_start = 0;
+            printf_note("fre_con1:%d\n",fre_con1);
+        }
+        
+        if((*(str+cnt) == 'G' || *(str+cnt) == 'M' )&& con2_start == 1)
+        {
+            fre_con2 = cnt;
+            con2_start = 0;
+            if(*(str+cnt) == 'M')
+                freq_unit = 0;
+            printf_note("fre_con2:%d\n",fre_con2);
+        }
+
+
+        if(*(str+cnt) == 'B' && con3_start == 1)
+        {
+            band_con1 = cnt;
+            con3_start = 0;
+            printf_note("band_con1:%d\n",band_con1);
+        }
+        
+        if(*(str+cnt) == 'M' && con4_start == 1 && con3_start == 0)
+        {
+            band_con2 = cnt;
+            con4_start = 0;
+            printf_note("band_con2:%d\n",band_con2);
+        }
+
+        cnt++;
+
+    }
+
+    if( fre_con2 > fre_con1)
+    {
+        memcpy(fre_str,str+fre_con1 + 1 ,fre_con2 - fre_con1 -1);
+        //frq_data = atoi(fre_str);
+        frq_tmp = atof(fre_str);
+        //frq_data = frq_tmp 
+        if(freq_unit ==1 )
+            frq_data = frq_tmp * pow(10,9);
+        else
+            frq_data = frq_tmp * pow(10,6);
+
+        *freq = frq_data;
+        printf_note("fre_str:%s frq_data:%lu frq_tmp:%lf\n",fre_str,frq_data,frq_tmp);
+    }
+    else
+    {
+        printf_err("get frequency error!\n");
+        return -1;
+    }
+
+    if( band_con2 > band_con1)
+    {
+        memcpy(band_str,str+band_con1 + 1 ,band_con2 - band_con1 -1);
+        band_data = atoi(band_str);
+        *band = band_data * pow(10,6);
+        printf_note("band_str:%s band_data:%u\n",band_str,band_data);
+    }
+    
+    else
+    {
+        printf_err("get band error!\n");
+        return -1;
+    }
+    
+    return 0;
+}
+
+
 static inline int _write_fs_disk_init(char *path)
 {
     int fd;
@@ -112,12 +215,44 @@ bool _fs_disk_valid(void)
     return true;
 }
 
+bool _fs_disk_info(struct statfs *diskInfo)
+{
+    #define DISK_NODE_NAME "/run/media/nvme0n1"
+    
+    if(access(DISK_NODE_NAME, F_OK)){
+        printf_note("Disk node[%s] is not valid\n", DISK_NODE_NAME);
+        return false;
+    }
+
+	if(!statfs(DISK_NODE_NAME, diskInfo))
+	{
+		printf_note("Disk node[%s] is unknown filesystem\n", DISK_NODE_NAME);
+        return false;
+	}
+    
+    return true;
+}
 
 static inline int _fs_format(void)
 {
-    if(disk_is_valid == false)
-        return -1;
-    return safe_system("mkfs.ext3    /dev/sda6");
+	#define DISK_DEVICE_NAME "/dev/nvme0n1"
+	#define DISK_NODE_NAME "/run/media/nvme0n1"
+    char cmd[128];
+	int ret;
+
+    snprintf(cmd, sizeof(cmd), "umount %s",DISK_NODE_NAME);
+    ret = safe_system(cmd);
+    if(!ret)
+    	printf_err("unmount %s failed\n", DISK_NODE_NAME);
+	snprintf(cmd, sizeof(cmd), "mkfs.ext2 %s",DISK_DEVICE_NAME);
+	ret = safe_system(cmd);    
+	if(!ret)
+    	printf_err("mkfs.ext2 %s failed\n", DISK_NODE_NAME);
+	snprintf(cmd, sizeof(cmd), "mount %s %s",DISK_DEVICE_NAME, DISK_NODE_NAME);
+	ret = safe_system(cmd);
+	if(!ret)
+    	printf_err("mount %s %s failed\n", DISK_DEVICE_NAME, DISK_NODE_NAME);
+    return ret;
 }
 
 static inline int _fs_mkdir(char *dirname)
@@ -322,11 +457,18 @@ static ssize_t _fs_start_read_raw_file(char *filename)
     int ret = -1;
     static int file_fd;
     char path[512];
+    uint32_t band;
+    uint64_t freq;
+    int ch = 0;
     if(disk_is_valid == false)
         return -1;
 #if 1
     if(filename == NULL)
         return -1;
+    //get_frequency_band_from_str(filename,&band,&freq);
+    //printf_note("wirte freq:%lu band:%u !\n",freq,band);
+    //config_write_data(EX_MID_FREQ_CMD,  EX_MID_FREQ, ch, &freq);
+    //config_write_data(EX_MID_FREQ_CMD,  EX_BANDWITH, ch, &band);
     snprintf(path, sizeof(path), "%s/%s", fs_get_root_dir(), filename);
     file_fd = open(path, O_RDONLY, 0666);
     if (file_fd < 0) {
@@ -363,6 +505,7 @@ static int _fs_close(void)
 }
 
 static const struct fs_ops _fs_ops = {
+    .fs_disk_info = _fs_disk_info,
     .fs_disk_valid = _fs_disk_valid,
     .fs_format = _fs_format,
     .fs_mkdir = _fs_mkdir,

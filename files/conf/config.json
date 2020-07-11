@@ -52,10 +52,42 @@
 				"fftsize":	32768,
 				"value":	10
 			}],
-		"psd_freq":	[{
+		"psd_freq":	[
+			{
+				"fftsize":	512,
 				"start_freq":	0,
-				"end_freq":	0,
-				"value":	0
+				"end_freq":	200000,
+				"value":	-100
+			},{
+				"fftsize":	1024,
+				"start_freq":	0,
+				"end_freq":	200000,
+				"value":	-100
+			},{
+				"fftsize":	2048,
+				"start_freq":	0,
+				"end_freq":	200000,
+				"value":	-100
+			},{
+				"fftsize":	4096,
+				"start_freq":	0,
+				"end_freq":	200000,
+				"value":	-100
+			},{
+				"fftsize":	8192,
+				"start_freq":	0,
+				"end_freq":	200000,
+				"value":	-100
+			},{
+				"fftsize":	16384,
+				"start_freq":	0,
+				"end_freq":	200000,
+				"value":	-100
+			},{
+				"fftsize":	32768,
+				"start_freq":	0,
+				"end_freq":	200000,
+				"value":	-100
 			}],
 		"analysis_power_global":	-195,
 		"analysis_freq":	[{
@@ -87,18 +119,30 @@
 			}]
 	},
 	"spectrum_parm":	{
-		"side_bandrate":	[{
+		    "side_bandrate":	[{
+				"bandwidth":    200000000,
+				"rate": 1.28
+			}, {
+				"bandwidth":    175000000,
+				"rate": 1.462857
+			},{
 				"bandwidth":	160000000,
-				"rate":	1.28
+				"rate":	1.6
+			},{
+				"bandwidth":	120000000,
+				"rate":	1.066667
 			}, {
 				"bandwidth":	80000000,
-				"rate":	1.28
+				"rate":	1.6
+			}, {
+				"bandwidth":	60000000,
+				"rate":	1.066667
 			}, {
 				"bandwidth":	40000000,
-				"rate":	1.28
+				"rate":	1.6
 			}, {
-				"bandwidth":	20000000,
-				"rate":	1.28
+				"bandwidth":	150000,
+				"rate":	1.281281
 			}],
 		"if_parm":	[{
 				"channel":	0,
@@ -112,13 +156,14 @@
 		"rf_parm":	[{
 				"channel":	0,
 				"middle_freq":	999994000,
-				"mid_bw":	40000000,
+				"mid_bw":	200000000,
 				"attenuation":	0,
 				"mode_code":	1,
 				"gain_mode":	1,
 				"mgc_gain":	30,
 				"agc_ctrl_time":	1000,
-				"agc_output_amp_dbm":	-20
+				"agc_output_amp_dbm":	-20,
+				"agc_ref_val_0dbm" : 1512
 			}]
 	}
 }

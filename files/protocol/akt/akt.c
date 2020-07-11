@@ -582,14 +582,14 @@ static int akt_execute_set_command(void *cl)
             check_valid_channel(header->buf[0]);
             memcpy(&(pakt_config->mid_freq_bandwidth[ch]), header->buf, sizeof(DIRECTION_MID_FREQ_BANDWIDTH_PARAM));
             poal_config->rf_para[ch].mid_bw = *((uint32_t *)(header->buf+1));
-            printf_note("ch=%d, bandwidth:%u\n", ch, poal_config->rf_para[ch].mid_bw);
+            printf_warn("ch=%d, bandwidth:%u\n", ch, poal_config->rf_para[ch].mid_bw);
             executor_set_command(EX_RF_FREQ_CMD, EX_RF_MID_BW, ch, &poal_config->rf_para[ch].mid_bw);
             break;
         }
         case RF_ATTENUATION_CMD:
             check_valid_channel(header->buf[0]);
             poal_config->rf_para[ch].attenuation = header->buf[1];
-            printf_info("RF_ATTENUATION_CMD:%d\n", poal_config->rf_para[ch].attenuation);
+            printf_note("=>RF_ATTENUATION_CMD:%d\n", poal_config->rf_para[ch].attenuation);
             executor_set_command(EX_RF_FREQ_CMD, EX_RF_ATTENUATION, ch, &poal_config->rf_para[ch].attenuation);
             break;
         case RF_WORK_MODE_CMD:
@@ -600,6 +600,7 @@ static int akt_execute_set_command(void *cl)
                 3: Low noise mode of operation
             */
             poal_config->rf_para[ch].rf_mode_code = header->buf[1];
+            printf_note("=>rf_mode_code = %d\n", poal_config->rf_para[ch].rf_mode_code);
             executor_set_command(EX_RF_FREQ_CMD, EX_RF_MODE_CODE, ch, &poal_config->rf_para[ch].rf_mode_code);
             break;
         case RF_GAIN_MODE_CMD:
@@ -617,6 +618,7 @@ static int akt_execute_set_command(void *cl)
         case MID_FREQ_ATTENUATION_CMD:
             check_valid_channel(header->buf[0]);
             poal_config->rf_para[ch].mgc_gain_value = header->buf[1];
+            printf_note("=>mgc_gain_value:%d\n", poal_config->rf_para[ch].mgc_gain_value);
             executor_set_command(EX_RF_FREQ_CMD, EX_RF_MGC_GAIN, ch, &poal_config->rf_para[ch].mgc_gain_value);
             break;
         case QUIET_NOISE_SWITCH_CMD:
@@ -710,7 +712,7 @@ static int akt_execute_set_command(void *cl)
             poal_config->network_10g.ipaddress = netinfo.ipaddr;
             poal_config->network_10g.netmask =netinfo.mask;
             poal_config->network_10g.gateway = netinfo.gateway;
-            poal_config->network.port = ntohs(netinfo.port);
+            poal_config->network_10g.port = ntohs(netinfo.port);
             
             printf_note("ipaddr=0x%x, mask=0x%x, gateway=0x%x, port=%d\n", 
                 poal_config->network_10g.ipaddress, poal_config->network_10g.netmask, poal_config->network_10g.gateway, poal_config->network_10g.port);
@@ -871,11 +873,26 @@ static int akt_execute_set_command(void *cl)
                 err_code = akt_err_code_check(ret);
                 goto set_exit;
             }
-
+            break;
         }
         case DISK_FORMAT_CMD:
         {
+			#if defined(SUPPORT_XWFS)
             file_disk_format(NULL, NULL);
+           	#elif defined(SUPPORT_FS)
+           	int ret;
+            struct fs_context *fs_ctx;
+			pthread_t work_id;
+            fs_ctx = get_fs_ctx();
+            //需要增加协议返回当前格式化的状态
+            ret=pthread_create(&work_id,NULL,(void *)fs_ctx->ops->fs_format(), NULL);
+    		if(ret!=0)
+        		perror("pthread cread format disk");
+    		pthread_detach(work_id);
+            //ret = fs_ctx->ops->fs_format();
+            //if(ret)
+            //	printf_err("format failed.\n");
+            #endif
             break;
         }
         default:
@@ -918,11 +935,16 @@ static int akt_execute_get_command(void)
     {
         case DEVICE_SELF_CHECK_CMD:
         {
+            uint8_t lock_ok=0, external_clk=0;
             DEVICE_SELF_CHECK_STATUS_RSP_ST self_check;
-            uint64_t freq_hz;
-            self_check.clk_status = 1;
-            self_check.ad_status = 0;
+            lock_ok = (uint8_t)io_get_clock_status(&external_clk);
+            self_check.ext_clk = (external_clk == 0 ? 0 :1);
+            self_check.ad_status = (io_get_adc_status(NULL) == true ? 1 : 0);
             self_check.pfga_temperature = io_get_adc_temperature();
+            self_check.ch_num = MAX_RADIO_CHANNEL_NUM;
+            //self_check.t_s[0].ch_status = 
+            //self_check.t_s[0].rf_temperature = 
+            printf_note("ext_clk:%d, ad_status=%d,pfga_temperature=%d\n", self_check.ext_clk, self_check.ad_status, self_check.pfga_temperature);
             memcpy(akt_get_response_data.payload_data, &self_check, sizeof(DEVICE_SELF_CHECK_STATUS_RSP_ST));
             akt_get_response_data.header.len = sizeof(DEVICE_SELF_CHECK_STATUS_RSP_ST);
             break;
@@ -1038,12 +1060,21 @@ static int akt_execute_get_command(void)
             }
             #if defined(SUPPORT_XWFS)
             ret = xwfs_get_disk_info(psi);
-            #endif
+            #elif defined(SUPPORT_FS)
+            struct fs_context *fs_ctx;
+            struct statfs diskInfo;
+            fs_ctx = get_fs_ctx();
+            ret = fs_ctx->ops->fs_disk_info(&diskInfo);
             printf_info("Get disk info: %d\n", ret);
             if(ret != 0){
                 err_code = akt_err_code_check(ret);
                 goto exit;
             }
+            psi->disk_num = 1;
+		    psi->read_write_speed_kbytesps = 0;  //按照写速度换算约等于1.8G
+		    psi->disk_capacity[0].disk_capacity_byte = diskInfo.f_bsize * diskInfo.f_blocks;
+		    psi->disk_capacity[0].disk_used_byte = diskInfo.f_bsize * (diskInfo.f_blocks - diskInfo.f_bfree);
+		    #endif
             printf_debug("ret=%d, num=%d, speed=%uKB/s, capacity_bytes=%llu, used_bytes=%llu\n",
                 ret, psi->disk_num, psi->read_write_speed_kbytesps, 
                 psi->disk_capacity[0].disk_capacity_byte, psi->disk_capacity[0].disk_used_byte);

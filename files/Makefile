@@ -82,6 +82,12 @@ ifneq ($(findstring y,$(SUPPORT_LCD)),)
 	C_VAR += -DSUPPORT_LCD
 endif
 
+#rs485
+ifneq ($(findstring y,$(SUPPORT_RS485)),)
+	SOURCE_DIR += device/rs485
+	C_VAR += -DSUPPORT_RS485
+endif
+
 #uart
 ifneq ($(findstring y,$(SUPPORT_UART)),)
 	SOURCE_DIR += device/uart
@@ -124,10 +130,12 @@ ifneq ($(findstring y,$(SUPPORT_RF_FPGA)),)
 	C_VAR += -DSUPPORT_RF_FPGA
 endif
 
-
+ifneq ($(findstring y,$(SUPPORT_DIRECT_SAMPLE)),)	
+	C_VAR += -DSUPPORT_DIRECT_SAMPLE
+endif
 
 #clock adc
-##clock adc spi
+##clock adc spis
 ifneq ($(findstring y,$(SUPPORT_CLOCK_ADC)),)
 	SOURCE_DIR += device/clock_adc
 	C_VAR += -DSUPPORT_CLOCK_ADC

@@ -92,6 +92,7 @@ static cJSON* json_read_file(const char *filename, cJSON* root)
     len = ftell(fp);
     if(0 == len)
     {
+        fclose(fp);
         return NULL;
     }
 
@@ -606,6 +607,12 @@ static int json_parse_config_param(const cJSON* root, struct poal_config *config
         config->ctrl_para.iq_data_length=value->valueint;
         printf_debug("iq_data_length:%d, \n",config->ctrl_para.iq_data_length);
     }
+    value = cJSON_GetObjectItem(control_parm, "agc_ref_val_0dbm");
+    if(value!= NULL && cJSON_IsNumber(value)){
+        config->ctrl_para.agc_ref_val_0dbm=value->valueint;
+        printf_debug("agc_ref_val_0dbm:%d, \n",config->ctrl_para.agc_ref_val_0dbm);
+    }
+    
 /* calibration_parm */
     cJSON *calibration = NULL;
     calibration = cJSON_GetObjectItem(root, "calibration_parm");
@@ -651,23 +658,25 @@ static int json_parse_config_param(const cJSON* root, struct poal_config *config
         for(int i = 0; i < cJSON_GetArraySize(psd_freq); i++){
             printfd("index:%d ", i);
             node = cJSON_GetArrayItem(psd_freq, i);            
+            value = cJSON_GetObjectItem(node, "fftsize");
+            if(cJSON_IsNumber(value)){
+                config->cal_level.spm_level.cal_node[i].fft =value->valueint;
+                printfd("fft:%u, ", config->cal_level.spm_level.cal_node[i].fft);
+            }
             value = cJSON_GetObjectItem(node, "start_freq");
             if(cJSON_IsNumber(value)){
-               // printfd("start_freq:%d, ", value->valueint);
-                config->cal_level.specturm.start_freq_khz[i]=value->valueint;
-                printfd("start_freq:%u, ", config->cal_level.specturm.start_freq_khz[i]);
+                config->cal_level.spm_level.cal_node[i].start_freq_khz =value->valueint;
+                printfd("start freq:%u, ", config->cal_level.spm_level.cal_node[i].start_freq_khz);
             }
             value = cJSON_GetObjectItem(node, "end_freq");
             if(cJSON_IsNumber(value)){
-                //printfd("end_freq:%d, ", value->valueint);
-                config->cal_level.specturm.end_freq_khz[i]=value->valueint;
-                printfd("end_freq:%u, ",  config->cal_level.specturm.start_freq_khz[i]);
+                config->cal_level.spm_level.cal_node[i].end_freq_khz =value->valueint;
+                printfd("end freq:%u, ", config->cal_level.spm_level.cal_node[i].end_freq_khz);
             } 
             value = cJSON_GetObjectItem(node, "value");
              if(cJSON_IsNumber(value)){
-                //printfd("value:%d, ", value->valueint);
-                config->cal_level.specturm.power_level[i]=value->valueint;
-                printfd("value:%d, ", config->cal_level.specturm.power_level[i]);
+                config->cal_level.spm_level.cal_node[i].power_level =value->valueint;
+                printfd("power level:%d, ", config->cal_level.spm_level.cal_node[i].power_level);
             } 
             printfd("\n");
         }

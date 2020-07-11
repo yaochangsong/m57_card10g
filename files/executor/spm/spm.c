@@ -127,16 +127,18 @@ void spm_deal(struct spm_context *ctx, void *args)
         spm_iq_deal_notify(&args);
     }
     if(pctx->pdata->enable.psd_en){
-        fft_t *ptr = NULL, *ord_ptr = NULL;
+        volatile fft_t *ptr = NULL, *ord_ptr = NULL;
         ssize_t  byte_len = 0; /* fft byte size len */
         size_t fft_len = 0, fft_ord_len = 0;
+        struct spm_run_parm *ptr_run;
+        ptr_run = (struct spm_run_parm *)args;
         byte_len = pctx->ops->read_fft_data(&ptr);
         if(byte_len < 0){
             return;
         }
         if(byte_len > 0){
             fft_len = byte_len/sizeof(fft_t);
-             printf_debug("size_len=%u, fft_len=%u\n", byte_len, fft_len);
+             printf_debug("size_len=%u, fft_len=%u, ptr=%p,%p, %p\n", byte_len, fft_len, ptr,ptr_run, ptr_run->fft_ptr);
             ord_ptr = pctx->ops->data_order(ptr, fft_len, &fft_ord_len, args);
             if(ord_ptr)
                 pctx->ops->send_fft_data(ord_ptr, fft_ord_len, args);
@@ -192,7 +194,12 @@ void *spm_init(void)
     //mqctx->ops->getattr(SPM_MQ_NAME);
 
     spmctx->run_args = calloc(1, sizeof(struct spm_run_parm));
-    spmctx->run_args->fft_ptr = calloc(1, MAX_FFT_SIZE*sizeof(fft_t));
+    spmctx->run_args->fft_ptr = malloc(MAX_FFT_SIZE*sizeof(fft_t));///calloc(1, MAX_FFT_SIZE*sizeof(fft_t));
+    if(spmctx->run_args->fft_ptr == NULL){
+        printf("malloc failed\n");
+        exit(1);
+    }
+    printf("=====>spmctx=%p, spmctx->run_args->fft_ptr=%p\n", spmctx, spmctx->run_args->fft_ptr);
    // thread_attr_set(&attr,SCHED_OTHER, 0);
    // ret=pthread_create(&recv_thread_id,&attr,(void *)spm_iq_handle_thread, spmctx);
     ret=pthread_create(&recv_thread_id,NULL,(void *)spm_iq_handle_thread, spmctx);

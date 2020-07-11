@@ -62,6 +62,14 @@ int fpga_memmap(int fd_dev, FPGA_CONFIG_REG *fpga_reg)
     }
     printf("virtual address:%p, physical address:0x%x\n", fpga_reg->rfReg, FPGA_RF_BASE);
 
+    fpga_reg->audioReg = (uint8_t *)fpga_reg->system + CONFG_AUDIO_OFFSET;
+    if (!fpga_reg->audioReg)
+    {
+        printf("mmap failed, NULL pointer!\n");
+        return -1;
+    }
+    printf("virtual address:%p, physical address:0x%x\n", fpga_reg->audioReg, FPGA_AUDIO_BASE);
+
     fpga_reg->adcReg = memmap(fd_dev, FPGA_ADC_BASE, SYSTEM_CONFG_REG_LENGTH); 
     if (!fpga_reg->adcReg)
     {
@@ -129,7 +137,7 @@ int fpga_unmemmap(FPGA_CONFIG_REG *fpga_reg)
         return -1;
     }
 
-    ret = munmap(fpga_reg->narrow_band, SYSTEM_CONFG_REG_LENGTH); 
+    ret = munmap(fpga_reg->narrow_band[0], SYSTEM_CONFG_REG_LENGTH); 
     if (ret)
     {
     	perror("munmap");
@@ -142,10 +150,14 @@ int fpga_unmemmap(FPGA_CONFIG_REG *fpga_reg)
 
 static FPGA_CONFIG_REG *fpga_reg = NULL;
 static bool fpga_init_flag = false;
+
+
 FPGA_CONFIG_REG *get_fpga_reg(void)
 {
     if(fpga_init_flag == false)
         fpga_io_init();
+
+    
     return fpga_reg;
 }
 
@@ -157,6 +169,7 @@ void fpga_io_init(void)
     
     if(fpga_init_flag)
         return;
+
     fd_fpga = open(FPGA_REG_DEV, O_RDWR|O_SYNC);
     if (fd_fpga == -1){
         printf_warn("%s, open error", FPGA_REG_DEV);

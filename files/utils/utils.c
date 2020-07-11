@@ -151,7 +151,7 @@ int get_gateway(char *ifname, struct in_addr * gw)
 int set_ipaddress(char *ifname, char *ipaddr, char *mask,char *gateway)  
 {  
     int fd;  
-    int rc;  
+    int rc = 0;  
     struct ifreq ifr;   
     struct sockaddr_in *sin;  
     struct rtentry  rt;  

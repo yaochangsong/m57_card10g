@@ -151,23 +151,50 @@ uint32_t  config_get_fft_size(uint8_t ch)
     return fftsize;
 }
 
-int32_t  config_get_fft_calibration_value(uint32_t fft_size)
+int32_t  config_get_fft_calibration_value(uint32_t fft_size, uint64_t m_freq)
 {
     struct poal_config *poal_config = &(config_get_config()->oal_config);
     int i;
-    int32_t cal_value=0,found = 0;
-    for(i=0;i<sizeof(poal_config->cal_level.cali_fft.fftsize)/sizeof(uint32_t);i++)
-    {
-        if(fft_size==poal_config->cal_level.cali_fft.fftsize[i])
-        {
-            cal_value=poal_config->cal_level.cali_fft.cali_value[i];
-            found=1;
-            break;
+    int32_t cal_value=0,freq_cal_value=0, found = 0, freq_found = 0;
+    uint32_t _fft = 0, _start_freq_khz = 0, _end_freq_khz = 0;
 
+    if(fft_size > 0){
+        for(i=0;i<sizeof(poal_config->cal_level.cali_fft.fftsize)/sizeof(uint32_t);i++)
+        {
+            if(fft_size==poal_config->cal_level.cali_fft.fftsize[i])
+            {
+                cal_value=poal_config->cal_level.cali_fft.cali_value[i];
+                found=1;
+                break;
+            }
         }
     }
+    
+    if(m_freq > 0){
+        for(i = 0; i< ARRAY_SIZE(poal_config->cal_level.spm_level.cal_node); i++){
+            _fft = poal_config->cal_level.spm_level.cal_node[i].fft;
+            _start_freq_khz = poal_config->cal_level.spm_level.cal_node[i].start_freq_khz;
+            _end_freq_khz = poal_config->cal_level.spm_level.cal_node[i].end_freq_khz;
+            if(_fft == 0 && _start_freq_khz ==0 && _end_freq_khz == 0){
+                break;
+            }
+            printf_debug("[%d], _fft=%u[%u],m_freq=%u, _start_freq_khz=%u, _end_freq_khz=%u\n", i, _fft,fft_size, m_freq,  _start_freq_khz, _end_freq_khz);
+            if(_fft == fft_size || _fft == 0){
+                if((m_freq >= _start_freq_khz*1000) &&  (m_freq < _end_freq_khz *1000)){
+                    freq_cal_value = poal_config->cal_level.spm_level.cal_node[i].power_level;
+                    cal_value += freq_cal_value;
+                    freq_found = 1;
+                }
+            }
+        }
+    }
+    
+    if(freq_found){
+        printf_warn("find the calibration level: %llu, %d\n", m_freq, cal_value);
+    }
+
     cal_value += poal_config->cal_level.specturm.global_roughly_power_lever;
-    printf_note("cal_value=%d\n",cal_value);
+    printf_warn("m_freq=%lluHz, cal_value=%d\n",m_freq, cal_value);
     if(found){
         printf_debug("find the fft_mgc calibration value: %d\n",cal_value);
     }else{
@@ -262,6 +289,12 @@ int8_t config_write_data(exec_cmd cmd, uint8_t type, uint8_t ch, void *data)
                     break;
                 case EX_AUDIO_SAMPLE_RATE:
                     poal_config->multi_freq_point_param[ch].audio_sample_rate = *(float *)data;
+                    break;
+                case EX_MID_FREQ:
+                    poal_config->multi_freq_point_param[ch].points[0].center_freq = *(uint64_t *)data;
+                    break;
+                case EX_BANDWITH:
+                    poal_config->multi_freq_point_param[ch].points[0].bandwidth = *(uint64_t *)data;
                     break;
                 default:
                     printf_err("not surpport type\n");
@@ -485,11 +518,12 @@ int8_t config_read_by_cmd(exec_cmd cmd, uint8_t type, uint8_t ch, void *data, ..
                      if(bw == 0)
                         bw = DEFAULT_BW_HZ;
                      for(int i = 0; i<sizeof(scanbw->bindwidth_hz)/sizeof(uint32_t); i++){
-                        printf_debug("bindwidth_hz=%u, %u\n", scanbw->bindwidth_hz[i], bw);
                         if(scanbw->bindwidth_hz[i] == bw){
-                            *(float *)data = scanbw->sideband_rate[i];
-                            scanbw->work_sideband_rate = scanbw->sideband_rate[i];
-                            found = 1;
+                            if(f_sgn(scanbw->sideband_rate[i]) > 0){
+                                *(float *)data = scanbw->sideband_rate[i];
+                                scanbw->work_sideband_rate = scanbw->sideband_rate[i];
+                                found = 1;
+                            }
                             break;
                         }
                     }
@@ -498,7 +532,7 @@ int8_t config_read_by_cmd(exec_cmd cmd, uint8_t type, uint8_t ch, void *data, ..
                         printf_debug("find side rate:%f, bw=%u\n",*(float *)data,  bw);
                     }else{
                         *(float *)data = DEFAULT_SIDEBAND;
-                        printf_warn("not find side rate, bw=%u, use default sideband=%f\n",  bw, *(float *)data);
+                        printf_note("not find side rate, bw=%u, use default sideband=%f\n",  bw, *(float *)data);
                         goto exit;
                     }
                     break;

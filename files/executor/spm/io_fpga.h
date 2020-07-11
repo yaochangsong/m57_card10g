@@ -28,6 +28,7 @@
 #define FPGA_BRAOD_BAND_BASE    (FPGA_REG_BASE+0x3000)
 #define FPGA_NARROR_BAND_BASE   (FPGA_REG_BASE+0x4000)
 #define FPGA_RF_BASE            (FPGA_REG_BASE+0x0100)
+#define FPGA_AUDIO_BASE   		FPGA_REG_BASE
 
 #define SYSTEM_CONFG_REG_OFFSET	0x0
 #define SYSTEM_CONFG_REG_LENGTH 0x100
@@ -37,6 +38,7 @@
 #define NARROW_BAND_REG_LENGTH 	0x100
 #define NARROW_BAND_CHANNEL_MAX_NUM 0x10
 #define CONFG_REG_LEN 0x100
+#define CONFG_AUDIO_OFFSET       0x800
 
 
 typedef struct _SYSTEM_CONFG_REG_
@@ -120,12 +122,18 @@ typedef struct _RF_REG_
     uint32_t direct_minus;   //直采衰减控制数据
 }RF_REG;
 
+typedef struct _AUDIO_REG_
+{
+    uint32_t volume;      //音量大小控制       byte 0 = 0x9a; byte 1 = 0xc0 + 31*dat/100;  dat为0-100的音量值
+}AUDIO_REG;
+
 typedef struct _FPGA_CONFIG_REG_
 {
 	SYSTEM_CONFG_REG *system;
     ADC_REG         *adcReg;
     SIGNAL_REG      *signal;
     RF_REG          *rfReg;
+    AUDIO_REG		*audioReg;
 	BROAD_BAND_REG  *broad_band;
 	NARROW_BAND_REG *narrow_band[NARROW_BAND_CHANNEL_MAX_NUM];
 }FPGA_CONFIG_REG;

@@ -31,9 +31,14 @@
 extern uint8_t * akt_assamble_data_frame_header_data(uint32_t *len, void *config);
 static int spm_stream_stop(enum stream_type type);
 
+#define DIRECT_FREQ_THR (200000000) /* 直采截止频率 */
+#define DIRECT_BANDWIDTH (256000000)
 #define DEFAULT_IQ_SEND_BYTE 512
+#define DEFAULT_AGC_REF_VAL  0x5e8
+
 size_t pagesize = 0;
-size_t iq_send_unit_byte = DEFAULT_IQ_SEND_BYTE;
+size_t iq_send_unit_byte = DEFAULT_IQ_SEND_BYTE;    /* IQ发送长度 */
+int32_t agc_ref_val_0dbm = DEFAULT_AGC_REF_VAL;     /* 信号为0DBm时对应的FPGA幅度值 */
 
 
 FILE *_file_fd;
@@ -98,7 +103,10 @@ static int32_t _get_run_timer(uint8_t index, uint8_t ch)
         return 0;
     }
     gettimeofday(&newTime, NULL);
+    //printf("newTime:%ld,%ld\n",newTime.tv_sec, newTime.tv_usec);
+    //printf("oldTime:%ld,%ld\n",oldTime->tv_sec, oldTime->tv_usec);
     _t_us = (newTime.tv_sec - oldTime->tv_sec)*1000000 + (newTime.tv_usec - oldTime->tv_usec); 
+    //printf("_t_us:%d\n",_t_us);
     if(_t_us > 0)
         ntime_us = _t_us; 
     else 
@@ -193,7 +201,7 @@ static int spm_create(void)
     return 0;
 }
 
-static ssize_t spm_stream_read(enum stream_type type, void **data)
+static ssize_t spm_stream_read(enum stream_type type, volatile void **data)
 {
     struct _spm_stream *pstream;
     ioctl_dma_status status;
@@ -227,7 +235,7 @@ static ssize_t spm_stream_read(enum stream_type type, void **data)
     }while(info.status == READ_BUFFER_STATUS_PENDING);
     readn = info.blocks[0].length;
     *data = pstream[type].ptr + info.blocks[0].offset;
-    printf_info("[%p, %p, offset=0x%x]%s, readn:%u\n", *data, pstream[type].ptr, info.blocks[0].offset,  pstream[type].name, readn);
+    printf_debug("[%p, %p, offset=0x%x]%s, readn:%u\n", *data, pstream[type].ptr, info.blocks[0].offset,  pstream[type].name, readn);
 
     return readn;
 }
@@ -273,7 +281,7 @@ static  float get_side_band_rate(uint32_t bandwidth)
 }
 
 /* 频谱数据整理 */
-static fft_t *spm_data_order(fft_t *fft_data, 
+static fft_t *spm_data_order(volatile fft_t *fft_data, 
                                 size_t fft_len,  
                                 size_t *order_fft_len,
                                 void *arg)
@@ -281,6 +289,8 @@ static fft_t *spm_data_order(fft_t *fft_data,
     struct spm_run_parm *run_args;
     float sigle_side_rate, side_rate;
     uint32_t single_sideband_size;
+    uint32_t offset = 0;
+    uint64_t start_freq_hz = 0;
     int i;
     size_t order_len = 0;
 
@@ -290,11 +300,12 @@ static fft_t *spm_data_order(fft_t *fft_data,
     }
         
     run_args = (struct spm_run_parm *)arg;
-    
     /* 获取边带率 */
-    side_rate  = get_side_band_rate(run_args->bandwidth);
+    side_rate  =  get_side_band_rate(run_args->scan_bw);
     /* 去边带后FFT长度 */
     order_len = (size_t)((float)(fft_len) / side_rate);
+    printf_debug("side_rate = %f[fft_len:%u, order_len=%u], scan_bw=%u\n", side_rate, fft_len, order_len, run_args->scan_bw);
+    // printf_warn("run_args->fft_ptr=%p, fft_data=%p, order_len=%u, fft_len=%u, side_rate=%f\n", run_args->fft_ptr, fft_data, order_len,fft_len, side_rate);
     /* 信号倒谱 */
     /*
        原始信号（注意去除中间边带）：==>真实输出信号；
@@ -304,15 +315,35 @@ static fft_t *spm_data_order(fft_t *fft_data,
                   \/                                                      
                  |边带  |
     */
+   // void *psrc = (void *)(fft_data+fft_len -(order_len/2));
+   #if 1
+    fft_t *pdst = calloc(1, 32*1024*2);
+    memcpy((uint8_t *)pdst,                 (uint8_t *)(fft_data) , fft_len*2);
+    memcpy((uint8_t *)run_args->fft_ptr,    (uint8_t *)(pdst+ fft_len -order_len/2 ), order_len*2);
+    memcpy((uint8_t *)(run_args->fft_ptr+order_len),    (uint8_t *)pdst , order_len*2);
+    free(pdst);
+    #else
     memcpy((uint8_t *)run_args->fft_ptr,                (uint8_t *)(fft_data+fft_len -order_len/2) , order_len);
     memcpy((uint8_t *)(run_args->fft_ptr+order_len),    (uint8_t *)fft_data , order_len);
-
-    if(run_args->scan_bw > run_args->bandwidth){
-        order_len = (order_len * run_args->bandwidth)/run_args->scan_bw;
-    }
+    #endif
+     if(run_args->mode == OAL_FAST_SCAN_MODE || run_args->mode ==OAL_MULTI_ZONE_SCAN_MODE){
+#if defined(SUPPORT_DIRECT_SAMPLE)
+        if((run_args->m_freq_s < DIRECT_FREQ_THR) && (run_args->m_freq_s > 0)){
+            order_len = (fft_len * run_args->bandwidth)/DIRECT_BANDWIDTH;//run_args->scan_bw;
+            offset = (run_args->s_freq_offset-28000000)*fft_len/DIRECT_BANDWIDTH;
+            printf_warn("s_freq_offset=%llu,fft_len=%u,order_len=%u, offset=%u, bandwidth=%u\n",run_args->s_freq_offset,fft_len, order_len, offset, run_args->bandwidth);
+        }else
+#endif
+         if(run_args->scan_bw > run_args->bandwidth){
+             order_len = (order_len * run_args->bandwidth)/run_args->scan_bw;
+             start_freq_hz = run_args->s_freq_offset - (run_args->m_freq_s - run_args->scan_bw/2);
+             offset = (order_len * start_freq_hz)/run_args->scan_bw;
+         }
+     }
     *order_fft_len = order_len;
-    
-    return (fft_t *)run_args->fft_ptr;
+    printf_debug("order_len=%u, offset = %u, start_freq_hz=%llu, s_freq_offset=%llu, m_freq=%llu, scan_bw=%u\n", 
+        order_len, offset, start_freq_hz, run_args->s_freq_offset, run_args->m_freq_s, run_args->scan_bw);
+    return (fft_t *)run_args->fft_ptr + offset;
 }
 
 static int spm_send_fft_data(void *data, size_t fft_len, void *arg)
@@ -358,7 +389,7 @@ static int spm_send_fft_data(void *data, size_t fft_len, void *arg)
     iov[0].iov_len = header_len;
     iov[1].iov_base = data;
     iov[1].iov_len = data_byte_size;
-    
+
     udp_send_vec_data(iov, 2);
 #endif
 #if (defined SUPPORT_DATA_PROTOCAL_XW)
@@ -487,6 +518,50 @@ static int spm_get_psd_analysis_result(void *data, size_t len)
     return 0;
 }
 
+static int spm_scan(uint64_t *s_freq_offset, uint64_t *e_freq, uint32_t *scan_bw, uint32_t *bw, uint64_t *m_freq)
+{
+    uint64_t _m_freq;
+    uint64_t _s_freq, _e_freq;
+    uint32_t _scan_bw, _bw;
+    
+    _s_freq = *s_freq_offset;
+    _e_freq = *e_freq;
+    _scan_bw = *scan_bw;
+#if defined(SUPPORT_DIRECT_SAMPLE)
+    #define DIRECT_MID_FREQ_HZ (128000000)
+    if(_s_freq < DIRECT_FREQ_THR ){
+        if(_e_freq < DIRECT_FREQ_THR){
+            _bw = _e_freq - _s_freq;
+            *s_freq_offset = _e_freq;
+        }else{
+            _bw = DIRECT_FREQ_THR - _s_freq;
+            *s_freq_offset = DIRECT_FREQ_THR;
+        }
+        *scan_bw = DIRECT_FREQ_THR;
+        *bw = _bw;
+        _m_freq = DIRECT_MID_FREQ_HZ;
+    }else
+#endif
+    {
+        _scan_bw = 175000000;
+        if((_e_freq - _s_freq)/_scan_bw > 0){
+            _bw = _scan_bw;
+            *s_freq_offset = _s_freq + _scan_bw;
+        }else{
+            _bw = _e_freq - _s_freq;
+            *s_freq_offset = _e_freq;
+        }
+        *scan_bw = _scan_bw;
+        _m_freq = _s_freq + _scan_bw/2;
+        *bw = _bw;
+    }
+    *m_freq = _m_freq;
+
+    return 0;
+}
+
+
+
 /* 自动增益控制  : 该函数在频谱处理线程中，循环调用。通过不断控制，逐渐逼近设置幅度值 */
 static int spm_agc_ctrl(int ch, struct spm_context *ctx)
 {
@@ -501,7 +576,7 @@ static int spm_agc_ctrl(int ch, struct spm_context *ctx)
     */
     
     #define AGC_CTRL_PRECISION      2       /* 控制精度+-2dbm */
-    #define AGC_REF_VAL             0x5e8    /* 信号为0DBm时对应的FPGA幅度值 */
+    //#define AGC_REF_VAL             0x5e8 /* 信号为0DBm时对应的FPGA幅度值 */
     #define AGC_MODE                1       /* 自动增益模式 */
     #define MGC_MODE                0       /* 手动增益模式 */
     #define RF_GAIN_THRE            30      /* 增益到达该阀值，开启射频增益/衰减 */
@@ -517,6 +592,8 @@ static int spm_agc_ctrl(int ch, struct spm_context *ctx)
     static uint8_t cur_dbm[MAX_RADIO_CHANNEL_NUM] = {0};
     static int8_t ctrl_method[MAX_RADIO_CHANNEL_NUM]={-1};
     uint8_t is_cur_dbm_change = false;
+    
+    printf_info("gain_ctrl_method:%d agc_ctrl_time:%d agc_ctrl_dbm:%d\n", gain_ctrl_method,agc_ctrl_time,agc_ctrl_dbm);
 
     /* 当模式变化时， 需要通知内核更新模式信息 */
     if(ctrl_method[ch] != gain_ctrl_method){
@@ -538,7 +615,7 @@ static int spm_agc_ctrl(int ch, struct spm_context *ctx)
         return -1;
     }
     printf_info("read agc value=%d\n", agc_val);
-    dbm_val = (int32_t)(20 * log10((double)agc_val / ((double)AGC_REF_VAL)));
+    dbm_val = (int32_t)(20 * log10((double)agc_val / ((double)agc_ref_val_0dbm)));
     /* 判断读取的幅度值是否>设置的输出幅度+控制精度 */
     if(dbm_val > (agc_ctrl_dbm+AGC_CTRL_PRECISION)){
         if(cur_dbm[ch] > 0){
@@ -579,13 +656,19 @@ exit_mode:
 static int spm_sample_ctrl(uint64_t freq_hz)
 {
     uint8_t val = 0;
+    static int8_t val_dup = -1;
     #define _200MHZ 200000000
     if(freq_hz < _200MHZ){
         val = 1;    /* 直采开启 */
     }else{
         val = 0;    /* 直采关闭 */
     }
-    printf_debug("samle ctrl:freq_hz =%lluHz, direct %d\n", freq_hz, val);
+    if(val_dup == val){
+        return 0;
+    }else{
+        val_dup = val;
+    }
+    printf_note("samle ctrl:freq_hz =%lluHz, direct %d\n", freq_hz, val);
     executor_set_command(EX_MID_FREQ_CMD, EX_SAMPLE_CTRL,    0, &val);
     executor_set_command(EX_RF_FREQ_CMD,  EX_RF_SAMPLE_CTRL, 0, &val);
     
@@ -633,8 +716,9 @@ static long signal_residency_policy(int ch, int policy, bool is_signal)
 bool is_sigal_residency_time_arrived(uint8_t ch, int policy, bool is_signal)
 {
     long residency_time = 0;
+    //printf("is_signal:%d, policy:%d\n",is_signal,policy);
     residency_time = signal_residency_policy(ch, policy, is_signal);
-    if(_get_run_timer(1, ch) < residency_time){
+    if(_get_run_timer(1, ch) < residency_time*1000){
         return false;
     }
     _reset_run_timer(1, ch);
@@ -850,6 +934,7 @@ static const struct spm_backend_ops spm_ops = {
     .stream_start = spm_stream_start,
     .stream_stop = spm_stream_stop,
     .sample_ctrl = spm_sample_ctrl,
+    .spm_scan = spm_scan,
     .close = _spm_close,
 };
 
@@ -870,6 +955,10 @@ struct spm_context * spm_create_fpga_context(void)
     printf_note("iq send unit byte:%u\n", iq_send_unit_byte);
     ctx->ops = &spm_ops;
     ctx->pdata = &config_get_config()->oal_config;
+    
+    if( config_get_config()->oal_config.ctrl_para.agc_ref_val_0dbm != 0)
+        agc_ref_val_0dbm = config_get_config()->oal_config.ctrl_para.agc_ref_val_0dbm;
+    
     _init_run_timer(MAX_RADIO_CHANNEL_NUM);
 err_set_errno:
     errno = -ret;

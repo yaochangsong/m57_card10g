@@ -29,6 +29,8 @@ do_install() {
          install -m 0755 shell/led.sh ${D}/etc/
 		 install -m 0755 shell/network.sh ${D}/etc/
          install -m 0755 shell/check.sh ${D}/etc/
+         install -m 0755 shell/reset-event.sh ${D}/etc/
+         install -m 0755 shell/reset-button.sh ${D}/etc/
          install -m 0755 conf/config.json ${D}/etc/
          install -m 0755 tools/xjson ${D}${bindir}
 }

@@ -530,6 +530,14 @@ struct fs_context *get_fs_ctx(void)
     return fs_ctx;
 }
 
+struct fs_context *get_fs_ctx_ex(void)
+{
+    if(fs_ctx == NULL){
+        fs_ctx = fs_create_context();
+    }
+    return fs_ctx;
+}
+
 struct fs_context * fs_create_context(void)
 {
     unsigned int len;

@@ -102,10 +102,17 @@ uint8_t rf_set_interface(uint8_t cmd,uint8_t ch,void *data){
                 uint8_t mode;
                 uint8_t reg_val;
             };
+            /*
             struct _reg reg[] = {
                     {0,     0x02},
                     {1,     0x00},
                     {2,     0x01},
+            };*/
+
+            struct _reg reg[] = {
+                    {1,     0x02},
+                    {2,     0x00},
+                    {3,     0x01},
             };
             
             for(i = 0; i < ARRAY_SIZE(reg); i++){

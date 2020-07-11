@@ -599,7 +599,7 @@ static int spm_agc_ctrl(int ch, struct spm_context *ctx)
     static int8_t ctrl_method[MAX_RADIO_CHANNEL_NUM]={-1};
     uint8_t is_cur_dbm_change = false;
     
-    printf_info("gain_ctrl_method:%d agc_ctrl_time:%d agc_ctrl_dbm:%d\n", gain_ctrl_method,agc_ctrl_time,agc_ctrl_dbm);
+    //printf_info("gain_ctrl_method:%d agc_ctrl_time:%d agc_ctrl_dbm:%d\n", gain_ctrl_method,agc_ctrl_time,agc_ctrl_dbm);
 
     /* 当模式变化时， 需要通知内核更新模式信息 */
     if(ctrl_method[ch] != gain_ctrl_method){

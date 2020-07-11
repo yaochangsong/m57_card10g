@@ -431,11 +431,27 @@ static uint32_t io_set_dec_middle_freq_reg(uint64_t dec_middle_freq, uint64_t mi
                 printf_err("Error read bandwidth=%u\n", bandwidth);
                 return -1;
         }
-        printf_note("read bandwidth=%uHz\n", bandwidth);
-        if(bandwidth /2 + dec_middle_freq < FREQ_ThRESHOLD_HZ){
-            reg = (uint32_t)((dec_middle_freq *FREQ_MAGIC2)/FREQ_MAGIC1);
+#define DIRECT_FREQ_THR (200000000)
+        if(dec_middle_freq< DIRECT_FREQ_THR ){
+            uint32_t reg;
+            int32_t val;
+//#define FREQ_MAGIC2 (0x100000000ULL)  /* 2^32 */
+//#define FREQ_MAGIC1 (256000000)
+#define MID_FREQ_MAGIC1 (128000000)
+            if(dec_middle_freq >= MID_FREQ_MAGIC1){
+                reg = (dec_middle_freq - MID_FREQ_MAGIC1)*FREQ_MAGIC2/FREQ_MAGIC1;
+            }else{
+                val = dec_middle_freq - MID_FREQ_MAGIC1;
+                reg = (dec_middle_freq+FREQ_MAGIC1)*FREQ_MAGIC2/FREQ_MAGIC1;
+            }
+            printf_debug("feq:%llu, reg=0x%x\n", dec_middle_freq, reg);
             return reg;
         }
+        //("read bandwidth=%uHz\n", bandwidth);
+        //if(bandwidth /2 + dec_middle_freq < FREQ_ThRESHOLD_HZ){
+        //    reg = (uint32_t)((dec_middle_freq *FREQ_MAGIC2)/FREQ_MAGIC1);
+        //return reg;
+       // }
 #endif
         if(middle_freq > dec_middle_freq){
             delta_freq = FREQ_MAGIC1 +  dec_middle_freq - middle_freq ;
@@ -470,7 +486,7 @@ int32_t io_set_dec_middle_freq(uint32_t ch, uint64_t dec_middle_freq, uint64_t m
     get_fpga_reg()->narrow_band[ch]->signal_carrier = reg;
 #endif
 #endif
-    printf_debug("[**REGISTER**]ch:%d, MiddleFreq =%llu, Decode MiddleFreq:%llu, reg=0x%x\n", ch, middle_freq, dec_middle_freq, reg);
+    printf_warn("[**REGISTER**]ch:%d, MiddleFreq =%llu, Decode MiddleFreq:%llu, reg=0x%x\n", ch, middle_freq, dec_middle_freq, reg);
     return ret;
 }
 

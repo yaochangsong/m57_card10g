@@ -425,19 +425,12 @@ static uint32_t io_set_dec_middle_freq_reg(uint64_t dec_middle_freq, uint64_t mi
         uint32_t reg;
         int32_t ret = 0;
 #if defined(SUPPORT_DIRECT_SAMPLE)
-        #define FREQ_ThRESHOLD_HZ (100000000)
-       // uint32_t bandwidth = 0;
-       // if(config_read_by_cmd(EX_MID_FREQ_CMD, EX_BANDWITH, 0, &bandwidth, 0) == -1){
-       //         printf_err("Error read bandwidth=%u\n", bandwidth);
-       //         return -1;
-       // }
+#define FREQ_ThRESHOLD_HZ (100000000)
+#define MID_FREQ_MAGIC1 (128000000)
 #define DIRECT_FREQ_THR (200000000)
         if(dec_middle_freq< DIRECT_FREQ_THR ){
             uint32_t reg;
             int32_t val;
-//#define FREQ_MAGIC2 (0x100000000ULL)  /* 2^32 */
-//#define FREQ_MAGIC1 (256000000)
-#define MID_FREQ_MAGIC1 (128000000)
             if(dec_middle_freq >= MID_FREQ_MAGIC1){
                 reg = (dec_middle_freq - MID_FREQ_MAGIC1)*FREQ_MAGIC2/FREQ_MAGIC1;
             }else{
@@ -447,11 +440,6 @@ static uint32_t io_set_dec_middle_freq_reg(uint64_t dec_middle_freq, uint64_t mi
             printf_debug("feq:%llu, reg=0x%x\n", dec_middle_freq, reg);
             return reg;
         }
-        //("read bandwidth=%uHz\n", bandwidth);
-        //if(bandwidth /2 + dec_middle_freq < FREQ_ThRESHOLD_HZ){
-        //    reg = (uint32_t)((dec_middle_freq *FREQ_MAGIC2)/FREQ_MAGIC1);
-        //return reg;
-       // }
 #endif
         if(middle_freq > dec_middle_freq){
             delta_freq = FREQ_MAGIC1 +  dec_middle_freq - middle_freq ;
@@ -490,6 +478,30 @@ int32_t io_set_dec_middle_freq(uint32_t ch, uint64_t dec_middle_freq, uint64_t m
     return ret;
 }
 
+
+int32_t io_set_middle_freq(uint32_t ch, uint64_t middle_freq)
+{
+#if defined(SUPPORT_DIRECT_SAMPLE)
+#define DIRECT_FREQ_THR (200000000) /* 直采截止频率 */
+#define FREQ_MAGIC2 (0x100000000ULL)  /* 2^32 */
+#define FREQ_MAGIC1 (256000000)
+#define MID_FREQ_MAGIC1 (128000000)/* 直采采样频率 */
+    uint32_t reg = 0;
+    if(middle_freq < DIRECT_FREQ_THR ){
+        int32_t val;
+        if(middle_freq >= MID_FREQ_MAGIC1){
+            reg = (middle_freq - MID_FREQ_MAGIC1)*FREQ_MAGIC2/FREQ_MAGIC1;
+        }else{
+            val = middle_freq - MID_FREQ_MAGIC1;
+            printf_note("val:%d\n", val);
+            reg = (val+FREQ_MAGIC1)*FREQ_MAGIC2/FREQ_MAGIC1;
+        }
+    }
+    get_fpga_reg()->broad_band->signal_carrier = reg;
+    printf_debug(">>>>>>feq:%llu, reg=0x%x\n", middle_freq, reg);
+#endif
+    return 0;
+}
 
 /*设置子通道解调中心频率因子*/
 int32_t io_set_subch_dec_middle_freq(uint32_t subch, uint64_t dec_middle_freq, uint64_t middle_freq)

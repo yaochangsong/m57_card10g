@@ -35,27 +35,12 @@ uint8_t rf_set_interface(uint8_t cmd,uint8_t ch,void *data){
             }
 #elif defined(SUPPORT_RF_FPGA)
             uint32_t freq_khz = old_freq/1000;/* NOTE: Hz => KHz */
-#if defined(SUPPORT_DIRECT_SAMPLE)
+    #if defined(SUPPORT_DIRECT_SAMPLE)
             #define DIRECT_FREQ_THR (200000000)
             if(old_freq < DIRECT_FREQ_THR ){
-                uint32_t reg;
-                int32_t val;
-                #define FREQ_MAGIC2 (0x100000000ULL)  /* 2^32 */
-                #define FREQ_MAGIC1 (256000000)
-                #define MID_FREQ_MAGIC1 (128000000)
-                if(old_freq >= MID_FREQ_MAGIC1){
-                    reg = (old_freq - MID_FREQ_MAGIC1)*FREQ_MAGIC2/FREQ_MAGIC1;
-                }else{
-                    val = old_freq - MID_FREQ_MAGIC1;
-                    printf_note("val:%d\n", val);
-                    reg = (val+FREQ_MAGIC1)*FREQ_MAGIC2/FREQ_MAGIC1;
-                }
-                printf_warn("feq:%llu, reg=0x%x\n", old_freq, reg);
-                get_fpga_reg()->broad_band->signal_carrier = reg;
-                usleep(2000);
-                break; 
+                break;
             }
-#endif
+    #endif
             printf_note("freq_khz=%ukhz\n", freq_khz);
             get_fpga_reg()->rfReg->freq_khz = freq_khz;
             usleep(2000);

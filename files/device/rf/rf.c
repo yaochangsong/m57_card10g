@@ -43,7 +43,7 @@ uint8_t rf_set_interface(uint8_t cmd,uint8_t ch,void *data){
     #endif
             printf_note("freq_khz=%ukhz\n", freq_khz);
             get_fpga_reg()->rfReg->freq_khz = freq_khz;
-            usleep(2000);
+            usleep(1000);
 #endif
             break; 
         }
@@ -204,6 +204,7 @@ uint8_t rf_set_interface(uint8_t cmd,uint8_t ch,void *data){
             /* 0关闭直采，1开启直采 */
             printf_note("[**RF**] direct control=%d, %d\n", val, _data);
             get_fpga_reg()->rfReg->direct_control = val;
+            usleep(100);
 #endif
             break;
         }

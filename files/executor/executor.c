@@ -180,12 +180,12 @@ static  int8_t  executor_fragment_scan(uint32_t fregment_num,uint8_t ch, work_mo
         r_args->freq_resolution = poal_config->multi_freq_fregment_para[ch].fregment[fregment_num].freq_resolution;
         printf_debug("[%d]s_freq=%llu, e_freq=%llu, scan_bw=%u, bandwidth=%u,m_freq=%llu, m_freq_s=%llu\n", 
             index, r_args->s_freq, r_args->e_freq, r_args->scan_bw, r_args->bandwidth, r_args->m_freq, r_args->m_freq_s);
+        spmctx->ops->sample_ctrl(r_args->m_freq_s);
         executor_set_command(EX_RF_FREQ_CMD, EX_RF_MID_FREQ, ch, &_m_freq_hz);
         executor_set_command(EX_RF_FREQ_CMD, EX_RF_LOW_NOISE, ch, &_m_freq_hz);
         executor_set_command(EX_MID_FREQ_CMD, EX_MID_FREQ,    ch, &_m_freq_hz);
         executor_set_command(EX_MID_FREQ_CMD, EX_FPGA_CALIBRATE, ch, &fftsize, _m_freq_hz);
         index ++;
-        spmctx->ops->sample_ctrl(r_args->m_freq_s);
         if(poal_config->enable.psd_en){
             io_set_enable_command(PSD_MODE_ENABLE, ch, -1, r_args->fft_size);
         }
@@ -253,6 +253,7 @@ static int8_t  executor_points_scan(uint8_t ch, work_mode_type mode, void *args)
         r_args->freq_resolution = (float)point->points[i].bandwidth * BAND_FACTOR / (float)point->points[i].fft_size;
         printf_note("ch=%d, s_freq=%llu, e_freq=%llu, fft_size=%u, d_method=%d\n", ch, s_freq, e_freq, r_args->fft_size,r_args->d_method);
         printf_note("rf scan bandwidth=%u, middlebw=%u, m_freq=%llu, freq_resolution=%f\n",r_args->scan_bw,r_args->bandwidth , r_args->m_freq, r_args->freq_resolution);
+        spmctx->ops->sample_ctrl(r_args->m_freq);
         executor_set_command(EX_RF_FREQ_CMD,  EX_RF_MID_FREQ, ch, &point->points[i].center_freq);
         executor_set_command(EX_RF_FREQ_CMD,  EX_RF_LOW_NOISE, ch, &point->points[i].center_freq);
         executor_set_command(EX_MID_FREQ_CMD, EX_BANDWITH, ch, &point->points[i].bandwidth);
@@ -300,7 +301,6 @@ static int8_t  executor_points_scan(uint8_t ch, work_mode_type mode, void *args)
             printf_note("is sigal: %s, strength:%d\n", (is_signal == true ? "Yes":"No"), strength);
         }
 #endif
-        spmctx->ops->sample_ctrl(r_args->m_freq);
         s_time = time(NULL);
         do{
             if(poal_config->enable.psd_en){

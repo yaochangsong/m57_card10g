@@ -442,7 +442,7 @@ static uint32_t io_set_dec_middle_freq_reg(uint64_t dec_middle_freq, uint64_t mi
                 reg = (dec_middle_freq - MID_FREQ_MAGIC1)*FREQ_MAGIC2/FREQ_MAGIC1;
             }else{
                 val = dec_middle_freq - MID_FREQ_MAGIC1;
-                reg = (dec_middle_freq+FREQ_MAGIC1)*FREQ_MAGIC2/FREQ_MAGIC1;
+                reg = (val+FREQ_MAGIC1)*FREQ_MAGIC2/FREQ_MAGIC1;
             }
             printf_debug("feq:%llu, reg=0x%x\n", dec_middle_freq, reg);
             return reg;

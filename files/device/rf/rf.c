@@ -48,7 +48,7 @@ uint8_t rf_set_interface(uint8_t cmd,uint8_t ch,void *data){
                 }else{
                     val = old_freq - MID_FREQ_MAGIC1;
                     printf_note("val:%d\n", val);
-                    reg = (old_freq+FREQ_MAGIC1)*FREQ_MAGIC2/FREQ_MAGIC1;
+                    reg = (val+FREQ_MAGIC1)*FREQ_MAGIC2/FREQ_MAGIC1;
                 }
                 printf_warn("feq:%llu, reg=0x%x\n", old_freq, reg);
                 get_fpga_reg()->broad_band->signal_carrier = reg;

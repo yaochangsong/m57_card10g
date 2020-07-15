@@ -66,7 +66,7 @@ static inline void spm_iq_deal_notify(void *arg)
    在该模式下，应以最快速度读取发送数据；
    使能后，不断读取、组包、发送；读取前无需停止DMA。
 */
-   static char notify;
+   //static char notify;
 
 void spm_iq_handle_thread(void *arg)
 {
@@ -82,7 +82,7 @@ void spm_iq_handle_thread(void *arg)
 
 loop:
     printf_warn("######Wait IQ enable######\n");
-    notify = 1;
+    //notify = 1;
     /* 通过条件变量阻塞方式等待数据使能 */
     pthread_mutex_lock(&spm_iq_cond_mutex);
     while(subch_bitmap_weight() == 0 && poal_config->enable.audio_en == 0)
@@ -108,7 +108,7 @@ loop:
             sleep(1);
             goto loop;
         }
-        usleep(1);
+        //usleep(1);
     }while(1);
     
 }
@@ -131,14 +131,14 @@ void spm_deal(struct spm_context *ctx, void *args)
                 ptr_run->ch, ptr_run->s_freq, ptr_run->e_freq, ptr_run->bandwidth);
         
         //usleep(10);
-        if(notify == 1)
-        {
-          printf_note("send:ch:%d, s_freq:%llu, e_freq:%llu, bandwidth=%u\n", 
-          ptr_run->ch, ptr_run->s_freq, ptr_run->e_freq, ptr_run->bandwidth);
-          notify =0;
-          sleep(1);
+        //if(notify == 1)
+        //{
+          //printf_note("send:ch:%d, s_freq:%llu, e_freq:%llu, bandwidth=%u\n", 
+          //ptr_run->ch, ptr_run->s_freq, ptr_run->e_freq, ptr_run->bandwidth);
+          //notify =0;
+          //sleep(1);
           spm_iq_deal_notify(&args);
-        }
+        //}
         
     }
     if(pctx->pdata->enable.psd_en){

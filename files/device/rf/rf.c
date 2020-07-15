@@ -300,12 +300,12 @@ uint8_t rf_read_interface(uint8_t cmd,uint8_t ch,void *data){
             break; 
         }
         case EX_RF_STATUS_TEMPERAT :{
+            int16_t  rf_temperature = 0;
 #if defined(SUPPORT_PLATFORM_ARCH_ARM)
 #if defined(SUPPORT_RF_SPI)
-            int16_t  rf_temperature = 0;
+            
             ret = spi_rf_get_command(SPI_RF_TEMPRATURE_GET, &rf_temperature);
 #elif defined(SUPPORT_RF_FPGA)
-		    int16_t rf_temperature = 0;
 			#define RF_TEMPERATURE_FACTOR 0.0625
 			rf_temperature = get_fpga_reg()->rfReg->temperature;
 			printf_err("rf temprature 0x:%x\n", rf_temperature);

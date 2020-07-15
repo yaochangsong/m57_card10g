@@ -271,6 +271,7 @@ static int json_write_config_param(cJSON* root, struct poal_config *config)
     node = cJSON_GetObjectItem(network, "mac");
     printf_debug("mac is:%s\n",node->valuestring);
 
+#ifdef SUPPORT_NET_WZ
     /* 10g */
     saddr.sin_addr.s_addr = config->network_10g.gateway;
     json_write_string_param(NULL, "network_10g", "gateway", inet_ntoa(saddr.sin_addr));
@@ -299,7 +300,7 @@ static int json_write_config_param(cJSON* root, struct poal_config *config)
     json_write_string_param(NULL, "network_10g", "mac", temp);
     node = cJSON_GetObjectItem(network, "mac");
     printf_debug("10g mac is:%s\n",node->valuestring);
-
+#endif
     /*control_parm*/
      json_write_int_param(NULL, "control_parm", "spectrum_time_interval", config->ctrl_para.spectrum_time_interval);
      json_write_int_param(NULL, "control_parm", "bandwidth_remote_ctrl", config->ctrl_para.remote_local);

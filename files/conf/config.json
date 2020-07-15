@@ -57,37 +57,37 @@
 				"fftsize":	512,
 				"start_freq":	0,
 				"end_freq":	200000,
-				"value":	-100
+				"value":	0
 			},{
 				"fftsize":	1024,
 				"start_freq":	0,
 				"end_freq":	200000,
-				"value":	-130
+				"value":	0
 			},{
 				"fftsize":	2048,
 				"start_freq":	0,
 				"end_freq":	200000,
-				"value":	-140
+				"value":	0
 			},{
 				"fftsize":	4096,
 				"start_freq":	0,
 				"end_freq":	200000,
-				"value":	-50
+				"value":	0
 			},{
 				"fftsize":	8192,
 				"start_freq":	0,
 				"end_freq":	200000,
-				"value":	-50
+				"value":	0
 			},{
 				"fftsize":	16384,
 				"start_freq":	0,
 				"end_freq":	200000,
-				"value":	-40
+				"value":	0
 			},{
 				"fftsize":	32768,
 				"start_freq":	0,
 				"end_freq":	200000,
-				"value":	-50
+				"value":	0
 			}],
 		"analysis_power_global":	-195,
 		"analysis_freq":	[{

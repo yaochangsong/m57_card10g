@@ -32,25 +32,25 @@
 		"psd_power_global":	1000,
 		"psd_fftsize":	[{
 				"fftsize":	512,
-				"value":	10
+				"value":	0
 			}, {
 				"fftsize":	1024,
-				"value":	10
+				"value":	0
 			}, {
 				"fftsize":	2048,
-				"value":	10
+				"value":	0
 			}, {
 				"fftsize":	4096,
-				"value":	10
+				"value":	0
 			}, {
 				"fftsize":	8192,
-				"value":	10
+				"value":	0
 			}, {
 				"fftsize":	16384,
-				"value":	10
+				"value":	0
 			}, {
 				"fftsize":	32768,
-				"value":	10
+				"value":	0
 			}],
 		"psd_freq":	[
 			{
@@ -108,6 +108,8 @@
 				"renew_data_len":	2
 			}],
 		"mgc_gain_global":	4,
+		"low_distortion_power_agc":	100,
+		"low_noise_power_agc":	140,
 		"mgc_gain_freq":	[{
 				"start_freq":	1050000,
 				"end_freq":	1250000,

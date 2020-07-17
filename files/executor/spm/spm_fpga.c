@@ -580,7 +580,7 @@ static int spm_agc_ctrl(int ch, struct spm_context *ctx)
 
     */
     
-    #define AGC_CTRL_PRECISION      1       /* 控制精度+-2dbm */
+    #define AGC_CTRL_PRECISION      0       /* 控制精度+-2dbm */
     //#define AGC_REF_VAL             0x5e8 /* 信号为0DBm时对应的FPGA幅度值 */
     #define AGC_MODE                1       /* 自动增益模式 */
     #define MGC_MODE                0       /* 手动增益模式 */
@@ -590,29 +590,52 @@ static int spm_agc_ctrl(int ch, struct spm_context *ctx)
     uint8_t gain_ctrl_method = ctx->pdata->rf_para[ch].gain_ctrl_method;
     uint16_t agc_ctrl_time= ctx->pdata->rf_para[ch].agc_ctrl_time;
     int8_t agc_ctrl_dbm = ctx->pdata->rf_para[ch].agc_mid_freq_out_level;
+    uint32_t fft_size_agc = ctx->pdata->multi_freq_point_param[ch].points[0].fft_size;
     uint16_t agc_val = 0;
     int8_t dbm_val = 0;
-    int ret = -1;
+    int ret = -1,rf_mode;
     int8_t rf_gain = 0, mid_gain = 0;
     /* 各通道初始dbm为0 */
     //static uint8_t cur_dbm[MAX_RADIO_CHANNEL_NUM] = {0};
     static int8_t ctrl_method[MAX_RADIO_CHANNEL_NUM]={-1};
+    static int  rf_mode_s = -1;
     uint8_t is_cur_dbm_change = false;
     
-    //printf_info("gain_ctrl_method:%d agc_ctrl_time:%d agc_ctrl_dbm:%d\n", gain_ctrl_method,agc_ctrl_time,agc_ctrl_dbm);
+    printf_info("gain_ctrl_method:%d agc_ctrl_time:%d agc_ctrl_dbm:%d\n", gain_ctrl_method,agc_ctrl_time,agc_ctrl_dbm);
+    //rf_mode = io_get_rf_mode();
+    rf_mode = ctx->pdata->rf_para[ch].rf_mode_code;
 
     /* 当模式变化时， 需要通知内核更新模式信息 */
     if(ctrl_method[ch] != gain_ctrl_method){
         ctrl_method[ch] = gain_ctrl_method;
+        printf_note("ch:%d ctrl_method:%d rf_mode:%d fft_size_agc:%d\n",ch,ctrl_method[ch],rf_mode,fft_size_agc);
         if(gain_ctrl_method == MGC_MODE){
+            executor_set_command(EX_MID_FREQ_CMD, EX_FPGA_CALIBRATE, ch, &fft_size_agc,0, MGC_MODE);
             goto exit_mode;
         }
+        else if(gain_ctrl_method == AGC_MODE){
+            executor_set_command(EX_MID_FREQ_CMD, EX_FPGA_CALIBRATE, ch, &fft_size_agc,0,AGC_MODE);
+        }
     }
+
+
 
     /* 非自动模式退出控制 */
     if(agc_ctrl_time == 0 ||gain_ctrl_method != AGC_MODE){
         return -1;
     }
+
+    
+    if(rf_mode_s != rf_mode){
+        rf_mode_s = rf_mode;
+        printf_note("ctrl_method:%d rf_mode:%d\n",rf_mode_s,rf_mode);
+        if(gain_ctrl_method == AGC_MODE){
+            executor_set_command(EX_MID_FREQ_CMD, EX_FPGA_CALIBRATE, ch, &fft_size_agc, 0,AGC_MODE);
+        }
+    }
+
+    //executor_set_command(EX_MID_FREQ_CMD, EX_FPGA_CALIBRATE, ch, 1024, 0);
+    
     if(_get_run_timer(0, ch) < agc_ctrl_time){
         return -1;
     }
@@ -620,7 +643,7 @@ static int spm_agc_ctrl(int ch, struct spm_context *ctx)
     if((agc_val = io_get_agc_thresh_val(ch)) < 0){
         return -1;
     }
-    printf_info("read agc ch=%d value=%d agc_ref_val_0dbm=%d\n",ch, agc_val,agc_ref_val_0dbm);
+    printf_note("read agc ch=%d value=%d agc_ref_val_0dbm=%d \n",ch, agc_val,agc_ref_val_0dbm);
     dbm_val = (int32_t)(20 * log10((double)agc_val / ((double)agc_ref_val_0dbm)));
     
     /* 判断读取的幅度值是否>设置的输出幅度+控制精度 */
@@ -659,7 +682,7 @@ static int spm_agc_ctrl(int ch, struct spm_context *ctx)
     /* 若当前幅度值需要修改；则按档次开始设置 ：
         
     */
-    printf_info("dbm_val:%d  agc_ctrl_dbm:%d is_cur_dbm_change:%d\n",dbm_val,agc_ctrl_dbm,is_cur_dbm_change);
+    printf_note("dbm_val:%d  agc_ctrl_dbm:%d is_cur_dbm_change:%d\n",dbm_val,agc_ctrl_dbm,is_cur_dbm_change);
     if(is_cur_dbm_change == true){
         //int8_t rf_gain = 0, mid_gain = 0;
         if(cur_dbm[ch] <= RF_GAIN_THRE){
@@ -679,7 +702,7 @@ static int spm_agc_ctrl(int ch, struct spm_context *ctx)
         ret = executor_set_command(EX_RF_FREQ_CMD, EX_RF_MGC_GAIN, ch, &mid_gain);
         usleep(500);
     }
-    printf_info("rf_gain:%d  mid_gain:%d cur_dbm[ch]:%d\n", rf_gain,mid_gain,cur_dbm[ch]);
+    printf_note("rf_gain:%d  mid_gain:%d cur_dbm[ch]:%d\n", rf_gain,mid_gain,cur_dbm[ch]);
 exit_mode:
     #if defined(SUPPORT_SPECTRUM_KERNEL) 
     ret = executor_set_command(EX_MID_FREQ_CMD, EX_FILL_RF_PARAM, ch, &cur_dbm[ch], gain_ctrl_method);

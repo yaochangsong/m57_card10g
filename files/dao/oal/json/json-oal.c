@@ -775,6 +775,18 @@ static int json_parse_config_param(const cJSON* root, struct poal_config *config
         config->cal_level.mgc.global_gain_val = value->valueint;
         printf_debug("mgc_gain_global=>value is:%d\n",value->valueint);
     } 
+
+    value = cJSON_GetObjectItem(calibration, "low_distortion_power_agc");
+    if(value!= NULL && cJSON_IsNumber(value)){
+        config->cal_level.specturm.low_distortion_power_level = value->valueint;
+        printf_debug("low_distortion_power_agc=>value is:%d\n",config->cal_level.specturm.low_distortion_power_level);
+    }
+    value = cJSON_GetObjectItem(calibration, "low_noise_power_agc");
+    if(value!= NULL && cJSON_IsNumber(value)){
+        config->cal_level.specturm.low_noise_power_level = value->valueint;
+        printf_debug("low_noise_power_agc=>value is:%d  %d\n",config->cal_level.specturm.low_noise_power_level,value->valueint);
+    }
+    
     /* mgc_gain_freq */
     cJSON *mgc_gain_freq=NULL;
     mgc_gain_freq = cJSON_GetObjectItem(calibration, "mgc_gain_freq");

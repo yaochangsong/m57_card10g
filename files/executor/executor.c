@@ -69,7 +69,7 @@ int executor_tcp_disconnect_notify(void *cl)
     /* reload udp client */
     list_for_each_entry_safe(cl_list, list_tmp, &srv->clients, list){
         ucli[index].cid = cl_list->ch;
-        /* UDP链表以大端模式存储客户端地址信息；内部以小端模式处理；注意转换 */
+        /* UDP链表以大端模式存储客户端地址信息；内部以小端模式处理；注意转�?*/
         ucli[index].ipaddr = ntohl(cl_list->peer_addr.sin_addr.s_addr);
         ucli[index].port = ntohs(cl_list->peer_addr.sin_port);
         printf_note("reload client index=%d, cid=%d, [ip:%x][port:%d][10g_ipaddr=0x%x][10g_port=%d], online\n", 
@@ -84,7 +84,7 @@ int executor_tcp_disconnect_notify(void *cl)
     /* client is 0 */
     if(index == 0){
         #if defined(SUPPORT_XWFS)
-        xwfs_stop_backtrace(NULL);  /* 停止回溯 ，回到正常状态*/
+        xwfs_stop_backtrace(NULL);  /* 停止回溯 ，回到正常状�?/
         #endif
         #ifdef SUPPORT_NET_WZ
         io_set_10ge_net_onoff(0);   /* 客户端离线，关闭万兆传输 */
@@ -98,7 +98,7 @@ int executor_tcp_disconnect_notify(void *cl)
             executor_set_command(EX_MID_FREQ_CMD, EX_SUB_CH_DEC_METHOD, i, &default_method);
             memset(&poal_config->sub_ch_enable[i], 0, sizeof(struct output_en_st));
         }
-        /* 所有客户端离线，关闭相关使能，线程复位到等待状态 */
+        /* 所有客户端离线，关闭相关使能，线程复位到等待状�?*/
         memset(&poal_config->enable, 0, sizeof(poal_config->enable));
         poal_config->enable.bit_reset = true; /* reset(stop) all working task */
     }
@@ -184,7 +184,7 @@ static  int8_t  executor_fragment_scan(uint32_t fregment_num,uint8_t ch, work_mo
         executor_set_command(EX_RF_FREQ_CMD, EX_RF_MID_FREQ, ch, &_m_freq_hz);
         executor_set_command(EX_RF_FREQ_CMD, EX_RF_LOW_NOISE, ch, &_m_freq_hz);
         executor_set_command(EX_MID_FREQ_CMD, EX_MID_FREQ,    ch, &_m_freq_hz);
-        executor_set_command(EX_MID_FREQ_CMD, EX_FPGA_CALIBRATE, ch, &fftsize, _m_freq_hz);
+        executor_set_command(EX_MID_FREQ_CMD, EX_FPGA_CALIBRATE, ch, &fftsize, _m_freq_hz,0);
         index ++;
         if(poal_config->enable.psd_en){
             io_set_enable_command(PSD_MODE_ENABLE, ch, -1, r_args->fft_size);
@@ -224,7 +224,8 @@ static int8_t  executor_points_scan(uint8_t ch, work_mode_type mode, void *args)
 
     point = &poal_config->multi_freq_point_param[ch];
     points_count = point->freq_point_cnt;
-    executor_set_command(EX_MID_FREQ_CMD, EX_FPGA_CALIBRATE, ch, &point->points[0].fft_size, 0);
+    executor_set_command(EX_MID_FREQ_CMD, EX_FPGA_CALIBRATE, ch, &point->points[0].fft_size, 0,poal_config->rf_para[ch].gain_ctrl_method);
+    //executor_set_command(EX_MID_FREQ_CMD, EX_FPGA_CALIBRATE, ch, &point->points[0].fft_size, 0);
     printf_note("residence_time=%d, points_count=%d\n", point->residence_time, points_count);
     for(i = 0; i < points_count; i++){
         printf_info("Scan Point [%d]......\n", i);
@@ -262,7 +263,7 @@ static int8_t  executor_points_scan(uint8_t ch, work_mode_type mode, void *args)
 #ifndef SUPPORT_SPECTRUM_FFT
         //executor_set_command(EX_MID_FREQ_CMD, EX_MID_FREQ,    ch, &point->points[i].center_freq);
         executor_set_command(EX_MID_FREQ_CMD, EX_FFT_SIZE, ch, &point->points[i].fft_size);
-        /* 根据带宽设置边带率 */
+        /* 根据带宽设置边带�?*/
         executor_set_command(EX_CTRL_CMD, EX_CTRL_SIDEBAND, ch, &r_args->scan_bw);
         #if defined(SUPPORT_SPECTRUM_KERNEL)
         executor_set_command(EX_WORK_MODE_CMD,mode, ch, r_args);
@@ -285,9 +286,9 @@ static int8_t  executor_points_scan(uint8_t ch, work_mode_type mode, void *args)
             executor_set_command(EX_MID_FREQ_CMD, EX_DEC_MID_FREQ, CONFG_AUDIO_CHANNEL,&point->points[i].center_freq,point->points[i].center_freq);
 
             executor_set_command(EX_MID_FREQ_CMD, EX_MUTE_THRE, CONFG_AUDIO_CHANNEL,&point->points[i].noise_thrh,point->points[i].noise_en);
-            io_set_enable_command(AUDIO_MODE_ENABLE, ch, CONFG_AUDIO_CHANNEL, 0);  //音频通道开关
+            io_set_enable_command(AUDIO_MODE_ENABLE, ch, CONFG_AUDIO_CHANNEL, 0);  //音频通道开�?
         }else{
-            io_set_enable_command(AUDIO_MODE_DISABLE, ch, CONFG_AUDIO_CHANNEL, 0);  //音频通道开关
+            io_set_enable_command(AUDIO_MODE_DISABLE, ch, CONFG_AUDIO_CHANNEL, 0);  //音频通道开�?
         }
 #endif
 #if defined (SUPPORT_RESIDENCY_STRATEGY) 
@@ -565,13 +566,53 @@ static int8_t executor_set_kernel_command(uint8_t type, uint8_t ch, void *data, 
             uint8_t  d_method;
             uint32_t fftsize;
             uint64_t m_freq = 0;
+            uint32_t contrl_type = 0;
+            int mode = 0;
 
             if(data !=NULL){
                 fftsize = *(uint32_t *)data;
             }
             m_freq = (uint64_t)va_arg(ap, uint64_t);
+            contrl_type = (uint32_t)va_arg(ap, uint32_t);
             value = config_get_fft_calibration_value(fftsize, m_freq);
-            printf_note("ch:%d, fft calibration value:%d\n", ch, value);
+            printf_note("ch:%d, fft calibration value:%d m_freq :%d contrl_type:%d\n", ch, value,m_freq,contrl_type);
+            /*
+            mode = io_get_rf_mode();*/
+            mode = poal_config->rf_para[ch].rf_mode_code;
+            if(contrl_type == 1)
+            {
+                if(mode == 3)
+                    value -= poal_config->cal_level.specturm.low_noise_power_level;
+                else if(mode == 1)
+                    value += poal_config->cal_level.specturm.low_distortion_power_level;
+            }
+            printf_note("mode:%d value:%d low_noise_power_level:%d  low_distortion_power_level:%d\n",mode,value,poal_config->cal_level.specturm.low_noise_power_level,poal_config->cal_level.specturm.low_distortion_power_level);
+            io_set_calibrate_val(ch, (uint32_t)value);
+            break;
+        }
+        case EX_AGC_MODE:
+        {
+            int32_t  value = 0;
+            uint8_t  d_method;
+            uint32_t fftsize;
+            uint32_t contrl_type = 0;
+            int mode = 0;
+
+            if(data !=NULL){
+                fftsize = *(uint32_t *)data;
+            }
+            contrl_type = (uint32_t)va_arg(ap, uint32_t);
+            value = config_get_fft_calibration_value(fftsize, 0);
+            printf_note("ch:%d, fft calibration value:%d contrl_type:%d\n", ch, value,contrl_type);
+            mode = io_get_rf_mode();
+            if(contrl_type == 1)
+            {
+                if(mode == 1)
+                    value -= poal_config->cal_level.specturm.low_noise_power_level;
+                else if(mode == 2)
+                    value += poal_config->cal_level.specturm.low_distortion_power_level;
+            }
+            printf_note("value:%d low_noise_power_level:%d  low_distortion_power_level:%d\n",value,poal_config->cal_level.specturm.low_noise_power_level,poal_config->cal_level.specturm.low_distortion_power_level);
             io_set_calibrate_val(ch, (uint32_t)value);
             break;
         }
@@ -622,11 +663,11 @@ static int8_t executor_set_ctrl_command(uint8_t type, uint8_t ch, void *data, va
             uint32_t bandwidth;
             float side_rate;
             bandwidth = *(uint32_t *)data;
-            /* 根据带宽获取边带率 */
+            /* 根据带宽获取边带�?*/
             if(config_read_by_cmd(EX_CTRL_CMD, EX_CTRL_SIDEBAND,ch, &side_rate, bandwidth) == -1){
                 printf_note("!!!SideRate Is Not Set In Config File[bandwidth=%u],user default siderate=%f!!!\n", bandwidth, side_rate);
             }
-            /* 设置边带率 */
+            /* 设置边带�?*/
             io_set_side_rate(ch, &side_rate);
             break;
         }
@@ -638,7 +679,7 @@ static int8_t executor_set_ctrl_command(uint8_t type, uint8_t ch, void *data, va
 static int executor_set_10g_network(struct network_st *_network)
 {
     safe_system("/etc/network.sh &");
-    /* 设置默认板卡万兆ip和端口 */
+    /* 设置默认板卡万兆ip和端�?*/
     //io_set_local_10g_net(ntohl(_network->ipaddress), ntohl(_network->netmask),ntohl(_network->gateway),_network->port);
     return 0;
 }

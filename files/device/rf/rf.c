@@ -193,6 +193,21 @@ uint8_t rf_set_interface(uint8_t cmd,uint8_t ch,void *data){
 #if defined(SUPPORT_RF_SPI)
             ret = spi_rf_set_command(SPI_RF_CALIBRATE_SOURCE_SET, &cs);
 #endif
+
+#if defined(SUPPORT_RF_FPGA)
+                        //uint8_t val = 0;
+                        //val = (*((int8_t *)data) == 0 ? 0 : 0x01);
+                        /* 0关闭直采，1开启直采 */
+                        //usleep(500);
+                        //get_fpga_reg()->rfReg->freq_khz = cs.middle_freq_mhz;
+                        usleep(500);
+                        get_fpga_reg()->rfReg->input = cs.source;
+                        usleep(500);
+                        get_fpga_reg()->rfReg->revise_minus = (uint32_t)akt_cs->power;
+                        usleep(500);
+                        printf_note("input=%d revise_minus=%d  freq_khz=%x\n",get_fpga_reg()->rfReg->input&0xffff,get_fpga_reg()->rfReg->revise_minus&0xffff,get_fpga_reg()->rfReg->freq_khz);
+#endif
+
             break;
         }
         case EX_RF_SAMPLE_CTRL:

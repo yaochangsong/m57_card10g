@@ -1086,7 +1086,7 @@ int32_t io_get_agc_thresh_val(int ch)
     }
 #elif defined(SUPPORT_SPECTRUM_V2) 
     agc_val = get_fpga_reg()->broad_band->agc_thresh;
-    printf_note("222222 agc_val:%d\n",get_fpga_reg()->broad_band->agc_thresh);
+    printf_note("agc_val:%d\n",get_fpga_reg()->broad_band->agc_thresh);
 #endif
 #endif
     return agc_val;
@@ -1116,6 +1116,25 @@ int16_t io_get_adc_temperature(void)
 
     return (signed short)result;
 }
+
+
+int io_get_rf_mode(void)
+{
+    int result=0; 
+
+#ifdef SUPPORT_PLATFORM_ARCH_ARM
+    
+    result = get_fpga_reg()->rfReg->rf_mode;
+    printf_debug("rf_mode=%d\n", get_fpga_reg()->rfReg->rf_mode);
+    result = result & 0x3;
+
+#endif
+
+    //return (signed short)result;
+    return result;
+
+}
+
 
 bool io_get_adc_status(void *args)
 {

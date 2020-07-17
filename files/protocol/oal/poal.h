@@ -273,6 +273,8 @@ struct calibration_specturm_info_st{
     int global_roughly_power_lever;
     int global_roughly_power_lever_mode1;
     int global_roughly_power_lever_mode2;
+    int low_distortion_power_level;
+    int low_noise_power_level;
 };//__attribute__ ((packed));
 
 struct calibration_specturm_node_st{

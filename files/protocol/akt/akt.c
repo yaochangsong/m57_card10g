@@ -108,10 +108,15 @@ static int akt_convert_oal_config(uint8_t ch, uint8_t cmd)
                     printf_warn("d_method error=%d\n", poal_config->multi_freq_point_param[ch].points[i].d_method);
                     return -1;
                 }
+
                 poal_config->multi_freq_point_param[ch].points[i].raw_d_method = pakt_config->decode_param[ch].sig_ch[i].decode_method_id;
                 poal_config->multi_freq_point_param[ch].points[i].d_method = method_id;
                 poal_config->multi_freq_point_param[ch].points[i].d_bandwith = pakt_config->decode_param[ch].sig_ch[i].bandwidth;
                 poal_config->multi_freq_point_param[ch].points[i].center_freq = pakt_config->decode_param[ch].sig_ch[i].center_freq;
+                poal_config->multi_freq_point_param[ch].points[i].noise_thrh = pakt_config->decode_param[ch].sig_ch[i].quiet_noise_threshold;
+                poal_config->multi_freq_point_param[ch].points[i].noise_en = pakt_config->decode_param[ch].sig_ch[i].quiet_noise_switch;
+                
+
                 /* 不在需要解调中心频率，除非窄带解调 */
                 printf_info("ch:%d,subch:%d, d_bw:%u\n", ch, i,poal_config->multi_freq_point_param[ch].points[i].d_bandwith);
                 printf_info("ch:%d,d_method:%u\n", ch, poal_config->multi_freq_point_param[ch].points[i].d_method);

@@ -281,11 +281,16 @@ static int8_t  executor_points_scan(uint8_t ch, work_mode_type mode, void *args)
                                 point->points[i].d_bandwith, point->points[i].raw_d_method);
             
             
-            executor_set_command(EX_MID_FREQ_CMD, EX_DEC_METHOD, CONFG_AUDIO_CHANNEL, &point->points[i].d_method);
-            executor_set_command(EX_MID_FREQ_CMD, EX_DEC_BW, CONFG_AUDIO_CHANNEL, &point->points[i].d_bandwith);
-            executor_set_command(EX_MID_FREQ_CMD, EX_DEC_MID_FREQ, CONFG_AUDIO_CHANNEL,&point->points[i].center_freq,point->points[i].center_freq);
+        printf_note("d_center_freq=%llu, d_method=%d, d_bandwith=%u noise=%d noise_en=%d\n",poal_config->multi_freq_point_param[ch].points[i].center_freq,
+                    poal_config->multi_freq_point_param[ch].points[i].d_method,poal_config->multi_freq_point_param[ch].points[i].d_bandwith,
+                    poal_config->multi_freq_point_param[ch].points[i].noise_thrh,poal_config->multi_freq_point_param[ch].points[i].noise_en);
 
-            executor_set_command(EX_MID_FREQ_CMD, EX_MUTE_THRE, CONFG_AUDIO_CHANNEL,&point->points[i].noise_thrh,point->points[i].noise_en);
+            executor_set_command(EX_MID_FREQ_CMD, EX_DEC_METHOD, CONFG_AUDIO_CHANNEL, &poal_config->multi_freq_point_param[ch].points[i].d_method);
+            executor_set_command(EX_MID_FREQ_CMD, EX_DEC_BW, CONFG_AUDIO_CHANNEL, &poal_config->multi_freq_point_param[ch].points[i].d_bandwith);
+            executor_set_command(EX_MID_FREQ_CMD, EX_DEC_MID_FREQ, CONFG_AUDIO_CHANNEL,&poal_config->multi_freq_point_param[ch].points[i].center_freq,poal_config->multi_freq_point_param[ch].points[i].center_freq);
+            
+            executor_set_command(EX_MID_FREQ_CMD, EX_MUTE_THRE, CONFG_AUDIO_CHANNEL,&poal_config->multi_freq_point_param[ch].points[i].noise_thrh,poal_config->multi_freq_point_param[ch].points[i].noise_en);
+
             io_set_enable_command(AUDIO_MODE_ENABLE, ch, CONFG_AUDIO_CHANNEL, 0);  //音频通道开�?
         }else{
             io_set_enable_command(AUDIO_MODE_DISABLE, ch, CONFG_AUDIO_CHANNEL, 0);  //音频通道开�?

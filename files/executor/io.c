@@ -705,13 +705,11 @@ int8_t io_fill_mid_rf_param(uint8_t gain_mode, uint8_t gain_val)
 void io_set_calibrate_val(uint32_t ch, uint32_t  cal_value)
 {
     static int32_t old_val = -1;
-    
     if(old_val == cal_value){
         /* 避免重复设置相同参数 */
         return;
     }
     old_val = cal_value;
-
     printf_note("[**REGISTER**][ch=%d]Set Calibrate Val factor=%u[0x%x]\n",ch, cal_value,cal_value);
 #if defined(SUPPORT_PLATFORM_ARCH_ARM)
 #if defined(SUPPORT_SPECTRUM_KERNEL)

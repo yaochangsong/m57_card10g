@@ -88,7 +88,7 @@ else
     SUPPORT_NET_WZ=y
 	#gps
     SUPPORT_GPS=y
-    SUPPORT_DIRECT_SAMPLE=y
+    SUPPORT_DIRECT_SAMPLE=n
 	ifneq ($(findstring y,$(SUPPORT_PROJECT_SSA)),)
 		SUPPORT_RF_ADRV9009=y
 		#iio

@@ -324,8 +324,8 @@ static fft_t *spm_data_order(volatile fft_t *fft_data,
    #if 1
     fft_t *pdst = calloc(1, 32*1024*2);
     memcpy((uint8_t *)pdst,                 (uint8_t *)(fft_data) , fft_len*2);
-    memcpy((uint8_t *)run_args->fft_ptr,    (uint8_t *)(pdst+ fft_len -order_len/2 ), order_len*2);
-    memcpy((uint8_t *)(run_args->fft_ptr+order_len),    (uint8_t *)pdst , order_len*2);
+    memcpy((uint8_t *)run_args->fft_ptr,    (uint8_t *)(pdst+ fft_len -order_len/2 ), order_len);
+    memcpy((uint8_t *)(run_args->fft_ptr+order_len),    (uint8_t *)pdst , order_len);
     free(pdst);
     #else
     memcpy((uint8_t *)run_args->fft_ptr,                (uint8_t *)(fft_data+fft_len -order_len/2) , order_len);
@@ -712,6 +712,7 @@ exit_mode:
 
 static int spm_sample_ctrl(uint64_t freq_hz)
 {
+#if defined(SUPPORT_DIRECT_SAMPLE)
     uint8_t val = 0;
     static int8_t val_dup = -1;
     #define _200MHZ 200000000
@@ -728,7 +729,7 @@ static int spm_sample_ctrl(uint64_t freq_hz)
     printf_note("samle ctrl:freq_hz =%lluHz, direct %d\n", freq_hz, val);
     executor_set_command(EX_MID_FREQ_CMD, EX_SAMPLE_CTRL,    0, &val);
     executor_set_command(EX_RF_FREQ_CMD,  EX_RF_SAMPLE_CTRL, 0, &val);
-    
+#endif
     return 0;
 }
 

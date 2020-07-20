@@ -288,9 +288,9 @@ int32_t io_set_noise(uint32_t ch, uint32_t noise_en,int8_t noise_level_tmp){
             noise_level = 0;
         }
         printf_note("[**REGISTER**]ch:%d, Set noise_level:%ld noise_en:%d noise_level_tmp:%d\n", ch,noise_level,noise_en,noise_level_tmp);
+#if defined(SUPPORT_PLATFORM_ARCH_ARM)
         get_fpga_reg()->narrow_band[ch]->noise_level = noise_level;
-        
-        
+#endif
 }
 /*根据边带率,设置数据长度 
     @rate: 边带率>0;实际下发边带率为整数；放大100倍（内核不处理浮点数）
@@ -329,7 +329,7 @@ int32_t io_set_dec_bandwidth(uint32_t ch, uint32_t dec_bandwidth){
     table= nbandtable;
     table_len = sizeof(nbandtable)/sizeof(struct  band_table_t);
     io_get_bandwidth_factor(dec_bandwidth, &band_factor,&filter_factor, table, table_len);
-    set_factor = band_factor|0x2000000;
+    set_factor = band_factor;
     if((old_val == set_factor) && (ch == old_ch)){
         /* 避免重复设置相同参数 */
         return ret;
@@ -339,11 +339,10 @@ int32_t io_set_dec_bandwidth(uint32_t ch, uint32_t dec_bandwidth){
     printf_note("[**REGISTER**]ch:%d, Set Decode Bandwidth:%u, band_factor=0x%x, set_factor=0x%x\n", ch, dec_bandwidth, band_factor, set_factor);
 #if defined(SUPPORT_PLATFORM_ARCH_ARM)
 #if defined(SUPPORT_SPECTRUM_KERNEL) 
-    ret = ioctl(io_ctrl_fd, IOCTL_EXTRACT_CH0, set_factor);
+    ret = ioctl(io_ctrl_fd, IOCTL_EXTRACT_CH0, set_factor|0x2000000);
 #elif defined(SUPPORT_SPECTRUM_V2) 
     get_fpga_reg()->narrow_band[ch]->band = band_factor;   //0x30190
     printf_note("narrow_band[%d]->band:%x\n",ch,band_factor);
-    printf_warn("NOT DEFINE...\n");
 #endif
 #endif
     return ret;
@@ -360,17 +359,17 @@ int32_t io_set_dec_method(uint32_t ch, uint8_t dec_method){
    
 
     if(dec_method == IO_DQ_MODE_AM){
-        d_method = 0x4000000;
+        d_method = 0x0000000;
     }else if(dec_method == IO_DQ_MODE_FM) {
-        d_method = 0x4000001;
+        d_method = 0x0000001;
     }else if(dec_method == IO_DQ_MODE_LSB) {
-        d_method = 0x4000002;
+        d_method = 0x0000002;
     }else if(dec_method == IO_DQ_MODE_USB) {
-        d_method = 0x4000002;
+        d_method = 0x0000002;
     }else if(dec_method == IO_DQ_MODE_CW) {
-        d_method = 0x4000003;
+        d_method = 0x0000003;
     }else if(dec_method == IO_DQ_MODE_IQ) {
-        d_method = 0x4000007;
+        d_method = 0x0000007;
     }else{
         printf_warn("decode method not support:%d\n",dec_method);
         return -1;
@@ -384,10 +383,9 @@ int32_t io_set_dec_method(uint32_t ch, uint8_t dec_method){
     printf_note("[**REGISTER**]ch:%d, Set Decode method:%u, d_method=0x%x\n", ch, dec_method, d_method);
 #if defined(SUPPORT_PLATFORM_ARCH_ARM)
 #if defined(SUPPORT_SPECTRUM_KERNEL) 
-    ret = ioctl(io_ctrl_fd,IOCTL_EXTRACT_CH0,d_method);
+    ret = ioctl(io_ctrl_fd,IOCTL_EXTRACT_CH0,d_method|0x4000000);
 #elif defined(SUPPORT_SPECTRUM_V2) 
-get_fpga_reg()->narrow_band[ch]->decode_type = dec_method;
-    printf_warn("NOT DEFINE...\n");
+    get_fpga_reg()->narrow_band[ch]->decode_type = dec_method;
 #endif
 #endif
     return ret;

@@ -510,6 +510,9 @@ static int8_t executor_set_kernel_command(uint8_t type, uint8_t ch, void *data, 
         {
             uint64_t  middle_freq;
             middle_freq = va_arg(ap, uint64_t);
+            if(middle_freq == 0){
+                middle_freq = *(uint64_t *)data;
+            }
             printf_note("ch=%d, dec_middle=%llu, middle_freq=%llu\n", ch, *(uint64_t *)data, middle_freq);
             io_set_dec_middle_freq(ch, *(uint64_t *)data, middle_freq);
             break;
@@ -910,6 +913,7 @@ int8_t executor_set_enable_command(uint8_t ch)
                 executor_set_command(EX_MID_FREQ_CMD, EX_FPGA_RESET, ch, NULL);
                 break;
             default:
+                printf_warn("Work Mode Not Set!!!!!\n");
                 return -1;
         }
     }

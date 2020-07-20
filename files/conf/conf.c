@@ -190,11 +190,11 @@ int32_t  config_get_fft_calibration_value(uint32_t fft_size, uint64_t m_freq)
     }
     
     if(freq_found){
-        printf_warn("find the calibration level: %llu, %d\n", m_freq, cal_value);
+        printf_debug("find the calibration level: %llu, %d\n", m_freq, cal_value);
     }
 
     cal_value += poal_config->cal_level.specturm.global_roughly_power_lever;
-    printf_warn("m_freq=%lluHz, cal_value=%d\n",m_freq, cal_value);
+    printf_debug("m_freq=%lluHz, cal_value=%d\n",m_freq, cal_value);
     if(found){
         printf_debug("find the fft_mgc calibration value: %d\n",cal_value);
     }else{

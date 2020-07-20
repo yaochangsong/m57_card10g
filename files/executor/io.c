@@ -704,11 +704,10 @@ int8_t io_fill_mid_rf_param(uint8_t gain_mode, uint8_t gain_val)
 /* 设置FPGA校准值 */
 void io_set_calibrate_val(uint32_t ch, uint32_t  cal_value)
 {
-    static uint32_t old_val = 0, flag = 0;
+    static int32_t old_val = -1;
     
-    if((old_val == cal_value) && (flag != 0)){
+    if(old_val == cal_value){
         /* 避免重复设置相同参数 */
-        flag = 1;
         return;
     }
     old_val = cal_value;

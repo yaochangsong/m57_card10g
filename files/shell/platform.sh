@@ -8,7 +8,7 @@ start()
 	/etc/led.sh check on
     /etc/network.sh
     /etc/led.sh work on
-    ln -s /run/media/nvme0n1/data /etc/data
+    ln -s /run/media/nvme0n1/data /etc/file
     /etc/check.sh stop
     /etc/check.sh start
 	/etc/reset-button.sh stop

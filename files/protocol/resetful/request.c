@@ -32,7 +32,9 @@
 
 static struct request_info http_req_cmd[] = {
     /* 磁盘文件操作 */
+#if defined(SUPPORT_XWFS)
     {"GET",     "/file/@filename",               DISPATCH_DOWNLOAD_CMD,    cmd_file_download},
+#endif
     {"DELETE",  "/file/@filename",                      -1,                cmd_file_delete},
     {"POST",    "/file/store/@ch/@enable/@filename",    -1,                cmd_file_store},
     {"POST",    "/file/backtrace/@ch/@enable/@filename",-1,                cmd_file_backtrace},

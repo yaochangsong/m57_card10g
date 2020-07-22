@@ -35,6 +35,8 @@
 #include "protocol/http/utils.h"
 #include "protocol/http/uhttpd.h"
 #include "protocol/http/client.h"
+#include "protocol/resetful/parse_json.h"
+
 #include "executor/io.h"
 
 #include "protocol/akt/akt.h"

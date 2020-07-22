@@ -598,32 +598,7 @@ static int8_t executor_set_kernel_command(uint8_t type, uint8_t ch, void *data, 
             io_set_calibrate_val(ch, (uint32_t)value);
             break;
         }
-        case EX_AGC_MODE:
-        {
-            int32_t  value = 0;
-            uint8_t  d_method;
-            uint32_t fftsize;
-            uint32_t contrl_type = 0;
-            int mode = 0;
 
-            if(data !=NULL){
-                fftsize = *(uint32_t *)data;
-            }
-            contrl_type = (uint32_t)va_arg(ap, uint32_t);
-            value = config_get_fft_calibration_value(fftsize, 0);
-            printf_note("ch:%d, fft calibration value:%d contrl_type:%d\n", ch, value,contrl_type);
-            mode = io_get_rf_mode();
-            if(contrl_type == 1)
-            {
-                if(mode == 1)
-                    value -= poal_config->cal_level.specturm.low_noise_power_level;
-                else if(mode == 2)
-                    value += poal_config->cal_level.specturm.low_distortion_power_level;
-            }
-            printf_note("value:%d low_noise_power_level:%d  low_distortion_power_level:%d\n",value,poal_config->cal_level.specturm.low_noise_power_level,poal_config->cal_level.specturm.low_distortion_power_level);
-            io_set_calibrate_val(ch, (uint32_t)value);
-            break;
-        }
         case EX_SUB_CH_ONOFF:
         {
             io_set_subch_onoff(ch, *(uint8_t *)data);

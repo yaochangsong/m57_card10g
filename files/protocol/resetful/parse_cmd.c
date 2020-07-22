@@ -17,6 +17,7 @@
 #include "log/log.h"
 #include "conf/conf.h"
 #include "parse_cmd.h"
+#include "parse_json.h"
 
 static struct response_err_code {
     int code;
@@ -50,12 +51,17 @@ static const char *const rf_types[] = {
 
 /* 中频参数类型 */
 static const char *const if_types[] = {
-    [EX_MUTE_SW] = "middleFreq",
-    [EX_MUTE_THRE] = "muteThre",              /*静噪门限*/
-    [EX_MID_FREQ]  = "middleFreq",            /*中心频率*/
-    [EX_BANDWITH] = "bandWidth",               /*带宽*/
-    [EX_DEC_METHOD] = "decMethod"    ,        /*解调方式*/
-
+    [EX_MUTE_SW] = "muteSwitch",
+    [EX_MUTE_THRE] = "muteThreshold",              /*静噪门限*/
+    [EX_MID_FREQ]  = "midFreq",            /*中心频率*/
+    [EX_BANDWITH] = "bandwidth",               /*带宽*/
+    [EX_DEC_METHOD] = "decMethodId"    ,        /*解调方式*/
+    [EX_DEC_BW] = "decBandwidth", 
+    [EX_DEC_MID_FREQ] = "decMidFreq", 
+    [EX_SMOOTH_TIME] = "smoothTimes", 
+    [EX_AUDIO_SAMPLE_RATE] = "audioSampleRate", 
+    [EX_FFT_SIZE] = "fftPoints", 
+    [EX_AUDIO_VOL_CTRL] = "audioVolume",
 };
 
 
@@ -280,16 +286,17 @@ error:
 */
 int cmd_if_single_value_set(struct uh_client *cl, void **arg, void **content)
 {
-    char *s_type, *s_ch, *s_subch, *s_value;
+    char *s_type, *s_ch, *s_subch, *s_value, *s_value_2;
     int ch, itype, subch;
-    int64_t value = 0;
+    int64_t value = 0, value2=0;
     int code = RESP_CODE_OK;
     
     s_type = cl->get_restful_var(cl, "type");
     s_ch = cl->get_restful_var(cl, "ch");
     s_subch = cl->get_restful_var(cl, "subch");
     s_value = cl->get_restful_var(cl, "value");
-    printf_note("if type=%s,ch = %s, subch=%s, value=%s\n", s_type, s_ch, s_subch, s_value);
+    s_value_2 = cl->get_restful_var(cl, "value2");
+    printf_note("if type=%s,ch = %s, subch=%s, value=%s, s_value_2=%s\n", s_type, s_ch, s_subch, s_value, s_value_2);
     if(str_to_int(s_ch, &ch, check_valid_ch) == false){
         code = RESP_CODE_CHANNEL_ERR;
         goto error;
@@ -308,10 +315,23 @@ int cmd_if_single_value_set(struct uh_client *cl, void **arg, void **content)
         goto error;
     }
 
+    if(s_value_2 != NULL){
+        if(str_to_s64(s_value_2, &value2, NULL) == false){
+            code = RESP_CODE_PATH_PARAM_ERR;
+             goto error;
+        }
+    }
     itype = find_idx_safe(if_types, ARRAY_SIZE(if_types), s_type);
-    if(executor_set_command(EX_MID_FREQ_CMD, itype, ch,&value) != 0){
-        code = RESP_CODE_EXECMD_ERR;
-        goto error;
+    if(s_value_2 != NULL){
+        if(executor_set_command(EX_MID_FREQ_CMD, itype, ch,&value, value2) != 0){
+            code = RESP_CODE_EXECMD_ERR;
+            goto error;
+        }
+    }else{
+        if(executor_set_command(EX_MID_FREQ_CMD, itype, ch,&value) != 0){
+            code = RESP_CODE_EXECMD_ERR;
+            goto error;
+        }
     }
 
 error:

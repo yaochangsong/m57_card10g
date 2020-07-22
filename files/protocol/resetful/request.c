@@ -45,6 +45,7 @@ static struct request_info http_req_cmd[] = {
     {"POST",    "/demodulation/@ch/@subch",             -1,                cmd_demodulation},
     /* 中频参数设置 */
     {"PUT",     "/if/@ch/@subch/@type/@value",          -1,                cmd_if_single_value_set},
+    {"PUT",     "/if/@ch/@subch/@type/@value/@value2",  -1,                cmd_if_single_value_set},
     {"PUT",     "/if/@ch/@type/@value",                 -1,                cmd_if_single_value_set},
     {"POST",    "/if/@ch/@subch",                       -1,                cmd_if_multi_value_set},
     {"POST",    "/if/@ch",                              -1,                cmd_if_multi_value_set},

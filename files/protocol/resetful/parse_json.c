@@ -16,7 +16,8 @@
 #include "parse_cmd.h"
 #include <sys/types.h>
 #include <dirent.h>
-
+#include "parse_json.h"
+#include "../../dao/json/cJSON.h"
 
 
 static inline bool str_to_int(char *str, int *ivalue, bool(*_check)(int))
@@ -150,6 +151,7 @@ int parse_json_net(const char * const body)
         config->network.gateway = inet_addr(value->valuestring);
         printf_note("set gateway: %s, 0x%x\n", value->valuestring, config->network.gateway);
     }
+    config_save_all();
     executor_set_command(EX_NETWORK_CMD, 0, 0, NULL);
     
     return RESP_CODE_OK;
@@ -168,7 +170,7 @@ int parse_json_if_multi_value(const char * const body)
 
 int parse_json_multi_band(const char * const body,uint8_t cid)
 {
-     printfd(" \n*************开始解析的body多频段数据消息*****************\n");
+     printfd(" \n*************multi band set*****************\n");
      cJSON *node, *value;
      uint32_t subcid;
      int code = RESP_CODE_OK;
@@ -281,7 +283,7 @@ int parse_json_multi_band(const char * const body,uint8_t cid)
 
 int parse_json_muti_point(const char * const body,uint8_t cid)
 {
-    printfn(" \n*************开始解析的body多频点数据消息*****************\n");
+    printfn(" \n*************multi point set*****************\n");
     cJSON *node, *value;
     int code = RESP_CODE_OK;
     struct poal_config *config = &(config_get_config()->oal_config);
@@ -419,12 +421,11 @@ int parse_json_muti_point(const char * const body,uint8_t cid)
     }else{
         config->work_mode = OAL_MULTI_POINT_SCAN_MODE;
     }
-    printfd("\n*****************解析完成************\n");
     return code;
 }
 int parse_json_demodulation(const char * const body,uint8_t cid,uint8_t subid )
 {
-     printfd(" \n*************开始解析的body解调数据消息*****************\n");
+     printfd(" \n*************demodulation set*****************\n");
      cJSON *node, *value;
      int code = RESP_CODE_OK;
      struct poal_config *config = &(config_get_config()->oal_config);
@@ -535,6 +536,17 @@ int parse_json_file_backtrace(const char * const body, uint8_t ch,  uint8_t enab
         ret = xwfs_start_backtrace(filename);
     else
         ret = xwfs_stop_backtrace(filename);
+#elif defined(SUPPORT_FS)
+    struct fs_context *fs_ctx;
+    fs_ctx = get_fs_ctx();
+    if(fs_ctx == NULL){
+        printf_warn("NOT FOUND DISK!!\n");
+        return RESP_CODE_EXECMD_ERR;
+    }
+    if(enable)
+        fs_ctx->ops->fs_start_read_raw_file(filename);
+    else
+        fs_ctx->ops->fs_stop_read_raw_file(filename);
 #endif
     if(ret != 0)
         return RESP_CODE_EXECMD_ERR;
@@ -569,6 +581,17 @@ int parse_json_file_store(const char * const body, uint8_t ch,  uint8_t enable, 
         ret = xwfs_start_save_file(filename);
     else
         ret = xwfs_stop_save_file(filename);
+#elif defined(SUPPORT_FS)
+        struct fs_context *fs_ctx;
+        fs_ctx = get_fs_ctx();
+        if(fs_ctx == NULL){
+            printf_warn("NOT FOUND DISK!!\n");
+            return RESP_CODE_EXECMD_ERR;
+        }
+        if(enable)
+            fs_ctx->ops->fs_start_save_file(filename);
+        else
+            fs_ctx->ops->fs_stop_save_file(filename);
 #endif
     if(ret != 0)
         return RESP_CODE_EXECMD_ERR;
@@ -576,7 +599,7 @@ int parse_json_file_store(const char * const body, uint8_t ch,  uint8_t enable, 
         return RESP_CODE_OK;
 }
 
-void creat_file_list(char *filename, struct stat *stats, cJSON *array)
+static void creat_file_list(char *filename, struct stat *stats, cJSON *array)
 {
     cJSON* item = NULL;
     if(stats == NULL || filename == NULL || array == NULL)

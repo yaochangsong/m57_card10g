@@ -52,8 +52,7 @@ enum {
     EX_SUB_CH_MUTE_THRE,       /* 子通道静噪门限 */
     EX_SUB_CH_ONOFF,           /* 子通道开关 */
     EX_SAMPLE_CTRL,            /*  0关闭直采，1开启直采*/
-    EX_AGC_MODE,                   /* agc射频模式选择*/
-    
+    EX_AUDIO_VOL_CTRL          /*  音频音量控制*/
 };
 
 /* executor: enable paramter */

@@ -612,9 +612,9 @@ static int akt_execute_set_command(void *cl)
         case RF_WORK_MODE_CMD:
             check_valid_channel(header->buf[0]);
             /*
-                1: low distortion mode of operation
-                2: Normal working mode
-                3: Low noise mode of operation
+                0: low distortion mode of operation
+                1: Normal working mode
+                2: Low noise mode of operation
             */
             poal_config->rf_para[ch].rf_mode_code = header->buf[1];
             printf_note("=>rf_mode_code = %d\n", poal_config->rf_para[ch].rf_mode_code);

@@ -95,5 +95,5 @@ else
 		SUPPORT_LIB_IIO=y
 	endif
     #通道信号驻留策略
-    SUPPORT_RESIDENCY_STRATEGY=y
+    SUPPORT_RESIDENCY_STRATEGY=n
 endif

@@ -1080,8 +1080,8 @@ static int akt_execute_get_command(void)
             struct statfs diskInfo;
             fs_ctx = get_fs_ctx();
             ret = fs_ctx->ops->fs_disk_info(&diskInfo);
-            printf_info("Get disk info: %d\n", ret);
-            if(ret != 0){
+            printf_debug("Get disk info: %d\n", ret);
+            if(ret == 0){
                 err_code = akt_err_code_check(ret);
                 goto exit;
             }

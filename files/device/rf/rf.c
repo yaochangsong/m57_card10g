@@ -318,7 +318,7 @@ uint8_t rf_read_interface(uint8_t cmd,uint8_t ch,void *data){
 #elif defined(SUPPORT_RF_FPGA)
 			#define RF_TEMPERATURE_FACTOR 0.0625
 			rf_temperature = get_fpga_reg()->rfReg->temperature;
-			printf_err("rf temprature 0x:%x\n", rf_temperature);
+			printf_note("rf temprature 0x%x\n", rf_temperature);
 		    rf_temperature = rf_temperature * RF_TEMPERATURE_FACTOR;
 #endif
 #endif

@@ -958,8 +958,12 @@ static int akt_execute_get_command(void)
             self_check.pfga_temperature = io_get_adc_temperature();
             self_check.ch_num = MAX_RADIO_CHANNEL_NUM;
             executor_get_command(EX_RF_FREQ_CMD, EX_RF_STATUS_TEMPERAT, 0,  &self_check.t_s[0].rf_temperature);
-            self_check.t_s[0].ch_status = (self_check.t_s[0].rf_temperature > 200 || self_check.t_s[0].rf_temperature < -100) ? 1 : 0;  //可以通过判断获取的温度值是否在有效范围内来确定
-            printf_note("ext_clk:%d, ad_status=%d,pfga_temperature=%d, rf_temperature=%d\n", self_check.ext_clk, self_check.ad_status, self_check.pfga_temperature, self_check.t_s[0].rf_temperature);
+            self_check.t_s[0].ch_status = (self_check.t_s[0].rf_temperature > 200 || 
+                                           self_check.t_s[0].rf_temperature < -100||
+                                           self_check.t_s[0].rf_temperature == 0) ? 1 : 0;  //可以通过判断获取的温度值是否在有效范围内来确定
+            printf_note("ext_clk:%d, ad_status=%d,pfga_temperature=%d,ch_num=%d, rf_temperature=%d, ch_status=%d\n", 
+                self_check.ext_clk, self_check.ad_status, self_check.pfga_temperature, self_check.ch_num,
+                self_check.t_s[0].rf_temperature, self_check.t_s[0].ch_status);
             memcpy(akt_get_response_data.payload_data, &self_check, sizeof(DEVICE_SELF_CHECK_STATUS_RSP_ST));
             akt_get_response_data.header.len = sizeof(DEVICE_SELF_CHECK_STATUS_RSP_ST);
             break;
@@ -1090,7 +1094,7 @@ static int akt_execute_get_command(void)
 		    psi->disk_capacity[0].disk_capacity_byte = diskInfo.f_bsize * diskInfo.f_blocks;
 		    psi->disk_capacity[0].disk_used_byte = diskInfo.f_bsize * (diskInfo.f_blocks - diskInfo.f_bfree);
 		    #endif
-            printf_debug("ret=%d, num=%d, speed=%uKB/s, capacity_bytes=%llu, used_bytes=%llu\n",
+            printf_note("ret=%d, num=%d, speed=%uKB/s, capacity_bytes=%llu, used_bytes=%llu\n",
                 ret, psi->disk_num, psi->read_write_speed_kbytesps, 
                 psi->disk_capacity[0].disk_capacity_byte, psi->disk_capacity[0].disk_used_byte);
             memcpy(akt_get_response_data.payload_data, psi, st_size);

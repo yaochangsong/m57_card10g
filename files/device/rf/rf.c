@@ -249,7 +249,7 @@ uint8_t rf_set_interface(uint8_t cmd,uint8_t ch,void *data){
             }
             if(found == 0){
                 ret = -1;
-                printf_warn("NOT find %uMhz in tables", freq_mhz);
+                printf_info("NOT find %uMhz in tables\n", freq_mhz);
                 break;
             }
             

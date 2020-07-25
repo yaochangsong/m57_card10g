@@ -610,11 +610,11 @@ static int spm_agc_ctrl(int ch, struct spm_context *ctx)
         ctrl_method[ch] = gain_ctrl_method;
         printf_note("ch:%d ctrl_method:%d rf_mode:%d fft_size_agc:%d\n",ch,ctrl_method[ch],rf_mode,fft_size_agc);
         if(gain_ctrl_method == POAL_MGC_MODE){
-            executor_set_command(EX_MID_FREQ_CMD, EX_FPGA_CALIBRATE, ch, &fft_size_agc,0, POAL_MGC_MODE);
+            //executor_set_command(EX_MID_FREQ_CMD, EX_FPGA_CALIBRATE, ch, &fft_size_agc,0, POAL_MGC_MODE);
             goto exit_mode;
         }
         else if(gain_ctrl_method == POAL_AGC_MODE){
-            executor_set_command(EX_MID_FREQ_CMD, EX_FPGA_CALIBRATE, ch, &fft_size_agc,0,POAL_AGC_MODE);
+            //executor_set_command(EX_MID_FREQ_CMD, EX_FPGA_CALIBRATE, ch, &fft_size_agc,0,POAL_AGC_MODE);
         }
     }
 
@@ -630,7 +630,7 @@ static int spm_agc_ctrl(int ch, struct spm_context *ctx)
         rf_mode_s = rf_mode;
         printf_note("ctrl_method:%d rf_mode:%d\n",rf_mode_s,rf_mode);
         if(gain_ctrl_method == POAL_AGC_MODE){
-            executor_set_command(EX_MID_FREQ_CMD, EX_FPGA_CALIBRATE, ch, &fft_size_agc, 0,POAL_AGC_MODE);
+            //executor_set_command(EX_MID_FREQ_CMD, EX_FPGA_CALIBRATE, ch, &fft_size_agc, 0,POAL_AGC_MODE);
         }
     }
 

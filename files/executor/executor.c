@@ -224,8 +224,6 @@ static int8_t  executor_points_scan(uint8_t ch, work_mode_type mode, void *args)
 
     point = &poal_config->multi_freq_point_param[ch];
     points_count = point->freq_point_cnt;
-    executor_set_command(EX_MID_FREQ_CMD, EX_FPGA_CALIBRATE, ch, &point->points[0].fft_size, 0,poal_config->rf_para[ch].gain_ctrl_method);
-    //executor_set_command(EX_MID_FREQ_CMD, EX_FPGA_CALIBRATE, ch, &point->points[0].fft_size, 0);
     printf_note("residence_time=%d, points_count=%d\n", point->residence_time, points_count);
     for(i = 0; i < points_count; i++){
         printf_info("Scan Point [%d]......\n", i);
@@ -309,6 +307,7 @@ static int8_t  executor_points_scan(uint8_t ch, work_mode_type mode, void *args)
 #endif
         s_time = time(NULL);
         do{
+            executor_set_command(EX_MID_FREQ_CMD, EX_FPGA_CALIBRATE, ch, &point->points[0].fft_size, 0);
             if(poal_config->enable.psd_en){
                 io_set_enable_command(PSD_MODE_ENABLE, ch, -1, point->points[i].fft_size);
             }
@@ -573,16 +572,14 @@ static int8_t executor_set_kernel_command(uint8_t type, uint8_t ch, void *data, 
             int32_t  value = 0;
             uint32_t fftsize;
             uint64_t m_freq = 0;
-            uint32_t contrl_type = 0;
             
 
             if(data !=NULL){
                 fftsize = *(uint32_t *)data;
             }
             m_freq = (uint64_t)va_arg(ap, uint64_t);
-            contrl_type = (uint32_t)va_arg(ap, uint32_t);
             value = config_get_fft_calibration_value(ch, fftsize, m_freq);
-            printf_note("ch:%d, fft calibration value:%d m_freq :%d contrl_type:%d\n", ch, value,m_freq,contrl_type);
+            printf_debug("ch:%d, fft calibration value:%d m_freq :%d\n", ch, value,m_freq);
             io_set_calibrate_val(ch, (uint32_t)value);
             break;
         }

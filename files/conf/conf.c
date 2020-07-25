@@ -201,7 +201,7 @@ int32_t  config_get_fft_calibration_value(uint8_t ch, uint32_t fft_size, uint64_
         cal_value += poal_config->cal_level.specturm.low_noise_power_level;
     else if(mode == POAL_LOW_DISTORTION)
         cal_value += poal_config->cal_level.specturm.low_distortion_power_level;
-    printf_note("mode:%d  low_noise_power_level:%d  low_distortion_power_level:%d\n",
+    printf_debug("mode:%d  low_noise_power_level:%d  low_distortion_power_level:%d\n",
     mode,poal_config->cal_level.specturm.low_noise_power_level,poal_config->cal_level.specturm.low_distortion_power_level);
 
     printf_debug("m_freq=%lluHz,mode=%d, cal_value=%d\n",m_freq, mode, cal_value);

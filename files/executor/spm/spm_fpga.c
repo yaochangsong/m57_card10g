@@ -582,8 +582,8 @@ static int spm_agc_ctrl(int ch, struct spm_context *ctx)
     
     #define AGC_CTRL_PRECISION      0       /* 控制精度+-2dbm */
     //#define AGC_REF_VAL             0x5e8 /* 信号为0DBm时对应的FPGA幅度值 */
-    #define AGC_MODE                1       /* 自动增益模式 */
-    #define MGC_MODE                0       /* 手动增益模式 */
+    //#define AGC_MODE                1       /* 自动增益模式 */
+    //#define MGC_MODE                0       /* 手动增益模式 */
     #define RF_GAIN_THRE            30      /* 增益到达该阀值，开启射频增益/衰减 */
     #define MID_GAIN_THRE           60      /* 增益到达该阀值，开启中频增益 */
 
@@ -609,19 +609,19 @@ static int spm_agc_ctrl(int ch, struct spm_context *ctx)
     if(ctrl_method[ch] != gain_ctrl_method){
         ctrl_method[ch] = gain_ctrl_method;
         printf_note("ch:%d ctrl_method:%d rf_mode:%d fft_size_agc:%d\n",ch,ctrl_method[ch],rf_mode,fft_size_agc);
-        if(gain_ctrl_method == MGC_MODE){
-            executor_set_command(EX_MID_FREQ_CMD, EX_FPGA_CALIBRATE, ch, &fft_size_agc,0, MGC_MODE);
+        if(gain_ctrl_method == POAL_MGC_MODE){
+            executor_set_command(EX_MID_FREQ_CMD, EX_FPGA_CALIBRATE, ch, &fft_size_agc,0, POAL_MGC_MODE);
             goto exit_mode;
         }
-        else if(gain_ctrl_method == AGC_MODE){
-            executor_set_command(EX_MID_FREQ_CMD, EX_FPGA_CALIBRATE, ch, &fft_size_agc,0,AGC_MODE);
+        else if(gain_ctrl_method == POAL_AGC_MODE){
+            executor_set_command(EX_MID_FREQ_CMD, EX_FPGA_CALIBRATE, ch, &fft_size_agc,0,POAL_AGC_MODE);
         }
     }
 
 
 
     /* 非自动模式退出控制 */
-    if(agc_ctrl_time == 0 ||gain_ctrl_method != AGC_MODE){
+    if(agc_ctrl_time == 0 ||gain_ctrl_method != POAL_AGC_MODE){
         return -1;
     }
 
@@ -629,8 +629,8 @@ static int spm_agc_ctrl(int ch, struct spm_context *ctx)
     if(rf_mode_s != rf_mode){
         rf_mode_s = rf_mode;
         printf_note("ctrl_method:%d rf_mode:%d\n",rf_mode_s,rf_mode);
-        if(gain_ctrl_method == AGC_MODE){
-            executor_set_command(EX_MID_FREQ_CMD, EX_FPGA_CALIBRATE, ch, &fft_size_agc, 0,AGC_MODE);
+        if(gain_ctrl_method == POAL_AGC_MODE){
+            executor_set_command(EX_MID_FREQ_CMD, EX_FPGA_CALIBRATE, ch, &fft_size_agc, 0,POAL_AGC_MODE);
         }
     }
 

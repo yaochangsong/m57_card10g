@@ -148,6 +148,18 @@ struct rf_para_st{
     uint64_t mid_freq;              /* 中心频率 */
 };//__attribute__ ((packed));
 
+typedef enum rf_ctrl_method_val{
+    POAL_LOW_DISTORTION = 0,   //低失真
+    POAL_NORMAL,               //常规
+    POAL_LOW_NOISE,            //低噪声
+};
+
+typedef enum rf_gain_mode_val{
+    POAL_MGC_MODE = 0,          //手动增益
+    POAL_AGC_MODE,              //自动增益
+};
+
+
 /* 控制参数 */
 struct ctrl_st{
     
@@ -271,8 +283,6 @@ struct calibration_specturm_info_st{
     uint32_t end_freq_khz[40];
     int power_level[40];
     int global_roughly_power_lever;
-    int global_roughly_power_lever_mode1;
-    int global_roughly_power_lever_mode2;
     int low_distortion_power_level;
     int low_noise_power_level;
 };//__attribute__ ((packed));

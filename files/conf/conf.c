@@ -151,12 +151,13 @@ uint32_t  config_get_fft_size(uint8_t ch)
     return fftsize;
 }
 
-int32_t  config_get_fft_calibration_value(uint32_t fft_size, uint64_t m_freq)
+int32_t  config_get_fft_calibration_value(uint8_t ch, uint32_t fft_size, uint64_t m_freq)
 {
     struct poal_config *poal_config = &(config_get_config()->oal_config);
     int i;
     int32_t cal_value=0,freq_cal_value=0, found = 0, freq_found = 0;
     uint32_t _fft = 0, _start_freq_khz = 0, _end_freq_khz = 0;
+    int mode = 0;
 
     if(fft_size > 0){
         for(i=0;i<sizeof(poal_config->cal_level.cali_fft.fftsize)/sizeof(uint32_t);i++)
@@ -194,7 +195,16 @@ int32_t  config_get_fft_calibration_value(uint32_t fft_size, uint64_t m_freq)
     }
 
     cal_value += poal_config->cal_level.specturm.global_roughly_power_lever;
-    printf_debug("m_freq=%lluHz, cal_value=%d\n",m_freq, cal_value);
+    
+    mode = poal_config->rf_para[ch].rf_mode_code;
+    if(mode == POAL_LOW_NOISE)
+        cal_value += poal_config->cal_level.specturm.low_noise_power_level;
+    else if(mode == POAL_LOW_DISTORTION)
+        cal_value += poal_config->cal_level.specturm.low_distortion_power_level;
+    printf_note("mode:%d  low_noise_power_level:%d  low_distortion_power_level:%d\n",
+    mode,poal_config->cal_level.specturm.low_noise_power_level,poal_config->cal_level.specturm.low_distortion_power_level);
+
+    printf_debug("m_freq=%lluHz,mode=%d, cal_value=%d\n",m_freq, mode, cal_value);
     if(found){
         printf_debug("find the fft_mgc calibration value: %d\n",cal_value);
     }else{

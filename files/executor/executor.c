@@ -571,30 +571,18 @@ static int8_t executor_set_kernel_command(uint8_t type, uint8_t ch, void *data, 
         case EX_FPGA_CALIBRATE:
         {
             int32_t  value = 0;
-            uint8_t  d_method;
             uint32_t fftsize;
             uint64_t m_freq = 0;
             uint32_t contrl_type = 0;
-            int mode = 0;
+            
 
             if(data !=NULL){
                 fftsize = *(uint32_t *)data;
             }
             m_freq = (uint64_t)va_arg(ap, uint64_t);
             contrl_type = (uint32_t)va_arg(ap, uint32_t);
-            value = config_get_fft_calibration_value(fftsize, m_freq);
+            value = config_get_fft_calibration_value(ch, fftsize, m_freq);
             printf_note("ch:%d, fft calibration value:%d m_freq :%d contrl_type:%d\n", ch, value,m_freq,contrl_type);
-            /*
-            mode = io_get_rf_mode();*/
-            mode = poal_config->rf_para[ch].rf_mode_code;
-            if(contrl_type == 1)
-            {
-                if(mode == 3)
-                    value -= poal_config->cal_level.specturm.low_noise_power_level;
-                else if(mode == 1)
-                    value += poal_config->cal_level.specturm.low_distortion_power_level;
-            }
-            printf_note("mode:%d value:%d low_noise_power_level:%d  low_distortion_power_level:%d\n",mode,value,poal_config->cal_level.specturm.low_noise_power_level,poal_config->cal_level.specturm.low_distortion_power_level);
             io_set_calibrate_val(ch, (uint32_t)value);
             break;
         }

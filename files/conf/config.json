@@ -109,7 +109,7 @@
 			}],
 		"mgc_gain_global":	4,
 		"low_distortion_power_agc":	100,
-		"low_noise_power_agc":	140,
+		"low_noise_power_agc":	-140,
 		"mgc_gain_freq":	[{
 				"start_freq":	1050000,
 				"end_freq":	1250000,

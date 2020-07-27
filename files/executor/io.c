@@ -1157,9 +1157,14 @@ bool io_get_adc_status(void *args)
 
 bool io_get_clock_status(void *args)
 {
+
     static FILE * fp = NULL;
-    uint8_t lock_ok=0, external_clk=0;
-    bool ret;
+
+    /**** stack smashing detected ***: <unknown> terminated; then exit
+      if we use uint8 lock_ok=0, external_clk=0;
+    */
+    int lock_ok=0, external_clk=0;
+    bool ret = false;
     
     if(fp == NULL){
         fp = fopen ("/run/status/clock", "r");
@@ -1168,13 +1173,14 @@ bool io_get_clock_status(void *args)
             return false;
         }
     }
+    
     rewind(fp);
     fscanf(fp, "%d %d", &external_clk, &lock_ok);
-    printf_note("external_clk:%d, lock_ok: %d\n", external_clk, lock_ok);
+    printf_debug("external_clk:%d, lock_ok: %d\n", external_clk, lock_ok);
     
     *(uint8_t *)args = external_clk;
     ret = (lock_ok == 0 ? false : true);
-    
+
     return ret;
 }
 

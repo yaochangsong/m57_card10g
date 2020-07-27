@@ -950,9 +950,10 @@ static int akt_execute_get_command(void)
     {
         case DEVICE_SELF_CHECK_CMD:
         {
-            uint8_t lock_ok=0, external_clk=0;
+            uint8_t lock_ok=0,external_clk=0;
             DEVICE_SELF_CHECK_STATUS_RSP_ST self_check;
-            lock_ok = (uint8_t)io_get_clock_status(&external_clk);
+            lock_ok = (io_get_clock_status(&external_clk) == true ? 1 : 0);
+            printf_debug("lock_ok=%d, external_clk=%d\n",lock_ok, external_clk);
             self_check.ext_clk = (external_clk == 0 ? 0 :1);
             self_check.ad_status = (io_get_adc_status(NULL) == true ? 1 : 0);
             self_check.pfga_temperature = io_get_adc_temperature();

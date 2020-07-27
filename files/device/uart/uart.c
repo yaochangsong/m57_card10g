@@ -323,7 +323,7 @@ void gps_timer_task_cb(struct uloop_timeout *t)
 	char cmdbuf[128];
 	
 	int32_t  nread; 
-
+    static uint8_t timed_flag = 0;
 	memset(buf,0,SERIAL_BUF_LEN);
 	nread = read(uartinfo[1].fd->fd, buf, SERIAL_BUF_LEN);
 	if(nread > 0)
@@ -332,13 +332,18 @@ void gps_timer_task_cb(struct uloop_timeout *t)
 
 		if (gps_parse_recv_msg(buf, nread) == 0)
 		{
-			io_set_fpga_sys_time(gps_get_format_date());
-			memset(cmdbuf, 0, sizeof(cmdbuf));
-			if(0 == gps_get_date_cmdstring(cmdbuf))
-			{
-				printf("set sys time:%s\n", cmdbuf);
-				system(cmdbuf);
+		    if(timed_flag == 0)
+		    {
+    			io_set_fpga_sys_time(gps_get_format_date());
+    			memset(cmdbuf, 0, sizeof(cmdbuf));
+    			if(0 == gps_get_date_cmdstring(cmdbuf))
+    			{
+    				printf("set sys time:%s\n", cmdbuf);
+    				system(cmdbuf);
+    			}
+    			timed_flag = 1;
 			}
+			#if 0
 			uloop_timeout_cancel(t);
 			free(t);
 			t = NULL;
@@ -346,6 +351,7 @@ void gps_timer_task_cb(struct uloop_timeout *t)
 			uartinfo[1].fd->fd = -1;
 			printf("gps exit!\n");
 			return;
+			#endif
 		}
 	}
 	else

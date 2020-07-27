@@ -181,6 +181,8 @@ struct gps_info {
 };
 
 static struct gps_info g_gps_info;
+static bool gps_status = false;  /*定位状态*/
+
 
 int gps_parse_recv_msg(char *str, size_t nbyte)
 {
@@ -220,8 +222,13 @@ int gps_parse_recv_msg(char *str, size_t nbyte)
 			{
 				if(NULL == strstr(para_buf, "A"))
 				{
+				    gps_status = false;
 					printf_debug("invalid gps data:%s\n", para_buf);
 					return -1;
+				}
+				else
+				{
+				    gps_status = true;
 				}
 				break;
 			}
@@ -418,6 +425,11 @@ int gps_get_longitude(void)
     flongitude = g_gps_info.longitude;
     longitude = (int32_t)(((int32_t)(flongitude/100) + fmod(flongitude,100)/60)*1000000);
     return longitude;
+}
+
+bool gps_location_is_valid(void)
+{
+    return gps_status;
 }
 
 int gps_init(void)

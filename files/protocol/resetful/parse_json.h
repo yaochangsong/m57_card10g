@@ -26,6 +26,16 @@ extern char *assemble_json_file_list(void);
 extern char *assemble_json_data_response(int err_code, const char *message, const char * const data);
 extern char *assemble_json_response(int err_code, const char *message);
 extern char *assemble_json_find_file(char *filename);
+extern char *assemble_json_softversion(void);
+extern char *assemble_json_fpag_info(void);
+extern char *assemble_json_temp_info(void);
+extern char *assemble_json_gps_info(void);
+extern char *assemble_json_clock_info(void);
+extern char *assemble_json_board_info(void);
+extern char *assemble_json_net_info(void);
+extern char *assemble_json_rf_info(void);
+extern char *assemble_json_disk_info(void);
+extern char *assemble_json_all_info(void);
 
 #endif
 

@@ -1084,7 +1084,6 @@ int32_t io_get_agc_thresh_val(int ch)
     }
 #elif defined(SUPPORT_SPECTRUM_V2) 
     agc_val = get_fpga_reg()->broad_band->agc_thresh;
-    printf_note("agc_val:%d\n",get_fpga_reg()->broad_band->agc_thresh);
 #endif
 #endif
     return agc_val;
@@ -1103,7 +1102,7 @@ int16_t io_get_adc_temperature(void)
         fp = fopen ("/sys/bus/iio/devices/iio:device0/in_temp0_ps_temp_raw", "r");
         if(!fp){
             printf("Open file error!\n");
-            return false;
+            return -1;
         }
     }
     rewind(fp);
@@ -1113,6 +1112,33 @@ int16_t io_get_adc_temperature(void)
 #endif
 
     return (signed short)result;
+}
+void io_get_fpga_status(void *args)
+{
+    struct arg_s{
+        uint32_t temp;
+        uint32_t vol;
+        uint32_t current;
+        uint32_t resources;
+    };
+    struct arg_s  *param = args;
+    uint32_t reg_status, reg_dup;
+#ifdef SUPPORT_PLATFORM_ARCH_ARM
+    #define STATUS_MASK (0x03ff)
+    #define STATUS_BIT (10)
+    reg_status = get_fpga_reg()->system->fpga_status;
+    printf_debug("reg_status=0x%x\n", reg_status);
+    reg_dup = reg_status & STATUS_MASK; /* temp */
+    param->temp = (uint32_t)((reg_dup * 509.314)/1024.0) - 280.23;
+    printf_debug("temp=0x%x, %u\n", reg_dup, param->temp);
+    reg_dup = (reg_status >> STATUS_BIT)&STATUS_MASK; /* fpga_int_vol */
+    param->vol = (uint32_t)(3* reg_dup/1024);
+    printf_debug("fpga_int_vol=0x%x, %u\n", reg_dup, param->vol);
+    reg_dup = (reg_status >> (STATUS_BIT*2))&STATUS_MASK; /* fpga_bram_vol */
+    param->current = (uint32_t)(3* reg_dup/1024);
+    printf_debug("fpga_bram_vol=0x%x, %u\n", reg_dup, param->current);
+    param->resources = 65;
+#endif
 }
 
 

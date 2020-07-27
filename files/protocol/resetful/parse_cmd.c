@@ -724,4 +724,44 @@ int cmd_ping(struct uh_client *cl, void **arg, void **content)
     return RESP_CODE_OK;
 }
 
+int cmd_get_softversion(struct uh_client *cl, void **arg, void **content)
+{
+    int code = RESP_CODE_OK;
+    *content = assemble_json_softversion();
+    if(*content == NULL)
+        code = RESP_CODE_EXECMD_ERR;
+error:
+    *arg = get_resp_message(code);
+    return code;
+}
 
+int cmd_get_fpga_info(struct uh_client *cl, void **arg, void **content)
+{
+    int code = RESP_CODE_OK;
+    *content = assemble_json_fpag_info();
+    if(*content == NULL)
+        code = RESP_CODE_EXECMD_ERR;
+error:
+    *arg = get_resp_message(code);
+    return code;
+}
+int cmd_get_temp_info(struct uh_client *cl, void **arg, void **content)
+{
+    int code = RESP_CODE_OK;
+    *content = assemble_json_temp_info();
+    if(*content == NULL)
+        code = RESP_CODE_EXECMD_ERR;
+error:
+    *arg = get_resp_message(code);
+    return code;
+}
+int cmd_get_all_info(struct uh_client *cl, void **arg, void **content)
+{
+    int code = RESP_CODE_OK;
+    *content = assemble_json_all_info();
+    if(*content == NULL)
+        code = RESP_CODE_EXECMD_ERR;
+error:
+    *arg = get_resp_message(code);
+    return code;
+}

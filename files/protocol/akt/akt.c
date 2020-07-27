@@ -955,7 +955,7 @@ static int akt_execute_get_command(void)
             lock_ok = (io_get_clock_status(&external_clk) == true ? 1 : 0);
             printf_debug("lock_ok=%d, external_clk=%d\n",lock_ok, external_clk);
             self_check.ext_clk = (external_clk == 0 ? 0 :1);
-            self_check.ad_status = (io_get_adc_status(NULL) == true ? 1 : 0);
+            self_check.ad_status = (io_get_adc_status(NULL) == true ? 0 : 1);
             self_check.pfga_temperature = io_get_adc_temperature();
             self_check.ch_num = MAX_RADIO_CHANNEL_NUM;
             executor_get_command(EX_RF_FREQ_CMD, EX_RF_STATUS_TEMPERAT, 0,  &self_check.t_s[0].rf_temperature);

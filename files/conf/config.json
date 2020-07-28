@@ -1,7 +1,7 @@
 {
 	"version":	"1.0",
 	"network":	{
-		"mac":	"00:0A:35:00:12:AB",
+		"mac":	"00:0A:35:00:22:01",
 		"ipaddress":	"192.168.1.111",
 		"netmask":	"255.255.255.0",
 		"gateway":	"192.168.1.1",
@@ -23,13 +23,13 @@
 	},
 	"status_parm":	{
 		"soft_version":	{
-			"app":	"1.0.0_debug(2020-07-28-14:28:24)-9dde4f4279fbfee1dd89eb3de643e40cef5049ed ",
+			"app":	"1.0.0_debug(2020-07-28-17:09:44)-27aedee4adf7284f5227ce316dc60e0c1897490f ",
 			"fpga":	"202012"
 		},
 		"device_sn":	"0x0202"
 	},
 	"calibration_parm":	{
-		"psd_power_global":	1000,
+		"psd_power_global":	1970,
 		"psd_fftsize":	[{
 				"fftsize":	512,
 				"value":	0
@@ -124,8 +124,8 @@
 				"renew_data_len":	2
 			}],
 		"mgc_gain_global":	4,
-		"low_distortion_power_agc":	100,
-		"low_noise_power_agc":	-140,
+		"low_distortion_power_agc":	-150,
+		"low_noise_power_agc":	150,
 		"mgc_gain_freq":	[{
 				"start_freq":	1050000,
 				"end_freq":	1250000,

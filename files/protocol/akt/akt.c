@@ -773,6 +773,10 @@ static int akt_execute_set_command(void *cl)
             poal_config->ctrl_para.residency.policy[ch] = (int32_t)*(int16_t *)(header->buf+1);
             printf_note("Residency Policy, ch=%d, policy=%d\n", ch, poal_config->ctrl_para.residency.policy[ch]);
             break;
+        case AUDIO_VOLUME_CMD:
+            check_valid_channel(header->buf[0]);
+            poal_config->multi_freq_point_param[ch].points[0].audio_volume = header->buf[1];
+            break;
         /* disk cmd */
         case STORAGE_IQ_CMD:
         {

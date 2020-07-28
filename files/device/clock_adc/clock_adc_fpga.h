@@ -9,4 +9,5 @@ static struct clock_adc_t{
 };
 
 extern struct clock_adc_ops * clock_adc_fpga_cxt(void);
+extern void volume_set(uint32_t base,uint8_t dat);
 #endif

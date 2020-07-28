@@ -825,6 +825,12 @@ void io_set_fpga_sample_ctrl(uint8_t val)
 #endif
 }
 
+int32_t io_set_audio_volume(uint32_t ch,uint8_t volume)
+{
+     volume_set(get_fpga_reg()->audioReg,volume);
+}
+
+
 static void io_dma_dev_disable(uint32_t ch,uint8_t type)
 {
     uint32_t ctrl_val = 0;

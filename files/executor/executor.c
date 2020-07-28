@@ -288,7 +288,7 @@ static int8_t  executor_points_scan(uint8_t ch, work_mode_type mode, void *args)
             executor_set_command(EX_MID_FREQ_CMD, EX_DEC_MID_FREQ, CONFG_AUDIO_CHANNEL,&poal_config->multi_freq_point_param[ch].points[i].center_freq,poal_config->multi_freq_point_param[ch].points[i].center_freq);
             
             executor_set_command(EX_MID_FREQ_CMD, EX_MUTE_THRE, CONFG_AUDIO_CHANNEL,&poal_config->multi_freq_point_param[ch].points[i].noise_thrh,poal_config->multi_freq_point_param[ch].points[i].noise_en);
-
+            executor_set_command(EX_MID_FREQ_CMD, EX_AUDIO_VOL_CTRL, CONFG_AUDIO_CHANNEL,&point->points[i].audio_volume);
             io_set_enable_command(AUDIO_MODE_ENABLE, ch, CONFG_AUDIO_CHANNEL, 0);  //音频通道开�?
         }else{
             io_set_enable_command(AUDIO_MODE_DISABLE, ch, CONFG_AUDIO_CHANNEL, 0);  //音频通道开�?
@@ -615,6 +615,11 @@ static int8_t executor_set_kernel_command(uint8_t type, uint8_t ch, void *data, 
         case EX_SAMPLE_CTRL:
         {
             io_set_fpga_sample_ctrl(*(uint8_t *)data);
+            break;
+        }
+        case EX_AUDIO_VOL_CTRL:
+        {
+            io_set_audio_volume(ch,*(uint8_t *)data);
             break;
         }
         default:

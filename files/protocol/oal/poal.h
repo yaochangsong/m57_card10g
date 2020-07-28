@@ -294,8 +294,23 @@ struct calibration_specturm_node_st{
     uint32_t fft;
 }__attribute__ ((packed));
 
+struct calibration_attenuation_node_st{
+    int32_t  rf_mode;
+    int32_t start_range;
+    int32_t end_range;
+}__attribute__ ((packed));
+
+
+struct calibration_mgc_attenuation_node_st{
+    int32_t start_range;
+    int32_t end_range;
+}__attribute__ ((packed));
+
+
 struct calibration_specturm_v2_st{
     struct calibration_specturm_node_st cal_node[32];
+    struct calibration_attenuation_node_st att_node[3];
+    struct calibration_mgc_attenuation_node_st mgc_attr_node;
     int global_roughly_power_lever;
 }__attribute__ ((packed));
 

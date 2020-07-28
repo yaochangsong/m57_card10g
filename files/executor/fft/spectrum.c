@@ -53,7 +53,7 @@ static inline float get_side_band_rate(void)
 {
     float sidebind_rate;
     if(config_read_by_cmd(EX_CTRL_CMD, EX_CTRL_SIDEBAND, 0, &sidebind_rate) == -1){
-        printf_note("Error read scan sidebind_rate, use default sidebind_rate[%f]\n", DEFAULT_SIDE_BAND_RATE);
+        printf_info("Error read scan sidebind_rate, use default sidebind_rate[%f]\n", DEFAULT_SIDE_BAND_RATE);
         return DEFAULT_SIDE_BAND_RATE;
     }
     //printf_warn("sidebind_rate=%.6f, %d\n", sidebind_rate, f_sgn(sidebind_rate - SIDE_BAND_RATE_1_2228));

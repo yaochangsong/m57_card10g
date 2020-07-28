@@ -46,7 +46,7 @@ static  float get_side_band_rate(uint32_t bandwidth)
     float side_rate = 0.0;
      /* 根据带宽获取边带率 */
     if(config_read_by_cmd(EX_CTRL_CMD, EX_CTRL_SIDEBAND,0, &side_rate, bandwidth) == -1){
-        printf_note("!!!!!!!!!!!!!SideRate Is Not Set In Config File[bandwidth=%u]!!!!!!!!!!!!!\n", bandwidth);
+        printf_info("!!!!!!!!!!!!!SideRate Is Not Set In Config File[bandwidth=%u]!!!!!!!!!!!!!\n", bandwidth);
         return DEFAULT_SIDE_BAND_RATE;
     }
     return side_rate;

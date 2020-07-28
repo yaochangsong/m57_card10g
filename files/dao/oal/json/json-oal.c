@@ -684,6 +684,59 @@ static int json_parse_config_param(const cJSON* root, struct poal_config *config
         }
     
    }
+    /* psd rf attenuation */
+    cJSON  *psd_attenuation = NULL;
+    cJSON *start_range = NULL, *end_range=NULL;
+    psd_attenuation = cJSON_GetObjectItem(calibration, "psd_rf_attenuation");
+    if(psd_attenuation!=NULL){
+        for(int i = 0; i < cJSON_GetArraySize(psd_attenuation); i++){
+            if(i >= ARRAY_SIZE(config->cal_level.spm_level.att_node)){
+                printf_warn("psd attenuation json node is too big:%d\n", ARRAY_SIZE(config->cal_level.spm_level.att_node));
+                break;
+            }
+            node = cJSON_GetArrayItem(psd_attenuation, i);            
+            value = cJSON_GetObjectItem(node, "rf_mode_code");
+            start_range = cJSON_GetObjectItem(node, "start_range");
+            end_range = cJSON_GetObjectItem(node, "end_range");
+            if(!cJSON_IsNumber(start_range) || !cJSON_IsNumber(end_range)){
+                continue;
+            }
+            if(value!= NULL && cJSON_IsString(value)){
+                if(!strcmp(value->valuestring, "low_distortion")){
+                    config->cal_level.spm_level.att_node[i].rf_mode = POAL_LOW_DISTORTION;
+                    config->cal_level.spm_level.att_node[i].start_range =start_range->valueint;
+                    config->cal_level.spm_level.att_node[i].end_range =end_range->valueint;
+                }else if(!strcmp(value->valuestring, "normal")){
+                    config->cal_level.spm_level.att_node[i].rf_mode = POAL_NORMAL;
+                    config->cal_level.spm_level.att_node[i].start_range =start_range->valueint;
+                    config->cal_level.spm_level.att_node[i].end_range =end_range->valueint;
+                }else if(!strcmp(value->valuestring, "low_noise")){
+                    config->cal_level.spm_level.att_node[i].rf_mode = POAL_LOW_NOISE;
+                    config->cal_level.spm_level.att_node[i].start_range =start_range->valueint;
+                    config->cal_level.spm_level.att_node[i].end_range =end_range->valueint;
+                }
+                printfd("[%d]rf_mode:[%s]%d, start_range=%d, end_range=%d\n",i, value->valuestring, config->cal_level.spm_level.att_node[i].rf_mode, 
+                            config->cal_level.spm_level.att_node[i].start_range,
+                            config->cal_level.spm_level.att_node[i].end_range);
+            }
+        }
+   }
+
+    /* psd mgc attenuation */
+    cJSON  *psd_mgc_attenuation = NULL;
+    psd_mgc_attenuation = cJSON_GetObjectItem(calibration, "psd_mgc_attenuation");
+    if(psd_mgc_attenuation!=NULL){
+        start_range = cJSON_GetObjectItem(psd_mgc_attenuation, "start_range");
+        if(start_range!= NULL && cJSON_IsNumber(start_range)){
+            config->cal_level.spm_level.mgc_attr_node.start_range = start_range->valueint;
+        }
+        end_range = cJSON_GetObjectItem(psd_mgc_attenuation, "end_range");
+        if(end_range!= NULL && cJSON_IsNumber(end_range)){
+            config->cal_level.spm_level.mgc_attr_node.end_range = end_range->valueint;
+        }
+        printfd("mgc attenuation start_range:%d, end_range=%d\n", config->cal_level.spm_level.mgc_attr_node.start_range, config->cal_level.spm_level.mgc_attr_node.end_range);
+    }
+    
     
     /* analysis_power_global */
     value = cJSON_GetObjectItem(calibration, "analysis_power_global");

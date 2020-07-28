@@ -1,7 +1,7 @@
 {
 	"version":	"1.0",
 	"network":	{
-		"mac":	"20:04:0F:F7:62:90",
+		"mac":	"00:0A:35:00:12:AB",
 		"ipaddress":	"192.168.1.111",
 		"netmask":	"255.255.255.0",
 		"gateway":	"192.168.1.1",
@@ -23,7 +23,7 @@
 	},
 	"status_parm":	{
 		"soft_version":	{
-			"app":	"1.0.0_debug(2020-06-28-17:39:10)-7fadf25a63014d28066001c1009f73333f3d97d4 ",
+			"app":	"1.0.0_debug(2020-07-28-14:28:24)-9dde4f4279fbfee1dd89eb3de643e40cef5049ed ",
 			"fpga":	"202012"
 		},
 		"device_sn":	"0x0202"
@@ -52,43 +52,59 @@
 				"fftsize":	32768,
 				"value":	0
 			}],
-		"psd_freq":	[
-			{
+		"psd_freq":	[{
 				"fftsize":	512,
 				"start_freq":	0,
 				"end_freq":	200000,
 				"value":	0
-			},{
+			}, {
 				"fftsize":	1024,
 				"start_freq":	0,
 				"end_freq":	200000,
 				"value":	0
-			},{
+			}, {
 				"fftsize":	2048,
 				"start_freq":	0,
 				"end_freq":	200000,
 				"value":	0
-			},{
+			}, {
 				"fftsize":	4096,
 				"start_freq":	0,
 				"end_freq":	200000,
 				"value":	0
-			},{
+			}, {
 				"fftsize":	8192,
 				"start_freq":	0,
 				"end_freq":	200000,
 				"value":	0
-			},{
+			}, {
 				"fftsize":	16384,
 				"start_freq":	0,
 				"end_freq":	200000,
 				"value":	0
-			},{
+			}, {
 				"fftsize":	32768,
 				"start_freq":	0,
 				"end_freq":	200000,
 				"value":	0
 			}],
+		"psd_rf_attenuation":	[{
+				"rf_mode_code":	"low_distortion",
+				"start_range":	0,
+				"end_range":	20
+			}, {
+				"rf_mode_code":	"normal",
+				"start_range":	0,
+				"end_range":	30
+			}, {
+				"rf_mode_code":	"low_noise",
+				"start_range":	-1,
+				"end_range":	-1
+			}],
+		"psd_mgc_attenuation":	{
+			"start_range":	0,
+			"end_range":	30
+		},
 		"analysis_power_global":	-195,
 		"analysis_freq":	[{
 				"start_freq":	0,
@@ -121,16 +137,16 @@
 			}]
 	},
 	"spectrum_parm":	{
-		    "side_bandrate":	[{
-				"bandwidth":    200000000,
-				"rate": 1.28
+		"side_bandrate":	[{
+				"bandwidth":	200000000,
+				"rate":	1.28
 			}, {
-				"bandwidth":    175000000,
-				"rate": 1.462857
-			},{
+				"bandwidth":	175000000,
+				"rate":	1.462857
+			}, {
 				"bandwidth":	160000000,
 				"rate":	1.6
-			},{
+			}, {
 				"bandwidth":	120000000,
 				"rate":	1.066667
 			}, {
@@ -165,7 +181,7 @@
 				"mgc_gain":	30,
 				"agc_ctrl_time":	1000,
 				"agc_output_amp_dbm":	-20,
-				"agc_ref_val_0dbm" : 11740
+				"agc_ref_val_0dbm":	11740
 			}]
 	}
 }

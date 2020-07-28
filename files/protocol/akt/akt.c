@@ -1087,7 +1087,7 @@ static int akt_execute_get_command(void)
             #elif defined(SUPPORT_FS)
             struct fs_context *fs_ctx;
             struct statfs diskInfo;
-            fs_ctx = get_fs_ctx();
+            fs_ctx = get_fs_ctx_ex();
             ret = fs_ctx->ops->fs_disk_info(&diskInfo);
             printf_debug("Get disk info: %d\n", ret);
             if(ret == 0){

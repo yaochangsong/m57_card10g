@@ -693,9 +693,12 @@ char *assemble_json_softversion(void)
 {
     char *str_json = NULL;
     cJSON *root = cJSON_CreateObject();
+    char version[32] = {0};
+    snprintf(version, sizeof(version), "%x", get_fpga_version());
+    version[sizeof(version) - 1] = 0;
     cJSON_AddStringToObject(root, "appversion", get_version_string());
     cJSON_AddStringToObject(root, "kernelversion", "1.0.0");
-    cJSON_AddStringToObject(root, "fpgaversion", "1.0.0");
+    cJSON_AddStringToObject(root, "fpgaversion", version);
     json_print(root, 1);
     str_json = cJSON_PrintUnformatted(root);
     return str_json;
@@ -705,14 +708,17 @@ char *assemble_json_fpag_info(void)
     char *str_json = NULL;
     struct arg_s{
         uint32_t temp;
-        uint32_t vol;
-        uint32_t current;
+        float vol;
+        float current;
         uint32_t resources;
     };
     struct arg_s args;
-    io_get_fpga_status(&args);
+    char version[32] = {0};
     cJSON *root = cJSON_CreateObject();
-    cJSON_AddStringToObject(root, "fpgaVersion", "1.0.0");
+    io_get_fpga_status(&args);
+    snprintf(version, sizeof(version), "%x", get_fpga_version());
+    version[sizeof(version) - 1] = 0;
+    cJSON_AddStringToObject(root, "fpgaVersion", version);
     cJSON_AddNumberToObject(root, "temperature", args.temp);
     cJSON_AddNumberToObject(root, "fpgaIntVol", args.vol);
     cJSON_AddNumberToObject(root, "fpgaBramVol", args.current);
@@ -749,7 +755,7 @@ char *assemble_json_clock_info(void)
     lock_ok = io_get_clock_status(&external_clk);
     cJSON_AddStringToObject(root, "inout", (external_clk == 1 ? "out" : "in"));
     cJSON_AddStringToObject(root, "status", (lock_ok == false ? "no":"ok"));
-    cJSON_AddNumberToObject(root, "frequency", 384000000);
+    cJSON_AddNumberToObject(root, "frequency", 512000000);
     json_print(root, 1);
     str_json = cJSON_PrintUnformatted(root);
     return str_json;
@@ -757,18 +763,50 @@ char *assemble_json_clock_info(void)
 char *assemble_json_board_info(void)
 {
     char *str_json = NULL;
+    struct arg_s{
+        float v;
+        float i;
+    };
+    struct arg_s power;
     cJSON *root = cJSON_CreateObject();
+    io_get_board_power(&power);
     cJSON_AddNumberToObject(root, "temperature", io_get_adc_temperature());
+    cJSON_AddNumberToObject(root, "voltage", power.v);
+    cJSON_AddNumberToObject(root, "current", power.i);
     json_print(root, 1);
     str_json = cJSON_PrintUnformatted(root);
     return str_json;
 }
 char *assemble_json_net_info(void)
 {
-    char *str_json = NULL;
+    char *str_json = NULL, *s_speed = "error", *s_link = "error";
+    int i;
+    struct speed_table{
+        int32_t i_speed;
+        char *s_speed;
+    };
+
+    struct speed_table spt[] = {
+        {SPEED_10, "10Mbps"},
+        {SPEED_100, "100Mbps"},
+        {SPEED_1000, "1Gbps"},
+        {SPEED_2500, "2.5Gbps"},
+        {SPEED_10000, "10Gbps"},
+    };
     cJSON *root = cJSON_CreateObject();
+    int32_t link = get_netlink_status("eth1");
+    int32_t speed = get_ifname_speed("eth1");
+    if(link >= 0)
+        s_link = (link == 0 ? "down" : "up");
+    for(i = 0; i < ARRAY_SIZE(spt); i++){
+        if(speed == spt[i].i_speed){
+            s_speed = spt[i].s_speed;
+            break;
+        }
+    }
     cJSON_AddStringToObject(root, "ifname", "eth1");
-    cJSON_AddStringToObject(root, "speed", "1.0Gbps");
+    cJSON_AddStringToObject(root, "link", s_link);
+    cJSON_AddStringToObject(root, "speed", s_speed);
     json_print(root, 1);
     str_json = cJSON_PrintUnformatted(root);
     return str_json;
@@ -779,12 +817,15 @@ char *assemble_json_rf_info(void)
     int i;
     cJSON *array = cJSON_CreateArray();
     cJSON* item = NULL;
-    uint16_t  rf_temp = 0;
+    int16_t  rf_temp = 0;
     for(i = 0; i < MAX_RADIO_CHANNEL_NUM; i++){
         cJSON_AddItemToArray(array, item = cJSON_CreateObject());
         cJSON_AddNumberToObject(item, "index", i);
-        cJSON_AddStringToObject(item, "status", "ok");
         executor_get_command(EX_RF_FREQ_CMD, EX_RF_STATUS_TEMPERAT, i,  &rf_temp);
+        if(rf_temp > 200 || rf_temp < -100 || rf_temp == 0)
+            cJSON_AddStringToObject(item, "status", "no");
+        else
+            cJSON_AddStringToObject(item, "status", "ok");
         cJSON_AddNumberToObject(item, "temperature", rf_temp);
     }
    str_json = cJSON_PrintUnformatted(array);

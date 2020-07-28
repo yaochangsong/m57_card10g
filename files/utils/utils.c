@@ -147,6 +147,92 @@ int get_gateway(char *ifname, struct in_addr * gw)
     return -1;
 }
 
+#include  <linux/ethtool.h>
+int32_t get_netlink_status(const char *if_name)
+{
+#ifndef SIOCETHTOOL
+#define SIOCETHTOOL     0x8946
+#endif
+    int skfd;
+    struct ifreq ifr;
+    struct ethtool_value edata;
+    edata.cmd = ETHTOOL_GLINK;
+    edata.data = 0;
+    memset(&ifr, 0, sizeof(ifr));
+    strncpy(ifr.ifr_name, if_name, sizeof(ifr.ifr_name) - 1);
+    ifr.ifr_data = (char *) &edata;
+    if (( skfd = socket( AF_INET, SOCK_DGRAM, 0 )) == 0)
+        return -1;
+    if(ioctl( skfd, SIOCETHTOOL, &ifr ) == -1)
+    {
+        close(skfd);
+        return -1;
+    }
+    close(skfd);
+    return edata.data;
+}
+int32_t get_ifname_speed(const char *ifname)
+{
+#ifndef SIOCETHTOOL
+#define SIOCETHTOOL     0x8946
+#endif
+#ifndef ARRAY_SIZE
+#define ARRAY_SIZE(x) (sizeof(x) / sizeof((x)[0]))
+#endif
+#define ETHTOOL_GSET        0x00000001 /* Get settings. */
+#define ETHTOOL_SSET        0x00000002 /* Set settings. */
+typedef __uint32_t __u32;       /* ditto */
+typedef __uint16_t __u16;       /* ditto */
+typedef __uint8_t __u8;         /* ditto */
+struct ethtool_cmd {
+        __u32   cmd;
+        __u32   supported;      /* Features this interface supports */
+        __u32   advertising;    /* Features this interface advertises */
+        __u16   speed;          /* The forced speed, 10Mb, 100Mb, gigabit */
+        __u8    duplex;         /* Duplex, half or full */
+        __u8    port;           /* Which connector port */
+        __u8    phy_address;
+        __u8    transceiver;    /* Which transceiver to use */
+        __u8    autoneg;        /* Enable or disable autonegotiation */
+        __u32   maxtxpkt;       /* Tx pkts before generating tx int */
+        __u32   maxrxpkt;       /* Rx pkts before generating rx int */
+        __u32   reserved[4];
+};
+    struct ifreq ifr, *ifrp;
+   int fd;
+   int link = -1;
+#if 0
+   link = get_netlink_status(ifname);
+   if(link == 0){
+        printf_warn("link down\n");
+        return 0;
+   }else if(link == -1){
+        printf_warn("link status check errno\n");
+        return -2;
+   }
+   printf_warn("link up\n");
+#endif
+   memset(&ifr, 0, sizeof(ifr));
+   strcpy(ifr.ifr_name, ifname);
+   fd = socket(AF_INET, SOCK_DGRAM, 0);
+   if (fd < 0) {
+       perror("Cannot get control socket");
+       return -2;
+   }
+   int err;
+   struct ethtool_cmd ep;
+   ep.cmd = ETHTOOL_GSET;
+   ifr.ifr_data = (caddr_t)&ep;
+   err = ioctl(fd, SIOCETHTOOL, &ifr);
+   if (err != 0) {
+       close(fd);
+       printf(" ioctl is erro .\n");
+       return -2;
+   }
+   close(fd);
+   printf_warn("%s Speed: %dMb\n", ifname , ep.speed);
+    return ep.speed;
+}
 
 int set_ipaddress(char *ifname, char *ipaddr, char *mask,char *gateway)  
 {  

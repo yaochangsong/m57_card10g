@@ -1123,8 +1123,8 @@ void io_get_fpga_status(void *args)
 {
     struct arg_s{
         uint32_t temp;
-        uint32_t vol;
-        uint32_t current;
+        float vol;
+        float current;
         uint32_t resources;
     };
     struct arg_s  *param = args;
@@ -1133,17 +1133,32 @@ void io_get_fpga_status(void *args)
     #define STATUS_MASK (0x03ff)
     #define STATUS_BIT (10)
     reg_status = get_fpga_reg()->system->fpga_status;
-    printf_debug("reg_status=0x%x\n", reg_status);
+    printf_note("reg_status=0x%x\n", reg_status);
     reg_dup = reg_status & STATUS_MASK; /* temp */
-    param->temp = (uint32_t)((reg_dup * 509.314)/1024.0) - 280.23;
-    printf_debug("temp=0x%x, %u\n", reg_dup, param->temp);
+    param->temp = (uint32_t)((reg_dup * 503.93)/1024.0) - 280.23;
+    printf_note("temp=0x%x, %u\n", reg_dup, param->temp);
     reg_dup = (reg_status >> STATUS_BIT)&STATUS_MASK; /* fpga_int_vol */
-    param->vol = (uint32_t)(3* reg_dup/1024);
-    printf_debug("fpga_int_vol=0x%x, %u\n", reg_dup, param->vol);
+    param->vol = 3.0* reg_dup/1024.0;
+    printf_note("fpga_int_vol=0x%x, %f\n", reg_dup, param->vol);
     reg_dup = (reg_status >> (STATUS_BIT*2))&STATUS_MASK; /* fpga_bram_vol */
-    param->current = (uint32_t)(3* reg_dup/1024);
-    printf_debug("fpga_bram_vol=0x%x, %u\n", reg_dup, param->current);
+    param->current = 3.0* reg_dup/1024.0;
+    printf_note("fpga_bram_vol=0x%x, %f\n", reg_dup, param->current);
     param->resources = 65;
+#endif
+}
+void io_get_board_power(void *args)
+{
+    struct arg_s{
+        float v;
+        float i;
+    };
+    struct arg_s *power = args;
+#ifdef SUPPORT_PLATFORM_ARCH_ARM
+    uint32_t reg_status;
+    reg_status = get_fpga_reg()->system->board_vi;
+    power->v = 24.845*(reg_status&0x3ff)/1024.0;
+    power->i = 8.585*((reg_status >> 10)&0x3ff)/1024.0;
+    printf_note("[0x%x]power.v=%f, power.i=%f\n", reg_status, power->v, power->i);
 #endif
 }
 

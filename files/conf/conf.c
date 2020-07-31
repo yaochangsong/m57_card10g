@@ -237,7 +237,7 @@ int32_t  config_get_fft_calibration_value(uint8_t ch, uint32_t fft_size, uint64_
     printf_debug("mode:%d  low_noise_power_level:%d  low_distortion_power_level:%d\n",
     mode,poal_config->cal_level.specturm.low_noise_power_level,poal_config->cal_level.specturm.low_distortion_power_level);
 
-    printf_note("m_freq=%lluHz,mode=%d, cal_value=%d, attenuation=%d, mgc_gain_value=%d\n",m_freq, mode, cal_value, poal_config->rf_para[ch].attenuation, poal_config->rf_para[ch].mgc_gain_value);
+    printf_debug("m_freq=%lluHz,mode=%d, cal_value=%d, attenuation=%d, mgc_gain_value=%d\n",m_freq, mode, cal_value, poal_config->rf_para[ch].attenuation, poal_config->rf_para[ch].mgc_gain_value);
     if(found){
         printf_debug("find the fft_mgc calibration value: %d\n",cal_value);
     }else{

@@ -904,7 +904,7 @@ static int akt_execute_set_command(void *cl)
 			pthread_t work_id;
             fs_ctx = get_fs_ctx_ex();
             //需要增加协议返回当前格式化的状态
-            ret=pthread_create(&work_id,NULL,(void *)fs_ctx->ops->fs_format(), NULL);
+            ret=pthread_create(&work_id,NULL,(void *)fs_ctx->ops->fs_format, NULL);
     		if(ret!=0)
         		perror("pthread cread format disk");
     		pthread_detach(work_id);

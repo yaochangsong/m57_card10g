@@ -316,10 +316,12 @@ uint8_t rf_read_interface(uint8_t cmd,uint8_t ch,void *data){
             
             ret = spi_rf_get_command(SPI_RF_TEMPRATURE_GET, &rf_temperature);
 #elif defined(SUPPORT_RF_FPGA)
-			#define RF_TEMPERATURE_FACTOR 0.0625
-			rf_temperature = get_fpga_reg()->rfReg->temperature;
-			printf_note("rf temprature 0x%x\n", rf_temperature);
-		    rf_temperature = rf_temperature * RF_TEMPERATURE_FACTOR;
+#define RF_TEMPERATURE_FACTOR 0.0625
+            rf_temperature = get_fpga_reg()->rfReg->temperature;
+            usleep(100);
+            rf_temperature = get_fpga_reg()->rfReg->temperature;
+            printf_debug("rf temprature 0x%x\n", rf_temperature);
+            rf_temperature = rf_temperature * RF_TEMPERATURE_FACTOR;
 #endif
 #endif
             *(int16_t *)data = rf_temperature;

@@ -1231,6 +1231,21 @@ bool io_get_clock_status(void *args)
     return ret;
 }
 
+/*  1: out clock 0: in clock */
+bool io_get_inout_clock_status(void *args)
+{
+    int lock_ok=0, external_clk=0;
+    bool ret = false;
+    external_clk = get_fpga_reg()->rfReg->in_out_clk;
+    lock_ok = get_fpga_reg()->rfReg->clk_lock;
+    usleep(50);
+    external_clk = get_fpga_reg()->rfReg->in_out_clk;
+    lock_ok = get_fpga_reg()->rfReg->clk_lock;
+    printf_note("external_clk=%d, lock_ok=%d\n", external_clk, lock_ok);
+    *(uint8_t *)args = (((external_clk & 0x01) == 0) ? 1 : 0);
+    ret = (lock_ok == 0 ? false : true);
+    return ret;
+}
 
 uint32_t get_fpga_version(void)
 {

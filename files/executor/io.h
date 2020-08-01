@@ -273,5 +273,5 @@ extern int32_t io_set_noise(uint32_t ch, uint32_t noise_en,int8_t noise_level_tm
 extern int32_t io_set_middle_freq(uint32_t ch, uint64_t middle_freq);
 extern void io_get_fpga_status(void *args);
 extern void io_get_board_power(void *args);
-
+extern bool io_get_inout_clock_status(void *args);
 #endif

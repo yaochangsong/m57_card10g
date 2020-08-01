@@ -566,7 +566,6 @@ static int spm_scan(uint64_t *s_freq_offset, uint64_t *e_freq, uint32_t *scan_bw
 }
 
 
-
 /* 自动增益控制  : 该函数在频谱处理线程中，循环调用。通过不断控制，逐渐逼近设置幅度值 */
 static int spm_agc_ctrl(int ch, struct spm_context *ctx)
 {

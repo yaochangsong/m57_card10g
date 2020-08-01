@@ -121,6 +121,8 @@ typedef struct _RF_REG_
     uint32_t revise_minus;   //校正衰减控制数据
     uint32_t direct_minus;   //直采衰减控制数据
     int32_t  temperature;    //射频温度
+    uint32_t clk_lock;       //时钟锁定
+    uint32_t in_out_clk;     //内外时钟
 }RF_REG;
 
 typedef struct _AUDIO_REG_

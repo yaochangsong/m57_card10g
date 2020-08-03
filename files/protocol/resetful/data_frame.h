@@ -17,13 +17,14 @@
 
 struct data_frame_header{
     uint32_t sysn;
-    time_t timestamp;
+    //time_t timestamp;
+    uint32_t timestamp;
     uint32_t time_counter;
     uint16_t ex_frame_type;
 #define  DFH_EX_TYPE_PSD   0x00
 #define  DFH_EX_TYPE_DEMO  0x01
     uint16_t ex_frame_header_len;
-};
+}__attribute__ ((packed));
 
 struct data_ex_frame_psd_head{
     uint8_t ch;
@@ -41,7 +42,7 @@ struct data_ex_frame_psd_head{
 #define  DEFH_DTYPE_CHAR   0x00
 #define  DEFH_DTYPE_FLOAT  0x02
     uint32_t data_len;
-};
+}__attribute__ ((packed));
 
 struct data_ex_frame_demodulation_head{
     uint8_t ch;
@@ -57,7 +58,7 @@ struct data_ex_frame_demodulation_head{
 #define  DEFH_DTYPE_CH_IQ   0x06
 #define  DEFH_DTYPE_AUDIO   0x08
     uint32_t data_len;
-};
+}__attribute__ ((packed));
 
 extern uint8_t * xw_assamble_frame_data(uint32_t *len, void *args);
 #endif

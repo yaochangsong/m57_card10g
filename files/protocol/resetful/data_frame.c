@@ -65,6 +65,7 @@ uint8_t * xw_assamble_frame_data(uint32_t *len, void *args)
         pexh->start_freq_hz = pargs->s_freq;
         pexh->end_freq_hz = pargs->e_freq;
         pexh->mid_freq_hz = pargs->m_freq;
+        pexh->bandwidth = pargs->bandwidth;
         pexh->freq_resolution = pargs->freq_resolution;
         pexh->sn = pargs->fft_sn;
         pexh->fft_len = pargs->fft_size;

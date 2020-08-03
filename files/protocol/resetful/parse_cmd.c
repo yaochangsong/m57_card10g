@@ -17,6 +17,7 @@
 #include "log/log.h"
 #include "conf/conf.h"
 #include "parse_cmd.h"
+#include "parse_json.h"
 
 static struct response_err_code {
     int code;
@@ -35,27 +36,32 @@ static struct response_err_code resp_code[] ={
 
 /* 射频参数类型 */
 static const char *const rf_types[] = {
-    [EX_RF_MID_FREQ] = "middleFreq",
-    [EX_RF_MID_BW] = "middleBw",
-    [EX_RF_MODE_CODE] = "mode",
-    [EX_RF_GAIN_MODE] = "gain",
-    [EX_RF_MGC_GAIN] = "mgc",
-    [EX_RF_AGC_CTRL_TIME]="agctime",          
-    [EX_RF_AGC_OUTPUT_AMP]="agcamp",          
-    [EX_RF_ANTENNA_SELECT]="actenna",          
-    [EX_RF_ATTENUATION] = "attenuation",
+    [EX_RF_MID_FREQ] = "midFreq",
+    [EX_RF_MID_BW] = "bandwidth",
+    [EX_RF_MODE_CODE] = "modeCode",
+    [EX_RF_GAIN_MODE] = "gainMode",
+    [EX_RF_MGC_GAIN] = "mgcGain",
+    [EX_RF_AGC_CTRL_TIME]="agcCtrlTime",          
+    [EX_RF_AGC_OUTPUT_AMP]="agcOutPutAmp",          
+    [EX_RF_ANTENNA_SELECT]="antennaSelect",          
+    [EX_RF_ATTENUATION] = "rfAttenuation",
     [EX_RF_STATUS_TEMPERAT] = "temperature",         
     [EX_RF_CALIBRATE] = "calibrate",
 };
 
 /* 中频参数类型 */
 static const char *const if_types[] = {
-    [EX_MUTE_SW] = "middleFreq",
-    [EX_MUTE_THRE] = "muteThre",              /*静噪门限*/
-    [EX_MID_FREQ]  = "middleFreq",            /*中心频率*/
-    [EX_BANDWITH] = "bandWidth",               /*带宽*/
-    [EX_DEC_METHOD] = "decMethod"    ,        /*解调方式*/
-
+    [EX_MUTE_SW] = "muteSwitch",
+    [EX_MUTE_THRE] = "muteThreshold",              /*静噪门限*/
+    [EX_MID_FREQ]  = "midFreq",            /*中心频率*/
+    [EX_BANDWITH] = "bandwidth",               /*带宽*/
+    [EX_DEC_METHOD] = "decMethodId"    ,        /*解调方式*/
+    [EX_DEC_BW] = "decBandwidth", 
+    [EX_DEC_MID_FREQ] = "decMidFreq", 
+    [EX_SMOOTH_TIME] = "smoothTimes", 
+    [EX_AUDIO_SAMPLE_RATE] = "audioSampleRate", 
+    [EX_FFT_SIZE] = "fftPoints", 
+    [EX_AUDIO_VOL_CTRL] = "audioVolume",
 };
 
 
@@ -280,16 +286,17 @@ error:
 */
 int cmd_if_single_value_set(struct uh_client *cl, void **arg, void **content)
 {
-    char *s_type, *s_ch, *s_subch, *s_value;
+    char *s_type, *s_ch, *s_subch, *s_value, *s_value_2;
     int ch, itype, subch;
-    int64_t value = 0;
+    int64_t value = 0, value2=0;
     int code = RESP_CODE_OK;
     
     s_type = cl->get_restful_var(cl, "type");
     s_ch = cl->get_restful_var(cl, "ch");
     s_subch = cl->get_restful_var(cl, "subch");
     s_value = cl->get_restful_var(cl, "value");
-    printf_note("if type=%s,ch = %s, subch=%s, value=%s\n", s_type, s_ch, s_subch, s_value);
+    s_value_2 = cl->get_restful_var(cl, "value2");
+    printf_note("if type=%s,ch = %s, subch=%s, value=%s, s_value_2=%s\n", s_type, s_ch, s_subch, s_value, s_value_2);
     if(str_to_int(s_ch, &ch, check_valid_ch) == false){
         code = RESP_CODE_CHANNEL_ERR;
         goto error;
@@ -308,10 +315,23 @@ int cmd_if_single_value_set(struct uh_client *cl, void **arg, void **content)
         goto error;
     }
 
+    if(s_value_2 != NULL){
+        if(str_to_s64(s_value_2, &value2, NULL) == false){
+            code = RESP_CODE_PATH_PARAM_ERR;
+             goto error;
+        }
+    }
     itype = find_idx_safe(if_types, ARRAY_SIZE(if_types), s_type);
-    if(executor_set_command(EX_MID_FREQ_CMD, itype, ch,&value) != 0){
-        code = RESP_CODE_EXECMD_ERR;
-        goto error;
+    if(s_value_2 != NULL){
+        if(executor_set_command(EX_MID_FREQ_CMD, itype, ch,&value, value2) != 0){
+            code = RESP_CODE_EXECMD_ERR;
+            goto error;
+        }
+    }else{
+        if(executor_set_command(EX_MID_FREQ_CMD, itype, ch,&value) != 0){
+            code = RESP_CODE_EXECMD_ERR;
+            goto error;
+        }
     }
 
 error:
@@ -334,7 +354,7 @@ int cmd_if_multi_value_set(struct uh_client *cl, void **arg, void **content)
     subch = cl->get_restful_var(cl, "subch");
     printf_note("rf ch = %s, subch=%s\n", ch, subch);
     printf_note("%s\n", cl->dispatch.body);
-    if(parse_json_if_multi_value(cl->dispatch.body) != 0){
+    if(parse_json_if_multi_value(cl->dispatch.body, ch) != 0){
         code = RESP_CODE_PARSE_ERR;
     }
     
@@ -381,6 +401,7 @@ int cmd_rf_single_value_set(struct uh_client *cl, void **arg, void **content)
     }
 
     itype = find_idx_safe(rf_types, ARRAY_SIZE(rf_types), s_type);
+    config_write_data(EX_RF_FREQ_CMD, itype, ch,&value);
     if(executor_set_command(EX_RF_FREQ_CMD, itype, ch,&value) != 0){
         code = RESP_CODE_EXECMD_ERR;
         goto error;
@@ -704,4 +725,44 @@ int cmd_ping(struct uh_client *cl, void **arg, void **content)
     return RESP_CODE_OK;
 }
 
+int cmd_get_softversion(struct uh_client *cl, void **arg, void **content)
+{
+    int code = RESP_CODE_OK;
+    *content = assemble_json_softversion();
+    if(*content == NULL)
+        code = RESP_CODE_EXECMD_ERR;
+error:
+    *arg = get_resp_message(code);
+    return code;
+}
 
+int cmd_get_fpga_info(struct uh_client *cl, void **arg, void **content)
+{
+    int code = RESP_CODE_OK;
+    *content = assemble_json_fpag_info();
+    if(*content == NULL)
+        code = RESP_CODE_EXECMD_ERR;
+error:
+    *arg = get_resp_message(code);
+    return code;
+}
+int cmd_get_temp_info(struct uh_client *cl, void **arg, void **content)
+{
+    int code = RESP_CODE_OK;
+    *content = assemble_json_temp_info();
+    if(*content == NULL)
+        code = RESP_CODE_EXECMD_ERR;
+error:
+    *arg = get_resp_message(code);
+    return code;
+}
+int cmd_get_all_info(struct uh_client *cl, void **arg, void **content)
+{
+    int code = RESP_CODE_OK;
+    *content = assemble_json_all_info();
+    if(*content == NULL)
+        code = RESP_CODE_EXECMD_ERR;
+error:
+    *arg = get_resp_message(code);
+    return code;
+}

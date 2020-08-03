@@ -66,9 +66,11 @@ ifneq ($(findstring x86,$(SUPPORT_PLAT_FORM_ARCH)),)
     SUPPORT_RESIDENCY_STRATEGY=y
 else
 	#uart: y n
-	SUPPORT_UART=n
+	SUPPORT_UART=y
 	#lcd: y n
 	SUPPORT_LCD=n
+    #RS485
+    SUPPORT_RS485=n
 	#ambient temperature&humidity: y n
 	SUPPORT_AMBIENT_TEMP_HUMIDITY=n
 	SUPPORT_TEMP_HUMIDITY_SI7021=n
@@ -85,12 +87,13 @@ else
     #万兆
     SUPPORT_NET_WZ=y
 	#gps
-	SUPPORT_GPS=n
+    SUPPORT_GPS=y
+    SUPPORT_DIRECT_SAMPLE=n
 	ifneq ($(findstring y,$(SUPPORT_PROJECT_SSA)),)
 		SUPPORT_RF_ADRV9009=y
 		#iio
 		SUPPORT_LIB_IIO=y
 	endif
     #通道信号驻留策略
-    SUPPORT_RESIDENCY_STRATEGY=y
+    SUPPORT_RESIDENCY_STRATEGY=n
 endif

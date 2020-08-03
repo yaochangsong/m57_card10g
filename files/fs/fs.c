@@ -112,12 +112,44 @@ bool _fs_disk_valid(void)
     return true;
 }
 
+bool _fs_disk_info(struct statfs *diskInfo)
+{
+    #define DISK_NODE_NAME "/run/media/nvme0n1"
+    
+    if(access(DISK_NODE_NAME, F_OK)){
+        printf_note("Disk node[%s] is not valid\n", DISK_NODE_NAME);
+        return false;
+    }
+
+	if(statfs(DISK_NODE_NAME, diskInfo))
+	{
+		printf_note("Disk node[%s] is unknown filesystem\n", DISK_NODE_NAME);
+        return false;
+	}
+    
+    return true;
+}
 
 static inline int _fs_format(void)
 {
-    if(disk_is_valid == false)
-        return -1;
-    return safe_system("mkfs.ext3    /dev/sda6");
+	#define DISK_DEVICE_NAME "/dev/nvme0n1"
+	#define DISK_NODE_NAME "/run/media/nvme0n1"
+    char cmd[128];
+	int ret;
+
+    snprintf(cmd, sizeof(cmd), "umount %s",DISK_NODE_NAME);
+    ret = safe_system(cmd);
+    if(!ret)
+    	printf_err("unmount %s failed\n", DISK_NODE_NAME);
+	snprintf(cmd, sizeof(cmd), "mkfs.ext2 %s",DISK_DEVICE_NAME);
+	ret = safe_system(cmd);    
+	if(!ret)
+    	printf_err("mkfs.ext2 %s failed\n", DISK_NODE_NAME);
+	snprintf(cmd, sizeof(cmd), "mount %s %s",DISK_DEVICE_NAME, DISK_NODE_NAME);
+	ret = safe_system(cmd);
+	if(!ret)
+    	printf_err("mount %s %s failed\n", DISK_DEVICE_NAME, DISK_NODE_NAME);
+    return ret;
 }
 
 static inline int _fs_mkdir(char *dirname)
@@ -322,11 +354,18 @@ static ssize_t _fs_start_read_raw_file(char *filename)
     int ret = -1;
     static int file_fd;
     char path[512];
+    uint32_t band;
+    uint64_t freq;
+    int ch = 0;
     if(disk_is_valid == false)
         return -1;
 #if 1
     if(filename == NULL)
         return -1;
+    //get_frequency_band_from_str(filename,&band,&freq);
+    //printf_note("wirte freq:%lu band:%u !\n",freq,band);
+    //config_write_data(EX_MID_FREQ_CMD,  EX_MID_FREQ, ch, &freq);
+    //config_write_data(EX_MID_FREQ_CMD,  EX_BANDWITH, ch, &band);
     snprintf(path, sizeof(path), "%s/%s", fs_get_root_dir(), filename);
     file_fd = open(path, O_RDONLY, 0666);
     if (file_fd < 0) {
@@ -363,6 +402,7 @@ static int _fs_close(void)
 }
 
 static const struct fs_ops _fs_ops = {
+    .fs_disk_info = _fs_disk_info,
     .fs_disk_valid = _fs_disk_valid,
     .fs_format = _fs_format,
     .fs_mkdir = _fs_mkdir,
@@ -381,6 +421,14 @@ struct fs_context *get_fs_ctx(void)
 {
     if(disk_is_valid == false)
         return NULL;
+    if(fs_ctx == NULL){
+        fs_ctx = fs_create_context();
+    }
+    return fs_ctx;
+}
+
+struct fs_context *get_fs_ctx_ex(void)
+{
     if(fs_ctx == NULL){
         fs_ctx = fs_create_context();
     }

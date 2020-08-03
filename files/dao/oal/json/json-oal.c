@@ -92,6 +92,7 @@ static cJSON* json_read_file(const char *filename, cJSON* root)
     len = ftell(fp);
     if(0 == len)
     {
+        fclose(fp);
         return NULL;
     }
 
@@ -270,6 +271,7 @@ static int json_write_config_param(cJSON* root, struct poal_config *config)
     node = cJSON_GetObjectItem(network, "mac");
     printf_debug("mac is:%s\n",node->valuestring);
 
+#ifdef SUPPORT_NET_WZ
     /* 10g */
     saddr.sin_addr.s_addr = config->network_10g.gateway;
     json_write_string_param(NULL, "network_10g", "gateway", inet_ntoa(saddr.sin_addr));
@@ -298,7 +300,7 @@ static int json_write_config_param(cJSON* root, struct poal_config *config)
     json_write_string_param(NULL, "network_10g", "mac", temp);
     node = cJSON_GetObjectItem(network, "mac");
     printf_debug("10g mac is:%s\n",node->valuestring);
-
+#endif
     /*control_parm*/
      json_write_int_param(NULL, "control_parm", "spectrum_time_interval", config->ctrl_para.spectrum_time_interval);
      json_write_int_param(NULL, "control_parm", "bandwidth_remote_ctrl", config->ctrl_para.remote_local);
@@ -606,6 +608,13 @@ static int json_parse_config_param(const cJSON* root, struct poal_config *config
         config->ctrl_para.iq_data_length=value->valueint;
         printf_debug("iq_data_length:%d, \n",config->ctrl_para.iq_data_length);
     }
+    /*
+    value = cJSON_GetObjectItem(control_parm, "agc_ref_val_0dbm");
+    if(value!= NULL && cJSON_IsNumber(value)){
+        config->ctrl_para.agc_ref_val_0dbm=value->valueint;
+        printf_debug("agc_ref_val_0dbm:%d, \n",config->ctrl_para.agc_ref_val_0dbm);
+    } */
+    
 /* calibration_parm */
     cJSON *calibration = NULL;
     calibration = cJSON_GetObjectItem(root, "calibration_parm");
@@ -651,28 +660,83 @@ static int json_parse_config_param(const cJSON* root, struct poal_config *config
         for(int i = 0; i < cJSON_GetArraySize(psd_freq); i++){
             printfd("index:%d ", i);
             node = cJSON_GetArrayItem(psd_freq, i);            
+            value = cJSON_GetObjectItem(node, "fftsize");
+            if(cJSON_IsNumber(value)){
+                config->cal_level.spm_level.cal_node[i].fft =value->valueint;
+                printfd("fft:%u, ", config->cal_level.spm_level.cal_node[i].fft);
+            }
             value = cJSON_GetObjectItem(node, "start_freq");
             if(cJSON_IsNumber(value)){
-               // printfd("start_freq:%d, ", value->valueint);
-                config->cal_level.specturm.start_freq_khz[i]=value->valueint;
-                printfd("start_freq:%u, ", config->cal_level.specturm.start_freq_khz[i]);
+                config->cal_level.spm_level.cal_node[i].start_freq_khz =value->valueint;
+                printfd("start freq:%u, ", config->cal_level.spm_level.cal_node[i].start_freq_khz);
             }
             value = cJSON_GetObjectItem(node, "end_freq");
             if(cJSON_IsNumber(value)){
-                //printfd("end_freq:%d, ", value->valueint);
-                config->cal_level.specturm.end_freq_khz[i]=value->valueint;
-                printfd("end_freq:%u, ",  config->cal_level.specturm.start_freq_khz[i]);
+                config->cal_level.spm_level.cal_node[i].end_freq_khz =value->valueint;
+                printfd("end freq:%u, ", config->cal_level.spm_level.cal_node[i].end_freq_khz);
             } 
             value = cJSON_GetObjectItem(node, "value");
              if(cJSON_IsNumber(value)){
-                //printfd("value:%d, ", value->valueint);
-                config->cal_level.specturm.power_level[i]=value->valueint;
-                printfd("value:%d, ", config->cal_level.specturm.power_level[i]);
+                config->cal_level.spm_level.cal_node[i].power_level =value->valueint;
+                printfd("power level:%d, ", config->cal_level.spm_level.cal_node[i].power_level);
             } 
             printfd("\n");
         }
     
    }
+    /* psd rf attenuation */
+    cJSON  *psd_attenuation = NULL;
+    cJSON *start_range = NULL, *end_range=NULL;
+    psd_attenuation = cJSON_GetObjectItem(calibration, "psd_rf_attenuation");
+    if(psd_attenuation!=NULL){
+        for(int i = 0; i < cJSON_GetArraySize(psd_attenuation); i++){
+            if(i >= ARRAY_SIZE(config->cal_level.spm_level.att_node)){
+                printf_warn("psd attenuation json node is too big:%d\n", ARRAY_SIZE(config->cal_level.spm_level.att_node));
+                break;
+            }
+            node = cJSON_GetArrayItem(psd_attenuation, i);            
+            value = cJSON_GetObjectItem(node, "rf_mode_code");
+            start_range = cJSON_GetObjectItem(node, "start_range");
+            end_range = cJSON_GetObjectItem(node, "end_range");
+            if(!cJSON_IsNumber(start_range) || !cJSON_IsNumber(end_range)){
+                continue;
+            }
+            if(value!= NULL && cJSON_IsString(value)){
+                if(!strcmp(value->valuestring, "low_distortion")){
+                    config->cal_level.spm_level.att_node[i].rf_mode = POAL_LOW_DISTORTION;
+                    config->cal_level.spm_level.att_node[i].start_range =start_range->valueint;
+                    config->cal_level.spm_level.att_node[i].end_range =end_range->valueint;
+                }else if(!strcmp(value->valuestring, "normal")){
+                    config->cal_level.spm_level.att_node[i].rf_mode = POAL_NORMAL;
+                    config->cal_level.spm_level.att_node[i].start_range =start_range->valueint;
+                    config->cal_level.spm_level.att_node[i].end_range =end_range->valueint;
+                }else if(!strcmp(value->valuestring, "low_noise")){
+                    config->cal_level.spm_level.att_node[i].rf_mode = POAL_LOW_NOISE;
+                    config->cal_level.spm_level.att_node[i].start_range =start_range->valueint;
+                    config->cal_level.spm_level.att_node[i].end_range =end_range->valueint;
+                }
+                printfd("[%d]rf_mode:[%s]%d, start_range=%d, end_range=%d\n",i, value->valuestring, config->cal_level.spm_level.att_node[i].rf_mode, 
+                            config->cal_level.spm_level.att_node[i].start_range,
+                            config->cal_level.spm_level.att_node[i].end_range);
+            }
+        }
+   }
+
+    /* psd mgc attenuation */
+    cJSON  *psd_mgc_attenuation = NULL;
+    psd_mgc_attenuation = cJSON_GetObjectItem(calibration, "psd_mgc_attenuation");
+    if(psd_mgc_attenuation!=NULL){
+        start_range = cJSON_GetObjectItem(psd_mgc_attenuation, "start_range");
+        if(start_range!= NULL && cJSON_IsNumber(start_range)){
+            config->cal_level.spm_level.mgc_attr_node.start_range = start_range->valueint;
+        }
+        end_range = cJSON_GetObjectItem(psd_mgc_attenuation, "end_range");
+        if(end_range!= NULL && cJSON_IsNumber(end_range)){
+            config->cal_level.spm_level.mgc_attr_node.end_range = end_range->valueint;
+        }
+        printfd("mgc attenuation start_range:%d, end_range=%d\n", config->cal_level.spm_level.mgc_attr_node.start_range, config->cal_level.spm_level.mgc_attr_node.end_range);
+    }
+    
     
     /* analysis_power_global */
     value = cJSON_GetObjectItem(calibration, "analysis_power_global");
@@ -764,6 +828,18 @@ static int json_parse_config_param(const cJSON* root, struct poal_config *config
         config->cal_level.mgc.global_gain_val = value->valueint;
         printf_debug("mgc_gain_global=>value is:%d\n",value->valueint);
     } 
+
+    value = cJSON_GetObjectItem(calibration, "low_distortion_power_agc");
+    if(value!= NULL && cJSON_IsNumber(value)){
+        config->cal_level.specturm.low_distortion_power_level = value->valueint;
+        printf_debug("low_distortion_power_agc=>value is:%d\n",config->cal_level.specturm.low_distortion_power_level);
+    }
+    value = cJSON_GetObjectItem(calibration, "low_noise_power_agc");
+    if(value!= NULL && cJSON_IsNumber(value)){
+        config->cal_level.specturm.low_noise_power_level = value->valueint;
+        printf_debug("low_noise_power_agc=>value is:%d  %d\n",config->cal_level.specturm.low_noise_power_level,value->valueint);
+    }
+    
     /* mgc_gain_freq */
     cJSON *mgc_gain_freq=NULL;
     mgc_gain_freq = cJSON_GetObjectItem(calibration, "mgc_gain_freq");
@@ -959,6 +1035,11 @@ static int json_parse_config_param(const cJSON* root, struct poal_config *config
                  config->rf_para[i].agc_ctrl_time=value->valueint;
                  printfd(" agc_ctrl_time:%d,", config->rf_para[i].agc_ctrl_time);                   
             }
+            value = cJSON_GetObjectItem(node, "agc_ref_val_0dbm");
+            if(cJSON_IsNumber(value)){
+                config->ctrl_para.agc_ref_val_0dbm=value->valueint;
+                printf_debug("agc_ref_val_0dbm:%d, \n",config->ctrl_para.agc_ref_val_0dbm);
+            } 
             value = cJSON_GetObjectItem(node, "agc_output_amp_dbm");
             if(cJSON_IsNumber(value)){
                 config->rf_para[i].agc_mid_freq_out_level=value->valueint;

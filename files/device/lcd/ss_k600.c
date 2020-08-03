@@ -283,7 +283,7 @@ int8_t k600_scanf(uint8_t *pdata, int32_t total_len)
                 ip.s_addr = ipaddr;
                 ipstr= inet_ntoa(ip);
                 printf_note("ipstr=%s ipaddr=0x%x, 0x%x\n", ipstr,  ip.s_addr, ipaddr);
-                config_write_data(EX_NETWORK_CMD, EX_NETWORK_IP, 0, &ipaddr);
+                config_write_save_data(EX_NETWORK_CMD, EX_NETWORK_IP, 0, &ipaddr);
                 executor_set_command(EX_NETWORK_CMD, EX_NETWORK_1G, 0, NULL);
             }
             break;
@@ -301,7 +301,7 @@ int8_t k600_scanf(uint8_t *pdata, int32_t total_len)
                 ip.s_addr = subnetmask;
                 ipstr= inet_ntoa(ip);
                 printf_note("subnetmaskstr=%s subnetmask=%x\n", ipstr,  ip.s_addr);
-                config_write_data(EX_NETWORK_CMD, EX_NETWORK_MASK, 0, &subnetmask);
+                config_write_save_data(EX_NETWORK_CMD, EX_NETWORK_MASK, 0, &subnetmask);
                 executor_set_command(EX_NETWORK_CMD, EX_NETWORK_1G, 0, NULL);
 
             }
@@ -320,7 +320,7 @@ int8_t k600_scanf(uint8_t *pdata, int32_t total_len)
                 ip.s_addr = gateway;
                 ipstr= inet_ntoa(ip);
                 printf_note("gatewaystr=%s gateway=%x\n", ipstr,  ip.s_addr);
-                config_write_data(EX_NETWORK_CMD,  EX_NETWORK_GW, 0, &gateway);
+                config_write_save_data(EX_NETWORK_CMD,  EX_NETWORK_GW, 0, &gateway);
                 executor_set_command(EX_NETWORK_CMD,  EX_NETWORK_1G, 0, NULL);
 
             }
@@ -330,7 +330,7 @@ int8_t k600_scanf(uint8_t *pdata, int32_t total_len)
                 uint16_t port;
                 port = ptr->data[0];
                 printf_note("port=%d , 0x%x\n", port, ptr->data[0]);
-                config_write_data(EX_NETWORK_CMD,  EX_NETWORK_PORT, 0, &port);
+                config_write_save_data(EX_NETWORK_CMD,  EX_NETWORK_PORT, 0, &port);
                 //executor_set_command(EX_NETWORK_CMD,  EX_NETWORK_PORT, 0, NULL);
             }
         }
@@ -362,7 +362,7 @@ int8_t k600_scanf(uint8_t *pdata, int32_t total_len)
                     if(bw_data[i].type == (uint8_t)i_data){
                         printf_note("rec bw data %uHz\n", bw_data[i].idata);
                         bw = (uint32_t)(bw_data[i].idata);
-                        config_write_data(EX_MID_FREQ_CMD,  EX_DEC_BW, ch, &bw);
+                        config_write_save_data(EX_MID_FREQ_CMD,  EX_DEC_BW, ch, &bw);
                         executor_set_command(EX_MID_FREQ_CMD,  EX_DEC_BW, ch, &bw);
                         break;
                     }
@@ -378,7 +378,7 @@ int8_t k600_scanf(uint8_t *pdata, int32_t total_len)
                     if(_rf_bw_table[i].type == (uint8_t)i_data){
                         mid_bw = (uint32_t)(_rf_bw_table[i].idata);
                         printf_note("rec bw data %uHz\n", mid_bw);
-                        config_write_data(EX_RF_FREQ_CMD,  EX_RF_MID_BW, ch, &mid_bw);
+                        config_write_save_data(EX_RF_FREQ_CMD,  EX_RF_MID_BW, ch, &mid_bw);
                         executor_set_command(EX_RF_FREQ_CMD,  EX_RF_MID_BW, ch, &mid_bw);
                         break;
                     }
@@ -397,7 +397,7 @@ int8_t k600_scanf(uint8_t *pdata, int32_t total_len)
                 */
                 printf_note("ch = %d, rf noise mode[%d]\n",  ch, i_data);
                 i_data = i_data + 1;
-                config_write_data(EX_RF_FREQ_CMD,  EX_RF_MODE_CODE, ch, &i_data);
+                config_write_save_data(EX_RF_FREQ_CMD,  EX_RF_MODE_CODE, ch, &i_data);
                 executor_set_command(EX_RF_FREQ_CMD, EX_RF_MODE_CODE, ch, &i_data);
                 break;
             }
@@ -417,7 +417,7 @@ int8_t k600_scanf(uint8_t *pdata, int32_t total_len)
                     printf_err("error decode type!!\n");
                     break;
                 }
-                config_write_data(EX_MID_FREQ_CMD,  EX_DEC_METHOD, ch, &i_data);
+                config_write_save_data(EX_MID_FREQ_CMD,  EX_DEC_METHOD, ch, &i_data);
                 executor_set_command(EX_MID_FREQ_CMD, EX_DEC_METHOD, ch, &i_data);
             }
                 break;
@@ -434,7 +434,7 @@ int8_t k600_scanf(uint8_t *pdata, int32_t total_len)
                 i_freq_khz = COMPOSE_32BYTE_BY_16BIT(ptr->data[0],ptr->data[1]);
                 printf_note("ch = %d, frequency[%u %x]\n",  ch, i_freq_khz, i_freq_khz);
                 i_freq_hz = i_freq_khz* 1000; /*KHz -> Hz*/
-                config_write_data(EX_RF_FREQ_CMD,  EX_RF_MID_FREQ, ch, &i_freq_hz);
+                config_write_save_data(EX_RF_FREQ_CMD,  EX_RF_MID_FREQ, ch, &i_freq_hz);
                 executor_set_command(EX_RF_FREQ_CMD, EX_RF_MID_FREQ, ch, &i_freq_hz);
                 break;
             }
@@ -449,7 +449,7 @@ int8_t k600_scanf(uint8_t *pdata, int32_t total_len)
                 int8_t mgc_value;
                 mgc_value = ptr->data[0];
                 printf_note("ch = %d, mgc_value = [%d]\n", ch, mgc_value);
-                config_write_data(EX_RF_FREQ_CMD,  EX_RF_MGC_GAIN, ch, &mgc_value);
+                config_write_save_data(EX_RF_FREQ_CMD,  EX_RF_MGC_GAIN, ch, &mgc_value);
                 executor_set_command(EX_RF_FREQ_CMD, EX_RF_MGC_GAIN, ch, &mgc_value);
             }
                 break;

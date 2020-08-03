@@ -3,10 +3,11 @@
 
 static struct clock_adc_t{
         int fd_mem_dev;
-        uint32_t *vir_addr;
+        volatile uint32_t *vir_addr;
         int in_clock;
         int adc_status;
 };
 
 extern struct clock_adc_ops * clock_adc_fpga_cxt(void);
+extern void volume_set(uint32_t base,uint8_t dat);
 #endif

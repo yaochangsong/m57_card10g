@@ -185,6 +185,8 @@ typedef enum _BUSINESS_CODE{
     SET_NET_WZ_THRESHOLD_CMD=0x16,
     SET_NET_WZ_NETWORK_CMD=0x26,
 #endif
+    AUDIO_VOLUME_CMD=0x28,
+
 }BUSINESS_CODE;
 
 
@@ -561,7 +563,7 @@ typedef struct  _DEVICE_SELF_CHECK_TEMPERATUE_ST{
 }__attribute__ ((packed)) DEVICE_SELF_CHECK_TEMPERATUE_ST; 
 
 typedef struct  _DEVICE_SELF_CHECK_STATUS_RSP_ST{
-    uint8_t clk_status;    
+    uint8_t ext_clk;    
     uint8_t ad_status;
     signed short  pfga_temperature;
     uint8_t ch_num;

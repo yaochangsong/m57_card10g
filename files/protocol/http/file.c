@@ -331,7 +331,7 @@ static void file_write_cb(struct uh_client *cl)
     static char buf[4096];
     int fd = cl->dispatch.file.fd;
     int r;
-    printf_warn("cl->us->w.data_bytes=%d\n", cl->us->w.data_bytes);
+
     while (cl->us->w.data_bytes < 256) {
         r = read(fd, buf, sizeof(buf));
         if (r < 0) {

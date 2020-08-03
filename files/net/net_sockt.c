@@ -63,7 +63,7 @@ int get_ifa_name_by_ip(char *ipaddr, char *ifa_name)
                 goto exit;
             }
             
-            printf("\t\taddress: <%s>, %s\n", host, ipaddr);
+            //printf("\t\taddress: <%s>, %s\n", host, ipaddr);
             if(!strcmp(host, ipaddr)){
                 strcpy(ifa_name, ifa->ifa_name);
                 break;

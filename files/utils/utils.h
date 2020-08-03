@@ -48,6 +48,11 @@ sgn(a - b) == 0         sgn(a - b) != 0       sgn(a - b) <  0         sgn(a - b)
                                 *_data = *_data*offset; _n--; _data++; \
                }}while(0)
 
+#define SPEED_10        10
+#define SPEED_100       100
+#define SPEED_1000      1000
+#define SPEED_2500      2500
+#define SPEED_10000     10000
 
 extern char *safe_strdup(const char *s);
 extern uint16_t crc16_caculate(uint8_t *pchMsg, uint16_t wDataLen);
@@ -58,5 +63,7 @@ extern char *get_version_string(void);
 extern void* safe_malloc(size_t size);
 extern int safe_system(const char *cmdstring);
 extern void safe_free(void *p);
+extern int32_t get_ifname_speed(const char *ifname);
+extern int32_t get_netlink_status(const char *if_name);
 #endif
 

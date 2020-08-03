@@ -211,7 +211,7 @@ static ssize_t file_read(const char *filename, uint8_t *ptr, int n)
 {
     struct file_request_read *fr=&req_readx;
     int ret = -1; /* NOTE: reload buffer return value; initialize value must not 0[ reload over]  */
-    ssize_t nread;
+    ssize_t nread = 0;
     int64_t nleft;
     
 #if defined(SUPPORT_XWFS)

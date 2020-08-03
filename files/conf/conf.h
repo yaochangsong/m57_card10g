@@ -54,7 +54,7 @@ extern s_config *config_get_config(void);
 extern int8_t config_save_batch(exec_cmd cmd, uint8_t type,s_config *config);
 extern int8_t config_read_by_cmd(exec_cmd cmd, uint8_t type, uint8_t ch, void *data, ...);
 extern int8_t config_write_data(exec_cmd cmd, uint8_t type, uint8_t ch, void *data);
-
+extern int8_t config_write_save_data(exec_cmd cmd, uint8_t type, uint8_t ch, void *data);
 
 #endif
 

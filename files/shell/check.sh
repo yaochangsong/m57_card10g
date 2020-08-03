@@ -1,5 +1,8 @@
 #!/bin/sh
 
+status_dir=/run/status
+adc_status_file=$status_dir/adc
+clk_status_file=$status_dir/clock
 proj_name=check.sh
 bin_name=platform
 #devmem 0xb00010c0 32
@@ -34,6 +37,7 @@ self_status_cheak()
 	adc_stat=0
 	adc_ok=0
 	inner_clk_stat=0
+	inner_clk=0
 	lock_stat=0
 	lock_ok=0
 	reg_val=`devmem $ADC_STATE_REG_ADDR 32`
@@ -45,12 +49,15 @@ self_status_cheak()
 		log_out "adc status check faild!"
 		adc_ok=0
 	fi
+	echo -n $adc_ok > $adc_status_file
 	
 	let "inner_clk_stat=$reg_val&0x0200"
 	if [ $inner_clk_stat -eq $((0x0200)) ]; then
 		log_out “external clock”
+		external_clk=1
 	else
 		log_out “internal clock”
+		external_clk=0
 	fi
 
 	let "lock_stat=$reg_val&0x0100"
@@ -61,6 +68,7 @@ self_status_cheak()
 		log_out “no locked”
 		lock_ok=0
 	fi
+	echo -n $external_clk $lock_ok > $clk_status_file
 	
 	if [ $lock_ok -eq 1 ] && [ $adc_ok -eq 1 ]; then
 		log_out "ok status..."
@@ -80,6 +88,9 @@ self_status_cheak()
 
 start()
 {
+	if [ ! -d "$status_dir" ]; then
+	  mkdir $status_dir
+	fi
 	while :
 	do
     	sleep 10

@@ -151,23 +151,93 @@ uint32_t  config_get_fft_size(uint8_t ch)
     return fftsize;
 }
 
-int32_t  config_get_fft_calibration_value(uint32_t fft_size)
+int32_t  config_get_fft_calibration_value(uint8_t ch, uint32_t fft_size, uint64_t m_freq)
 {
     struct poal_config *poal_config = &(config_get_config()->oal_config);
     int i;
-    int32_t cal_value=0,found = 0;
-    for(i=0;i<sizeof(poal_config->cal_level.cali_fft.fftsize)/sizeof(uint32_t);i++)
-    {
-        if(fft_size==poal_config->cal_level.cali_fft.fftsize[i])
-        {
-            cal_value=poal_config->cal_level.cali_fft.cali_value[i];
-            found=1;
-            break;
+    int32_t cal_value=0,freq_cal_value=0, found = 0, freq_found = 0;
+    uint32_t _fft = 0, _start_freq_khz = 0, _end_freq_khz = 0;
+    int mode = 0;
 
+    if(fft_size > 0){
+        for(i=0;i<sizeof(poal_config->cal_level.cali_fft.fftsize)/sizeof(uint32_t);i++)
+        {
+            if(fft_size==poal_config->cal_level.cali_fft.fftsize[i])
+            {
+                cal_value=poal_config->cal_level.cali_fft.cali_value[i];
+                found=1;
+                break;
+            }
         }
     }
+    
+    if(m_freq > 0){
+        for(i = 0; i< ARRAY_SIZE(poal_config->cal_level.spm_level.cal_node); i++){
+            _fft = poal_config->cal_level.spm_level.cal_node[i].fft;
+            _start_freq_khz = poal_config->cal_level.spm_level.cal_node[i].start_freq_khz;
+            _end_freq_khz = poal_config->cal_level.spm_level.cal_node[i].end_freq_khz;
+            if(_fft == 0 && _start_freq_khz ==0 && _end_freq_khz == 0){
+                break;
+            }
+            printf_debug("[%d], _fft=%u[%u],m_freq=%u, _start_freq_khz=%u, _end_freq_khz=%u\n", i, _fft,fft_size, m_freq,  _start_freq_khz, _end_freq_khz);
+            if(_fft == fft_size || _fft == 0){
+                if((m_freq >= _start_freq_khz*1000) &&  (m_freq < _end_freq_khz *1000)){
+                    freq_cal_value = poal_config->cal_level.spm_level.cal_node[i].power_level;
+                    cal_value += freq_cal_value;
+                    freq_found = 1;
+                }
+            }
+        }
+    }
+    
+    if(freq_found){
+        printf_debug("find the calibration level: %llu, %d\n", m_freq, cal_value);
+    }
+
     cal_value += poal_config->cal_level.specturm.global_roughly_power_lever;
-    printf_note("cal_value=%d\n",cal_value);
+    
+    mode = poal_config->rf_para[ch].rf_mode_code;
+    if(mode == POAL_LOW_NOISE){
+        cal_value += poal_config->cal_level.specturm.low_noise_power_level;
+    }
+        
+    else if(mode == POAL_LOW_DISTORTION){
+        cal_value += poal_config->cal_level.specturm.low_distortion_power_level;
+    }
+    
+    for(i = 0; i< ARRAY_SIZE(poal_config->cal_level.spm_level.att_node); i++){
+        if(poal_config->cal_level.spm_level.att_node[i].rf_mode == mode){
+            if(poal_config->cal_level.spm_level.att_node[i].start_range >= 0 && 
+               poal_config->cal_level.spm_level.att_node[i].end_range > 0){
+                    if(poal_config->rf_para[ch].attenuation > poal_config->cal_level.spm_level.att_node[i].end_range){
+                        if(cal_value > poal_config->cal_level.spm_level.att_node[i].end_range*10)
+                            cal_value -= poal_config->cal_level.spm_level.att_node[i].end_range*10;
+                    }
+                    else if(poal_config->rf_para[ch].attenuation >= poal_config->cal_level.spm_level.att_node[i].start_range && 
+                            poal_config->rf_para[ch].attenuation <= poal_config->cal_level.spm_level.att_node[i].end_range ){
+                            if(cal_value > poal_config->rf_para[ch].attenuation*10)
+                                cal_value -= poal_config->rf_para[ch].attenuation *10;
+                    }
+                }
+        }
+    }
+    if(poal_config->cal_level.spm_level.mgc_attr_node.start_range >= 0 &&
+        poal_config->cal_level.spm_level.mgc_attr_node.end_range > 0){
+        if(poal_config->rf_para[ch].mgc_gain_value > poal_config->cal_level.spm_level.mgc_attr_node.end_range){
+                    if(cal_value > poal_config->cal_level.spm_level.mgc_attr_node.end_range*10)
+                        cal_value -= poal_config->cal_level.spm_level.mgc_attr_node.end_range*10;
+        }
+        else if(poal_config->rf_para[ch].mgc_gain_value >= poal_config->cal_level.spm_level.mgc_attr_node.start_range &&
+                poal_config->rf_para[ch].mgc_gain_value <= poal_config->cal_level.spm_level.mgc_attr_node.end_range )
+                if(cal_value > poal_config->rf_para[ch].mgc_gain_value*10){
+                    cal_value -= poal_config->rf_para[ch].mgc_gain_value*10;
+                }
+    }
+        
+    printf_debug("mode:%d  low_noise_power_level:%d  low_distortion_power_level:%d\n",
+    mode,poal_config->cal_level.specturm.low_noise_power_level,poal_config->cal_level.specturm.low_distortion_power_level);
+
+    printf_debug("m_freq=%lluHz,mode=%d, cal_value=%d, attenuation=%d, mgc_gain_value=%d\n",m_freq, mode, cal_value, poal_config->rf_para[ch].attenuation, poal_config->rf_para[ch].mgc_gain_value);
     if(found){
         printf_debug("find the fft_mgc calibration value: %d\n",cal_value);
     }else{
@@ -263,6 +333,12 @@ int8_t config_write_data(exec_cmd cmd, uint8_t type, uint8_t ch, void *data)
                 case EX_AUDIO_SAMPLE_RATE:
                     poal_config->multi_freq_point_param[ch].audio_sample_rate = *(float *)data;
                     break;
+                case EX_MID_FREQ:
+                    poal_config->multi_freq_point_param[ch].points[0].center_freq = *(uint64_t *)data;
+                    break;
+                case EX_BANDWITH:
+                    poal_config->multi_freq_point_param[ch].points[0].bandwidth = *(uint64_t *)data;
+                    break;
                 default:
                     printf_err("not surpport type\n");
                     return -1;
@@ -278,15 +354,33 @@ int8_t config_write_data(exec_cmd cmd, uint8_t type, uint8_t ch, void *data)
                     break;
                 case EX_RF_MID_BW:
                     poal_config->rf_para[ch].mid_bw = *(uint32_t *)data;
+                    printf_note("mid_bw=%u\n", poal_config->rf_para[ch].mid_bw);
                     break;
                 case EX_RF_MODE_CODE:
                     poal_config->rf_para[ch].rf_mode_code = *(int8_t *)data;
+                    printf_note("rf_mode_code=%d\n", poal_config->rf_para[ch].rf_mode_code);
                     break;
                 case EX_RF_GAIN_MODE:
                     poal_config->rf_para[ch].gain_ctrl_method = *(int8_t *)data;
+                    printf_note("gain_ctrl_method=%d\n", poal_config->rf_para[ch].gain_ctrl_method);
+                    break;
+                case EX_RF_AGC_CTRL_TIME:
+                    poal_config->rf_para[ch].agc_ctrl_time = *(uint32_t *)data;
+                    printf_note("agc_ctrl_time=%u\n", poal_config->rf_para[ch].agc_ctrl_time);
+                    break;
+                case EX_RF_AGC_OUTPUT_AMP:
+                    poal_config->rf_para[ch].agc_mid_freq_out_level = *(int8_t *)data;
+                    printf_note("agc_mid_freq_out_level=%d\n", poal_config->rf_para[ch].agc_mid_freq_out_level);
+                    break;
+                case EX_RF_ATTENUATION:
+                    poal_config->rf_para[ch].attenuation = *(int8_t *)data;
+                    printf_note("attenuation=%d\n", poal_config->rf_para[ch].attenuation);
                     break;
                 case EX_RF_MGC_GAIN:
                     poal_config->rf_para[ch].mgc_gain_value = *(int8_t *)data;
+                    printf_note("mgc_gain_value=%d\n", poal_config->rf_para[ch].mgc_gain_value);
+                    break;
+                case EX_RF_ANTENNA_SELECT:
                     break;
                 default:
                     printf_err("not surpport type\n");
@@ -338,10 +432,14 @@ int8_t config_write_data(exec_cmd cmd, uint8_t type, uint8_t ch, void *data)
             return -1;
      }
      
-    config_save_batch(cmd, type, config_get_config());
     return 0;
 }
 
+int8_t config_write_save_data(exec_cmd cmd, uint8_t type, uint8_t ch, void *data)
+{
+    config_write_data(cmd, type, ch, data);
+    config_save_batch(cmd, type, config_get_config());
+}
 
 int8_t config_read_by_cmd(exec_cmd cmd, uint8_t type, uint8_t ch, void *data, ...)
 {
@@ -485,11 +583,12 @@ int8_t config_read_by_cmd(exec_cmd cmd, uint8_t type, uint8_t ch, void *data, ..
                      if(bw == 0)
                         bw = DEFAULT_BW_HZ;
                      for(int i = 0; i<sizeof(scanbw->bindwidth_hz)/sizeof(uint32_t); i++){
-                        printf_debug("bindwidth_hz=%u, %u\n", scanbw->bindwidth_hz[i], bw);
                         if(scanbw->bindwidth_hz[i] == bw){
-                            *(float *)data = scanbw->sideband_rate[i];
-                            scanbw->work_sideband_rate = scanbw->sideband_rate[i];
-                            found = 1;
+                            if(f_sgn(scanbw->sideband_rate[i]) > 0){
+                                *(float *)data = scanbw->sideband_rate[i];
+                                scanbw->work_sideband_rate = scanbw->sideband_rate[i];
+                                found = 1;
+                            }
                             break;
                         }
                     }
@@ -498,7 +597,7 @@ int8_t config_read_by_cmd(exec_cmd cmd, uint8_t type, uint8_t ch, void *data, ..
                         printf_debug("find side rate:%f, bw=%u\n",*(float *)data,  bw);
                     }else{
                         *(float *)data = DEFAULT_SIDEBAND;
-                        printf_warn("not find side rate, bw=%u, use default sideband=%f\n",  bw, *(float *)data);
+                        printf_info("not find side rate, bw=%u, use default sideband=%f\n",  bw, *(float *)data);
                         goto exit;
                     }
                     break;

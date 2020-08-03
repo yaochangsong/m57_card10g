@@ -66,6 +66,7 @@ static inline void spm_iq_deal_notify(void *arg)
    在该模式下，应以最快速度读取发送数据；
    使能后，不断读取、组包、发送；读取前无需停止DMA。
 */
+   //static char notify;
 
 void spm_iq_handle_thread(void *arg)
 {
@@ -75,15 +76,16 @@ void spm_iq_handle_thread(void *arg)
     struct spm_context *ctx = NULL;
     iq_t *ptr_iq = NULL;
     ssize_t  len = 0, i;
-
+    struct poal_config *poal_config = &(config_get_config()->oal_config);
    // thread_bind_cpu(1);
     ctx = (struct spm_context *)arg;
 
 loop:
     printf_warn("######Wait IQ enable######\n");
+    //notify = 1;
     /* 通过条件变量阻塞方式等待数据使能 */
     pthread_mutex_lock(&spm_iq_cond_mutex);
-    while(subch_bitmap_weight() == 0)
+    while(subch_bitmap_weight() == 0 && poal_config->enable.audio_en == 0)
         pthread_cond_wait(&spm_iq_cond, &spm_iq_cond_mutex);
     pthread_mutex_unlock(&spm_iq_cond_mutex);
     
@@ -101,12 +103,12 @@ loop:
            // printfd("\n----------[%d]---------\n", len);
             ctx->ops->send_iq_data(ptr_iq, len, &run);
         }
-        if(subch_bitmap_weight() == 0){
+        if(subch_bitmap_weight() == 0 && poal_config->enable.audio_en == 0){
             printf_note("iq disabled\n");
             sleep(1);
             goto loop;
         }
-        usleep(1);
+        //usleep(1);
     }while(1);
     
 }
@@ -115,28 +117,43 @@ loop:
 void spm_deal(struct spm_context *ctx, void *args)
 {   
     struct spm_context *pctx = ctx;
+    struct poal_config *poal_config = &(config_get_config()->oal_config);
+    
     if(pctx == NULL){
         printf_err("spm is not init!!\n");
         return;
     }
-    if(subch_bitmap_weight() != 0){
+    if(subch_bitmap_weight() != 0 || poal_config->enable.audio_en != 0){
+  
         struct spm_run_parm *ptr_run;
         ptr_run = (struct spm_run_parm *)args;
         printf_debug("send:ch:%d, s_freq:%llu, e_freq:%llu, bandwidth=%u\n", 
                 ptr_run->ch, ptr_run->s_freq, ptr_run->e_freq, ptr_run->bandwidth);
-        spm_iq_deal_notify(&args);
+        
+        //usleep(10);
+        //if(notify == 1)
+        //{
+          //printf_note("send:ch:%d, s_freq:%llu, e_freq:%llu, bandwidth=%u\n", 
+          //ptr_run->ch, ptr_run->s_freq, ptr_run->e_freq, ptr_run->bandwidth);
+          //notify =0;
+          //sleep(1);
+          spm_iq_deal_notify(&args);
+        //}
+        
     }
     if(pctx->pdata->enable.psd_en){
-        fft_t *ptr = NULL, *ord_ptr = NULL;
+        volatile fft_t *ptr = NULL, *ord_ptr = NULL;
         ssize_t  byte_len = 0; /* fft byte size len */
         size_t fft_len = 0, fft_ord_len = 0;
+        struct spm_run_parm *ptr_run;
+        ptr_run = (struct spm_run_parm *)args;
         byte_len = pctx->ops->read_fft_data(&ptr);
         if(byte_len < 0){
             return;
         }
         if(byte_len > 0){
             fft_len = byte_len/sizeof(fft_t);
-             printf_debug("size_len=%u, fft_len=%u\n", byte_len, fft_len);
+             printf_debug("size_len=%u, fft_len=%u, ptr=%p,%p, %p\n", byte_len, fft_len, ptr,ptr_run, ptr_run->fft_ptr);
             ord_ptr = pctx->ops->data_order(ptr, fft_len, &fft_ord_len, args);
             if(ord_ptr)
                 pctx->ops->send_fft_data(ord_ptr, fft_ord_len, args);
@@ -192,7 +209,11 @@ void *spm_init(void)
     //mqctx->ops->getattr(SPM_MQ_NAME);
 
     spmctx->run_args = calloc(1, sizeof(struct spm_run_parm));
-    spmctx->run_args->fft_ptr = calloc(1, MAX_FFT_SIZE*sizeof(fft_t));
+    spmctx->run_args->fft_ptr = malloc(MAX_FFT_SIZE*sizeof(fft_t));///calloc(1, MAX_FFT_SIZE*sizeof(fft_t));
+    if(spmctx->run_args->fft_ptr == NULL){
+        printf("malloc failed\n");
+        exit(1);
+    }
    // thread_attr_set(&attr,SCHED_OTHER, 0);
    // ret=pthread_create(&recv_thread_id,&attr,(void *)spm_iq_handle_thread, spmctx);
     ret=pthread_create(&recv_thread_id,NULL,(void *)spm_iq_handle_thread, spmctx);

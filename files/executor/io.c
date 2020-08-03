@@ -22,28 +22,42 @@ static int io_ctrl_fd = -1;
 
 /* 窄带表：解调方式为IQ系数表 */
 static struct  band_table_t iq_nbandtable[] ={
-    {204608, 0, 5000},
-    {198208, 0, 25000},
-    {197408, 0, 50000},
-    {197008, 0, 100000},
-    {196768, 0, 250000},
-    {196688, 0, 500000},
-    {196648, 0, 1000000},
-    {196624, 0, 2500000},
-    {196616, 0, 5000000},
-    {196612, 0, 10000000},
+    {206608, 0, 5000},
+    {198608, 0, 25000},
+    {197608, 0, 50000},
+    {197108, 0, 100000},
+    {196941, 0, 150000},
+    {196808, 0, 250000},
+    {196708, 0, 500000},
+    {196658, 0, 1000000},
+    {196628, 0, 2500000},
+    {196618, 0, 5000000},
+    {196613, 0, 10000000},
     {458752, 0, 20000000},
     {196608, 0, 40000000},
 }; 
 
 /* 窄带表：解调方式为非IQ系数表 */
 static struct  band_table_t nbandtable[] ={
+    {198608, 135,   600},
+    {198608, 134,   1500},
+    {198608, 133,   2400},
+    {198608, 132,   6000},
+    {198608, 131,   9000},
+    {198608, 130,   12000},
+    {198608, 128,   15000},
+    {197608, 128,   30000},
+    {197108, 0,     50000},
+    {196858, 0,     100000},
+    {196733, 0,     150000},
+#if 0
     {198208, 130,   5000},
     {197408, 128,   25000},
     {197008, 128,   50000},
     {196808, 0,     100000},
     {196708, 0,     250000},
     {196658, 0,     500000},
+#endif
 }; 
 /* 宽带系数表 */
 static struct  band_table_t bandtable[] ={
@@ -53,8 +67,11 @@ static struct  band_table_t bandtable[] ={
     {65536,  0, 100000000},
     {0,      0, 200000000},
 #else
-    {458752, 0,  20000000},
-    {458752, 0,  25000000},
+    {196658, 0,  1000000},
+    {196633, 0,  2000000},
+    {196618, 0,  5000000},
+    {196613, 0,  10000000},
+    {65541, 0,   20000000},
     {196608, 0,  40000000},
     {196608, 0,  50000000},
     {65536,  0,  80000000},
@@ -233,7 +250,7 @@ int32_t io_set_bandwidth(uint32_t ch, uint32_t bandwidth){
     struct  band_table_t *table;
     uint32_t table_len = 0;
 
-    table= &bandtable;
+    table= bandtable;
     table_len = sizeof(bandtable)/sizeof(struct  band_table_t);
     io_get_bandwidth_factor(bandwidth, &band_factor,&filter_factor, table, table_len);
     if((old_val == band_factor) && (ch == old_ch)){
@@ -256,6 +273,25 @@ int32_t io_set_bandwidth(uint32_t ch, uint32_t bandwidth){
 
 }
 
+int32_t io_set_noise(uint32_t ch, uint32_t noise_en,int8_t noise_level_tmp){
+        uint32_t  noise_level;
+        if(noise_en == 1)
+        {
+            if(noise_level_tmp > 0)
+            {
+                noise_level_tmp = 0;
+            }
+            noise_level =  (uint32_t)(16000.0 * pow(10.0, (double)(noise_level_tmp / 20.0)));
+        }
+        else 
+        {
+            noise_level = 0;
+        }
+        printf_note("[**REGISTER**]ch:%d, Set noise_level:%ld noise_en:%d noise_level_tmp:%d\n", ch,noise_level,noise_en,noise_level_tmp);
+#if defined(SUPPORT_PLATFORM_ARCH_ARM)
+        get_fpga_reg()->narrow_band[ch]->noise_level = noise_level;
+#endif
+}
 /*根据边带率,设置数据长度 
     @rate: 边带率>0;实际下发边带率为整数；放大100倍（内核不处理浮点数）
 */
@@ -290,10 +326,10 @@ int32_t io_set_dec_bandwidth(uint32_t ch, uint32_t dec_bandwidth){
     struct  band_table_t *table;
     uint32_t table_len = 0;
 
-    table= &nbandtable;
+    table= nbandtable;
     table_len = sizeof(nbandtable)/sizeof(struct  band_table_t);
     io_get_bandwidth_factor(dec_bandwidth, &band_factor,&filter_factor, table, table_len);
-    set_factor = band_factor|0x2000000;
+    set_factor = band_factor;
     if((old_val == set_factor) && (ch == old_ch)){
         /* 避免重复设置相同参数 */
         return ret;
@@ -303,9 +339,10 @@ int32_t io_set_dec_bandwidth(uint32_t ch, uint32_t dec_bandwidth){
     printf_note("[**REGISTER**]ch:%d, Set Decode Bandwidth:%u, band_factor=0x%x, set_factor=0x%x\n", ch, dec_bandwidth, band_factor, set_factor);
 #if defined(SUPPORT_PLATFORM_ARCH_ARM)
 #if defined(SUPPORT_SPECTRUM_KERNEL) 
-    ret = ioctl(io_ctrl_fd, IOCTL_EXTRACT_CH0, set_factor);
+    ret = ioctl(io_ctrl_fd, IOCTL_EXTRACT_CH0, set_factor|0x2000000);
 #elif defined(SUPPORT_SPECTRUM_V2) 
-    printf_warn("NOT DEFINE...\n");
+    get_fpga_reg()->narrow_band[ch]->band = band_factor;   //0x30190
+    printf_note("narrow_band[%d]->band:%x\n",ch,band_factor);
 #endif
 #endif
     return ret;
@@ -322,17 +359,17 @@ int32_t io_set_dec_method(uint32_t ch, uint8_t dec_method){
    
 
     if(dec_method == IO_DQ_MODE_AM){
-        d_method = 0x4000000;
+        d_method = 0x0000000;
     }else if(dec_method == IO_DQ_MODE_FM) {
-        d_method = 0x4000001;
+        d_method = 0x0000001;
     }else if(dec_method == IO_DQ_MODE_LSB) {
-        d_method = 0x4000002;
+        d_method = 0x0000002;
     }else if(dec_method == IO_DQ_MODE_USB) {
-        d_method = 0x4000002;
+        d_method = 0x0000002;
     }else if(dec_method == IO_DQ_MODE_CW) {
-        d_method = 0x4000003;
+        d_method = 0x0000003;
     }else if(dec_method == IO_DQ_MODE_IQ) {
-        d_method = 0x4000007;
+        d_method = 0x0000007;
     }else{
         printf_warn("decode method not support:%d\n",dec_method);
         return -1;
@@ -346,9 +383,9 @@ int32_t io_set_dec_method(uint32_t ch, uint8_t dec_method){
     printf_note("[**REGISTER**]ch:%d, Set Decode method:%u, d_method=0x%x\n", ch, dec_method, d_method);
 #if defined(SUPPORT_PLATFORM_ARCH_ARM)
 #if defined(SUPPORT_SPECTRUM_KERNEL) 
-    ret = ioctl(io_ctrl_fd,IOCTL_EXTRACT_CH0,d_method);
+    ret = ioctl(io_ctrl_fd,IOCTL_EXTRACT_CH0,d_method|0x4000000);
 #elif defined(SUPPORT_SPECTRUM_V2) 
-    printf_warn("NOT DEFINE...\n");
+    get_fpga_reg()->narrow_band[ch]->decode_type = dec_method;
 #endif
 #endif
     return ret;
@@ -388,7 +425,23 @@ static uint32_t io_set_dec_middle_freq_reg(uint64_t dec_middle_freq, uint64_t mi
         uint64_t delta_freq;
         uint32_t reg;
         int32_t ret = 0;
-    
+#if defined(SUPPORT_DIRECT_SAMPLE)
+#define FREQ_ThRESHOLD_HZ (100000000)
+#define MID_FREQ_MAGIC1 (128000000)
+#define DIRECT_FREQ_THR (200000000)
+        if(dec_middle_freq< DIRECT_FREQ_THR ){
+            uint32_t reg;
+            int32_t val;
+            if(dec_middle_freq >= MID_FREQ_MAGIC1){
+                reg = (dec_middle_freq - MID_FREQ_MAGIC1)*FREQ_MAGIC2/FREQ_MAGIC1;
+            }else{
+                val = dec_middle_freq - MID_FREQ_MAGIC1;
+                reg = (val+FREQ_MAGIC1)*FREQ_MAGIC2/FREQ_MAGIC1;
+            }
+            printf_debug("feq:%llu, reg=0x%x\n", dec_middle_freq, reg);
+            return reg;
+        }
+#endif
         if(middle_freq > dec_middle_freq){
             delta_freq = FREQ_MAGIC1 +  dec_middle_freq - middle_freq ;
         }else{
@@ -419,13 +472,37 @@ int32_t io_set_dec_middle_freq(uint32_t ch, uint64_t dec_middle_freq, uint64_t m
 #if defined(SUPPORT_SPECTRUM_KERNEL) 
     ret = ioctl(io_ctrl_fd, IOCTL_DECODE_MID_FREQ, reg);
 #elif defined(SUPPORT_SPECTRUM_V2) 
-    get_fpga_reg()->broad_band->signal_carrier = reg;
+    get_fpga_reg()->narrow_band[ch]->signal_carrier = reg;
 #endif
 #endif
-    printf_debug("[**REGISTER**]ch:%d, MiddleFreq =%llu, Decode MiddleFreq:%llu, reg=0x%x\n", ch, middle_freq, dec_middle_freq, reg);
+    printf_warn("[**REGISTER**]ch:%d, MiddleFreq =%llu, Decode MiddleFreq:%llu, reg=0x%x\n", ch, middle_freq, dec_middle_freq, reg);
     return ret;
 }
 
+
+int32_t io_set_middle_freq(uint32_t ch, uint64_t middle_freq)
+{
+#if defined(SUPPORT_DIRECT_SAMPLE)
+#define DIRECT_FREQ_THR (200000000) /* 直采截止频率 */
+#define FREQ_MAGIC2 (0x100000000ULL)  /* 2^32 */
+#define FREQ_MAGIC1 (256000000)
+#define MID_FREQ_MAGIC1 (128000000)/* 直采采样频率 */
+    uint32_t reg = 0;
+    if(middle_freq < DIRECT_FREQ_THR ){
+        int32_t val;
+        if(middle_freq >= MID_FREQ_MAGIC1){
+            reg = (middle_freq - MID_FREQ_MAGIC1)*FREQ_MAGIC2/FREQ_MAGIC1;
+        }else{
+            val = middle_freq - MID_FREQ_MAGIC1;
+            printf_note("val:%d\n", val);
+            reg = (val+FREQ_MAGIC1)*FREQ_MAGIC2/FREQ_MAGIC1;
+        }
+    }
+    get_fpga_reg()->broad_band->signal_carrier = reg;
+    printf_debug(">>>>>>feq:%llu, reg=0x%x\n", middle_freq, reg);
+#endif
+    return 0;
+}
 
 /*设置子通道解调中心频率因子*/
 int32_t io_set_subch_dec_middle_freq(uint32_t subch, uint64_t dec_middle_freq, uint64_t middle_freq)
@@ -470,7 +547,7 @@ int32_t io_set_subch_onoff(uint32_t subch, uint8_t onoff)
     }
 #endif
 #endif
-    printf_note("[**REGISTER**]ch:%d, SubChannle Set OnOff=%d,subch_bitmap_weight=0x%x\n",subch, onoff, subch_bitmap_weight());
+    printf_debug("[**REGISTER**]ch:%d, SubChannle Set OnOff=%d,subch_bitmap_weight=0x%x\n",subch, onoff, subch_bitmap_weight());
     return ret;
 }
 
@@ -625,15 +702,12 @@ int8_t io_fill_mid_rf_param(uint8_t gain_mode, uint8_t gain_val)
 /* 设置FPGA校准值 */
 void io_set_calibrate_val(uint32_t ch, uint32_t  cal_value)
 {
-    static uint32_t old_val = 0, flag = 0;
-    
-    if((old_val == cal_value) && (flag != 0)){
+    static int32_t old_val = -1;
+    if(old_val == cal_value){
         /* 避免重复设置相同参数 */
-        flag = 1;
         return;
     }
     old_val = cal_value;
-
     printf_note("[**REGISTER**][ch=%d]Set Calibrate Val factor=%u[0x%x]\n",ch, cal_value,cal_value);
 #if defined(SUPPORT_PLATFORM_ARCH_ARM)
 #if defined(SUPPORT_SPECTRUM_KERNEL)
@@ -736,6 +810,8 @@ void io_set_fpga_sys_time(uint32_t time)
         return;
     }
     ioctl(io_ctrl_fd,IOCTL_SET_SYS_TIME,time);
+#elif defined(SUPPORT_SPECTRUM_V2) 
+    get_fpga_reg()->signal->current_time = time;
 #endif
 }
 
@@ -743,10 +819,17 @@ void io_set_fpga_sample_ctrl(uint8_t val)
 {
 #if defined(SUPPORT_PLATFORM_ARCH_ARM)
 #if defined(SUPPORT_SPECTRUM_V2)
+    printf_note("[**FPGA**] ifch=%d\n", val);
     get_fpga_reg()->system->if_ch = (val == 0 ? 0 : 1);
 #endif
 #endif
 }
+
+int32_t io_set_audio_volume(uint32_t ch,uint8_t volume)
+{
+     volume_set(get_fpga_reg()->audioReg,volume);
+}
+
 
 static void io_dma_dev_disable(uint32_t ch,uint8_t type)
 {
@@ -941,14 +1024,17 @@ int8_t io_set_enable_command(uint8_t type, int ch, int subc_ch, uint32_t fftsize
         case AUDIO_MODE_ENABLE:
         {
             if(fftsize == 0)
-                io_set_dma_DQ_out_en(ch, subc_ch, 512, 1);
+                //io_set_dma_DQ_out_en(ch, subc_ch, 512, 1);
+                io_set_IQ_out_en(ch, subc_ch,512, 1);
             else
-                io_set_dma_DQ_out_en(ch, subc_ch,fftsize, 1);
+                //io_set_dma_DQ_out_en(ch, subc_ch,fftsize, 1);
+                io_set_IQ_out_en(ch, subc_ch,fftsize, 1);
             break;
         }
         case AUDIO_MODE_DISABLE:
         {
-            io_set_dma_DQ_out_dis(ch, subc_ch);
+            //io_set_dma_DQ_out_dis(ch, subc_ch);
+            io_set_IQ_out_disable(ch, subc_ch);
             break;
         }
         case IQ_MODE_ENABLE:
@@ -1013,35 +1099,152 @@ int32_t io_get_agc_thresh_val(int ch)
 int16_t io_get_adc_temperature(void)
 {
     float result=0; 
+
 #ifdef SUPPORT_PLATFORM_ARCH_ARM
-    char  path[128], upset[20];  
-    char value=0;  
-    int fd = -1, offset;
-    float raw_data=0;
-    
+    static FILE * fp = NULL;
+    int raw_data;
 
-    sprintf(path,"/sys/bus/iio/devices/iio:device0/in_temp0_raw");
-    fd = open(path, O_RDONLY);
-    if (fd < 0)
-    {
-        printf_note("[get_adc_temperature]: Cannot open in_temp0_raw path\n");
-        return -1;
+    if(fp == NULL){
+        fp = fopen ("/sys/bus/iio/devices/iio:device0/in_temp0_ps_temp_raw", "r");
+        if(!fp){
+            printf("Open file error!\n");
+            return -1;
+        }
     }
-    offset=0;  
-    while(offset<5)	
-    {  
-        lseek(fd,offset,SEEK_SET);  
-        read(fd,&value,sizeof(char));	 
-        upset[offset]=value;  
-        offset++;  
-    }	 
-    upset[offset]='\0'; 
-    raw_data=atoi(upset);
-    result = ((raw_data * 503.975)/4096) - 273.15;
-    close(fd);
+    rewind(fp);
+    fscanf(fp, "%d", &raw_data);
+    printf_note("temp: %d\n", raw_data);
+    result = ((raw_data * 509.314)/65536.0) - 280.23;
 #endif
-    return (signed short)result;
 
+    return (signed short)result;
+}
+void io_get_fpga_status(void *args)
+{
+    struct arg_s{
+        uint32_t temp;
+        float vol;
+        float current;
+        uint32_t resources;
+    };
+    struct arg_s  *param = args;
+    uint32_t reg_status, reg_dup;
+#ifdef SUPPORT_PLATFORM_ARCH_ARM
+    #define STATUS_MASK (0x03ff)
+    #define STATUS_BIT (10)
+    reg_status = get_fpga_reg()->system->fpga_status;
+    printf_note("reg_status=0x%x\n", reg_status);
+    reg_dup = reg_status & STATUS_MASK; /* temp */
+    param->temp = (uint32_t)((reg_dup * 503.93)/1024.0) - 280.23;
+    printf_note("temp=0x%x, %u\n", reg_dup, param->temp);
+    reg_dup = (reg_status >> STATUS_BIT)&STATUS_MASK; /* fpga_int_vol */
+    param->vol = 3.0* reg_dup/1024.0;
+    printf_note("fpga_int_vol=0x%x, %f\n", reg_dup, param->vol);
+    reg_dup = (reg_status >> (STATUS_BIT*2))&STATUS_MASK; /* fpga_bram_vol */
+    param->current = 3.0* reg_dup/1024.0;
+    printf_note("fpga_bram_vol=0x%x, %f\n", reg_dup, param->current);
+    param->resources = 65;
+#endif
+}
+void io_get_board_power(void *args)
+{
+    struct arg_s{
+        float v;
+        float i;
+    };
+    struct arg_s *power = args;
+#ifdef SUPPORT_PLATFORM_ARCH_ARM
+    uint32_t reg_status;
+    reg_status = get_fpga_reg()->system->board_vi;
+    power->v = 24.845*(reg_status&0x3ff)/1024.0;
+    power->i = 8.585*((reg_status >> 10)&0x3ff)/1024.0;
+    printf_note("[0x%x]power.v=%f, power.i=%f\n", reg_status, power->v, power->i);
+#endif
+}
+
+
+int io_get_rf_mode(void)
+{
+    int result=0; 
+
+#ifdef SUPPORT_PLATFORM_ARCH_ARM
+    
+    result = get_fpga_reg()->rfReg->rf_mode;
+    printf_debug("rf_mode=%d\n", get_fpga_reg()->rfReg->rf_mode);
+    result = result & 0x3;
+
+#endif
+
+    //return (signed short)result;
+    return result;
+
+}
+
+
+bool io_get_adc_status(void *args)
+{
+    static FILE * fp = NULL;
+    int status;
+    bool ret;
+    args = args;
+    if(fp == NULL){
+        fp = fopen ("/run/status/adc", "r");
+        if(!fp){
+            printf("Open file error!\n");
+            return false;
+        }
+    }
+    rewind(fp);
+    fscanf(fp, "%d", &status);
+    printf_note("adc status: %d\n", status);
+    
+    ret = (status == 0 ? false : true);
+    return ret;
+}
+
+bool io_get_clock_status(void *args)
+{
+
+    static FILE * fp = NULL;
+
+    /**** stack smashing detected ***: <unknown> terminated; then exit
+      if we use uint8 lock_ok=0, external_clk=0;
+    */
+    int lock_ok=0, external_clk=0;
+    bool ret = false;
+    
+    if(fp == NULL){
+        fp = fopen ("/run/status/clock", "r");
+        if(!fp){
+            printf("Open file error!\n");
+            return false;
+        }
+    }
+    
+    rewind(fp);
+    fscanf(fp, "%d %d", &external_clk, &lock_ok);
+    printf_debug("external_clk:%d, lock_ok: %d\n", external_clk, lock_ok);
+    
+    *(uint8_t *)args = external_clk;
+    ret = (lock_ok == 0 ? false : true);
+
+    return ret;
+}
+
+/*  1: out clock 0: in clock */
+bool io_get_inout_clock_status(void *args)
+{
+    int lock_ok=0, external_clk=0;
+    bool ret = false;
+    external_clk = get_fpga_reg()->rfReg->in_out_clk;
+    lock_ok = get_fpga_reg()->rfReg->clk_lock;
+    usleep(50);
+    external_clk = get_fpga_reg()->rfReg->in_out_clk;
+    lock_ok = get_fpga_reg()->rfReg->clk_lock;
+    printf_note("external_clk=%d, lock_ok=%d\n", external_clk, lock_ok);
+    *(uint8_t *)args = (((external_clk & 0x01) == 0) ? 1 : 0);
+    ret = (lock_ok == 0 ? false : true);
+    return ret;
 }
 
 uint32_t get_fpga_version(void)

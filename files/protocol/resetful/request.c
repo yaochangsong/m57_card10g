@@ -32,7 +32,9 @@
 
 static struct request_info http_req_cmd[] = {
     /* 磁盘文件操作 */
+#if defined(SUPPORT_XWFS)
     {"GET",     "/file/@filename",               DISPATCH_DOWNLOAD_CMD,    cmd_file_download},
+#endif
     {"DELETE",  "/file/@filename",                      -1,                cmd_file_delete},
     {"POST",    "/file/store/@ch/@enable/@filename",    -1,                cmd_file_store},
     {"POST",    "/file/backtrace/@ch/@enable/@filename",-1,                cmd_file_backtrace},
@@ -45,6 +47,7 @@ static struct request_info http_req_cmd[] = {
     {"POST",    "/demodulation/@ch/@subch",             -1,                cmd_demodulation},
     /* 中频参数设置 */
     {"PUT",     "/if/@ch/@subch/@type/@value",          -1,                cmd_if_single_value_set},
+    {"PUT",     "/if/@ch/@subch/@type/@value/@value2",  -1,                cmd_if_single_value_set},
     {"PUT",     "/if/@ch/@type/@value",                 -1,                cmd_if_single_value_set},
     {"POST",    "/if/@ch/@subch",                       -1,                cmd_if_multi_value_set},
     {"POST",    "/if/@ch",                              -1,                cmd_if_multi_value_set},
@@ -61,6 +64,9 @@ static struct request_info http_req_cmd[] = {
     {"PUT",     "/enable/@ch/@type/@value",             -1,                cmd_ch_enable_set},
     /* 心跳 */
     {"GET",     "/ping",                                -1,                cmd_ping},
+    {"GET",     "/status/device/softversion",           -1,                cmd_get_softversion},
+    {"GET",     "/status/device/fpgaInfo",              -1,                cmd_get_fpga_info},
+    {"GET",     "/status/device/all",                   -1,                cmd_get_all_info}
 };
 
 #define URL_SEPARATOR "/"

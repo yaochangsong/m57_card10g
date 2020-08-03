@@ -148,6 +148,18 @@ struct rf_para_st{
     uint64_t mid_freq;              /* 中心频率 */
 };//__attribute__ ((packed));
 
+typedef enum rf_ctrl_method_val{
+    POAL_LOW_DISTORTION = 0,   //低失真
+    POAL_NORMAL,               //常规
+    POAL_LOW_NOISE,            //低噪声
+};
+
+typedef enum rf_gain_mode_val{
+    POAL_MGC_MODE = 0,          //手动增益
+    POAL_AGC_MODE,              //自动增益
+};
+
+
 /* 控制参数 */
 struct ctrl_st{
     
@@ -201,6 +213,7 @@ struct control_st{
     struct residency_policy residency;                            /* 驻留时间策略 */
     struct calibration_singal_threshold_st signal;
 	uint32_t iq_data_length;                                      /* iq数据包发送长度*/
+    int32_t agc_ref_val_0dbm;                                     /*  AGC 模式下，0DB 对应校准值*/
 };//__attribute__ ((packed));
 
 /*状态参数*/
@@ -270,7 +283,37 @@ struct calibration_specturm_info_st{
     uint32_t end_freq_khz[40];
     int power_level[40];
     int global_roughly_power_lever;
+    int low_distortion_power_level;
+    int low_noise_power_level;
 };//__attribute__ ((packed));
+
+struct calibration_specturm_node_st{
+    uint32_t start_freq_khz;
+    uint32_t end_freq_khz;
+    int power_level;
+    uint32_t fft;
+}__attribute__ ((packed));
+
+struct calibration_attenuation_node_st{
+    int32_t  rf_mode;
+    int32_t start_range;
+    int32_t end_range;
+}__attribute__ ((packed));
+
+
+struct calibration_mgc_attenuation_node_st{
+    int32_t start_range;
+    int32_t end_range;
+}__attribute__ ((packed));
+
+
+struct calibration_specturm_v2_st{
+    struct calibration_specturm_node_st cal_node[32];
+    struct calibration_attenuation_node_st att_node[3];
+    struct calibration_mgc_attenuation_node_st mgc_attr_node;
+    int global_roughly_power_lever;
+}__attribute__ ((packed));
+
 
 struct calibration_analysis_info_st{
     uint32_t start_freq_khz[40];
@@ -306,6 +349,7 @@ struct calibration_fft_st{
 
 struct calibration_info_st{
     struct calibration_specturm_info_st specturm;
+    struct calibration_specturm_v2_st   spm_level;
     struct calibration_analysis_info_st analysis;
     struct calibration_low_noise_info_st low_noise;
     struct calibration_lo_leakage_info_st lo_leakage;

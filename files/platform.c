@@ -71,6 +71,13 @@ bool is_spectrum_continuous_mode(void)
     return spectrum_continuous_mode;
 }
 
+time_t system_power_on_time = 0;
+
+time_t get_system_power_on_time(void)
+{
+    return system_power_on_time;
+}
+
 int main(int argc, char **argv)
 {
     int debug_level = -1;
@@ -108,8 +115,10 @@ int main(int argc, char **argv)
             usage(argv[0]);
         }
     }
+    system_power_on_time = time((time_t *)NULL);
     log_init(debug_level);
     printf("Platform Start...\n");
+    printf("%s\n", ctime(&system_power_on_time));
     printf("VERSION:%s\n",get_version_string());
     config_init();
     uloop_init();
@@ -128,7 +137,7 @@ int main(int argc, char **argv)
     clock_adc_init();   /* 时钟/AD初始化 */
 #endif
     fpga_io_init();
-    executor_init();    /* DMA频谱初始化需要在时钟初始化之前 */
+    executor_init();   
  if(spectrum_aditool_debug == false){
 #ifdef SUPPORT_RF
     rf_init();  /* RF初始化， */

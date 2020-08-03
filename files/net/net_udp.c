@@ -73,6 +73,7 @@ int udp_send_data_to_client(struct net_udp_client *client, uint8_t *data, uint32
 static inline int udp_send_vec_data_to_client(struct net_udp_client *client, struct iovec *iov, int iov_len)
 {    
     struct msghdr msgsent;
+    int r=0;
 
     if(client == NULL)
         return -1;
@@ -84,7 +85,10 @@ static inline int udp_send_vec_data_to_client(struct net_udp_client *client, str
     msgsent.msg_control = NULL;
     msgsent.msg_controllen = 0;
     //printf_debug("send: %s:%d\n", client->get_peer_addr(client), client->get_peer_port(client));
-    sendmsg(client->srv->fd.fd, &msgsent, 0);
+    r = sendmsg(client->srv->fd.fd, &msgsent, 0);
+    if(r < 0){
+        perror("sendmsg");
+    }
     return 0;
 }
 

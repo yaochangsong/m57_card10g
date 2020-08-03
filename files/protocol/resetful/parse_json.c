@@ -16,7 +16,8 @@
 #include "parse_cmd.h"
 #include <sys/types.h>
 #include <dirent.h>
-
+#include "parse_json.h"
+#include "../../dao/json/cJSON.h"
 
 
 static inline bool str_to_int(char *str, int *ivalue, bool(*_check)(int))
@@ -150,6 +151,7 @@ int parse_json_net(const char * const body)
         config->network.gateway = inet_addr(value->valuestring);
         printf_note("set gateway: %s, 0x%x\n", value->valuestring, config->network.gateway);
     }
+    config_save_all();
     executor_set_command(EX_NETWORK_CMD, 0, 0, NULL);
     
     return RESP_CODE_OK;
@@ -160,15 +162,60 @@ int parse_json_rf_multi_value(const char * const body)
     return RESP_CODE_OK;
 }
 
-int parse_json_if_multi_value(const char * const body)
+int parse_json_if_multi_value(const char * const body, uint8_t cid)
 {  
+    struct poal_config *config = &(config_get_config()->oal_config);
+    cJSON *node, *value;
+    cJSON *root = cJSON_Parse(body);
+    if (root == NULL)
+    {
+        const char *error_ptr = cJSON_GetErrorPtr();
+        if (error_ptr != NULL)
+        {
+            fprintf(stderr, "Error before: %s\n", error_ptr);
+        }
+        return RESP_CODE_PARSE_ERR;
+    }
+    config->rf_para[cid].cid = cid;
+    value = cJSON_GetObjectItem(root, "modeCode");
+    if(value!=NULL&&cJSON_IsNumber(value)){
+         config->rf_para[cid].rf_mode_code=value->valueint;
+         printfd("rf_mode_code:%d,\n", config->rf_para[cid].rf_mode_code);
+    }
+    value = cJSON_GetObjectItem(root, "gainMode");
+    if(value!=NULL&&cJSON_IsNumber(value)){
+         config->rf_para[cid].gain_ctrl_method=value->valueint;
+         printfd("gain_ctrl_method:%d,\n", config->rf_para[cid].gain_ctrl_method);
+    }
+    value = cJSON_GetObjectItem(root, "mgcGain");
+    if(value!=NULL&&cJSON_IsNumber(value)){
+         config->rf_para[cid].mgc_gain_value=value->valueint;
+         printfd("gain_ctrl_method:%d,\n", config->rf_para[cid].mgc_gain_value);
+    }
+    value = cJSON_GetObjectItem(root, "agcCtrlTime");
+    if(value!=NULL&&cJSON_IsNumber(value)){
+         config->rf_para[cid].agc_ctrl_time=value->valueint;
+         printfd("agc_ctrl_time:%d,\n", config->rf_para[cid].agc_ctrl_time);
+    }
+    value = cJSON_GetObjectItem(root, "agcOutPutAmp");
+    if(value!=NULL&&cJSON_IsNumber(value)){
+         config->rf_para[cid].agc_mid_freq_out_level=value->valueint;
+         printfd("agc_mid_freq_out_level:%d,\n", config->rf_para[cid].agc_mid_freq_out_level);
+    }
+    value = cJSON_GetObjectItem(root, "bandwidth");
+    if(value!=NULL&&cJSON_IsNumber(value)){
+         config->rf_para[cid].mid_bw=value->valueint;
+         printfd("rf mid_bw:%d,\n", config->rf_para[cid].mid_bw);
+    }
+    printfd("\n");
+    
     return RESP_CODE_OK;
 
 }
 
 int parse_json_multi_band(const char * const body,uint8_t cid)
 {
-     printfd(" \n*************开始解析的body多频段数据消息*****************\n");
+     printfd(" \n*************multi band set*****************\n");
      cJSON *node, *value;
      uint32_t subcid;
      int code = RESP_CODE_OK;
@@ -281,7 +328,7 @@ int parse_json_multi_band(const char * const body,uint8_t cid)
 
 int parse_json_muti_point(const char * const body,uint8_t cid)
 {
-    printfn(" \n*************开始解析的body多频点数据消息*****************\n");
+    printfn(" \n*************multi point set*****************\n");
     cJSON *node, *value;
     int code = RESP_CODE_OK;
     struct poal_config *config = &(config_get_config()->oal_config);
@@ -419,12 +466,11 @@ int parse_json_muti_point(const char * const body,uint8_t cid)
     }else{
         config->work_mode = OAL_MULTI_POINT_SCAN_MODE;
     }
-    printfd("\n*****************解析完成************\n");
     return code;
 }
 int parse_json_demodulation(const char * const body,uint8_t cid,uint8_t subid )
 {
-     printfd(" \n*************开始解析的body解调数据消息*****************\n");
+     printfd(" \n*************demodulation set*****************\n");
      cJSON *node, *value;
      int code = RESP_CODE_OK;
      struct poal_config *config = &(config_get_config()->oal_config);
@@ -535,6 +581,17 @@ int parse_json_file_backtrace(const char * const body, uint8_t ch,  uint8_t enab
         ret = xwfs_start_backtrace(filename);
     else
         ret = xwfs_stop_backtrace(filename);
+#elif defined(SUPPORT_FS)
+    struct fs_context *fs_ctx;
+    fs_ctx = get_fs_ctx();
+    if(fs_ctx == NULL){
+        printf_warn("NOT FOUND DISK!!\n");
+        return RESP_CODE_EXECMD_ERR;
+    }
+    if(enable)
+        fs_ctx->ops->fs_start_read_raw_file(filename);
+    else
+        fs_ctx->ops->fs_stop_read_raw_file(filename);
 #endif
     if(ret != 0)
         return RESP_CODE_EXECMD_ERR;
@@ -569,6 +626,17 @@ int parse_json_file_store(const char * const body, uint8_t ch,  uint8_t enable, 
         ret = xwfs_start_save_file(filename);
     else
         ret = xwfs_stop_save_file(filename);
+#elif defined(SUPPORT_FS)
+        struct fs_context *fs_ctx;
+        fs_ctx = get_fs_ctx();
+        if(fs_ctx == NULL){
+            printf_warn("NOT FOUND DISK!!\n");
+            return RESP_CODE_EXECMD_ERR;
+        }
+        if(enable)
+            fs_ctx->ops->fs_start_save_file(filename);
+        else
+            fs_ctx->ops->fs_stop_save_file(filename);
 #endif
     if(ret != 0)
         return RESP_CODE_EXECMD_ERR;
@@ -576,7 +644,7 @@ int parse_json_file_store(const char * const body, uint8_t ch,  uint8_t enable, 
         return RESP_CODE_OK;
 }
 
-void creat_file_list(char *filename, struct stat *stats, cJSON *array)
+static void creat_file_list(char *filename, struct stat *stats, cJSON *array)
 {
     cJSON* item = NULL;
     if(stats == NULL || filename == NULL || array == NULL)
@@ -666,6 +734,203 @@ char *assemble_json_find_file(char *filename)
 }
 
 
+char *assemble_json_softversion(void)
+{
+    char *str_json = NULL;
+    cJSON *root = cJSON_CreateObject();
+    char version[32] = {0};
+    snprintf(version, sizeof(version), "%x", get_fpga_version());
+    version[sizeof(version) - 1] = 0;
+    cJSON_AddStringToObject(root, "appversion", get_version_string());
+    cJSON_AddStringToObject(root, "kernelversion", "1.0.0");
+    cJSON_AddStringToObject(root, "fpgaversion", version);
+    json_print(root, 1);
+    str_json = cJSON_PrintUnformatted(root);
+    return str_json;
+}
+char *assemble_json_fpag_info(void)
+{
+    char *str_json = NULL;
+    struct arg_s{
+        uint32_t temp;
+        float vol;
+        float current;
+        uint32_t resources;
+    };
+    struct arg_s args;
+    char version[32] = {0};
+    cJSON *root = cJSON_CreateObject();
+    io_get_fpga_status(&args);
+    snprintf(version, sizeof(version), "%x", get_fpga_version());
+    version[sizeof(version) - 1] = 0;
+    cJSON_AddStringToObject(root, "fpgaVersion", version);
+    cJSON_AddNumberToObject(root, "temperature", args.temp);
+    cJSON_AddNumberToObject(root, "fpgaIntVol", args.vol);
+    cJSON_AddNumberToObject(root, "fpgaBramVol", args.current);
+    cJSON_AddNumberToObject(root, "fpgaResources", args.resources);
+    json_print(root, 1);
+    str_json = cJSON_PrintUnformatted(root);
+    return str_json;
+}
+char *assemble_json_gps_info(void)
+{
+    char *str_json = NULL;
+    struct arg_s{
+        uint32_t status;
+    };
+    struct arg_s args;
+    cJSON *root = cJSON_CreateObject();
+    cJSON_AddStringToObject(root, "status", 
+#if defined (SUPPORT_GPS)
+        (gps_location_is_valid() == true ? "ok" : "no")
+#else
+        "no"
+#endif
+        );
+    json_print(root, 1);
+    str_json = cJSON_PrintUnformatted(root);
+    return str_json;
+}
+char *assemble_json_clock_info(void)
+{
+    char *str_json = NULL;
+    uint8_t external_clk = 0;
+    bool lock_ok = false;
+    cJSON *root = cJSON_CreateObject();
+    lock_ok =  io_get_inout_clock_status(&external_clk);
+    cJSON_AddStringToObject(root, "inout", (external_clk == 1 ? "out" : "in"));
+    cJSON_AddStringToObject(root, "status", (lock_ok == false ? "no":"ok"));
+    cJSON_AddNumberToObject(root, "frequency", 512000000);
+    json_print(root, 1);
+    str_json = cJSON_PrintUnformatted(root);
+    return str_json;
+}
+char *assemble_json_board_info(void)
+{
+    char *str_json = NULL;
+    struct arg_s{
+        float v;
+        float i;
+    };
+    struct arg_s power;
+    cJSON *root = cJSON_CreateObject();
+    io_get_board_power(&power);
+    cJSON_AddNumberToObject(root, "temperature", io_get_adc_temperature());
+    cJSON_AddNumberToObject(root, "voltage", power.v);
+    cJSON_AddNumberToObject(root, "current", power.i);
+    json_print(root, 1);
+    str_json = cJSON_PrintUnformatted(root);
+    return str_json;
+}
+char *assemble_json_net_info(void)
+{
+    char *str_json = NULL, *s_speed = "error", *s_link = "error";
+    int i;
+    struct speed_table{
+        int32_t i_speed;
+        char *s_speed;
+    };
+
+    struct speed_table spt[] = {
+        {SPEED_10, "10Mbps"},
+        {SPEED_100, "100Mbps"},
+        {SPEED_1000, "1Gbps"},
+        {SPEED_2500, "2.5Gbps"},
+        {SPEED_10000, "10Gbps"},
+    };
+    cJSON *root = cJSON_CreateObject();
+    int32_t link = get_netlink_status("eth1");
+    int32_t speed = get_ifname_speed("eth1");
+    if(link >= 0)
+        s_link = (link == 0 ? "down" : "up");
+    for(i = 0; i < ARRAY_SIZE(spt); i++){
+        if(speed == spt[i].i_speed){
+            s_speed = spt[i].s_speed;
+            break;
+        }
+    }
+    cJSON_AddStringToObject(root, "ifname", "eth1");
+    cJSON_AddStringToObject(root, "link", s_link);
+    cJSON_AddStringToObject(root, "speed", s_speed);
+    json_print(root, 1);
+    str_json = cJSON_PrintUnformatted(root);
+    return str_json;
+}
+char *assemble_json_rf_info(void)
+{
+    char *str_json = NULL;
+    int i;
+    cJSON *array = cJSON_CreateArray();
+    cJSON* item = NULL;
+    int16_t  rf_temp = 0;
+    for(i = 0; i < MAX_RADIO_CHANNEL_NUM; i++){
+        cJSON_AddItemToArray(array, item = cJSON_CreateObject());
+        cJSON_AddNumberToObject(item, "index", i);
+        executor_get_command(EX_RF_FREQ_CMD, EX_RF_STATUS_TEMPERAT, i,  &rf_temp);
+        if(rf_temp > 200 || rf_temp < -100 || rf_temp == 0)
+            cJSON_AddStringToObject(item, "status", "no");
+        else
+            cJSON_AddStringToObject(item, "status", "ok");
+        cJSON_AddNumberToObject(item, "temperature", rf_temp);
+    }
+   str_json = cJSON_PrintUnformatted(array);
+   return str_json;
+}
+char *assemble_json_disk_info(void)
+{
+    #define DISK_NUM 1
+    char *str_json = NULL;
+    int i;
+    cJSON *array = cJSON_CreateArray();
+    cJSON* item = NULL;
+    bool b_valid = false;
+#if defined(SUPPORT_FS)
+    struct fs_context *fs_ctx;
+    struct statfs diskInfo;
+    fs_ctx = get_fs_ctx_ex();
+    b_valid = fs_ctx->ops->fs_disk_info(&diskInfo);
+#endif
+    for(i = 0; i < DISK_NUM; i++){
+        cJSON_AddItemToArray(array, item = cJSON_CreateObject());
+        cJSON_AddNumberToObject(item, "index", i);
+        cJSON_AddStringToObject(item, "status", (b_valid == false ? "no":"ok"));
+        if(b_valid){
+            cJSON_AddNumberToObject(item, "totalSpace", diskInfo.f_bsize * diskInfo.f_blocks);
+            cJSON_AddNumberToObject(item, "freeSpace", diskInfo.f_bsize * diskInfo.f_bfree);
+        }
+    }
+   str_json = cJSON_PrintUnformatted(array);
+   return str_json;
+}
+char *assemble_json_all_info(void)
+{
+    char *str_json = NULL;
+    cJSON *root = cJSON_CreateObject();
+    cJSON_AddItemToObject(root, "versionInfo", cJSON_Parse(assemble_json_softversion()));
+    cJSON_AddItemToObject(root, "diskInfo", cJSON_Parse(assemble_json_disk_info()));
+    cJSON_AddItemToObject(root, "clockInfo", cJSON_Parse(assemble_json_clock_info()));
+    cJSON_AddItemToObject(root, "rfInfo", cJSON_Parse(assemble_json_rf_info()));
+    cJSON_AddItemToObject(root, "boardInfo", cJSON_Parse(assemble_json_board_info()));
+    cJSON_AddItemToObject(root, "fpgaInfo", cJSON_Parse(assemble_json_fpag_info()));
+    cJSON_AddItemToObject(root, "gpsInfo", cJSON_Parse(assemble_json_gps_info()));
+    cJSON_AddItemToObject(root, "netInfo", cJSON_Parse(assemble_json_net_info()));
+    json_print(root, 1);
+    str_json = cJSON_PrintUnformatted(root);
+    return str_json;
+}
+char *assemble_json_temp_info(void)
+{
+    char *str_json = NULL;
+    uint16_t ps_temp, rf_temp;
+    ps_temp = io_get_adc_temperature();
+    executor_get_command(EX_RF_FREQ_CMD, EX_RF_STATUS_TEMPERAT, 0,  &rf_temp);
+    cJSON *root = cJSON_CreateObject();
+    cJSON_AddNumberToObject(root, "dbTemp", ps_temp);
+    cJSON_AddNumberToObject(root, "rfTemp", rf_temp);
+    json_print(root, 1);
+    str_json = cJSON_PrintUnformatted(root);
+    return str_json;
+}
 
 
 /* NOTE: 调用该函数后，需要free返回指针 */

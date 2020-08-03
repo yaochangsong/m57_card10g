@@ -16,8 +16,10 @@
 #define _FS_H
 
 #include <stdbool.h>
+#include <sys/statfs.h>
 
 struct fs_ops {
+	bool (*fs_disk_info)(struct statfs *diskInfo);
     bool (*fs_disk_valid)(void);
     int (*fs_format)(void);
     int (*fs_mkdir)(char *);
@@ -38,6 +40,7 @@ struct fs_context {
 extern void fs_init(void);
 extern char *fs_get_root_dir(void);
 extern struct fs_context *get_fs_ctx(void);
+extern struct fs_context *get_fs_ctx_ex(void);
 extern struct fs_context * fs_create_context(void);
 #endif
 

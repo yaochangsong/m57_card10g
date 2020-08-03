@@ -267,5 +267,11 @@ extern int io_read_more_info_by_name(const char *name, void *info, int32_t (*iof
 extern int32_t io_find_file_info(void *arg);
 extern int32_t io_start_backtrace_file(void *arg);
 extern int32_t io_stop_backtrace_file(void *arg);
-
+extern bool io_get_adc_status(void *args);
+extern bool io_get_clock_status(void *args);
+extern int32_t io_set_noise(uint32_t ch, uint32_t noise_en,int8_t noise_level_tmp);
+extern int32_t io_set_middle_freq(uint32_t ch, uint64_t middle_freq);
+extern void io_get_fpga_status(void *args);
+extern void io_get_board_power(void *args);
+extern bool io_get_inout_clock_status(void *args);
 #endif

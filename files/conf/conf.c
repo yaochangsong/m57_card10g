@@ -354,15 +354,33 @@ int8_t config_write_data(exec_cmd cmd, uint8_t type, uint8_t ch, void *data)
                     break;
                 case EX_RF_MID_BW:
                     poal_config->rf_para[ch].mid_bw = *(uint32_t *)data;
+                    printf_note("mid_bw=%u\n", poal_config->rf_para[ch].mid_bw);
                     break;
                 case EX_RF_MODE_CODE:
                     poal_config->rf_para[ch].rf_mode_code = *(int8_t *)data;
+                    printf_note("rf_mode_code=%d\n", poal_config->rf_para[ch].rf_mode_code);
                     break;
                 case EX_RF_GAIN_MODE:
                     poal_config->rf_para[ch].gain_ctrl_method = *(int8_t *)data;
+                    printf_note("gain_ctrl_method=%d\n", poal_config->rf_para[ch].gain_ctrl_method);
+                    break;
+                case EX_RF_AGC_CTRL_TIME:
+                    poal_config->rf_para[ch].agc_ctrl_time = *(uint32_t *)data;
+                    printf_note("agc_ctrl_time=%u\n", poal_config->rf_para[ch].agc_ctrl_time);
+                    break;
+                case EX_RF_AGC_OUTPUT_AMP:
+                    poal_config->rf_para[ch].agc_mid_freq_out_level = *(int8_t *)data;
+                    printf_note("agc_mid_freq_out_level=%d\n", poal_config->rf_para[ch].agc_mid_freq_out_level);
+                    break;
+                case EX_RF_ATTENUATION:
+                    poal_config->rf_para[ch].attenuation = *(int8_t *)data;
+                    printf_note("attenuation=%d\n", poal_config->rf_para[ch].attenuation);
                     break;
                 case EX_RF_MGC_GAIN:
                     poal_config->rf_para[ch].mgc_gain_value = *(int8_t *)data;
+                    printf_note("mgc_gain_value=%d\n", poal_config->rf_para[ch].mgc_gain_value);
+                    break;
+                case EX_RF_ANTENNA_SELECT:
                     break;
                 default:
                     printf_err("not surpport type\n");
@@ -414,10 +432,14 @@ int8_t config_write_data(exec_cmd cmd, uint8_t type, uint8_t ch, void *data)
             return -1;
      }
      
-    config_save_batch(cmd, type, config_get_config());
     return 0;
 }
 
+int8_t config_write_save_data(exec_cmd cmd, uint8_t type, uint8_t ch, void *data)
+{
+    config_write_data(cmd, type, ch, data);
+    config_save_batch(cmd, type, config_get_config());
+}
 
 int8_t config_read_by_cmd(exec_cmd cmd, uint8_t type, uint8_t ch, void *data, ...)
 {

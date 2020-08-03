@@ -36,15 +36,15 @@ static struct response_err_code resp_code[] ={
 
 /* 射频参数类型 */
 static const char *const rf_types[] = {
-    [EX_RF_MID_FREQ] = "middleFreq",
-    [EX_RF_MID_BW] = "middleBw",
-    [EX_RF_MODE_CODE] = "mode",
-    [EX_RF_GAIN_MODE] = "gain",
-    [EX_RF_MGC_GAIN] = "mgc",
-    [EX_RF_AGC_CTRL_TIME]="agctime",          
-    [EX_RF_AGC_OUTPUT_AMP]="agcamp",          
-    [EX_RF_ANTENNA_SELECT]="actenna",          
-    [EX_RF_ATTENUATION] = "attenuation",
+    [EX_RF_MID_FREQ] = "midFreq",
+    [EX_RF_MID_BW] = "bandwidth",
+    [EX_RF_MODE_CODE] = "modeCode",
+    [EX_RF_GAIN_MODE] = "gainMode",
+    [EX_RF_MGC_GAIN] = "mgcGain",
+    [EX_RF_AGC_CTRL_TIME]="agcCtrlTime",          
+    [EX_RF_AGC_OUTPUT_AMP]="agcOutPutAmp",          
+    [EX_RF_ANTENNA_SELECT]="antennaSelect",          
+    [EX_RF_ATTENUATION] = "rfAttenuation",
     [EX_RF_STATUS_TEMPERAT] = "temperature",         
     [EX_RF_CALIBRATE] = "calibrate",
 };
@@ -354,7 +354,7 @@ int cmd_if_multi_value_set(struct uh_client *cl, void **arg, void **content)
     subch = cl->get_restful_var(cl, "subch");
     printf_note("rf ch = %s, subch=%s\n", ch, subch);
     printf_note("%s\n", cl->dispatch.body);
-    if(parse_json_if_multi_value(cl->dispatch.body) != 0){
+    if(parse_json_if_multi_value(cl->dispatch.body, ch) != 0){
         code = RESP_CODE_PARSE_ERR;
     }
     
@@ -401,6 +401,7 @@ int cmd_rf_single_value_set(struct uh_client *cl, void **arg, void **content)
     }
 
     itype = find_idx_safe(rf_types, ARRAY_SIZE(rf_types), s_type);
+    config_write_data(EX_RF_FREQ_CMD, itype, ch,&value);
     if(executor_set_command(EX_RF_FREQ_CMD, itype, ch,&value) != 0){
         code = RESP_CODE_EXECMD_ERR;
         goto error;

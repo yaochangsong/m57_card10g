@@ -133,7 +133,7 @@ uint8_t rf_set_interface(uint8_t cmd,uint8_t ch,void *data){
         case EX_RF_MGC_GAIN : {
             int8_t mgc_gain_value;
             mgc_gain_value = *((int8_t *)data);
-            printf_note("[**RF**]ch=%d, mgc_gain_value=%d\n",ch, mgc_gain_value);
+            printf_info("[**RF**]ch=%d, mgc_gain_value=%d\n",ch, mgc_gain_value);
 #ifdef SUPPORT_RF_ADRV9009
 #elif defined(SUPPORT_RF_SPI)
             ret = spi_rf_set_command(SPI_RF_MIDFREQ_GAIN_SET, &mgc_gain_value);
@@ -160,7 +160,7 @@ uint8_t rf_set_interface(uint8_t cmd,uint8_t ch,void *data){
         case EX_RF_ATTENUATION :{
             int8_t rf_gain_value = 0;
             rf_gain_value = *((int8_t *)data);
-            printf_note("[**RF**]ch=%d, rf_gain_value=%d\n",ch, rf_gain_value);
+            printf_info("[**RF**]ch=%d, rf_gain_value=%d\n",ch, rf_gain_value);
 #ifdef SUPPORT_RF_ADRV9009
             gpio_select_rf_attenuation(rf_gain_value);
 #elif defined(SUPPORT_RF_SPI)

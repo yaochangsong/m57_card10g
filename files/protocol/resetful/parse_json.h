@@ -22,6 +22,7 @@ extern int parse_json_muti_point(const char * const body,uint8_t cid);
 extern int parse_json_demodulation(const char * const body,uint8_t cid,uint8_t subid );
 extern int parse_json_file_backtrace(const char * const body, uint8_t ch,  uint8_t enable, char  *filename);
 extern int parse_json_file_store(const char * const body, uint8_t ch,  uint8_t enable, char  *filename);
+extern int parse_json_if_multi_value(const char * const body, uint8_t cid);
 extern char *assemble_json_file_list(void);
 extern char *assemble_json_data_response(int err_code, const char *message, const char * const data);
 extern char *assemble_json_response(int err_code, const char *message);

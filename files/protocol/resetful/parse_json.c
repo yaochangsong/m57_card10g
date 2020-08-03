@@ -162,8 +162,53 @@ int parse_json_rf_multi_value(const char * const body)
     return RESP_CODE_OK;
 }
 
-int parse_json_if_multi_value(const char * const body)
+int parse_json_if_multi_value(const char * const body, uint8_t cid)
 {  
+    struct poal_config *config = &(config_get_config()->oal_config);
+    cJSON *node, *value;
+    cJSON *root = cJSON_Parse(body);
+    if (root == NULL)
+    {
+        const char *error_ptr = cJSON_GetErrorPtr();
+        if (error_ptr != NULL)
+        {
+            fprintf(stderr, "Error before: %s\n", error_ptr);
+        }
+        return RESP_CODE_PARSE_ERR;
+    }
+    config->rf_para[cid].cid = cid;
+    value = cJSON_GetObjectItem(root, "modeCode");
+    if(value!=NULL&&cJSON_IsNumber(value)){
+         config->rf_para[cid].rf_mode_code=value->valueint;
+         printfd("rf_mode_code:%d,\n", config->rf_para[cid].rf_mode_code);
+    }
+    value = cJSON_GetObjectItem(root, "gainMode");
+    if(value!=NULL&&cJSON_IsNumber(value)){
+         config->rf_para[cid].gain_ctrl_method=value->valueint;
+         printfd("gain_ctrl_method:%d,\n", config->rf_para[cid].gain_ctrl_method);
+    }
+    value = cJSON_GetObjectItem(root, "mgcGain");
+    if(value!=NULL&&cJSON_IsNumber(value)){
+         config->rf_para[cid].mgc_gain_value=value->valueint;
+         printfd("gain_ctrl_method:%d,\n", config->rf_para[cid].mgc_gain_value);
+    }
+    value = cJSON_GetObjectItem(root, "agcCtrlTime");
+    if(value!=NULL&&cJSON_IsNumber(value)){
+         config->rf_para[cid].agc_ctrl_time=value->valueint;
+         printfd("agc_ctrl_time:%d,\n", config->rf_para[cid].agc_ctrl_time);
+    }
+    value = cJSON_GetObjectItem(root, "agcOutPutAmp");
+    if(value!=NULL&&cJSON_IsNumber(value)){
+         config->rf_para[cid].agc_mid_freq_out_level=value->valueint;
+         printfd("agc_mid_freq_out_level:%d,\n", config->rf_para[cid].agc_mid_freq_out_level);
+    }
+    value = cJSON_GetObjectItem(root, "bandwidth");
+    if(value!=NULL&&cJSON_IsNumber(value)){
+         config->rf_para[cid].mid_bw=value->valueint;
+         printfd("rf mid_bw:%d,\n", config->rf_para[cid].mid_bw);
+    }
+    printfd("\n");
+    
     return RESP_CODE_OK;
 
 }

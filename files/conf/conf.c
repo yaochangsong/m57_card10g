@@ -341,6 +341,9 @@ int8_t config_write_data(exec_cmd cmd, uint8_t type, uint8_t ch, void *data)
                 case EX_BANDWITH:
                     poal_config->multi_freq_point_param[ch].points[0].bandwidth = *(uint64_t *)data;
                     break;
+                case EX_AUDIO_VOL_CTRL:
+                    poal_config->multi_freq_point_param[ch].points[0].audio_volume = *(int16_t *)data;
+                    break;
                 default:
                     printf_err("not surpport type\n");
                     return -1;

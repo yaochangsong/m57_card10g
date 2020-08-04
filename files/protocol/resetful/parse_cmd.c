@@ -323,11 +323,13 @@ int cmd_if_single_value_set(struct uh_client *cl, void **arg, void **content)
     }
     itype = find_idx_safe(if_types, ARRAY_SIZE(if_types), s_type);
     if(s_value_2 != NULL){
+        config_write_data(EX_MID_FREQ_CMD, itype, ch,&value);
         if(executor_set_command(EX_MID_FREQ_CMD, itype, ch,&value, value2) != 0){
             code = RESP_CODE_EXECMD_ERR;
             goto error;
         }
     }else{
+        config_write_data(EX_MID_FREQ_CMD, itype, ch,&value);
         if(executor_set_command(EX_MID_FREQ_CMD, itype, ch,&value) != 0){
             code = RESP_CODE_EXECMD_ERR;
             goto error;

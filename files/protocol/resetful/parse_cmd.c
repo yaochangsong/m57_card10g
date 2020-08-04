@@ -438,7 +438,7 @@ int cmd_rf_multi_value_set(struct uh_client *cl, void **arg, void **content)
         subch = -1;
     }
     printf_note("%s\n", cl->dispatch.body);
-    if(parse_json_rf_multi_value(cl->dispatch.body) != 0){
+    if(parse_json_rf_multi_value(cl->dispatch.body, ch) != 0){
         code = RESP_CODE_PARSE_ERR;
     }
     

@@ -83,6 +83,28 @@ static inline bool str_to_u64(char *str, uint64_t *ivalue, bool(*_check)(int))
     return ((*_check)(value));
 }
 
+static int8_t xw_decode_method_convert(uint8_t method)
+{
+    uint8_t d_method;
+    
+    if(method == DC_MODE_AM){
+        d_method = IO_DQ_MODE_AM;
+    }else if(method == DC_MODE_FM) {
+        d_method = IO_DQ_MODE_FM;
+    }else if(method == DC_MODE_LSB || method == DC_MODE_USB) {
+        d_method = IO_DQ_MODE_LSB;
+    }else if(method == DC_MODE_CW) {
+        d_method = IO_DQ_MODE_CW;
+    }else if(method == DC_MODE_IQ) {
+        d_method = IO_DQ_MODE_IQ;
+    }else{
+        printf_err("decode method not support:%d, use iq\n",method);
+        return IO_DQ_MODE_IQ;
+    }
+    printf_note("method convert:%d ===> %d\n",method, d_method);
+    return d_method;
+}
+
 
 
 int parse_json_client_net(int ch, const char * const body)
@@ -157,12 +179,12 @@ int parse_json_net(const char * const body)
     return RESP_CODE_OK;
 }
 
-int parse_json_rf_multi_value(const char * const body)
+int parse_json_if_multi_value(const char * const body, uint8_t cid)
 {
     return RESP_CODE_OK;
 }
 
-int parse_json_if_multi_value(const char * const body, uint8_t cid)
+int parse_json_rf_multi_value(const char * const body, uint8_t cid)
 {  
     struct poal_config *config = &(config_get_config()->oal_config);
     cJSON *node, *value;
@@ -430,7 +452,7 @@ int parse_json_muti_point(const char * const body,uint8_t cid)
              value = cJSON_GetObjectItem(node, "decMethodId");
              if(cJSON_IsNumber(value)){
                 // printfd("channel:%d, ", value->valueint);
-                 config->multi_freq_point_param[cid].points[subcid].d_method=value->valueint;
+                 config->multi_freq_point_param[cid].points[subcid].d_method=xw_decode_method_convert(value->valueint);
                   printfn("decMethodId:%d, ",config->multi_freq_point_param[cid].points[subcid].d_method);
              }
              value = cJSON_GetObjectItem(node, "decBandwidth");
@@ -521,8 +543,8 @@ int parse_json_demodulation(const char * const body,uint8_t cid,uint8_t subid )
     }
     value = cJSON_GetObjectItem(root, "decMethodId");
     if(value!=NULL&&cJSON_IsNumber(value)){
-         config->sub_channel_para[cid].sub_ch[subid].d_method=value->valueint;
-         printfd("decMethodId:%d,\n",config->sub_channel_para[cid].sub_ch[subid].d_method);
+         config->sub_channel_para[cid].sub_ch[subid].d_method = xw_decode_method_convert(value->valueint);
+         printfd("cid=%d, subid=%d,decMethodId:%d,\n",cid, subid, config->sub_channel_para[cid].sub_ch[subid].d_method);
 
     }
     value = cJSON_GetObjectItem(root, "muteSwitch");

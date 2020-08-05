@@ -31,6 +31,17 @@ static struct _frame_read_x{
 
 static struct _frame_read_x frame_read;
 
+/*电子罗盘*/
+static struct _elec_compass{
+    uint8_t     header;
+    uint8_t     data_len;
+    uint8_t     addr;
+    uint16_t    cmd;
+    uint8_t     data[0];
+    uint8_t     crc;
+}__attribute__ ((packed));
+
+
 static ssize_t _rs485_com_read_frame(uint8_t *rev_data, size_t rev_nread, struct _frame_data **oframe)
 {
     struct _frame_read_x *fread = &frame_read;
@@ -301,6 +312,49 @@ int8_t rs485_com_get(int32_t cmd, void *data)
     return ret;
 }
 
+
+int elec_compass_com_get_angle(float *angle)
+{
+    #define BCD2BIN(val)  (((val) & 0x0f) + ((val) >> 4) * 10)
+    #define HEADER  0x77
+    #define TIMEOUT 100
+    int nbyte = 0;
+    float tmp_angle = 0.0f;
+    uint8_t flag = 0;
+    uint8_t buffer[FRAME_MAX_LEN];
+    struct _elec_compass *fdata;
+    fdata = (struct _elec_compass *)calloc(1, sizeof(struct _elec_compass));
+    fdata->header = HEADER;
+    fdata->data_len = 0x04;
+    fdata->addr = 0x00;
+    fdata->cmd = 0x03;  
+    fdata->crc = 0x07;
+    rs485_send_data_by_serial((uint8_t *)fdata, 5);
+    free(fdata);
+    nbyte = rs485_read_block_timeout(buffer, TIMEOUT);
+    if(nbyte <= 0)
+    {
+        printf_note("read compass failed!\n");
+        return -1;
+    }
+    if(nbyte < 8 || buffer[0] != HEADER || buffer[3] != 0x83)
+    {
+        printf_note("elec compass respose err:len=%d!\n", nbyte);
+        return -1;
+    }
+
+    flag = (buffer[4] & 0xf0 > 0) ? 1 : 0;  //符号位
+    tmp_angle = (buffer[4] & 0x0f) * 100 + BCD2BIN(buffer[5]) + BCD2BIN(buffer[6]) * 0.01f;
+    if(flag)
+    {
+       tmp_angle *= -1; 
+    }
+    *angle = tmp_angle;
+    printf_note("get compass angle: %f\n", tmp_angle);
+    //*angle = ((int32_t)buffer[4] << 16) | ((int32_t)buffer[5] << 8) | buffer[6];
+    return 0;
+
+}
 
 int8_t rs485_com_init(void)
 {

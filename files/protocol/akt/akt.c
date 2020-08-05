@@ -1155,6 +1155,17 @@ static int akt_execute_get_command(void)
             akt_get_response_data.header.len = sizeof(SEARCH_FILE_STATUS_RSP_ST);
             break;
         }
+
+        case COMPASS_REQ_CMD:
+        {
+            float angle = -1.0f;
+        #if defined(SUPPORT_RS485_EC)
+            elec_compass_com_get_angle(&angle);
+        #endif
+            memcpy(akt_get_response_data.payload_data, &angle, sizeof(float));
+            akt_get_response_data.header.len = sizeof(float);
+            break;
+        }
         default:
             printf_debug("not support get commmand\n");
     }

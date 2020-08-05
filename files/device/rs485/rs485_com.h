@@ -45,7 +45,7 @@ extern int8_t rs485_com_init(void);
 extern int8_t rs485_com_get(int32_t cmd, void *pdata);
 extern int8_t rs485_com_set(int32_t cmd, void *pdata, size_t len);
 extern int8_t rs485_com_set_v2(int32_t cmd, void *pdata);
-
+extern int elec_compass_com_get_angle(float *angle);
 #endif
 
 

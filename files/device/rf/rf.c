@@ -261,7 +261,7 @@ uint8_t rf_set_interface(uint8_t cmd,uint8_t ch,void *data){
                 break;
             }
             
-#if defined(SUPPORT_RS485)
+#if defined(SUPPORT_RS485_AMPLIFIER)
            static int8_t vdata_dup = -1;
             if(vdata_dup == vdata){
                 printf_info("set EX_RF_LOW_NOISE value is equal:%d no need set\n" , vdata_dup);

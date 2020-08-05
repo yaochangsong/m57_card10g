@@ -87,6 +87,13 @@ ifneq ($(findstring y,$(SUPPORT_RS485)),)
 	SOURCE_DIR += device/rs485
 	C_VAR += -DSUPPORT_RS485
 endif
+ifneq ($(findstring y,$(SUPPORT_RS485_AMPLIFIER)),)
+	C_VAR += -DSUPPORT_RS485_AMPLIFIER
+endif
+ifneq ($(findstring y,$(SUPPORT_RS485_EC)),)
+	C_VAR += -DSUPPORT_RS485_EC
+endif
+
 
 #uart
 ifneq ($(findstring y,$(SUPPORT_UART)),)

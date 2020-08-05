@@ -871,7 +871,7 @@ static void io_set_dma_adc_out_en(int ch, int subch, uint32_t trans_len,uint8_t 
 #if defined(SUPPORT_SPECTRUM_KERNEL)
 
 #elif defined(SUPPORT_SPECTRUM_V2)
-    get_spm_ctx()->ops->stream_start(trans_len, continuous, STREAM_ADC);
+    get_spm_ctx()->ops->stream_start(trans_len, continuous, STREAM_ADC_READ);
 #endif
 #endif
 }
@@ -883,7 +883,7 @@ static void io_set_dma_adc_out_disable(int ch, int subch)
 #if defined(SUPPORT_SPECTRUM_KERNEL)
 
 #elif defined(SUPPORT_SPECTRUM_V2)
-    get_spm_ctx()->ops->stream_stop(STREAM_ADC);
+    get_spm_ctx()->ops->stream_stop(STREAM_ADC_READ);
 #endif
 #endif
 }
@@ -1412,7 +1412,7 @@ int32_t io_start_backtrace_file(void *arg){
     //SW_TO_BACKTRACE_MODE();
     ret = ioctl(io_ctrl_fd,IOCTL_DISK_START_BACKTRACE_FILE_INFO,arg);
 #elif defined(SUPPORT_SPECTRUM_V2) 
-    get_spm_ctx()->ops->stream_back_start(0x1000, 1, STREAM_ADC);
+    get_spm_ctx()->ops->stream_start(0x1000, 1, STREAM_ADC_WRITE);
 #endif
 #endif
     return ret;
@@ -1426,7 +1426,7 @@ int32_t io_stop_backtrace_file(void *arg){
     //SW_TO_AD_MODE();
     ret = ioctl(io_ctrl_fd,IOCTL_DISK_STOP_BACKTRACE_FILE_INFO,arg);
 #elif defined(SUPPORT_SPECTRUM_V2) 
-    get_spm_ctx()->ops->stream_back_stop(STREAM_ADC);
+    get_spm_ctx()->ops->stream_stop(STREAM_ADC_WRITE);
 #endif
 #endif
     return ret;

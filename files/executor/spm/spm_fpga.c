@@ -30,6 +30,8 @@
 
 extern uint8_t * akt_assamble_data_frame_header_data(uint32_t *len, void *config);
 static int spm_stream_stop(enum stream_type type);
+static int spm_stream_back_stop(enum stream_type type);
+
 
 #define DIRECT_FREQ_THR (200000000) /* 直采截止频率 */
 #define DIRECT_BANDWIDTH (256000000)
@@ -153,9 +155,10 @@ static inline const char * get_str_by_code(const char *const *list, int max, int
 
 
 static struct _spm_stream spm_stream[] = {
-        {DMA_IQ_DEV,  -1, NULL, DMA_BUFFER_SIZE, "IQ Stream"},
-        {DMA_FFT_DEV, -1, NULL, DMA_BUFFER_SIZE, "FFT Stream"},
-        {DMA_ADC_DEV, -1, NULL, DMA_BUFFER_SIZE, "ADC Stream"},
+        {DMA_IQ_DEV,  -1, NULL, DMA_BUFFER_SIZE, "IQ Stream", DMA_READ},
+        {DMA_FFT_DEV, -1, NULL, DMA_BUFFER_SIZE, "FFT Stream", DMA_READ},
+        {DMA_ADC_TX_DEV, -1, NULL, DMA_BUFFER_SIZE, "ADC Tx Stream", DMA_WRITE},
+        {DMA_ADC_RX_DEV, -1, NULL, DMA_BUFFER_SIZE, "ADC Rx Stream", DMA_READ},
 };
 
 static const char *const dma_status_array[] = {
@@ -257,7 +260,7 @@ static ssize_t spm_read_fft_data(void **data)
 
 static ssize_t spm_read_adc_data(void **data)
 {
-    return spm_stream_read(STREAM_ADC, data);
+    return spm_stream_read(STREAM_ADC_READ, data);
 }
 
 
@@ -268,7 +271,7 @@ static int spm_read_adc_over_deal(void *arg)
     
     struct _spm_stream *pstream = spm_stream;
     if(pstream){
-        ioctl(pstream[STREAM_ADC].id, IOCTL_DMA_SET_ASYN_READ_INFO, &nwrite_byte);
+        ioctl(pstream[STREAM_ADC_READ].id, IOCTL_DMA_SET_ASYN_READ_INFO, &nwrite_byte);
     }
         
 }
@@ -1063,32 +1066,6 @@ static int32_t  spm_get_signal_strength(uint8_t ch, bool *is_singal, uint16_t *s
     return 0;
 }
 
-static int spm_stream_back_start(uint32_t len,uint8_t continuous, enum stream_type type)
-{
-    struct _spm_stream *pstream = spm_stream;
-    IOCTL_DMA_START_PARA para;
-    
-    printf_note("stream type:%d, back start, continuous[%d], len=%u\n", type, continuous, len);
-
-    if(continuous)
-        para.mode = DMA_MODE_CONTINUOUS;
-    else{
-        para.mode = DMA_MODE_ONCE;
-        para.trans_len = len;
-    }
-    ioctl(pstream[type].id, IOCTL_DMA_ASYN_WRITE_START, &para);
-    return 0;
-}
-
-static int spm_stream_back_stop(enum stream_type type)
-{
-    struct _spm_stream *pstream = spm_stream;
-    ioctl(pstream[type].id, IOCTL_DMA_ASYN_WRITE_STOP, NULL);
-    printf_note("stream back stop: %d\n", type);
-    sync();
-    return 0;
-}
-
 static int spm_stream_back_running_file(enum stream_type type, int fd)
 {
     void *w_addr = NULL;
@@ -1162,14 +1139,20 @@ static int spm_stream_start(uint32_t len,uint8_t continuous, enum stream_type ty
         para.mode = DMA_MODE_ONCE;
         para.trans_len = len;
     }
-    ioctl(pstream[type].id, IOCTL_DMA_ASYN_READ_START, &para);
+    if(pstream[type].rd_wr == DMA_READ)
+        ioctl(pstream[type].id, IOCTL_DMA_ASYN_READ_START, &para);
+    else
+        ioctl(pstream[type].id, IOCTL_DMA_ASYN_WRITE_START, &para);
     return 0;
 }
 
 static int spm_stream_stop(enum stream_type type)
 {
     struct _spm_stream *pstream = spm_stream;
-    ioctl(pstream[type].id, IOCTL_DMA_ASYN_READ_STOP, NULL);
+    if(pstream[type].rd_wr == DMA_READ)
+        ioctl(pstream[type].id, IOCTL_DMA_ASYN_READ_STOP, NULL);
+    else
+        ioctl(pstream[type].id, IOCTL_DMA_ASYN_WRITE_STOP, NULL);
     printf_debug("stream_stop: %d\n", type);
     return 0;
 }
@@ -1209,8 +1192,6 @@ static const struct spm_backend_ops spm_ops = {
     .residency_time_arrived = is_sigal_residency_time_arrived,
     .signal_strength = spm_get_signal_strength,
     .back_running_file = spm_stream_back_running_file,
-    .stream_back_start = spm_stream_back_start,
-    .stream_back_stop = spm_stream_back_stop,
     .stream_start = spm_stream_start,
     .stream_stop = spm_stream_stop,
     .sample_ctrl = spm_sample_ctrl,

@@ -942,7 +942,7 @@ void executor_init(void)
 #ifdef SUPPORT_NET_WZ
     io_set_10ge_net_onoff(0); /* 关闭万兆传输 */
 #endif
-
+    io_stop_backtrace_file(NULL);
     printf_note("clear all sub ch\n");
     uint8_t enable =0;
     uint8_t default_method = IO_DQ_MODE_IQ;

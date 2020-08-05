@@ -1091,12 +1091,12 @@ static int spm_stream_back_stop(enum stream_type type)
 
 static int spm_stream_back_running_file(enum stream_type type, int fd)
 {
-    void *user_mem = NULL, *w_addr = NULL;
+    void *w_addr = NULL;
     int i, rc, ret = 0;
     ssize_t total_Byte = 0;
     unsigned int size;
     write_info info;
-    int isDone = 0;
+    int try_count = 0;
     int file_fd;
 
     struct _spm_stream *pstream = spm_stream;
@@ -1104,6 +1104,7 @@ static int spm_stream_back_running_file(enum stream_type type, int fd)
     if(fd <= 0)
         return -1;
     file_fd = fd;
+try_gain:
     ioctl(pstream[type].id, IOCTL_DMA_GET_ASYN_WRITE_INFO, &info);
     if(info.status != 0){   /* NOT OK */
         printf_debug("write status:%d, block_num:%d\n", info.status, info.block_num);
@@ -1131,8 +1132,15 @@ static int spm_stream_back_running_file(enum stream_type type, int fd)
             break;
         }
         else if(rc == 0){
-            printf_debug("read file over.\n");
-            return 0;
+            if(++try_count >= 2){ /* if the file is read over, need to check(2times) whether the DMA is write over! */
+                printf_debug("read file over.\n");
+                return 0;
+            }else{
+                usleep(10);
+                printf_note("read over try again: %d\n", try_count);
+                goto try_gain;
+            }
+            
         }       
         ioctl(pstream[type].id, IOCTL_DMA_SET_ASYN_WRITE_INFO, &rc);
         total_Byte += rc;

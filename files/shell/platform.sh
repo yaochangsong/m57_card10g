@@ -8,6 +8,8 @@ start()
 	/etc/led.sh check on
     /etc/network.sh
     /etc/led.sh work on
+    mkdir -p /run/media/nvme0n1
+    mount /dev/nvme0n1 /run/media/nvme0n1
     ln -s /run/media/nvme0n1/data /etc/file
     /etc/check.sh stop
     /etc/check.sh start

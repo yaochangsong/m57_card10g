@@ -21,7 +21,10 @@ struct gpio_node_info gpio_node[] ={
 #else
     /* pin   direction  default gpio value   func_code    func_name    fd */
     {63,      "out",       0,               GPIO_FUNC_ADC,          "ADC&Backtrace gpio ctrl",    -1 },  /* low:  adc ; high : backtrace*/
-    {62,      "in",        -1,               GPIO_FUNC_ADC_STATUS,   "ADC Status",                 -1 },
+    {62,      "in",        -1,              GPIO_FUNC_ADC_STATUS,   "ADC Status",                 -1 },
+    {4,      "out",        0,               GPIO_FUNC_COMPASS1,     "RS485 0 ctrl",                 -1 },
+    {5,      "out",        0,               GPIO_FUNC_COMPASS2,     "RS485 1 ctrl",                 -1 },
+    {6,      "out",        0,               GPIO_FUNC_LOW_NOISER,   "RS485 2 ctrl",                 -1 },
 #endif
 };
 

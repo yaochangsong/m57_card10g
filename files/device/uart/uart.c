@@ -30,14 +30,17 @@ static void uart1_read_cb(struct uloop_fd *fd, unsigned int events);
 static void uart0_read_cb(struct uloop_fd *fd, unsigned int events);
 void gps_timer_task_cb(struct uloop_timeout *t);
 
+#define  GPS_INDEX 1    //gps 设备索引
 
 struct uart_t uart[2];
 struct uart_info uartinfo[] = {
     /* NOTE:  坑：ttyUL0为PL侧控制，波特率由PL侧设置（默认为115200，不可更改），需要更改连续FPGA同事 */
-   {0, "/dev/ttyUL4", 9600, "ttyUL4 rs485", NULL, NULL, NULL,              NULL},
+   {0, "/dev/ttyUL4", 9600, "ttyUL4 rs485", NULL, NULL, NULL,              NULL},               //接低噪放 A2/B2
    {1, "/dev/ttyUL1", 9600,   "ttyUL1 gps",    NULL, NULL,          gps_timer_task_cb, NULL},
-   //{1, "/dev/ttyPS0", 9600,   "ttyps0 gps",    NULL, NULL,          gps_timer_task_cb, NULL},
+   {2, "/dev/ttyUL2", 9600,   "ttyUL2 compass1",    NULL, NULL,          NULL, NULL},           //接电子罗盘1 30M-1350M A0/B0
+   {3, "/dev/ttyUL3", 9600,   "ttyUL3 compass2",    NULL, NULL,          NULL, NULL},           //接电子罗盘2 1G-6G A1/B1
 };
+
 
 static void set_speed(int fd, unsigned long speed)
 {
@@ -325,7 +328,7 @@ void gps_timer_task_cb(struct uloop_timeout *t)
 	int32_t  nread; 
     static uint8_t timed_flag = 0;
 	memset(buf,0,SERIAL_BUF_LEN);
-	nread = read(uartinfo[1].fd->fd, buf, SERIAL_BUF_LEN);
+	nread = read(uartinfo[GPS_INDEX].fd->fd, buf, SERIAL_BUF_LEN);
 	if(nread > 0)
 	{
 		//printf_note("\r\n*******************recv:%d Bytes*******************\r\n%s\n",nread,buf);
@@ -359,18 +362,18 @@ void gps_timer_task_cb(struct uloop_timeout *t)
 		if((nread < 0) && (EAGAIN != errno) && (EINTR != errno))
 		{
 			printf("gps fd err!\r\n");
-			close( uartinfo[1].fd->fd);
-			uartinfo[1].fd->fd = uart_init_dev(uartinfo[1].devname, uartinfo[1].baudrate);
+			close( uartinfo[GPS_INDEX].fd->fd);
+			uartinfo[GPS_INDEX].fd->fd = uart_init_dev(uartinfo[GPS_INDEX].devname, uartinfo[GPS_INDEX].baudrate);
 		}
 	}
 
-	tcflush(uartinfo[1].fd->fd, TCIOFLUSH);
+	tcflush(uartinfo[GPS_INDEX].fd->fd, TCIOFLUSH);
     uloop_timeout_set(t, UART_HANDER_TIMROUT);
 }
 
 void uart_timer_task_init(int index)
 {
-	if(index < 0 || index > 1)
+	if(index < 0 || index > 3)
 	{
 		return;
 	}

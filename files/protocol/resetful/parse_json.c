@@ -608,12 +608,12 @@ int parse_json_file_backtrace(const char * const body, uint8_t ch,  uint8_t enab
     fs_ctx = get_fs_ctx();
     if(fs_ctx == NULL){
         printf_warn("NOT FOUND DISK!!\n");
-        return RESP_CODE_EXECMD_ERR;
+        return RESP_CODE_DISK_DETECTED_ERR;
     }
     if(enable)
-        fs_ctx->ops->fs_start_read_raw_file(filename);
+        ret = fs_ctx->ops->fs_start_read_raw_file(filename);
     else
-        fs_ctx->ops->fs_stop_read_raw_file(filename);
+        ret = fs_ctx->ops->fs_stop_read_raw_file(filename);
 #endif
     if(ret != 0)
         return RESP_CODE_EXECMD_ERR;

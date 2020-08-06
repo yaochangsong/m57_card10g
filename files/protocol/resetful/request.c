@@ -40,6 +40,7 @@ static struct request_info http_req_cmd[] = {
     {"POST",    "/file/backtrace/@ch/@enable/@filename",-1,                cmd_file_backtrace},
     {"GET",     "/file/list",                           -1,                cmd_file_list},
     {"GET",     "/file/find/@filename",                 -1,                cmd_file_find},
+    {"GET",     "/disk/format",                         -1,                cmd_disk_format},
     
     /* 模式参数设置 */
     {"POST",    "/mode/mutiPoint/@ch",                  -1,                cmd_muti_point},

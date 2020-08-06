@@ -26,13 +26,20 @@ static struct response_err_code {
 
 
 static struct response_err_code resp_code[] ={
-    {RESP_CODE_OK,                  "ok"},
-    {RESP_CODE_CHANNEL_ERR,         "channel error"},
-    {RESP_CODE_PATH_PARAM_ERR,      "path param error"},
-    {RESP_CODE_PARSE_ERR,           "parse json error"},
-    {RESP_CODE_EXECMD_ERR,          "execute cmd error"},
+    {RESP_CODE_OK,                          "ok"},
+    {RESP_CODE_UNKNOWN_OPS_MODE,            "unknown operating mode"},
+    {RESP_CODE_PARSE_ERR,                   "parameter parsing failed"},
+    {RESP_CODE_INTERNAL_ERR,                "device internal error"},
+    {RESP_CODE_INVALID_PARAM,               "invalid parameter"},
+    {RESP_CODE_CHANNEL_ERR,                 "channel error"},
+    {RESP_CODE_BUSY,                        "device is busy"},
+    {RESP_CODE_FILE_NOT_EXIST,              "file does not exist"},
+    {RESP_CODE_FILE_ALREADY_EXIST,          "file already exists"},
+    {RESP_CODE_DISK_FORMAT_ERR,             "disk format failed"},
+    {RESP_CODE_DISK_DETECTED_ERR,           "disk not detected"},
+    {RESP_CODE_PATH_PARAM_ERR,              "path parameter error"},
+    {RESP_CODE_EXECMD_ERR,                  "execute command error"},
 };
-
 
 /* 射频参数类型 */
 static const char *const rf_types[] = {
@@ -210,11 +217,7 @@ int cmd_muti_point(struct uh_client *cl, void **arg, void **content)
         goto error;
     }
     printf_note("%s", cl->dispatch.body);
-    if(parse_json_muti_point(cl->dispatch.body,ch)){
-        code = RESP_CODE_PARSE_ERR;
-        goto error;
-    }
-
+    code =parse_json_muti_point(cl->dispatch.body,ch);
 error:
     *arg = get_resp_message(code);
     return code;
@@ -236,10 +239,7 @@ int cmd_multi_band(struct uh_client *cl, void **arg, void **content)
         goto error;
     }
     printf_note("%s\n", cl->dispatch.body);
-    if(parse_json_multi_band(cl->dispatch.body,ch) != 0){
-        code = RESP_CODE_PARSE_ERR;
-        goto error;
-    }
+    code = parse_json_multi_band(cl->dispatch.body,ch);
 error:
     *arg = get_resp_message(code);
     return code;
@@ -270,11 +270,7 @@ int cmd_demodulation(struct uh_client *cl, void **arg, void **content)
         goto error;
     }
     printf_note("%s\n", cl->dispatch.body);
-    if(parse_json_demodulation(cl->dispatch.body,ch,subch) != 0){
-        code = RESP_CODE_PARSE_ERR;
-        goto error;
-    }
-    
+    code = parse_json_demodulation(cl->dispatch.body,ch,subch);
 error:
     *arg = get_resp_message(code);
     return code;
@@ -356,9 +352,7 @@ int cmd_if_multi_value_set(struct uh_client *cl, void **arg, void **content)
     subch = cl->get_restful_var(cl, "subch");
     printf_note("rf ch = %s, subch=%s\n", ch, subch);
     printf_note("%s\n", cl->dispatch.body);
-    if(parse_json_if_multi_value(cl->dispatch.body, ch) != 0){
-        code = RESP_CODE_PARSE_ERR;
-    }
+    code = parse_json_if_multi_value(cl->dispatch.body, ch);
     
 error:
     *arg = get_resp_message(code);
@@ -440,9 +434,7 @@ int cmd_rf_multi_value_set(struct uh_client *cl, void **arg, void **content)
         subch = -1;
     }
     printf_note("%s\n", cl->dispatch.body);
-    if(parse_json_rf_multi_value(cl->dispatch.body, ch) != 0){
-        code = RESP_CODE_PARSE_ERR;
-    }
+    code = parse_json_rf_multi_value(cl->dispatch.body, ch);
     
 error:
     *arg = get_resp_message(code);
@@ -474,9 +466,7 @@ int cmd_net_client(struct uh_client *cl, void **arg, void **content)
         goto error;
     }
     printf_note("ch:%d, %s\n", ch, cl->dispatch.body);
-    if(parse_json_client_net(ch, cl->dispatch.body) != 0){
-        code = RESP_CODE_PARSE_ERR;
-    }
+    code = parse_json_client_net(ch, cl->dispatch.body);
 error:
     *arg = get_resp_message(code);
     return code;
@@ -522,8 +512,9 @@ int cmd_ch_enable_set(struct uh_client *cl, void **arg, void **content)
         goto error;
     }
     INTERNEL_ENABLE_BIT_SET(poal_config->enable.bit_en,poal_config->enable);
-    executor_set_enable_command(ch);
-    
+    if(executor_set_enable_command(ch) != 0){
+        code = RESP_CODE_UNKNOWN_OPS_MODE;
+    }
 error:
     *arg = get_resp_message(code);
     return code;
@@ -645,6 +636,7 @@ int cmd_file_delete(struct uh_client *cl, void **arg, void **content)
 {
     char  *filename;
     int code = RESP_CODE_OK;
+    int ret = 0;
     
     filename = cl->get_restful_var(cl, "filename");
 #if defined(SUPPORT_XWFS)
@@ -654,10 +646,12 @@ int cmd_file_delete(struct uh_client *cl, void **arg, void **content)
     struct fs_context *fs_ctx;
     fs_ctx = get_fs_ctx();
     if(fs_ctx == NULL){
-        code = RESP_CODE_EXECMD_ERR;
+        code = RESP_CODE_DISK_DETECTED_ERR;
         goto error;
     }
-    fs_ctx->ops->fs_delete(filename);
+    ret = fs_ctx->ops->fs_delete(filename);
+    if(ret != 0)
+        code = RESP_CODE_EXECMD_ERR;
 #endif
 error:
     *arg = get_resp_message(code);
@@ -685,8 +679,7 @@ int cmd_file_backtrace(struct uh_client *cl, void **arg, void **content)
         code = RESP_CODE_PATH_PARAM_ERR;
         goto error;
     }
-    parse_json_file_backtrace(cl->dispatch.body, ch, enable, filename);
-    
+    code = parse_json_file_backtrace(cl->dispatch.body, ch, enable, filename);
 error:
     *arg = get_resp_message(code);
     return code;
@@ -700,7 +693,7 @@ int cmd_file_list(struct uh_client *cl, void **arg, void **content)
     int code = RESP_CODE_OK;
     *content = assemble_json_file_list();
     if(*content == NULL)
-        code = RESP_CODE_EXECMD_ERR;
+        code = RESP_CODE_DISK_DETECTED_ERR;
 error:
     *arg = get_resp_message(code);
     return code;
@@ -716,6 +709,29 @@ int cmd_file_find(struct uh_client *cl, void **arg, void **content)
     
     filename = cl->get_restful_var(cl, "filename");
     *content = assemble_json_find_file(filename);
+    if(*content == NULL)
+        code = RESP_CODE_DISK_DETECTED_ERR;
+error:
+    *arg = get_resp_message(code);
+    return code;
+}
+
+int cmd_disk_format(struct uh_client *cl, void **arg, void **content)
+{
+    char  *filename;
+    int code = RESP_CODE_OK, ret = 0;
+    
+#if defined(SUPPORT_FS)
+    struct fs_context *fs_ctx;
+    fs_ctx = get_fs_ctx();
+    if(fs_ctx == NULL){
+        code = RESP_CODE_DISK_DETECTED_ERR;
+        goto error;
+    }
+    ret = fs_ctx->ops->fs_format();
+    if(ret != 0)
+        code = RESP_CODE_DISK_FORMAT_ERR;
+#endif
 error:
     *arg = get_resp_message(code);
     return code;

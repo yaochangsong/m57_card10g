@@ -16,11 +16,19 @@
 #ifndef _CMD_HTTP_RESTFUL_
 #define _CMD_HTTP_RESTFUL_
 
-#define RESP_CODE_OK                0
-#define RESP_CODE_CHANNEL_ERR       -1
-#define RESP_CODE_PATH_PARAM_ERR    -2
-#define RESP_CODE_PARSE_ERR         -3
-#define RESP_CODE_EXECMD_ERR        -4
+#define RESP_CODE_OK                     0
+#define RESP_CODE_UNKNOWN_OPS_MODE      -1
+#define RESP_CODE_PARSE_ERR             -2
+#define RESP_CODE_INTERNAL_ERR          -3
+#define RESP_CODE_INVALID_PARAM         -4
+#define RESP_CODE_CHANNEL_ERR           -5
+#define RESP_CODE_BUSY                  -6
+#define RESP_CODE_FILE_NOT_EXIST        -7
+#define RESP_CODE_FILE_ALREADY_EXIST    -8
+#define RESP_CODE_DISK_FORMAT_ERR       -9
+#define RESP_CODE_DISK_DETECTED_ERR     -10
+#define RESP_CODE_PATH_PARAM_ERR        -11
+#define RESP_CODE_EXECMD_ERR            -12
 
 
 extern int cmd_muti_point(struct uh_client *cl, void **arg, void **content);
@@ -39,6 +47,7 @@ extern int cmd_file_delete(struct uh_client *cl, void **arg, void **content);
 extern int cmd_file_backtrace(struct uh_client *cl, void **arg, void **content);
 extern int cmd_file_list(struct uh_client *cl, void **arg, void **content);
 extern int cmd_file_find(struct uh_client *cl, void **arg, void **content);
+extern int cmd_disk_format(struct uh_client *cl, void **arg, void **content);
 extern int cmd_ping(struct uh_client *cl, void **arg, void **content);
 extern int cmd_netset(struct uh_client *cl, void **arg, void **content);
 extern int cmd_net_client(struct uh_client *cl, void **arg, void **content);

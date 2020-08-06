@@ -117,7 +117,6 @@ int gpio_raw_init(void)
 {
     int ret = 0;
     struct gpio_node_info *ptr = &gpio_node;
-
     for(int i = 0; i< ARRAY_SIZE(gpio_node); i++){
         if(ptr[i].pin_num >= 0){
             gpio_export(ptr[i].pin_num);

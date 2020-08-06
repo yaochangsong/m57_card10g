@@ -312,12 +312,54 @@ int8_t rs485_com_get(int32_t cmd, void *data)
     return ret;
 }
 
+int elec_compass1_com_get(void *data, int time_sec_ms)
+{
+    #define TIME_OUT_RESOLUTION 2
+    int ret = 0;
+    int nbyte = 0;
+    uint8_t buffer[FRAME_MAX_LEN];
+    uint8_t response[128];
+    int offset = 0;
+    int time_passed_ms = 0;
+    int i = 0;
+    do{
+        nbyte = comp1_read_block_timeout(buffer, TIME_OUT_RESOLUTION);
+        if (nbyte > 0)
+        {
+            memcpy(response+offset, buffer, nbyte);
+            offset += nbyte;
+            if(response[0] != 0x77)
+            {
+                offset = 0;
+            }
+            if ((offset >= 2) && (offset >= response[1]+1))
+            {
+                memcpy((uint8_t *)data, response, response[1]+1);
+                return offset;
+            }
+        }
+        else if(nbyte < 0){
+            printf("read error[%d]\n", nbyte);
+            ret = -1;
+            break;
+        }
+        
+        time_passed_ms += TIME_OUT_RESOLUTION;
+        if(time_passed_ms >= time_sec_ms)
+        {
+            printf("read compass 1 timeout\n");
+            ret = 0;
+            break;
+        }
+    }while(1);
+    
+    return ret;
+}
 
-int elec_compass_com_get_angle(float *angle)
+int elec_compass1_com_get_angle(float *angle)
 {
     #define BCD2BIN(val)  (((val) & 0x0f) + ((val) >> 4) * 10)
     #define HEADER  0x77
-    #define TIMEOUT 100
     int nbyte = 0;
     float tmp_angle = 0.0f;
     uint8_t flag = 0;
@@ -329,29 +371,32 @@ int elec_compass_com_get_angle(float *angle)
     fdata->addr = 0x00;
     fdata->cmd = 0x03;  
     fdata->crc = 0x07;
-    rs485_send_data_by_serial((uint8_t *)fdata, 5);
+    
+    SW_TO_UART0_WRITE();  //A0/B0
+    comp1_send_data_by_serial((uint8_t *)fdata, 5);
+    usleep(10000);  //等待发送完毕，在切换方向
+    SW_TO_UART0_READ();
     free(fdata);
-    nbyte = rs485_read_block_timeout(buffer, TIMEOUT);
+    nbyte = elec_compass1_com_get(buffer, 200000);
     if(nbyte <= 0)
     {
-        printf_note("read compass failed!\n");
         return -1;
     }
+    
     if(nbyte < 8 || buffer[0] != HEADER || buffer[3] != 0x83)
     {
         printf_note("elec compass respose err:len=%d!\n", nbyte);
         return -1;
     }
 
-    flag = (buffer[4] & 0xf0 > 0) ? 1 : 0;  //符号位
+    flag = ((buffer[4] & 0xf0) > 0) ? 1 : 0;  //符号位
     tmp_angle = (buffer[4] & 0x0f) * 100 + BCD2BIN(buffer[5]) + BCD2BIN(buffer[6]) * 0.01f;
     if(flag)
     {
        tmp_angle *= -1; 
     }
     *angle = tmp_angle;
-    printf_note("get compass angle: %f\n", tmp_angle);
-    //*angle = ((int32_t)buffer[4] << 16) | ((int32_t)buffer[5] << 8) | buffer[6];
+    printf_info("get compass angle: %f\n", tmp_angle);
     return 0;
 
 }

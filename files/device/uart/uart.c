@@ -243,6 +243,77 @@ static void uart0_read_cb(struct uloop_fd *fd, unsigned int events)
     }
 }
 
+long rs4851_send_data(uint8_t *buf, uint32_t len)
+{
+    return write(uartinfo[2].fd->fd,buf,len);
+}
+
+int rs4851_read_block_timeout(uint8_t *buf, int time_sec_ms)
+{
+    int fd = uartinfo[2].fd->fd;
+    int ret = -1;
+    int ms_count = 0, i = 0;
+   
+    if(time_sec_ms < 0)
+        time_sec_ms = 1;
+    do{
+        ret = read(fd, buf, SERIAL_BUF_LEN);
+        if(ret == 0){
+            usleep(1000);
+            if(ms_count++ >= time_sec_ms){
+                break;
+            }
+        }else if(ret < 0){
+            printf_err("read error\n", ret);
+            break;
+        }else{  /* read ok */
+            printfd("uart recv[%d]:\n", ret);
+            for(i = 0; i < ret; i++)
+                printfd("%02x ", buf[i]);
+            printfd("\n");
+            break;
+        }
+    }while(1);
+
+    return ret;
+}
+
+long rs4852_send_data(uint8_t *buf, uint32_t len)
+{
+    return write(uartinfo[3].fd->fd,buf,len);
+}
+
+int rs4852_read_block_timeout(uint8_t *buf, int time_sec_ms)
+{
+    int fd = uartinfo[3].fd->fd;
+    int ret = -1;
+    int ms_count = 0, i = 0;
+   
+    if(time_sec_ms < 0)
+        time_sec_ms = 1;
+    do{
+        ret = read(fd, buf, SERIAL_BUF_LEN);
+        if(ret == 0){
+            usleep(1000);
+            if(ms_count++ >= time_sec_ms){
+                break;
+            }
+        }else if(ret < 0){
+            printf_err("read error\n", ret);
+            break;
+        }else{  /* read ok */
+            printfd("uart recv[%d]:\n", ret);
+            for(i = 0; i < ret; i++)
+                printfd("%02x ", buf[i]);
+            printfd("\n");
+            break;
+        }
+    }while(1);
+
+    return ret;
+}
+
+
 int uart0_read_block_timeout(uint8_t *buf, int time_sec_ms)
 {
 

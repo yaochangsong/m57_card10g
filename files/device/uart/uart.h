@@ -28,5 +28,10 @@ extern long uart0_send_string(uint8_t *buf);
 extern long uart1_send_string(uint8_t *buf);
 extern int uart0_read_block_timeout(uint8_t *buf, int time_sec_ms);
 
+extern long rs4851_send_data(uint8_t *buf, uint32_t len);
+extern long rs4852_send_data(uint8_t *buf, uint32_t len);
+
+extern int rs4851_read_block_timeout(uint8_t *buf, int time_sec_ms);
+extern int rs4852_read_block_timeout(uint8_t *buf, int time_sec_ms);
 #endif
 

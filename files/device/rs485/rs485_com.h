@@ -18,6 +18,11 @@
 #ifdef SUPPORT_UART    
 #define  rs485_send_data_by_serial(buf, len)    uart0_send_data(buf, len)
 #define  rs485_read_block_timeout(buf, t)       uart0_read_block_timeout(buf, t)
+
+#define  comp1_send_data_by_serial(buf, len)    rs4851_send_data(buf, len)
+#define  comp2_send_data_by_serial(buf, len)    rs4852_send_data(buf, len)
+#define  comp1_read_block_timeout(buf, t)       rs4851_read_block_timeout(buf, t)
+#define  comp2_read_block_timeout(buf, t)       rs4852_read_block_timeout(buf, t)
 #else    
 #define  rs485_send_data_by_serial(buf, len)
 #define  rs485_read_block_timeout(buf, t)
@@ -45,7 +50,8 @@ extern int8_t rs485_com_init(void);
 extern int8_t rs485_com_get(int32_t cmd, void *pdata);
 extern int8_t rs485_com_set(int32_t cmd, void *pdata, size_t len);
 extern int8_t rs485_com_set_v2(int32_t cmd, void *pdata);
-extern int elec_compass_com_get_angle(float *angle);
+
+extern int elec_compass1_com_get_angle(float *angle);
 #endif
 
 

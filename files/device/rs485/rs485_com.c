@@ -375,7 +375,7 @@ int elec_compass1_com_get_angle(float *angle)
     
     SW_TO_UART0_WRITE();  //A0/B0
     comp1_send_data_by_serial((uint8_t *)fdata, 5);
-    usleep(10000);  //等待发送完毕，在切换方向
+    usleep(20000);  //等待发送完毕，在切换方向
     SW_TO_UART0_READ();
     free(fdata);
     nbyte = elec_compass1_com_get(buffer, 200);
@@ -457,7 +457,7 @@ int elec_compass2_com_get_angle(float *angle)
 
     SW_TO_UART1_WRITE();  //A1/B1
     comp2_send_data_by_serial(HPR_CMD, strlen(HPR_CMD));
-    usleep(100000);  //等待发送完毕，在切换方向
+    usleep(50000);  //等待发送完毕，在切换方向
     SW_TO_UART1_READ();
     nbyte = elec_compass2_com_get(buffer, 200);
     if (nbyte <= 0)

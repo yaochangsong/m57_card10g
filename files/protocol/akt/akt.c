@@ -1160,7 +1160,7 @@ static int akt_execute_get_command(void)
         {
             float angle = -1.0f;
         #if defined(SUPPORT_RS485_EC)
-            elec_compass_com_get_angle(&angle);
+            elec_compass1_com_get_angle(&angle);
         #endif
             memcpy(akt_get_response_data.payload_data, &angle, sizeof(float));
             akt_get_response_data.header.len = sizeof(float);

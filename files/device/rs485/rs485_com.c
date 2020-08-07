@@ -315,6 +315,7 @@ int8_t rs485_com_get(int32_t cmd, void *data)
 int elec_compass1_com_get(void *data, int time_sec_ms)
 {
     #define TIME_OUT_RESOLUTION 2
+    #define HEADER  0x77
     int ret = 0;
     int nbyte = 0;
     uint8_t buffer[FRAME_MAX_LEN];
@@ -328,7 +329,7 @@ int elec_compass1_com_get(void *data, int time_sec_ms)
         {
             memcpy(response+offset, buffer, nbyte);
             offset += nbyte;
-            if(response[0] != 0x77)
+            if(response[0] != HEADER)
             {
                 offset = 0;
             }
@@ -339,15 +340,14 @@ int elec_compass1_com_get(void *data, int time_sec_ms)
             }
         }
         else if(nbyte < 0){
-            printf("read error[%d]\n", nbyte);
+            printf_warn("read error[%d]\n", nbyte);
             ret = -1;
             break;
         }
-        
         time_passed_ms += TIME_OUT_RESOLUTION;
         if(time_passed_ms >= time_sec_ms)
         {
-            printf("read compass 1 timeout\n");
+            printf_warn("read compass 1 timeout\n");
             ret = 0;
             break;
         }
@@ -356,6 +356,7 @@ int elec_compass1_com_get(void *data, int time_sec_ms)
     return ret;
 }
 
+//30M-1350M
 int elec_compass1_com_get_angle(float *angle)
 {
     #define BCD2BIN(val)  (((val) & 0x0f) + ((val) >> 4) * 10)
@@ -377,7 +378,7 @@ int elec_compass1_com_get_angle(float *angle)
     usleep(10000);  //等待发送完毕，在切换方向
     SW_TO_UART0_READ();
     free(fdata);
-    nbyte = elec_compass1_com_get(buffer, 200000);
+    nbyte = elec_compass1_com_get(buffer, 200);
     if(nbyte <= 0)
     {
         return -1;
@@ -396,9 +397,79 @@ int elec_compass1_com_get_angle(float *angle)
        tmp_angle *= -1; 
     }
     *angle = tmp_angle;
-    printf_info("get compass angle: %f\n", tmp_angle);
+    printf_note("get compass angle: %f\n", tmp_angle);
     return 0;
 
+}
+
+
+
+int elec_compass2_com_get(void *data, int time_sec_ms)
+{
+    #define TIME_OUT_RESOLUTION 2
+    #define HPR_RES_HEADER  "$PTNTHPR"
+    int ret = 0;
+    int nbyte = 0;
+    uint8_t buffer[FRAME_MAX_LEN];
+    uint8_t response[128];
+    int offset = 0;
+    int time_passed_ms = 0;
+    memset(response, 0, sizeof(response));
+    do{
+        nbyte = comp2_read_block_timeout(buffer, TIME_OUT_RESOLUTION);
+        if (nbyte > 0)
+        {
+            memcpy(response+offset, buffer, nbyte);
+            offset += nbyte;
+           
+            if (strstr(response, HPR_RES_HEADER) && strstr(response, "\r\n"))
+            {
+                memcpy((uint8_t *)data, response, offset);
+                return offset;
+            }
+        }
+        else if(nbyte < 0){
+            printf_warn("read error[%d]\n", nbyte);
+            ret = -1;
+            break;
+        }
+        
+        time_passed_ms += TIME_OUT_RESOLUTION;
+        if(time_passed_ms >= time_sec_ms)
+        {
+            printf_warn("read compass 2 timeout\n");
+            ret = 0;
+            break;
+        }
+    }while(1);
+    
+    return ret;
+}
+
+//1G-6G
+int elec_compass2_com_get_angle(float *angle)
+{
+    #define HPR_CMD         "$PTNT, HPR, 78\r\n"
+    #define HPR_RES_HEADER  "$PTNTHPR"
+    float tmp_angle = 0.0f;
+    uint8_t buffer[FRAME_MAX_LEN];
+    int nbyte = 0;
+
+    SW_TO_UART1_WRITE();  //A1/B1
+    comp2_send_data_by_serial(HPR_CMD, strlen(HPR_CMD));
+    usleep(100000);  //等待发送完毕，在切换方向
+    SW_TO_UART1_READ();
+    nbyte = elec_compass2_com_get(buffer, 200);
+    if (nbyte <= 0)
+    {
+        printf_warn("read compass failed!\n");
+        return -1;
+    }
+
+    tmp_angle = atof(buffer + strlen(HPR_RES_HEADER)+1);
+    *angle = tmp_angle;
+    printf_note("get compass angle: %f\n", tmp_angle);
+    return 0;
 }
 
 int8_t rs485_com_init(void)

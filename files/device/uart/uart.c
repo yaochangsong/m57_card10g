@@ -174,7 +174,7 @@ switch (stopbits)
 static int openserial(char *name)
 {
     int fd =-1;
-    fd = open(name,O_RDWR| O_NOCTTY|O_NDELAY);
+    fd = open(name,O_RDWR| O_NOCTTY|O_NONBLOCK);
     if(-1 == fd){
         perror("open serial 1 failed\n");
     }else{
@@ -243,17 +243,17 @@ static void uart0_read_cb(struct uloop_fd *fd, unsigned int events)
     }
 }
 
-long rs4851_send_data(uint8_t *buf, uint32_t len)
+long rs4850_send_data(uint8_t *buf, uint32_t len)
 {
     return write(uartinfo[2].fd->fd,buf,len);
 }
 
-int rs4851_read_block_timeout(uint8_t *buf, int time_sec_ms)
+int rs4850_read_block_timeout(uint8_t *buf, int time_sec_ms)
 {
     int fd = uartinfo[2].fd->fd;
     int ret = -1;
     int ms_count = 0, i = 0;
-   
+    
     if(time_sec_ms < 0)
         time_sec_ms = 1;
     do{
@@ -267,10 +267,10 @@ int rs4851_read_block_timeout(uint8_t *buf, int time_sec_ms)
             printf_err("read error\n", ret);
             break;
         }else{  /* read ok */
-            printfd("uart recv[%d]:\n", ret);
+            printf("uart recv[%d]:\n", ret);
             for(i = 0; i < ret; i++)
-                printfd("%02x ", buf[i]);
-            printfd("\n");
+                printf("%02x ", buf[i]);
+            printf("\n");
             break;
         }
     }while(1);
@@ -278,12 +278,12 @@ int rs4851_read_block_timeout(uint8_t *buf, int time_sec_ms)
     return ret;
 }
 
-long rs4852_send_data(uint8_t *buf, uint32_t len)
+long rs4851_send_data(uint8_t *buf, uint32_t len)
 {
     return write(uartinfo[3].fd->fd,buf,len);
 }
 
-int rs4852_read_block_timeout(uint8_t *buf, int time_sec_ms)
+int rs4851_read_block_timeout(uint8_t *buf, int time_sec_ms)
 {
     int fd = uartinfo[3].fd->fd;
     int ret = -1;
@@ -302,10 +302,10 @@ int rs4852_read_block_timeout(uint8_t *buf, int time_sec_ms)
             printf_err("read error\n", ret);
             break;
         }else{  /* read ok */
-            printfd("uart recv[%d]:\n", ret);
+            printf("uart recv[%d]:\n", ret);
             for(i = 0; i < ret; i++)
-                printfd("%02x ", buf[i]);
-            printfd("\n");
+                printf("%02x ", buf[i]);
+            printf("\n");
             break;
         }
     }while(1);

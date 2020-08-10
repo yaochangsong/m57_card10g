@@ -28,7 +28,7 @@
 #include "spm_fpga.h"
 #include "../../protocol/resetful/data_frame.h"
 
-extern uint8_t * akt_assamble_data_frame_header_data(uint32_t *len, void *config);
+extern int8_t akt_assamble_data_frame_header_data( uint8_t *head_buf,  int buf_len, uint32_t *len, void *config);
 static int spm_stream_stop(enum stream_type type);
 static int spm_stream_back_stop(enum stream_type type);
 
@@ -356,12 +356,15 @@ static fft_t *spm_data_order(volatile fft_t *fft_data,
 
 static int spm_send_fft_data(void *data, size_t fft_len, void *arg)
 {
+    #define HEAD_BUFFER_LEN  512 
     uint8_t *ptr_header = NULL;
     uint32_t header_len = 0;
     size_t data_byte_size = 0;
+    uint8_t head_buf[HEAD_BUFFER_LEN];
 
     if(data == NULL || fft_len == 0 || arg == NULL)
         return -1;
+    memset(head_buf, 0, HEAD_BUFFER_LEN);
     data_byte_size = fft_len * sizeof(fft_t);
 #if (defined SUPPORT_DATA_PROTOCAL_AKT)
     struct spm_run_parm *hparam;
@@ -369,7 +372,10 @@ static int spm_send_fft_data(void *data, size_t fft_len, void *arg)
     hparam->data_len = data_byte_size; 
     hparam->type = SPECTRUM_DATUM_FLOAT;
     hparam->ex_type = SPECTRUM_DATUM;
-    ptr_header = akt_assamble_data_frame_header_data(&header_len, arg);
+    if(akt_assamble_data_frame_header_data(head_buf, HEAD_BUFFER_LEN, &header_len, arg)!=0){
+        return -1;
+    }
+    ptr_header = head_buf;
 #elif defined(SUPPORT_DATA_PROTOCAL_XW)
     struct spm_run_parm *hparam;
     hparam = (struct spm_run_parm *)arg;
@@ -408,23 +414,29 @@ static int spm_send_fft_data(void *data, size_t fft_len, void *arg)
 
 static int spm_send_iq_data(void *data, size_t len, void *arg)
 {
+    #define HEAD_BUFFER_LEN  512 
     uint8_t *ptr = NULL, *ptr_header = NULL;
     uint32_t header_len = 0;
     struct _spm_stream *pstream = spm_stream;
     size_t _send_byte = (iq_send_unit_byte > 0 ? iq_send_unit_byte : DEFAULT_IQ_SEND_BYTE);
+    uint8_t head_buf[HEAD_BUFFER_LEN];
     
     if(data == NULL || len == 0 || arg == NULL)
         return -1;
 
     if(len < _send_byte)
         return -1;
+    memset(head_buf, 0, HEAD_BUFFER_LEN);
 #ifdef SUPPORT_DATA_PROTOCAL_AKT
     struct spm_run_parm *hparam;
     hparam = (struct spm_run_parm *)arg;
     hparam->data_len = _send_byte;
     hparam->type = BASEBAND_DATUM_IQ;
     hparam->ex_type = DEMODULATE_DATUM;
-    ptr_header = akt_assamble_data_frame_header_data(&header_len, arg);
+    if(akt_assamble_data_frame_header_data(head_buf, HEAD_BUFFER_LEN, &header_len, arg)!=0){
+        return -1;
+    }
+    ptr_header = head_buf;
 #elif defined(SUPPORT_DATA_PROTOCAL_XW)
     struct spm_run_parm *hparam;
     hparam = (struct spm_run_parm *)arg;

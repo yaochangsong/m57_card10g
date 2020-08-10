@@ -384,7 +384,7 @@ loop:   printf_note("######wait to deal work######\n");
         poal_config->enable.bit_reset = false;
         printf_note("-------------------------------------\n");
         #if (defined SUPPORT_PROTOCAL_AKT) || (defined SUPPORT_PROTOCAL_XNRP) 
-        poal_config->assamble_response_data = executor_assamble_header_response_data_cb;
+        //poal_config->assamble_response_data = executor_assamble_header_response_data_cb;
         poal_config->send_active = executor_send_data_to_clent_cb;
         #endif
         if(poal_config->work_mode == OAL_FAST_SCAN_MODE){
@@ -760,7 +760,7 @@ int8_t executor_set_command(exec_cmd cmd, uint8_t type, uint8_t ch,  void *data,
             uint32_t len;
             printf_debug("set work mode[%d]\n", type);
             #if (defined SUPPORT_PROTOCAL_AKT) || (defined SUPPORT_PROTOCAL_XNRP) 
-            pbuf = poal_config->assamble_response_data(&len, data);
+            //pbuf = poal_config->assamble_response_data(&len, data);
             io_set_work_mode_command((void *)pbuf);
             #endif
             break;

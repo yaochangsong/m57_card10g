@@ -911,7 +911,8 @@ static void io_set_IQ_out_disable(int ch, int subch)
 #if defined(SUPPORT_SPECTRUM_KERNEL)
     io_dma_dev_disable(ch, IO_IQ_TYPE);
 #elif defined(SUPPORT_SPECTRUM_V2) 
-    get_spm_ctx()->ops->stream_stop(STREAM_IQ);
+    if(subch_bitmap_weight() == 0)
+        get_spm_ctx()->ops->stream_stop(STREAM_IQ);
 #endif 
 #endif
 

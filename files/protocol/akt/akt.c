@@ -1679,12 +1679,12 @@ uint8_t *akt_assamble_data_extend_frame_header_data(uint32_t *len, void *config)
 *       @len: return total header len(data header+extend data header)
 * RETURNS
 ******************************************************************************/
-uint8_t * akt_assamble_data_frame_header_data(uint32_t *len, void *config)
+int8_t akt_assamble_data_frame_header_data( uint8_t *head_buf,  int buf_len, uint32_t *len, void *config)
 {
     DATUM_PDU_HEADER_ST *package_header;
     static unsigned short seq_num[MAX_RADIO_CHANNEL_NUM] = {0};
     struct spm_run_parm *header_param;
-    static uint8_t head_buf[sizeof(DATUM_PDU_HEADER_ST)+sizeof(DATUM_SPECTRUM_HEADER_ST)+sizeof(DATUM_DEMODULATE_HEADER_ST)];
+    //static uint8_t head_buf[sizeof(DATUM_PDU_HEADER_ST)+sizeof(DATUM_SPECTRUM_HEADER_ST)+sizeof(DATUM_DEMODULATE_HEADER_ST)];
     uint8_t *pextend;
     uint32_t extend_data_header_len;
     struct timeval tv;
@@ -1698,7 +1698,13 @@ uint8_t * akt_assamble_data_frame_header_data(uint32_t *len, void *config)
         pextend = akt_assamble_demodulation_data_extend_frame_header_data(&extend_data_header_len, config);
     else{
         printf_err("extend type is not valid!\n");
-        return NULL;
+        return -1;
+    }
+    if(head_buf == NULL)
+        return -1;
+    if(buf_len <sizeof(DATUM_PDU_HEADER_ST)+extend_data_header_len ){
+        printf_err("header len is too long: %d, %d\n, ",buf_len, sizeof(DATUM_PDU_HEADER_ST)+extend_data_header_len);
+        return -1;
     }
     memset(head_buf, 0, sizeof(DATUM_PDU_HEADER_ST)+extend_data_header_len);
     memcpy(head_buf+ sizeof(DATUM_PDU_HEADER_ST), pextend, extend_data_header_len);
@@ -1729,7 +1735,7 @@ uint8_t * akt_assamble_data_frame_header_data(uint32_t *len, void *config)
         printfd("%x ", *(head_buf + sizeof(DATUM_PDU_HEADER_ST)+i));
     }
     printfd("\n");
-    return head_buf;
+    return 0;
 }
 
 

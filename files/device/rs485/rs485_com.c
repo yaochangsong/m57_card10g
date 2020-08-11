@@ -267,6 +267,7 @@ int8_t rs485_com_set_v2(int32_t cmd, void *pdata)
         /* NOTE:  
             If it is set to block sending here; there may be a big delay after sending slow
         */
+        gpio_raw_write_value(GPIO_FUNC_LOW_NOISER, 1);
         rs485_send_data_by_serial(buffer, n);
     }else{
         printf_info("assemble err n: %d\n", n);

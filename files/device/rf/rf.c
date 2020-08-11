@@ -269,7 +269,7 @@ uint8_t rf_set_interface(uint8_t cmd,uint8_t ch,void *data){
             }else{
                 vdata_dup = vdata;
                 rs485_com_set_v2(RS_485_LOW_NOISE_SET_CMD, &vdata);
-                usleep(10000);
+                usleep(20000);
             }
            // rs485_com_set(RS_485_LOW_NOISE_SET_CMD, &vdata, sizeof(vdata));
             //r= rs485_com_get(RS_485_LOW_NOISE_GET_CMD, &rdata);

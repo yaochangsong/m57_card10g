@@ -35,9 +35,9 @@ void gps_timer_task_cb(struct uloop_timeout *t);
 struct uart_t uart[2];
 struct uart_info uartinfo[] = {
     /* NOTE:  坑：ttyUL0为PL侧控制，波特率由PL侧设置（默认为115200，不可更改），需要更改连续FPGA同事 */
-   {0, "/dev/ttyUL4", 9600, "ttyUL4 rs485", NULL, NULL, NULL,              NULL},               //接低噪放 A2/B2
+   {0, "/dev/ttyUL2", 9600, "ttyUL4 rs485", NULL, NULL, NULL,              NULL},               //接低噪放 A0/B0
    {1, "/dev/ttyUL1", 9600,   "ttyUL1 gps",    NULL, NULL,          gps_timer_task_cb, NULL},
-   {2, "/dev/ttyUL2", 9600,   "ttyUL2 compass1",    NULL, NULL,          NULL, NULL},           //接电子罗盘1 30M-1350M A0/B0
+   {2, "/dev/ttyUL4", 9600,   "ttyUL2 compass1",    NULL, NULL,          NULL, NULL},           //接电子罗盘1 30M-1350M A2/B2
    {3, "/dev/ttyUL3", 9600,   "ttyUL3 compass2",    NULL, NULL,          NULL, NULL},           //接电子罗盘2 1G-6G A1/B1
 };
 

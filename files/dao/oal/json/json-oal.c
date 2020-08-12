@@ -720,12 +720,12 @@ static int json_parse_config_param(const cJSON* root, struct poal_config *config
     }
 
     /* distortion_range */
-    cJSON *distortion_range = NULL;
+    cJSON *attenuation_range = NULL;
     cJSON *rf_range, *mgc_range;
     cJSON *start_range = NULL, *end_range=NULL;
-    distortion_range = cJSON_GetObjectItem(calibration, "distortion_range");
-    if(distortion_range != NULL){
-        rf_range = cJSON_GetObjectItem(distortion_range, "rf_range");
+    attenuation_range = cJSON_GetObjectItem(calibration, "attenuation_range");
+    if(attenuation_range != NULL){
+        rf_range = cJSON_GetObjectItem(attenuation_range, "rf_range");
         if(rf_range != NULL){
             for(i = 0; i < cJSON_GetArraySize(rf_range); i++){
                 if(i >= ARRAY_SIZE(config->cal_level.rf_mode.rf_distortion)){
@@ -760,14 +760,14 @@ static int json_parse_config_param(const cJSON* root, struct poal_config *config
                 }
             }
         }
-        mgc_range = cJSON_GetObjectItem(distortion_range, "mgc_range");
+        mgc_range = cJSON_GetObjectItem(attenuation_range, "mgc_range");
         if(mgc_range != NULL){
             start_range = cJSON_GetObjectItem(mgc_range, "start_range");
             end_range = cJSON_GetObjectItem(mgc_range, "end_range");
             if(cJSON_IsNumber(start_range) && cJSON_IsNumber(end_range)){
                 config->cal_level.rf_mode.mgc_distortion.start_range = start_range->valueint;
                 config->cal_level.rf_mode.mgc_distortion.end_range = end_range->valueint;
-                printfd("[%d]mgc_range: start_range=%d, end_range=%d\n",i, 
+                printfd("mgc_range: start_range=%d, end_range=%d\n", 
                     config->cal_level.rf_mode.mgc_distortion.start_range,
                     config->cal_level.rf_mode.mgc_distortion.end_range);
             }

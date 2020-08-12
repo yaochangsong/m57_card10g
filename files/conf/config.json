@@ -156,7 +156,7 @@
                 "magification":45
             }
         ],
-        "distortion_range":{
+        "attenuation_range":{
             "rf_range":[
                 {
                     "rf_mode_code":"low_distortion",
@@ -240,7 +240,7 @@
                 "mute_switch":1,
                 "dec_bandwith":1500,
                 "dec_method":2,
-                "audio_volume":50
+                "audio_volume":100
             }
         ],
         "rf_parm":[

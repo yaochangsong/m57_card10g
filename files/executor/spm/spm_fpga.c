@@ -28,8 +28,10 @@
 #include "spm_fpga.h"
 #include "../../protocol/resetful/data_frame.h"
 
-extern uint8_t * akt_assamble_data_frame_header_data(uint32_t *len, void *config);
+extern int8_t akt_assamble_data_frame_header_data( uint8_t *head_buf,  int buf_len, uint32_t *len, void *config);
 static int spm_stream_stop(enum stream_type type);
+static int spm_stream_back_stop(enum stream_type type);
+
 
 #define DIRECT_FREQ_THR (200000000) /* 直采截止频率 */
 #define DIRECT_BANDWIDTH (256000000)
@@ -153,9 +155,10 @@ static inline const char * get_str_by_code(const char *const *list, int max, int
 
 
 static struct _spm_stream spm_stream[] = {
-        {DMA_IQ_DEV,  -1, NULL, DMA_BUFFER_SIZE, "IQ Stream"},
-        {DMA_FFT_DEV, -1, NULL, DMA_BUFFER_SIZE, "FFT Stream"},
-        {DMA_ADC_DEV, -1, NULL, DMA_BUFFER_SIZE, "ADC Stream"},
+        {DMA_IQ_DEV,  -1, NULL, DMA_BUFFER_SIZE, "IQ Stream", DMA_READ},
+        {DMA_FFT_DEV, -1, NULL, DMA_BUFFER_SIZE, "FFT Stream", DMA_READ},
+        {DMA_ADC_TX_DEV, -1, NULL, DMA_BUFFER_SIZE, "ADC Tx Stream", DMA_WRITE},
+        {DMA_ADC_RX_DEV, -1, NULL, DMA_BUFFER_SIZE, "ADC Rx Stream", DMA_READ},
 };
 
 static const char *const dma_status_array[] = {
@@ -257,7 +260,7 @@ static ssize_t spm_read_fft_data(void **data)
 
 static ssize_t spm_read_adc_data(void **data)
 {
-    return spm_stream_read(STREAM_ADC, data);
+    return spm_stream_read(STREAM_ADC_READ, data);
 }
 
 
@@ -268,7 +271,7 @@ static int spm_read_adc_over_deal(void *arg)
     
     struct _spm_stream *pstream = spm_stream;
     if(pstream){
-        ioctl(pstream[STREAM_ADC].id, IOCTL_DMA_SET_ASYN_READ_INFO, &nwrite_byte);
+        ioctl(pstream[STREAM_ADC_READ].id, IOCTL_DMA_SET_ASYN_READ_INFO, &nwrite_byte);
     }
         
 }
@@ -353,12 +356,15 @@ static fft_t *spm_data_order(volatile fft_t *fft_data,
 
 static int spm_send_fft_data(void *data, size_t fft_len, void *arg)
 {
+    #define HEAD_BUFFER_LEN  512 
     uint8_t *ptr_header = NULL;
     uint32_t header_len = 0;
     size_t data_byte_size = 0;
+    uint8_t head_buf[HEAD_BUFFER_LEN];
 
     if(data == NULL || fft_len == 0 || arg == NULL)
         return -1;
+    memset(head_buf, 0, HEAD_BUFFER_LEN);
     data_byte_size = fft_len * sizeof(fft_t);
 #if (defined SUPPORT_DATA_PROTOCAL_AKT)
     struct spm_run_parm *hparam;
@@ -366,7 +372,10 @@ static int spm_send_fft_data(void *data, size_t fft_len, void *arg)
     hparam->data_len = data_byte_size; 
     hparam->type = SPECTRUM_DATUM_FLOAT;
     hparam->ex_type = SPECTRUM_DATUM;
-    ptr_header = akt_assamble_data_frame_header_data(&header_len, arg);
+    if(akt_assamble_data_frame_header_data(head_buf, HEAD_BUFFER_LEN, &header_len, arg)!=0){
+        return -1;
+    }
+    ptr_header = head_buf;
 #elif defined(SUPPORT_DATA_PROTOCAL_XW)
     struct spm_run_parm *hparam;
     hparam = (struct spm_run_parm *)arg;
@@ -405,23 +414,29 @@ static int spm_send_fft_data(void *data, size_t fft_len, void *arg)
 
 static int spm_send_iq_data(void *data, size_t len, void *arg)
 {
+    #define HEAD_BUFFER_LEN  512 
     uint8_t *ptr = NULL, *ptr_header = NULL;
     uint32_t header_len = 0;
     struct _spm_stream *pstream = spm_stream;
     size_t _send_byte = (iq_send_unit_byte > 0 ? iq_send_unit_byte : DEFAULT_IQ_SEND_BYTE);
+    uint8_t head_buf[HEAD_BUFFER_LEN];
     
     if(data == NULL || len == 0 || arg == NULL)
         return -1;
 
     if(len < _send_byte)
         return -1;
+    memset(head_buf, 0, HEAD_BUFFER_LEN);
 #ifdef SUPPORT_DATA_PROTOCAL_AKT
     struct spm_run_parm *hparam;
     hparam = (struct spm_run_parm *)arg;
     hparam->data_len = _send_byte;
     hparam->type = BASEBAND_DATUM_IQ;
     hparam->ex_type = DEMODULATE_DATUM;
-    ptr_header = akt_assamble_data_frame_header_data(&header_len, arg);
+    if(akt_assamble_data_frame_header_data(head_buf, HEAD_BUFFER_LEN, &header_len, arg)!=0){
+        return -1;
+    }
+    ptr_header = head_buf;
 #elif defined(SUPPORT_DATA_PROTOCAL_XW)
     struct spm_run_parm *hparam;
     hparam = (struct spm_run_parm *)arg;
@@ -566,6 +581,221 @@ static int spm_scan(uint64_t *s_freq_offset, uint64_t *e_freq, uint32_t *scan_bw
 }
 
 
+static inline int _spm_get_max_db_level(uint8_t rf_mode_code)
+{
+    if(rf_mode_code == POAL_LOW_DISTORTION)
+        return 0;
+    else if(rf_mode_code == POAL_NORMAL)
+        return 0;
+    else if(rf_mode_code == POAL_LOW_NOISE)
+        return 0;
+    printf_warn("Unkown rf mode: %d\n", rf_mode_code);
+    return 0;
+}
+static inline int _spm_get_min_db_level(uint8_t rf_mode_code)
+{
+    if(rf_mode_code == POAL_LOW_DISTORTION)
+        return -100;
+    else if(rf_mode_code == POAL_NORMAL)
+        return -100;
+    else if(rf_mode_code == POAL_LOW_NOISE)
+        return -100;
+    printf_warn("Unkown rf mode: %d\n", rf_mode_code);
+    return 0;
+}
+static inline int _spm_get_proper_ctrl_db_level(uint8_t rf_mode_code, int8_t agc_ctrl_dbm)
+{
+    int rang_level = 0;
+    rang_level =  _spm_get_max_db_level(rf_mode_code) + _spm_get_min_db_level(rf_mode_code);
+    rang_level = rang_level/2;
+    printf_debug("proper db level = %d\n", rang_level);
+    return  rang_level;
+}
+static inline int get_max_rf_attenuation_value(int ch, struct spm_context *ctx)
+{
+    uint8_t rf_mode_code = ctx->pdata->rf_para[ch].rf_mode_code;
+    uint8_t max_attenuation_value = 0;
+    int i, found = 0;
+    for(i = 0; i< ARRAY_SIZE(ctx->pdata->cal_level.spm_level.att_node); i++){
+        if(ctx->pdata->cal_level.spm_level.att_node[i].rf_mode == rf_mode_code){
+            if(ctx->pdata->cal_level.spm_level.att_node[i].start_range >= 0 && 
+               ctx->pdata->cal_level.spm_level.att_node[i].end_range > 0){
+                    max_attenuation_value = ctx->pdata->cal_level.spm_level.att_node[i].end_range;
+                    found ++;
+                    break;
+                }
+        }
+    }
+    if(found == 0)
+        return -1;
+    printf_debug("max_attenuation_value: %d\n", max_attenuation_value);
+    return max_attenuation_value;
+}
+static inline int get_max_mgc_attenuation_value(int ch, struct spm_context *ctx)
+{
+    uint8_t rf_mode_code = ctx->pdata->rf_para[ch].rf_mode_code;
+    uint8_t max_attenuation_value = 0;
+    int i, found = 0;
+    if(ctx->pdata->cal_level.spm_level.mgc_attr_node.start_range >= 0 &&
+        ctx->pdata->cal_level.spm_level.mgc_attr_node.end_range > 0){
+            max_attenuation_value = ctx->pdata->cal_level.spm_level.mgc_attr_node.end_range;
+            found ++;
+    }
+    if(found == 0)
+        return -1;
+    printf_debug("max_attenuation_value: %d\n", max_attenuation_value);
+    return max_attenuation_value;
+}
+static inline int set_max_attenuation_value(int ch, struct spm_context *ctx)
+{
+    int8_t  rf_attenuation = 0, mgc_attenuation = 0;
+    rf_attenuation = get_max_rf_attenuation_value(ch, ctx);
+    mgc_attenuation = get_max_mgc_attenuation_value(ch, ctx);
+    //usleep(500);
+    if(rf_attenuation >= 0){
+        executor_set_command(EX_RF_FREQ_CMD, EX_RF_ATTENUATION, ch, &rf_attenuation);
+    }
+    if(mgc_attenuation >= 0){
+        executor_set_command(EX_RF_FREQ_CMD, EX_RF_MGC_GAIN, ch, &mgc_attenuation);
+    }
+    //usleep(500);
+    printf_debug("set max attenuation_value: rf_attenuation: %d, mgc_attenuation=%d\n", rf_attenuation, mgc_attenuation);
+    return (rf_attenuation + mgc_attenuation);
+}
+static inline int get_min_attenuation_value(int ch, struct spm_context *ctx)
+{
+    uint8_t rf_mode_code = ctx->pdata->rf_para[ch].rf_mode_code;
+    uint8_t min_attenuation_value = 0;
+    int i;
+    for(i = 0; i< ARRAY_SIZE(ctx->pdata->cal_level.spm_level.att_node); i++){
+        if(ctx->pdata->cal_level.spm_level.att_node[i].rf_mode == rf_mode_code){
+            if(ctx->pdata->cal_level.spm_level.att_node[i].start_range >= 0 && 
+               ctx->pdata->cal_level.spm_level.att_node[i].end_range > 0){
+                    min_attenuation_value = ctx->pdata->cal_level.spm_level.att_node[i].end_range;
+                }
+        }
+    }
+    if(ctx->pdata->cal_level.spm_level.mgc_attr_node.start_range >= 0 &&
+        ctx->pdata->cal_level.spm_level.mgc_attr_node.end_range > 0){
+            min_attenuation_value += ctx->pdata->cal_level.spm_level.mgc_attr_node.end_range;
+    }
+    printf_debug("min_attenuation_value: %d\n", min_attenuation_value);
+    return 0;
+}
+
+
+/* 逐步增加衰减, 先增加射频衰减，再增加中频衰减 */
+static inline int set_up_step_attenuation_value(int32_t *cursor_val, int ch, struct spm_context *ctx)
+{
+    int8_t  rf_max_attenuation = 0, mgc_max_attenuation, mgc_attenuation = 0;
+    int32_t cursor_val_dup = *cursor_val;
+    rf_max_attenuation = get_max_rf_attenuation_value(ch, ctx);
+    mgc_max_attenuation = get_max_mgc_attenuation_value(ch, ctx);
+    if(rf_max_attenuation >= 0 && cursor_val_dup <= rf_max_attenuation){
+        //ctx->pdata->rf_para[ch].attenuation = cursor_val_dup;
+        executor_set_command(EX_RF_FREQ_CMD, EX_RF_ATTENUATION, ch, &cursor_val_dup);
+        cursor_val_dup ++;
+    }else {
+        mgc_attenuation = cursor_val_dup - rf_max_attenuation;
+        if(mgc_max_attenuation >= 0 && mgc_attenuation <= mgc_max_attenuation){
+            //ctx->pdata->rf_para[ch].mgc_gain_value =mgc_attenuation; 
+            executor_set_command(EX_RF_FREQ_CMD, EX_RF_MGC_GAIN, ch, &mgc_attenuation);
+            if(mgc_attenuation < mgc_max_attenuation)
+                cursor_val_dup ++;
+        }
+    }
+   // usleep(500);
+    *cursor_val = cursor_val_dup;
+    printf_debug("UP,cursor_val=%d, mgc_gain_value=%d, rf_attenuation=%d\n", cursor_val_dup, ctx->pdata->rf_para[ch].mgc_gain_value, ctx->pdata->rf_para[ch].attenuation);
+    return 0;
+}
+
+/* 逐步减少衰减; 先减少中频衰减，再减少射频衰减 */
+static inline int set_down_step_attenuation_value(int32_t *cursor_val, int ch, struct spm_context *ctx)
+{
+    int8_t  rf_attenuation = 0, rf_max_attenuation = 0, mgc_max_attenuation = 0;
+    int32_t cursor_val_dup = *cursor_val;
+
+    rf_max_attenuation = get_max_rf_attenuation_value(ch, ctx);
+    //衰减中频参数
+    if(cursor_val_dup > rf_max_attenuation && cursor_val_dup > 0){
+        cursor_val_dup --;
+        if(rf_max_attenuation != -1){//有射频衰减，减去射频最大值
+            mgc_max_attenuation = cursor_val_dup - rf_max_attenuation;
+        }else{//若没有射频衰减（比如在低噪声模式），直接设置
+            mgc_max_attenuation = cursor_val_dup;
+        }
+        if(mgc_max_attenuation >= 0){
+            executor_set_command(EX_RF_FREQ_CMD, EX_RF_MGC_GAIN, ch, &mgc_max_attenuation);
+        }
+    }else if(cursor_val_dup > 0){
+        cursor_val_dup --;
+        executor_set_command(EX_RF_FREQ_CMD, EX_RF_ATTENUATION, ch, &cursor_val_dup);
+    }
+    
+   // usleep(500);
+    *cursor_val = cursor_val_dup;
+    printf_debug("DOWN cursor_val=%d,rf_max_attenuation=%d, mgc_gain_value=%d, rf_attenuation=%d\n", cursor_val_dup, rf_max_attenuation, ctx->pdata->rf_para[ch].mgc_gain_value, ctx->pdata->rf_para[ch].attenuation);
+    return 0;
+}
+
+static int spm_agc_ctrl_v2(int ch, struct spm_context *ctx)
+{
+    #define AGC_CTRL_PRECISION      0       /* 控制精度+-2dbm */
+    uint8_t gain_ctrl_method = ctx->pdata->rf_para[ch].gain_ctrl_method; /* 自动增益or手动增益 */
+    uint16_t agc_ctrl_time= ctx->pdata->rf_para[ch].agc_ctrl_time;       /* 自动增益步进控制时间 */
+    int8_t agc_ctrl_dbm = ctx->pdata->rf_para[ch].agc_mid_freq_out_level;/* 自动增益目标控制功率db值 */
+    uint8_t rf_mode = ctx->pdata->rf_para[ch].rf_mode_code; /* 射频模式 */
+    uint16_t agc_reg_val = 0;   /* 读取信号寄存器值,sigal power level read from fpga register */
+    int8_t agc_dbm_val = 0;     /* 读取信号db值 */
+    int ret = -1;
+    int8_t rf_gain = 0, mid_gain = 0;
+    static int8_t ctrl_method_dup[MAX_RADIO_CHANNEL_NUM]={-1};
+    static int8_t rf_mode_dup[MAX_RADIO_CHANNEL_NUM]={-1};
+    static int32_t cursor_val[MAX_RADIO_CHANNEL_NUM] = {0};
+
+    /* 当增益模式变化时 */
+    if(ctrl_method_dup[ch] != gain_ctrl_method || rf_mode_dup[ch] != rf_mode){
+        ctrl_method_dup[ch] = gain_ctrl_method;
+        rf_mode_dup[ch] = rf_mode;
+        printf_debug("ch:%d ctrl_method:%d rf_mode:%d\n",ch,ctrl_method_dup[ch],rf_mode);
+        if(gain_ctrl_method == POAL_MGC_MODE){
+            /* 手动模式直接退出 */
+            return -1;
+        }
+        else if(gain_ctrl_method == POAL_AGC_MODE){
+            /* 设置最大衰减 */
+            cursor_val[ch] = set_max_attenuation_value(ch, ctx);
+        }
+    }
+
+    /* 非自动模式退出控制 */
+    if(gain_ctrl_method != POAL_AGC_MODE){
+        return -1;
+    }
+
+    if(_get_run_timer(0, ch) < agc_ctrl_time){
+        /* 控制步进时间未到 */
+        return -1;
+    }
+    _reset_run_timer(0, ch);
+    //sleep(1);
+    /* 读取信号强度 */
+    if((agc_reg_val = io_get_agc_thresh_val(ch)) < 0){
+        return -1;
+    }
+    
+    /* 信号强度转换为db值 */
+    agc_dbm_val = (int32_t)(20 * log10((double)agc_reg_val / ((double)agc_ref_val_0dbm)));
+    printf_debug("read agc ch=%d value=%d[%ddbm] agc_ref_val_0dbm=%d agc_ctrl_dbm=%d\n",ch, agc_reg_val,agc_dbm_val, agc_ref_val_0dbm,_spm_get_proper_ctrl_db_level(rf_mode, agc_ctrl_dbm));
+    if(agc_dbm_val < (_spm_get_proper_ctrl_db_level(rf_mode, agc_ctrl_dbm) - AGC_CTRL_PRECISION)){
+        set_down_step_attenuation_value(&cursor_val[ch], ch, ctx);
+    }else if(agc_dbm_val > (_spm_get_proper_ctrl_db_level(rf_mode, agc_ctrl_dbm) + AGC_CTRL_PRECISION)){
+        set_up_step_attenuation_value(&cursor_val[ch], ch, ctx);
+    }
+    
+    return 0;
+}
 /* 自动增益控制  : 该函数在频谱处理线程中，循环调用。通过不断控制，逐渐逼近设置幅度值 */
 static int spm_agc_ctrl(int ch, struct spm_context *ctx)
 {
@@ -600,14 +830,14 @@ static int spm_agc_ctrl(int ch, struct spm_context *ctx)
     static int  rf_mode_s = -1;
     uint8_t is_cur_dbm_change = false;
     
-    printf_info("gain_ctrl_method:%d agc_ctrl_time:%d agc_ctrl_dbm:%d\n", gain_ctrl_method,agc_ctrl_time,agc_ctrl_dbm);
+    printf_note("gain_ctrl_method:%d agc_ctrl_time:%d agc_ctrl_dbm:%d\n", gain_ctrl_method,agc_ctrl_time,agc_ctrl_dbm);
     //rf_mode = io_get_rf_mode();
     rf_mode = ctx->pdata->rf_para[ch].rf_mode_code;
 
     /* 当模式变化时， 需要通知内核更新模式信息 */
     if(ctrl_method[ch] != gain_ctrl_method){
         ctrl_method[ch] = gain_ctrl_method;
-        printf_info("ch:%d ctrl_method:%d rf_mode:%d fft_size_agc:%d\n",ch,ctrl_method[ch],rf_mode,fft_size_agc);
+        printf_note("ch:%d ctrl_method:%d rf_mode:%d fft_size_agc:%d\n",ch,ctrl_method[ch],rf_mode,fft_size_agc);
         if(gain_ctrl_method == POAL_MGC_MODE){
             //executor_set_command(EX_MID_FREQ_CMD, EX_FPGA_CALIBRATE, ch, &fft_size_agc,0, POAL_MGC_MODE);
             goto exit_mode;
@@ -627,7 +857,7 @@ static int spm_agc_ctrl(int ch, struct spm_context *ctx)
     
     if(rf_mode_s != rf_mode){
         rf_mode_s = rf_mode;
-        printf_info("ctrl_method:%d rf_mode:%d\n",rf_mode_s,rf_mode);
+        printf_note("ctrl_method:%d rf_mode:%d\n",rf_mode_s,rf_mode);
         if(gain_ctrl_method == POAL_AGC_MODE){
             //executor_set_command(EX_MID_FREQ_CMD, EX_FPGA_CALIBRATE, ch, &fft_size_agc, 0,POAL_AGC_MODE);
         }
@@ -642,7 +872,7 @@ static int spm_agc_ctrl(int ch, struct spm_context *ctx)
     if((agc_val = io_get_agc_thresh_val(ch)) < 0){
         return -1;
     }
-    printf_info("read agc ch=%d value=%d agc_ref_val_0dbm=%d \n",ch, agc_val,agc_ref_val_0dbm);
+    printf_note("read agc ch=%d value=%d agc_ref_val_0dbm=%d \n",ch, agc_val,agc_ref_val_0dbm);
     dbm_val = (int32_t)(20 * log10((double)agc_val / ((double)agc_ref_val_0dbm)));
     
     /* 判断读取的幅度值是否>设置的输出幅度+控制精度 */
@@ -681,7 +911,7 @@ static int spm_agc_ctrl(int ch, struct spm_context *ctx)
     /* 若当前幅度值需要修改；则按档次开始设置 ：
         
     */
-    printf_note("dbm_val:%d  agc_ctrl_dbm:%d is_cur_dbm_change:%d\n",dbm_val,agc_ctrl_dbm,is_cur_dbm_change);
+    printf_note("==>dbm_val:%d  agc_ctrl_dbm:%d is_cur_dbm_change:%d\n",dbm_val,agc_ctrl_dbm,is_cur_dbm_change);
     if(is_cur_dbm_change == true){
         //int8_t rf_gain = 0, mid_gain = 0;
         if(cur_dbm[ch] <= RF_GAIN_THRE){
@@ -701,7 +931,7 @@ static int spm_agc_ctrl(int ch, struct spm_context *ctx)
         ret = executor_set_command(EX_RF_FREQ_CMD, EX_RF_MGC_GAIN, ch, &mid_gain);
         usleep(500);
     }
-    printf_info("rf_gain:%d  mid_gain:%d cur_dbm[ch]:%d\n", rf_gain,mid_gain,cur_dbm[ch]);
+    printf_note("rf_gain:%d  mid_gain:%d cur_dbm[ch]:%d\n", rf_gain,mid_gain,cur_dbm[ch]);
 exit_mode:
     #if defined(SUPPORT_SPECTRUM_KERNEL) 
     ret = executor_set_command(EX_MID_FREQ_CMD, EX_FILL_RF_PARAM, ch, &cur_dbm[ch], gain_ctrl_method);
@@ -848,40 +1078,14 @@ static int32_t  spm_get_signal_strength(uint8_t ch, bool *is_singal, uint16_t *s
     return 0;
 }
 
-static int spm_stream_back_start(uint32_t len,uint8_t continuous, enum stream_type type)
-{
-    struct _spm_stream *pstream = spm_stream;
-    IOCTL_DMA_START_PARA para;
-    
-    printf_note("stream type:%d, back start, continuous[%d], len=%u\n", type, continuous, len);
-
-    if(continuous)
-        para.mode = DMA_MODE_CONTINUOUS;
-    else{
-        para.mode = DMA_MODE_ONCE;
-        para.trans_len = len;
-    }
-    ioctl(pstream[type].id, IOCTL_DMA_ASYN_WRITE_START, &para);
-    return 0;
-}
-
-static int spm_stream_back_stop(enum stream_type type)
-{
-    struct _spm_stream *pstream = spm_stream;
-    ioctl(pstream[type].id, IOCTL_DMA_ASYN_WRITE_STOP, NULL);
-    printf_note("stream back stop: %d\n", type);
-    sync();
-    return 0;
-}
-
 static int spm_stream_back_running_file(enum stream_type type, int fd)
 {
-    void *user_mem = NULL, *w_addr = NULL;
+    void *w_addr = NULL;
     int i, rc, ret = 0;
     ssize_t total_Byte = 0;
     unsigned int size;
     write_info info;
-    int isDone = 0;
+    int try_count = 0;
     int file_fd;
 
     struct _spm_stream *pstream = spm_stream;
@@ -889,6 +1093,7 @@ static int spm_stream_back_running_file(enum stream_type type, int fd)
     if(fd <= 0)
         return -1;
     file_fd = fd;
+try_gain:
     ioctl(pstream[type].id, IOCTL_DMA_GET_ASYN_WRITE_INFO, &info);
     if(info.status != 0){   /* NOT OK */
         printf_debug("write status:%d, block_num:%d\n", info.status, info.block_num);
@@ -916,8 +1121,15 @@ static int spm_stream_back_running_file(enum stream_type type, int fd)
             break;
         }
         else if(rc == 0){
-            printf_debug("read file over.\n");
-            return 0;
+            if(++try_count >= 2){ /* if the file is read over, need to check(2times) whether the DMA is write over! */
+                printf_debug("read file over.\n");
+                return 0;
+            }else{
+                usleep(10);
+                printf_note("read over try again: %d\n", try_count);
+                goto try_gain;
+            }
+            
         }       
         ioctl(pstream[type].id, IOCTL_DMA_SET_ASYN_WRITE_INFO, &rc);
         total_Byte += rc;
@@ -939,14 +1151,20 @@ static int spm_stream_start(uint32_t len,uint8_t continuous, enum stream_type ty
         para.mode = DMA_MODE_ONCE;
         para.trans_len = len;
     }
-    ioctl(pstream[type].id, IOCTL_DMA_ASYN_READ_START, &para);
+    if(pstream[type].rd_wr == DMA_READ)
+        ioctl(pstream[type].id, IOCTL_DMA_ASYN_READ_START, &para);
+    else
+        ioctl(pstream[type].id, IOCTL_DMA_ASYN_WRITE_START, &para);
     return 0;
 }
 
 static int spm_stream_stop(enum stream_type type)
 {
     struct _spm_stream *pstream = spm_stream;
-    ioctl(pstream[type].id, IOCTL_DMA_ASYN_READ_STOP, NULL);
+    if(pstream[type].rd_wr == DMA_READ)
+        ioctl(pstream[type].id, IOCTL_DMA_ASYN_READ_STOP, NULL);
+    else
+        ioctl(pstream[type].id, IOCTL_DMA_ASYN_WRITE_STOP, NULL);
     printf_debug("stream_stop: %d\n", type);
     return 0;
 }
@@ -982,12 +1200,10 @@ static const struct spm_backend_ops spm_ops = {
     .get_psd_analysis_result = spm_get_psd_analysis_result,
     .save_data = spm_save_data,
     .backtrace_data = spm_backtrace_data,
-    .agc_ctrl = spm_agc_ctrl,
+    .agc_ctrl = spm_agc_ctrl_v2,//spm_agc_ctrl,
     .residency_time_arrived = is_sigal_residency_time_arrived,
     .signal_strength = spm_get_signal_strength,
     .back_running_file = spm_stream_back_running_file,
-    .stream_back_start = spm_stream_back_start,
-    .stream_back_stop = spm_stream_back_stop,
     .stream_start = spm_stream_start,
     .stream_stop = spm_stream_stop,
     .sample_ctrl = spm_sample_ctrl,

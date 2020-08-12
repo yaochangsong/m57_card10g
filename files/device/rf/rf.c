@@ -80,7 +80,9 @@ uint8_t rf_set_interface(uint8_t cmd,uint8_t ch,void *data){
                 printf_note("NOT found bandwidth %uHz in tables,use default[200Mhz]\n", mbw);
                 set_val = 0x03; /* default 200MHz */
             }
-            get_fpga_reg()->rfReg->mid_band = 0x03;//set_val;
+            get_fpga_reg()->rfReg->mid_band = set_val;
+            usleep(100);
+            get_fpga_reg()->rfReg->mid_band = set_val;
 #endif
             break; 
         }
@@ -123,6 +125,8 @@ uint8_t rf_set_interface(uint8_t cmd,uint8_t ch,void *data){
             }
             printf_note("[**RF**]ch=%d, set rel noise mode=%d\n", ch, noise_mode);
             get_fpga_reg()->rfReg->rf_mode = set_val;
+            usleep(100);
+            get_fpga_reg()->rfReg->rf_mode = set_val;
 #endif
             break; 
         }
@@ -133,7 +137,7 @@ uint8_t rf_set_interface(uint8_t cmd,uint8_t ch,void *data){
         case EX_RF_MGC_GAIN : {
             int8_t mgc_gain_value;
             mgc_gain_value = *((int8_t *)data);
-            printf_info("[**RF**]ch=%d, mgc_gain_value=%d\n",ch, mgc_gain_value);
+            printf_note("[**RF**]ch=%d, mgc_gain_value=%d\n",ch, mgc_gain_value);
 #ifdef SUPPORT_RF_ADRV9009
 #elif defined(SUPPORT_RF_SPI)
             ret = spi_rf_set_command(SPI_RF_MIDFREQ_GAIN_SET, &mgc_gain_value);
@@ -144,6 +148,8 @@ uint8_t rf_set_interface(uint8_t cmd,uint8_t ch,void *data){
                 mgc_gain_value = 30;
             else if(mgc_gain_value < 0)
                 mgc_gain_value = 0;
+            get_fpga_reg()->rfReg->midband_minus = mgc_gain_value;
+            usleep(100);
             get_fpga_reg()->rfReg->midband_minus = mgc_gain_value;
 #endif
             break; 
@@ -160,7 +166,7 @@ uint8_t rf_set_interface(uint8_t cmd,uint8_t ch,void *data){
         case EX_RF_ATTENUATION :{
             int8_t rf_gain_value = 0;
             rf_gain_value = *((int8_t *)data);
-            printf_info("[**RF**]ch=%d, rf_gain_value=%d\n",ch, rf_gain_value);
+            printf_note("[**RF**]ch=%d, rf_gain_value=%d\n",ch, rf_gain_value);
 #ifdef SUPPORT_RF_ADRV9009
             gpio_select_rf_attenuation(rf_gain_value);
 #elif defined(SUPPORT_RF_SPI)
@@ -172,6 +178,8 @@ uint8_t rf_set_interface(uint8_t cmd,uint8_t ch,void *data){
                 rf_gain_value = 30;
             else if(rf_gain_value < 0)
                 rf_gain_value = 0;
+            get_fpga_reg()->rfReg->rf_minus = rf_gain_value;
+            usleep(100);
             get_fpga_reg()->rfReg->rf_minus = rf_gain_value;
 #endif
             break; 
@@ -253,7 +261,7 @@ uint8_t rf_set_interface(uint8_t cmd,uint8_t ch,void *data){
                 break;
             }
             
-#if defined(SUPPORT_RS485)
+#if defined(SUPPORT_RS485_AMPLIFIER)
            static int8_t vdata_dup = -1;
             if(vdata_dup == vdata){
                 printf_info("set EX_RF_LOW_NOISE value is equal:%d no need set\n" , vdata_dup);
@@ -261,7 +269,7 @@ uint8_t rf_set_interface(uint8_t cmd,uint8_t ch,void *data){
             }else{
                 vdata_dup = vdata;
                 rs485_com_set_v2(RS_485_LOW_NOISE_SET_CMD, &vdata);
-                usleep(10000);
+                usleep(20000);
             }
            // rs485_com_set(RS_485_LOW_NOISE_SET_CMD, &vdata, sizeof(vdata));
             //r= rs485_com_get(RS_485_LOW_NOISE_GET_CMD, &rdata);

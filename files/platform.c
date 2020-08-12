@@ -118,6 +118,11 @@ int main(int argc, char **argv)
     system_power_on_time = time((time_t *)NULL);
     log_init(debug_level);
     printf("Platform Start...\n");
+#if (defined SUPPORT_DATA_PROTOCAL_AKT)
+    printf("ACT Protocal\n");
+#elif defined(SUPPORT_DATA_PROTOCAL_XW)
+    printf("XW Protocal\n");
+#endif
     printf("%s\n", ctime(&system_power_on_time));
     printf("VERSION:%s\n",get_version_string());
     config_init();

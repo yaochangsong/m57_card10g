@@ -672,8 +672,8 @@ typedef struct  _CALIBRATION_SOURCE_ST{
 
 
 /*************************************************************************/
-#define check_radio_channel(ch)   (ch > MAX_RADIO_CHANNEL_NUM ? 1 : 0) 
-#define check_sub_channel(sub_ch) (sub_ch > MAX_SIGNAL_CHANNEL_NUM ? 1 : 0) 
+#define check_radio_channel(ch)   (ch >= MAX_RADIO_CHANNEL_NUM ? 1 : 0) 
+#define check_sub_channel(sub_ch) (sub_ch >= MAX_SIGNAL_CHANNEL_NUM ? 1 : 0) 
 
 #define check_valid_channel(data)  do {                       \
             if(check_radio_channel(data)){                  \
@@ -716,6 +716,6 @@ extern bool akt_parse_data(const uint8_t *payload, int *code);
 extern bool akt_execute_method(int *code, void *cl);
 extern int akt_assamble_response_data(uint8_t **buf, int err_code);
 extern uint8_t *akt_assamble_data_extend_frame_header_data(uint32_t *len, void *config);
-extern uint8_t *akt_assamble_data_frame_header_data(uint32_t *len, void *config);
+extern int8_t akt_assamble_data_frame_header_data( uint8_t *head_buf,  int buf_len, uint32_t *len, void *config);
 #endif
 

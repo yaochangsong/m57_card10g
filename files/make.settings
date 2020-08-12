@@ -71,7 +71,9 @@ else
 	SUPPORT_LCD=n
     #RS485
     SUPPORT_RS485=n
-	#ambient temperature&humidity: y n
+    SUPPORT_RS485_AMPLIFIER=n #放大器
+    SUPPORT_RS485_EC=n #电子罗盘
+    #ambient temperature&humidity: y n
 	SUPPORT_AMBIENT_TEMP_HUMIDITY=n
 	SUPPORT_TEMP_HUMIDITY_SI7021=n
 	#audio

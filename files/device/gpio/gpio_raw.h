@@ -1,12 +1,23 @@
 #ifndef _GPIO_RAW_H
 #define _GPIO_RAW_H
 
-#define GPIO_RAW_BASE_OFFSET (960)
+#define GPIO_RAW_BASE_OFFSET (416)
 #define SW_TO_AD_MODE()         gpio_raw_write_value(GPIO_FUNC_ADC, 0)
 #define SW_TO_BACKTRACE_MODE()  gpio_raw_write_value(GPIO_FUNC_ADC, 1)
+
+#define SW_TO_UART0_READ()      gpio_raw_write_value(GPIO_FUNC_COMPASS1, 0)
+#define SW_TO_UART0_WRITE()     gpio_raw_write_value(GPIO_FUNC_COMPASS1, 1)
+#define SW_TO_UART1_READ()      gpio_raw_write_value(GPIO_FUNC_COMPASS2, 0)
+#define SW_TO_UART1_WRITE()     gpio_raw_write_value(GPIO_FUNC_COMPASS2, 1)
+#define SW_TO_UART2_READ()      gpio_raw_write_value(GPIO_FUNC_LOW_NOISER, 0)
+#define SW_TO_UART2_WRITE()     gpio_raw_write_value(GPIO_FUNC_LOW_NOISER, 1)
+
 enum gpio_func_code{
     GPIO_FUNC_ADC           = 0x01,
     GPIO_FUNC_ADC_STATUS    = 0x02,
+    GPIO_FUNC_COMPASS1      = 0x03,   //电子罗盘
+    GPIO_FUNC_COMPASS2      = 0x04,
+    GPIO_FUNC_LOW_NOISER    = 0x05,   //低噪放
 };
     
 

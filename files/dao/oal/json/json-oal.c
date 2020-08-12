@@ -36,7 +36,7 @@ int json_print(cJSON *root, int do_format)
     {
         return -1;
     }
-    printf("%s\n", printed_json);
+   // printf("%s\n", printed_json);
     free(printed_json);
     return 0;
 }

@@ -17,7 +17,10 @@
 
 #define DMA_FFT_DEV "/dev/dma_fft"
 #define DMA_IQ_DEV  "/dev/dma_iq"
-#define DMA_ADC_DEV "/dev/dma_adc"
+#define DMA_ADC_TX_DEV "/dev/dma_adc_tx"
+#define DMA_ADC_RX_DEV "/dev/dma_adc_rx"
+
+
 
 #define DMA_MAX_BLOCK (3)
 #define DMA_BUFFER_SIZE (16 * 1024 * 1024)
@@ -89,6 +92,12 @@ typedef struct _IOCTL_DMA_START_PARA_
     unsigned int trans_len; //单次工作模式下一次传输的数据长度，其他模式下无意义。
 }IOCTL_DMA_START_PARA;
 
+typedef enum _dma_tx_rx_
+{
+    DMA_READ = 0,
+    DMA_WRITE = 1,
+}dma_tx_rx;
+
 
 struct _spm_stream {
     char *devname;      /* 流设备节点名称 */
@@ -96,6 +105,7 @@ struct _spm_stream {
     uint8_t *ptr;       /* 频谱流数据buffer指针 */
     uint32_t len;       /* 频谱流数据buffer长度 */
     char *name;         /* 频谱流名称 */
+    int rd_wr;
 };
 
 typedef enum _IOCTL_CMD_ 

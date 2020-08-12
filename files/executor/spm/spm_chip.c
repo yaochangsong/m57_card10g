@@ -91,7 +91,7 @@ static int spm_chip_send_fft_data(void *data, size_t len, void *arg)
     hparam->data_len = len; 
     hparam->type = SPECTRUM_DATUM_FLOAT;
     hparam->ex_type = SPECTRUM_DATUM;
-    ptr_header = akt_assamble_data_frame_header_data(&header_len, arg);
+    //ptr_header = akt_assamble_data_frame_header_data(&header_len, arg);
 #endif
     ptr = (uint8_t *)safe_malloc(header_len+ len);
     if (!ptr){
@@ -117,7 +117,7 @@ static int spm_chip_send_iq_data(void *data, size_t len, void *arg)
     hparam->data_len = len; 
     hparam->type = BASEBAND_DATUM_IQ;
     hparam->ex_type = DEMODULATE_DATUM;
-    ptr_header = akt_assamble_data_frame_header_data(&header_len, arg);
+    //ptr_header = akt_assamble_data_frame_header_data(&header_len, arg);
 #endif
     ptr = (uint8_t *)safe_malloc(header_len+ len);
     if (!ptr){

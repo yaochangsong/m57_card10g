@@ -92,8 +92,8 @@ int server_init(void)
 
 #endif
     struct net_udp_server *udpsrv = NULL;
-    printf_note("udp server init[port:%d]\n", poal_config->network.port);
-    udpsrv = udp_server_new("0.0.0.0",  poal_config->network.port);
+    printf_note("udp server init[port:%d]\n", 1234);
+    udpsrv = udp_server_new("0.0.0.0",  1234);
     if (!udpsrv)
         return -1;
 

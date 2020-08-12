@@ -29,7 +29,7 @@
 #define REG_WRITE(base, data) (*(volatile uint32_t *)(base) = data, usleep(100))
 #define REG_READ(base)  (*(volatile uint32_t *)(base))
 
-uint8_t apb_i2c_write(uint32_t base,uint8_t data)
+uint8_t apb_i2c_write(intptr_t base,uint8_t data)
 {
 	uint8_t tmp;
 	REG_WRITE(base + 0x04,data);
@@ -39,7 +39,7 @@ uint8_t apb_i2c_write(uint32_t base,uint8_t data)
 	return tmp;
 }
 
-uint8_t apb_i2c_read(uint32_t base,uint8_t ack)
+uint8_t apb_i2c_read(intptr_t base,uint8_t ack)
 {
 	uint8_t tmp;
 	if(ack)
@@ -51,19 +51,19 @@ uint8_t apb_i2c_read(uint32_t base,uint8_t ack)
 	return tmp;
 }
 
-void apb_i2c_start(uint32_t base)
+void apb_i2c_start(intptr_t base)
 {
 	REG_WRITE(base + 0x0c,0x01);
 	while(REG_READ(base + 0x08) & 0x02)usleep(10);
 }
 
-void apb_i2c_stop(uint32_t base)
+void apb_i2c_stop(intptr_t base)
 {
 	REG_WRITE(base + 0x0c,0x02);
 	while(REG_READ(base + 0x08) & 0x02)usleep(10);
 }
 
-uint8_t i2c_write(uint32_t base_addr,uint8_t saddr,uint16_t addr,uint8_t alen,uint8_t data)
+uint8_t i2c_write(intptr_t base_addr,uint8_t saddr,uint16_t addr,uint8_t alen,uint8_t data)
 {
     uint8_t wbuf[4];
     uint8_t i;
@@ -90,7 +90,7 @@ uint8_t i2c_write(uint32_t base_addr,uint8_t saddr,uint16_t addr,uint8_t alen,ui
     return status;
 }
 
-uint8_t i2c_read(uint32_t base_addr,uint8_t saddr,uint16_t addr,uint8_t alen,uint8_t *data)
+uint8_t i2c_read(intptr_t base_addr,uint8_t saddr,uint16_t addr,uint8_t alen,uint8_t *data)
 {
     uint8_t wbuf[3];
     uint8_t i;
@@ -176,7 +176,7 @@ void eeprom_test(void)
 };
 #endif
 //--volume set--------------------------------------------------
-uint8_t i2c_buf_write(uint32_t base_addr,uint8_t alen,uint8_t *data)
+uint8_t i2c_buf_write(intptr_t base_addr,uint8_t alen,uint8_t *data)
 {
 	uint8_t i;
 	uint8_t status;
@@ -189,7 +189,7 @@ uint8_t i2c_buf_write(uint32_t base_addr,uint8_t alen,uint8_t *data)
     return status;
 }
 
-void volume_set(uint32_t base,uint8_t dat)//dat 0~100
+void volume_set(intptr_t base,uint8_t dat)//dat 0~100
 {
 	uint8_t buf[2];
     buf[0] = 0x9a;
@@ -509,12 +509,12 @@ static uint32_t logic_state(volatile char * base)
     return	state;
 }
 
-uint32_t get_dc_offset(uint32_t base)
+uint32_t get_dc_offset(intptr_t base)
 {
     return REG_READ(base + 0x8c);
 }
 
-void set_dc_offset(uint32_t base,uint32_t dat)
+void set_dc_offset(intptr_t base,uint32_t dat)
 {
     REG_WRITE(base + 0x8c,dat);
 }

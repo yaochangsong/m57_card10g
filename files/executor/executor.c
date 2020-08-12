@@ -250,13 +250,13 @@ static int8_t  executor_points_scan(uint8_t ch, work_mode_type mode, void *args)
         r_args->gain_mode = poal_config->rf_para[ch].gain_ctrl_method;
         r_args->gain_value = poal_config->rf_para[ch].mgc_gain_value;
         r_args->freq_resolution = (float)point->points[i].bandwidth * BAND_FACTOR / (float)point->points[i].fft_size;
-        printf_note("ch=%d, s_freq=%llu, e_freq=%llu, fft_size=%u, d_method=%d\n", ch, s_freq, e_freq, r_args->fft_size,r_args->d_method);
-        printf_note("rf scan bandwidth=%u, middlebw=%u, m_freq=%llu, freq_resolution=%f\n",r_args->scan_bw,r_args->bandwidth , r_args->m_freq, r_args->freq_resolution);
+        printf_info("ch=%d, s_freq=%llu, e_freq=%llu, fft_size=%u, d_method=%d\n", ch, s_freq, e_freq, r_args->fft_size,r_args->d_method);
+        printf_info("rf scan bandwidth=%u, middlebw=%u, m_freq=%llu, freq_resolution=%f\n",r_args->scan_bw,r_args->bandwidth , r_args->m_freq, r_args->freq_resolution);
         spmctx->ops->sample_ctrl(r_args->m_freq);
         executor_set_command(EX_RF_FREQ_CMD,  EX_RF_MID_FREQ, ch, &point->points[i].center_freq);
-        executor_set_command(EX_RF_FREQ_CMD,  EX_RF_LOW_NOISE, ch, &point->points[i].center_freq);
         executor_set_command(EX_MID_FREQ_CMD, EX_BANDWITH, ch, &point->points[i].bandwidth);
         executor_set_command(EX_MID_FREQ_CMD, EX_MID_FREQ,    ch, &point->points[i].center_freq);
+        executor_set_command(EX_RF_FREQ_CMD,  EX_RF_LOW_NOISE, ch, &point->points[i].center_freq);
         //executor_set_command(EX_RF_FREQ_CMD,  EX_RF_MID_BW,   ch, &r_args->.scan_bw);
 #ifndef SUPPORT_SPECTRUM_FFT
         //executor_set_command(EX_MID_FREQ_CMD, EX_MID_FREQ,    ch, &point->points[i].center_freq);
@@ -269,40 +269,46 @@ static int8_t  executor_points_scan(uint8_t ch, work_mode_type mode, void *args)
         /* notify client that some paramter has changed */
        // poal_config->send_active((void *)r_args);
         /* 解调参数: 音频 */
-        printf_note("enable.audio_en=%d, residence_time=%u,points_count=%u\n",poal_config->enable.audio_en,point->residence_time, points_count);
-        if(poal_config->enable.audio_en){
-            printf_note("ch=%d, i=%d, center_freq=%llu, d_method=%d, d_bandwith=%u\n",ch, i,
-                point->points[i].center_freq, point->points[i].d_method, point->points[i].d_bandwith);
+        //printf_note("enable.audio_en=%d, residence_time=%u,points_count=%u\n",poal_config->enable.audio_en,point->residence_time, points_count);
             
             
-            executor_set_command(EX_MID_FREQ_CMD, EX_DEC_RAW_DATA, ch, &point->points[i].center_freq, 
-                                point->points[i].d_bandwith, point->points[i].raw_d_method);
             
             
         printf_note("d_center_freq=%llu, d_method=%d, d_bandwith=%u noise=%d noise_en=%d\n",poal_config->multi_freq_point_param[ch].points[i].center_freq,
                     poal_config->multi_freq_point_param[ch].points[i].d_method,poal_config->multi_freq_point_param[ch].points[i].d_bandwith,
                     poal_config->multi_freq_point_param[ch].points[i].noise_thrh,poal_config->multi_freq_point_param[ch].points[i].noise_en);
-
-            executor_set_command(EX_MID_FREQ_CMD, EX_DEC_METHOD, CONFG_AUDIO_CHANNEL, &poal_config->multi_freq_point_param[ch].points[i].d_method);
-            executor_set_command(EX_MID_FREQ_CMD, EX_DEC_BW, CONFG_AUDIO_CHANNEL, &poal_config->multi_freq_point_param[ch].points[i].d_bandwith);
-            executor_set_command(EX_MID_FREQ_CMD, EX_DEC_MID_FREQ, CONFG_AUDIO_CHANNEL,&poal_config->multi_freq_point_param[ch].points[i].center_freq,poal_config->multi_freq_point_param[ch].points[i].center_freq);
+        if(poal_config->enable.audio_en || points_count > 1){
+            if(poal_config->enable.audio_en){
+                subch = CONFIG_AUDIO_CHANNEL;
+            }else if(points_count > 1){
+                subch = CONFIG_SIGNAL_CHECK_CHANNEL;
+            }
+            executor_set_command(EX_MID_FREQ_CMD, EX_DEC_METHOD, subch, &poal_config->multi_freq_point_param[ch].points[i].d_method);
+            executor_set_command(EX_MID_FREQ_CMD, EX_DEC_BW, subch, &poal_config->multi_freq_point_param[ch].points[i].d_bandwith);
+            executor_set_command(EX_MID_FREQ_CMD, EX_DEC_MID_FREQ, subch,&poal_config->multi_freq_point_param[ch].points[i].center_freq,poal_config->multi_freq_point_param[ch].points[i].center_freq);
+            executor_set_command(EX_MID_FREQ_CMD, EX_MUTE_THRE, subch,&poal_config->multi_freq_point_param[ch].points[i].noise_thrh,poal_config->multi_freq_point_param[ch].points[i].noise_en);
+        }
+        if(poal_config->enable.audio_en){
+            executor_set_command(EX_MID_FREQ_CMD, EX_AUDIO_VOL_CTRL, subch,&point->points[i].audio_volume);
+            io_set_enable_command(AUDIO_MODE_ENABLE, ch, CONFIG_AUDIO_CHANNEL, 0);  //音频通道开�?
             
-            executor_set_command(EX_MID_FREQ_CMD, EX_MUTE_THRE, CONFG_AUDIO_CHANNEL,&poal_config->multi_freq_point_param[ch].points[i].noise_thrh,poal_config->multi_freq_point_param[ch].points[i].noise_en);
-            executor_set_command(EX_MID_FREQ_CMD, EX_AUDIO_VOL_CTRL, CONFG_AUDIO_CHANNEL,&point->points[i].audio_volume);
-            io_set_enable_command(AUDIO_MODE_ENABLE, ch, CONFG_AUDIO_CHANNEL, 0);  //音频通道开�?
         }else{
-            io_set_enable_command(AUDIO_MODE_DISABLE, ch, CONFG_AUDIO_CHANNEL, 0);  //音频通道开�?
+            io_set_enable_command(AUDIO_MODE_DISABLE, ch, CONFIG_AUDIO_CHANNEL, 0);  //音频通道开�?
+            
         }
 #endif
 #if defined (SUPPORT_RESIDENCY_STRATEGY) 
-        usleep(20000);
         uint16_t strength = 0;
         bool is_signal = false;
-        int32_t ret = -1;
-        ret = spmctx->ops->signal_strength(ch, &is_signal, &strength);
+        int32_t ret = -1, enable=1;
+        if(points_count > 1){
+            executor_set_command(EX_MID_FREQ_CMD, EX_SUB_CH_ONOFF, subch, &enable);
+            usleep(20000);
+            ret = spmctx->ops->signal_strength(subch, i, &is_signal, &strength);
         //is_signal = true;
         if(ret == 0){
             printf_note("is sigal: %s, strength:%d\n", (is_signal == true ? "Yes":"No"), strength);
+            }
         }
 #endif
         s_time = time(NULL);

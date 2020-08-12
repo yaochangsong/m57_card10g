@@ -459,9 +459,9 @@ int8_t config_read_by_cmd(exec_cmd cmd, uint8_t type, uint8_t ch, void *data, ..
     }
      switch(cmd)
      {
-        uint32_t index = va_arg(argp, uint32_t);
         case EX_MID_FREQ_CMD:
         {
+            uint32_t index = va_arg(argp, uint32_t);
             switch(type)
             {
                 case EX_MUTE_SW:

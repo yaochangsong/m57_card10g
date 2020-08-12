@@ -1281,7 +1281,7 @@ int16_t io_get_signal_strength(uint8_t ch)
         return sig_amp.sig_amp;
     }
 #elif defined(SUPPORT_SPECTRUM_V2) 
-    return 0;
+    return get_fpga_reg()->narrow_band[ch]->sigal_val;
 #endif
 #endif
 }

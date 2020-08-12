@@ -970,7 +970,7 @@ static long signal_residency_policy(int ch, int policy, bool is_signal)
     #define POLICY2_PENDING     -1      /* 策略2：有信号，永久驻留，无信号驻留1秒切换      */
     #define POLICY3_WAIT_TIME   1       /* 策略3： policy>0 有信号按驻留时间驻留切换，无信号驻留NO_SIGAL_WAIT_TIME毫秒立即切换 */
 
-    #define NO_SIGAL_WAIT_TIME  20 /* 无信号驻留时间 */
+    #define NO_SIGAL_WAIT_TIME  1000 /* 无信号驻留时间 */
     
     switch(policy){
         case POLICY2_PENDING:
@@ -1027,36 +1027,32 @@ int32_t _get_singal_threshold(uint8_t ch)
 }
 
 /* 获取信号门限 */
-static int32_t _get_signal_threshold_by_amp(uint8_t ch, int32_t *sigal_thred)
+static int32_t _get_signal_threshold_by_amp(uint8_t ch, uint32_t index, int32_t *sigal_thred)
 {
-    int8_t rf_attenuation, m_attenuation;
-    uint16_t threshold_0db, threshold = 0;
     int ret = 0;
+    uint8_t mute_sw = 0;
+    int8_t mute_thre_val = 0, mute_thre_db = 0;
 
-    ret = config_read_by_cmd(EX_RF_FREQ_CMD, EX_RF_MGC_GAIN, ch, &m_attenuation);
+    ret = config_read_by_cmd(EX_MID_FREQ_CMD, EX_MUTE_SW, ch, &mute_sw, index);
     if(ret != 0){
-        printf_err("Read MGC Gain error\n");
+        printf_err("Read Mute sw error\n");
         return -1;
     }
-    ret = config_read_by_cmd(EX_RF_FREQ_CMD, EX_RF_ATTENUATION, ch, &rf_attenuation);
+    ret = config_read_by_cmd(EX_MID_FREQ_CMD, EX_MUTE_THRE, ch, &mute_thre_db, index);
     if(ret != 0){
-        printf_err("Read RF attenuation error\n");
+        printf_err("Read Mute thre error\n");
         return -1;
     }
-    ret = _get_singal_threshold(ch);
-    if(ret == -1)
-        return -1;
-    threshold_0db = ret;
-    printf_note("rf:%d,mf:%d,0db_th:%d\n",rf_attenuation,m_attenuation,threshold_0db);
-    threshold = threshold_0db * pow(10.0f,(double)(rf_attenuation+m_attenuation)/20);
-    printf_note("threshold = %d\n", threshold);
-    *sigal_thred = threshold;
+
+    mute_thre_val = 20;//pow(10.0f,(double)(mute_thre_db)/20);
+    printf_note("mute_thre_val=%d, mute_thre_db=%dDbm\n", mute_thre_val, mute_thre_db);
+    *sigal_thred = mute_thre_val;
     
     return 0;
 }
 
 /* 判断对应通道是否有信号:      true: 有信号; false:无信号*/
-static int32_t  spm_get_signal_strength(uint8_t ch, bool *is_singal, uint16_t *strength)
+static int32_t  spm_get_signal_strength(uint8_t ch, uint32_t index, bool *is_singal, uint16_t *strength)
 {
     uint16_t sig_amp = 0;
     int32_t sigal_thred = 0;
@@ -1065,10 +1061,11 @@ static int32_t  spm_get_signal_strength(uint8_t ch, bool *is_singal, uint16_t *s
     sig_amp = io_get_signal_strength(ch);
     if(strength != NULL)
         *strength = sig_amp;
-    ret = _get_signal_threshold_by_amp(ch, &sigal_thred);
-    if(ret == -1)
+    ret = _get_signal_threshold_by_amp(ch, index, &sigal_thred);
+    if(ret == -1){
+        *is_singal = true;
         return -1;
-    
+    }
     if(sig_amp > sigal_thred) {
         *is_singal = true;
     }else{

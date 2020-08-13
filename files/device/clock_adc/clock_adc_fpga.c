@@ -220,7 +220,7 @@ static void hmc_7044_init(volatile char * Spi_synth,uint8_t cs)
     //------------------------------------
     spi_wrapper(Spi_synth,0x001, 0x60,cs);//noise pri
     spi_wrapper(Spi_synth,0x002, 0x00,cs);//
-    spi_wrapper(Spi_synth,0x003, 0x14,cs);//eable pll1,,use pll2 2.1g~2.8g high vco disable rf_sync
+    spi_wrapper(Spi_synth,0x003, 0x04,cs);//eable pll1,,use pll2 2.1g~2.8g high vco disable rf_sync
     spi_wrapper(Spi_synth,0x004, 0x3a,cs);//0-01,2-23,6-1213
     spi_wrapper(Spi_synth,0x005, 0x23,cs);////ref0 ref1 active disable rf_sync adn sync
     //spi_wrapper(Spi_synth,0x006, 0x01,cs);//clear alarm

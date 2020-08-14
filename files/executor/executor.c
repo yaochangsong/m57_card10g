@@ -444,12 +444,14 @@ loop:   printf_note("######wait to deal work######\n");
                         if(executor_points_scan(ch, poal_config->work_mode, arg) == -1){
                             io_set_enable_command(PSD_MODE_DISABLE, ch, -1,  0);
                             io_set_enable_command(AUDIO_MODE_DISABLE, ch, -1, 0);
+                            io_set_enable_command(IQ_MODE_DISABLE, ch, -1, 0);
                             usleep(1000);
                             goto loop;
                         }
                     }else{
                         io_set_enable_command(PSD_MODE_DISABLE, ch, -1, 0);
                         io_set_enable_command(AUDIO_MODE_DISABLE, ch, -1, 0);
+                        io_set_enable_command(IQ_MODE_DISABLE, ch, -1, 0);
                         sleep(1);
                         goto loop;
                     }

@@ -857,11 +857,13 @@ static int spm_agc_ctrl_v3(int ch, struct spm_context *ctx)
             _set_half_attenuation_value(ch, ctx);
             /* 读取衰减目标值 */
             usleep(100000);
-            dst_val[ch] = _spm_read_signal_value(ch);
+            dst_val[ch] = agc_ctrl_dbm;//_spm_read_signal_value(ch);
             _get_range_max(ch, rf_mode, dst_val[ch], &max_val[ch], ctx);
             _get_range_min(ch, rf_mode, dst_val[ch], &min_val[ch], ctx);
-            up_val[ch] = max_val[ch] - dst_val[ch];
-            down_val[ch] = dst_val[ch] - min_val[ch];
+            down_val[ch]= max_val[ch] - dst_val[ch];
+            up_val[ch]   = dst_val[ch] - min_val[ch];
+            if(up_val[ch] < 0)
+                up_val[ch] = -up_val[ch];
             printf_info("up_val=%d, down_val=%d, dst_val=%d, max_val=%d, min_val=%d\n", 
                         up_val[ch], down_val[ch], dst_val[ch], max_val[ch], min_val[ch]);
             config_read_by_cmd(EX_RF_FREQ_CMD, EX_RF_ATTENUATION, ch, &rf_attenuation[ch]);

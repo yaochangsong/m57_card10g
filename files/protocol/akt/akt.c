@@ -605,9 +605,11 @@ static int akt_execute_set_command(void *cl)
         }
         case RF_ATTENUATION_CMD:
             check_valid_channel(header->buf[0]);
+            if(poal_config->rf_para[ch].gain_ctrl_method != POAL_AGC_MODE){
             poal_config->rf_para[ch].attenuation = header->buf[1];
             printf_note("=>RF_ATTENUATION_CMD:%d\n", poal_config->rf_para[ch].attenuation);
             executor_set_command(EX_RF_FREQ_CMD, EX_RF_ATTENUATION, ch, &poal_config->rf_para[ch].attenuation);
+            }
             break;
         case RF_WORK_MODE_CMD:
             check_valid_channel(header->buf[0]);
@@ -634,9 +636,11 @@ static int akt_execute_set_command(void *cl)
             break;
         case MID_FREQ_ATTENUATION_CMD:
             check_valid_channel(header->buf[0]);
+            if(poal_config->rf_para[ch].gain_ctrl_method != POAL_AGC_MODE){
             poal_config->rf_para[ch].mgc_gain_value = header->buf[1];
             printf_note("=>mgc_gain_value:%d\n", poal_config->rf_para[ch].mgc_gain_value);
             executor_set_command(EX_RF_FREQ_CMD, EX_RF_MGC_GAIN, ch, &poal_config->rf_para[ch].mgc_gain_value);
+            }
             break;
         case SAMPLE_CONTROL_FFT_CMD:
             check_valid_channel(header->buf[0]);

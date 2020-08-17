@@ -87,7 +87,9 @@ typedef struct _NARROW_BAND_REG_
 	uint32_t signal_carrier;
 	uint32_t enable;
 	uint32_t band;
-	uint32_t reserve[0x9];
+    uint32_t reserve[0x5];
+    uint32_t sigal_val;
+	uint32_t reserve2[0x3];
 	uint32_t decode_type;
 	uint32_t fir_coeff;
 	uint32_t noise_level;

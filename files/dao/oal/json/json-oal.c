@@ -684,59 +684,133 @@ static int json_parse_config_param(const cJSON* root, struct poal_config *config
         }
     
    }
-    /* psd rf attenuation */
-    cJSON  *psd_attenuation = NULL;
-    cJSON *start_range = NULL, *end_range=NULL;
-    psd_attenuation = cJSON_GetObjectItem(calibration, "psd_rf_attenuation");
-    if(psd_attenuation!=NULL){
-        for(int i = 0; i < cJSON_GetArraySize(psd_attenuation); i++){
-            if(i >= ARRAY_SIZE(config->cal_level.spm_level.att_node)){
-                printf_warn("psd attenuation json node is too big:%d\n", ARRAY_SIZE(config->cal_level.spm_level.att_node));
+    /* rf_mode_magification */
+    cJSON *rf_mode_magification = NULL;
+    cJSON *magification;
+    int i;
+    rf_mode_magification = cJSON_GetObjectItem(calibration, "rf_mode_magification");
+    if(rf_mode_magification != NULL){
+        for(i = 0; i < cJSON_GetArraySize(rf_mode_magification); i++){
+            if(i >= ARRAY_SIZE(config->cal_level.rf_mode.mag)){
+                printf_warn("rf_mode_magification json node is too big:%d, %d\n", i, ARRAY_SIZE(config->cal_level.rf_mode.mag));
                 break;
             }
-            node = cJSON_GetArrayItem(psd_attenuation, i);            
+            node = cJSON_GetArrayItem(rf_mode_magification, i);
             value = cJSON_GetObjectItem(node, "rf_mode_code");
-            start_range = cJSON_GetObjectItem(node, "start_range");
-            end_range = cJSON_GetObjectItem(node, "end_range");
-            if(!cJSON_IsNumber(start_range) || !cJSON_IsNumber(end_range)){
+            magification = cJSON_GetObjectItem(node, "magification");
+            if(!cJSON_IsNumber(magification)){
                 continue;
             }
             if(value!= NULL && cJSON_IsString(value)){
                 if(!strcmp(value->valuestring, "low_distortion")){
-                    config->cal_level.spm_level.att_node[i].rf_mode = POAL_LOW_DISTORTION;
-                    config->cal_level.spm_level.att_node[i].start_range =start_range->valueint;
-                    config->cal_level.spm_level.att_node[i].end_range =end_range->valueint;
+                    config->cal_level.rf_mode.mag[i].mode = POAL_LOW_DISTORTION;
+                    config->cal_level.rf_mode.mag[i].magification = magification->valueint;
                 }else if(!strcmp(value->valuestring, "normal")){
-                    config->cal_level.spm_level.att_node[i].rf_mode = POAL_NORMAL;
-                    config->cal_level.spm_level.att_node[i].start_range =start_range->valueint;
-                    config->cal_level.spm_level.att_node[i].end_range =end_range->valueint;
+                    config->cal_level.rf_mode.mag[i].mode = POAL_NORMAL;
+                    config->cal_level.rf_mode.mag[i].magification = magification->valueint;
                 }else if(!strcmp(value->valuestring, "low_noise")){
-                    config->cal_level.spm_level.att_node[i].rf_mode = POAL_LOW_NOISE;
-                    config->cal_level.spm_level.att_node[i].start_range =start_range->valueint;
-                    config->cal_level.spm_level.att_node[i].end_range =end_range->valueint;
+                    config->cal_level.rf_mode.mag[i].mode = POAL_LOW_NOISE;
+                    config->cal_level.rf_mode.mag[i].magification = magification->valueint;
                 }
-                printfd("[%d]rf_mode:[%s]%d, start_range=%d, end_range=%d\n",i, value->valuestring, config->cal_level.spm_level.att_node[i].rf_mode, 
-                            config->cal_level.spm_level.att_node[i].start_range,
-                            config->cal_level.spm_level.att_node[i].end_range);
+                printfd("[%d]rf_mode_magification: rf_mode:[%s]%d, magification=%d\n",i, 
+                    value->valuestring, config->cal_level.rf_mode.mag[i].mode, 
+                    config->cal_level.rf_mode.mag[i].magification);
             }
         }
-   }
-
-    /* psd mgc attenuation */
-    cJSON  *psd_mgc_attenuation = NULL;
-    psd_mgc_attenuation = cJSON_GetObjectItem(calibration, "psd_mgc_attenuation");
-    if(psd_mgc_attenuation!=NULL){
-        start_range = cJSON_GetObjectItem(psd_mgc_attenuation, "start_range");
-        if(start_range!= NULL && cJSON_IsNumber(start_range)){
-            config->cal_level.spm_level.mgc_attr_node.start_range = start_range->valueint;
-        }
-        end_range = cJSON_GetObjectItem(psd_mgc_attenuation, "end_range");
-        if(end_range!= NULL && cJSON_IsNumber(end_range)){
-            config->cal_level.spm_level.mgc_attr_node.end_range = end_range->valueint;
-        }
-        printfd("mgc attenuation start_range:%d, end_range=%d\n", config->cal_level.spm_level.mgc_attr_node.start_range, config->cal_level.spm_level.mgc_attr_node.end_range);
     }
-    
+
+    /* distortion_range */
+    cJSON *attenuation_range = NULL;
+    cJSON *rf_range, *mgc_range;
+    cJSON *start_range = NULL, *end_range=NULL;
+    attenuation_range = cJSON_GetObjectItem(calibration, "attenuation_range");
+    if(attenuation_range != NULL){
+        rf_range = cJSON_GetObjectItem(attenuation_range, "rf_range");
+        if(rf_range != NULL){
+            for(i = 0; i < cJSON_GetArraySize(rf_range); i++){
+                if(i >= ARRAY_SIZE(config->cal_level.rf_mode.rf_distortion)){
+                    printf_warn("rf_range json node is too big:%d, %d\n", i, ARRAY_SIZE(config->cal_level.rf_mode.rf_distortion));
+                    break;
+                }
+                node = cJSON_GetArrayItem(rf_range, i);
+                value = cJSON_GetObjectItem(node, "rf_mode_code");
+                start_range = cJSON_GetObjectItem(node, "start_range");
+                end_range = cJSON_GetObjectItem(node, "end_range");
+                if(!cJSON_IsNumber(start_range) || !cJSON_IsNumber(end_range)){
+                    continue;
+                }
+                if(value!= NULL && cJSON_IsString(value)){
+                    if(!strcmp(value->valuestring, "low_distortion")){
+                        config->cal_level.rf_mode.rf_distortion[i].mode = POAL_LOW_DISTORTION;
+                        config->cal_level.rf_mode.rf_distortion[i].start_range = start_range->valueint;
+                        config->cal_level.rf_mode.rf_distortion[i].end_range = end_range->valueint;
+                    }else if(!strcmp(value->valuestring, "normal")){
+                        config->cal_level.rf_mode.rf_distortion[i].mode = POAL_NORMAL;
+                        config->cal_level.rf_mode.rf_distortion[i].start_range = start_range->valueint;
+                        config->cal_level.rf_mode.rf_distortion[i].end_range = end_range->valueint;
+                    }else if(!strcmp(value->valuestring, "low_noise")){
+                        config->cal_level.rf_mode.rf_distortion[i].mode = POAL_LOW_NOISE;
+                        config->cal_level.rf_mode.rf_distortion[i].start_range = start_range->valueint;
+                        config->cal_level.rf_mode.rf_distortion[i].end_range = end_range->valueint;
+                    }
+                    printfd("[%d]rf_range: rf_mode:[%s]%d, start_range=%d, end_range=%d\n",i, 
+                            value->valuestring, config->cal_level.rf_mode.rf_distortion[i].mode, 
+                            config->cal_level.rf_mode.rf_distortion[i].start_range ,
+                            config->cal_level.rf_mode.rf_distortion[i].end_range);
+                }
+            }
+        }
+        mgc_range = cJSON_GetObjectItem(attenuation_range, "mgc_range");
+        if(mgc_range != NULL){
+            start_range = cJSON_GetObjectItem(mgc_range, "start_range");
+            end_range = cJSON_GetObjectItem(mgc_range, "end_range");
+            if(cJSON_IsNumber(start_range) && cJSON_IsNumber(end_range)){
+                config->cal_level.rf_mode.mgc_distortion.start_range = start_range->valueint;
+                config->cal_level.rf_mode.mgc_distortion.end_range = end_range->valueint;
+                printfd("mgc_range: start_range=%d, end_range=%d\n", 
+                    config->cal_level.rf_mode.mgc_distortion.start_range,
+                    config->cal_level.rf_mode.mgc_distortion.end_range);
+            }
+        }
+    }
+    /* signal_detection_range */
+    cJSON *signal_detection_range = NULL;
+    cJSON *max, *min;
+    signal_detection_range = cJSON_GetObjectItem(calibration, "signal_detection_range");
+    if(signal_detection_range != NULL){
+        for(i = 0; i < cJSON_GetArraySize(signal_detection_range); i++){
+            if(i >= ARRAY_SIZE(config->cal_level.rf_mode.detection)){
+                printf_warn("detection json node is too big:%d, %d\n", i, ARRAY_SIZE(config->cal_level.rf_mode.detection));
+                break;
+            }
+            node = cJSON_GetArrayItem(signal_detection_range, i);
+            value = cJSON_GetObjectItem(node, "rf_mode_code");
+            max = cJSON_GetObjectItem(node, "max");
+            min = cJSON_GetObjectItem(node, "min");
+            if(!cJSON_IsNumber(max) || !cJSON_IsNumber(min )){
+                    continue;
+            }
+            if(value!= NULL && cJSON_IsString(value)){
+                if(!strcmp(value->valuestring, "low_distortion")){
+                    config->cal_level.rf_mode.detection[i].mode = POAL_LOW_DISTORTION;
+                    config->cal_level.rf_mode.detection[i].max = max->valueint;
+                    config->cal_level.rf_mode.detection[i].min = min->valueint;
+                }else if(!strcmp(value->valuestring, "normal")){
+                    config->cal_level.rf_mode.detection[i].mode = POAL_NORMAL;
+                    config->cal_level.rf_mode.detection[i].max = max->valueint;
+                    config->cal_level.rf_mode.detection[i].min = min->valueint;
+                }else if(!strcmp(value->valuestring, "low_noise")){
+                    config->cal_level.rf_mode.detection[i].mode = POAL_LOW_NOISE;
+                    config->cal_level.rf_mode.detection[i].max = max->valueint;
+                    config->cal_level.rf_mode.detection[i].min = min->valueint;
+                }
+                printfd("[%d]signal_detection_range: rf_mode:[%s]%d, max=%d, min=%d\n",i, 
+                            value->valuestring, config->cal_level.rf_mode.detection[i].mode, 
+                            config->cal_level.rf_mode.detection[i].max,
+                            config->cal_level.rf_mode.detection[i].min);
+            }
+        }
+    }
     
     /* analysis_power_global */
     value = cJSON_GetObjectItem(calibration, "analysis_power_global");

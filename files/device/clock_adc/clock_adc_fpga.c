@@ -198,11 +198,12 @@ void volume_set(intptr_t base,uint8_t dat)//dat 0~100
 };
 
 
-#define RCLK_DIV    24
-#define SCLK_DIVH   0x06
+#define RCLK_DIV    4
+#define SCLK_DIVH   0x01
 #define SCLK_DIVL   0x00
-#define ACLK_DIV    6
+#define ACLK_DIV    1
 #define DCLK_TYPE   0x08
+#define SCLK_TYPE   0xa8
 static void hmc_7044_init(volatile char * Spi_synth,uint8_t cs)
 {
     printf_note("spi_wrapper begin ......\r\n");
@@ -219,9 +220,9 @@ static void hmc_7044_init(volatile char * Spi_synth,uint8_t cs)
     //------------------------------------
     spi_wrapper(Spi_synth,0x001, 0x60,cs);//noise pri
     spi_wrapper(Spi_synth,0x002, 0x00,cs);//
-    spi_wrapper(Spi_synth,0x003, 0x0f,cs);//eable pll1,,use pll2 2.1g~2.8g high vco
+    spi_wrapper(Spi_synth,0x003, 0x04,cs);//eable pll1,,use pll2 2.1g~2.8g high vco disable rf_sync
     spi_wrapper(Spi_synth,0x004, 0x3a,cs);//0-01,2-23,6-1213
-    spi_wrapper(Spi_synth,0x005, 0x43,cs);////ref0 ref1 active
+    spi_wrapper(Spi_synth,0x005, 0x23,cs);////ref0 ref1 active disable rf_sync adn sync
     //spi_wrapper(Spi_synth,0x006, 0x01,cs);//clear alarm
     spi_wrapper(Spi_synth,0x007, 0x00,cs);//
     spi_wrapper(Spi_synth,0x009, 0x00,cs);//
@@ -264,11 +265,11 @@ static void hmc_7044_init(volatile char * Spi_synth,uint8_t cs)
     spi_wrapper(Spi_synth,0x052, 0x00,cs);//gpo[2]-disable
     spi_wrapper(Spi_synth,0x053, 0x00,cs);//gpo[3]-disable
     spi_wrapper(Spi_synth,0x054, 0x01,cs);//sdata tri mode
-    spi_wrapper(Spi_synth,0x05a, 0x04,cs);//0x4--8 pulse,0x7--constinue
-    spi_wrapper(Spi_synth,0x05b, 0x02,cs);//Bypass the retime
+    spi_wrapper(Spi_synth,0x05a, 0x07,cs);//0x4--8 pulse,0x7--constinue
+    spi_wrapper(Spi_synth,0x05b, 0x00,cs);//Bypass the retime
     spi_wrapper(Spi_synth,0x05c, SCLK_DIVL,cs);//sysref lsb cnt
     spi_wrapper(Spi_synth,0x05d, SCLK_DIVH,cs);//sysref msb cnt
-    spi_wrapper(Spi_synth,0x064, 0x00,cs);//low freq
+    spi_wrapper(Spi_synth,0x064, 0x01,cs);//low freq
      //channel 0
     spi_wrapper(Spi_synth,0x0c8, 0xd1,cs);//channel 0 config
     spi_wrapper(Spi_synth,0x0c9, RCLK_DIV,cs);//div lsb
@@ -288,7 +289,7 @@ static void hmc_7044_init(volatile char * Spi_synth,uint8_t cs)
     spi_wrapper(Spi_synth,0x0d7, 0x00,cs);//mslip_lsb
     spi_wrapper(Spi_synth,0x0d8, 0x00,cs);//mslip_msb
     spi_wrapper(Spi_synth,0x0d9, 0x00,cs);//[1:0]00-divider,01-analog,10-other,11-input
-    spi_wrapper(Spi_synth,0x0da, 0xb0,cs);//[4:3]00-cml,01-lvpecl,10-lvds,11-cmos; [1:0]00-0, 01-100,11-50
+    spi_wrapper(Spi_synth,0x0da, SCLK_TYPE,cs);//[4:3]00-cml,01-lvpecl,10-lvds,11-cmos; [1:0]00-0, 01-100,11-50
      //channel 2
     spi_wrapper(Spi_synth,0x0dc, 0xd1,cs);//channel 2 config
     spi_wrapper(Spi_synth,0x0dd, ACLK_DIV,cs);//div lsb
@@ -308,7 +309,7 @@ static void hmc_7044_init(volatile char * Spi_synth,uint8_t cs)
     spi_wrapper(Spi_synth,0x0eb, 0x00,cs);//mslip_lsb
     spi_wrapper(Spi_synth,0x0ec, 0x00,cs);//mslip_msb
     spi_wrapper(Spi_synth,0x0ed, 0x00,cs);//[1:0]00-divider,01-analog,10-other,11-input
-    spi_wrapper(Spi_synth,0x0ee, 0xb0,cs);//[4:3]00-cml,01-lvpecl,10-lvds,11-cmos; [1:0]00-0, 01-100,11-50
+    spi_wrapper(Spi_synth,0x0ee, SCLK_TYPE,cs);//[4:3]00-cml,01-lvpecl,10-lvds,11-cmos; [1:0]00-0, 01-100,11-50
      //channel 4
     spi_wrapper(Spi_synth,0x0f0, 0xd1,cs);//channel 4 config
     spi_wrapper(Spi_synth,0x0f1, RCLK_DIV,cs);//div lsb
@@ -328,7 +329,7 @@ static void hmc_7044_init(volatile char * Spi_synth,uint8_t cs)
     spi_wrapper(Spi_synth,0x0ff, 0x00,cs);//mslip_lsb
     spi_wrapper(Spi_synth,0x100, 0x00,cs);//mslip_msb
     spi_wrapper(Spi_synth,0x101, 0x00,cs);//[1:0]00-divider,01-analog,10-other,11-input
-    spi_wrapper(Spi_synth,0x102, 0xb0,cs);//[4:3]00-cml,01-lvpecl,10-lvds,11-cmos; [1:0]00-0, 01-100,11-50
+    spi_wrapper(Spi_synth,0x102, SCLK_TYPE,cs);//[4:3]00-cml,01-lvpecl,10-lvds,11-cmos; [1:0]00-0, 01-100,11-50
     //channel 6
     spi_wrapper(Spi_synth,0x104, 0xd1,cs);//channel 6 config
     spi_wrapper(Spi_synth,0x105, RCLK_DIV,cs);//div lsb
@@ -368,7 +369,7 @@ static void hmc_7044_init(volatile char * Spi_synth,uint8_t cs)
     spi_wrapper(Spi_synth,0x127, 0x00,cs);//mslip_lsb
     spi_wrapper(Spi_synth,0x128, 0x00,cs);//mslip_msb
     spi_wrapper(Spi_synth,0x129, 0x00,cs);//[1:0]00-divider,01-analog,10-other,11-input
-    spi_wrapper(Spi_synth,0x12a, 0xb0,cs);////[4:3]00-cml,01-lvpecl,10-lvds,11-cmos; [1:0]00-0, 01-100,11-50
+    spi_wrapper(Spi_synth,0x12a, SCLK_TYPE,cs);////[4:3]00-cml,01-lvpecl,10-lvds,11-cmos; [1:0]00-0, 01-100,11-50
     //channel 10
     spi_wrapper(Spi_synth,0x12c, 0xd1,cs);//channel 10 config
     spi_wrapper(Spi_synth,0x12d, RCLK_DIV,cs);//div lsb
@@ -388,7 +389,7 @@ static void hmc_7044_init(volatile char * Spi_synth,uint8_t cs)
     spi_wrapper(Spi_synth,0x13b, 0x00,cs);//mslip_lsb
     spi_wrapper(Spi_synth,0x13c, 0x00,cs);//mslip_msb
     spi_wrapper(Spi_synth,0x13d, 0x00,cs);//[1:0]00-divider,01-analog,10-other,11-input
-    spi_wrapper(Spi_synth,0x13e, 0xb0,cs);////[4:3]00-cml,01-lvpecl,10-lvds,11-cmos; [1:0]00-0, 01-100,11-50
+    spi_wrapper(Spi_synth,0x13e, SCLK_TYPE,cs);////[4:3]00-cml,01-lvpecl,10-lvds,11-cmos; [1:0]00-0, 01-100,11-50
     //channel 12
     spi_wrapper(Spi_synth,0x140, 0xd1,cs);//channel 12 config
     spi_wrapper(Spi_synth,0x141, RCLK_DIV,cs);//div lsb
@@ -408,7 +409,7 @@ static void hmc_7044_init(volatile char * Spi_synth,uint8_t cs)
     spi_wrapper(Spi_synth,0x14f, 0x00,cs);//mslip_lsb
     spi_wrapper(Spi_synth,0x150, 0x00,cs);//mslip_msb
     spi_wrapper(Spi_synth,0x151, 0x00,cs);//[1:0]00-divider,01-analog,10-other,11-input
-    spi_wrapper(Spi_synth,0x152, 0xb0,cs);////[4:3]00-cml,01-lvpecl,10-lvds,11-cmos; [1:0]00-0, 01-100,11-50
+    spi_wrapper(Spi_synth,0x152, SCLK_TYPE,cs);////[4:3]00-cml,01-lvpecl,10-lvds,11-cmos; [1:0]00-0, 01-100,11-50
     usleep(100);
     spi_wrapper(Spi_synth,0x001, 0x42,cs);//restart dividers/FSMs
     spi_wrapper(Spi_synth,0x001, 0x40,cs);//restart
@@ -416,6 +417,7 @@ static void hmc_7044_init(volatile char * Spi_synth,uint8_t cs)
     spi_wrapper(Spi_synth,0x001, 0xc0,cs);//sync internal div
     spi_wrapper(Spi_synth,0x001, 0x40,cs);//sync internal div
 };
+
 
 static void hmc7044_generate_sync(char *Spi_synth,uint8_t cs)
 {

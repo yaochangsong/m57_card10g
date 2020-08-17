@@ -198,6 +198,10 @@ ifneq ($(findstring y,$(SUPPORT_RESIDENCY_STRATEGY)),)
 	C_VAR += -DSUPPORT_RESIDENCY_STRATEGY
 endif
 
+ifneq ($(findstring y,$(SUPPORT_CALIBRATION_GAIN)),)
+	C_VAR += -DSUPPORT_CALIBRATION_GAIN
+endif
+
 SOURCE_DIR += log net protocol/oal dao/oal conf executor  utils device  device/gpio 
 
 #control enable

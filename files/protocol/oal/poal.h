@@ -347,6 +347,38 @@ struct calibration_fft_st{
     int32_t   cali_value[8];
 };
 
+/*射频各模式放大倍数*/
+struct rf_mode_magification{
+    int32_t mode;
+    int32_t magification;
+};
+
+/*distortion range: rf_range*/
+struct rf_distortion_range{
+    int32_t mode;
+    int32_t start_range;
+    int32_t end_range;
+};
+
+/*distortion range: mgc_range*/
+struct mgc_distortion_range{
+    int32_t start_range;
+    int32_t end_range;
+};
+
+/*signal_detection_range*/
+struct signal_detection_range{
+    int32_t mode;
+    int32_t max;
+    int32_t min;
+};
+
+struct cal_rf_mode_param{
+    struct rf_mode_magification mag[3];
+    struct rf_distortion_range rf_distortion[3];
+    struct mgc_distortion_range mgc_distortion;
+    struct signal_detection_range detection[3];
+};
 struct calibration_info_st{
     struct calibration_specturm_info_st specturm;
     struct calibration_specturm_v2_st   spm_level;
@@ -355,6 +387,7 @@ struct calibration_info_st{
     struct calibration_lo_leakage_info_st lo_leakage;
     struct calibration_mgc_info_st mgc;
     struct calibration_fft_st cali_fft;
+    struct cal_rf_mode_param rf_mode;
 };//__attribute__ ((packed));
 
 

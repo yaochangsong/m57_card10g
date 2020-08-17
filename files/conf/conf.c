@@ -195,7 +195,8 @@ int32_t  config_get_fft_calibration_value(uint8_t ch, uint32_t fft_size, uint64_
     }
 
     cal_value += poal_config->cal_level.specturm.global_roughly_power_lever;
-    
+
+#ifdef SUPPORT_CALIBRATION_GAIN
     /* ##NOTE: [重要]在常规模式下，0增益校准## */
     found = 0;
      for(i = 0; i< ARRAY_SIZE(poal_config->cal_level.rf_mode.mag); i++){
@@ -256,6 +257,7 @@ int32_t  config_get_fft_calibration_value(uint8_t ch, uint32_t fft_size, uint64_
         printf_debug("after MGC attenuation,mode:%d attenuation:%d, cal_value=%d\n", mode, attenuation, cal_value);
         
     }
+#endif
     return cal_value;
 }
 

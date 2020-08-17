@@ -98,4 +98,6 @@ else
 	endif
     #通道信号驻留策略
     SUPPORT_RESIDENCY_STRATEGY=y
+    #衰减增益校准
+    SUPPORT_CALIBRATION_GAIN=y
 endif

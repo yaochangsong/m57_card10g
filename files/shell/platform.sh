@@ -3,26 +3,29 @@
 start()
 {
     echo " Start FlatForm."
-	/etc/led.sh init
+    #LED灯控制
+    /etc/led.sh init
     /etc/led.sh power on
-	/etc/led.sh check on
+    /etc/led.sh check on
+    #网络初始化
     /etc/network.sh
     /etc/led.sh work on
+    #网络发送缓冲区最大修改位8m
+    echo 8388608 > /proc/sys/net/core/wmem_max
+    #磁盘挂载
     mkdir -p /run/media/nvme0n1
     mount /dev/nvme0n1 /run/media/nvme0n1
     ln -s /run/media/nvme0n1/data /etc/file
+    #启动状态检测
     /etc/check.sh stop
     /etc/check.sh start
-	/etc/reset-button.sh stop
-	/etc/reset-button.sh start
-	echo 3 4 1 3 > /proc/sys/kernel/printk
-#   insmod /lib/modules/4.6.0-xilinx/extra/dmadrvm.ko
- #   insmod /lib/modules/4.6.0-xilinx/extra/xwfsm.ko
+    #启动复位按钮检测
+    /etc/reset-button.sh stop
+    /etc/reset-button.sh start
+    #调整内核部分打印级别
+    echo 3 4 1 3 > /proc/sys/kernel/printk
     sleep 1
     platform &
- #   ifconfig eth0 down                                                 
- #   ifconfig eth0 hw ether 02:0a:35:00:00:04                 
- #   ifconfig eth0 up
 }
 
 stop()

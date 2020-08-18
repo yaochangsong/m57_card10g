@@ -18,6 +18,15 @@
 #include <stdbool.h>
 #include <sys/statfs.h>
 
+typedef enum _disk_err_code {
+
+    DISK_CODE_OK = 0,
+    DISK_CODE_NOT_FOUND = 1,
+    DISK_CODE_FORAMT = 2,
+    DISK_CODE_ERR = 3,
+    DISK_CODE_NOT_FORAMT = 4,
+}disk_err_code;
+
 struct fs_ops {
 	bool (*fs_disk_info)(struct statfs *diskInfo);
     bool (*fs_disk_valid)(void);
@@ -30,6 +39,7 @@ struct fs_ops {
     ssize_t (*fs_stop_save_file)(char *);
     ssize_t (*fs_start_read_raw_file)(char *);
     ssize_t (*fs_stop_read_raw_file)(char *);
+    disk_err_code (*fs_get_err_code)(void);
     int (*fs_close)(void);
 };
 

@@ -1122,18 +1122,12 @@ static int akt_execute_get_command(void)
             struct statfs diskInfo;
             fs_ctx = get_fs_ctx_ex();
             ret = fs_ctx->ops->fs_disk_info(&diskInfo);
+            printf_debug("Get disk info: %d\n", ret);
             psi->disk_num = 1;
             psi->read_write_speed_kbytesps = 0;  //按照写速度换算约等于1.8G
-            printf_debug("Get disk info: %d\n", ret);
-            if(ret == 0){
-                psi->disk_capacity[0].disk_state = 1;  //未发现设备
-                psi->disk_capacity[0].disk_capacity_byte = 0;
-                psi->disk_capacity[0].disk_used_byte = 0;
-            }else{
-                psi->disk_capacity[0].disk_state = 0;
-                psi->disk_capacity[0].disk_capacity_byte = diskInfo.f_bsize * diskInfo.f_blocks;
-                psi->disk_capacity[0].disk_used_byte = diskInfo.f_bsize * (diskInfo.f_blocks - diskInfo.f_bfree);
-            }
+            psi->disk_capacity[0].disk_state = fs_ctx->ops->fs_get_err_code();
+            psi->disk_capacity[0].disk_capacity_byte = diskInfo.f_bsize * diskInfo.f_blocks;
+            psi->disk_capacity[0].disk_used_byte = diskInfo.f_bsize * (diskInfo.f_blocks - diskInfo.f_bfree);
 		    #endif
             printf_note("ret=%d, num=%d, speed=%uKB/s, capacity_bytes=%llu, used_bytes=%llu\n",
                 ret, psi->disk_num, psi->read_write_speed_kbytesps, 
@@ -1204,6 +1198,7 @@ static int akt_execute_get_command(void)
             struct _device_model model;
             memset(&model, 0, sizeof(model));
             memcpy(model.type, poal_config->status_para.device_sn, sizeof(model.type));
+            printf("device mode:%s\n", model.type);
             memcpy(akt_get_response_data.payload_data, &model, sizeof(model));
             akt_get_response_data.header.len = sizeof(model);
             break;

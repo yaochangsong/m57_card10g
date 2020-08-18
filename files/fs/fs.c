@@ -326,6 +326,47 @@ static ssize_t _fs_stop_save_file(char *filename)
 
 #define THREAD_FS_BACK_NAME "FS_BACK_FILE"
 
+static double difftime_us_val(const struct timeval *start, const struct timeval *end)
+{
+    double d;
+    time_t s;
+    suseconds_t u;
+    s = end->tv_sec - start->tv_sec;
+    u = end->tv_usec - start->tv_usec;
+    d = s;
+    d *= 1000000.0;//1 Ãë = 10^6 Î¢Ãë
+    d += u;
+    return d;
+}
+struct push_arg{
+    struct timeval *ct;
+    uint64_t nbyte;
+    uint64_t count;
+    int  fd;
+};
+static void _thread_exit_callback(void *arg){  
+    struct timeval *beginTime, endTime;
+    uint64_t nbyte;
+    float speed = 0;
+    double  diff_time_us = 0;
+    float diff_time_s = 0;
+    int fd = -1;
+    struct push_arg *pargs;
+    pargs = (struct push_arg *)arg;
+    beginTime = pargs->ct;
+    nbyte = pargs->nbyte;
+    fd = pargs->fd;
+    fprintf(stderr, ">>start time %ld.%.9ld., nbyte=%llu, fd=%d\n",beginTime->tv_sec, beginTime->tv_usec, nbyte, fd);
+    gettimeofday(&endTime, NULL);
+    fprintf(stderr, ">>end time %ld.%.9ld.\n",endTime.tv_sec, endTime.tv_usec);
+    diff_time_us = difftime_us_val(beginTime, &endTime);
+    diff_time_s = diff_time_us/1000000.0;
+    printf(">>diff us=%fus, %fs\n", diff_time_us, diff_time_s);
+     speed = (float)((nbyte / (1024 * 1024)) / diff_time_s);
+     fprintf(stdout,"speed: %.2f MBps, count=%llu\n", speed, pargs->count);
+     if(fd > 0)
+        close(fd);
+}  
 static ssize_t _fs_start_read_raw_file_loop(void *arg)
 {
     ssize_t nread = 0; 
@@ -374,7 +415,7 @@ static ssize_t _fs_start_read_raw_file(char *filename)
     } 
     printf_note("start read file: %s, file_fd=%d\n", path, file_fd);
     io_start_backtrace_file(NULL);
-    ret =  pthread_create_detach (NULL, _fs_start_read_raw_file_loop, _fs_read_exit_callback,  
+    ret =  pthread_create_detach (NULL, _fs_start_read_raw_file_loop, _thread_exit_callback,  
                                 THREAD_FS_BACK_NAME, &file_fd, &file_fd);
     if(ret != 0){
         perror("pthread cread save file thread!!");

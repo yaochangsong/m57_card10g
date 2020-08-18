@@ -285,6 +285,7 @@ struct calibration_specturm_info_st{
     int global_roughly_power_lever;
     int low_distortion_power_level;
     int low_noise_power_level;
+    bool gain_calibration_onoff;
 };//__attribute__ ((packed));
 
 struct calibration_specturm_node_st{

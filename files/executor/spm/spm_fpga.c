@@ -1167,13 +1167,13 @@ static int32_t _get_signal_threshold_by_amp(uint8_t ch, uint32_t index, int32_t 
 }
 
 /* 判断对应通道是否有信号:      true: 有信号; false:无信号*/
-static int32_t  spm_get_signal_strength(uint8_t ch, uint32_t index, bool *is_singal, uint16_t *strength)
+static int32_t  spm_get_signal_strength(uint8_t ch,uint8_t subch, uint32_t index, bool *is_singal, uint16_t *strength)
 {
     uint16_t sig_amp = 0;
     int32_t sigal_thred = 0;
     int32_t ret;
     
-    sig_amp = io_get_signal_strength(ch);
+    sig_amp = io_get_signal_strength(subch);
     if(strength != NULL)
         *strength = sig_amp;
     ret = _get_signal_threshold_by_amp(ch, index, &sigal_thred);

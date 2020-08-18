@@ -976,6 +976,8 @@ static int akt_execute_get_command(void)
         case DEVICE_SELF_CHECK_CMD:
         {
             uint8_t lock_ok=0,external_clk=0;
+            struct tm *tm_on;
+            time_t start_time = get_system_power_on_time();
             DEVICE_SELF_CHECK_STATUS_RSP_ST self_check;
             struct arg_s{
                 uint32_t temp;
@@ -990,6 +992,10 @@ static int akt_execute_get_command(void)
             self_check.ext_clk = (external_clk == 0 ? 0 :1);
             self_check.ad_status = (io_get_adc_status(NULL) == true ? 0 : 1);
             self_check.pfga_temperature = fpga_status.temp;
+            tm_on = localtime(&start_time);
+            sprintf(self_check.system_power_on_time, "%04d-%02d-%02d-%02d:%02d:%02d",
+                tm_on->tm_year+1900, tm_on->tm_mon+1, tm_on->tm_mday, tm_on->tm_hour, tm_on->tm_min, tm_on->tm_sec);
+            printf_note("power on time:%s\n", self_check.system_power_on_time);
             self_check.ch_num = MAX_RADIO_CHANNEL_NUM;
             executor_get_command(EX_RF_FREQ_CMD, EX_RF_STATUS_TEMPERAT, 0,  &self_check.t_s[0].rf_temperature);
             self_check.t_s[0].ch_status = (self_check.t_s[0].rf_temperature > 200 || 
@@ -1078,20 +1084,18 @@ static int akt_execute_get_command(void)
             struct poal_config *poal_config = &(config_get_config()->oal_config);
             struct _soft_info{
                 uint8_t num;
-                uint16_t name;
-                uint64_t btime;
+                uint16_t name[16];
+                uint64_t btime[20];
                 uint8_t ver;
             }__attribute__ ((packed));
             
             struct _soft_info info;
+             memset(&info, 0, sizeof(info));
             info.num = 1;
             printf_note("device sn=%s\n", poal_config->status_para.device_sn);
-            if(hxstr_to_int(poal_config->status_para.device_sn, &info.name, NULL)){
-                printf_note("device sn=0x%x", info.name);
-            }else{
-                info.name = 0;
-            }
-            info.btime = 0;
+            memcpy(info.name, poal_config->status_para.device_sn, sizeof(info.name));
+            sprintf(info.btime,"%s-%s",get_build_time(), __TIME__);
+            printf_note("compile time:%s\n", info.btime);
             info.ver = 0x10;
 
             memcpy(akt_get_response_data.payload_data, &info, sizeof(info));
@@ -1118,15 +1122,18 @@ static int akt_execute_get_command(void)
             struct statfs diskInfo;
             fs_ctx = get_fs_ctx_ex();
             ret = fs_ctx->ops->fs_disk_info(&diskInfo);
+            psi->disk_num = 1;
+            psi->read_write_speed_kbytesps = 0;  //按照写速度换算约等于1.8G
             printf_debug("Get disk info: %d\n", ret);
             if(ret == 0){
-                err_code = akt_err_code_check(ret);
-                goto exit;
+                psi->disk_capacity[0].disk_state = 1;  //未发现设备
+                psi->disk_capacity[0].disk_capacity_byte = 0;
+                psi->disk_capacity[0].disk_used_byte = 0;
+            }else{
+                psi->disk_capacity[0].disk_state = 0;
+                psi->disk_capacity[0].disk_capacity_byte = diskInfo.f_bsize * diskInfo.f_blocks;
+                psi->disk_capacity[0].disk_used_byte = diskInfo.f_bsize * (diskInfo.f_blocks - diskInfo.f_bfree);
             }
-            psi->disk_num = 1;
-		    psi->read_write_speed_kbytesps = 0;  //按照写速度换算约等于1.8G
-		    psi->disk_capacity[0].disk_capacity_byte = diskInfo.f_bsize * diskInfo.f_blocks;
-		    psi->disk_capacity[0].disk_used_byte = diskInfo.f_bsize * (diskInfo.f_blocks - diskInfo.f_bfree);
 		    #endif
             printf_note("ret=%d, num=%d, speed=%uKB/s, capacity_bytes=%llu, used_bytes=%llu\n",
                 ret, psi->disk_num, psi->read_write_speed_kbytesps, 
@@ -1185,6 +1192,20 @@ static int akt_execute_get_command(void)
         #endif
             memcpy(akt_get_response_data.payload_data, &angle, sizeof(float));
             akt_get_response_data.header.len = sizeof(float);
+            break;
+        }
+
+        case DEVICE_MODEL_CMD:
+        {
+            struct poal_config *poal_config = &(config_get_config()->oal_config);
+            struct _device_model{
+                int8_t type[10];
+            }__attribute__ ((packed));
+            struct _device_model model;
+            memset(&model, 0, sizeof(model));
+            memcpy(model.type, poal_config->status_para.device_sn, sizeof(model.type));
+            memcpy(akt_get_response_data.payload_data, &model, sizeof(model));
+            akt_get_response_data.header.len = sizeof(model);
             break;
         }
         default:

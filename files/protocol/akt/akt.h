@@ -162,6 +162,7 @@ typedef enum _BUSINESS_CODE{
     SINGLE_FREQ_ZONE_SCAN_CMD=0xf0,
     DIRECTION_MULTI_FREQ_ZONE_CMD=0xf1,
     DIRECTION_SIGNAL_THRESHOLD_CMD=0xf2,
+    DEVICE_MODEL_CMD=0xf3,
     SUB_SIGNAL_PARAM_CMD=0xf4,
     SUB_SIGNAL_OUTPUT_ENABLE_CMD=0xf5,
     DEVICE_CALIBRATE_CMD=0xf6,
@@ -566,6 +567,7 @@ typedef struct  _DEVICE_SELF_CHECK_STATUS_RSP_ST{
     uint8_t ext_clk;    
     uint8_t ad_status;
     signed short  pfga_temperature;
+    int8_t system_power_on_time[20];
     uint8_t ch_num;
     DEVICE_SELF_CHECK_TEMPERATUE_ST t_s[MAX_RADIO_CHANNEL_NUM];
 }__attribute__ ((packed)) DEVICE_SELF_CHECK_STATUS_RSP_ST; 
@@ -627,6 +629,7 @@ typedef struct _FFT_SIGNAL_RESPINSE{
 /************Disk-related parameters***********************/
 
 typedef struct  _STORAGE_DISK_INFO_ST{
+    uint8_t disk_state;
     uint64_t disk_capacity_byte;
     uint64_t disk_used_byte;
 }__attribute__ ((packed)) STORAGE_DISK_INFO_ST; 

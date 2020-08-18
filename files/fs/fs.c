@@ -367,7 +367,7 @@ static ssize_t _fs_start_read_raw_file(char *filename)
     //config_write_data(EX_MID_FREQ_CMD,  EX_MID_FREQ, ch, &freq);
     //config_write_data(EX_MID_FREQ_CMD,  EX_BANDWITH, ch, &band);
     snprintf(path, sizeof(path), "%s/%s", fs_get_root_dir(), filename);
-    file_fd = open(path, O_RDONLY, 0666);
+    file_fd = open(path, O_RDONLY | O_DIRECT | O_SYNC, 0666);
     if (file_fd < 0) {
         printf_err("open % fail\n", path);
         return -1;

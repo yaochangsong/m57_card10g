@@ -256,6 +256,7 @@ static void udp_read_cb(struct uloop_fd *fd, unsigned int events)
 
 struct net_udp_server *udp_server_new(const char *host, int port)
 {
+    #define UDP_SEND_BUF (8*1024*1024)
     struct net_udp_server *srv;
     int sock;
     
@@ -265,8 +266,27 @@ struct net_udp_server *udp_server_new(const char *host, int port)
         uh_log_err("usock");
         return NULL;
     }
-    
     printf_debug("sock=%d\n", sock);
+
+    /* 优化UDP发送速度；调整发送缓冲区大小 */
+    int defrcvbufsize = -1;
+    int nSnd_buffer = UDP_SEND_BUF;
+    socklen_t optlen = sizeof(defrcvbufsize);
+    if(getsockopt(sock, SOL_SOCKET, SO_SNDBUF, &defrcvbufsize, &optlen) < 0)
+    {
+        printf("getsockopt error\n");
+        return NULL;
+    }
+    printf_info("Current udp default send buffer size is:%d\n", defrcvbufsize);
+
+    if(setsockopt(sock, SOL_SOCKET, SO_SNDBUF, &nSnd_buffer, optlen) < 0)
+    {
+        printf("set udp recive buffer size failed.\n");
+        return NULL;
+    }
+    printf_info("Now set udp send buffer size to:%dByte\n",nSnd_buffer);
+    /* end */
+    
     srv = calloc(1, sizeof(struct net_udp_server));
     if (!srv) {
         uh_log_err("calloc");

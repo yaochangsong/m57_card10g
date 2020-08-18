@@ -235,7 +235,7 @@ static ssize_t spm_stream_read(enum stream_type type, volatile void **data)
                 printf_debug("[%s]DMA idle!\n", pstream[type].name);
                 return -1;
             }
-            usleep(100);
+            usleep(5);
             printf_debug("[%s]no data, waitting\n", pstream[type].name);
         }else if(info.status == READ_BUFFER_STATUS_OVERRUN){
             printf_warn("[%s]data is overrun\n", pstream[type].name);
@@ -887,7 +887,8 @@ static int spm_agc_ctrl_v3(int ch, struct spm_context *ctx)
     agc_dbm_val =  _spm_read_signal_value(ch);
     usleep(1000);
 
-    printf_info("[%d]read signal value: %d, up_val=%d, down_val=%d, rf_attenuation=%d, mgc_attenuation=%d\n", dst_val[ch], agc_dbm_val, up_val[ch], down_val[ch], rf_attenuation[ch], mgc_attenuation[ch]);
+    printf_info("[%d]dst_val=%d, read signal value: %d, up_val=%d, down_val=%d, rf_attenuation=%d, mgc_attenuation=%d\n", agc_ctrl_dbm,dst_val[ch], agc_dbm_val, up_val[ch], down_val[ch], rf_attenuation[ch], mgc_attenuation[ch]);
+
     if(agc_dbm_val < (dst_val[ch] - AGC_CTRL_PRECISION)){
         if(up_val[ch] <= 0){
             printf_note(">>>Arrived TOP<<<\n");
@@ -1207,15 +1208,15 @@ try_gain:
     if(info.status != 0){   /* NOT OK */
         printf_debug("write status:%d, block_num:%d\n", info.status, info.block_num);
         if(info.status == WRITE_BUFFER_STATUS_FAIL){
-            printf_debug("read error!\n");
+            printf_warn("read error!\n");
             exit(1);
         }else if (info.status == WRITE_BUFFER_STATUS_EMPTY){
-            printf_debug("write buffer empty\n");
+            printf_warn("write buffer empty\n");
         }else if (info.status == WRITE_BUFFER_STATUS_FULL){
-            printf_debug("write buffer full\n");
-            usleep(100);
+            printf_warn("write buffer full\n");
+            usleep(10);
         }else{
-            printf_debug("unknown status[0x%x]\n", info.status);
+            printf_warn("unknown status[0x%x]\n", info.status);
         }
     }
 

@@ -218,7 +218,7 @@ int32_t  config_get_fft_calibration_value(uint8_t ch, uint32_t fft_size, uint64_
         for(i = 0; i< ARRAY_SIZE(poal_config->cal_level.rf_mode.mag); i++){
             if(poal_config->cal_level.rf_mode.mag[i].mode == mode){
                 cal_value += poal_config->cal_level.rf_mode.mag[i].magification*10;
-                printf_note("after rf mode magification,mode:%d magification:%d, cal_value=%d\n", mode, 
+                printf_debug("after rf mode magification,mode:%d magification:%d, cal_value=%d\n", mode, 
                         poal_config->cal_level.rf_mode.mag[i].magification, cal_value);
                 found = 1;
                 break;
@@ -241,7 +241,7 @@ int32_t  config_get_fft_calibration_value(uint8_t ch, uint32_t fft_size, uint64_
                             cal_value -= attenuation*10;
                 }
             }
-                printf_note("after rf attenuation,mode:%d attenuation:%d, cal_value=%d\n", mode, attenuation, cal_value);
+                printf_debug("after rf attenuation,mode:%d attenuation:%d, cal_value=%d\n", mode, attenuation, cal_value);
                 found = 1;
                 break;
             }

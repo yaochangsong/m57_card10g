@@ -312,6 +312,8 @@ static fft_t *spm_data_order(volatile fft_t *fft_data,
     side_rate  =  get_side_band_rate(run_args->scan_bw);
     /* 去边带后FFT长度 */
     order_len = (size_t)((float)(fft_len) / side_rate);
+    /*双字节对齐*/
+    order_len = order_len&0x0fffffffe; 
     printf_debug("side_rate = %f[fft_len:%u, order_len=%u], scan_bw=%u\n", side_rate, fft_len, order_len, run_args->scan_bw);
     // printf_warn("run_args->fft_ptr=%p, fft_data=%p, order_len=%u, fft_len=%u, side_rate=%f\n", run_args->fft_ptr, fft_data, order_len,fft_len, side_rate);
     /* 信号倒谱 */

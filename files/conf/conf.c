@@ -198,7 +198,8 @@ int32_t  config_get_fft_calibration_value(uint8_t ch, uint32_t fft_size, uint64_
 
 #ifdef SUPPORT_CALIBRATION_GAIN
     /* ##NOTE: [重要]在常规模式下，0增益校准## */
-    if(poal_config->rf_para[ch].gain_ctrl_method != POAL_AGC_MODE){
+    if(poal_config->rf_para[ch].gain_ctrl_method != POAL_AGC_MODE && 
+        poal_config->cal_level.specturm.gain_calibration_onoff == true){
         #if 0
         found = 0;
          for(i = 0; i< ARRAY_SIZE(poal_config->cal_level.rf_mode.mag); i++){

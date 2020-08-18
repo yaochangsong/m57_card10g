@@ -30,6 +30,7 @@
 	},
     "calibration_parm":{
         "psd_power_global":1662,
+	"gain_calibration":"true",
         "psd_fftsize":[
             {
                 "fftsize":512,

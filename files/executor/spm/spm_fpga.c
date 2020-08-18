@@ -155,10 +155,10 @@ static inline const char * get_str_by_code(const char *const *list, int max, int
 
 
 static struct _spm_stream spm_stream[] = {
-        {DMA_IQ_DEV,  -1, NULL, DMA_BUFFER_SIZE, "IQ Stream", DMA_READ},
-        {DMA_FFT_DEV, -1, NULL, DMA_BUFFER_SIZE, "FFT Stream", DMA_READ},
-        {DMA_ADC_TX_DEV, -1, NULL, DMA_BUFFER_SIZE, "ADC Tx Stream", DMA_WRITE},
-        {DMA_ADC_RX_DEV, -1, NULL, DMA_BUFFER_SIZE, "ADC Rx Stream", DMA_READ},
+        {DMA_IQ_DEV,  -1, NULL, DMA_BUFFER_16M_SIZE, "IQ Stream", DMA_READ},
+        {DMA_FFT_DEV, -1, NULL, DMA_BUFFER_16M_SIZE, "FFT Stream", DMA_READ},
+        {DMA_ADC_TX_DEV, -1, NULL, DMA_BUFFER_128M_SIZE, "ADC Tx Stream", DMA_WRITE},
+        {DMA_ADC_RX_DEV, -1, NULL, DMA_BUFFER_128M_SIZE, "ADC Rx Stream", DMA_READ},
 };
 
 static const char *const dma_status_array[] = {

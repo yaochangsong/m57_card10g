@@ -39,7 +39,6 @@
 #include "../executor/spm/spm.h"
 #include "config.h"
 
-#define DMA_BUFFER_SIZE (16 * 1024 * 1024)
 
 struct fs_context *fs_ctx = NULL;
 static bool disk_is_valid = false;

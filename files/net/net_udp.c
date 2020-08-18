@@ -284,7 +284,12 @@ struct net_udp_server *udp_server_new(const char *host, int port)
         printf("set udp recive buffer size failed.\n");
         return NULL;
     }
-    printf_info("Now set udp send buffer size to:%dByte\n",nSnd_buffer);
+    if(getsockopt(sock, SOL_SOCKET, SO_SNDBUF, &defrcvbufsize, &optlen) < 0)
+    {
+        printf("getsockopt error\n");
+        return NULL;
+    }
+    printf_info("Now set udp send buffer size to:%dByte\n",defrcvbufsize);
     /* end */
     
     srv = calloc(1, sizeof(struct net_udp_server));

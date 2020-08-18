@@ -29,7 +29,7 @@
 		"device_sn":	"ACTI-0204"
 	},
     "calibration_parm":{
-        "psd_power_global":1360,
+        "psd_power_global":1662,
         "psd_fftsize":[
             {
                 "fftsize":512,

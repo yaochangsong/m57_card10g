@@ -25,7 +25,10 @@ start()
     #调整内核部分打印级别
     echo 3 4 1 3 > /proc/sys/kernel/printk
     sleep 1
-    platform &
+    platform & 
+	#启动进程监控
+	/etc/checkproc.sh stop
+	/etc/checkproc.sh start
 }
 
 stop()

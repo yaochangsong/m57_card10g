@@ -69,6 +69,23 @@ int8_t akt_decode_method_convert(uint8_t method)
     return d_method;
 }
 
+
+
+
+uint32_t fftsize_check(uint32_t fft_size)
+{
+    #define _DEFAULT_FFT_SIZE 2048
+    uint32_t t_fftsize[] = {128,256,512,1024,2048,4096,8192,16384,32768,65536};
+    int i;
+    for(i=0; i< ARRAY_SIZE(t_fftsize); i++){
+        if(t_fftsize[i] == fft_size)
+            return fft_size;
+    }
+    printf_err("fft size[%u] ERROR! use default size:%u\n", fft_size, _DEFAULT_FFT_SIZE);
+    return _DEFAULT_FFT_SIZE;
+}
+
+
 /******************************************************************************
 * FUNCTION:
 *     akt_convert_oal_config
@@ -191,7 +208,7 @@ static int akt_convert_oal_config(uint8_t ch, uint8_t cmd)
                     }
                     point->points[sig_cnt].raw_d_method = pakt_config->decode_param[ch].sig_ch[sig_cnt].decode_method_id;
                     point->points[sig_cnt].d_method = akt_decode_method_convert(point->points[sig_cnt].raw_d_method);
-                    point->points[sig_cnt].fft_size = pakt_config->fft[ch].fft_size;
+                    point->points[sig_cnt].fft_size = fftsize_check(pakt_config->fft[ch].fft_size);
                     if(point->points[sig_cnt].fft_size > 0){
                         point->points[sig_cnt].freq_resolution = ((float)point->points[sig_cnt].bandwidth/(float)point->points[sig_cnt].fft_size)*BAND_FACTOR;
                         printf_info("freq_resolution:%f\n",point->points[sig_cnt].freq_resolution);
@@ -226,7 +243,7 @@ static int akt_convert_oal_config(uint8_t ch, uint8_t cmd)
                     /* 步长 */
                     fregment->fregment[sig_cnt].step = pakt_config->multi_freq_zone[ch].sig_ch[sig_cnt].freq_step;
                     /* fft size转换 */
-                    fregment->fregment[sig_cnt].fft_size = pakt_config->fft[ch].fft_size;
+                    fregment->fregment[sig_cnt].fft_size = fftsize_check(pakt_config->fft[ch].fft_size);
                     /*扫描频段转换*/
                     fregment->freq_segment_cnt = pakt_config->multi_freq_zone[ch].freq_band_cnt;
                     /* smooth */
@@ -266,7 +283,7 @@ static int akt_convert_oal_config(uint8_t ch, uint8_t cmd)
                         fregment->fregment[i].start_freq = pakt_config->multi_freq_zone[ch].sig_ch[i].center_freq - pakt_config->multi_freq_zone[ch].sig_ch[i].bandwidth/2;
                         fregment->fregment[i].end_freq = pakt_config->multi_freq_zone[ch].sig_ch[i].center_freq + pakt_config->multi_freq_zone[ch].sig_ch[i].bandwidth/2;
                         fregment->fregment[i].step = pakt_config->multi_freq_zone[ch].sig_ch[i].freq_step;
-                        fregment->fregment[i].fft_size = pakt_config->fft[ch].fft_size;
+                        fregment->fregment[i].fft_size = fftsize_check(pakt_config->fft[ch].fft_size);
                         if(fregment->fregment[i].fft_size > 0){
                             fregment->fregment[i].freq_resolution = ((float)bw/(float)fregment->fregment[i].fft_size)*BAND_FACTOR;
                             printf_info("[%d]resolution:%f\n",i, fregment->fregment[i].freq_resolution);
@@ -295,7 +312,7 @@ static int akt_convert_oal_config(uint8_t ch, uint8_t cmd)
                     for(i = 0; i < point->freq_point_cnt; i++){
                         point->points[i].center_freq = pakt_config->multi_freq_zone[ch].sig_ch[i].center_freq;
                         point->points[i].bandwidth = pakt_config->multi_freq_zone[ch].sig_ch[i].bandwidth;
-                        point->points[i].fft_size = pakt_config->fft[ch].fft_size;
+                        point->points[i].fft_size =fftsize_check(pakt_config->fft[ch].fft_size);
                         point->points[i].d_method = akt_decode_method_convert(pakt_config->decode_param[ch].sig_ch[i].decode_method_id);
                         point->points[i].raw_d_method = pakt_config->decode_param[ch].sig_ch[i].decode_method_id;
                         point->points[i].d_bandwith = pakt_config->decode_param[ch].sig_ch[i].bandwidth;

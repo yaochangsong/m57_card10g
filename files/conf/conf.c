@@ -198,64 +198,66 @@ int32_t  config_get_fft_calibration_value(uint8_t ch, uint32_t fft_size, uint64_
 
 #ifdef SUPPORT_CALIBRATION_GAIN
     /* ##NOTE: [重要]在常规模式下，0增益校准## */
-    found = 0;
-     for(i = 0; i< ARRAY_SIZE(poal_config->cal_level.rf_mode.mag); i++){
-        if(poal_config->cal_level.rf_mode.mag[i].mode == POAL_NORMAL){
-            cal_value += poal_config->cal_level.rf_mode.mag[i].magification*10;
-            found = 1;
-            break;
+    if(poal_config->rf_para[ch].gain_ctrl_method != POAL_AGC_MODE && 
+        poal_config->cal_level.specturm.gain_calibration_onoff == true){
+        #if 0
+        found = 0;
+         for(i = 0; i< ARRAY_SIZE(poal_config->cal_level.rf_mode.mag); i++){
+            if(poal_config->cal_level.rf_mode.mag[i].mode == POAL_NORMAL){
+                cal_value += poal_config->cal_level.rf_mode.mag[i].magification*10;
+                found = 1;
+                break;
+            }
+            }
+         if(found == 0){
+            printf_err("Not find magification in rf normal mode!!!\n");
         }
+#endif
+        /* 增益模式校准 */
+        found = 0;
+        mode = poal_config->rf_para[ch].rf_mode_code;
+        for(i = 0; i< ARRAY_SIZE(poal_config->cal_level.rf_mode.mag); i++){
+            if(poal_config->cal_level.rf_mode.mag[i].mode == mode){
+                cal_value += poal_config->cal_level.rf_mode.mag[i].magification*10;
+                printf_debug("after rf mode magification,mode:%d magification:%d, cal_value=%d\n", mode, 
+                        poal_config->cal_level.rf_mode.mag[i].magification, cal_value);
+                found = 1;
+                break;
+            }
         }
-     if(found == 0){
-        printf_err("Not find magification in rf normal mode!!!\n");
-    }
-
-    /* 增益模式校准 */
-    found = 0;
-    mode = poal_config->rf_para[ch].rf_mode_code;
-    for(i = 0; i< ARRAY_SIZE(poal_config->cal_level.rf_mode.mag); i++){
-        if(poal_config->cal_level.rf_mode.mag[i].mode == mode){
-            cal_value += poal_config->cal_level.rf_mode.mag[i].magification*10;
-            printf_debug("after rf mode magification,mode:%d magification:%d, cal_value=%d\n", mode, 
-                    poal_config->cal_level.rf_mode.mag[i].magification, cal_value);
-            found = 1;
-            break;
+        if(found == 0){
+            printf_warn("RF mode Error: %d\n", mode);
                     }
-                    }
-    if(found == 0){
-        printf_warn("RF mode Error: %d\n", mode);
+        /* 衰减模式校准 */
+        /* attenuation */
+        found = 0;
+        struct rf_distortion_range range;
+        int8_t attenuation = 0;
+        attenuation = poal_config->rf_para[ch].attenuation;
+        for(i = 0; i< ARRAY_SIZE(poal_config->cal_level.rf_mode.rf_distortion); i++){
+            range = poal_config->cal_level.rf_mode.rf_distortion[i];
+            if(range.mode == mode){
+                if(attenuation >= range.start_range && attenuation <= range.end_range){
+                        if(cal_value > attenuation*10){
+                            cal_value -= attenuation*10;
                 }
-    /* 衰减模式校准 */
-    /* attenuation */
-    found = 0;
-    struct rf_distortion_range range;
-    int8_t attenuation = 0;
-    attenuation = poal_config->rf_para[ch].attenuation;
-    for(i = 0; i< ARRAY_SIZE(poal_config->cal_level.rf_mode.rf_distortion); i++){
-        range = poal_config->cal_level.rf_mode.rf_distortion[i];
-        if(range.mode == mode){
-            if(attenuation >= range.start_range && attenuation <= range.end_range){
-                if(cal_value > attenuation*10){
-                    cal_value -= attenuation*10;
+            }
+                printf_debug("after rf attenuation,mode:%d attenuation:%d, cal_value=%d\n", mode, attenuation, cal_value);
+                found = 1;
+                break;
+            }
         }
-    }
-            printf_debug("after rf attenuation,mode:%d attenuation:%d, cal_value=%d\n", mode, attenuation, cal_value);
-            found = 1;
-            break;
+        found = 0;
+        struct mgc_distortion_range mgc_range;
+        attenuation = poal_config->rf_para[ch].mgc_gain_value;
+        mgc_range = poal_config->cal_level.rf_mode.mgc_distortion;
+        if(attenuation >= mgc_range.start_range && attenuation <= mgc_range.end_range){
+            if(cal_value > attenuation*10){
+                cal_value -= attenuation*10;
+            }
+            printf_debug("after MGC attenuation,mode:%d attenuation:%d, cal_value=%d\n", mode, attenuation, cal_value);
+            
         }
-                }
-    found = 0;
-    struct mgc_distortion_range mgc_range;
-    attenuation = poal_config->rf_para[ch].mgc_gain_value;
-    mgc_range = poal_config->cal_level.rf_mode.mgc_distortion;
-    if(attenuation >= mgc_range.start_range && attenuation <= mgc_range.end_range){
-        if(cal_value > attenuation*10){
-            cal_value -= attenuation*10;
-    }
-        
-
-        printf_debug("after MGC attenuation,mode:%d attenuation:%d, cal_value=%d\n", mode, attenuation, cal_value);
-        
     }
 #endif
     return cal_value;

@@ -23,7 +23,8 @@
 
 
 #define DMA_MAX_BLOCK (3)
-#define DMA_BUFFER_SIZE (16 * 1024 * 1024)
+#define DMA_BUFFER_16M_SIZE (16 * 1024 * 1024)
+#define DMA_BUFFER_128M_SIZE (128 * 1024 * 1024)
 
 typedef enum _read_status_
 {

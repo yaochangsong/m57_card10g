@@ -76,6 +76,7 @@ struct push_arg{
     struct timeval *ct;
     uint64_t nbyte;
     uint64_t count;
+    int fd;
 };
 
 
@@ -189,10 +190,15 @@ void *thread_loop_cb (void *s)
     memcpy(&args, s, sizeof(struct thread_args));
     
     pthread_detach(pthread_self());
-    pthread_cleanup_push(args.exit_callback, args.arg_cb);
+   // pthread_cleanup_push(args.exit_callback, args.arg_cb);
+    pthread_cleanup_push(args.exit_callback, &p_args);
     gettimeofday(&beginTime, NULL);
 
     fprintf(stderr, "#######start time %ld.%.9ld.\n",beginTime.tv_sec, beginTime.tv_usec);
+    p_args.ct = &beginTime;
+    p_args.nbyte = 0;
+    p_args.count = 0;
+    p_args.fd= *(int *)args.arg_cb;
 
     while(1){
         stateval = pthread_setcancelstate (PTHREAD_CANCEL_DISABLE , NULL);
@@ -201,10 +207,10 @@ void *thread_loop_cb (void *s)
         }
         if(args.callback){
             ret = args.callback(args.arg);
-            //p_args.count ++;
+            p_args.count ++;
         }
         if(ret > 0){
-           // p_args.nbyte += ret;
+            p_args.nbyte += ret;
         }
         stateval  = pthread_setcancelstate (PTHREAD_CANCEL_ENABLE , NULL);
         pthread_testcancel();

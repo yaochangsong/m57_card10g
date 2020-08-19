@@ -39,11 +39,12 @@
 #include "../executor/spm/spm.h"
 #include "config.h"
 
-#define DMA_BUFFER_SIZE (16 * 1024 * 1024)
 
 struct fs_context *fs_ctx = NULL;
 static bool disk_is_valid = false;
 static void  *disk_buffer_ptr  = NULL;
+volatile bool disk_is_format = false;
+volatile int disk_error_num = DISK_CODE_OK;
 
 static inline int _write_fs_disk_init(char *path)
 {
@@ -106,6 +107,7 @@ bool _fs_disk_valid(void)
 {
     #define DISK_NODE_NAME "/run/media/nvme0n1"
     if(access(DISK_NODE_NAME, F_OK)){
+        disk_error_num = DISK_CODE_NOT_FOUND;
         printf_note("Disk node[%s] is not valid\n", DISK_NODE_NAME);
         return false;
     }
@@ -117,12 +119,14 @@ bool _fs_disk_info(struct statfs *diskInfo)
     #define DISK_NODE_NAME "/run/media/nvme0n1"
     
     if(access(DISK_NODE_NAME, F_OK)){
+        disk_error_num = DISK_CODE_NOT_FOUND;
         printf_note("Disk node[%s] is not valid\n", DISK_NODE_NAME);
         return false;
     }
 
 	if(statfs(DISK_NODE_NAME, diskInfo))
 	{
+        disk_error_num = DISK_CODE_NOT_FORAMT;
 		printf_note("Disk node[%s] is unknown filesystem\n", DISK_NODE_NAME);
         return false;
 	}
@@ -130,31 +134,54 @@ bool _fs_disk_info(struct statfs *diskInfo)
     return true;
 }
 
+static disk_err_code _fs_get_err_code(void)
+{
+    return disk_error_num;
+}
+
 static inline int _fs_format(void)
 {
 	#define DISK_DEVICE_NAME "/dev/nvme0n1"
 	#define DISK_NODE_NAME "/run/media/nvme0n1"
     char cmd[128];
-	int ret;
-
+	int ret, err_no = 0;
+	disk_error_num = DISK_CODE_FORAMT;
+    if(disk_is_format){
+        printf_warn("disk is format now\n");
+        return DISK_CODE_FORAMT;
+    }
+        
+    disk_is_format = true;
     snprintf(cmd, sizeof(cmd), "umount %s",DISK_NODE_NAME);
     ret = safe_system(cmd);
-    if(!ret)
-    	printf_err("unmount %s failed\n", DISK_NODE_NAME);
-	snprintf(cmd, sizeof(cmd), "mkfs.ext2 %s",DISK_DEVICE_NAME);
-	ret = safe_system(cmd);    
-	if(!ret)
-    	printf_err("mkfs.ext2 %s failed\n", DISK_NODE_NAME);
-	snprintf(cmd, sizeof(cmd), "mount %s %s",DISK_DEVICE_NAME, DISK_NODE_NAME);
-	ret = safe_system(cmd);
-	if(!ret)
-    	printf_err("mount %s %s failed\n", DISK_DEVICE_NAME, DISK_NODE_NAME);
+    if(!ret){
+        err_no++;
+        printf_err("unmount %s failed\n", DISK_NODE_NAME);
+    }
+    snprintf(cmd, sizeof(cmd), "mkfs.ext2 %s",DISK_DEVICE_NAME);
+    ret = safe_system(cmd);    
+    if(!ret){
+        err_no++;
+        printf_err("mkfs.ext2 %s failed\n", DISK_NODE_NAME);
+    }
+    snprintf(cmd, sizeof(cmd), "mount %s %s",DISK_DEVICE_NAME, DISK_NODE_NAME);
+    ret = safe_system(cmd);
+    if(!ret){
+        printf_err("mount %s %s failed\n", DISK_DEVICE_NAME, DISK_NODE_NAME);
+        err_no++;
+    }
+   
+    disk_is_format = false;
+    if(err_no > 0)
+        disk_error_num = DISK_CODE_ERR;
+    else
+        disk_error_num = DISK_CODE_OK;
     return ret;
 }
 
 static inline int _fs_mkdir(char *dirname)
 {
-    if(disk_is_valid == false)
+    if(disk_is_valid == false || disk_is_format == true)
         return -1;
     if(dirname && access(dirname, F_OK)){
         printf("mkdir %s\n", dirname);
@@ -169,7 +196,7 @@ static inline int _fs_delete(char *filename)
     char path[PATH_MAX];
     int ret = 0;
     
-    if(disk_is_valid == false)
+    if(disk_is_valid == false || disk_is_format == true)
         return -1;
 
     if(filename == NULL)
@@ -198,7 +225,7 @@ static inline int _fs_find(char *filename,  int (*callback) (char *,void *, void
     struct stat stats;
     char *dirname;
     
-    if(disk_is_valid == false)
+    if(disk_is_valid == false || disk_is_format == true)
         return -1;
 
     if(filename == NULL)
@@ -237,6 +264,8 @@ static ssize_t _fs_dir(char *dirname, int (*callback) (char *,void *, void *), v
     struct dirent *dirp;
     struct stat stats;
     char path[PATH_MAX];
+    if(disk_is_valid == false || disk_is_format == true)
+        return -1;
     if(dirname == NULL)
         dirname = fs_get_root_dir();
     if((dp = opendir(dirname))==NULL){
@@ -299,7 +328,7 @@ static ssize_t _fs_start_save_file(char *filename)
     
     char path[512];
     
-    if(disk_is_valid == false)
+    if(disk_is_valid == false || disk_is_format == true)
         return -1;
     if(filename == NULL)
             return -1;
@@ -326,6 +355,47 @@ static ssize_t _fs_stop_save_file(char *filename)
 
 #define THREAD_FS_BACK_NAME "FS_BACK_FILE"
 
+static double difftime_us_val(const struct timeval *start, const struct timeval *end)
+{
+    double d;
+    time_t s;
+    suseconds_t u;
+    s = end->tv_sec - start->tv_sec;
+    u = end->tv_usec - start->tv_usec;
+    d = s;
+    d *= 1000000.0;//1 Ãë = 10^6 Î¢Ãë
+    d += u;
+    return d;
+}
+struct push_arg{
+    struct timeval *ct;
+    uint64_t nbyte;
+    uint64_t count;
+    int  fd;
+};
+static void _thread_exit_callback(void *arg){  
+    struct timeval *beginTime, endTime;
+    uint64_t nbyte;
+    float speed = 0;
+    double  diff_time_us = 0;
+    float diff_time_s = 0;
+    int fd = -1;
+    struct push_arg *pargs;
+    pargs = (struct push_arg *)arg;
+    beginTime = pargs->ct;
+    nbyte = pargs->nbyte;
+    fd = pargs->fd;
+    fprintf(stderr, ">>start time %ld.%.9ld., nbyte=%llu, fd=%d\n",beginTime->tv_sec, beginTime->tv_usec, nbyte, fd);
+    gettimeofday(&endTime, NULL);
+    fprintf(stderr, ">>end time %ld.%.9ld.\n",endTime.tv_sec, endTime.tv_usec);
+    diff_time_us = difftime_us_val(beginTime, &endTime);
+    diff_time_s = diff_time_us/1000000.0;
+    printf(">>diff us=%fus, %fs\n", diff_time_us, diff_time_s);
+     speed = (float)((nbyte / (1024 * 1024)) / diff_time_s);
+     fprintf(stdout,"speed: %.2f MBps, count=%llu\n", speed, pargs->count);
+     if(fd > 0)
+        close(fd);
+}  
 static ssize_t _fs_start_read_raw_file_loop(void *arg)
 {
     ssize_t nread = 0; 
@@ -357,7 +427,7 @@ static ssize_t _fs_start_read_raw_file(char *filename)
     uint32_t band;
     uint64_t freq;
     int ch = 0;
-    if(disk_is_valid == false)
+    if(disk_is_valid == false || disk_is_format == true)
         return -1;
 #if 1
     if(filename == NULL)
@@ -367,14 +437,14 @@ static ssize_t _fs_start_read_raw_file(char *filename)
     //config_write_data(EX_MID_FREQ_CMD,  EX_MID_FREQ, ch, &freq);
     //config_write_data(EX_MID_FREQ_CMD,  EX_BANDWITH, ch, &band);
     snprintf(path, sizeof(path), "%s/%s", fs_get_root_dir(), filename);
-    file_fd = open(path, O_RDONLY, 0666);
+    file_fd = open(path, O_RDONLY | O_DIRECT | O_SYNC, 0666);
     if (file_fd < 0) {
         printf_err("open % fail\n", path);
         return -1;
     } 
     printf_note("start read file: %s, file_fd=%d\n", path, file_fd);
     io_start_backtrace_file(NULL);
-    ret =  pthread_create_detach (NULL, _fs_start_read_raw_file_loop, _fs_read_exit_callback,  
+    ret =  pthread_create_detach (NULL, _fs_start_read_raw_file_loop, _thread_exit_callback,  
                                 THREAD_FS_BACK_NAME, &file_fd, &file_fd);
     if(ret != 0){
         perror("pthread cread save file thread!!");
@@ -413,6 +483,7 @@ static const struct fs_ops _fs_ops = {
     .fs_stop_save_file = _fs_stop_save_file,
     .fs_start_read_raw_file = _fs_start_read_raw_file,
     .fs_stop_read_raw_file = _fs_stop_read_raw_file,
+	.fs_get_err_code = _fs_get_err_code,
     .fs_close = _fs_close,
 };
 

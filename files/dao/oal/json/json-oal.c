@@ -627,6 +627,14 @@ static int json_parse_config_param(const cJSON* root, struct poal_config *config
         config->cal_level.specturm.global_roughly_power_lever = value->valueint;
         printf_debug("psd_power_global=>value is:%d\n",config->cal_level.specturm.global_roughly_power_lever);
     }
+    value = cJSON_GetObjectItem(calibration, "gain_calibration");
+    if(value!= NULL && cJSON_IsString(value)){
+        if(!strcmp(value->valuestring, "true"))
+            config->cal_level.specturm.gain_calibration_onoff = true;
+        else
+            config->cal_level.specturm.gain_calibration_onoff = false;
+        printf_debug("gain_calibration_onoff=>value is:%d\n",config->cal_level.specturm.gain_calibration_onoff);
+    }
     /* psd_fftsize */
     cJSON *psd_fftsize = NULL;
     psd_fftsize = cJSON_GetObjectItem(calibration, "psd_fftsize");

@@ -304,7 +304,7 @@ static int8_t  executor_points_scan(uint8_t ch, work_mode_type mode, void *args)
         if(points_count > 1){
             executor_set_command(EX_MID_FREQ_CMD, EX_SUB_CH_ONOFF, subch, &enable);
             usleep(20000);
-            ret = spmctx->ops->signal_strength(subch, i, &is_signal, &strength);
+            ret = spmctx->ops->signal_strength(ch, subch, i, &is_signal, &strength);
         //is_signal = true;
         if(ret == 0){
             printf_note("is sigal: %s, strength:%d\n", (is_signal == true ? "Yes":"No"), strength);

@@ -155,10 +155,10 @@ static inline const char * get_str_by_code(const char *const *list, int max, int
 
 
 static struct _spm_stream spm_stream[] = {
-        {DMA_IQ_DEV,  -1, NULL, DMA_BUFFER_SIZE, "IQ Stream", DMA_READ},
-        {DMA_FFT_DEV, -1, NULL, DMA_BUFFER_SIZE, "FFT Stream", DMA_READ},
-        {DMA_ADC_TX_DEV, -1, NULL, DMA_BUFFER_SIZE, "ADC Tx Stream", DMA_WRITE},
-        {DMA_ADC_RX_DEV, -1, NULL, DMA_BUFFER_SIZE, "ADC Rx Stream", DMA_READ},
+        {DMA_IQ_DEV,  -1, NULL, DMA_BUFFER_16M_SIZE, "IQ Stream", DMA_READ},
+        {DMA_FFT_DEV, -1, NULL, DMA_BUFFER_16M_SIZE, "FFT Stream", DMA_READ},
+        {DMA_ADC_TX_DEV, -1, NULL, DMA_BUFFER_128M_SIZE, "ADC Tx Stream", DMA_WRITE},
+        {DMA_ADC_RX_DEV, -1, NULL, DMA_BUFFER_128M_SIZE, "ADC Rx Stream", DMA_READ},
 };
 
 static const char *const dma_status_array[] = {
@@ -235,7 +235,7 @@ static ssize_t spm_stream_read(enum stream_type type, volatile void **data)
                 printf_debug("[%s]DMA idle!\n", pstream[type].name);
                 return -1;
             }
-            usleep(100);
+            usleep(5);
             printf_debug("[%s]no data, waitting\n", pstream[type].name);
         }else if(info.status == READ_BUFFER_STATUS_OVERRUN){
             printf_warn("[%s]data is overrun\n", pstream[type].name);
@@ -312,6 +312,8 @@ static fft_t *spm_data_order(volatile fft_t *fft_data,
     side_rate  =  get_side_band_rate(run_args->scan_bw);
     /* 去边带后FFT长度 */
     order_len = (size_t)((float)(fft_len) / side_rate);
+    /*双字节对齐*/
+    order_len = order_len&0x0fffffffe; 
     printf_debug("side_rate = %f[fft_len:%u, order_len=%u], scan_bw=%u\n", side_rate, fft_len, order_len, run_args->scan_bw);
     // printf_warn("run_args->fft_ptr=%p, fft_data=%p, order_len=%u, fft_len=%u, side_rate=%f\n", run_args->fft_ptr, fft_data, order_len,fft_len, side_rate);
     /* 信号倒谱 */
@@ -857,11 +859,13 @@ static int spm_agc_ctrl_v3(int ch, struct spm_context *ctx)
             _set_half_attenuation_value(ch, ctx);
             /* 读取衰减目标值 */
             usleep(100000);
-            dst_val[ch] = _spm_read_signal_value(ch);
+            dst_val[ch] = agc_ctrl_dbm;//_spm_read_signal_value(ch);
             _get_range_max(ch, rf_mode, dst_val[ch], &max_val[ch], ctx);
             _get_range_min(ch, rf_mode, dst_val[ch], &min_val[ch], ctx);
-            up_val[ch] = max_val[ch] - dst_val[ch];
-            down_val[ch] = dst_val[ch] - min_val[ch];
+            down_val[ch]= max_val[ch] - dst_val[ch];
+            up_val[ch]   = dst_val[ch] - min_val[ch];
+            if(up_val[ch] < 0)
+                up_val[ch] = -up_val[ch];
             printf_info("up_val=%d, down_val=%d, dst_val=%d, max_val=%d, min_val=%d\n", 
                         up_val[ch], down_val[ch], dst_val[ch], max_val[ch], min_val[ch]);
             config_read_by_cmd(EX_RF_FREQ_CMD, EX_RF_ATTENUATION, ch, &rf_attenuation[ch]);
@@ -885,7 +889,8 @@ static int spm_agc_ctrl_v3(int ch, struct spm_context *ctx)
     agc_dbm_val =  _spm_read_signal_value(ch);
     usleep(1000);
 
-    printf_info("[%d]read signal value: %d, up_val=%d, down_val=%d, rf_attenuation=%d, mgc_attenuation=%d\n", dst_val[ch], agc_dbm_val, up_val[ch], down_val[ch], rf_attenuation[ch], mgc_attenuation[ch]);
+    printf_info("[%d]dst_val=%d, read signal value: %d, up_val=%d, down_val=%d, rf_attenuation=%d, mgc_attenuation=%d\n", agc_ctrl_dbm,dst_val[ch], agc_dbm_val, up_val[ch], down_val[ch], rf_attenuation[ch], mgc_attenuation[ch]);
+
     if(agc_dbm_val < (dst_val[ch] - AGC_CTRL_PRECISION)){
         if(up_val[ch] <= 0){
             printf_note(">>>Arrived TOP<<<\n");
@@ -1162,13 +1167,13 @@ static int32_t _get_signal_threshold_by_amp(uint8_t ch, uint32_t index, int32_t 
 }
 
 /* 判断对应通道是否有信号:      true: 有信号; false:无信号*/
-static int32_t  spm_get_signal_strength(uint8_t ch, uint32_t index, bool *is_singal, uint16_t *strength)
+static int32_t  spm_get_signal_strength(uint8_t ch,uint8_t subch, uint32_t index, bool *is_singal, uint16_t *strength)
 {
     uint16_t sig_amp = 0;
     int32_t sigal_thred = 0;
     int32_t ret;
     
-    sig_amp = io_get_signal_strength(ch);
+    sig_amp = io_get_signal_strength(subch);
     if(strength != NULL)
         *strength = sig_amp;
     ret = _get_signal_threshold_by_amp(ch, index, &sigal_thred);
@@ -1205,15 +1210,15 @@ try_gain:
     if(info.status != 0){   /* NOT OK */
         printf_debug("write status:%d, block_num:%d\n", info.status, info.block_num);
         if(info.status == WRITE_BUFFER_STATUS_FAIL){
-            printf_debug("read error!\n");
+            printf_warn("read error!\n");
             exit(1);
         }else if (info.status == WRITE_BUFFER_STATUS_EMPTY){
-            printf_debug("write buffer empty\n");
+            printf_warn("write buffer empty\n");
         }else if (info.status == WRITE_BUFFER_STATUS_FULL){
-            printf_debug("write buffer full\n");
-            usleep(100);
+            printf_warn("write buffer full\n");
+            usleep(10);
         }else{
-            printf_debug("unknown status[0x%x]\n", info.status);
+            printf_warn("unknown status[0x%x]\n", info.status);
         }
     }
 

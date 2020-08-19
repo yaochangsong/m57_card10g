@@ -43,7 +43,7 @@ struct spm_backend_ops {
     /* 获取驻留时间是否到达：根据通道驻留策略和是否有信号 */
     bool (*residency_time_arrived)(uint8_t, int, bool);
     /* 获取某通道是否有信号；并返回信号强度 */
-    int32_t (*signal_strength)(uint8_t ch, uint32_t, bool *is_singal, uint16_t *strength);
+    int32_t (*signal_strength)(uint8_t ch,uint8_t subch, uint32_t, bool *is_singal, uint16_t *strength);
     int (*convet_iq_to_fft)(void *, void *, size_t);
     int (*set_psd_analysis_enable)(bool);
     int (*get_psd_analysis_result)(void *);

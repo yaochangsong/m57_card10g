@@ -24,13 +24,14 @@ start()
 {
 	while :
 	do
-    	sleep 10
+    	sleep 2
     	restart_process_if_die $proc_name
 	done
 }
 
 stop()
 {
+    killall checkproc.sh
     echo "stop..."
 }
 

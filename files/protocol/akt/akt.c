@@ -798,6 +798,7 @@ static int akt_execute_set_command(void *cl)
         case AUDIO_VOLUME_CMD:
             check_valid_channel(header->buf[0]);
             poal_config->multi_freq_point_param[ch].points[0].audio_volume = header->buf[1];
+            printf_note("audio_volume=%d\n", poal_config->multi_freq_point_param[ch].points[0].audio_volume);
             break;
         /* disk cmd */
         case STORAGE_IQ_CMD:

@@ -642,13 +642,14 @@ static int akt_execute_set_command(void *cl)
         case RF_GAIN_MODE_CMD:
             check_valid_channel(header->buf[0]);
             poal_config->rf_para[ch].gain_ctrl_method = header->buf[1];
+            printf_note("gain_ctrl_method=%d\n", poal_config->rf_para[ch].gain_ctrl_method);
             //executor_set_command(EX_RF_FREQ_CMD, EX_RF_GAIN_MODE, ch, &poal_config->rf_para[ch].gain_ctrl_method);
             break;
         case RF_AGC_CMD:
             check_valid_channel(header->buf[0]);
             poal_config->rf_para[ch].agc_ctrl_time = *((uint16_t *)(header->buf + 1));
             poal_config->rf_para[ch].agc_mid_freq_out_level = *((uint8_t *)(header->buf + 3));
-            printf_info("agc_ctrl_time:%d, agc_mid_freq_out_level=%d\n", 
+            printf_note("agc_ctrl_time:%d, agc_mid_freq_out_level=%d\n", 
                         poal_config->rf_para[ch].agc_ctrl_time, poal_config->rf_para[ch].agc_mid_freq_out_level);
             break;
         case MID_FREQ_ATTENUATION_CMD:

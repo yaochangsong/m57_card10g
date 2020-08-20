@@ -448,14 +448,14 @@ void ad_9680_ddc_5g_int(volatile char *Spi_synth,uint8_t cs)
     spi_wrapper(Spi_synth, 0x200,0x02,cs);//ddc0 & ddc1
     spi_wrapper(Spi_synth, 0x201,0x01,cs);//dec 2
 //----ddc0 mode
-    spi_wrapper(Spi_synth, 0x310,0x03,cs);//test mode and dec 2 == 0x33 03
+    spi_wrapper(Spi_synth, 0x310,0x43,cs);//test mode and dec 2 == 0x33 03
     spi_wrapper(Spi_synth, 0x311,0x05,cs);//ddc0 a
     spi_wrapper(Spi_synth, 0x314,0x00,cs);//nco0 f/fs*4096
     spi_wrapper(Spi_synth, 0x315,0x0c,cs);//nco0 f/fs*4096
     spi_wrapper(Spi_synth, 0x320,0x00,cs);//nco0 phase
     spi_wrapper(Spi_synth, 0x321,0x00,cs);
 //----ddc1 mode
-    spi_wrapper(Spi_synth, 0x330,0x03,cs);// 03
+    spi_wrapper(Spi_synth, 0x330,0x43,cs);// 03
     spi_wrapper(Spi_synth, 0x331,0x00,cs);//ddc1 b
     spi_wrapper(Spi_synth, 0x334,0x00,cs);//nco1 f/fs*4096
     spi_wrapper(Spi_synth, 0x335,0x04,cs);//nco1 f/fs*4096

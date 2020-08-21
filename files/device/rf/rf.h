@@ -4,8 +4,8 @@
 #define GPIO_BASE_OFFSET              960
 struct calibration_source_t{
     uint8_t source;
-    uint32_t middle_freq_mhz;
-    float power;
+    uint32_t middle_freq_khz;
+    int8_t power;
 }__attribute__ ((packed));
 
 extern    int8_t   rf_init(void);                                                      //射频初始化

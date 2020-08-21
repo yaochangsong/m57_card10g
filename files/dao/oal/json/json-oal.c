@@ -1025,7 +1025,9 @@ static int json_parse_config_param(const cJSON* root, struct poal_config *config
             } 
             value = cJSON_GetObjectItem(node, "audio_volume");
             if(cJSON_IsNumber(value)){
-                config->multi_freq_point_param[i].points[0].audio_volume=value->valueint;
+                for (int j = 0; j < MAX_SIG_CHANNLE; j++) {
+                    config->multi_freq_point_param[i].points[j].audio_volume=value->valueint;
+                }
                 printfd("audio_volume:%d, ", config->multi_freq_point_param[i].points[0].audio_volume);
             } 
 

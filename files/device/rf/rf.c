@@ -189,10 +189,15 @@ uint8_t rf_set_interface(uint8_t cmd,uint8_t ch,void *data){
             CALIBRATION_SOURCE_ST *akt_cs;
             struct calibration_source_t cs;
             akt_cs = (CALIBRATION_SOURCE_ST *)data;
-            cs.source = akt_cs->enable;
-            cs.middle_freq_mhz = akt_cs->middle_freq_hz/1000000;
-            cs.power = (float)akt_cs->power;
-            printf_note("source=%d, middle_freq_mhz=%uMhz, power=%f\n", cs.source, cs.middle_freq_mhz, cs.power);
+            cs.source = (akt_cs->enable == 0) ? 0 : 1;
+            cs.middle_freq_khz = akt_cs->middle_freq_hz/1000;
+            cs.power = akt_cs->power + 30;
+            if(cs.power > 0){
+                cs.power = 0;
+            }else if(cs.power < -60){
+                cs.power = -60;
+            }
+            printf_note("source=%d, middle_freq_khz=%uKhz, power=%f\n", cs.source, cs.middle_freq_khz, cs.power);
 #if defined(SUPPORT_RF_SPI)
             ret = spi_rf_set_command(SPI_RF_CALIBRATE_SOURCE_SET, &cs);
 #endif
@@ -202,13 +207,14 @@ uint8_t rf_set_interface(uint8_t cmd,uint8_t ch,void *data){
                         //val = (*((int8_t *)data) == 0 ? 0 : 0x01);
                         /* 0关闭直采，1开启直采 */
                         //usleep(500);
-                        //get_fpga_reg()->rfReg->freq_khz = cs.middle_freq_mhz;
+                        get_fpga_reg()->rfReg->freq_khz = cs.middle_freq_khz;
                         usleep(500);
                         get_fpga_reg()->rfReg->input = cs.source;
                         usleep(500);
-                        get_fpga_reg()->rfReg->revise_minus = (uint32_t)akt_cs->power;
+                        get_fpga_reg()->rfReg->revise_minus = -akt_cs->power;
                         usleep(500);
-                        printf_note("input=%d revise_minus=%d  freq_khz=%x\n",get_fpga_reg()->rfReg->input&0xffff,get_fpga_reg()->rfReg->revise_minus&0xffff,get_fpga_reg()->rfReg->freq_khz);
+                        printf_note("write:input=%d revise_minus=%d  freq_khz=%x\n",cs.source,-akt_cs->power,cs.middle_freq_khz);
+                        printf_note("read: input=%d revise_minus=%d  freq_khz=%x\n",get_fpga_reg()->rfReg->input&0xffff,get_fpga_reg()->rfReg->revise_minus&0xffff,get_fpga_reg()->rfReg->freq_khz);
 #endif
 
             break;

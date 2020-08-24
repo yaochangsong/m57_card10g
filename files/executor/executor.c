@@ -271,24 +271,17 @@ static int8_t  executor_points_scan(uint8_t ch, work_mode_type mode, void *args)
         /* 解调参数: 音频 */
         //printf_note("enable.audio_en=%d, residence_time=%u,points_count=%u\n",poal_config->enable.audio_en,point->residence_time, points_count);
             
-            
-            
-            
-        printf_note("d_center_freq=%llu, d_method=%d, d_bandwith=%u noise=%d noise_en=%d\n",poal_config->multi_freq_point_param[ch].points[i].center_freq,
+        printf_note("d_center_freq=%llu, d_method=%d, d_bandwith=%u noise=%d noise_en=%d volume=%d\n",poal_config->multi_freq_point_param[ch].points[i].center_freq,
                     poal_config->multi_freq_point_param[ch].points[i].d_method,poal_config->multi_freq_point_param[ch].points[i].d_bandwith,
-                    poal_config->multi_freq_point_param[ch].points[i].noise_thrh,poal_config->multi_freq_point_param[ch].points[i].noise_en);
-        if(poal_config->enable.audio_en || points_count > 1){
-            if(poal_config->enable.audio_en){
-                subch = CONFIG_AUDIO_CHANNEL;
-            }else if(points_count > 1){
-                subch = CONFIG_SIGNAL_CHECK_CHANNEL;
-            }
+                    poal_config->multi_freq_point_param[ch].points[i].noise_thrh,poal_config->multi_freq_point_param[ch].points[i].noise_en,
+                    poal_config->multi_freq_point_param[ch].points[i].audio_volume);
+        if(poal_config->enable.audio_en){
+            subch = CONFIG_AUDIO_CHANNEL;
             executor_set_command(EX_MID_FREQ_CMD, EX_DEC_METHOD, subch, &poal_config->multi_freq_point_param[ch].points[i].d_method);
             executor_set_command(EX_MID_FREQ_CMD, EX_DEC_BW, subch, &poal_config->multi_freq_point_param[ch].points[i].d_bandwith);
             executor_set_command(EX_MID_FREQ_CMD, EX_DEC_MID_FREQ, subch,&poal_config->multi_freq_point_param[ch].points[i].center_freq,poal_config->multi_freq_point_param[ch].points[i].center_freq);
             executor_set_command(EX_MID_FREQ_CMD, EX_MUTE_THRE, subch,&poal_config->multi_freq_point_param[ch].points[i].noise_thrh,poal_config->multi_freq_point_param[ch].points[i].noise_en);
-        }
-        if(poal_config->enable.audio_en){
+            
             executor_set_command(EX_MID_FREQ_CMD, EX_AUDIO_VOL_CTRL, subch,&point->points[i].audio_volume);
             io_set_enable_command(AUDIO_MODE_ENABLE, ch, CONFIG_AUDIO_CHANNEL, 0);  //音频通道开�?
             
@@ -300,15 +293,11 @@ static int8_t  executor_points_scan(uint8_t ch, work_mode_type mode, void *args)
 #if defined (SUPPORT_RESIDENCY_STRATEGY) 
         uint16_t strength = 0;
         bool is_signal = false;
-        int32_t ret = -1, enable=1;
-        if(points_count > 1){
-            executor_set_command(EX_MID_FREQ_CMD, EX_SUB_CH_ONOFF, subch, &enable);
-            usleep(20000);
-            ret = spmctx->ops->signal_strength(ch, subch, i, &is_signal, &strength);
-        //is_signal = true;
+        int32_t ret = -1;
+        usleep(20000);
+        ret = spmctx->ops->signal_strength(ch, subch, i, &is_signal, &strength);
         if(ret == 0){
             printf_note("is sigal: %s, strength:%d\n", (is_signal == true ? "Yes":"No"), strength);
-            }
         }
 #endif
         s_time = time(NULL);

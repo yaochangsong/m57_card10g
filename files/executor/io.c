@@ -730,17 +730,30 @@ void io_set_rf_calibration_source_level(int level)
     }else if(reg_val < -60){
         reg_val = -60;
     }
+    printf_note("calibration source level = %d\n", reg_val);
     get_fpga_reg()->rfReg->revise_minus = reg_val;
     usleep(300);
 }
 
 void io_set_rf_calibration_source_enable(int enable)
 {
+    struct poal_config *poal_config = &(config_get_config()->oal_config);
     int reg;
     reg = (enable == 0 ? 0 : 1);
     /* 0 为外部射频输入，1 为校正源输入 */
-    get_fpga_reg()->rfReg->revise_minus = reg;
+    get_fpga_reg()->rfReg->input = reg;
     usleep(300);
+    poal_config->enable.cali_source_en = (enable == 0 ? 0 : 1);
+    printf_note("cali_source_en: 0x%x[0x%x]\n", poal_config->enable.cali_source_en, get_fpga_reg()->rfReg->input);
+}
+bool is_rf_calibration_source_enable(void)
+{
+    struct poal_config *poal_config = &(config_get_config()->oal_config);
+    bool enable = false;
+    enable = poal_config->enable.cali_source_en & 0x01;
+    enable = (enable == 0 ? false : true);
+    printf_note("calibration source enable: %s\n", (enable==true ? "true" : "false"));
+    return enable;
 }
 
 void io_dma_dev_enable(uint32_t ch, uint8_t type, uint8_t continuous)

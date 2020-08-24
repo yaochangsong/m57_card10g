@@ -66,6 +66,7 @@ struct output_en_st{
     volatile uint8_t  iq_en;
     volatile uint8_t  spec_analy_en;
     volatile uint8_t  direction_en;
+    volatile uint8_t  cali_source_en;
     /*        bit_en: 8bit
     bit[7]---bit[6]---bit[5]------bit[4]--------bit[3]--------bit[2]-----bit[1]------bit[0]
      **-----**-------**-- [direction_en]--[spec_analy_en]--[iq_en]--[audio_en]--[psd_en]

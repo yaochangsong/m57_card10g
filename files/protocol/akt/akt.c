@@ -183,6 +183,16 @@ static int akt_convert_oal_config(uint8_t ch, uint8_t cmd)
             printf_note("enable subch=%d, sub_ch bit_en=%x, sub_ch psd_en=%d, sub_ch audio_en=%d,sub_ch iq_en=%d\n", ch, poal_config->sub_ch_enable[ch].bit_en, 
             poal_config->sub_ch_enable[ch].psd_en,poal_config->sub_ch_enable[ch].audio_en,poal_config->sub_ch_enable[ch].iq_en);
             break;
+        case SAMPLE_CONTROL_FFT_CMD:
+        {
+            int i;
+            struct multi_freq_point_para_st *point;
+            point = &poal_config->multi_freq_point_param[ch];
+            for(i = 0; i < MAX_SIG_CHANNLE; i++){
+                point->points[i].fft_size = fftsize_check(pakt_config->fft[ch].fft_size);
+            }
+        }
+            break;
         case DIRECTION_MULTI_FREQ_ZONE_CMD: /* 多频段扫描参数 */
         {
             switch (poal_config->work_mode)
@@ -341,6 +351,47 @@ static int akt_convert_oal_config(uint8_t ch, uint8_t cmd)
     return 0;
 }
 
+static int akt_cali_source_param_convert(void *args)
+{
+    struct poal_config *poal_config = &(config_get_config()->oal_config);
+    CALIBRATION_SOURCE_ST_V2 *cal_source;
+    int ch;
+    struct multi_freq_point_para_st *point;
+    int i, count = 0;
+    cal_source = args;
+    if(cal_source->e_freq < cal_source->s_freq){
+        printf_err("s_freq[%llu] is big than e_freq[%llu]\n", cal_source->e_freq, cal_source->s_freq);
+        return -1;
+    }
+        
+    count = (cal_source->e_freq - cal_source->s_freq)/cal_source->step;
+    ch = cal_source->cid;
+    point = &poal_config->multi_freq_point_param[ch];
+    /*主通道转换*/
+    point->cid = ch;
+    /* 频点数 */
+    if(count >= MAX_SIG_CHANNLE){
+        printf_err("freq count is bigger: %d than %d\n", count, MAX_SIG_CHANNLE);
+        return -1;
+    }
+    point->freq_point_cnt = count;
+    /* 驻留时间:秒 */
+    point->residence_time = cal_source->r_time_ms/1000;
+    printf_note("[ch:%d]freq_point_cnt:%u\n",ch, point->freq_point_cnt);
+    printf_note("residence_time:%uSec.\n",point->residence_time);
+
+    for(i = 0; i < point->freq_point_cnt; i++){
+        point->points[i].center_freq = cal_source->middle_freq_hz + i * cal_source->step;
+        point->points[i].bandwidth = 175000000;
+        if(point->points[i].fft_size == 0){
+            printf_note("FFT size is 0, set default 2048\n");
+            point->points[i].fft_size =fftsize_check(2048);
+        }
+        printf_note("[%d]center_freq:%llu, bandwidth:%llu,fft_size:%u\n",i, point->points[i].center_freq, point->points[i].bandwidth, point->points[i].fft_size);
+    }
+    poal_config->work_mode =OAL_MULTI_POINT_SCAN_MODE;
+    return 0;
+}
 static int akt_work_mode_set(struct akt_protocal_param *akt_config)
 {
     struct poal_config *poal_config = &(config_get_config()->oal_config);
@@ -453,7 +504,7 @@ static int akt_execute_set_command(void *cl)
                 err_code = RET_CODE_PARAMTER_ERR;
                 goto set_exit;
             }
-            if(pakt_config->enable.output_en){
+            if(pakt_config->enable.output_en && is_rf_calibration_source_enable() == false){
                akt_convert_oal_config(ch, DIRECTION_MULTI_FREQ_ZONE_CMD);
                //config_save_batch(EX_WORK_MODE_CMD, EX_FIXED_FREQ_ANYS_MODE, config_get_config());
             }   
@@ -484,7 +535,10 @@ static int akt_execute_set_command(void *cl)
         }
         case DIRECTION_MULTI_FREQ_ZONE_CMD:
         {
-            
+            /* 校准源模式下不启动该参数 */
+            if(is_rf_calibration_source_enable() == true){
+                break;
+            }
             check_valid_channel(header->buf[0]);
             memcpy(&pakt_config->multi_freq_zone[ch], header->buf, sizeof(DIRECTION_MULTI_FREQ_ZONE_PARAM));
             printf_info("resident_time:%d\n", pakt_config->multi_freq_zone[ch].resident_time);
@@ -663,10 +717,10 @@ static int akt_execute_set_command(void *cl)
         case SAMPLE_CONTROL_FFT_CMD:
             check_valid_channel(header->buf[0]);
             memcpy(&(pakt_config->fft[ch]), header->buf, sizeof(DIRECTION_FFT_PARAM));
-            //if(akt_convert_oal_config(ch, header->code) == -1){
-            //    err_code = RET_CODE_PARAMTER_ERR;
-            //    goto set_exit;
-            //}
+            if(akt_convert_oal_config(ch, SAMPLE_CONTROL_FFT_CMD) == -1){
+                err_code = RET_CODE_PARAMTER_ERR;
+                goto set_exit;
+            }
             executor_set_command(EX_MID_FREQ_CMD, EX_FFT_SIZE, ch, &pakt_config->fft[ch].fft_size);
             break;
         case SUB_SIGNAL_PARAM_CMD:
@@ -788,10 +842,17 @@ static int akt_execute_set_command(void *cl)
             printf_note("RF calibrate: cid=%d, enable=%d, middle_freq_hz=%uhz, power=%d, s_freq=%llu, e_freq=%llu, r_time_ms=%u,step=%llu\n", 
                 cal_source.cid, cal_source.enable, cal_source.middle_freq_hz, cal_source.power, cal_source.s_freq, cal_source.e_freq, cal_source.r_time_ms, cal_source.step);
             //executor_set_command(EX_RF_FREQ_CMD, EX_RF_CALIBRATE, ch, &cal_source);
-            if(cal_source.enable)
-                rf_calibration_source_start(&cal_source);
-            else
-                rf_calibration_source_stop(NULL);
+            if(cal_source.enable){
+                if(akt_cali_source_param_convert(&cal_source) != 0){
+                    err_code = RET_CODE_PARAMTER_ERR;
+                    goto set_exit;
+                }
+                io_set_rf_calibration_source_enable(1);
+                io_set_rf_calibration_source_level(cal_source.power);
+            }
+            else{
+                io_set_rf_calibration_source_enable(0);
+            }
             break;
         }
         case FREQ_RESIDENT_MODE:

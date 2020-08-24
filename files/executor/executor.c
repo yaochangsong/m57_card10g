@@ -98,6 +98,7 @@ int executor_tcp_disconnect_notify(void *cl)
             executor_set_command(EX_MID_FREQ_CMD, EX_SUB_CH_DEC_METHOD, i, &default_method);
             memset(&poal_config->sub_ch_enable[i], 0, sizeof(struct output_en_st));
         }
+        io_set_rf_calibration_source_enable(0);
         /* 所有客户端离线，关闭相关使能，线程复位到等待状�?*/
         memset(&poal_config->enable, 0, sizeof(poal_config->enable));
         poal_config->enable.bit_reset = true; /* reset(stop) all working task */

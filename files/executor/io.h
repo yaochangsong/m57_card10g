@@ -276,4 +276,5 @@ extern void io_get_board_power(void *args);
 extern bool io_get_inout_clock_status(void *args);
 extern void io_set_rf_calibration_source_level(int level);
 extern void io_set_rf_calibration_source_enable(int enable);
+extern bool is_rf_calibration_source_enable(void);
 #endif

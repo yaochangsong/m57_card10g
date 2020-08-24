@@ -782,12 +782,16 @@ static int akt_execute_set_command(void *cl)
             break;       
         case DEVICE_CALIBRATE_CMD:
         {
-            CALIBRATION_SOURCE_ST cal_source;
+            CALIBRATION_SOURCE_ST_V2 cal_source;
             check_valid_channel(header->buf[0]);
-            memcpy(&cal_source, header->buf, sizeof(CALIBRATION_SOURCE_ST));
-            printf_note("RF calibrate: cid=%d, enable=%d, middle_freq_hz=%uhz, power=%d\n", 
-                cal_source.cid, cal_source.enable, cal_source.middle_freq_hz, cal_source.power);
-            executor_set_command(EX_RF_FREQ_CMD, EX_RF_CALIBRATE, ch, &cal_source);
+            memcpy(&cal_source, header->buf, sizeof(CALIBRATION_SOURCE_ST_V2));
+            printf_note("RF calibrate: cid=%d, enable=%d, middle_freq_hz=%uhz, power=%d, s_freq=%llu, e_freq=%llu, r_time_ms=%u,step=%llu\n", 
+                cal_source.cid, cal_source.enable, cal_source.middle_freq_hz, cal_source.power, cal_source.s_freq, cal_source.e_freq, cal_source.r_time_ms, cal_source.step);
+            //executor_set_command(EX_RF_FREQ_CMD, EX_RF_CALIBRATE, ch, &cal_source);
+            if(cal_source.enable)
+                rf_calibration_source_start(&cal_source);
+            else
+                rf_calibration_source_stop(NULL);
             break;
         }
         case FREQ_RESIDENT_MODE:

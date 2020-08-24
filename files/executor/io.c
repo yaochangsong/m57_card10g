@@ -718,6 +718,30 @@ void io_set_calibrate_val(uint32_t ch, uint32_t  cal_value)
 #endif
 }
 
+void io_set_rf_calibration_source_level(int level)
+{
+    /*  射频模块-90～-30dBm 功率可调，步进 1dB 
+        接收机校正衰减有效范围为 寄存器0 dB～60dB
+    */
+    int reg_val;
+    reg_val = level + 30;
+    if(reg_val > 0){
+        reg_val = 0;
+    }else if(reg_val < -60){
+        reg_val = -60;
+    }
+    get_fpga_reg()->rfReg->revise_minus = reg_val;
+    usleep(300);
+}
+
+void io_set_rf_calibration_source_enable(int enable)
+{
+    int reg;
+    reg = (enable == 0 ? 0 : 1);
+    /* 0 为外部射频输入，1 为校正源输入 */
+    get_fpga_reg()->rfReg->revise_minus = reg;
+    usleep(300);
+}
 
 void io_dma_dev_enable(uint32_t ch, uint8_t type, uint8_t continuous)
 {

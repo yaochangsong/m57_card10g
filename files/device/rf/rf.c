@@ -1,5 +1,6 @@
 #include "config.h"
 #include "../../executor/spm/io_fpga.h"
+#include "rf.h"
 
 uint8_t rf_set_interface(uint8_t cmd,uint8_t ch,void *data){
     uint8_t ret = -1;
@@ -351,6 +352,70 @@ uint8_t rf_read_interface(uint8_t cmd,uint8_t ch,void *data){
 
 }
 
+static int  _calibration_source_loop(void *args)
+{
+    struct  calibration_source_args_t *cs_args = args;
+    int i, count = 0;
+    uint32_t r_time_us = cs_args->r_time_ms *1000;
+    uint64_t middle_freq_khz = 0;
+    count = (cs_args->e_freq - cs_args->s_freq)/cs_args->step;
+    middle_freq_khz = cs_args->rf_args.middle_freq_khz;
+    io_set_rf_calibration_source_enable(1);
+    io_set_rf_calibration_source_level(cs_args->rf_args.power);
+    for(i = 0; i< count; i++){
+        get_fpga_reg()->rfReg->freq_khz = middle_freq_khz + i * cs_args->step/1000;
+        printf_note("[%d]freq_khz=%u, start_mid_khz=%d, count=%d, r_time_us=%d\n", i, middle_freq_khz+ i * cs_args->step/1000, middle_freq_khz, count, r_time_us);
+        usleep(r_time_us);
+        pthread_setcancelstate (PTHREAD_CANCEL_ENABLE , NULL);
+        pthread_testcancel();
+    }
+    return 0;
+}
+#define THREAD_CAL_SOURCE_NAME "CAL_SOURCE"
+static void  _calibration_source_exit(void *args)
+{
+    printf_note(">>>>>>>_calibration source exit!!\n");
+    if(args != NULL)
+        safe_free(args);
+}
+
+int rf_calibration_source_start(void *args)
+{
+    CALIBRATION_SOURCE_ST_V2 *cal = args;
+    struct calibration_source_t cs;
+    int ret = -1;
+    struct  calibration_source_args_t *cs_args;
+
+    cs_args = safe_malloc(sizeof(struct calibration_source_args_t));
+    cs_args->rf_args.middle_freq_khz = cal->middle_freq_hz/1000;
+    cs_args->rf_args.power = cal->power;
+    cs_args->rf_args.source = cal->enable;
+    cs_args->e_freq = cal->e_freq;
+    cs_args->s_freq = cal->s_freq;
+    cs_args->step = cal->step;
+    cs_args->r_time_ms = cal->r_time_ms;
+    if(cs_args->s_freq > cs_args->e_freq)
+        goto error_exit;
+    
+    ret =  pthread_create_detach (NULL, _calibration_source_loop, _calibration_source_exit,  
+                                    THREAD_CAL_SOURCE_NAME, cs_args, cs_args);
+    if(ret != 0){
+        perror("pthread create calibration source thread!!");
+        goto error_exit;
+    }
+    
+    return 0;
+error_exit:
+    safe_free(args);
+    return -1;
+}
+
+int rf_calibration_source_stop(void *args)
+{
+    pthread_cancel_by_name(THREAD_CAL_SOURCE_NAME);
+    io_set_rf_calibration_source_enable(0);
+    return 0;
+}
 int8_t rf_init(void)
 {
     int ret = -1;

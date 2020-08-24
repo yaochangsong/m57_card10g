@@ -673,6 +673,16 @@ typedef struct  _CALIBRATION_SOURCE_ST{
     int8_t power;
 }__attribute__ ((packed)) CALIBRATION_SOURCE_ST; 
 
+typedef struct  _CALIBRATION_SOURCE_ST_V2{
+    uint8_t cid;
+    uint8_t enable;
+    uint64_t middle_freq_hz;
+    int8_t power;
+    uint64_t s_freq;
+    uint64_t e_freq;
+    uint64_t step;
+    uint32_t r_time_ms;
+}__attribute__ ((packed)) CALIBRATION_SOURCE_ST_V2; 
 
 /*************************************************************************/
 #define check_radio_channel(ch)   (ch >= MAX_RADIO_CHANNEL_NUM ? 1 : 0) 

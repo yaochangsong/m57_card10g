@@ -1153,8 +1153,8 @@ static int akt_execute_get_command(void)
             struct poal_config *poal_config = &(config_get_config()->oal_config);
             struct _soft_info{
                 uint8_t num;
-                uint16_t name[16];
-                uint64_t btime[20];
+                uint8_t name[16];
+                uint8_t btime[20];
                 uint8_t ver;
             }__attribute__ ((packed));
             

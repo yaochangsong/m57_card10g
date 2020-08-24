@@ -256,7 +256,7 @@
                 "agc_ctrl_time":1000,
                 "agc_output_amp_dbm":-20,
                 "agc_ref_val_0dbm":13330,
-                "subch_ref_val_0dbm":13075
+                "subch_ref_val_0dbm":13040
             }
         ]
     }

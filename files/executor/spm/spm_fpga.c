@@ -1171,13 +1171,52 @@ static int32_t _get_signal_threshold_by_amp(uint8_t ch, uint32_t index, int32_t 
 /* 判断对应通道是否有信号:      true: 有信号; false:无信号*/
 static int32_t  spm_get_signal_strength(uint8_t ch,uint8_t subch, uint32_t index, bool *is_singal, uint16_t *strength)
 {
-    uint16_t sig_amp = 0;
+    uint16_t sig_amp = 0, sig_max = 0;
     int32_t sigal_thred = 0;
     int32_t ret;
-    
-    sig_amp = io_get_signal_strength(subch);
+    uint8_t mute_sw = 0;
+    int8_t mute_thre_db = 0;
+    int32_t mute_thre_val = 0.0f;
+    int i = 0;
+    for(i = 0; i < 3; i++){
+        sig_amp = io_get_signal_strength(subch);
+        if(sig_max < sig_amp){
+            sig_max = sig_amp;
+        }
+        usleep(20000);
+        printf_debug("----------sig:%d\n", sig_amp);
+    }
     if(strength != NULL)
-        *strength = sig_amp;
+        *strength = sig_max;
+
+    sig_amp = sig_max;
+    ret = config_read_by_cmd(EX_MID_FREQ_CMD, EX_MUTE_SW, ch, &mute_sw, index);
+    if (ret != 0){
+        printf_err("Read Mute sw error\n");
+        *is_singal = true;
+        return -1;
+    }
+    if (mute_sw < 1){
+        *is_singal = true;
+        return 0;
+    }
+
+    ret = config_read_by_cmd(EX_MID_FREQ_CMD, EX_MUTE_THRE, ch, &mute_thre_db, index);
+    if(ret != 0){
+        printf_err("Read Mute thre error\n");
+        *is_singal = true;
+        return -1;
+    }
+    
+    mute_thre_val = subch_ref_val_0dbm * pow(10.0f, (double)mute_thre_db / 20);
+    printf_note("sig_amp:%d, mute_thre_val:%d\n", sig_amp, mute_thre_val);
+    if (sig_amp >= mute_thre_val){
+        *is_singal = true;
+    }else{
+        *is_singal = false;
+    }
+
+    #if 0
     ret = _get_signal_threshold_by_amp(ch, index, &sigal_thred);
     if(ret == -1){
         *is_singal = true;
@@ -1188,6 +1227,7 @@ static int32_t  spm_get_signal_strength(uint8_t ch,uint8_t subch, uint32_t index
     }else{
         *is_singal = false;
     }
+    #endif
     
     return 0;
 }

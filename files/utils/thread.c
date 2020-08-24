@@ -41,7 +41,7 @@ static struct thread_bitmaps_t{
 
 struct thread_args{
     char *name;
-    void *arg;
+    void *arg_exit;
     void *arg_cb;
     void *(*callback)(void *);
     void *(*exit_callback)(void *);
@@ -57,160 +57,26 @@ void pthread_bmp_init(void)
     bitmap_zero(tbmp.bitmap, MAX_TEST_BITS);
 }
 
-double difftime_us_val(const struct timeval *start, const struct timeval *end)
-{
-    double d;
-    time_t s;
-    suseconds_t u;
-
-    s = end->tv_sec - start->tv_sec;
-    u = end->tv_usec - start->tv_usec;
-    d = s;
-    d *= 1000000.0;//1 秒 = 10^6 微秒
-    d += u;
-
-    return d;
-}
-
-struct push_arg{
-    struct timeval *ct;
-    uint64_t nbyte;
-    uint64_t count;
-    int fd;
-};
-
-
-static void thread_exit_callback(void *arg){  
-    struct timeval *beginTime, endTime;
-    uint64_t nbyte;
-    float speed = 0;
-    double  diff_time_us = 0;
-    float diff_time_s = 0;
-
-    struct push_arg *pargs;
-    pargs = (struct push_arg *)arg;
-    beginTime = pargs->ct;
-    nbyte = pargs->nbyte;
-    fprintf(stderr, ">>start time %ld.%.9ld., nbyte=%llu\n",beginTime->tv_sec, beginTime->tv_usec, nbyte);
-    
-    gettimeofday(&endTime, NULL);
-    fprintf(stderr, ">>end time %ld.%.9ld.\n",endTime.tv_sec, endTime.tv_usec);
-
-    diff_time_us = difftime_us_val(beginTime, &endTime);
-    diff_time_s = diff_time_us/1000000.0;
-    printf(">>diff us=%fus, %fs\n", diff_time_us, diff_time_s);
-    
-     speed = (float)((nbyte / (1024 * 1024)) / diff_time_s);
-     fprintf(stdout,"speed: %.2f MBps, count=%llu\n", speed, pargs->count);
-}  
-
-void *thread_loop (void *s)
-{
-   // thread_bind_cpu(1);
-    int stateval;
-    int ret;
-    struct timeval beginTime, endTime;
-    struct push_arg p_args;
-    struct thread_args args;
-    
-    memcpy(&args, s, sizeof(struct thread_args));
-    
-    pthread_detach(pthread_self());
-    pthread_cleanup_push(thread_exit_callback,&p_args);
-    gettimeofday(&beginTime, NULL);
-
-    fprintf(stderr, "#######start time %ld.%.9ld.\n",beginTime.tv_sec, beginTime.tv_usec);
-    p_args.ct = &beginTime;
-    p_args.nbyte = 0;
-    p_args.count = 0;
-    while(1){
-        stateval = pthread_setcancelstate (PTHREAD_CANCEL_DISABLE , NULL);
-        if (stateval != 0){
-            printf("set cancel state failure\n");
-        }
-        if(args.callback){
-            ret = args.callback(args.arg);
-            p_args.count ++;
-        }
-        if(ret > 0){
-            p_args.nbyte += ret;
-        }
-        stateval  = pthread_setcancelstate (PTHREAD_CANCEL_ENABLE , NULL);
-        pthread_testcancel();
-    }
-    pthread_cleanup_pop(1);
-    return (void *)0;
-}
-
-int pthread_create_detach_loop (const pthread_attr_t *attr, 
-                                        int (*start_routine) (void *), 
-                                        char *name, void *arg)
-{
-
-    struct thread_args args;
-    args.name = name;
-    args.arg = arg;
-    args.callback = start_routine;
-    int err, i;
-    unsigned long	tid_index = 0;
-    if(bitmap_weight(thread_bmp, MAX_TEST_BITS) >= MAX_TEST_BITS){
-        printf("thread number %d = max number %d\n", bitmap_weight(thread_bmp, MAX_TEST_BITS), MAX_TEST_BITS);
-        return -1;
-    }
-    for(i = 0; i< ARRAY_SIZE(tbmp.thread_t); i++){
-        if(tbmp.thread_t[i].name &&  !strcmp(tbmp.thread_t[i].name, name)){
-            printf("[%s]thread is running\n", name);
-            return -1;
-        }
-    }
-
-    tid_index = find_first_zero_bit(thread_bmp, MAX_TEST_BITS);
-    tbmp.thread_t[tid_index].name = strdup(name);
-
-    err = pthread_create (&tbmp.thread_t[tid_index].tid , attr , thread_loop , &args);
-    if (err != 0){
-        printf("can't create thread: %s\n", strerror(err));
-        return -1;
-    }
-    set_bit(tid_index, thread_bmp);
-    usleep(100);
-    
-    return 0;
-}
-
 void *thread_loop_cb (void *s)
 {
    // thread_bind_cpu(1);
     int stateval;
     int ret;
     struct timeval beginTime, endTime;
-    struct push_arg p_args;
     struct thread_args args;
     
     memcpy(&args, s, sizeof(struct thread_args));
-    
     pthread_detach(pthread_self());
-   // pthread_cleanup_push(args.exit_callback, args.arg_cb);
-    pthread_cleanup_push(args.exit_callback, &p_args);
-    gettimeofday(&beginTime, NULL);
-
-    fprintf(stderr, "#######start time %ld.%.9ld.\n",beginTime.tv_sec, beginTime.tv_usec);
-    p_args.ct = &beginTime;
-    p_args.nbyte = 0;
-    p_args.count = 0;
-    p_args.fd= *(int *)args.arg_cb;
-
+    
+    pthread_cleanup_push(args.exit_callback, args.arg_exit);
+    printf("%s thread run\n", args.name);
     while(1){
         stateval = pthread_setcancelstate (PTHREAD_CANCEL_DISABLE , NULL);
         if (stateval != 0){
             printf("set cancel state failure\n");
         }
         if(args.callback){
-            ret = args.callback(args.arg);
-            p_args.count ++;
-        }
-        if(ret > 0){
-            p_args.nbyte += ret;
+            args.callback(args.arg_cb);
         }
         stateval  = pthread_setcancelstate (PTHREAD_CANCEL_ENABLE , NULL);
         pthread_testcancel();
@@ -222,12 +88,12 @@ void *thread_loop_cb (void *s)
 
 int pthread_create_detach (const pthread_attr_t *attr, 
                                         int (*start_routine) (void *), int (*exit_callback) (void *), 
-                                        char *name, void *arg_st, void *arg_cb)
+                                        char *name, void *arg_cb,void *arg_exit)
 {
 
     struct thread_args args;
     args.name = name;
-    args.arg = arg_st;
+    args.arg_exit = arg_exit;
     args.arg_cb = arg_cb;
     args.callback = start_routine;
     args.exit_callback = exit_callback;
@@ -318,22 +184,22 @@ int main_thread_test(void)
     int i = 1, j, k,l,m,n,o;
     pthread_bmp_init();
     i = 1;
-    pthread_create_detach_loop(NULL, thread_test, "thead name test1", &i);
-    pthread_create_detach_loop(NULL, thread_test, "thead name test1", &i);
+    pthread_create_detach(NULL, thread_test, NULL, "thead name test1", &i, NULL);
+    //pthread_create_detach(NULL, thread_test, NULL, "thead name test1", &i, NULL);
     j = 2;
-    pthread_create_detach_loop(NULL, thread_test, "thead name test2", &j);
+    pthread_create_detach(NULL, thread_test, NULL, "thead name test2", &j, NULL);
     //pthread_cancel_by_name("thead name test1");
     k = 3;
-    pthread_create_detach_loop(NULL, thread_test, "thead name test3", &k);
+    pthread_create_detach(NULL, thread_test, NULL, "thead name test3", &k, NULL);
     l=4;
-    pthread_create_detach_loop(NULL, thread_test, "thead name test4", &l);
+    pthread_create_detach(NULL, thread_test, NULL, "thead name test4", &l, NULL);
     //pthread_cancel_by_name("thead name test2");
     m=5;
-    pthread_create_detach_loop(NULL, thread_test, "thead name test5", &m);
+    pthread_create_detach(NULL, thread_test, NULL, "thead name test5", &m, NULL);
     n=6;
-    pthread_create_detach_loop(NULL, thread_test, "thead name test6", &n);
+    pthread_create_detach(NULL, thread_test, NULL, "thead name test6", &n, NULL);
     o=7;
-    pthread_create_detach_loop(NULL, thread_test, "thead name test7", &o);
+    pthread_create_detach(NULL, thread_test, NULL, "thead name test7", &o, NULL);
 
     sleep(5);
     pthread_cancel_by_name("thead name test1");

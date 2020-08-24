@@ -16,12 +16,9 @@
 #define _THREAD_H_
 
 extern void pthread_bmp_init(void);
-extern int pthread_create_detach_loop (const pthread_attr_t *attr, 
-									int (*start_routine) (void *), 
-									char *name, void *arg);
 extern int pthread_create_detach (const pthread_attr_t *attr, 
                                         int (*start_routine) (void *), int (*exit_callback) (void *), 
-                                        char *name, void *arg_st, void *arg_cb);
+                                        char *name, void *arg_cb, void *arg_exit);
 
 extern void *pthread_cancel_by_name(char *name);
 extern int pthread_exit_by_name(char *name);

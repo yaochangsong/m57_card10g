@@ -46,6 +46,24 @@ static void  *disk_buffer_ptr  = NULL;
 volatile bool disk_is_format = false;
 volatile int disk_error_num = DISK_CODE_OK;
 
+struct push_arg{
+    struct timeval ct;
+    uint64_t nbyte;
+    uint64_t count;
+    int  fd;
+};
+static double difftime_us_val(const struct timeval *start, const struct timeval *end)
+{
+    double d;
+    time_t s;
+    suseconds_t u;
+    s = end->tv_sec - start->tv_sec;
+    u = end->tv_usec - start->tv_usec;
+    d = s;
+    d *= 1000000.0;//1 √Î = 10^6 Œ¢√Î
+    d += u;
+    return d;
+}
 static inline int _write_fs_disk_init(char *path)
 {
     int fd;
@@ -67,22 +85,10 @@ static inline  int _write_disk_run(int fd, size_t size, void *pdata)
     size_t pagesize = 0;
     void *user_mem = NULL;
     int rc;
-
+    
     if(size == 0 || pdata == NULL || fd <= 0)
         return -1;
-
-    //posix_memalign((void **)&user_mem, 4096 /*alignment */ , size + 4096);
-   // posix_memalign((void **)&user_mem, 4096 /*alignment */ , WRITE_UNIT_BYTE + 4096);
-    //printf_note("fd=%d, pdata=%p, %p, size=0x%x\n",fd, pdata,user_mem,  size);
-
-    //if(size > DMA_BUFFER_SIZE){
-    //    printf_warn("size is too big: %u\n", size);
-    //    size = DMA_BUFFER_SIZE;
-    //}
-   // memcpy(disk_buffer_ptr, pdata, size);
-    //printf_note("pdata=%p, size = 0x%x\n", pdata, size);
-    //rc = write(fd, user_mem, WRITE_UNIT_BYTE);
-    //rc = write(fd, disk_buffer_ptr, size);
+    
     rc = write(fd, pdata, size);
     if (rc < 0){
         perror("write file");
@@ -91,11 +97,6 @@ static inline  int _write_disk_run(int fd, size_t size, void *pdata)
     return 0;
 }
 
-static inline  void _write_disk_close(int fd)
-{
-    if(fd > 0)
-        close(fd);
-}
 
 char *fs_get_root_dir(void)
 {
@@ -289,59 +290,99 @@ static ssize_t _fs_dir(char *dirname, int (*callback) (char *,void *, void *), v
     return 0;
 }
 
+static void _thread_exit_callback(void *arg){  
+    struct timeval beginTime, endTime;
+    uint64_t nbyte;
+    float speed = 0;
+    double  diff_time_us = 0;
+    float diff_time_s = 0;
+    int fd = -1;
+    struct push_arg *pargs;
+    pargs = (struct push_arg *)arg;
+    memcpy(&beginTime, &pargs->ct, sizeof(struct timeval));
+    nbyte = pargs->nbyte;
+    fd = pargs->fd;
+    fprintf(stderr, ">>start time %ld.%.9ld., nbyte=%llu, fd=%d\n",beginTime.tv_sec, beginTime.tv_usec, nbyte, fd);
+    gettimeofday(&endTime, NULL);
+    fprintf(stderr, ">>end time %ld.%.9ld.\n",endTime.tv_sec, endTime.tv_usec);
+    diff_time_us = difftime_us_val(&beginTime, &endTime);
+    diff_time_s = diff_time_us/1000000.0;
+    printf(">>diff us=%fus, %fs\n", diff_time_us, diff_time_s);
+     speed = (float)((nbyte / (1024 * 1024)) / diff_time_s);
+     fprintf(stdout,"speed: %.2f MBps, count=%llu\n", speed, pargs->count);
+    if(fd > 0)
+        close(fd);
+    if(arg)
+        safe_free(arg);
+}  
 static int _fs_start_save_file_thread(void *arg)
 {
     typedef int16_t adc_t;
     adc_t *ptr = NULL;
     ssize_t nread = 0; 
-    int ret, fd;
-#if 1
-    fd = *(int *)arg;
+    int ret;
+    struct push_arg *p_args;
     struct spm_context *_ctx;
+    p_args = (struct push_arg *)arg;
     _ctx = get_spm_ctx();
     nread = _ctx->ops->read_adc_data(&ptr);
     if(nread > 0){
-        ret = _write_disk_run(fd, nread, ptr);
+        p_args->nbyte += nread;
+        p_args->count ++;
+        ret = _write_disk_run(p_args->fd, nread, ptr);
         _ctx->ops->read_adc_over_deal(&nread);
     }else{
         usleep(1000);
         printf("read_adc_data err:%d\n", nread);
     }
-    //usleep(1000);
-#else
-    sleep(1);
-#endif
     return nread;
 
 }
 
 
 #define THREAD_NAME "FS_SAVE_FILE"
-static int disk_save_file_fd = -1;
-
 static ssize_t _fs_start_save_file(char *filename)
 {
     #define     _START_SAVE     1
     #define     _STOP_SAVE      0
-    int ret = -1, i, found = 0, cval;
-    
-    
+    int ret = -1;
+    static int fd = 0;
     char path[512];
+    struct timeval beginTime;
+    struct push_arg *p_args;
     
     if(disk_is_valid == false || disk_is_format == true)
         return -1;
     if(filename == NULL)
-            return -1;
+        return -1;
     
     io_set_enable_command(ADC_MODE_ENABLE, -1, -1, 0);
     snprintf(path, sizeof(path), "%s/%s", fs_get_root_dir(), filename);
-    disk_save_file_fd = _write_fs_disk_init(path);
     printf("start save file: %s\n", path);
-    ret = pthread_create_detach_loop(NULL, _fs_start_save_file_thread, THREAD_NAME, &disk_save_file_fd);
-    if(ret != 0){
-        perror("pthread cread save file thread!!");
+        
+    if(path == NULL)
+        return -1;
+    fd = open(path, O_RDWR | O_CREAT | O_TRUNC | O_DIRECT | O_SYNC, 0666);
+    if (fd < 0) {
+        printf_err("open %s fail\n", path);
+        return -1;
     }
-    
+    printf_note("fd = %d\n", fd);
+    p_args = safe_malloc(sizeof(struct push_arg));
+    gettimeofday(&beginTime, NULL);
+    fprintf(stderr, "#######start time %ld.%.9ld.\n",beginTime.tv_sec, beginTime.tv_usec);
+    memcpy(&p_args->ct, &beginTime, sizeof(struct timeval));
+    p_args->nbyte = 0;
+    p_args->count = 0;
+    p_args->fd = fd;
+    ret =  pthread_create_detach (NULL, _fs_start_save_file_thread, _thread_exit_callback,  
+                                THREAD_NAME, p_args, p_args);
+    if(ret != 0){
+        perror("pthread save file thread!!");
+        safe_free(p_args);
+        exit(1);
+    }
+
     return ret;
 }
 
@@ -350,59 +391,22 @@ static ssize_t _fs_stop_save_file(char *filename)
     io_set_enable_command(ADC_MODE_DISABLE, -1, -1, 0);
     printf("stop save file : %s\n", THREAD_NAME);
     pthread_cancel_by_name(THREAD_NAME);
-    _write_disk_close(disk_save_file_fd);
 }
 
 #define THREAD_FS_BACK_NAME "FS_BACK_FILE"
 
-static double difftime_us_val(const struct timeval *start, const struct timeval *end)
-{
-    double d;
-    time_t s;
-    suseconds_t u;
-    s = end->tv_sec - start->tv_sec;
-    u = end->tv_usec - start->tv_usec;
-    d = s;
-    d *= 1000000.0;//1 √Î = 10^6 Œ¢√Î
-    d += u;
-    return d;
-}
-struct push_arg{
-    struct timeval *ct;
-    uint64_t nbyte;
-    uint64_t count;
-    int  fd;
-};
-static void _thread_exit_callback(void *arg){  
-    struct timeval *beginTime, endTime;
-    uint64_t nbyte;
-    float speed = 0;
-    double  diff_time_us = 0;
-    float diff_time_s = 0;
-    int fd = -1;
-    struct push_arg *pargs;
-    pargs = (struct push_arg *)arg;
-    beginTime = pargs->ct;
-    nbyte = pargs->nbyte;
-    fd = pargs->fd;
-    fprintf(stderr, ">>start time %ld.%.9ld., nbyte=%llu, fd=%d\n",beginTime->tv_sec, beginTime->tv_usec, nbyte, fd);
-    gettimeofday(&endTime, NULL);
-    fprintf(stderr, ">>end time %ld.%.9ld.\n",endTime.tv_sec, endTime.tv_usec);
-    diff_time_us = difftime_us_val(beginTime, &endTime);
-    diff_time_s = diff_time_us/1000000.0;
-    printf(">>diff us=%fus, %fs\n", diff_time_us, diff_time_s);
-     speed = (float)((nbyte / (1024 * 1024)) / diff_time_s);
-     fprintf(stdout,"speed: %.2f MBps, count=%llu\n", speed, pargs->count);
-     if(fd > 0)
-        close(fd);
-}  
 static ssize_t _fs_start_read_raw_file_loop(void *arg)
 {
     ssize_t nread = 0; 
-    int  fd;
-    fd = *(int *)arg;
+    struct push_arg *p_args;
+    p_args = arg;
     
-    nread = get_spm_ctx()->ops->back_running_file(STREAM_ADC_WRITE, fd);
+    nread = get_spm_ctx()->ops->back_running_file(STREAM_ADC_WRITE, p_args->fd);
+    p_args->count ++;
+    if(nread > 0){
+         p_args->nbyte += nread;
+    }
+
     if(nread == 0){
         printf_note(">>>>>>>read over!!\n");
         pthread_exit_by_name(THREAD_FS_BACK_NAME);
@@ -411,11 +415,14 @@ static ssize_t _fs_start_read_raw_file_loop(void *arg)
 }
 
 static void _fs_read_exit_callback(void *arg){  
-    int fd;
-    fd = *(int *)arg;
-    printf_note("fs read exit, fd= %d\n", fd);
-    if(fd > 0)
-        close(fd);
+    struct push_arg *p_args;
+    p_args = (struct push_arg *)arg;
+    
+    printf_note("fs read exit, fd= %d\n", p_args->fd);
+    if(p_args->fd > 0)
+        close(p_args->fd);
+    if(arg)
+        safe_free(arg);
 }
 
 
@@ -427,15 +434,12 @@ static ssize_t _fs_start_read_raw_file(char *filename)
     uint32_t band;
     uint64_t freq;
     int ch = 0;
+    struct timeval beginTime;
     if(disk_is_valid == false || disk_is_format == true)
         return -1;
-#if 1
+
     if(filename == NULL)
         return -1;
-    //get_frequency_band_from_str(filename,&band,&freq);
-    //printf_note("wirte freq:%lu band:%u !\n",freq,band);
-    //config_write_data(EX_MID_FREQ_CMD,  EX_MID_FREQ, ch, &freq);
-    //config_write_data(EX_MID_FREQ_CMD,  EX_BANDWITH, ch, &band);
     snprintf(path, sizeof(path), "%s/%s", fs_get_root_dir(), filename);
     file_fd = open(path, O_RDONLY | O_DIRECT | O_SYNC, 0666);
     if (file_fd < 0) {
@@ -444,12 +448,23 @@ static ssize_t _fs_start_read_raw_file(char *filename)
     } 
     printf_note("start read file: %s, file_fd=%d\n", path, file_fd);
     io_start_backtrace_file(NULL);
+    struct push_arg *p_args;
+    p_args = safe_malloc(sizeof(struct push_arg));
+    gettimeofday(&beginTime, NULL);
+    fprintf(stderr, "#######start time %ld.%.9ld.\n",beginTime.tv_sec, beginTime.tv_usec);
+   // p_args->ct = &beginTime;
+    memcpy(&p_args->ct, &beginTime, sizeof(struct timeval));
+    p_args->nbyte = 0;
+    p_args->count = 0;
+    p_args->fd= file_fd;
     ret =  pthread_create_detach (NULL, _fs_start_read_raw_file_loop, _thread_exit_callback,  
-                                THREAD_FS_BACK_NAME, &file_fd, &file_fd);
+                                THREAD_FS_BACK_NAME, p_args, p_args);
     if(ret != 0){
-        perror("pthread cread save file thread!!");
+        perror("pthread read file thread!!");
+        safe_free(p_args);
+        io_stop_backtrace_file(NULL);
     }
-#endif
+
     return 0;
 }
 

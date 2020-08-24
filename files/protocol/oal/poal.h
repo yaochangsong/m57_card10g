@@ -214,6 +214,7 @@ struct control_st{
     struct calibration_singal_threshold_st signal;
 	uint32_t iq_data_length;                                      /* iq数据包发送长度*/
     int32_t agc_ref_val_0dbm;                                     /*  AGC 模式下，0DB 对应校准值*/
+    int32_t subch_ref_val_0dbm;                                   /*  多频点模式下 0DBm 对应校准值*/
 };//__attribute__ ((packed));
 
 /*状态参数*/

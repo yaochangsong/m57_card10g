@@ -39,13 +39,15 @@ static int spm_stream_back_stop(enum stream_type type);
 //#define DEFAULT_AGC_REF_VAL  0x5e8
 //#define DEFAULT_AGC_REF_VAL  0xBE4
 #define DEFAULT_AGC_REF_VAL  0x3000
-
+#define DEFAULT_SUBCH_REF_VAL 0x3000
 
 uint8_t cur_dbm[MAX_RADIO_CHANNEL_NUM] = {0};
 
 size_t pagesize = 0;
 size_t iq_send_unit_byte = DEFAULT_IQ_SEND_BYTE;    /* IQ发送长度 */
 int32_t agc_ref_val_0dbm = DEFAULT_AGC_REF_VAL;     /* 信号为0DBm时对应的FPGA幅度值 */
+int32_t subch_ref_val_0dbm  = DEFAULT_SUBCH_REF_VAL;
+
 
 
 FILE *_file_fd;
@@ -1343,7 +1345,10 @@ struct spm_context * spm_create_fpga_context(void)
     
     if( config_get_config()->oal_config.ctrl_para.agc_ref_val_0dbm != 0)
         agc_ref_val_0dbm = config_get_config()->oal_config.ctrl_para.agc_ref_val_0dbm;
-    
+
+    if( config_get_config()->oal_config.ctrl_para.subch_ref_val_0dbm != 0)
+        subch_ref_val_0dbm = config_get_config()->oal_config.ctrl_para.subch_ref_val_0dbm;
+        
     _init_run_timer(MAX_RADIO_CHANNEL_NUM);
 err_set_errno:
     errno = -ret;

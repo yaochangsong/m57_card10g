@@ -1124,6 +1124,11 @@ static int json_parse_config_param(const cJSON* root, struct poal_config *config
                 config->ctrl_para.agc_ref_val_0dbm=value->valueint;
                 printf_debug("agc_ref_val_0dbm:%d, \n",config->ctrl_para.agc_ref_val_0dbm);
             } 
+            value = cJSON_GetObjectItem(node, "subch_ref_val_0dbm");
+            if(cJSON_IsNumber(value)){
+                config->ctrl_para.subch_ref_val_0dbm=value->valueint;
+                printf_debug("subch_ref_val_0dbm:%d, \n",config->ctrl_para.subch_ref_val_0dbm);
+            } 
             value = cJSON_GetObjectItem(node, "agc_output_amp_dbm");
             if(cJSON_IsNumber(value)){
                 config->rf_para[i].agc_mid_freq_out_level=value->valueint;

@@ -332,6 +332,7 @@ static int8_t  executor_points_scan(uint8_t ch, work_mode_type mode, void *args)
 #if defined (SUPPORT_RESIDENCY_STRATEGY) 
             /* 驻留时间是否到达判断;多频点模式下生效 */
             if(spmctx->ops->residency_time_arrived && (ret == 0) && (points_count > 1)){
+                policy = poal_config->multi_freq_point_param[ch].residence_time;
                 residency_time_arrived = spmctx->ops->residency_time_arrived(ch, policy, is_signal);
             }else
 #endif

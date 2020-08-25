@@ -65,5 +65,7 @@ extern int safe_system(const char *cmdstring);
 extern void safe_free(void *p);
 extern int32_t get_ifname_speed(const char *ifname);
 extern int32_t get_netlink_status(const char *if_name);
+extern char *get_build_time(void);
+
 #endif
 

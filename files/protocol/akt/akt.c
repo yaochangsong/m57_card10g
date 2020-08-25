@@ -382,7 +382,7 @@ static int akt_cali_source_param_convert(void *args)
 
     for(i = 0; i < point->freq_point_cnt; i++){
         point->points[i].center_freq = cal_source->middle_freq_hz + i * cal_source->step;
-        point->points[i].bandwidth = 175000000;
+        point->points[i].bandwidth = cal_source->step;
         if(point->points[i].fft_size == 0){
             printf_note("FFT size is 0, set default 2048\n");
             point->points[i].fft_size =fftsize_check(2048);

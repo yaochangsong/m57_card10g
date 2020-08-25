@@ -724,12 +724,12 @@ void io_set_rf_calibration_source_level(int level)
         接收机校正衰减有效范围为 寄存器0 dB～60dB
     */
     int reg_val;
-    reg_val = level + 30;
-    if(reg_val > 0){
-        reg_val = 0;
-    }else if(reg_val < -60){
-        reg_val = -60;
-    }
+    if(level > -30)
+        level = -30;
+    else if(level < -90)
+        level = -90;
+    level = -level;
+    reg_val = level - 30;
     printf_note("calibration source level = %d\n", reg_val);
     get_fpga_reg()->rfReg->revise_minus = reg_val;
     usleep(300);

@@ -237,7 +237,7 @@ static ssize_t spm_stream_read(enum stream_type type, volatile void **data)
                 printf_debug("[%s]DMA idle!\n", pstream[type].name);
                 return -1;
             }
-            usleep(5);
+           // usleep(5);
             printf_debug("[%s]no data, waitting\n", pstream[type].name);
         }else if(info.status == READ_BUFFER_STATUS_OVERRUN){
             printf_warn("[%s]data is overrun\n", pstream[type].name);

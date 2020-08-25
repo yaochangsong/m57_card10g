@@ -1,9 +1,9 @@
 #!/bin/sh
 
 load_default_1g_network (){
-    DEFAULT_IP="192.168.1.111"
+    DEFAULT_IP="192.168.2.111"
     DEFAULT_NETMASK="255.255.255.0"
-    DEFAULT_GW="192.168.1.1"
+    DEFAULT_GW="192.168.2.1"
     DEFAULT_PORT=1234
 
     xjson -w -f /etc/config.json -n ipaddress,network -v $DEFAULT_IP
@@ -13,9 +13,9 @@ load_default_1g_network (){
 }
 
 load_default_10g_network (){
-    DEFAULT_IP="192.168.2.111"
+    DEFAULT_IP="192.168.3.111"
     DEFAULT_NETMASK="255.255.255.0"
-    DEFAULT_GW="192.168.2.1"
+    DEFAULT_GW="192.168.3.1"
     DEFAULT_PORT=1234
 
     xjson -w -f /etc/config.json -n ipaddress,network_10g -v $DEFAULT_IP

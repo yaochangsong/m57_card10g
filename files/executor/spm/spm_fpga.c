@@ -347,9 +347,9 @@ static fft_t *spm_data_order(volatile fft_t *fft_data,
         }else
 #endif
          if(run_args->scan_bw > run_args->bandwidth){
-             order_len = (order_len * run_args->bandwidth)/run_args->scan_bw;
              start_freq_hz = run_args->s_freq_offset - (run_args->m_freq_s - run_args->scan_bw/2);
              offset = (order_len * start_freq_hz)/run_args->scan_bw;
+             order_len = (order_len * run_args->bandwidth)/run_args->scan_bw;
          }
      }
     *order_fft_len = order_len;
@@ -544,6 +544,7 @@ static int spm_get_psd_analysis_result(void *data, size_t len)
 
 static int spm_scan(uint64_t *s_freq_offset, uint64_t *e_freq, uint32_t *scan_bw, uint32_t *bw, uint64_t *m_freq)
 {
+    #define MAX_SCAN_FREQ_HZ (6000000000)
     uint64_t _m_freq;
     uint64_t _s_freq, _e_freq;
     uint32_t _scan_bw, _bw;
@@ -577,6 +578,10 @@ static int spm_scan(uint64_t *s_freq_offset, uint64_t *e_freq, uint32_t *scan_bw
         }
         *scan_bw = _scan_bw;
         _m_freq = _s_freq + _scan_bw/2;
+        //fix bug:中频超6G无信号 wzq
+        if (_m_freq > MAX_SCAN_FREQ_HZ){
+            _m_freq = MAX_SCAN_FREQ_HZ;
+        }
         *bw = _bw;
     }
     *m_freq = _m_freq;

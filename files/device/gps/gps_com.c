@@ -403,7 +403,7 @@ uint32_t gps_get_format_date(void)
     days = gps_format_days_to_fpga(y, M, d);
     printf_note("format fpga date:y(%d),m(%d),d(%d), days(%d)\n",y,M,d,days);
     
-    date_to_fpga = (s & 0x3f) | (m & 0x3f) << 6 | (h & 0x3f) << 12 | (days & 0x1ff) << 18 | (y & 0x1f) << 27;
+    date_to_fpga = (s & 0x3f) | (m & 0x3f) << 6 | (h & 0x1f) << 12 | (days & 0x1ff) << 17 | (y & 0x3f) << 26;
     printf_note("date_to_fpga:0x%08x\n",date_to_fpga);
     return date_to_fpga;
 }

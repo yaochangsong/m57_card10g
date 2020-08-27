@@ -374,11 +374,11 @@ int32_t io_set_dec_method(uint32_t ch, uint8_t dec_method){
         printf_warn("decode method not support:%d\n",dec_method);
         return -1;
     }
-     if((old_val == d_method) && (ch == old_ch)){
+    // if((old_val == d_method) && (ch == old_ch)){
         /* 避免重复设置相同参数 */
-        return ret;
-    }
-    old_val = d_method;
+   //     return ret;
+  //  }
+  //  old_val = d_method;
     old_ch = ch;
     printf_note("[**REGISTER**]ch:%d, Set Decode method:%u, d_method=0x%x\n", ch, dec_method, d_method);
 #if defined(SUPPORT_PLATFORM_ARCH_ARM)

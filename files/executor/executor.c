@@ -206,6 +206,19 @@ static  int8_t  executor_fragment_scan(uint32_t fregment_num,uint8_t ch, work_mo
     return 0;
 }
 
+static double difftime_us_val(const struct timeval *start, const struct timeval *end)
+{
+    double d;
+    time_t s;
+    suseconds_t u;
+    s = end->tv_sec - start->tv_sec;
+    u = end->tv_usec - start->tv_usec;
+    d = s;
+    d *= 1000000.0;//1 �� = 10^6 ΢��
+    d += u;
+    return d;
+}
+
 static int8_t  executor_points_scan(uint8_t ch, work_mode_type mode, void *args)
 {
     struct poal_config *poal_config = &(config_get_config()->oal_config);
@@ -217,6 +230,8 @@ static int8_t  executor_points_scan(uint8_t ch, work_mode_type mode, void *args)
     time_t s_time;
     struct io_decode_param_st decode_param;
     int8_t subch = 0;
+    struct timeval beginTime, endTime;
+    double  diff_time_us = 0;
     bool residency_time_arrived = false;
     //int32_t policy = poal_config->ctrl_para.residency.policy[ch];
     int32_t policy = poal_config->multi_freq_point_param[ch].residence_time;
@@ -295,13 +310,17 @@ static int8_t  executor_points_scan(uint8_t ch, work_mode_type mode, void *args)
         uint16_t strength = 0;
         bool is_signal = false;
         int32_t ret = -1;
-        usleep(20000);
-        ret = spmctx->ops->signal_strength(ch, subch, i, &is_signal, &strength);
-        if(ret == 0){
-            printf_note("is sigal: %s, strength:%d\n", (is_signal == true ? "Yes":"No"), strength);
+        if(is_rf_calibration_source_enable() == false){
+            usleep(20000);
+            ret = spmctx->ops->signal_strength(ch, subch, i, &is_signal, &strength);
+            if(ret == 0){
+                printf_note("is sigal: %s, strength:%d\n", (is_signal == true ? "Yes":"No"), strength);
+            }
         }
+       
 #endif
-        s_time = time(NULL);
+        //s_time = time(NULL);
+        gettimeofday(&beginTime, NULL);
         do{
             executor_set_command(EX_MID_FREQ_CMD, EX_FPGA_CALIBRATE, ch, &point->points[0].fft_size, 0);
             if(poal_config->enable.psd_en){
@@ -332,12 +351,14 @@ static int8_t  executor_points_scan(uint8_t ch, work_mode_type mode, void *args)
 #if defined (SUPPORT_RESIDENCY_STRATEGY) 
             /* 驻留时间是否到达判断;多频点模式下生效 */
             if(spmctx->ops->residency_time_arrived && (ret == 0) && (points_count > 1)){
-                policy = poal_config->multi_freq_point_param[ch].residence_time;
+                policy = poal_config->multi_freq_point_param[ch].residence_time/1000;
                 residency_time_arrived = spmctx->ops->residency_time_arrived(ch, policy, is_signal);
             }else
 #endif
             {
-                residency_time_arrived = (time(NULL) < s_time + point->residence_time) ? false : true;
+                gettimeofday(&endTime, NULL);
+                diff_time_us = difftime_us_val(&beginTime, &endTime);
+                residency_time_arrived = (diff_time_us < point->residence_time*1000) ? false : true;
             }
         }while((residency_time_arrived == false) ||  /* multi-frequency switching */
                points_count == 1);                             /* single-frequency station */

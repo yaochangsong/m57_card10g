@@ -138,6 +138,7 @@ static int akt_convert_oal_config(uint8_t ch, uint8_t cmd)
                 printf_info("ch:%d,subch:%d, d_bw:%u\n", ch, i,poal_config->multi_freq_point_param[ch].points[i].d_bandwith);
                 printf_info("ch:%d,d_method:%u\n", ch, poal_config->multi_freq_point_param[ch].points[i].d_method);
                 printf_info("ch:%d,center_freq:%llu\n", ch, poal_config->multi_freq_point_param[ch].points[i].center_freq);
+                printf_info("ch:%d,noise_thrh:%d\n", ch, poal_config->multi_freq_point_param[ch].points[i].noise_thrh);
             }
             break;
         }
@@ -209,7 +210,7 @@ static int akt_convert_oal_config(uint8_t ch, uint8_t cmd)
                     /* (RF)带宽转换 */
                     point->points[sig_cnt].bandwidth = pakt_config->multi_freq_zone[ch].sig_ch[sig_cnt].bandwidth;
                     /* 驻留时间 */
-                    point->residence_time = pakt_config->multi_freq_zone[ch].resident_time;
+                    point->residence_time = pakt_config->multi_freq_zone[ch].resident_time*1000;
                     /* 频点数 */
                     point->freq_point_cnt = pakt_config->multi_freq_zone[ch].freq_band_cnt;
                     /*带宽*/
@@ -226,7 +227,7 @@ static int akt_convert_oal_config(uint8_t ch, uint8_t cmd)
                      /* smooth */
                     point->smooth_time = pakt_config->smooth[ch].smooth;
                     printf_note("raw_d_method:%d, d_method:%u\n",point->points[sig_cnt].raw_d_method, point->points[sig_cnt].d_method);
-                    printf_note("residence_time:%u\n",point->residence_time);
+                    printf_note("residence_time:%ums\n",point->residence_time);
                     printf_note("freq_point_cnt:%u\n",point->freq_point_cnt);
                     printf_note("ch:%d, sig_cnt:%d,center_freq:%u\n", ch,sig_cnt,point->points[sig_cnt].center_freq);
                     printf_note("bandwidth:%u\n",point->points[sig_cnt].bandwidth);
@@ -314,10 +315,10 @@ static int akt_convert_oal_config(uint8_t ch, uint8_t cmd)
                     /* 频点数 */
                     point->freq_point_cnt = pakt_config->multi_freq_zone[ch].freq_band_cnt;
                     /* 驻留时间 */
-                    point->residence_time = pakt_config->multi_freq_zone[ch].resident_time;
+                    point->residence_time = pakt_config->multi_freq_zone[ch].resident_time*1000;
                     point->smooth_time = pakt_config->smooth[ch].smooth;
                     printf_info("[ch:%d]freq_point_cnt:%u\n",ch, point->freq_point_cnt);
-                    printf_info("residence_time:%u\n",point->residence_time);
+                    printf_info("residence_time:%uMs\n",point->residence_time);
                     printf_info("smooth_time:%u\n",point->smooth_time);
                     for(i = 0; i < point->freq_point_cnt; i++){
                         point->points[i].center_freq = pakt_config->multi_freq_zone[ch].sig_ch[i].center_freq;
@@ -375,19 +376,30 @@ static int akt_cali_source_param_convert(void *args)
         return -1;
     }
     point->freq_point_cnt = count;
-    /* 驻留时间:秒 */
-    point->residence_time = cal_source->r_time_ms/1000;
+    /* 驻留时间:毫秒 */
+    point->residence_time = cal_source->r_time_ms;
     printf_note("[ch:%d]freq_point_cnt:%u\n",ch, point->freq_point_cnt);
-    printf_note("residence_time:%uSec.\n",point->residence_time);
+    printf_note("residence_time:%uMSec.\n",point->residence_time);
 
     for(i = 0; i < point->freq_point_cnt; i++){
-        point->points[i].center_freq = cal_source->middle_freq_hz + i * cal_source->step;
+        //point->points[i].center_freq = cal_source->middle_freq_hz + i * cal_source->step;
+        point->points[i].center_freq = cal_source->s_freq + i * cal_source->step + cal_source->step / 2;
         point->points[i].bandwidth = cal_source->step;
         if(point->points[i].fft_size == 0){
             printf_note("FFT size is 0, set default 2048\n");
             point->points[i].fft_size =fftsize_check(2048);
         }
         printf_note("[%d]center_freq:%llu, bandwidth:%llu,fft_size:%u\n",i, point->points[i].center_freq, point->points[i].bandwidth, point->points[i].fft_size);
+    }
+     if ((cal_source->e_freq - cal_source->s_freq) % cal_source->step != 0){
+        uint64_t left_freq = cal_source->e_freq - cal_source->s_freq - cal_source->step * i;
+        point->points[i].center_freq = cal_source->s_freq + cal_source->step * i + left_freq / 2;
+        point->points[i].bandwidth = left_freq;
+        if(point->points[i].fft_size == 0){
+            printf_note("FFT size is 0, set default 2048\n");
+            point->points[i].fft_size =fftsize_check(2048);
+        }
+        point->freq_point_cnt += 1;
     }
     poal_config->work_mode =OAL_MULTI_POINT_SCAN_MODE;
     return 0;

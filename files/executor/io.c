@@ -1061,6 +1061,7 @@ int8_t io_set_enable_command(uint8_t type, int ch, int subc_ch, uint32_t fftsize
         }
         case AUDIO_MODE_ENABLE:
         {
+            subc_ch = CONFIG_AUDIO_CHANNEL;
             if(fftsize == 0)
                 //io_set_dma_DQ_out_en(ch, subc_ch, 512, 1);
                 io_set_IQ_out_en(ch, subc_ch,512, 1);
@@ -1071,6 +1072,7 @@ int8_t io_set_enable_command(uint8_t type, int ch, int subc_ch, uint32_t fftsize
         }
         case AUDIO_MODE_DISABLE:
         {
+            subc_ch = CONFIG_AUDIO_CHANNEL;
             //io_set_dma_DQ_out_dis(ch, subc_ch);
             io_set_IQ_out_disable(ch, subc_ch);
             break;

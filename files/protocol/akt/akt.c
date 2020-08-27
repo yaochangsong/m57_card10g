@@ -860,6 +860,7 @@ static int akt_execute_set_command(void *cl)
                     goto set_exit;
                 }
                 io_set_rf_calibration_source_enable(1);
+                usleep(1000);
                 io_set_rf_calibration_source_level(cal_source.power);
             }
             else{

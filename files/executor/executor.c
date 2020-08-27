@@ -299,10 +299,10 @@ static int8_t  executor_points_scan(uint8_t ch, work_mode_type mode, void *args)
             executor_set_command(EX_MID_FREQ_CMD, EX_MUTE_THRE, subch,&poal_config->multi_freq_point_param[ch].points[i].noise_thrh,poal_config->multi_freq_point_param[ch].points[i].noise_en);
             
             executor_set_command(EX_MID_FREQ_CMD, EX_AUDIO_VOL_CTRL, subch,&point->points[i].audio_volume);
-            io_set_enable_command(AUDIO_MODE_ENABLE, ch, CONFIG_AUDIO_CHANNEL, 0);  //音频通道开�?
+            io_set_enable_command(AUDIO_MODE_ENABLE, ch, -1, 0);  //音频通道开�?
             
         }else{
-            io_set_enable_command(AUDIO_MODE_DISABLE, ch, CONFIG_AUDIO_CHANNEL, 0);  //音频通道开�?
+            io_set_enable_command(AUDIO_MODE_DISABLE, ch, -1, 0);  //音频通道开�?
             
         }
 #endif
@@ -374,7 +374,7 @@ void executor_spm_thread(void *arg)
     uint32_t fft_size;
     uint8_t ch = poal_config->enable.cid;
     uint8_t sub_ch = poal_config->enable.sub_id;
-    uint32_t j;
+    uint32_t j, i;
 
     //thread_bind_cpu(1);
     while(1)
@@ -456,14 +456,18 @@ loop:   printf_note("######wait to deal work######\n");
                         if(executor_points_scan(ch, poal_config->work_mode, arg) == -1){
                             io_set_enable_command(PSD_MODE_DISABLE, ch, -1,  0);
                             io_set_enable_command(AUDIO_MODE_DISABLE, ch, -1, 0);
-                            io_set_enable_command(IQ_MODE_DISABLE, ch, -1, 0);
+                            for(i = 0; i< MAX_SIGNAL_CHANNEL_NUM; i++){
+                                io_set_enable_command(IQ_MODE_DISABLE, ch, i, 0);
+                            }
                             usleep(1000);
                             goto loop;
                         }
                     }else{
                         io_set_enable_command(PSD_MODE_DISABLE, ch, -1, 0);
                         io_set_enable_command(AUDIO_MODE_DISABLE, ch, -1, 0);
-                        io_set_enable_command(IQ_MODE_DISABLE, ch, -1, 0);
+                        for(i = 0; i< MAX_SIGNAL_CHANNEL_NUM; i++){
+                            io_set_enable_command(IQ_MODE_DISABLE, ch, i, 0);
+                        }
                         sleep(1);
                         goto loop;
                     }

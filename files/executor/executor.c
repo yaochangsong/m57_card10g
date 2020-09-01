@@ -772,6 +772,10 @@ int8_t executor_set_command(exec_cmd cmd, uint8_t type, uint8_t ch,  void *data,
         }
         case EX_ENABLE_CMD:
         {
+            if(type == PSD_MODE_DISABLE){
+                poal_config->enable.psd_en = 0;
+                INTERNEL_ENABLE_BIT_SET(poal_config->enable.bit_en,poal_config->enable);
+            }
             /* notify thread to deal data */
             printf_note("notify thread to deal data\n");
             poal_config->enable.bit_reset = true; /* reset(stop) all working task */

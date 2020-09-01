@@ -46,11 +46,15 @@ static void  *disk_buffer_ptr  = NULL;
 volatile bool disk_is_format = false;
 volatile int disk_error_num = DISK_CODE_OK;
 
+#define THREAD_FS_BACK_NAME "FS_BACK_FILE"
+#define THREAD_NAME         "FS_SAVE_FILE"
+
 struct push_arg{
     struct timeval ct;
     uint64_t nbyte;
     uint64_t count;
     int  fd;
+    char *name;
 };
 static double difftime_us_val(const struct timeval *start, const struct timeval *end)
 {
@@ -310,10 +314,16 @@ static void _thread_exit_callback(void *arg){
     printf(">>diff us=%fus, %fs\n", diff_time_us, diff_time_s);
      speed = (float)((nbyte / (1024 * 1024)) / diff_time_s);
      fprintf(stdout,"speed: %.2f MBps, count=%llu\n", speed, pargs->count);
+    if(pargs->name && !strcmp(pargs->name, THREAD_FS_BACK_NAME)){
+        printf_note("Stop Backtrace, Stop Psd!!!\n");
+        io_stop_backtrace_file(NULL);
+        executor_set_command(EX_ENABLE_CMD, PSD_MODE_DISABLE, 0, NULL);
+    }
     if(fd > 0)
         close(fd);
     if(arg)
         safe_free(arg);
+
 }  
 static int _fs_start_save_file_thread(void *arg)
 {
@@ -339,8 +349,6 @@ static int _fs_start_save_file_thread(void *arg)
 
 }
 
-
-#define THREAD_NAME "FS_SAVE_FILE"
 static ssize_t _fs_start_save_file(char *filename)
 {
     #define     _START_SAVE     1
@@ -375,6 +383,7 @@ static ssize_t _fs_start_save_file(char *filename)
     p_args->nbyte = 0;
     p_args->count = 0;
     p_args->fd = fd;
+    p_args->name=THREAD_NAME;
     ret =  pthread_create_detach (NULL, _fs_start_save_file_thread, _thread_exit_callback,  
                                 THREAD_NAME, p_args, p_args);
     if(ret != 0){
@@ -392,8 +401,6 @@ static ssize_t _fs_stop_save_file(char *filename)
     printf("stop save file : %s\n", THREAD_NAME);
     pthread_cancel_by_name(THREAD_NAME);
 }
-
-#define THREAD_FS_BACK_NAME "FS_BACK_FILE"
 
 static ssize_t _fs_start_read_raw_file_loop(void *arg)
 {
@@ -457,6 +464,7 @@ static ssize_t _fs_start_read_raw_file(char *filename)
     p_args->nbyte = 0;
     p_args->count = 0;
     p_args->fd= file_fd;
+    p_args->name=THREAD_FS_BACK_NAME;
     ret =  pthread_create_detach (NULL, _fs_start_read_raw_file_loop, _thread_exit_callback,  
                                 THREAD_FS_BACK_NAME, p_args, p_args);
     if(ret != 0){

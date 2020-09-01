@@ -915,7 +915,7 @@ static void io_set_dma_adc_out_en(int ch, int subch, uint32_t trans_len,uint8_t 
 
 static void io_set_dma_adc_out_disable(int ch, int subch)
 {
-    printf_debug("ADC out disable\n",ch);
+    printf_debug("ADC out disable\n");
 #if defined(SUPPORT_PLATFORM_ARCH_ARM)
 #if defined(SUPPORT_SPECTRUM_KERNEL)
 

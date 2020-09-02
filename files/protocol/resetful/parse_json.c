@@ -517,7 +517,7 @@ int parse_json_demodulation(const char * const body,uint8_t cid,uint8_t subid )
     /* 解调中心频率需要工作中心频率计算 */
     executor_set_command(EX_MID_FREQ_CMD, EX_SUB_CH_MID_FREQ, subid,
         &sub_channel_array->sub_ch[subid].center_freq,/* 解调频率*/
-        config->multi_freq_point_param[cid].points[subid].center_freq); /* 频点工作频率 */
+        config->multi_freq_point_param[cid].points[0].center_freq); /* 频点工作频率 */
     /* 解调带宽, 不同解调方式，带宽系数表不一样*/
     executor_set_command(EX_MID_FREQ_CMD, EX_SUB_CH_DEC_BW, subid, 
         &sub_channel_array->sub_ch[subid].d_bandwith,

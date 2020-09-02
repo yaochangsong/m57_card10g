@@ -444,7 +444,7 @@ static int spm_send_iq_data(void *data, size_t len, void *arg)
 #elif defined(SUPPORT_DATA_PROTOCAL_XW)
     struct spm_run_parm *hparam;
     hparam = (struct spm_run_parm *)arg;
-    hparam->data_len = len; 
+    hparam->data_len = _send_byte; 
     hparam->type = DEFH_DTYPE_BB_IQ;
     hparam->ex_type = DFH_EX_TYPE_DEMO;
     ptr_header = xw_assamble_frame_data(&header_len, arg);

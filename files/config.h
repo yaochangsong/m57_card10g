@@ -27,7 +27,7 @@
 #if defined  SUPPORT_PROJECT_WD_XCR
 #include "bsp/wd_xcr/_reg.h"
 #include "bsp/wd_xcr/_reg_clk_adc.h"
-#elif defined(SUPPORT_PROJECT_160M_V2)
+#elif defined(SUPPORT_PROJECT_160M_V2) 
 #include "bsp/160m_v2/_reg.h"
 #include "bsp/160m_v2/_reg_clk_adc.h"
 #else

@@ -217,14 +217,17 @@ uint8_t rf_set_interface(uint8_t cmd,uint8_t ch,void *data){
                         //val = (*((int8_t *)data) == 0 ? 0 : 0x01);
                         /* 0关闭直采，1开启直采 */
                         //usleep(500);
-                        get_fpga_reg()->rfReg->freq_khz = cs.middle_freq_khz;
+                        SET_RF_MID_FREQ(get_fpga_reg(),cs.middle_freq_khz);
+                        //get_fpga_reg()->rfReg->freq_khz = cs.middle_freq_khz;
                         usleep(500);
-                        get_fpga_reg()->rfReg->input = cs.source;
+                        SET_RF_CALIB_SOURCE_CHOISE(get_fpga_reg(),cs.source);
+                        //get_fpga_reg()->rfReg->input = cs.source;
                         usleep(500);
-                        get_fpga_reg()->rfReg->revise_minus = -akt_cs->power;
+                        SET_RF_CALIB_SOURCE_ATTENUATION(get_fpga_reg(),-akt_cs->power);
+                        //get_fpga_reg()->rfReg->revise_minus = -akt_cs->power;
                         usleep(500);
-                        printf_note("write:input=%d revise_minus=%d  freq_khz=%x\n",cs.source,-akt_cs->power,cs.middle_freq_khz);
-                        printf_note("read: input=%d revise_minus=%d  freq_khz=%x\n",get_fpga_reg()->rfReg->input&0xffff,get_fpga_reg()->rfReg->revise_minus&0xffff,get_fpga_reg()->rfReg->freq_khz);
+                       // printf_note("write:input=%d revise_minus=%d  freq_khz=%x\n",cs.source,-akt_cs->power,cs.middle_freq_khz);
+                        //printf_note("read: input=%d revise_minus=%d  freq_khz=%x\n",get_fpga_reg()->rfReg->input&0xffff,get_fpga_reg()->rfReg->revise_minus&0xffff,get_fpga_reg()->rfReg->freq_khz);
 #endif
 
             break;
@@ -237,7 +240,8 @@ uint8_t rf_set_interface(uint8_t cmd,uint8_t ch,void *data){
             val = (_data == 0 ? 0 : 0x01);
             /* 0关闭直采，1开启直采 */
             printf_note("[**RF**] direct control=%d, %d\n", val, _data);
-            get_fpga_reg()->rfReg->direct_control = val;
+            SET_RF_DIRECT_SAMPLE_CTRL(get_fpga_reg(),val);
+            //get_fpga_reg()->rfReg->direct_control = val;
             usleep(100);
 #endif
             break;
@@ -341,9 +345,11 @@ uint8_t rf_read_interface(uint8_t cmd,uint8_t ch,void *data){
             ret = spi_rf_get_command(SPI_RF_TEMPRATURE_GET, &rf_temperature);
 #elif defined(SUPPORT_RF_FPGA)
 #define RF_TEMPERATURE_FACTOR 0.0625
-            rf_temperature = get_fpga_reg()->rfReg->temperature;
+           // rf_temperature = get_fpga_reg()->rfReg->temperature;
+            rf_temperature = GET_RF_TEMPERATURE(get_fpga_reg());
             usleep(100);
-            rf_temperature = get_fpga_reg()->rfReg->temperature;
+            //rf_temperature = get_fpga_reg()->rfReg->temperature;
+            rf_temperature = GET_RF_TEMPERATURE(get_fpga_reg());
             printf_debug("rf temprature 0x%x\n", rf_temperature);
             rf_temperature = rf_temperature * RF_TEMPERATURE_FACTOR;
 #endif
@@ -372,7 +378,8 @@ static int  _calibration_source_loop(void *args)
     io_set_rf_calibration_source_enable(1);
     io_set_rf_calibration_source_level(cs_args->rf_args.power);
     for(i = 0; i< count; i++){
-        get_fpga_reg()->rfReg->freq_khz = middle_freq_khz + i * cs_args->step/1000;
+        //get_fpga_reg()->rfReg->freq_khz = middle_freq_khz + i * cs_args->step/1000;
+        SET_RF_MID_FREQ(get_fpga_reg(),middle_freq_khz + i * cs_args->step/1000);
         printf_note("[%d]freq_khz=%u, start_mid_khz=%d, count=%d, r_time_us=%d\n", i, middle_freq_khz+ i * cs_args->step/1000, middle_freq_khz, count, r_time_us);
         usleep(r_time_us);
         pthread_setcancelstate (PTHREAD_CANCEL_ENABLE , NULL);

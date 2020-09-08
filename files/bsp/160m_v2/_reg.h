@@ -9,193 +9,130 @@
 *  permission of Showay Technology Dev Co.,Ltd. (C) 2019
 ******************************************************************************/
 /*****************************************************************************     
-*  Rev 1.0   09 July 2019   yaochangsong
+*  Rev 1.0   10 March 2019   bob
 *  Initial revision.
 ******************************************************************************/
-#ifndef __REG_H__
-#define __REG_H__
+#ifndef _FPGA_REG_H_
+#define _FPGA_REG_H_
 
-#include "config.h"
+#include <stdint.h>
 
-#define DMA_DEVICE "/dev/dma_rf"
+#define FPGA_REG_DEV "/dev/mem"
 
-#define MAX_COMMON_PARAM_LEN 512
+#define FPGA_REG_BASE 0x43c00000
+#define SYSTEM_CONFG_REG_OFFSET	0x0
+#define SYSTEM_CONFG_REG_LENGTH 0x100
+#define BROAD_BAND_REG_OFFSET 	0x100
+#define BROAD_BAND_REG_LENGTH 	0x100
+#define NARROW_BAND_REG_BASE 	0x43c01000
+#define NARROW_BAND_REG_LENGTH 	0x100
+#define NARROW_BAND_CHANNEL_MAX_NUM 0x10
 
-typedef enum _IOCTL_CMD {
-    ENABLE_DISABLE = 0x1,
-    TRANSLEN = 0x2,
-    EXTRACT_CH0 = 0x3,
-    EXTRACT_CH1 = 0x4,
-    EXTRACT_CH2 = 0x5,
-    EXTRACT_CH3 = 0x6,
-    SMOOTH_CH0 = 0x7,
-    SMOOTH_CH1 = 0x8,
-    SMOOTH_CH2 = 0x9,
-    SMOOTH_CH3 = 0x10,
-    DATA_PATTERN = 0x11,
-    BUFFER_LEN = 0x12,
-    CALIBRATE_CH0 = 0x13,
-    CALIBRATE_CH1 = 0x14,
-    CALIBRATE_CH2 = 0x15,
-    CALIBRATE_CH3 = 0x16,
-    FPGA_VERSION = 0x17,
-    AGC_CH0 = 0x18,
-    AGC_CH1 = 0x19,
-    AGC_CH2 = 0x1a,
-    AGC_CH3 = 0x1b,
-    FFT_SIZE_CH0 = 0x1c,
-    FFT_SIZE_CH1 = 0x1d,
-    FFT_SIZE_CH2 = 0x1e,
-    FFT_SIZE_CH3 = 0x1f,
-    FFT_HDR_PARAM = 0x20,
-    RUN_RF_PARAM = 0x21,
-    RUN_CONFIG_PARAM = 0x22,
-    RUN_DEC_PARAM = 0x23,
-    RUN_NET_PARAM = 0x24,
-    KEEPALIVE_PARAM = 0x25,
-    STA_INFO_PARAM = 0x26,
-    QUIET_NOISE_CH0 = 0x27,
-    QUIET_NOISE_CH1 = 0x28,
-    QUIET_NOISE_CH2 = 0x29,
-    QUIET_NOISE_CH3 = 0x2a,
-    FREQUENCY_BAND_CONFIG0 = 0x2b,
-    FREQUENCY_BAND_CONFIG1 = 0x2c,
-    DATA_PATTERN_FREQ = 0x2d,
-    GET_DDC_REGISTER_VALUE = 0x2e,
-    SET_DDC_REGISTER_VALUE = 0x2f,
-    SIGNAL_THRESHOLD_CH0 = 0x30,
-    DECODE_MID_FREQ = 0x31,
-    COMMON_PARAM_CONFIG=0x32,
-    GET_CH_SIGNAL_AMP=0x33,
-    SUB_CH_ONOFF=0x34,
-    SUB_CH_BANDWIDTH=0x35,
-    SUB_CH_MIDDLE_FREQ=0x36,
-    NET_10G_LOCAL_SET=0x37,
-    NET_10G_REMOTE_SET=0x38,
-    NET_10G_ONOFF_SET=0x39,
-    NET_1G_ONOFF_SET=0x40,
-    UDP_CLIENT_INFO_NOTIFY=0x41,
-    BAND_SIDE_RATE=0x42,
-    SUB_CH_DECODE_TYPE=0x43,
-    SUB_CH_FILTER_COEFF=0x44,
-    SUB_CH_NOISE_LEVEL=0x45,
-    SET_SYS_TIME=0x46,
-    /* disk */
-    DISK_REFRESH_FILE_BUFFER=0x70,
-    DISK_READ_FILE_INFO=71,
-    DISK_FIND_FILE=0x72,
-    DISK_START_SAVE_FILE=0x73,
-    DISK_STOP_SAVE_FILE = 0x74,
-    DISK_DELETE_FILE=0x75,
-    DISK_START_BACKTRACE_FILE=0x76,
-    DISK_STOP_BACKTRACE_FILE=0x77,
-    DISK_GET_INFO=0x78,
-    DISK_FORMAT=0x79,
-}IOCTL_CMD;
+typedef struct _SYSTEM_CONFG_REG_
+{
+	uint32_t version;
+	uint32_t data_path_reset;
+	uint32_t time_pulse;
+	uint32_t reserve[0x1D];
+	uint32_t time;
+}SYSTEM_CONFG_REG;
 
+typedef struct _BROAD_BAND_REG_
+{
+	uint32_t signal_carrier;
+	uint32_t enable;
+	uint32_t band;
+	uint32_t fft_mean_time;
+	uint32_t fft_smooth_type;
+	uint32_t fft_calibration;
+	uint32_t fft_nosise_thresh;
+	uint32_t fft_lenth;
+	uint32_t reserve;
+	uint32_t agc_thresh;
+	uint32_t reserves[0x4];
+	uint32_t fir_coeff;
+}BROAD_BAND_REG;
 
-#define DMA_RF_IOC_MAGIC  'k'
+typedef struct _NARROW_BAND_REG_
+{
+	uint32_t signal_carrier;
+	uint32_t enable;
+	uint32_t band;
+	uint32_t reserve[0x9];
+	uint32_t decode_type;
+	uint32_t fir_coeff;
+	uint32_t noise_level;
+}NARROW_BAND_REG;
 
-#define IOCTL_ENABLE_DISABLE    _IOW(DMA_RF_IOC_MAGIC, ENABLE_DISABLE, uint32_t)
-#define IOCTL_TRANSLEN      _IOW(DMA_RF_IOC_MAGIC, TRANSLEN, uint32_t)
-#define IOCTL_EXTRACT_CH0   _IOW(DMA_RF_IOC_MAGIC, EXTRACT_CH0, uint32_t)
-#define IOCTL_EXTRACT_CH1   _IOW(DMA_RF_IOC_MAGIC, EXTRACT_CH1, uint32_t)
-#define IOCTL_EXTRACT_CH2   _IOW(DMA_RF_IOC_MAGIC, EXTRACT_CH2, uint32_t)
-#define IOCTL_EXTRACT_CH3   _IOW(DMA_RF_IOC_MAGIC, EXTRACT_CH3, uint32_t)
-#define IOCTL_SMOOTH_CH0    _IOW(DMA_RF_IOC_MAGIC, SMOOTH_CH0, uint32_t)
-#define IOCTL_SMOOTH_CH1    _IOW(DMA_RF_IOC_MAGIC, SMOOTH_CH1, uint32_t)
-#define IOCTL_SMOOTH_CH2    _IOW(DMA_RF_IOC_MAGIC, SMOOTH_CH2, uint32_t)
-#define IOCTL_SMOOTH_CH3    _IOW(DMA_RF_IOC_MAGIC, SMOOTH_CH3, uint32_t)
-#define IOCTL_DATA_PATTERN  _IOW(DMA_RF_IOC_MAGIC, DATA_PATTERN, uint32_t)
-#define IOCTL_DATA_PATTERN_FREQ  _IOW(DMA_RF_IOC_MAGIC, DATA_PATTERN_FREQ, uint32_t)
-#define IOCTL_BUFFER_LEN    _IOW(DMA_RF_IOC_MAGIC, BUFFER_LEN, uint32_t)
+typedef struct _FPGA_CONFIG_REG_
+{
+    SYSTEM_CONFG_REG *system;
+    BROAD_BAND_REG	*broad_band;
+    NARROW_BAND_REG *narrow_band[NARROW_BAND_CHANNEL_MAX_NUM];
+}FPGA_CONFIG_REG;
 
-#define IOCTL_CALIBRATE_CH0    _IOW(DMA_RF_IOC_MAGIC, CALIBRATE_CH0, uint32_t)
-#define IOCTL_CALIBRATE_CH1    _IOW(DMA_RF_IOC_MAGIC, CALIBRATE_CH1, uint32_t)
-#define IOCTL_CALIBRATE_CH2    _IOW(DMA_RF_IOC_MAGIC, CALIBRATE_CH2, uint32_t)
-#define IOCTL_CALIBRATE_CH3    _IOW(DMA_RF_IOC_MAGIC, CALIBRATE_CH3, uint32_t)
-#define IOCTL_FPGA_VERSION  _IOW(DMA_RF_IOC_MAGIC, IOCTL_FPGA_VERSION, uint32_t)
-#define IOCTL_AGC_CH0    _IOW(DMA_RF_IOC_MAGIC, AGC_CH0, uint32_t)
-#define IOCTL_AGC_CH1    _IOW(DMA_RF_IOC_MAGIC, AGC_CH1, uint32_t)
-#define IOCTL_AGC_CH2    _IOW(DMA_RF_IOC_MAGIC, AGC_CH2, uint32_t)
-#define IOCTL_AGC_CH3    _IOW(DMA_RF_IOC_MAGIC, AGC_CH3, uint32_t)
-#define IOCTL_FFT_SIZE_CH0    _IOW(DMA_RF_IOC_MAGIC, FFT_SIZE_CH0, uint32_t)
-#define IOCTL_FFT_SIZE_CH1    _IOW(DMA_RF_IOC_MAGIC, FFT_SIZE_CH1, uint32_t)
-#define IOCTL_FFT_SIZE_CH2    _IOW(DMA_RF_IOC_MAGIC, FFT_SIZE_CH2, uint32_t)
-#define IOCTL_FFT_SIZE_CH3    _IOW(DMA_RF_IOC_MAGIC, FFT_SIZE_CH3, uint32_t)
-#define IOCTL_FFT_HDR_PARAM  _IOW(DMA_RF_IOC_MAGIC, FFT_HDR_PARAM, uint32_t)
-#define IOCTL_RF_PARAM  _IOW(DMA_RF_IOC_MAGIC, RUN_RF_PARAM, uint32_t)
-#define IOCTL_RUN_CONFIG_PARAM  _IOW(DMA_RF_IOC_MAGIC, RUN_CONFIG_PARAM, uint32_t)
-#define IOCTL_RUN_DEC_PARAM  _IOW(DMA_RF_IOC_MAGIC, RUN_DEC_PARAM, uint32_t)
-#define IOCTL_RUN_NET_PARAM  _IOW(DMA_RF_IOC_MAGIC, RUN_NET_PARAM, uint32_t)
-#define IOCTL_KEEPALIVE_PARAM _IOW(DMA_RF_IOC_MAGIC,KEEPALIVE_PARAM, uint32_t)
-#define IOCTL_STA_INFO_PARAM _IOW(DMA_RF_IOC_MAGIC, STA_INFO_PARAM, uint32_t)
-#define IOCTL_QUIET_NOISE_CH0  _IOW(DMA_RF_IOC_MAGIC, QUIET_NOISE_CH0, uint32_t)
-#define IOCTL_QUIET_NOISE_CH1  _IOW(DMA_RF_IOC_MAGIC, QUIET_NOISE_CH1, uint32_t)
-#define IOCTL_QUIET_NOISE_CH2  _IOW(DMA_RF_IOC_MAGIC, QUIET_NOISE_CH2, uint32_t)
-#define IOCTL_QUIET_NOISE_CH3  _IOW(DMA_RF_IOC_MAGIC, QUIET_NOISE_CH3, uint32_t)
-#define IOCTL_FREQUENCY_BAND_CONFIG0  _IOW(DMA_RF_IOC_MAGIC, FREQUENCY_BAND_CONFIG0, uint32_t)
-#define IOCTL_FREQUENCY_BAND_CONFIG1  _IOW(DMA_RF_IOC_MAGIC, FREQUENCY_BAND_CONFIG1, uint32_t)
-#define IOCTL_GET_DDC_REGISTER_VALUE _IOW(DMA_RF_IOC_MAGIC, GET_DDC_REGISTER_VALUE, uint32_t)
-#define IOCTL_SET_DDC_REGISTER_VALUE _IOW(DMA_RF_IOC_MAGIC, SET_DDC_REGISTER_VALUE, uint32_t)
-#define IOCTL_SIGNAL_THRESHOLD_CH0    _IOW(DMA_RF_IOC_MAGIC, SIGNAL_THRESHOLD_CH0, uint32_t)
-#define IOCTL_DECODE_MID_FREQ    _IOW(DMA_RF_IOC_MAGIC, DECODE_MID_FREQ, uint32_t)
-#define IOCTL_COMMON_PARAM_CMD    _IOW(DMA_RF_IOC_MAGIC, COMMON_PARAM_CONFIG, uint32_t)
-#define IOCTL_GET_CH_SIGNAL_AMP    _IOW(DMA_RF_IOC_MAGIC, GET_CH_SIGNAL_AMP, uint32_t)
-#define IOCTL_SUB_CH_ONOFF    _IOW(DMA_RF_IOC_MAGIC, SUB_CH_ONOFF, uint32_t)
-#define IOCTL_SUB_CH_BANDWIDTH    _IOW(DMA_RF_IOC_MAGIC, SUB_CH_BANDWIDTH, uint32_t)
-#define IOCTL_SUB_CH_MIDDLE_FREQ    _IOW(DMA_RF_IOC_MAGIC, SUB_CH_MIDDLE_FREQ, uint32_t)
-#define IOCTL_NET_10G_LOCAL_SET    _IOW(DMA_RF_IOC_MAGIC, NET_10G_LOCAL_SET, uint32_t)
-#define IOCTL_NET_10G_REMOTE_SET    _IOW(DMA_RF_IOC_MAGIC, NET_10G_REMOTE_SET, uint32_t)
-#define IOCTL_NET_10G_ONOFF_SET    _IOW(DMA_RF_IOC_MAGIC, NET_10G_ONOFF_SET, uint32_t)
-#define IOCTL_NET_1G_IQ_ONOFF_SET    _IOW(DMA_RF_IOC_MAGIC, NET_1G_ONOFF_SET, uint32_t)
-#define IOCTL_UDP_CLIENT_INFO_NOTIFY    _IOW(DMA_RF_IOC_MAGIC, UDP_CLIENT_INFO_NOTIFY, uint32_t)
-#define IOCTL_BAND_SIDE_RATE    _IOW(DMA_RF_IOC_MAGIC, BAND_SIDE_RATE, uint32_t)
-#define IOCTL_SUB_CH_DECODE_TYPE    _IOW(DMA_RF_IOC_MAGIC, SUB_CH_DECODE_TYPE, uint32_t)
-#define IOCTL_SUB_CH_FILTER_COEFF    _IOW(DMA_RF_IOC_MAGIC, SUB_CH_FILTER_COEFF, uint32_t)
-#define IOCTL_SUB_CH_NOISE_LEVEL    _IOW(DMA_RF_IOC_MAGIC, SUB_CH_NOISE_LEVEL, uint32_t)
-#define IOCTL_SET_SYS_TIME          _IOW(DMA_RF_IOC_MAGIC, SET_SYS_TIME, uint32_t)
-#define IOCTL_GET_FPGA_VERSION          _IOW(DMA_RF_IOC_MAGIC, FPGA_VERSION, uint32_t)
+/*****system*****/
+/*GET*/
+#define GET_SYS_FPGA_VER(reg)				(reg->system->version)
+#define GET_SYS_FPGA_STATUS(reg)			0
+#define GET_SYS_FPGA_BOARD_VI(reg)			0
+/*SET*/
+#define SET_SYS_RESET(reg,v) 				
+#define SET_SYS_IF_CH(reg,v) 				
+#define SET_SYS_SSD_MODE(reg,v) 			
+
+/*****broad band*****/
+/*GET*/
+#define GET_BROAD_AGC_THRESH(reg) 			(reg->broad_band->agc_thresh)
+/*SET*/
+#define SET_BROAD_SIGNAL_CARRIER(reg,v) 	(reg->broad_band->signal_carrier=v)
+#define SET_BROAD_ENABLE(reg,v) 			(reg->broad_band->enable=v)
+#define SET_BROAD_BAND(reg,v) 				(reg->broad_band->band=v)
+#define SET_BROAD_FIR_COEFF(reg,v) 			(reg->broad_band->fir_coeff=v)
+/*fft smooth */
+#define SET_FFT_SMOOTH_TYPE(reg,v) 			(reg->broad_band->fft_smooth_type=v)
+#define SET_FFT_MEAN_TIME(reg,v) 			(reg->broad_band->fft_mean_time=v)
+#define SET_FFT_CALIB(reg,v) 				(reg->broad_band->fft_calibration=v)
+#define SET_FFT_FFT_LEN(reg,v) 				(reg->broad_band->fft_lenth=v)
+
+/*****narrow band*****/
+/*GET*/
+#define GET_NARROW_SIGNAL_VAL(reg,id) 		0
+/*SET*/
+#define SET_NARROW_BAND(reg,id,v) 			(reg->narrow_band[id]->band=v)
+#define SET_NARROW_FIR_COEFF(reg,id,v) 		(reg->narrow_band[id]->fir_coeff=v)
+#define SET_NARROW_DECODE_TYPE(reg,id,v) 	(reg->narrow_band[id]->decode_type=v)
+#define SET_NARROW_ENABLE(reg,id,v) 		(reg->narrow_band[id]->enable=v)
+#define SET_NARROW_SIGNAL_CARRIER(reg,id,v) (reg->narrow_band[id]->signal_carrier=v)
+#define SET_NARROW_NOISE_LEVEL(reg,id,v) 	(reg->narrow_band[id]->noise_level=v)
+
+/* others */
+#define SET_CURRENT_TIME(reg,v)			    (reg->system->time=v)
+#define SET_DATA_RESET(reg,v)			    (reg->system->data_path_reset=v)
+#define SET_CURRENT_COUNT(reg,v)		
+#define SET_TRIG_TIME(reg,v)			
+#define SET_TRIG_COUNT(reg,v)			
+#define AUDIO_REG(reg)                      0
 
 
-/* disk ioctl */
-#define IOCTL_DISK_REFRESH_FILE_BUFFER    _IOW(DMA_RF_IOC_MAGIC, DISK_REFRESH_FILE_BUFFER, uint32_t)
-#define IOCTL_DISK_READ_FILE_INFO    _IOW(DMA_RF_IOC_MAGIC, DISK_READ_FILE_INFO, uint32_t)
-#define IOCTL_DISK_FIND_FILE_INFO    _IOW(DMA_RF_IOC_MAGIC, DISK_FIND_FILE, uint32_t)
-#define IOCTL_DISK_START_SAVE_FILE_INFO    _IOW(DMA_RF_IOC_MAGIC, DISK_START_SAVE_FILE, uint32_t)
-#define IOCTL_DISK_STOP_SAVE_FILE_INFO    _IOW(DMA_RF_IOC_MAGIC, DISK_STOP_SAVE_FILE, uint32_t)
-#define IOCTL_DISK_DELETE_FILE_INFO    _IOW(DMA_RF_IOC_MAGIC, DISK_DELETE_FILE, uint32_t)
-#define IOCTL_DISK_START_BACKTRACE_FILE_INFO    _IOW(DMA_RF_IOC_MAGIC, DISK_START_BACKTRACE_FILE, uint32_t)
-#define IOCTL_DISK_STOP_BACKTRACE_FILE_INFO    _IOW(DMA_RF_IOC_MAGIC, DISK_STOP_BACKTRACE_FILE, uint32_t)
-#define IOCTL_DISK_GET_INFO    _IOW(DMA_RF_IOC_MAGIC, DISK_GET_INFO, uint32_t)
-#define IOCTL_DISK_FORMAT    _IOW(DMA_RF_IOC_MAGIC, DISK_FORMAT, uint32_t)
+/*****rf*****/
+/*GET*/
+#define GET_RF_TEMPERATURE(reg)				0
+#define GET_RF_CLK_LOCK(reg)				0
+#define GET_RF_INOUT_CLK(reg)				0
+/*SET*/
+#define SET_RF_MID_FREQ(reg,v) 				
+#define SET_RF_ATTENUATION(reg,v) 			
+#define SET_RF_IF_ATTENUATION(reg,v) 		
+#define SET_RF_MODE(reg,v) 					
+#define SET_RF_BAND(reg,v) 					
+#define SET_RF_CALIB_SOURCE_CHOISE(reg,v) 	
+#define SET_RF_DIRECT_SAMPLE_CTRL(reg,v) 	
+#define SET_RF_CALIB_SOURCE_ATTENUATION(reg,v) 
+#define SET_RF_DIRECT_SAMPLE_ATTENUATION(reg,v)
 
-enum _data_type{
-    IO_IQ_TYPE = 0,
-    IO_SPECTRUM_TYPE,
-    IO_DQ_TYPE,
-};
-
-
-typedef struct  _COMMON_PARAM_ST{
-    uint8_t type;
-    uint8_t buf[MAX_COMMON_PARAM_LEN];
-}__attribute__ ((packed)) COMMON_PARAM_ST; 
-
-struct  ioctl_data_t{
-    uint8_t ch;
-    uint8_t data[MAX_COMMON_PARAM_LEN];
-}__attribute__ ((packed)); 
-
-
-
-
-struct io_decode_param_st{
-    uint8_t  cid;
-    uint8_t  sub_ch;
-    uint8_t  d_method;
-    uint32_t d_bandwidth;  
-    uint64_t center_freq;
-};
-
+extern FPGA_CONFIG_REG *get_fpga_reg(void);
+extern void fpga_io_init(void);
+extern void fpga_io_close(void);
 #endif
+

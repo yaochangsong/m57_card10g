@@ -236,7 +236,7 @@ void io_reset_fpga_data_link(void){
     data = (RESET_ADDR &0xffff)<<16;
     ret = ioctl(io_ctrl_fd,IOCTL_SET_DDC_REGISTER_VALUE,&data);
 #elif defined(SUPPORT_SPECTRUM_V2) 
-    SET_SIG_DATA_RESET(get_fpga_reg(),1);
+    SET_DATA_RESET(get_fpga_reg(),1);
 //    get_fpga_reg()->system->data_path_reset = 1;
 #endif
 #endif /* SUPPORT_PLATFORM_ARCH_ARM */
@@ -867,7 +867,7 @@ void io_set_fpga_sys_time(uint32_t time)
     }
     ioctl(io_ctrl_fd,IOCTL_SET_SYS_TIME,time);
 #elif defined(SUPPORT_SPECTRUM_V2) 
-    SET_SIG_CURRENT_TIME(get_fpga_reg(),time);
+    SET_CURRENT_TIME(get_fpga_reg(),time);
     //get_fpga_reg()->signal->current_time = time;
 #endif
 }
@@ -885,7 +885,8 @@ void io_set_fpga_sample_ctrl(uint8_t val)
 
 int32_t io_set_audio_volume(uint32_t ch,uint8_t volume)
 {
-     volume_set(get_fpga_reg()->audioReg,volume);
+     volume_set(AUDIO_REG(get_fpga_reg()), volume);
+     //volume_set(get_fpga_reg()->audioReg,volume);
 }
 
 

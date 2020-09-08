@@ -128,6 +128,7 @@ typedef struct _FPGA_CONFIG_REG_
 	BROAD_BAND_REG  *broad_band;
 	NARROW_BAND_REG *narrow_band[NARROW_BAND_CHANNEL_MAX_NUM];
 }FPGA_CONFIG_REG;
+
 /*****system*****/
 /*GET*/
 #define GET_SYS_FPGA_VER(reg)				(reg->system->version)
@@ -152,14 +153,6 @@ typedef struct _FPGA_CONFIG_REG_
 #define SET_FFT_CALIB(reg,v) 				(reg->broad_band->fft_calibration=v)
 #define SET_FFT_FFT_LEN(reg,v) 				(reg->broad_band->fft_lenth=v)
 
-/*****signal reg*****/
-/*SET*/
-#define SET_SIG_DATA_RESET(reg,v)			(reg->signal->data_path_reset=v)
-#define SET_SIG_CURRENT_TIME(reg,v)			(reg->signal->current_time=v)
-#define SET_SIG_CURRENT_COUNT(reg,v)		(reg->signal->current_count=v)
-#define SET_SIG_TRIG_TIME(reg,v)			(reg->signal->trig_time=v)
-#define SET_SIG_TRIG_COUNT(reg,v)			(reg->signal->trig_count=v)
-
 /*****narrow band*****/
 /*GET*/
 #define GET_NARROW_SIGNAL_VAL(reg,id) 		(reg->narrow_band[id]->sigal_val)
@@ -170,6 +163,15 @@ typedef struct _FPGA_CONFIG_REG_
 #define SET_NARROW_ENABLE(reg,id,v) 		(reg->narrow_band[id]->enable=v)
 #define SET_NARROW_SIGNAL_CARRIER(reg,id,v) (reg->narrow_band[id]->signal_carrier=v)
 #define SET_NARROW_NOISE_LEVEL(reg,id,v) 	(reg->narrow_band[id]->noise_level=v)
+
+/* others */
+#define SET_CURRENT_TIME(reg,v)			    (reg->signal->current_time=v)
+#define SET_DATA_RESET(reg,v)			    (reg->signal->data_path_reset=v)
+#define SET_CURRENT_COUNT(reg,v)		    (reg->signal->current_count=v)
+#define SET_TRIG_TIME(reg,v)			    (reg->signal->trig_time=v)
+#define SET_TRIG_COUNT(reg,v)			    (reg->signal->trig_count=v)
+
+#define AUDIO_REG(reg)                      (reg->audioReg)
 
 /*****rf*****/
 /*GET*/

@@ -213,6 +213,9 @@ endif
 ifneq ($(findstring y,$(SUPPORT_PROJECT_WD_XCR)),)
 	C_VAR += -DSUPPORT_PROJECT_WD_XCR
 	SOURCE_DIR += bsp/wd_xcr
+else ifneq ($(findstring y,$(SUPPORT_PROJECT_160M_V2)),)
+	C_VAR += -DSUPPORT_PROJECT_160M_V2
+	SOURCE_DIR += bsp/160m_v2
 endif
 ifneq ($(findstring y,$(SUPPORT_PROJECT_SSA)),)
 	C_VAR += -DSUPPORT_PROJECT_SSA

@@ -228,7 +228,6 @@ static int8_t  executor_points_scan(uint8_t ch, work_mode_type mode, void *args)
     struct spm_run_parm *r_args;
     struct multi_freq_point_para_st *point;
     time_t s_time;
-    struct io_decode_param_st decode_param;
     int8_t subch = 0;
     struct timeval beginTime, endTime;
     double  diff_time_us = 0;

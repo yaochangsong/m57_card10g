@@ -22,10 +22,10 @@
 #include <sys/ioctl.h>
 #include <pthread.h>
 #include <getopt.h>
-#include "clock_adc.h"
-#include "clock_adc_spi.h"
+#include "clk_adc.h"
+#include "clk_adc_spi.h"
 #include "../rf/spi/rf_spi.h"
-#include "clock_adc_conf.h"
+#include "clk_adc_conf.h"
 
 static struct rf_spi_node_info spi_node[] ={
     /* name path               function code    pin  spifd      pinfd  info */

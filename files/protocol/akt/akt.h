@@ -684,6 +684,17 @@ typedef struct  _CALIBRATION_SOURCE_ST_V2{
     uint32_t r_time_ms;
 }__attribute__ ((packed)) CALIBRATION_SOURCE_ST_V2; 
 
+struct udp_client_info{
+    uint8_t cid;
+    uint32_t ipaddr;
+    uint16_t port;
+#ifdef SUPPORT_NET_WZ
+    uint32_t wz_ipaddr; /* 添加上位机万兆IP和端口*/
+    uint16_t wz_port;
+#endif
+}__attribute__ ((packed));
+
+
 /*************************************************************************/
 #define check_radio_channel(ch)   (ch >= MAX_RADIO_CHANNEL_NUM ? 1 : 0) 
 #define check_sub_channel(sub_ch) (sub_ch >= MAX_SIGNAL_CHANNEL_NUM ? 1 : 0) 

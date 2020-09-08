@@ -13,9 +13,8 @@
 *  Initial revision.
 ******************************************************************************/
 #include "config.h"
-#include "clock_adc.h"
-#include "clock_adc_spi.h"
-#include "clock_adc_fpga.h"
+#include "clk_adc.h"
+#include "clk_adc_spi.h"
 
 
 static struct clock_adc_ctx *_ca_ctx = NULL;

@@ -1,19 +1,5 @@
-/******************************************************************************
-*  Copyright 2019, Showay Technology Dev Co.,Ltd.
-*  ---------------------------------------------------------------------------
-*  Statement:
-*  ----------
-*  This software is protected by Copyright and the information contained
-*  herein is confidential. The software may not be copied and the information
-*  contained herein may not be used or disclosed except with the written
-*  permission of Showay Technology Dev Co.,Ltd. (C) 2019
-******************************************************************************/
-/*****************************************************************************     
-*  Rev 1.0   10 March 2019   bob
-*  Initial revision.
-******************************************************************************/
-#ifndef _FPGA_REG_H_
-#define _FPGA_REG_H_
+#ifndef __REG_H__
+#define __REG_H__
 
 #include <stdint.h>
 
@@ -142,8 +128,66 @@ typedef struct _FPGA_CONFIG_REG_
 	BROAD_BAND_REG  *broad_band;
 	NARROW_BAND_REG *narrow_band[NARROW_BAND_CHANNEL_MAX_NUM];
 }FPGA_CONFIG_REG;
+/*****system*****/
+/*GET*/
+#define GET_SYS_FPGA_VER(reg)				(reg->system->version)
+#define GET_SYS_FPGA_STATUS(reg)			(reg->system->fpga_status)
+#define GET_SYS_FPGA_BOARD_VI(reg)			(reg->system->board_vi)
+/*SET*/
+#define SET_SYS_RESET(reg,v) 				(reg->system->system_reset=v)
+#define SET_SYS_IF_CH(reg,v) 				(reg->system->if_ch=v)
+#define SET_SYS_SSD_MODE(reg,v) 			(reg->system->ssd_mode=v)
 
+/*****broad band*****/
+/*GET*/
+#define GET_BROAD_AGC_THRESH(reg) 			(reg->broad_band->agc_thresh)
+/*SET*/
+#define SET_BROAD_SIGNAL_CARRIER(reg,v) 	(reg->broad_band->signal_carrier=v)
+#define SET_BROAD_ENABLE(reg,v) 			(reg->broad_band->enable=v)
+#define SET_BROAD_BAND(reg,v) 				(reg->broad_band->band=v)
+#define SET_BROAD_FIR_COEFF(reg,v) 			(reg->broad_band->fir_coeff=v)
+/*fft smooth */
+#define SET_FFT_SMOOTH_TYPE(reg,v) 			(reg->broad_band->fft_smooth_type=v)
+#define SET_FFT_MEAN_TIME(reg,v) 			(reg->broad_band->fft_mean_time=v)
+#define SET_FFT_CALIB(reg,v) 				(reg->broad_band->fft_calibration=v)
+#define SET_FFT_FFT_LEN(reg,v) 				(reg->broad_band->fft_lenth=v)
+
+/*****signal reg*****/
+/*SET*/
+#define SET_SIG_DATA_RESET(reg,v)			(reg->signal->data_path_reset=v)
+#define SET_SIG_CURRENT_TIME(reg,v)			(reg->signal->current_time=v)
+#define SET_SIG_CURRENT_COUNT(reg,v)		(reg->signal->current_count=v)
+#define SET_SIG_TRIG_TIME(reg,v)			(reg->signal->trig_time=v)
+#define SET_SIG_TRIG_COUNT(reg,v)			(reg->signal->trig_count=v)
+
+/*****narrow band*****/
+/*GET*/
+#define GET_NARROW_SIGNAL_VAL(reg,id) 		(reg->narrow_band[id]->sigal_val)
+/*SET*/
+#define SET_NARROW_BAND(reg,id,v) 			(reg->narrow_band[id]->band=v)
+#define SET_NARROW_FIR_COEFF(reg,id,v) 		(reg->narrow_band[id]->fir_coeff=v)
+#define SET_NARROW_DECODE_TYPE(reg,id,v) 	(reg->narrow_band[id]->decode_type=v)
+#define SET_NARROW_ENABLE(reg,id,v) 		(reg->narrow_band[id]->enable=v)
+#define SET_NARROW_SIGNAL_CARRIER(reg,id,v) (reg->narrow_band[id]->signal_carrier=v)
+#define SET_NARROW_NOISE_LEVEL(reg,id,v) 	(reg->narrow_band[id]->noise_level=v)
+
+/*****rf*****/
+/*GET*/
+#define GET_RF_TEMPERATURE(reg)				(reg->rfReg->temperature)
+#define GET_RF_CLK_LOCK(reg)				(reg->rfReg->clk_lock)
+#define GET_RF_INOUT_CLK(reg)				(reg->rfReg->in_out_clk)
+/*SET*/
+#define SET_RF_MID_FREQ(reg,v) 				(reg->rfReg->freq_khz=v)
+#define SET_RF_ATTENUATION(reg,v) 			(reg->rfReg->rf_minus=v)
+#define SET_RF_IF_ATTENUATION(reg,v) 		(reg->rfReg->midband_minus=v)
+#define SET_RF_MODE(reg,v) 					(reg->rfReg->rf_mode=v)
+#define SET_RF_BAND(reg,v) 					(reg->rfReg->mid_band=v)
+#define SET_RF_CALIB_SOURCE_CHOISE(reg,v) 	(reg->rfReg->input=v)
+#define SET_RF_DIRECT_SAMPLE_CTRL(reg,v) 	(reg->rfReg->direct_control=v)
+#define SET_RF_CALIB_SOURCE_ATTENUATION(reg,v) (reg->rfReg->revise_minus=v)
+#define SET_RF_DIRECT_SAMPLE_ATTENUATION(reg,v)(reg->rfReg->direct_minus=v)
 
 extern FPGA_CONFIG_REG *get_fpga_reg(void);
 extern void fpga_io_init(void);
+extern void fpga_io_close(void);
 #endif

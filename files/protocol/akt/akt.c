@@ -13,6 +13,8 @@
 *  Initial revision.
 ******************************************************************************/
 #include "config.h"
+#include "../../bsp/io.h"
+
 
 PDU_CFG_REQ_HEADER_ST akt_header;
 

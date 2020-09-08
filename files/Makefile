@@ -144,7 +144,7 @@ endif
 #clock adc
 ##clock adc spis
 ifneq ($(findstring y,$(SUPPORT_CLOCK_ADC)),)
-	SOURCE_DIR += device/clock_adc
+	SOURCE_DIR += device/clk_adc
 	C_VAR += -DSUPPORT_CLOCK_ADC
 endif
 ifneq ($(findstring y,$(SUPPORT_CLOCK_ADC_SPI)),)
@@ -202,7 +202,7 @@ ifneq ($(findstring y,$(SUPPORT_CALIBRATION_GAIN)),)
 	C_VAR += -DSUPPORT_CALIBRATION_GAIN
 endif
 
-SOURCE_DIR += log net protocol/oal dao/oal conf executor  utils device  device/gpio 
+SOURCE_DIR += bsp log net protocol/oal dao/oal conf executor  utils device  device/gpio  
 
 #control enable
 ifneq ($(findstring y,$(SUPPORT_REMOTE_LOCAL_CTRL_EN)),)
@@ -212,6 +212,7 @@ endif
 #project
 ifneq ($(findstring y,$(SUPPORT_PROJECT_WD_XCR)),)
 	C_VAR += -DSUPPORT_PROJECT_WD_XCR
+	SOURCE_DIR += bsp/wd_xcr
 endif
 ifneq ($(findstring y,$(SUPPORT_PROJECT_SSA)),)
 	C_VAR += -DSUPPORT_PROJECT_SSA

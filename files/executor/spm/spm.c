@@ -19,8 +19,6 @@
 #include "spm.h"
 #include "utils/mq.h"
 #include <assert.h>
-#include "spm_fpga.h"
-#include "../io.h"
 
 
 
@@ -184,7 +182,7 @@ void thread_attr_set(pthread_attr_t *attr, int policy, int prio)
     pthread_attr_setschedparam(attr,&param);
     pthread_attr_setinheritsched(attr,PTHREAD_EXPLICIT_SCHED);
 }
-#include "io_fpga.h"
+
 void *spm_init(void)
 {
     static pthread_t send_thread_id, recv_thread_id;

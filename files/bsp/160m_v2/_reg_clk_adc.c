@@ -9,8 +9,8 @@
 #include <pthread.h>
 #include <getopt.h>
 
-#include "clock_adc_fpga.h"
-#include "clock_adc.h"
+#include "_reg_clk_adc.h"
+#include "../../device/clk_adc/clk_adc.h"
 
 
 

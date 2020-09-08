@@ -441,7 +441,7 @@ int8_t rf_init(void)
     adrv9009_iio_init();
 #endif
 #if defined(SUPPORT_RF_SPI)
-    ret = spi_init();
+    ret = spi_rf_init();
 #endif
     return ret;
 }

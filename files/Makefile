@@ -31,6 +31,7 @@ else ifneq ($(findstring arm,$(SUPPORT_PLAT_FORM_ARCH)),)
 	#make CC=aarch64-linux-gnu-gcc
 	CC?=arm-linux-gnueabihf-gcc
 	C_VAR += -DSUPPORT_PLATFORM_ARCH_ARM
+	C_VAR += -DPETALINUX_VER_$(PETALINUX_VER)
 endif
 
 #protocal

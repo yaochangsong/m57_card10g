@@ -50,7 +50,6 @@ struct rf_spi_cmd_info{
 
 
 extern    int spi_rf_init(void); 
-extern    int spi_rf_get_node(void);
 extern    ssize_t  spi_rf_set_command(rf_spi_set_cmd_code cmd, void *data);
 extern    ssize_t spi_rf_get_command(rf_spi_get_cmd_code cmd, void *data);
 #endif

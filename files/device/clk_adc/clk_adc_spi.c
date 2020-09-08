@@ -29,14 +29,17 @@
 
 static struct rf_spi_node_info spi_node[] ={
     /* name path               function code    pin  spifd      pinfd  info */
+#ifdef PETALINUX_VER_2019.1
     /* petalinux2019.1 */
     //{"/dev/spidev2.0",     SPI_FUNC_RF,     8,   -1,      -1,  "spi rf"},
     {"/dev/spidev1.0",     SPI_FUNC_CLOCK,  8,   -1,      -1,  "spi clock 7044 chip"},
     {"/dev/spidev1.1",     SPI_FUNC_AD,     8,   -1,      -1,  "spi ad 9690 chip"},
+#else
     /* petalinux2016.4 */
     //{"/dev/spidev32765.0",     SPI_FUNC_RF,     8,   -1,      -1,  "spi rf"},
-   // {"/dev/spidev32766.0",     SPI_FUNC_CLOCK,  8,   -1,      -1,  "spi clock 7044 chip"},
-    //{"/dev/spidev32766.1",     SPI_FUNC_AD,     8,   -1,      -1,  "spi ad 9690 chip"},
+    {"/dev/spidev32766.0",     SPI_FUNC_CLOCK,  8,   -1,      -1,  "spi clock 7044 chip"},
+    {"/dev/spidev32766.1",     SPI_FUNC_AD,     8,   -1,      -1,  "spi ad 9690 chip"},
+#endif
     {NULL,                     -1              -1,   -1,      -1,  NULL},
 };
 
@@ -79,7 +82,6 @@ static int ca_spi_clock_init_before(void)
     int found = 0, index = 0;
     uint32_t array_len = 3;
     bool internal_clock = config_get_is_internal_clock();
-    printf_note(" ARRAY_SIZE(spi_node)=%d\n",  ARRAY_SIZE(spi_node));
     for(int i = 0; i< ARRAY_SIZE(spi_node); i++){
         printf_note("spi_node: %d, func_code:%d\n", i, spi_node[i].func_code);
         if(spi_node[i].func_code == SPI_FUNC_CLOCK){
@@ -269,7 +271,7 @@ static int _spi_init(void)
         if(ptr[i].name != NULL){
             ptr[i].fd =  open(ptr[i].name,O_RDWR);
             if(ioctl(ptr[i].fd, SPI_IOC_WR_MODE,&mode) <0){
-                printf_err("can't set spi mode\n");
+                printf_err("[%s]fd:%d,can't set spi mode\n",ptr[i].name, ptr[i].fd);
                 continue;
             }
             printf_note("spi[%s] mode: %d\n", ptr[i].name, mode);

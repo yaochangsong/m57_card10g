@@ -76,7 +76,7 @@
 #include "device/uart/uart.h"
 #include "device/rf/rf.h"
 #if defined (SUPPORT_RF_SPI)
-#include "device/rf/spi/spi.h"
+#include "device/rf/spi/rf_spi.h"
 #endif
 #if defined (SUPPORT_GPS)
 #include "device/gps/gps_com.h"

@@ -146,8 +146,6 @@ static disk_err_code _fs_get_err_code(void)
 
 static inline int _fs_format(void)
 {
-	#define DISK_DEVICE_NAME "/dev/nvme0n1"
-	#define DISK_NODE_NAME "/run/media/nvme0n1"
     char cmd[128];
 	int ret, err_no = 0;
 	disk_error_num = DISK_CODE_FORAMT;
@@ -157,25 +155,12 @@ static inline int _fs_format(void)
     }
         
     disk_is_format = true;
-    snprintf(cmd, sizeof(cmd), "umount %s",DISK_NODE_NAME);
+    snprintf(cmd, sizeof(cmd), "/etc/disk.sh format");
     ret = safe_system(cmd);
     if(!ret){
         err_no++;
         printf_err("unmount %s failed\n", DISK_NODE_NAME);
-    }
-    snprintf(cmd, sizeof(cmd), "mkfs.ext2 %s",DISK_DEVICE_NAME);
-    ret = safe_system(cmd);    
-    if(!ret){
-        err_no++;
-        printf_err("mkfs.ext2 %s failed\n", DISK_NODE_NAME);
-    }
-    snprintf(cmd, sizeof(cmd), "mount %s %s",DISK_DEVICE_NAME, DISK_NODE_NAME);
-    ret = safe_system(cmd);
-    if(!ret){
-        printf_err("mount %s %s failed\n", DISK_DEVICE_NAME, DISK_NODE_NAME);
-        err_no++;
-    }
-   
+    } 
     disk_is_format = false;
     if(err_no > 0)
         disk_error_num = DISK_CODE_ERR;

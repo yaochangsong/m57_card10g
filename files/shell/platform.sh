@@ -4,18 +4,16 @@ start()
 {
     echo " Start FlatForm."
     #LED灯控制
-    /etc/led.sh init
-    /etc/led.sh power on
-    /etc/led.sh check on
+    /etc/led.sh init	>/dev/null 2>&1
+    /etc/led.sh power on >/dev/null 2>&1
+    /etc/led.sh check on >/dev/null 2>&1
     #网络初始化
-    /etc/network.sh
-    /etc/led.sh work on
+    /etc/network.sh >/dev/null 2>&1
+    /etc/led.sh work on	>/dev/null 2>&1
     #网络发送缓冲区最大修改位8m
     echo 8388608 > /proc/sys/net/core/wmem_max
     #磁盘挂载
-    mkdir -p /run/media/nvme0n1
-    mount /dev/nvme0n1 /run/media/nvme0n1
-    ln -s /run/media/nvme0n1/data /etc/file
+    /etc/disk.sh mount
     #启动状态检测
     /etc/check.sh stop
     /etc/check.sh start

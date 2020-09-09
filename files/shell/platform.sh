@@ -1,5 +1,6 @@
 #!/bin/sh
 
+DAEMON=/usr/bin/platform
 start()
 {
     echo " Start FlatForm."
@@ -13,34 +14,33 @@ start()
     #网络发送缓冲区最大修改位8m
     echo 8388608 > /proc/sys/net/core/wmem_max
     #磁盘挂载
-    /etc/disk.sh mount
+    /etc/disk.sh mount >/dev/null 2>&1
     #启动状态检测
-    /etc/check.sh stop
+    /etc/check.sh stop >/dev/null 2>&1
     /etc/check.sh start
     #启动复位按钮检测
-    /etc/reset-button.sh stop
+    /etc/reset-button.sh stop >/dev/null 2>&1
     /etc/reset-button.sh start
     #调整内核部分打印级别
     echo 3 4 1 3 > /proc/sys/kernel/printk
     sleep 1
-    platform & 
-	#启动进程监控
-	/etc/checkproc.sh stop
-	/etc/checkproc.sh start
+    start-stop-daemon -S -o --background -x $DAEMON
+    sleep 1
+    #启动进程监控
+    /etc/checkproc.sh stop >/dev/null 2>&1
+    /etc/checkproc.sh start >/dev/null 2>&1
 }
 
 stop()
 {
 	echo " Stop FlatForm..."
-	if killall platform > /dev/null 2>&1; then
-		echo "killall platform"
-	fi
-    /etc/led.sh work off
+    start-stop-daemon -K -x $DAEMON
+    /etc/led.sh work off >/dev/null 2>&1
 }
 
 case $1 in
         start)
-		start
+	    	    start
                 ;;
         stop)
                 stop

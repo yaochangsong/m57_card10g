@@ -674,7 +674,7 @@ static int8_t executor_set_ctrl_command(uint8_t type, uint8_t ch, void *data, va
 #ifdef SUPPORT_NET_WZ
 static int executor_set_10g_network(struct network_st *_network)
 {
-    safe_system("/etc/network.sh &");
+    safe_system("/etc/network.sh >/dev/null 2>&1 &");
     /* 设置默认板卡万兆ip和端�?*/
     //io_set_local_10g_net(ntohl(_network->ipaddress), ntohl(_network->netmask),ntohl(_network->gateway),_network->port);
     return 0;
@@ -795,7 +795,7 @@ int8_t executor_set_command(exec_cmd cmd, uint8_t type, uint8_t ch,  void *data,
         case EX_NETWORK_CMD:
         {
             executor_set_1g_network(&poal_config->network);
-            safe_system("/etc/network.sh &");
+            safe_system("/etc/network.sh >/dev/null 2>&1 &");
             break;
         }
         case EX_CTRL_CMD:

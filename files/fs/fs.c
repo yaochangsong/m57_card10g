@@ -40,6 +40,10 @@
 #include "config.h"
 
 
+#define DEV_NAME    "/dev/nvme0n1"
+#define MOUNT_DIR   "/run/media/nvme0n1"
+#define ROOT_DIR    "/run/media/nvme0n1/data"
+
 struct fs_context *fs_ctx = NULL;
 static bool disk_is_valid = false;
 static void  *disk_buffer_ptr  = NULL;
@@ -104,16 +108,15 @@ static inline  int _write_disk_run(int fd, size_t size, void *pdata)
 
 char *fs_get_root_dir(void)
 {
-    return "/run/media/nvme0n1/data";
+    return ROOT_DIR;
 }
 
 
 bool _fs_disk_valid(void)
 {
-    #define DISK_NODE_NAME "/run/media/nvme0n1"
-    if(access(DISK_NODE_NAME, F_OK)){
+    if(access(MOUNT_DIR, F_OK)){
         disk_error_num = DISK_CODE_NOT_FOUND;
-        printf_note("Disk node[%s] is not valid\n", DISK_NODE_NAME);
+        printf_note("Disk node[%s] is not valid\n", MOUNT_DIR);
         return false;
     }
     return true;
@@ -121,18 +124,17 @@ bool _fs_disk_valid(void)
 
 bool _fs_disk_info(struct statfs *diskInfo)
 {
-    #define DISK_NODE_NAME "/run/media/nvme0n1"
     
-    if(access(DISK_NODE_NAME, F_OK)){
+    if(access(MOUNT_DIR, F_OK)){
         disk_error_num = DISK_CODE_NOT_FOUND;
-        printf_note("Disk node[%s] is not valid\n", DISK_NODE_NAME);
+        printf_note("Disk node[%s] is not valid\n", MOUNT_DIR);
         return false;
     }
 
-	if(statfs(DISK_NODE_NAME, diskInfo))
+	if(statfs(MOUNT_DIR, diskInfo))
 	{
         disk_error_num = DISK_CODE_NOT_FORAMT;
-		printf_note("Disk node[%s] is unknown filesystem\n", DISK_NODE_NAME);
+		printf_note("Disk node[%s] is unknown filesystem\n", MOUNT_DIR);
         return false;
 	}
     
@@ -159,7 +161,7 @@ static inline int _fs_format(void)
     ret = safe_system(cmd);
     if(!ret){
         err_no++;
-        printf_err("unmount %s failed\n", DISK_NODE_NAME);
+        printf_err("format failed\n");
     } 
     disk_is_format = false;
     if(err_no > 0)

@@ -1,8 +1,8 @@
 #!/bin/sh
+
 DEV_NAME="/dev/nvme0n1"
 MOUNT_DIR="/etc/file"
 
-#磁盘挂载
 mount()
 {
 	if [ ! -d ]; then

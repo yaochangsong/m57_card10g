@@ -12,5 +12,10 @@ enum {
     BLK_FILE_ADD=3
 };
 
+extern void *net_get_tcp_srv_ctx(void);
+extern void *net_get_10g_tcp_srv_ctx(void);
+extern void *net_get_udp_srv_ctx(void);
+extern void *net_get_uhttp_srv_ctx(void);
+
 #endif
 

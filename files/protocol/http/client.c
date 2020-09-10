@@ -196,10 +196,11 @@ int clinet_srv_send_post(char *path, char *data)
 {
     struct uh_client *cl_list, *list_tmp;
     char host[64] = {0};
-    if(get_uh_srv() == NULL)
+    struct uh_server *uh_srv = net_get_uhttp_srv_ctx();
+    if(uh_srv == NULL)
         return -1;
     printf_note("path:%s\n", path);
-    list_for_each_entry_safe(cl_list, list_tmp, &get_uh_srv()->clients, list){
+    list_for_each_entry_safe(cl_list, list_tmp, &uh_srv->clients, list){
         printf_note("send post on list:%s, port=%d\n",  cl_list->get_peer_addr(cl_list), cl_list->get_peer_port(cl_list));
         snprintf(host, sizeof(host), "%s:%d", cl_list->get_peer_addr(cl_list), cl_list->get_peer_port(cl_list));
         printf_note("host:%s\n", host);

@@ -25,8 +25,6 @@
 #include <linux/if_link.h>
 
 
-struct net_tcp_server *g_srv;
-
 int get_ifa_name_by_ip(char *ipaddr, char *ifa_name)
 {
     struct ifaddrs *ifaddr, *ifa;
@@ -240,7 +238,8 @@ err:
 int tcp_active_send_all_client(uint8_t *data, int len)
 {
     struct net_tcp_client *cl_list, *list_tmp;
-    list_for_each_entry_safe(cl_list, list_tmp, &g_srv->clients, list){
+     struct net_tcp_server *srv = (struct net_tcp_server *)net_get_tcp_srv_ctx();
+    list_for_each_entry_safe(cl_list, list_tmp, &srv->clients, list){
             printf_debug("Find ipaddree on list:%s, port=%d\n",  cl_list->get_peer_addr(cl_list), cl_list->get_peer_port(cl_list));
             ustream_write(cl_list->us, data, len, true);
     }
@@ -249,7 +248,8 @@ int tcp_active_send_all_client(uint8_t *data, int len)
 bool tcp_find_client(struct sockaddr_in *addr)
 {
     struct net_tcp_client *cl_list, *list_tmp;
-    list_for_each_entry_safe(cl_list, list_tmp, &g_srv->clients, list){
+     struct net_tcp_server *srv = (struct net_tcp_server *)net_get_tcp_srv_ctx();
+    list_for_each_entry_safe(cl_list, list_tmp, &srv->clients, list){
         if(memcmp(&cl_list->peer_addr.sin_addr, &addr->sin_addr, sizeof(addr->sin_addr)) == 0){
             return true;
         }
@@ -269,7 +269,9 @@ bool tcp_get_peer_addr_port(void *cl, struct sockaddr_in *_peer_addr)
 uint32_t tcp_get_addr(void)
 {
     struct net_tcp_client *cl_list, *list_tmp;
-    list_for_each_entry_safe(cl_list, list_tmp, &g_srv->clients, list){
+    struct net_tcp_server *srv = (struct net_tcp_server *)net_get_tcp_srv_ctx();
+    
+    list_for_each_entry_safe(cl_list, list_tmp, &srv->clients, list){
        return  cl_list->peer_addr.sin_addr.s_addr;
     }
     return 0;
@@ -299,7 +301,6 @@ struct net_tcp_server *tcp_server_new(const char *host, int port)
     uloop_fd_add(&srv->fd, ULOOP_READ);
     
     INIT_LIST_HEAD(&srv->clients);
-    g_srv = srv;
 
     return srv;
     

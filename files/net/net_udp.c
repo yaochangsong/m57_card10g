@@ -1,10 +1,8 @@
 #include "config.h"
 
-struct net_udp_server *g_udp_srv;
-
 struct net_udp_server *get_udp_server(void)
 {
-    return g_udp_srv;
+    return net_get_udp_srv_ctx();
 }
 
 static char  *udp_get_ifname(struct net_udp_client *cl)
@@ -300,7 +298,6 @@ struct net_udp_server *udp_server_new(const char *host, int port)
     
     srv->fd.fd = sock;
     srv->fd.cb = udp_read_cb;
-    g_udp_srv = srv;
     uloop_fd_add(&srv->fd, ULOOP_READ);
     
     INIT_LIST_HEAD(&srv->clients);

@@ -16,6 +16,31 @@
 #include "config.h"
 #include "protocol/resetful/request.h"
 
+static struct net_tcp_server *ptcp_srv_1gnet = NULL;
+static struct net_tcp_server *ptcp_srv_10gnet = NULL;
+static struct uh_server *puhttp_srv = NULL;
+static struct net_udp_server *pudp_srv = NULL;
+
+void *net_get_tcp_srv_ctx(void)
+{
+    return (void*)ptcp_srv_1gnet;
+}
+void *net_get_10g_tcp_srv_ctx(void)
+{
+    return (void*)ptcp_srv_10gnet;
+}
+
+void *net_get_udp_srv_ctx(void)
+{
+    return (void*)pudp_srv;
+}
+
+void *net_get_uhttp_srv_ctx(void)
+{
+    return (void*)puhttp_srv;
+}
+
+
 static void on_accept(struct uh_client *cl)
 {
     printf_info("New connection from: %s:%d\n", cl->get_peer_addr(cl), cl->get_peer_port(cl));
@@ -81,6 +106,7 @@ int server_init(void)
     tcpsrv = tcp_server_new("0.0.0.0", poal_config->network.port);
     if (!tcpsrv)
         return -1;
+    ptcp_srv_1gnet = tcpsrv;
     #ifdef SUPPORT_NET_WZ
     if(poal_config->network.port != poal_config->network_10g.port){
         struct net_tcp_server *tcpsrv_10g = NULL;
@@ -88,6 +114,7 @@ int server_init(void)
         tcpsrv = tcp_server_new("0.0.0.0", poal_config->network_10g.port);
         if (!tcpsrv)
             return -1;
+        ptcp_srv_10gnet = tcpsrv;
     }
     #endif
 
@@ -97,6 +124,7 @@ int server_init(void)
     udpsrv = udp_server_new("0.0.0.0",  1234);
     if (!udpsrv)
         return -1;
+    pudp_srv = udpsrv;
 
 #ifdef  SUPPORT_PROTOCAL_HTTP
     struct uh_server *srv = NULL;
@@ -106,7 +134,7 @@ int server_init(void)
         return -1;
     srv->on_accept = on_accept;
     srv->on_request = on_request;
-    
+    puhttp_srv = srv;
 #endif
     return 0;
 }

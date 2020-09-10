@@ -55,7 +55,5 @@ void uh_server_init(struct uh_server *srv, int sock);
 #if (UHTTPD_LUA_SUPPORT)
     void uh_template(struct uh_client *cl);
 #endif
-struct uh_server * get_uh_srv(void);
-
 
 #endif

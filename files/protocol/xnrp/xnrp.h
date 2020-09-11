@@ -36,6 +36,7 @@ typedef enum {
     RET_CODE_DEVICE_BUSY      = 10,
     RET_CODE_FILE_NOT_FOUND   = 11,
     RET_CODE_FILE_EXISTS      = 12,
+    RET_CODE_HEADER_ERR       = 13,
 } x_return_code;
 
 /* method code */

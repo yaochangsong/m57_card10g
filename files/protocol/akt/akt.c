@@ -1470,18 +1470,17 @@ bool akt_parse_header_v2(void *client, const char *buf, int len, int *head_len, 
     PDU_CFG_REQ_HEADER_ST_EX *header;
     int hlen = 0 , i;
     hlen = sizeof(PDU_CFG_REQ_HEADER_ST_EX);
-
-    if(len < hlen){
-        *head_len = 0;
-        //*code = RET_CODE_FORMAT_ERR;
-        return true;
-    }
+    
     header = calloc(1, hlen);
     if (!header) {
         printf_err("calloc\n");
-        *head_len = 0;
-        *code = RET_CODE_INTERNAL_ERR;
-        return false;
+        exit(1);
+    }
+    if(len < hlen){
+        *head_len = len;
+        *code = RET_CODE_HEADER_ERR;
+        printf_err("header err\n");
+        goto exit;
     }
     memcpy(header, buf, hlen);
     
@@ -1493,7 +1492,7 @@ bool akt_parse_header_v2(void *client, const char *buf, int len, int *head_len, 
         printf_err("parse_header error\n");
         *head_len = hlen;
         *code = RET_CODE_FORMAT_ERR;
-        return false;
+        goto exit;
     }
     printf_debug("header.data len=%x\n", header->len);
     printf_debug("header.operation_code=%x\n", header->operation);
@@ -1505,15 +1504,41 @@ bool akt_parse_header_v2(void *client, const char *buf, int len, int *head_len, 
     printfd("\n");
     printf_debug("header.receiver_id=%x\n", header->receiver_id);
     printf_debug("header.crc=%x\n", header->crc);
-
-    cl->request.header = header;
-    cl->request.content_length = header->len; 
-    
     *head_len = hlen;
     *code = RET_CODE_SUCCSESS;
 
-    return true;
+exit:
+    cl->request.header = header;
+    cl->request.content_length = header->len; 
+    
+    return (*code == RET_CODE_SUCCSESS ? true : false);
 }
+
+
+int  akt_parse_end(void *client, char *buf, int len)
+{
+    struct net_tcp_client *cl = client;
+    uint16_t end_flag = AKT_END_FLAG;
+    int ret_len;
+    
+    if(cl == NULL || buf == NULL || len == 0)
+        goto exit;
+    
+    if(len < sizeof(end_flag)){
+        goto exit;
+    }
+    
+    if(*(uint16_t *)buf == end_flag){
+         return sizeof(end_flag);
+    }
+    
+exit:
+    ret_len = min(sizeof(end_flag), len);
+    //cl->srv->send_error(cl, RET_CODE_HEADER_ERR, NULL);
+    printf_note("ret_len=%d\n", ret_len);
+    return ret_len;
+}
+
 
 
 void akt_send_rsp(void *client, int code, void *args)
@@ -1625,6 +1650,8 @@ void akt_send(void *cl, const void *data, int len)
 
 
 }
+
+
 
 /******************************************************************************
 * FUNCTION:

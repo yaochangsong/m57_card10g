@@ -75,6 +75,7 @@ struct net_tcp_server {
     int (*on_request)(struct net_tcp_client *cl);
     int (*on_header)(struct net_tcp_client *cl,const char *buf, int len, int *head_len, int *code);
     int (*on_execute)(struct net_tcp_client *cl, int *code);
+    int (*on_end)(struct net_tcp_client *cl, char *buf, int len);
     void (*send)(struct net_tcp_client *cl, const void *data, int len);
     void (*send_error)(struct net_tcp_client *cl, int code, const char *fmt, ...);
 };

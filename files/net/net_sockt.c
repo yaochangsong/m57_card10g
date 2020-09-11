@@ -102,16 +102,15 @@ static bool tcp_client_header_cb(struct net_tcp_client *cl, char *buf, int len)
     int head_len = 0;
 
     stat = cl->srv->on_header(cl, buf, len, &head_len, &code);
-    ustream_consume(cl->us, head_len);
     if(stat == false){
+        ustream_consume(cl->us, len);
         cl->state = NET_TCP_CLIENT_STATE_DONE;
         cl->srv->send_error(cl, code, NULL);
         cl->request_done(cl);
         return false;
     }
-    
+    ustream_consume(cl->us, head_len);
     cl->state = NET_TCP_CLIENT_STATE_DATA;
-
     return stat;
 }
 
@@ -127,24 +126,19 @@ static void tcp_dispatch_done(struct net_tcp_client *cl)
 static void tcp_data_free(struct net_tcp_client *cl)
 {
     struct dispatch *d = &cl->dispatch;
-    printf_note("free d->body=%p\n", d->body);
     if(d->body)
         free(d->body);
 }
 
 static void tcp_post_done(struct net_tcp_client *cl)
 {
-    int code;
-    if(!cl->srv->on_execute){
-        cl->srv->send_error(cl, 400, NULL);
+    int code = 0;
+    if(cl->srv->on_execute){
+        cl->srv->on_execute(cl, &code);
     }
-    if (cl->srv->on_execute(cl, &code) == false){
-        cl->srv->send_error(cl, code, NULL);
-        if(cl->request_done)
-            cl->request_done(cl);
-        return;
-    }
+    
     cl->srv->send_error(cl, code, NULL);
+    
     if(cl->request_done)
         cl->request_done(cl);
 }
@@ -201,7 +195,7 @@ static void tcp_client_poll_data(struct net_tcp_client *cl)
 
     while (1) {
         int cur_len;
-
+        /* 根据数据长度；循环读取数据 */
         buf = ustream_get_read_buf(cl->us, &len);
         if (!buf || !len)
             break;
@@ -217,13 +211,21 @@ static void tcp_client_poll_data(struct net_tcp_client *cl)
             ustream_consume(cl->us, cur_len);
             continue;
         }else{
-             ustream_consume(cl->us, len);
+            /* 如果数据后有结束标志；检测结束标志 */
+             int end_len;
+             if(cl->srv->on_end){
+                end_len = cl->srv->on_end(cl, buf, len);
+                ustream_consume(cl->us, end_len);
+             }
             break;
         }
     }
     if (!content_length && cl->state != NET_TCP_CLIENT_STATE_DONE) {
         if (cl->dispatch.post_done)
             cl->dispatch.post_done(cl);
+    }else{
+        if(cl->request_done)
+            cl->request_done(cl);
     }
 
 }
@@ -231,7 +233,7 @@ static void tcp_client_poll_data(struct net_tcp_client *cl)
 static inline bool tcp_client_data_cb(struct net_tcp_client *cl, char *buf, int len)
 {
     tcp_client_poll_data(cl);
-    return false;
+    return true;
 }
 
 static void tcp_client_request_done(struct net_tcp_client *cl)
@@ -426,7 +428,6 @@ static void tcp_accept_cb(struct uloop_fd *fd, unsigned int events)
     cl->get_peer_port = tcp_get_peer_port;
     cl->send = tcp_send;
     cl->request_done = tcp_client_request_done;
-    printf_note("cl->response.data=%p\n", cl->response.data);
     printf_note("New connection from: %s:%d\n", cl->get_peer_addr(cl), cl->get_peer_port(cl));
 
     socklen_t serv_len = sizeof(cl->serv_addr); 

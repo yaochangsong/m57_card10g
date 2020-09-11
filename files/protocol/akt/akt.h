@@ -285,6 +285,16 @@ typedef struct  _PDU_REQ_HEADER{
     uint8_t buf[MAX_RECEIVE_DATA_LEN];
 }__attribute__ ((packed)) PDU_CFG_REQ_HEADER_ST;
 
+typedef struct  _PDU_REQ_HEADER_EX{
+    uint16_t start_flag;
+    uint16_t len;
+    uint8_t operation;
+    uint8_t code;
+    uint8_t usr_id[32];
+    uint16_t receiver_id;
+    uint16_t crc;
+}__attribute__ ((packed)) PDU_CFG_REQ_HEADER_ST_EX;
+
 
 //table 4 page 22
 typedef struct  _PDU_RSP_HEADER{
@@ -734,12 +744,31 @@ struct response_set_data{
     uint16_t end_flag;
 };
 
+struct response_get_data_v2{
+    PDU_CFG_RSP_HEADER_ST header;
+//    uint8_t  payload_data[MAX_SEND_DATA_LEN];
+    uint16_t end_flag;
+};
 
+struct response_set_data_v2{
+    PDU_CFG_RSP_HEADER_ST header;
+    uint8_t cid;
+//    uint8_t  payload_data[MAX_SEND_DATA_LEN];
+//    uint16_t end_flag;
+};
+
+
+extern bool akt_parse_header_v2(void *client, const char *buf, int len, int *head_len, int *code);
 extern bool akt_parse_header(const uint8_t *data, int len, uint8_t **payload, int *err_code);
 extern bool akt_parse_data(const uint8_t *payload, int *code);
-extern bool akt_execute_method(int *code, void *cl);
+extern bool akt_execute_method(void *cl, int *code);
 extern int akt_assamble_response_data(uint8_t **buf, int err_code);
 extern uint8_t *akt_assamble_data_extend_frame_header_data(uint32_t *len, void *config);
 extern int8_t akt_assamble_data_frame_header_data( uint8_t *head_buf,  int buf_len, uint32_t *len, void *config);
+//extern void akt_send_err(void *cl, int code, const char *fmt, ...);
+extern void akt_send(void *cl, const void *data, int len);
+extern void akt_send_rsp(void *client, int code, void *args);
+
+
 #endif
 

@@ -494,11 +494,15 @@ int akt_add_udp_client(void *cl_info)
 
 static int akt_execute_set_command(void *cl)
 {
-    PDU_CFG_REQ_HEADER_ST *header;
+    PDU_CFG_REQ_HEADER_ST_EX *header;
+    
     struct akt_protocal_param *pakt_config = &akt_config;
     struct poal_config *poal_config = &(config_get_config()->oal_config);
+    struct net_tcp_client *client = cl;
     int err_code;
-    header = &akt_header;
+    header = (PDU_CFG_REQ_HEADER_ST_EX *)client->request.header;
+    char *payload = (char *)client->dispatch.body;
+    int payload_len = client->request.content_length;
     int ch = -1;
 
     err_code = RET_CODE_SUCCSESS;
@@ -506,14 +510,14 @@ static int akt_execute_set_command(void *cl)
         err_code = RET_CODE_LOCAL_CTRL_MODE;
         goto set_exit;
     }
-    printf_note("set bussiness code[0x%x]\n", header->code);
+    printf_note("===>set bussiness code[0x%x]\n", header->code);
     switch (header->code)
     {
         case OUTPUT_ENABLE_PARAM:
         {
-            printf_info("enable[cid:%x en:%x]\n", header->buf[0], header->buf[1]);
-            check_valid_channel(header->buf[0]);
-            memcpy(&(pakt_config->enable), header->buf, sizeof(OUTPUT_ENABLE_PARAM_ST));
+            printf_note("enable[cid:%x en:%x]\n", payload[0], payload[1]);
+            check_valid_channel(payload[0]);
+            memcpy(&(pakt_config->enable), payload, sizeof(OUTPUT_ENABLE_PARAM_ST));
             if(check_radio_channel(pakt_config->enable.cid)){
                 err_code = RET_CODE_PARAMTER_ERR;
                 goto set_exit;
@@ -531,20 +535,20 @@ static int akt_execute_set_command(void *cl)
         }
         case QUIET_NOISE_THRESHOLD_CMD:
         {
-            check_valid_channel(header->buf[0]);
-            poal_config->multi_freq_point_param[ch].points[0].noise_thrh = header->buf[1];
+            check_valid_channel(payload[0]);
+            poal_config->multi_freq_point_param[ch].points[0].noise_thrh = payload[1];
             break;
         }
         case QUIET_NOISE_SWITCH_CMD:
         {
-            check_valid_channel(header->buf[0]);
-            poal_config->multi_freq_point_param[ch].points[0].noise_en = header->buf[1];
+            check_valid_channel(payload[0]);
+            poal_config->multi_freq_point_param[ch].points[0].noise_en = payload[1];
             break;
         }
         case DIRECTION_FREQ_POINT_REQ_CMD:
         {
-            check_valid_channel(header->buf[0]);
-            memcpy(&(pakt_config->fft[ch]), header->buf, sizeof(DIRECTION_FFT_PARAM));
+            check_valid_channel(payload[0]);
+            memcpy(&(pakt_config->fft[ch]), payload, sizeof(DIRECTION_FFT_PARAM));
             break;
         }
         case DIRECTION_MULTI_FREQ_ZONE_CMD:
@@ -553,9 +557,9 @@ static int akt_execute_set_command(void *cl)
             if(is_rf_calibration_source_enable() == true){
                 break;
             }
-            check_valid_channel(header->buf[0]);
-            memcpy(&pakt_config->multi_freq_zone[ch], header->buf, sizeof(DIRECTION_MULTI_FREQ_ZONE_PARAM));
-            printf_info("resident_time:%d\n", pakt_config->multi_freq_zone[ch].resident_time);
+            check_valid_channel(payload[0]);
+            memcpy(&pakt_config->multi_freq_zone[ch], payload, payload_len);
+            printf_note("resident_time:%d\n", pakt_config->multi_freq_zone[ch].resident_time);
             akt_work_mode_set(pakt_config);
             if(akt_convert_oal_config(ch, DIRECTION_MULTI_FREQ_ZONE_CMD) == -1){
                 err_code = RET_CODE_PARAMTER_NOT_SET;
@@ -566,8 +570,8 @@ static int akt_execute_set_command(void *cl)
         }
         case MULTI_FREQ_DECODE_CMD:
         {
-            check_valid_channel(header->buf[0]);
-            memcpy(&(pakt_config->decode_param[pakt_config->cid]), header->buf, sizeof(MULTI_FREQ_DECODE_PARAM));
+            check_valid_channel(payload[0]);
+            memcpy(&(pakt_config->decode_param[pakt_config->cid]), payload, sizeof(MULTI_FREQ_DECODE_PARAM));
             if(akt_convert_oal_config(ch, MULTI_FREQ_DECODE_CMD) == -1){
                 err_code = RET_CODE_PARAMTER_NOT_SET;
                 goto set_exit;
@@ -576,17 +580,10 @@ static int akt_execute_set_command(void *cl)
         }
         case DIRECTION_SMOOTH_CMD:
         {
-            check_valid_channel(header->buf[0]);
-            memcpy(&(pakt_config->smooth[pakt_config->cid]), header->buf, sizeof(DIRECTION_SMOOTH_PARAM));
-            //if(poal_config->work_mode == OAL_FIXED_FREQ_ANYS_MODE || poal_config->work_mode == OAL_MULTI_POINT_SCAN_MODE){
-                poal_config->multi_freq_point_param[ch].smooth_time = pakt_config->smooth[ch].smooth;
-            //}else if(poal_config->work_mode == OAL_FAST_SCAN_MODE || poal_config->work_mode == OAL_MULTI_ZONE_SCAN_MODE){
-                poal_config->multi_freq_fregment_para[ch].smooth_time = pakt_config->smooth[ch].smooth;
-            //}else {
-            //    printf_warn("Work Mode is not set!!\n");
-            //     err_code = RET_CODE_INVALID_MODULE;
-            //    goto set_exit;
-            //}
+            check_valid_channel(payload[0]);
+            memcpy(&(pakt_config->smooth[pakt_config->cid]), payload, sizeof(DIRECTION_SMOOTH_PARAM));
+            poal_config->multi_freq_point_param[ch].smooth_time = pakt_config->smooth[ch].smooth;
+            poal_config->multi_freq_fregment_para[ch].smooth_time = pakt_config->smooth[ch].smooth;
             executor_set_command(EX_MID_FREQ_CMD, EX_SMOOTH_TIME, ch, &pakt_config->smooth[ch].smooth);
             break;
         }
@@ -598,7 +595,7 @@ static int akt_execute_set_command(void *cl)
             struct net_tcp_client * client = (struct net_tcp_client *)cl;
             bool restart = false;
            
-            memcpy(&netinfo, header->buf, sizeof(DEVICE_NET_INFO_ST));
+            memcpy(&netinfo, payload, sizeof(DEVICE_NET_INFO_ST));
             if(get_ifa_name_by_ip(client->get_serv_addr(client), ifname) != 0){
                 err_code = RET_CODE_INTERNAL_ERR;
                 goto set_exit;
@@ -653,13 +650,13 @@ static int akt_execute_set_command(void *cl)
             char ifname[32];
             struct net_tcp_client * _cl = (struct net_tcp_client *)cl;
 
-            check_valid_channel(header->buf[0]);
+            check_valid_channel(payload[0]);
             net_para.cid = ch;
             if(get_ifa_name_by_ip(_cl->get_serv_addr(_cl), ifname) != 0){
                 err_code = RET_CODE_INTERNAL_ERR;
                 goto set_exit;
             }
-            memcpy(&net_para, header->buf, sizeof(SNIFFER_DATA_REPORT_ST));
+            memcpy(&net_para, payload, sizeof(SNIFFER_DATA_REPORT_ST));
             /* EndTest */
             client.sin_port = net_para.port;
             client.sin_addr.s_addr = net_para.ipaddr;//ntohl(net_para.sin_addr.s_addr);
@@ -673,64 +670,64 @@ static int akt_execute_set_command(void *cl)
         case AUDIO_SAMPLE_RATE:
         {
             uint32_t rate;
-            check_valid_channel(header->buf[0]);
-            poal_config->multi_freq_point_param[ch].audio_sample_rate = *((float *)(header->buf+1));
+            check_valid_channel(payload[0]);
+            poal_config->multi_freq_point_param[ch].audio_sample_rate = *((float *)(payload+1));
             rate = (uint32_t)poal_config->multi_freq_point_param[ch].audio_sample_rate;
             executor_set_command(EX_MID_FREQ_CMD, EX_AUDIO_SAMPLE_RATE, ch, &rate);
             break;
         }
         case MID_FREQ_BANDWIDTH_CMD:
         {
-            check_valid_channel(header->buf[0]);
-            memcpy(&(pakt_config->mid_freq_bandwidth[ch]), header->buf, sizeof(DIRECTION_MID_FREQ_BANDWIDTH_PARAM));
-            poal_config->rf_para[ch].mid_bw = *((uint32_t *)(header->buf+1));
+            check_valid_channel(payload[0]);
+            memcpy(&(pakt_config->mid_freq_bandwidth[ch]), payload, sizeof(DIRECTION_MID_FREQ_BANDWIDTH_PARAM));
+            poal_config->rf_para[ch].mid_bw = *((uint32_t *)(payload+1));
             printf_warn("ch=%d, bandwidth:%u\n", ch, poal_config->rf_para[ch].mid_bw);
             executor_set_command(EX_RF_FREQ_CMD, EX_RF_MID_BW, ch, &poal_config->rf_para[ch].mid_bw);
             break;
         }
         case RF_ATTENUATION_CMD:
-            check_valid_channel(header->buf[0]);
+            check_valid_channel(payload[0]);
             if(poal_config->rf_para[ch].gain_ctrl_method != POAL_AGC_MODE){
-            poal_config->rf_para[ch].attenuation = header->buf[1];
+            poal_config->rf_para[ch].attenuation = payload[1];
             printf_note("=>RF_ATTENUATION_CMD:%d\n", poal_config->rf_para[ch].attenuation);
             executor_set_command(EX_RF_FREQ_CMD, EX_RF_ATTENUATION, ch, &poal_config->rf_para[ch].attenuation);
             }
             break;
         case RF_WORK_MODE_CMD:
-            check_valid_channel(header->buf[0]);
+            check_valid_channel(payload[0]);
             /*
                 0: low distortion mode of operation
                 1: Normal working mode
                 2: Low noise mode of operation
             */
-            poal_config->rf_para[ch].rf_mode_code = header->buf[1];
+            poal_config->rf_para[ch].rf_mode_code = payload[1];
             printf_note("=>rf_mode_code = %d\n", poal_config->rf_para[ch].rf_mode_code);
             executor_set_command(EX_RF_FREQ_CMD, EX_RF_MODE_CODE, ch, &poal_config->rf_para[ch].rf_mode_code);
             break;
         case RF_GAIN_MODE_CMD:
-            check_valid_channel(header->buf[0]);
-            poal_config->rf_para[ch].gain_ctrl_method = header->buf[1];
+            check_valid_channel(payload[0]);
+            poal_config->rf_para[ch].gain_ctrl_method = payload[1];
             printf_note("gain_ctrl_method=%d\n", poal_config->rf_para[ch].gain_ctrl_method);
             //executor_set_command(EX_RF_FREQ_CMD, EX_RF_GAIN_MODE, ch, &poal_config->rf_para[ch].gain_ctrl_method);
             break;
         case RF_AGC_CMD:
-            check_valid_channel(header->buf[0]);
-            poal_config->rf_para[ch].agc_ctrl_time = *((uint16_t *)(header->buf + 1));
-            poal_config->rf_para[ch].agc_mid_freq_out_level = *((uint8_t *)(header->buf + 3));
+            check_valid_channel(payload[0]);
+            poal_config->rf_para[ch].agc_ctrl_time = *((uint16_t *)(payload + 1));
+            poal_config->rf_para[ch].agc_mid_freq_out_level = *((uint8_t *)(payload + 3));
             printf_note("agc_ctrl_time:%d, agc_mid_freq_out_level=%d\n", 
                         poal_config->rf_para[ch].agc_ctrl_time, poal_config->rf_para[ch].agc_mid_freq_out_level);
             break;
         case MID_FREQ_ATTENUATION_CMD:
-            check_valid_channel(header->buf[0]);
+            check_valid_channel(payload[0]);
             if(poal_config->rf_para[ch].gain_ctrl_method != POAL_AGC_MODE){
-            poal_config->rf_para[ch].mgc_gain_value = header->buf[1];
+            poal_config->rf_para[ch].mgc_gain_value = payload[1];
             printf_note("=>mgc_gain_value:%d\n", poal_config->rf_para[ch].mgc_gain_value);
             executor_set_command(EX_RF_FREQ_CMD, EX_RF_MGC_GAIN, ch, &poal_config->rf_para[ch].mgc_gain_value);
             }
             break;
         case SAMPLE_CONTROL_FFT_CMD:
-            check_valid_channel(header->buf[0]);
-            memcpy(&(pakt_config->fft[ch]), header->buf, sizeof(DIRECTION_FFT_PARAM));
+            check_valid_channel(payload[0]);
+            memcpy(&(pakt_config->fft[ch]), payload, sizeof(DIRECTION_FFT_PARAM));
             if(akt_convert_oal_config(ch, SAMPLE_CONTROL_FFT_CMD) == -1){
                 err_code = RET_CODE_PARAMTER_ERR;
                 goto set_exit;
@@ -741,15 +738,15 @@ static int akt_execute_set_command(void *cl)
         {           
             struct sub_channel_freq_para_st *sub_channel_array;
             uint8_t sub_ch;
-            sub_ch = *(uint16_t *)(header->buf+1);
+            sub_ch = *(uint16_t *)(payload+1);
             if(sub_ch >= 1)
                 sub_ch-= 1;
-            check_valid_channel(header->buf[0]);
+            check_valid_channel(payload[0]);
             if(check_sub_channel(sub_ch)){
                 err_code = RET_CODE_PARAMTER_ERR;
                 goto set_exit;
             }
-            memcpy(&(pakt_config->sub_channel[sub_ch]), header->buf, sizeof(SUB_SIGNAL_PARAM));
+            memcpy(&(pakt_config->sub_channel[sub_ch]), payload, sizeof(SUB_SIGNAL_PARAM));
             sub_channel_array = &poal_config->sub_channel_para[ch];
             if(akt_convert_oal_config(sub_ch, SUB_SIGNAL_PARAM_CMD) == -1){
                 err_code = RET_CODE_PARAMTER_ERR;
@@ -776,15 +773,15 @@ static int akt_execute_set_command(void *cl)
         {
             uint8_t sub_ch, enable = 0, i;
             bool net_10g_threshold_on = false, net_1g_threshold_on = false;
-            check_valid_channel(header->buf[0]);
-            sub_ch = *(uint16_t *)(header->buf+1);
+            check_valid_channel(payload[0]);
+            sub_ch = *(uint16_t *)(payload+1);
             if(sub_ch >= 1)
                 sub_ch-= 1;
             if(check_sub_channel(sub_ch)){
                 err_code = RET_CODE_PARAMTER_ERR;
                 goto set_exit;
             }
-            memcpy(&(pakt_config->sub_channel_enable[sub_ch]), header->buf, sizeof(SUB_SIGNAL_ENABLE_PARAM));
+            memcpy(&(pakt_config->sub_channel_enable[sub_ch]), payload, sizeof(SUB_SIGNAL_ENABLE_PARAM));
             if(akt_convert_oal_config(sub_ch, SUB_SIGNAL_OUTPUT_ENABLE_CMD) == -1){
                 err_code = RET_CODE_PARAMTER_NOT_SET;
                 goto set_exit;
@@ -806,14 +803,14 @@ static int akt_execute_set_command(void *cl)
 #ifdef SUPPORT_NET_WZ
         case SET_NET_WZ_THRESHOLD_CMD:
         {
-            poal_config->ctrl_para.wz_threshold_bandwidth =  *(uint32_t *)(header->buf+1);
+            poal_config->ctrl_para.wz_threshold_bandwidth =  *(uint32_t *)(payload+1);
             printf_note("wz_threshold_bandwidth  %u\n", poal_config->ctrl_para.wz_threshold_bandwidth);
             break;
         }
         case SET_NET_WZ_NETWORK_CMD:
         {   
             DEVICE_NET_INFO_ST netinfo;
-            memcpy(&netinfo, header->buf, sizeof(DEVICE_NET_INFO_ST));
+            memcpy(&netinfo, payload, sizeof(DEVICE_NET_INFO_ST));
             poal_config->network_10g.ipaddress = netinfo.ipaddr;
             poal_config->network_10g.netmask =netinfo.mask;
             poal_config->network_10g.gateway = netinfo.gateway;
@@ -830,7 +827,7 @@ static int akt_execute_set_command(void *cl)
         {
             uint64_t freq_hz;
             int i; 
-            freq_hz = *(uint64_t *)(header->buf);
+            freq_hz = *(uint64_t *)(payload);
             printf_debug("spctrum freq hz=%lluHz\n", freq_hz);
             poal_config->ctrl_para.specturm_analysis_param.frequency_hz = freq_hz;
             break;
@@ -838,7 +835,7 @@ static int akt_execute_set_command(void *cl)
         case SPCTRUM_ANALYSIS_CTRL_EN_CMD:
         {
             bool enable;
-            enable =  (bool)header->buf[0];
+            enable =  (bool)payload[0];
             printf_note("Spctrum Analysis Ctrl  %s\n", enable == false ? "Enable" : "Disable");
             poal_config->enable.spec_analy_en = !enable;
             INTERNEL_ENABLE_BIT_SET(poal_config->enable.bit_en,poal_config->enable);
@@ -851,8 +848,8 @@ static int akt_execute_set_command(void *cl)
         case DEVICE_CALIBRATE_CMD:
         {
             CALIBRATION_SOURCE_ST_V2 cal_source;
-            check_valid_channel(header->buf[0]);
-            memcpy(&cal_source, header->buf, sizeof(CALIBRATION_SOURCE_ST_V2));
+            check_valid_channel(payload[0]);
+            memcpy(&cal_source, payload, sizeof(CALIBRATION_SOURCE_ST_V2));
             printf_note("RF calibrate: cid=%d, enable=%d, middle_freq_hz=%uhz, power=%d, s_freq=%llu, e_freq=%llu, r_time_ms=%u,step=%llu\n", 
                 cal_source.cid, cal_source.enable, cal_source.middle_freq_hz, cal_source.power, cal_source.s_freq, cal_source.e_freq, cal_source.r_time_ms, cal_source.step);
             //executor_set_command(EX_RF_FREQ_CMD, EX_RF_CALIBRATE, ch, &cal_source);
@@ -871,16 +868,16 @@ static int akt_execute_set_command(void *cl)
             break;
         }
         case FREQ_RESIDENT_MODE:
-            check_valid_channel(header->buf[0]);
-            poal_config->ctrl_para.residency.policy[ch] = (int32_t)*(int16_t *)(header->buf+1);
+            check_valid_channel(payload[0]);
+            poal_config->ctrl_para.residency.policy[ch] = (int32_t)*(int16_t *)(payload+1);
             printf_note("Residency Policy, ch=%d, policy=%d\n", ch, poal_config->ctrl_para.residency.policy[ch]);
             break;
         case AUDIO_VOLUME_CMD:
-            check_valid_channel(header->buf[0]);
+            check_valid_channel(payload[0]);
             for (int i = 0; i < MAX_SIG_CHANNLE; i++) {
-                poal_config->multi_freq_point_param[ch].points[i].audio_volume = header->buf[1];
+                poal_config->multi_freq_point_param[ch].points[i].audio_volume = payload[1];
             }
-            executor_set_command(EX_MID_FREQ_CMD, EX_AUDIO_VOL_CTRL, CONFIG_AUDIO_CHANNEL,&header->buf[1]);
+            executor_set_command(EX_MID_FREQ_CMD, EX_AUDIO_VOL_CTRL, CONFIG_AUDIO_CHANNEL,&payload[1]);
             printf_note("audio_volume=%d\n", poal_config->multi_freq_point_param[ch].points[0].audio_volume);
             break;
         /* disk cmd */
@@ -889,8 +886,8 @@ static int akt_execute_set_command(void *cl)
             int ret = 0;
             STORAGE_IQ_ST  sis;
             uint32_t old_bandwidth = 0;
-            check_valid_channel(header->buf[0]);
-            memcpy(&sis, header->buf, sizeof(STORAGE_IQ_ST));
+            check_valid_channel(payload[0]);
+            memcpy(&sis, payload, sizeof(STORAGE_IQ_ST));
             if(sis.cmd == 1){/* start add iq file */
                 printf_note("Start add file:%s, bandwidth=%u\n", sis.filepath, sis.bandwidth);
                 executor_set_command(EX_MID_FREQ_CMD, EX_BANDWITH, ch, &sis.bandwidth);
@@ -934,8 +931,8 @@ static int akt_execute_set_command(void *cl)
             BACKTRACE_IQ_ST bis;
             int ret = 0;
             uint32_t max_bandwidth = 0;
-            check_valid_channel(header->buf[0]);
-            memcpy(&bis, header->buf, sizeof(BACKTRACE_IQ_ST));
+            check_valid_channel(payload[0]);
+            memcpy(&bis, payload, sizeof(BACKTRACE_IQ_ST));
             if(bis.cmd == 1){/* start backtrace iq file */
                 printf_note("Start backtrace file:%s, bandwidth=%u\n", bis.filepath, bis.bandwidth);
                 executor_set_command(EX_MID_FREQ_CMD, EX_BANDWITH, ch, &bis.bandwidth);
@@ -982,7 +979,7 @@ static int akt_execute_set_command(void *cl)
         {
             int ret = 0;
             char filename[FILE_PATH_MAX_LEN];
-            memcpy(filename, header->buf, FILE_PATH_MAX_LEN);
+            memcpy(filename, payload, FILE_PATH_MAX_LEN);
 #if defined(SUPPORT_XWFS)
             ret = xwfs_delete_file(filename);
 #elif defined(SUPPORT_FS)
@@ -1026,6 +1023,8 @@ static int akt_execute_set_command(void *cl)
           goto set_exit;
     }
 set_exit:
+    client->response.ch = (ch >= 0 ? ch : 0);
+#if 0
     memcpy(akt_set_response_data.payload_data, &err_code, sizeof(err_code));
     akt_set_response_data.header.operation = SET_CMD_RSP;
     if(ch != -1){
@@ -1036,6 +1035,7 @@ set_exit:
         akt_set_response_data.cid = 0;
     }
     printf_debug("set cid=%d\n", akt_set_response_data.cid);
+#endif
     return err_code;
 
 }
@@ -1048,14 +1048,15 @@ static void _find_file_list(char *filename, struct stat *stats, size_t *size)
     *size = stats->st_size;
 }
 
-static int akt_execute_get_command(void)
+static int akt_execute_get_command(void *cl)
 {
     PDU_CFG_REQ_HEADER_ST *header;
     int err_code;
-    header = &akt_header;
+    struct net_tcp_client *client = cl;
+    header = (PDU_CFG_REQ_HEADER_ST *)client->request.header;
 
     err_code = RET_CODE_SUCCSESS;
-    printf_note("get bussiness code[%x]\n", header->code);
+    printf_note("====>get bussiness code[%x]\n", header->code);
     switch (header->code)
     {
         case DEVICE_SELF_CHECK_CMD:
@@ -1089,8 +1090,16 @@ static int akt_execute_get_command(void)
             printf_note("ext_clk:%d, ad_status=%d,pfga_temperature=%d,ch_num=%d, rf_temperature=%d, ch_status=%d\n", 
                 self_check.ext_clk, self_check.ad_status, self_check.pfga_temperature, self_check.ch_num,
                 self_check.t_s[0].rf_temperature, self_check.t_s[0].ch_status);
-            memcpy(akt_get_response_data.payload_data, &self_check, sizeof(DEVICE_SELF_CHECK_STATUS_RSP_ST));
-            akt_get_response_data.header.len = sizeof(DEVICE_SELF_CHECK_STATUS_RSP_ST);
+            client->response.response_length = sizeof(DEVICE_SELF_CHECK_STATUS_RSP_ST);
+            client->response.data = calloc(1, client->response.response_length);
+            if(client->response.data == NULL){
+                printf_err("calloc err!");
+                break;
+            }
+            memcpy(client->response.data, &self_check, client->response.response_length);
+                
+            //memcpy(akt_get_response_data.payload_data, &self_check, sizeof(DEVICE_SELF_CHECK_STATUS_RSP_ST));
+            //akt_get_response_data.header.len = sizeof(DEVICE_SELF_CHECK_STATUS_RSP_ST);
             break;
         }
         case SPCTRUM_PARAM_CMD:
@@ -1157,8 +1166,15 @@ static int akt_execute_get_command(void)
             resp_result->humidity = io_get_ambient_humidity();
             printf_warn("temperature:%0.2f℃, humidity:%0.2f%\n", resp_result->temperature, resp_result->humidity);
             datalen = sizeof(FFT_SIGNAL_RESPINSE_ST) + sizeof(FFT_SIGNAL_RESULT_ST)*result_num;
-            memcpy(akt_get_response_data.payload_data, resp_result, datalen);
-            akt_get_response_data.header.len = datalen;
+            client->response.response_length = datalen;
+            client->response.data = calloc(1, client->response.response_length);
+            if(client->response.data == NULL){
+                printf_err("calloc err!");
+                break;
+            }
+            memcpy(client->response.data, resp_result, client->response.response_length);
+           // memcpy(akt_get_response_data.payload_data, resp_result, datalen);
+            //akt_get_response_data.header.len = datalen;
             safe_free(resp_result);
         #else
             printf_warn("###########SPECTRUM ANALYSIS NOT SUPPORT#############\n");
@@ -1182,9 +1198,17 @@ static int akt_execute_get_command(void)
             sprintf(info.btime,"%s-%s",get_build_time(), __TIME__);
             printf_note("compile time:%s\n", info.btime);
             info.ver = 0x10;
+            
+            client->response.response_length = sizeof(info);
+            client->response.data = calloc(1, client->response.response_length);
+            if(client->response.data == NULL){
+                printf_err("calloc err!");
+                break;
+            }
+            memcpy(client->response.data, &info, client->response.response_length);
 
-            memcpy(akt_get_response_data.payload_data, &info, sizeof(info));
-            akt_get_response_data.header.len = sizeof(info);
+            //memcpy(akt_get_response_data.payload_data, &info, sizeof(info));
+            //akt_get_response_data.header.len = sizeof(info);
         }
             break;
         /* disk cmd */
@@ -1217,8 +1241,15 @@ static int akt_execute_get_command(void)
             printf_note("ret=%d, num=%d, speed=%uKB/s, capacity_bytes=%llu, used_bytes=%llu\n",
                 ret, psi->disk_num, psi->read_write_speed_kbytesps, 
                 psi->disk_capacity[0].disk_capacity_byte, psi->disk_capacity[0].disk_used_byte);
-            memcpy(akt_get_response_data.payload_data, psi, st_size);
-            akt_get_response_data.header.len = st_size;
+            client->response.response_length = st_size;
+            client->response.data = calloc(1, client->response.response_length);
+            if(client->response.data == NULL){
+                printf_err("calloc err!");
+                break;
+            }
+            memcpy(client->response.data, psi, client->response.response_length);
+            //memcpy(akt_get_response_data.payload_data, psi, st_size);
+            //akt_get_response_data.header.len = st_size;
             safe_free(psi);
             break;
         } 
@@ -1258,8 +1289,13 @@ static int akt_execute_get_command(void)
             printf_note("Find file:%s, fsize=%u ret =%d\n", fsp.filepath, f_bg_size, ret);
             
             printf_note("ret=%d, filepath=%s, file_size=[%u bg]%llu, status=%d\n",ret, fsp.filepath, f_bg_size, fsp.file_size, fsp.status);
-            memcpy(akt_get_response_data.payload_data, &fsp, sizeof(SEARCH_FILE_STATUS_RSP_ST));
-            akt_get_response_data.header.len = sizeof(SEARCH_FILE_STATUS_RSP_ST);
+            client->response.response_length = sizeof(SEARCH_FILE_STATUS_RSP_ST);
+            client->response.data = calloc(1, client->response.response_length);
+            if(client->response.data == NULL){
+                printf_err("calloc err!");
+                break;
+            }
+            memcpy(client->response.data, &fsp, client->response.response_length);
             break;
         }
 
@@ -1269,8 +1305,13 @@ static int akt_execute_get_command(void)
         #if defined(SUPPORT_RS485_EC)
             elec_compass1_com_get_angle(&angle);
         #endif
-            memcpy(akt_get_response_data.payload_data, &angle, sizeof(float));
-            akt_get_response_data.header.len = sizeof(float);
+            client->response.response_length = sizeof(float);
+            client->response.data = calloc(1, client->response.response_length);
+            if(client->response.data == NULL){
+                printf_err("calloc err!");
+                break;
+            }
+            memcpy(client->response.data, &angle, client->response.response_length);
             break;
         }
 
@@ -1283,17 +1324,20 @@ static int akt_execute_get_command(void)
             struct _device_model model;
             memset(&model, 0, sizeof(model));
             memcpy(model.type, poal_config->status_para.device_sn, sizeof(model.type));
-            printf("device mode:%s\n", model.type);
-            memcpy(akt_get_response_data.payload_data, &model, sizeof(model));
-            akt_get_response_data.header.len = sizeof(model);
+            printf_debug("device mode:%s\n", model.type);
+            client->response.response_length = sizeof(model);
+            client->response.data = calloc(1, client->response.response_length);
+            if(client->response.data == NULL){
+                printf_err("calloc err!");
+                break;
+            }
+            memcpy(client->response.data, &model, client->response.response_length);
             break;
         }
         default:
             printf_debug("not support get commmand\n");
     }
 exit:
-    //io_set_refresh_keepalive_time(0);
-    akt_get_response_data.header.operation = QUERY_CMD_RSP;
     return err_code;
 }
 
@@ -1362,11 +1406,12 @@ static int akt_execute_net_command(void *client)
 * RETURNS
 *     err_code: error code
 ******************************************************************************/
-bool akt_execute_method(int *code, void *cl)
+bool akt_execute_method(void *cl, int *code)
 {
-    PDU_CFG_REQ_HEADER_ST *header;
+    PDU_CFG_REQ_HEADER_ST_EX *header;
     int err_code;
-    header = &akt_header;
+    struct net_tcp_client *client = cl;
+    header = (PDU_CFG_REQ_HEADER_ST_EX *)client->request.header;
 
     err_code = RET_CODE_SUCCSESS;
     printf_note("operation code[%x]\n", header->operation);
@@ -1381,7 +1426,7 @@ bool akt_execute_method(int *code, void *cl)
         case QUERY_CMD_REQ:
         {
             update_tcp_keepalive(cl);
-            err_code = akt_execute_get_command();
+            err_code = akt_execute_get_command(cl);
             break;
         }
         case NET_CTRL_CMD:
@@ -1417,6 +1462,168 @@ bool akt_execute_method(int *code, void *cl)
         printf_warn("error code[%d]\n", *code);
         return false;
     }
+}
+
+bool akt_parse_header_v2(void *client, const char *buf, int len, int *head_len, int *code)
+{
+    struct net_tcp_client *cl = client;
+    PDU_CFG_REQ_HEADER_ST_EX *header;
+    int hlen = 0 , i;
+    hlen = sizeof(PDU_CFG_REQ_HEADER_ST_EX);
+
+    if(len < hlen){
+        *head_len = 0;
+        //*code = RET_CODE_FORMAT_ERR;
+        return true;
+    }
+    header = calloc(1, hlen);
+    if (!header) {
+        printf_err("calloc\n");
+        *head_len = 0;
+        *code = RET_CODE_INTERNAL_ERR;
+        return false;
+    }
+    memcpy(header, buf, hlen);
+    
+    for(i = 0; i< len; i++)
+        printfd("%02x ", buf[i]);
+    printfd("\n");
+    
+    if(header->start_flag != AKT_START_FLAG){
+        printf_err("parse_header error\n");
+        *head_len = hlen;
+        *code = RET_CODE_FORMAT_ERR;
+        return false;
+    }
+    printf_debug("header.data len=%x\n", header->len);
+    printf_debug("header.operation_code=%x\n", header->operation);
+    printf_debug("header.code=%x\n", header->code);
+    printf_debug("header.usr_id:");
+    for(i = 0; i< sizeof(header->usr_id); i++){
+        printfd("%x", header->usr_id[i]);
+    }
+    printfd("\n");
+    printf_debug("header.receiver_id=%x\n", header->receiver_id);
+    printf_debug("header.crc=%x\n", header->crc);
+
+    cl->request.header = header;
+    cl->request.content_length = header->len; 
+    
+    *head_len = hlen;
+    *code = RET_CODE_SUCCSESS;
+
+    return true;
+}
+
+
+void akt_send_rsp(void *client, int code, void *args)
+{
+    struct net_tcp_client *cl = client;
+    PDU_CFG_REQ_HEADER_ST_EX *req_header;
+    PDU_CFG_RSP_HEADER_ST *rsp_header;
+    char *psend;
+    char *ptr_rsp;
+    uint16_t end_flag = AKT_END_FLAG;
+    int rsp_len;
+    printf_debug("AKT Send Rsp...[%d]\n", code);
+    rsp_len = sizeof(PDU_CFG_RSP_HEADER_ST);
+    ptr_rsp = calloc(1, rsp_len);
+    if(ptr_rsp == NULL){
+        printf_err("calloc err!\n");
+        return;
+    }
+    rsp_header = ptr_rsp;
+    req_header = cl->request.header;
+    printf_debug("req_header->operation=%d\n", req_header->operation);
+    if(req_header->operation == SET_CMD_REQ){
+        rsp_header->operation = SET_CMD_RSP;
+        rsp_header->code = req_header->code;
+        cl->response.data = calloc(1, sizeof(code));
+        if(cl->response.data == NULL)
+            goto exit;
+        memcpy(cl->response.data, &code, sizeof(code));
+        cl->response.response_length = sizeof(uint32_t);
+        
+        /* 设置反馈命令需要反馈通道号 */
+        rsp_len++;
+        rsp_header = realloc(rsp_header, rsp_len);
+        if(rsp_header == NULL){
+            printf_err("realloc err!\n");
+            goto exit;
+        }
+        ptr_rsp[rsp_len - 1] = cl->response.ch;
+    }
+    else if(req_header->operation == QUERY_CMD_REQ){
+        rsp_header->operation = QUERY_CMD_RSP;
+        rsp_header->code = req_header->code;
+    }
+    else if(req_header->operation == NET_CTRL_CMD){
+        if(req_header->code == HEART_BEAT_MSG_REQ){
+            rsp_header->operation = req_header->operation;
+            rsp_header->code  = HEART_BEAT_MSG_RSP;
+        }
+        else if(req_header->code == DISCOVER_LAN_DEV_PARAM){
+            rsp_header->operation = req_header->operation;
+            rsp_header->code  = req_header->code;;
+        }
+    }
+    rsp_header->start_flag = AKT_START_FLAG;
+    rsp_header->receiver_id = 0;
+    /* 设置反馈命令数据长度要加上通达号长度（1个字节） */
+    rsp_header->len = cl->response.response_length + 1;
+   // rsp_header->crc = htons(crc16_caculate((uint8_t *)cl->response.data, cl->response.response_length));
+    rsp_header->crc = crc16_caculate((uint8_t *)cl->response.data, cl->response.response_length);
+    printf_debug("crc=0x%x", rsp_header->crc);
+    memcpy(rsp_header->usr_id, req_header->usr_id, sizeof(req_header->usr_id));
+
+#if 0
+    int i;
+    printfn("Send Response: \n");
+    for(i = 0; i< rsp_len; i++){
+        printfn("%02x ", ptr_rsp[i]);
+    }
+    char *data = (char *)cl->response.data;
+    for(i = 0; i< cl->response.response_length; i++){
+        printfn("%02x ", data[i]);
+    }
+    data = (char *)&end_flag;
+    for(i = 0; i< sizeof(end_flag); i++){
+        printfn("%02x ", data[i]);
+    }
+    printfn("\n");
+#endif
+
+    size_t send_len, offset = 0;
+    send_len = rsp_len+cl->response.response_length+sizeof(end_flag);
+    psend = calloc(1, send_len);
+    if(psend == NULL){
+        printf_err("psend err!\n");
+        goto exit;
+    }
+    
+    memcpy(psend, rsp_header, rsp_len);
+    offset += rsp_len;
+    if(cl->response.response_length > 0){
+        memcpy(psend+offset, cl->response.data, cl->response.response_length);
+        offset += cl->response.response_length;
+    }
+    
+    memcpy(psend+offset, &end_flag, sizeof(end_flag));
+    int i;
+    for(i = 0; i< send_len; i++){
+        printfd("%02x ", psend[i]);
+    }
+    printfd("\n");
+    cl->send(cl, psend, send_len);
+exit:
+    safe_free(rsp_header);
+}
+
+
+void akt_send(void *cl, const void *data, int len)
+{
+
+
 }
 
 /******************************************************************************
@@ -1490,7 +1697,6 @@ bool akt_parse_header(const uint8_t *data, int len, uint8_t **payload, int *err_
     
     return true;
 }
-
 
 bool akt_parse_data(const uint8_t *payload, int *code)
 {

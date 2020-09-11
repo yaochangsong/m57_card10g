@@ -55,7 +55,7 @@ sgn(a - b) == 0         sgn(a - b) != 0       sgn(a - b) <  0         sgn(a - b)
 #define SPEED_10000     10000
 
 extern char *safe_strdup(const char *s);
-extern uint16_t crc16_caculate(uint8_t *pchMsg, uint16_t wDataLen);
+extern uint16_t crc16_caculate(const uint8_t *pchMsg, uint16_t wDataLen);
 extern int get_mac(char *ifname, char * mac, int len_limit);
 extern int write_file_in_int16(void *pdata, unsigned int data_len, char *filename);
 extern int32_t  diff_time(void);

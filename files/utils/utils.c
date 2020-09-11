@@ -331,13 +331,13 @@ int get_mac(char *ifname, char * mac, int len_limit)
 
 
 #define CRC_16_POLYNOMIALS   0x8005
-uint16_t crc16_caculate(uint8_t *pchMsg, uint16_t wDataLen) {
+uint16_t crc16_caculate(const uint8_t *pchMsg, uint16_t wDataLen) {
     uint8_t i;
     uint8_t chChar;
     uint16_t wCRC = 0xFFFF; //g_CRC_value;
-
+    uint8_t *ptr = pchMsg;
     while (wDataLen--) {
-        chChar = *pchMsg++;
+        chChar = *ptr++;
         wCRC ^= (((uint16_t) chChar) << 8);
 
         for (i = 0; i < 8; i++) {

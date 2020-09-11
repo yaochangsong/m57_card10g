@@ -74,13 +74,214 @@ exit:
     return 0;
 }
 
+static FILE *_file_fd = NULL;
+static  void init_write_file(char *filename)
+{
+    _file_fd = fopen(filename, "w+b");
+    if(!_file_fd){
+        printf("Open file error!\n");
+    }
+}
+
+static inline int write_file_raw_data(void *pdata, int len)
+{
+    if(_file_fd != NULL)
+        fwrite(pdata, len, 1, _file_fd);
+    return 0;
+}
+
+static inline void write_file_close(void *pdata, int len)
+{
+    close(_file_fd);
+}
+
+static bool tcp_client_header_cb(struct net_tcp_client *cl, char *buf, int len)
+{
+    bool stat;
+    int code = 0;
+    int head_len = 0;
+
+    stat = cl->srv->on_header(cl, buf, len, &head_len, &code);
+    ustream_consume(cl->us, head_len);
+    if(stat == false){
+        cl->state = NET_TCP_CLIENT_STATE_DONE;
+        cl->srv->send_error(cl, code, NULL);
+        cl->request_done(cl);
+        return false;
+    }
+    
+    cl->state = NET_TCP_CLIENT_STATE_DATA;
+
+    return stat;
+}
+
+static void tcp_dispatch_done(struct net_tcp_client *cl)
+{
+    
+    if (cl->dispatch.free)
+        cl->dispatch.free(cl);
+
+    memset(&cl->dispatch, 0, sizeof(struct dispatch));
+}
+
+static void tcp_data_free(struct net_tcp_client *cl)
+{
+    struct dispatch *d = &cl->dispatch;
+    printf_note("free d->body=%p\n", d->body);
+    if(d->body)
+        free(d->body);
+}
+
+static void tcp_post_done(struct net_tcp_client *cl)
+{
+    int code;
+    if(!cl->srv->on_execute){
+        cl->srv->send_error(cl, 400, NULL);
+    }
+    if (cl->srv->on_execute(cl, &code) == false){
+        cl->srv->send_error(cl, code, NULL);
+        if(cl->request_done)
+            cl->request_done(cl);
+        return;
+    }
+    cl->srv->send_error(cl, code, NULL);
+    if(cl->request_done)
+        cl->request_done(cl);
+}
+
+
+static int tcp_load_data(struct net_tcp_client *cl, const char *data, int len)
+{
+    struct dispatch *d = &cl->dispatch;
+    d->post_len += len;
+
+    if (d->post_len > MAX_RECEIVE_DATA_LEN)
+        goto err;
+
+    if (d->post_len > NET_DATA_BUF_SIZE) {
+        printf_note("realloc: %p, %d\n", d->body, d->post_len);
+        d->body = realloc(d->body, MAX_RECEIVE_DATA_LEN);
+        if (!d->body) {
+            cl->srv->send_error(cl, 500, "No memory");
+            return 0;
+        }
+    }
+
+    memcpy(d->body, data, len);
+    int i;
+    printfd("rec data: ");
+    for(i = 0; i< len; i++){
+        printfd("%02x ", d->body[i]);
+    }
+    printfd("\n");
+    return len;
+err:
+    cl->srv->send_error(cl, 413, NULL);
+    return 0;
+}
+
+
+
+static void tcp_client_poll_data(struct net_tcp_client *cl)
+{
+    struct dispatch *d = &cl->dispatch;
+    struct net_tcp_request *r = &cl->request;
+    char *buf;
+    int len;
+    int content_length = r->content_length;
+
+    if (cl->state == NET_TCP_CLIENT_STATE_DONE)
+        return;
+    d->post_data = tcp_load_data;
+    d->post_done = tcp_post_done;
+    d->free = tcp_data_free;
+    d->body = calloc(1, NET_DATA_BUF_SIZE);
+    if (!d->body)
+        cl->srv->send_error(cl, 500, "Internal Server Error,No memory");
+
+    while (1) {
+        int cur_len;
+
+        buf = ustream_get_read_buf(cl->us, &len);
+        if (!buf || !len)
+            break;
+
+        if (!d->post_data)
+            return;
+        cur_len = min(content_length, len);
+        if (cur_len) {
+            if (d->post_data)
+                cur_len = d->post_data(cl, buf, cur_len);
+
+            content_length -= cur_len;
+            ustream_consume(cl->us, cur_len);
+            continue;
+        }else{
+             ustream_consume(cl->us, len);
+            break;
+        }
+    }
+    if (!content_length && cl->state != NET_TCP_CLIENT_STATE_DONE) {
+        if (cl->dispatch.post_done)
+            cl->dispatch.post_done(cl);
+    }
+
+}
+
+static inline bool tcp_client_data_cb(struct net_tcp_client *cl, char *buf, int len)
+{
+    tcp_client_poll_data(cl);
+    return false;
+}
+
+static void tcp_client_request_done(struct net_tcp_client *cl)
+{
+    cl->state = NET_TCP_CLIENT_STATE_HEADER;
+    tcp_dispatch_done(cl);
+    safe_free(cl->request.header);
+    safe_free(cl->response.data);
+    memset(&cl->request, 0, sizeof(cl->request));
+    memset(&cl->response, 0, sizeof(cl->response));
+}
+
+
+typedef bool (*tcp_read_cb_t)(struct net_tcp_client *cl, char *buf, int len);
+static tcp_read_cb_t tcp_read_cbs[] = {
+    [NET_TCP_CLIENT_STATE_HEADER] = tcp_client_header_cb,
+    [NET_TCP_CLIENT_STATE_DATA] = tcp_client_data_cb,
+};
+
+
+void tcp_client_read_cb(struct net_tcp_client *cl)
+{
+    struct ustream *us = cl->us;
+    
+    char *str;
+    int len;
+    
+    do {
+        str = ustream_get_read_buf(us, &len);
+        if (!str || !len)
+            return;
+
+        if (cl->state >= ARRAY_SIZE(tcp_read_cbs) || !tcp_read_cbs[cl->state])
+            return;
+
+        if (!tcp_read_cbs[cl->state](cl, str, len)) {
+            if (len == us->r.buffer_len && cl->state != NET_TCP_CLIENT_STATE_DATA)
+                cl->srv->send_error(cl, 413, NULL);
+            break;
+        }
+    } while(1);
+}
 
 static inline void tcp_ustream_read_cb(struct ustream *s, int bytes)
 {
-    uint8_t str[MAX_RECEIVE_DATA_LEN];
-    int len;
+   // uint8_t str[MAX_RECEIVE_DATA_LEN];
+   // int len;
     struct net_tcp_client *cl = container_of(s, struct net_tcp_client, sfd.stream);
-
+    tcp_client_read_cb(cl);
+    #if 0
     printf_debug("data from: %s:%d\n", cl->get_peer_addr(cl), cl->get_peer_port(cl));
     //str = ustream_get_read_buf(s, &len);
     memset(str, 0 ,sizeof(str));
@@ -88,6 +289,7 @@ static inline void tcp_ustream_read_cb(struct ustream *s, int bytes)
     if (!str || !len)
         return;
     poal_handle_request(cl, str,  len);
+    #endif
 }
 
 static void tcp_ustream_write_cb(struct ustream *s, int bytes)
@@ -173,6 +375,11 @@ void update_tcp_keepalive(struct net_tcp_client *cl)
     } 
 }
 
+void tcp_send(struct net_tcp_client *cl, const void *data, int len)
+{
+    ustream_write(cl->us, data, len, true);
+}
+
 static void tcp_accept_cb(struct uloop_fd *fd, unsigned int events)
 {
     struct net_tcp_server *srv = container_of(fd, struct net_tcp_server, fd);
@@ -215,12 +422,11 @@ static void tcp_accept_cb(struct uloop_fd *fd, unsigned int events)
     cl->srv->nclients++;
 
     cl->free = tcp_free;
-    //cl->vprintf = uh_vprintf;
-    //cl->chunk_send = uh_chunk_send;
-    //cl->chunk_printf = uh_chunk_printf;
-
     cl->get_peer_addr = tcp_get_peer_addr;
     cl->get_peer_port = tcp_get_peer_port;
+    cl->send = tcp_send;
+    cl->request_done = tcp_client_request_done;
+    printf_note("cl->response.data=%p\n", cl->response.data);
     printf_note("New connection from: %s:%d\n", cl->get_peer_addr(cl), cl->get_peer_port(cl));
 
     socklen_t serv_len = sizeof(cl->serv_addr); 
@@ -244,6 +450,8 @@ int tcp_active_send_all_client(uint8_t *data, int len)
             ustream_write(cl_list->us, data, len, true);
     }
 }
+
+
 
 bool tcp_find_client(struct sockaddr_in *addr)
 {
@@ -294,7 +502,6 @@ struct net_tcp_server *tcp_server_new(const char *host, int port)
         uh_log_err("calloc");
         goto err;
     }
-    
     srv->fd.fd = sock;
     srv->fd.cb = tcp_accept_cb;
    

@@ -1577,25 +1577,29 @@ void akt_send_rsp(void *client, int code, void *args)
             goto exit;
         }
         ptr_rsp[rsp_len - 1] = cl->response.ch;
+        /* 设置反馈命令数据长度要加上通达号长度（1个字节） */
+        rsp_header->len = cl->response.response_length + 1;
     }
     else if(req_header->operation == QUERY_CMD_REQ){
         rsp_header->operation = QUERY_CMD_RSP;
         rsp_header->code = req_header->code;
+        rsp_header->len = cl->response.response_length;
     }
     else if(req_header->operation == NET_CTRL_CMD){
         if(req_header->code == HEART_BEAT_MSG_REQ){
             rsp_header->operation = req_header->operation;
             rsp_header->code  = HEART_BEAT_MSG_RSP;
+            rsp_header->len = 0;
         }
         else if(req_header->code == DISCOVER_LAN_DEV_PARAM){
             rsp_header->operation = req_header->operation;
-            rsp_header->code  = req_header->code;;
+            rsp_header->code  = req_header->code;
+            rsp_header->len = cl->response.response_length;
         }
     }
     rsp_header->start_flag = AKT_START_FLAG;
     rsp_header->receiver_id = 0;
-    /* 设置反馈命令数据长度要加上通达号长度（1个字节） */
-    rsp_header->len = cl->response.response_length + 1;
+
    // rsp_header->crc = htons(crc16_caculate((uint8_t *)cl->response.data, cl->response.response_length));
     rsp_header->crc = crc16_caculate((uint8_t *)cl->response.data, cl->response.response_length);
     printf_debug("crc=0x%x", rsp_header->crc);

@@ -59,13 +59,12 @@ void udp_free(struct net_udp_client *cl)
     }
 }
 
-int udp_send_data_to_client(struct net_udp_client *client, uint8_t *data, uint32_t data_len)
+void udp_send_data_to_client(struct net_udp_client *client, uint8_t *data, uint32_t data_len)
 {    
     if(client == NULL)
-        return -1;
+        return;
     printf_debug("send: %s:%d\n", client->get_peer_addr(client), client->get_peer_port(client));
     sendto(client->srv->fd.fd, data, data_len, 0, (struct sockaddr *)&client->peer_addr, sizeof(struct sockaddr));
-    return 0;
 }
 
 static inline int udp_send_vec_data_to_client(struct net_udp_client *client, struct iovec *iov, int iov_len)
@@ -220,17 +219,6 @@ static void udp_read_cb(struct uloop_fd *fd, unsigned int events)
         return;
     }
 
-#if 0
-    struct net_udp_client *cl_list, *list_tmp;
-    list_for_each_entry_safe(cl_list, list_tmp, &srv->clients, list){
-        if(memcmp(&cl_list->peer_addr.sin_addr, &addr.sin_addr, sizeof(addr.sin_addr)) == 0 &&
-            cl_list->peer_addr.sin_port == addr.sin_port){
-            printf_note("Find UDP ipaddree on list:%s:%d tag=%d\n",  cl_list->get_peer_addr(cl_list), cl_list->peer_addr.sin_port, cl_list->tag);
-            cl = cl_list;
-            goto udp_handle;
-        }
-    }
-#endif
     cl = calloc(1, sizeof(struct net_udp_client));
     if (!cl) {
         printf_err("calloc\n");
@@ -240,13 +228,14 @@ static void udp_read_cb(struct uloop_fd *fd, unsigned int events)
     cl->get_peer_addr = udp_get_peer_addr;
     cl->get_peer_port = udp_get_peer_port;
 
-    //list_add(&cl->list, &srv->clients);
     cl->srv = srv;
-    //cl->srv->nclients++;
+    cl->send = udp_send_data_to_client;
     cl->ifname = udp_get_ifname(cl);
     printf_note("Receive New UDP data[%d] From: %s:%d, ifname=%s\n", n, cl->get_peer_addr(cl), cl->get_peer_port(cl), cl->ifname);
     if(cl != NULL){
-        poal_udp_handle_request(cl, data, n);
+        //poal_udp_handle_request(cl, data, n);
+        if(cl->srv->on_discovery)
+            cl->srv->on_discovery(cl, data, n);
         printf_note("Deal Over Free UDP: %s:%d\n", cl->get_peer_addr(cl), cl->get_peer_port(cl));
         free(cl);
     }

@@ -22,6 +22,7 @@ struct response_get_data akt_get_response_data;
 struct response_set_data akt_set_response_data;
 
 struct akt_protocal_param akt_config;
+bool akt_send_resp_discovery(void *client, const char *pdata, int len);
 
 int akt_get_device_id(void)
 {
@@ -1393,6 +1394,56 @@ static int akt_execute_net_command(void *client)
     return 0;
 }
 
+static int akt_execute_discovery_command(void *client, const char *buf, int len)
+{
+    struct poal_config *poal_config = &(config_get_config()->oal_config);
+    
+    DEVICE_NET_INFO_ST netinfo;
+    struct in_addr ipdata;
+    struct net_udp_client *cl = NULL;
+    struct sockaddr_in addr;
+    struct discover_net{
+        uint32_t ipaddr;
+        uint16_t port;
+    };
+    /* parse ipaddress&port */
+    struct discover_net dis_net;
+    memcpy(&dis_net, buf, sizeof(struct discover_net));
+    printf_note("ipaddr = 0x%x, port=0x%x[%d]\n", dis_net.ipaddr, dis_net.port,  dis_net.port);
+    addr.sin_port = dis_net.port;
+    addr.sin_addr.s_addr = dis_net.ipaddr;
+    addr.sin_family = AF_INET;   /* fixedb bug: Address family not supported by protocol */
+    
+    cl = (struct net_udp_client *)client;
+#ifdef  SUPPORT_NET_WZ
+    if(cl->ifname && !strcmp(cl->ifname, NETWORK_10G_EHTHERNET_POINT)){
+        memcpy(netinfo.mac, poal_config->network_10g.mac, sizeof(netinfo.mac));
+        netinfo.ipaddr = htonl(poal_config->network_10g.ipaddress);
+        netinfo.gateway = htonl(poal_config->network_10g.gateway);
+        netinfo.mask = htonl(poal_config->network_10g.netmask);
+        netinfo.port = htons(poal_config->network_10g.port);
+        netinfo.status = 0;
+        ipdata.s_addr = poal_config->network_10g.ipaddress;
+    }else
+#endif
+    {
+        memcpy(netinfo.mac, poal_config->network.mac, sizeof(netinfo.mac));
+        netinfo.ipaddr = htonl(poal_config->network.ipaddress);
+        netinfo.gateway = htonl(poal_config->network.gateway);
+        netinfo.mask = htonl(poal_config->network.netmask);
+        netinfo.port = htons(poal_config->network.port);
+        netinfo.status = 0;
+        ipdata.s_addr = poal_config->network.ipaddress;
+    }
+    printf_note("ifname:%s,mac:%x%x%x%x%x%x, ipaddr=%x[%s], gateway=%x\n", cl->ifname, netinfo.mac[0],netinfo.mac[1],netinfo.mac[2],netinfo.mac[3],netinfo.mac[4],netinfo.mac[5],
+                                                        netinfo.ipaddr, inet_ntoa(ipdata), netinfo.gateway);
+    memcpy(&cl->discover_peer_addr, &addr, sizeof(addr));
+    akt_send_resp_discovery(client, &netinfo, sizeof(DEVICE_NET_INFO_ST));
+
+    return 0;
+}
+
+
 
 /******************************************************************************
 * FUNCTION:
@@ -1463,6 +1514,99 @@ bool akt_execute_method(void *cl, int *code)
         return false;
     }
 }
+
+/* UDP */
+bool akt_parse_discovery(void *client, const char *buf, int len)
+{
+    #define _DISCOVERY_CODE 0xaa
+    #define _DISCOVERY_BUSINESS_CODE 0xff
+    #define _DISCOVERY_PAYLOAD_LEN 6    /* ip(4)+port(2) */
+    
+    struct net_udp_client *cl = client;
+    PDU_CFG_REQ_HEADER_ST_EX header;
+    int hlen = 0 , i;
+    char *payload = NULL;
+    int payload_len = 0;
+    hlen = sizeof(PDU_CFG_REQ_HEADER_ST_EX);
+    
+    if(len < (hlen+_DISCOVERY_PAYLOAD_LEN) || buf == NULL)
+        return false;
+    
+    memcpy(&header, buf, hlen);
+    
+    if(header.start_flag != AKT_START_FLAG){
+        return false;
+    }
+    if(header.operation != _DISCOVERY_CODE || header.code != _DISCOVERY_BUSINESS_CODE){
+        printf_err("err header.operation_code=%x\n", header.operation);
+        printf_err("err header.code=%x\n", header.code);
+        return false;
+    }
+    printf_debug("header.data len=%x\n", header.len);
+    printf_debug("header.operation_code=%x\n", header.operation);
+    printf_debug("header.code=%x\n", header.code);
+    printf_debug("header.usr_id:");
+    for(i = 0; i< sizeof(header.usr_id); i++){
+        printfd("%x", header.usr_id[i]);
+    }
+    printfd("\n");
+    printf_debug("header.receiver_id=%x\n", header.receiver_id);
+    printf_debug("header.crc=%x\n", header.crc);
+
+    if(header.len != _DISCOVERY_PAYLOAD_LEN){
+        printf_debug("err header.len=%d\n", header.len);
+        return false;
+    }
+
+    printfd("Discovery: ");
+    for(i = 0; i< len; i++)
+        printfd("%02x ", buf[i]);
+    printfd("\n");
+    payload_len = header.len;
+    payload = buf + hlen;
+    akt_execute_discovery_command(cl, payload, payload_len);
+
+    return true;
+}
+
+bool akt_send_resp_discovery(void *client, const char *pdata, int len)
+{
+    #define _DISCOVERY_CODE 0xaa
+    #define _DISCOVERY_BUSINESS_CODE 0xff
+    uint16_t end_flag = AKT_END_FLAG;
+    PDU_CFG_RSP_HEADER_ST rsp_header;
+    int header_len=0, offset = 0;
+    struct net_udp_client *cl = client;
+    char send_buf[sizeof(rsp_header) + len + sizeof(end_flag)];
+
+    header_len = sizeof(rsp_header);
+    memset(&rsp_header, 0, header_len);
+    rsp_header.start_flag = AKT_START_FLAG;
+    rsp_header.operation = _DISCOVERY_CODE;
+    rsp_header.code  = _DISCOVERY_BUSINESS_CODE;
+    rsp_header.len = len;
+
+    memcpy(send_buf, &rsp_header, header_len);
+    offset+=header_len;
+    memcpy(send_buf+offset, pdata, len);
+    offset+=len;
+    memcpy(send_buf+offset, &end_flag, sizeof(end_flag));
+    offset+=sizeof(end_flag);
+
+    printfd("Discovery resp: ");
+    for(int i = 0; i< len; i++)
+        printfd("%02x ", send_buf[i]);
+    printfd("\n");
+
+    int n;
+    n = sendto(cl->srv->fd.fd, send_buf, offset, 0, (struct sockaddr *)&cl->discover_peer_addr, sizeof(struct sockaddr));
+    if(n < 0){
+        printf_err("n=%d, errno=%d[%s]\n", n, errno, strerror(errno));
+    }
+    return true;
+}
+
+
 
 bool akt_parse_header_v2(void *client, const char *buf, int len, int *head_len, int *code)
 {
@@ -1541,7 +1685,7 @@ exit:
 
 
 
-void akt_send_rsp(void *client, int code, void *args)
+void akt_send_resp(void *client, int code, void *args)
 {
     struct net_tcp_client *cl = client;
     PDU_CFG_REQ_HEADER_ST_EX *req_header;

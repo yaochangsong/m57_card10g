@@ -767,8 +767,9 @@ extern uint8_t *akt_assamble_data_extend_frame_header_data(uint32_t *len, void *
 extern int8_t akt_assamble_data_frame_header_data( uint8_t *head_buf,  int buf_len, uint32_t *len, void *config);
 //extern void akt_send_err(void *cl, int code, const char *fmt, ...);
 extern void akt_send(void *cl, const void *data, int len);
-extern void akt_send_rsp(void *client, int code, void *args);
+extern void akt_send_resp(void *client, int code, void *args);
 extern int  akt_parse_end(void *cl, char *buf, int len);
+extern bool akt_parse_discovery(void *client, const char *buf, int len);
 
 
 #endif

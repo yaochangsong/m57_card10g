@@ -28,11 +28,12 @@ struct net_udp_server {
     void (*free)(struct net_udp_server *srv);
     void (*on_accept)(struct net_udp_client *cl);
     int (*on_request)(struct net_udp_client *cl);
+    bool (*on_discovery)(struct net_udp_client *cl, const char *buf, int len);
 };
 
 extern struct net_udp_server *udp_server_new(const char *host, int port);
 extern int udp_send_data(uint8_t  *data, uint32_t data_len);
-extern int udp_send_data_to_client(struct net_udp_client *client, uint8_t *data, uint32_t data_len);
+extern void udp_send_data_to_client(struct net_udp_client *client, uint8_t *data, uint32_t data_len);
 extern void udp_add_client_to_list(struct sockaddr_in *addr, int ch);
 extern struct net_udp_server *get_udp_server(void);
 extern int udp_send_vec_data(struct iovec *iov, int iov_len);

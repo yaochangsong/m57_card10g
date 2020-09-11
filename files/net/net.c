@@ -121,16 +121,18 @@ int server_init(void)
     #endif
     tcpsrv->on_header = akt_parse_header_v2;
     tcpsrv->on_execute = akt_execute_method;
-    tcpsrv->send_error =  akt_send_rsp;
+    tcpsrv->send_error =  akt_send_resp;
     tcpsrv->on_end = akt_parse_end;
     //tcpsrv->send =  akt_send_rsp;
-#endif
+
     struct net_udp_server *udpsrv = NULL;
     printf_note("udp server init[port:%d]\n", 1234);
     udpsrv = udp_server_new("0.0.0.0",  1234);
     if (!udpsrv)
         return -1;
     pudp_srv = udpsrv;
+    udpsrv->on_discovery = akt_parse_discovery;
+#endif
 
 #ifdef  SUPPORT_PROTOCAL_HTTP
     struct uh_server *srv = NULL;

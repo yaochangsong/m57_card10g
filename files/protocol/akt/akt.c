@@ -788,13 +788,12 @@ static int akt_execute_set_command(void *cl)
             /* 通道IQ使能 */
             if(enable){
                 /* NOTE:The parameter must be a MAIN channel, not a subchannel */
-               // io_set_enable_command(IQ_MODE_ENABLE, -1, sub_ch, 0);
+                io_set_enable_command(IQ_MODE_ENABLE, -1, sub_ch, 0);
             }else{
-              //  io_set_enable_command(IQ_MODE_DISABLE, -1,sub_ch, 0);
+                io_set_enable_command(IQ_MODE_DISABLE, -1,sub_ch, 0);
             }
-            client->send_raw_data(client, 
-                "/etc/file/CH0_D20200909192511390_F1000.000M_B175.000M_R409.600M_TIQ.wav");
-           // executor_set_enable_command(ch);
+            //client->send_raw_data(client, 
+            //    "/etc/file/CH0_D20200909192511390_F1000.000M_B175.000M_R409.600M_TIQ.wav");
             break;
         }
 #ifdef SUPPORT_NET_WZ

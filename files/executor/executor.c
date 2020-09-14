@@ -39,7 +39,7 @@ static void executor_send_config_data_to_clent(void *data)
     send_data = (uint8_t *)&notify_param;
     send_data_len = sizeof(DEVICE_SIGNAL_PARAM_ST);
 #endif
-    poal_send_active_to_all_client(send_data, send_data_len);
+  //  poal_send_active_to_all_client(send_data, send_data_len);
 }
 
 int executor_tcp_disconnect_notify(void *cl)

@@ -15,12 +15,6 @@
 #include "config.h"
 #include "../../bsp/io.h"
 
-
-PDU_CFG_REQ_HEADER_ST akt_header;
-
-struct response_get_data akt_get_response_data;
-struct response_set_data akt_set_response_data;
-
 struct akt_protocal_param akt_config;
 bool akt_send_resp_discovery(void *client, const char *pdata, int len);
 
@@ -794,10 +788,12 @@ static int akt_execute_set_command(void *cl)
             /* 通道IQ使能 */
             if(enable){
                 /* NOTE:The parameter must be a MAIN channel, not a subchannel */
-                io_set_enable_command(IQ_MODE_ENABLE, -1, sub_ch, 0);
+               // io_set_enable_command(IQ_MODE_ENABLE, -1, sub_ch, 0);
             }else{
-                io_set_enable_command(IQ_MODE_DISABLE, -1,sub_ch, 0);
+              //  io_set_enable_command(IQ_MODE_DISABLE, -1,sub_ch, 0);
             }
+            client->send_raw_data(client, 
+                "/etc/file/CH0_D20200909192511390_F1000.000M_B175.000M_R409.600M_TIQ.wav");
            // executor_set_enable_command(ch);
             break;
         }
@@ -1342,58 +1338,6 @@ exit:
     return err_code;
 }
 
-static int akt_execute_net_command(void *client)
-{
-    struct poal_config *poal_config = &(config_get_config()->oal_config);
-    
-    DEVICE_NET_INFO_ST netinfo;
-    struct in_addr ipdata;
-    struct net_udp_client *cl = NULL;
-    struct sockaddr_in addr;
-    struct discover_net{
-        uint32_t ipaddr;
-        uint16_t port;
-    };
-    /* parse ipaddress&port */
-    struct discover_net dis_net;
-    PDU_CFG_REQ_HEADER_ST *header;
-    header = &akt_header;
-    memcpy(&dis_net, header->buf, sizeof(struct discover_net));
-    printf_note("ipaddr = 0x%x, port=0x%x[%d]\n", dis_net.ipaddr, dis_net.port,  dis_net.port);
-    addr.sin_port = dis_net.port;
-    addr.sin_addr.s_addr = dis_net.ipaddr;
-    addr.sin_family = AF_INET;   /* fixedb bug: Address family not supported by protocol */
-    
-    cl = (struct net_udp_client *)client;
-#ifdef  SUPPORT_NET_WZ
-    if(cl->ifname && !strcmp(cl->ifname, NETWORK_10G_EHTHERNET_POINT)){
-        memcpy(netinfo.mac, poal_config->network_10g.mac, sizeof(netinfo.mac));
-        netinfo.ipaddr = htonl(poal_config->network_10g.ipaddress);
-        netinfo.gateway = htonl(poal_config->network_10g.gateway);
-        netinfo.mask = htonl(poal_config->network_10g.netmask);
-        netinfo.port = htons(poal_config->network_10g.port);
-        netinfo.status = 0;
-        ipdata.s_addr = poal_config->network_10g.ipaddress;
-    }else
-#endif
-    {
-        memcpy(netinfo.mac, poal_config->network.mac, sizeof(netinfo.mac));
-        netinfo.ipaddr = htonl(poal_config->network.ipaddress);
-        netinfo.gateway = htonl(poal_config->network.gateway);
-        netinfo.mask = htonl(poal_config->network.netmask);
-        netinfo.port = htons(poal_config->network.port);
-        netinfo.status = 0;
-        ipdata.s_addr = poal_config->network.ipaddress;
-    }
-    printf_note("ifname:%s,mac:%x%x%x%x%x%x, ipaddr=%x[%s], gateway=%x\n", cl->ifname, netinfo.mac[0],netinfo.mac[1],netinfo.mac[2],netinfo.mac[3],netinfo.mac[4],netinfo.mac[5],
-                                                        netinfo.ipaddr, inet_ntoa(ipdata), netinfo.gateway);
-    memcpy(&cl->discover_peer_addr, &addr, sizeof(addr));
-    memcpy(akt_get_response_data.payload_data, &netinfo, sizeof(DEVICE_NET_INFO_ST));
-    akt_get_response_data.header.len = sizeof(DEVICE_NET_INFO_ST);
-//    akt_get_response_data.header.operation = QUERY_CMD_RSP;
-    return 0;
-}
-
 static int akt_execute_discovery_command(void *client, const char *buf, int len)
 {
     struct poal_config *poal_config = &(config_get_config()->oal_config);
@@ -1484,13 +1428,13 @@ bool akt_execute_method(void *cl, int *code)
         {
             if(header->code == HEART_BEAT_MSG_REQ){
                 update_tcp_keepalive(cl);
-                akt_get_response_data.header.len = 0;
-            } else if(header->code == DISCOVER_LAN_DEV_PARAM){
-                printf_note("discover ...\n");
-                err_code = akt_execute_net_command(cl);
-            }else{
-                err_code = akt_execute_net_command(cl);
-            }
+            //    akt_get_response_data.header.len = 0;
+            }// else if(header->code == DISCOVER_LAN_DEV_PARAM){
+               // printf_note("discover ...\n");
+               // err_code = akt_execute_net_command(cl);
+            //}else{
+               // err_code = akt_execute_net_command(cl);
+           // }
             
             break;
         }
@@ -1800,177 +1744,6 @@ void akt_send(void *cl, const void *data, int len)
 }
 
 
-
-/******************************************************************************
-* FUNCTION:
-*     akt_parse_header
-*
-* DESCRIPTION:
-*     akt protocol : Parse Receiving Data Header
-*     
-* PARAMETERS
-*     @data:   total receive data pointer
-*       @len:  total receive data length
-*   @payload:  payload data
-*  @err_code:  error code,  return
-* RETURNS
-*     false: handle data false 
-*      ture: handle data successful
-******************************************************************************/
-bool akt_parse_header(const uint8_t *data, int len, uint8_t **payload, int *err_code)
-{
-    uint8_t *val;
-    PDU_CFG_REQ_HEADER_ST *header, *pdata;
-    header = &akt_header;
-    pdata = data;
-    int header_len;
-
-    int i;
-    printf_debug("receive data:\n");
-    for(i = 0; i< len; i++)
-        printfd("%02x ", data[i]);
-    printfd("\n");
-
-    header_len = sizeof(PDU_CFG_REQ_HEADER_ST) - sizeof(header->buf);
-
-    if(len < header_len){
-        printf_err("receive data len[%d < %d] is too short\n", len, header_len);
-        *err_code = RET_CODE_FORMAT_ERR;
-        return false;
-    }
-
-    printf_debug("parse_header[%x,%x]\n", data[0], data[1]);
-    if(pdata->start_flag != AKT_START_FLAG){
-        printf_debug("parse_header error\n");
-        *err_code = RET_CODE_FORMAT_ERR;
-        return false;
-    }
-    memcpy(header, pdata, sizeof(PDU_CFG_REQ_HEADER_ST));
-    printf_debug("header.start_flag=%x\n", header->start_flag);
-    printf_debug("header.len=%x\n", header->len);
-    printf_info("header.operation_code=%x\n", header->operation);
-    printf_info("header.code=%x\n", header->code);
-    printf_debug("header.usr_id:");
-    for(i = 0; i< sizeof(header->usr_id); i++){
-        printfd("%x", header->usr_id[i]);
-    }
-    printfd("\n");
-    printf_debug("header.receiver_id=%x\n", header->receiver_id);
-    printf_debug("header.crc=%x\n", header->crc);
-
-    if(header_len + header->len > len){
-        *err_code = RET_CODE_FORMAT_ERR;
-        printf_err("invalid payload len=%d\n", header->len);
-        return false;
-    }
-    if(header->len > 0){
-        *payload = data + header_len;
-    }
-    else{
-        *payload = NULL;
-    }
-    
-    return true;
-}
-
-bool akt_parse_data(const uint8_t *payload, int *code)
-{
-    int i;
-    PDU_CFG_REQ_HEADER_ST *header;
-    header = &akt_header;
-    
-    printf_info("payload:\n");
-    for(i = 0; i< header->len; i++)
-        printfi("%02x ", payload[i]);
-    printfi("\n");
-    
-    if(header->len > MAX_RECEIVE_DATA_LEN){
-        *code = RET_CODE_PARAMTER_TOO_LONG;
-        return false;
-    }
-/*
-    header->pbuf = calloc(1, header->len);
-    if (!header->pbuf){
-        printf_err("calloc failed\n");
-        *code = RET_CODE_INTERNAL_ERR;
-        return false;
-    }
-*/    
-    memcpy(header->buf, payload, header->len);
-
-    return true;
-}
-
-
-/******************************************************************************
-* FUNCTION:
-*     akt_assamble_response_data
-*
-* DESCRIPTION:
-*     akt protocol send data prepare: assamble package
-*     注：  协议中，设置命令返回和查询命令返回头格式不一致（fuck!), 需要做判断
-*     
-* PARAMETERS
-*     buf:  send data pointer(not include header)
-*    code: error code
-* RETURNS
-*     len: total data len 
-******************************************************************************/
-
-int akt_assamble_response_data(uint8_t **buf, int err_code)
-{
-    int len = 0;
-    printf_debug("Prepare to assamble response akt data\n");
-
-    PDU_CFG_REQ_HEADER_ST *req_header;
-    struct response_get_data *response_data;
-    int header_len=0;
-    uint8_t response_code;
-
-    req_header = &akt_header;
-    response_data = &akt_get_response_data;
-    header_len = sizeof(PDU_CFG_RSP_HEADER_ST);
-    if(req_header->operation == SET_CMD_REQ){
-        //header_len += 1; /*结构体struct response_set_data cid长度*/
-        response_data = &akt_set_response_data;
-        response_data->header.code = req_header->code;
-    }else if(req_header->operation == NET_CTRL_CMD){
-        /* hearbeat response code */
-        if(req_header->code == HEART_BEAT_MSG_REQ){
-            printf_info("response heartbeat code\n");
-            response_data->header.operation = req_header->operation;
-            response_data->header.code = HEART_BEAT_MSG_RSP;
-        }else if(req_header->code == DISCOVER_LAN_DEV_PARAM){
-            printf_note("response discover...\n");
-            response_data->header.operation = req_header->operation;
-            response_data->header.code = req_header->code;
-        }
-    }else{
-        response_data->header.code = req_header->code;
-    }
-    *buf = response_data;
-
-    response_data->header.start_flag = AKT_START_FLAG; 
-    memcpy(response_data->header.usr_id, req_header->usr_id, sizeof(req_header->usr_id));
-    response_data->header.receiver_id = 0;
-    response_data->header.crc = htons(crc16_caculate((uint8_t *)response_data->payload_data, response_data->header.len));
-    printf_debug("crc:%04x\n", response_data->header.crc);
-    response_data->end_flag = AKT_END_FLAG;
-    
-    int i;
-    for(i = 0 ;i< response_data->header.len; i++){
-        printfd("%02x ", response_data->payload_data[i]);
-    }
-    printfd("\n");
-
-    printf_debug("headerlen=%d, data len:%d\n", header_len, response_data->header.len);
-    len = header_len + response_data->header.len;
-    memcpy(*buf+len, (uint8_t *)&response_data->end_flag, sizeof(response_data->end_flag));
-    len +=  sizeof(response_data->end_flag);
-    
-    return len;
-}
-
 int  akt_assamble_send_active_data(uint8_t *send_buf, uint8_t *payload, uint32_t payload_len)
 {
     struct response_get_data *response_data;
@@ -1994,48 +1767,6 @@ int  akt_assamble_send_active_data(uint8_t *send_buf, uint8_t *payload, uint32_t
     response_data->end_flag = AKT_END_FLAG;
     len = header_len + response_data->header.len;
     memcpy(send_buf+len, (uint8_t *)&response_data->end_flag, sizeof(response_data->end_flag));
-    len +=  sizeof(response_data->end_flag);
-    return len;
-}
-
-
-/******************************************************************************
-* FUNCTION:
-*     akt_assamble_error_response_data
-*
-* DESCRIPTION:
-*     错误时，组装返回错误包
-*     注：协议中，只有设置命令有错误返回！
-* PARAMETERS
-*     buf:  send data pointer(not include header)
-*    code: error code
-* RETURNS
-*     len: total data len 
-******************************************************************************/
-int akt_assamble_error_response_data(uint8_t **buf, int err_code)
-{
-    int len = 0;
-    printf_info("Prepare to assamble error response akt data\n");
-
-    PDU_CFG_REQ_HEADER_ST *req_header;
-    struct response_set_data *response_data;
-
-    req_header = &akt_header;
-    response_data = &akt_set_response_data;
-    *buf = response_data;
-
-    response_data->header.start_flag = AKT_START_FLAG; 
-    //response_data->header.operation =  req_header->operation;
-    response_data->header.code = req_header->code;
-    memcpy(response_data->header.usr_id, req_header->usr_id, sizeof(req_header->usr_id));
-    response_data->header.receiver_id = 0;
-    memcpy(response_data->payload_data, &err_code, sizeof(err_code));
-    response_data->header.len = sizeof(err_code);
-    response_data->header.crc = crc16_caculate((uint8_t *)response_data->payload_data, response_data->header.len);
-    printf_info("crc:%x\n", response_data->header.crc);
-    response_data->end_flag = AKT_END_FLAG;
-    len = sizeof(PDU_CFG_RSP_HEADER_ST) + response_data->header.len;
-    memcpy(*buf+len, (uint8_t *)&response_data->end_flag, sizeof(response_data->end_flag));
     len +=  sizeof(response_data->end_flag);
     return len;
 }

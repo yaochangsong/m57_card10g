@@ -23,6 +23,8 @@
 #include <unistd.h>
 #include <string.h>
 #include <linux/if_link.h>
+#include "../protocol/http/file.h"
+
 
 
 int get_ifa_name_by_ip(char *ipaddr, char *ifa_name)
@@ -195,7 +197,7 @@ static void tcp_client_poll_data(struct net_tcp_client *cl)
 
     while (1) {
         int cur_len;
-        /* æ ¹æ®æ•°æ®é•¿åº¦ï¼›å¾ªçŽ¯è¯»å–æ•°æ® */
+         /* ¸ù¾ÝÊý¾Ý³¤¶È£»Ñ­»·¶ÁÈ¡Êý¾Ý */
         buf = ustream_get_read_buf(cl->us, &len);
         if (!buf || !len)
             break;
@@ -211,7 +213,7 @@ static void tcp_client_poll_data(struct net_tcp_client *cl)
             ustream_consume(cl->us, cur_len);
             continue;
         }else{
-            /* å¦‚æžœæ•°æ®åŽæœ‰ç»“æŸæ ‡å¿—ï¼›æ£€æµ‹ç»“æŸæ ‡å¿— */
+            /* Èç¹ûÊý¾ÝºóÓÐ½áÊø±êÖ¾£»¼ì²â½áÊø±êÖ¾ */
              int end_len;
              if(cl->srv->on_end){
                 end_len = cl->srv->on_end(cl, buf, len);
@@ -294,6 +296,67 @@ static inline void tcp_ustream_read_cb(struct ustream *s, int bytes)
     #endif
 }
 
+static void tcp_raw_data_write_free(struct net_tcp_client *cl)
+{
+    printf_note("data write free...\n");
+    if(cl->dispatch.file.fd)
+        close(cl->dispatch.file.fd);
+}
+
+
+static void tcp_raw_data_write_loop(struct net_tcp_client *cl)
+{
+    static char buf[4096];
+    int fd = cl->dispatch.file.fd;
+    int r = 0;
+    void *ptr;
+
+    while (cl->us->w.data_bytes < 256) {
+       // if(cl->srv->read_raw_data)
+          //  r = cl->srv->read_raw_data(cl, &ptr); //r = read(fd, buf, sizeof(buf));
+        r = read(fd, buf, sizeof(buf));
+        if (r < 0) {
+            if (errno == EINTR)
+                continue;
+            uh_log_err("read");
+        }
+
+        if (r <= 0) {
+            printf_note("request_done:r=%d\n", r);
+            cl->request_done(cl);
+            return;
+        }
+        //cl->send(cl, ptr, r);
+        cl->send(cl, buf, r);
+        //if(cl->srv->read_raw_data_cancel){
+        //    if(cl->srv->read_raw_data_cancel()){
+        //        cl->request_done(cl);
+       //         return;
+        //    }
+       // }
+    }
+}
+
+static void tcp_raw_data_write_cb(struct net_tcp_client *cl, const char *path)
+{
+    int fd;
+    struct path_info *pi;
+    printf_err("read path:%s\n", path);
+    pi = uh_path_lookup(cl, path);
+    if (!pi){
+        printf_err("read error!\n");
+        return;
+    }
+
+    fd = open(pi->phys, O_RDONLY);
+    if (fd < 0)
+        return;
+    cl->dispatch.file.fd = fd;
+    cl->dispatch.write_cb = tcp_raw_data_write_loop;
+    cl->dispatch.free = tcp_raw_data_write_free;
+    tcp_raw_data_write_loop(cl);
+}
+
 static void tcp_ustream_write_cb(struct ustream *s, int bytes)
 {
      printf_debug("tcp_ustream_write_cb[%d]bytes\n",bytes);
@@ -315,8 +378,6 @@ void tcp_free(struct net_tcp_client *cl)
        // cl->srv->on_client_free(cl);
         free(cl);
     }
-    
-
 }
 
 
@@ -427,6 +488,7 @@ static void tcp_accept_cb(struct uloop_fd *fd, unsigned int events)
     cl->get_peer_addr = tcp_get_peer_addr;
     cl->get_peer_port = tcp_get_peer_port;
     cl->send = tcp_send;
+    cl->send_raw_data = tcp_raw_data_write_cb;
     cl->request_done = tcp_client_request_done;
     printf_note("New connection from: %s:%d\n", cl->get_peer_addr(cl), cl->get_peer_port(cl));
 

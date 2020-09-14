@@ -123,6 +123,8 @@ int server_init(void)
     tcpsrv->on_execute = akt_execute_method;
     tcpsrv->send_error =  akt_send_resp;
     tcpsrv->on_end = akt_parse_end;
+   // tcpsrv->read_raw_data = ;
+   //read_raw_data_cancel
     //tcpsrv->send =  akt_send_rsp;
 
     struct net_udp_server *udpsrv = NULL;

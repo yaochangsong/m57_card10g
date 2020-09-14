@@ -759,13 +759,9 @@ struct response_set_data_v2{
 
 
 extern bool akt_parse_header_v2(void *client, const char *buf, int len, int *head_len, int *code);
-extern bool akt_parse_header(const uint8_t *data, int len, uint8_t **payload, int *err_code);
-extern bool akt_parse_data(const uint8_t *payload, int *code);
 extern bool akt_execute_method(void *cl, int *code);
-extern int akt_assamble_response_data(uint8_t **buf, int err_code);
 extern uint8_t *akt_assamble_data_extend_frame_header_data(uint32_t *len, void *config);
 extern int8_t akt_assamble_data_frame_header_data( uint8_t *head_buf,  int buf_len, uint32_t *len, void *config);
-//extern void akt_send_err(void *cl, int code, const char *fmt, ...);
 extern void akt_send(void *cl, const void *data, int len);
 extern void akt_send_resp(void *client, int code, void *args);
 extern int  akt_parse_end(void *cl, char *buf, int len);

@@ -451,6 +451,11 @@ static int spm_send_iq_data(void *data, size_t len, void *arg)
     if(ptr_header == NULL)
         return -1;
 #endif
+    printf_note("tcp send: len %d\n", len);
+    tcp_active_send_all_client(data, len);
+    ioctl(pstream[STREAM_IQ].id, IOCTL_DMA_SET_ASYN_READ_INFO, &len);
+
+#if 0
 #if 1
     #if 1
     int i, index,sbyte;
@@ -500,15 +505,17 @@ static int spm_send_iq_data(void *data, size_t len, void *arg)
     }
     safe_free(ptr);
 #endif
-    
+
     ioctl(pstream[STREAM_IQ].id, IOCTL_DMA_SET_ASYN_READ_INFO, &sbyte);
+#endif
+
     return (header_len + len);
 }
 
 static int spm_send_cmd(void *cmd, void *data, size_t data_len)
 {
 #ifdef SUPPORT_PROTOCAL_AKT
-    poal_send_active_to_all_client((uint8_t *)data, data_len);
+   // poal_send_active_to_all_client((uint8_t *)data, data_len);
 #endif
 }
 

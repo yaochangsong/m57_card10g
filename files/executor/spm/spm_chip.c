@@ -133,7 +133,7 @@ static int spm_chip_send_iq_data(void *data, size_t len, void *arg)
 static int spm_chip_send_cmd(void *cmd, void *data, size_t data_len)
 {
 #ifdef SUPPORT_PROTOCAL_AKT
-    poal_send_active_to_all_client((uint8_t *)data, data_len);
+  //  poal_send_active_to_all_client((uint8_t *)data, data_len);
 #endif
 }
 

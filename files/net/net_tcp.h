@@ -53,6 +53,7 @@ struct net_tcp_client {
     void (*request_done)(struct net_tcp_client *cl);
     
     void (*send)(struct net_tcp_client *cl, const void *data, int len);
+    void (*send_raw_data)(struct net_tcp_client *cl, const char *path);
     void (*printf)(struct net_tcp_client *cl, const char *format, ...);
     void (*vprintf)(struct net_tcp_client *cl, const char *format, va_list arg);
 
@@ -77,6 +78,8 @@ struct net_tcp_server {
     int (*on_end)(struct net_tcp_client *cl, char *buf, int len);
     void (*send)(struct net_tcp_client *cl, const void *data, int len);
     void (*send_error)(struct net_tcp_client *cl, int code, const char *fmt, ...);
+    size_t (*read_raw_data)(struct net_tcp_client *cl, void **data);
+    bool (*read_raw_data_cancel)(struct net_tcp_client *cl);
 };
 
 struct net_tcp_server *tcp_server_new(const char *host, int port);

@@ -127,10 +127,6 @@ int server_init(void)
     tcpsrv->on_execute = akt_execute_method;
     tcpsrv->send_error =  akt_send_resp;
     tcpsrv->on_end = akt_parse_end;
-   // tcpsrv->read_raw_data = ;
-   //read_raw_data_cancel
-    //tcpsrv->send =  akt_send_rsp;
-
     struct net_udp_server *udpsrv = NULL;
     printf_note("udp server init[port:%d]\n", 1234);
     udpsrv = udp_server_new("0.0.0.0",  1234);
@@ -141,7 +137,7 @@ int server_init(void)
 #endif
 
     struct net_tcp_server *tcpdatasrv = NULL;
-    printf_note("tcp server init [port:%d]\n", 6080);
+    printf_note("tcp data server init [port:%d]\n", 6080);
     tcpdatasrv = tcp_data_server_new("0.0.0.0", 6080);
     if (!tcpdatasrv)
         return -1;

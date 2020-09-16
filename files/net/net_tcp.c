@@ -11,8 +11,9 @@
 /*****************************************************************************     
 *  Rev 1.0   06 July 2019   yaochangsong
 *  Initial revision.
+*  Rev 1.0   14 Sep 2020   yaochangsong
+*  Paring data through function callback.
 ******************************************************************************/
-
 #include "config.h"
 #include <arpa/inet.h>
 #include <sys/socket.h>
@@ -260,19 +261,8 @@ void tcp_client_read_cb(struct net_tcp_client *cl)
 
 static inline void tcp_ustream_read_cb(struct ustream *s, int bytes)
 {
-   // uint8_t str[MAX_RECEIVE_DATA_LEN];
-   // int len;
     struct net_tcp_client *cl = container_of(s, struct net_tcp_client, sfd.stream);
     tcp_client_read_cb(cl);
-    #if 0
-    printf_debug("data from: %s:%d\n", cl->get_peer_addr(cl), cl->get_peer_port(cl));
-    //str = ustream_get_read_buf(s, &len);
-    memset(str, 0 ,sizeof(str));
-    len =ustream_read(s, str, MAX_RECEIVE_DATA_LEN);
-    if (!str || !len)
-        return;
-    poal_handle_request(cl, str,  len);
-    #endif
 }
 
 static void tcp_ustream_write_cb(struct ustream *s, int bytes)
@@ -292,8 +282,6 @@ void tcp_free(struct net_tcp_client *cl)
         list_del(&cl->list);
         cl->srv->nclients--;
         executor_tcp_disconnect_notify(cl);
-       // if (cl->srv->on_client_free)
-       // cl->srv->on_client_free(cl);
         free(cl);
     }
 }
@@ -470,7 +458,6 @@ struct net_tcp_server *tcp_server_new(const char *host, int port)
     struct net_tcp_server *srv;
     int sock;
     
-    printf_debug("tcp_server_new\n");
     sock = usock(USOCK_TCP | USOCK_SERVER | USOCK_IPV4ONLY, host, usock_port(port));
     if (sock < 0) {
         uh_log_err("usock");

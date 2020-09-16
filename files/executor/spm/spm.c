@@ -127,16 +127,7 @@ void spm_deal(struct spm_context *ctx, void *args)
         ptr_run = (struct spm_run_parm *)args;
         printf_debug("send:ch:%d, s_freq:%llu, e_freq:%llu, bandwidth=%u\n", 
                 ptr_run->ch, ptr_run->s_freq, ptr_run->e_freq, ptr_run->bandwidth);
-        
-        //usleep(10);
-        //if(notify == 1)
-        //{
-          //printf_note("send:ch:%d, s_freq:%llu, e_freq:%llu, bandwidth=%u\n", 
-          //ptr_run->ch, ptr_run->s_freq, ptr_run->e_freq, ptr_run->bandwidth);
-          //notify =0;
-          //sleep(1);
-          spm_iq_deal_notify(&args);
-        //}
+        spm_iq_deal_notify(&args);
         
     }
     if(pctx->pdata->enable.psd_en){
@@ -212,12 +203,11 @@ void *spm_init(void)
         printf("malloc failed\n");
         exit(1);
     }
-   // thread_attr_set(&attr,SCHED_OTHER, 0);
-   // ret=pthread_create(&recv_thread_id,&attr,(void *)spm_iq_handle_thread, spmctx);
-   // ret=pthread_create(&recv_thread_id,NULL,(void *)spm_iq_handle_thread, spmctx);
-  //  if(ret!=0)
-   //     perror("pthread cread spm");
-   // pthread_detach(recv_thread_id);
+
+    ret=pthread_create(&recv_thread_id,NULL,(void *)spm_iq_handle_thread, spmctx);
+    if(ret!=0)
+        perror("pthread cread spm");
+    pthread_detach(recv_thread_id);
     
 #endif /* SUPPORT_PLATFORM_ARCH_ARM */
     return (void *)spmctx;

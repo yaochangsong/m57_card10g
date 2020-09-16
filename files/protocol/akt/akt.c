@@ -791,20 +791,14 @@ static int akt_execute_set_command(void *cl)
                 struct net_tcp_client *s_cl;
                 /* NOTE:The parameter must be a MAIN channel, not a subchannel */
                 io_set_enable_command(IQ_MODE_ENABLE, -1, sub_ch, 0);
-                s_cl = tcp_get_datasrv_client(NULL);
-                if(s_cl)
-                    s_cl->send_raw_data(s_cl, NULL, get_spm_ctx()->ops->read_iq_data, get_spm_ctx()->ops->read_iq_over_deal);
             }else{
                 io_set_enable_command(IQ_MODE_DISABLE, -1,sub_ch, 0);
             }
-            //client->send_raw_data(client, 
-            //    "/etc/file/CH0_D20200909192511390_F1000.000M_B175.000M_R409.600M_TIQ.wav");
             break;
         }
 #ifdef SUPPORT_NET_WZ
         case SET_NET_WZ_THRESHOLD_CMD:
         {
-            
             poal_config->ctrl_para.wz_threshold_bandwidth =  *(uint32_t *)(payload+1);
             printf_note("wz_threshold_bandwidth  %u\n", poal_config->ctrl_para.wz_threshold_bandwidth);
 

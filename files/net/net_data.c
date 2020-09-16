@@ -1,3 +1,17 @@
+/******************************************************************************
+*  Copyright 2019, Showay Technology Dev Co.,Ltd.
+*  ---------------------------------------------------------------------------
+*  Statement:
+*  ----------
+*  This software is protected by Copyright and the information contained
+*  herein is confidential. The software may not be copied and the information
+*  contained herein may not be used or disclosed except with the written
+*  permission of Showay Technology Dev Co.,Ltd. (C) 2019
+******************************************************************************/
+/*****************************************************************************     
+*  Rev 1.0   14 Sep 2020   yaochangsong
+*  Analysis of sending and receiving network raw data
+******************************************************************************/
 #include "config.h"
 #include <arpa/inet.h>
 #include <sys/socket.h>
@@ -11,7 +25,6 @@
 #include "../protocol/http/file.h"
 #include "net_data.h"
 
-#if 1
 struct net_tcp_client *tcp_get_datasrv_client(char *ipaddr)
 {
     struct net_tcp_client *cl_list, *list_tmp;
@@ -22,22 +35,6 @@ struct net_tcp_client *tcp_get_datasrv_client(char *ipaddr)
     }
     printf_note("client is null\n");
     return NULL;
-}
-#endif
-
-
-static  void tcp_send_raw_data_cancel(struct net_tcp_client *cl)
-{
-    printf_note("cancel send data:%d\n", cl->dispatch.cmd);
-    cl->dispatch.cmd = 0;
-    printf_note("cancel send data over\n");
-}
-static  bool is_tcp_send_raw_data_cancel(struct net_tcp_client *cl)
-{
-    if(cl->dispatch.cmd == 0)
-        return true;
-    else
-        return false;
 }
 
 static void tcp_ustream_write_cb(struct ustream *s, int bytes)
@@ -103,7 +100,6 @@ static inline void tcp_notify_state(struct ustream *s)
 
 static void tcp_raw_data_write_free(struct net_tcp_client *cl)
 {
-    printf_note("data write free...[fd=%d]\n", cl->dispatch.file.fd);
     if(cl->dispatch.file.fd)
         close(cl->dispatch.file.fd);
 }
@@ -180,22 +176,26 @@ static void tcp_raw_data_write_loop(struct net_tcp_client *cl)
                 cl->request_done(cl);
                 return;
             }
-                
         }
 
         if(cl->send_over)
             cl->send_over(&r);
-        #if 0
-        if(cl->is_send_raw_data_cancel){
-            if(cl->is_send_raw_data_cancel(cl)){
-                cl->request_done(cl);
-                return;
-            }
-        }
-        #endif
     }
 }
 
+/*
+功能：使用TCP发送原始数据
+    @cl: 发送客户端信息
+    @path: 若不为空，发送文件地址
+    @callback: 若不为空，读取数据函数指针
+    @callback_over: 发送完毕一帧后，函数操作指针
+    .
+    如：通过TCP发送IQ数据给客户端
+    client->send_raw_data(client, NULL,  get_spm_ctx()->ops->read_iq_data,  get_spm_ctx()->ops->read_iq_over_deal);
+    通过TCP发送文件给客户端
+    client->send_raw_data(client, "/etc/file/CH0_D20200909192511390_F1000.000M_B175.000M_R409.600M_TIQ.wav", NULL, NULL);
+
+*/
 static void tcp_raw_data_write_cb(struct net_tcp_client *cl, const char *path, 
                                         size_t (*callback) (void **), int (*callback_over) (size_t *))
 {
@@ -229,6 +229,7 @@ static int tcp_send(struct net_tcp_client *cl, const void *data, int len)
 {
     int s;
     s = ustream_write(cl->us, data, len, true);
+    return s;
 }
 
 
@@ -279,8 +280,6 @@ static void tcp_data_accept_cb(struct uloop_fd *fd, unsigned int events)
     cl->send = tcp_send;
     cl->send_raw_data = tcp_raw_data_write_cb;
     cl->request_done = tcp_data_client_request_done;
-    cl->send_raw_data_cancel = tcp_send_raw_data_cancel;
-    cl->is_send_raw_data_cancel = is_tcp_send_raw_data_cancel;
     printf_note("New connection from: %s:%d\n", cl->get_peer_addr(cl), cl->get_peer_port(cl));
 
     socklen_t serv_len = sizeof(cl->serv_addr); 
@@ -300,7 +299,6 @@ struct net_tcp_server *tcp_data_server_new(const char *host, int port)
     struct net_tcp_server *srv;
     int sock;
     
-    printf_debug("tcp_server_new\n");
     sock = usock(USOCK_TCP | USOCK_SERVER | USOCK_IPV4ONLY, host, usock_port(port));
     if (sock < 0) {
         uh_log_err("usock");

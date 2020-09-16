@@ -55,8 +55,6 @@ struct net_tcp_client {
     int (*send)(struct net_tcp_client *cl, const void *data, int len);
     void (*send_over)(struct net_tcp_client *cl);
     void (*send_raw_data)(struct net_tcp_client *cl, const char *path, size_t (*callback) (void **), int (*callback_over) (size_t *));
-    void (*send_raw_data_cancel)(struct net_tcp_client *cl);
-    bool (*is_send_raw_data_cancel)(struct net_tcp_client *cl);
     void (*printf)(struct net_tcp_client *cl, const char *format, ...);
     void (*vprintf)(struct net_tcp_client *cl, const char *format, va_list arg);
 

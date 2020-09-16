@@ -17,7 +17,7 @@
 #include "protocol/resetful/request.h"
 #include "protocol/akt/akt.h"
 
-
+static struct net_tcp_server *ptcp_data_srv = NULL;
 static struct net_tcp_server *ptcp_srv_1gnet = NULL;
 static struct net_tcp_server *ptcp_srv_10gnet = NULL;
 static struct uh_server *puhttp_srv = NULL;
@@ -30,6 +30,10 @@ void *net_get_tcp_srv_ctx(void)
 void *net_get_10g_tcp_srv_ctx(void)
 {
     return (void*)ptcp_srv_10gnet;
+}
+void *net_get_data_srv_ctx(void)
+{
+    return (void*)ptcp_data_srv;
 }
 
 void *net_get_udp_srv_ctx(void)
@@ -135,6 +139,14 @@ int server_init(void)
     pudp_srv = udpsrv;
     udpsrv->on_discovery = akt_parse_discovery;
 #endif
+
+    struct net_tcp_server *tcpdatasrv = NULL;
+    printf_note("tcp server init [port:%d]\n", 6080);
+    tcpdatasrv = tcp_data_server_new("0.0.0.0", 6080);
+    if (!tcpdatasrv)
+        return -1;
+    ptcp_data_srv = tcpdatasrv;
+
 
 #ifdef  SUPPORT_PROTOCAL_HTTP
     struct uh_server *srv = NULL;

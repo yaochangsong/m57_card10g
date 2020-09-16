@@ -275,7 +275,18 @@ static int spm_read_adc_over_deal(void *arg)
     if(pstream){
         ioctl(pstream[STREAM_ADC_READ].id, IOCTL_DMA_SET_ASYN_READ_INFO, &nwrite_byte);
     }
+    return 0;
+}
         
+static int spm_read_iq_over_deal(void *arg)
+{
+    unsigned int nwrite_byte;
+    nwrite_byte = *(unsigned int *)arg;
+    struct _spm_stream *pstream = spm_stream;
+    if(pstream){
+        ioctl(pstream[STREAM_IQ].id, IOCTL_DMA_SET_ASYN_READ_INFO, &nwrite_byte);
+    }
+    return 0;
 }
 
 static  float get_side_band_rate(uint32_t bandwidth)
@@ -451,11 +462,7 @@ static int spm_send_iq_data(void *data, size_t len, void *arg)
     if(ptr_header == NULL)
         return -1;
 #endif
-    printf_note("tcp send: len %d\n", len);
-    tcp_active_send_all_client(data, len);
-    ioctl(pstream[STREAM_IQ].id, IOCTL_DMA_SET_ASYN_READ_INFO, &len);
 
-#if 0
 #if 1
     #if 1
     int i, index,sbyte;
@@ -507,7 +514,6 @@ static int spm_send_iq_data(void *data, size_t len, void *arg)
 #endif
 
     ioctl(pstream[STREAM_IQ].id, IOCTL_DMA_SET_ASYN_READ_INFO, &sbyte);
-#endif
 
     return (header_len + len);
 }
@@ -1357,6 +1363,7 @@ static const struct spm_backend_ops spm_ops = {
     .read_fft_data = spm_read_fft_data,
     .read_adc_data = spm_read_adc_data,
     .read_adc_over_deal = spm_read_adc_over_deal,
+    .read_iq_over_deal = spm_read_iq_over_deal,
     .data_order = spm_data_order,
     .send_fft_data = spm_send_fft_data,
     .send_iq_data = spm_send_iq_data,

@@ -14,6 +14,7 @@
 ******************************************************************************/
 #include "config.h"
 #include "../../bsp/io.h"
+#include "../../executor/spm/spm.h"
 
 struct akt_protocal_param akt_config;
 bool akt_send_resp_discovery(void *client, const char *pdata, int len);
@@ -787,8 +788,12 @@ static int akt_execute_set_command(void *cl)
             printf_info("ch:%d, sub_ch=%d, au_en:%d,iq_en:%d, enable=%d\n", ch,sub_ch, poal_config->sub_ch_enable[sub_ch].audio_en, poal_config->sub_ch_enable[sub_ch].iq_en, enable);
             /* 通道IQ使能 */
             if(enable){
+                struct net_tcp_client *s_cl;
                 /* NOTE:The parameter must be a MAIN channel, not a subchannel */
                 io_set_enable_command(IQ_MODE_ENABLE, -1, sub_ch, 0);
+                s_cl = tcp_get_datasrv_client(NULL);
+                if(s_cl)
+                    s_cl->send_raw_data(s_cl, NULL, get_spm_ctx()->ops->read_iq_data, get_spm_ctx()->ops->read_iq_over_deal);
             }else{
                 io_set_enable_command(IQ_MODE_DISABLE, -1,sub_ch, 0);
             }
@@ -799,8 +804,10 @@ static int akt_execute_set_command(void *cl)
 #ifdef SUPPORT_NET_WZ
         case SET_NET_WZ_THRESHOLD_CMD:
         {
+            
             poal_config->ctrl_para.wz_threshold_bandwidth =  *(uint32_t *)(payload+1);
             printf_note("wz_threshold_bandwidth  %u\n", poal_config->ctrl_para.wz_threshold_bandwidth);
+
             break;
         }
         case SET_NET_WZ_NETWORK_CMD:

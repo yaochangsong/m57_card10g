@@ -214,10 +214,10 @@ void *spm_init(void)
     }
    // thread_attr_set(&attr,SCHED_OTHER, 0);
    // ret=pthread_create(&recv_thread_id,&attr,(void *)spm_iq_handle_thread, spmctx);
-    ret=pthread_create(&recv_thread_id,NULL,(void *)spm_iq_handle_thread, spmctx);
-    if(ret!=0)
-        perror("pthread cread spm");
-    pthread_detach(recv_thread_id);
+   // ret=pthread_create(&recv_thread_id,NULL,(void *)spm_iq_handle_thread, spmctx);
+  //  if(ret!=0)
+   //     perror("pthread cread spm");
+   // pthread_detach(recv_thread_id);
     
 #endif /* SUPPORT_PLATFORM_ARCH_ARM */
     return (void *)spmctx;

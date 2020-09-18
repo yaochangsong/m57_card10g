@@ -80,7 +80,6 @@ struct net_tcp_server {
     void (*send)(struct net_tcp_client *cl, const void *data, int len);
     void (*send_error)(struct net_tcp_client *cl, int code, const char *fmt, ...);
     size_t (*read_raw_data)(void **data);
-    bool (*read_raw_data_cancel)(struct net_tcp_client *cl);
 };
 
 struct net_tcp_server *tcp_server_new(const char *host, int port);

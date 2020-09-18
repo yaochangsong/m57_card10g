@@ -28,10 +28,14 @@
 #include "client.h"
 #include "file.h"
 #include "utils.h"
+#include "uhttpd-cgi.h"
+
+
 //#include "uh_ssl.h"
 #include "log/log.h"
 #include "../resetful/parse_json.h"
 
+#define CGI_BIN "/cgi-bin"
 
 static const char *const http_versions[] = {
     [UH_HTTP_VER_09] = "HTTP/0.9",
@@ -46,6 +50,19 @@ static const char *const http_methods[] = {
     [UH_HTTP_METHOD_PUT] =  "PUT",
     [UH_HTTP_METHOD_DELETE] = "DELETE"
 };
+
+/**
+ * 检查是否匹配某个类型的路径
+ */
+static int client_path_match(const char *prefix, const char *url) {
+    if ((strstr(url, prefix) == url) &&
+      ((prefix[strlen(prefix) - 1] == '/') || (strlen(url) == strlen(prefix)) ||
+       (url[strlen(prefix)] == '/'))) {
+    return 1;
+    }
+
+    return 0;
+}
 
 static inline void client_send(struct uh_client *cl, const void *data, int len)
 {
@@ -343,6 +360,20 @@ static void uh_handle_request(struct uh_client *cl)
                 return;
             break;
         case UH_HTTP_METHOD_POST:
+            /* POST CGI */
+            if (path && client_path_match(CGI_BIN, path)) {
+                struct path_info *pi;
+                pi = uh_path_lookup(cl, path);
+                if(pi == NULL){
+                    cl->send_error(cl, 400, "Bad Request", "Invalid Request");
+                    return;
+                }
+                if(uh_cgi_request(cl, pi, NULL) == false){
+                    printf_err("Internal Server Error,No memory");
+                }
+                return;
+            }
+            /* POST BODY */
             d->post_data = post_post_data;
             d->post_done = post_post_done;
             d->free = post_data_free;
@@ -352,6 +383,7 @@ static void uh_handle_request(struct uh_client *cl)
                 //cl->send_error(cl, 500, "Internal Server Error", "No memory");
             return;
         default:
+            cl->request.redirect_status = 404;
             cl->send_error_json(cl, 400, "Bad Request,Invalid Request");
             //cl->send_error(cl, 400, "Bad Request", "Invalid Request");
             return;
@@ -367,7 +399,8 @@ static void uh_handle_request(struct uh_client *cl)
             return;
          }
     }
-   
+
+    cl->request.redirect_status = 404;
     if (cl->srv->on_error404) {
         cl->srv->on_error404(cl);
         return;
@@ -599,7 +632,6 @@ static void client_poll_post_data(struct uh_client *cl)
     struct http_request *r = &cl->request;
     char *buf;
     int len;
-    printf_info("cl->state=%d,%d\n", cl->state, CLIENT_STATE_DONE);
 
     if (cl->state == CLIENT_STATE_DONE)
         return;
@@ -637,6 +669,7 @@ static void client_poll_post_data(struct uh_client *cl)
     }
 
 }
+
 
 static inline bool client_data_cb(struct uh_client *cl, char *buf, int len)
 {
@@ -682,7 +715,7 @@ static void client_parse_header(struct uh_client *cl, char *data)
     }
 
     kvlist_set(&req->header, data, val);
-
+    cl->request.redirect_status = 200;
     cl->state = CLIENT_STATE_HEADER;
 }
 
@@ -815,6 +848,12 @@ void uh_accept_client(struct uh_server *srv, bool ssl)
     kvlist_init(&cl->request.var, hdr_get_len);
     kvlist_init(&cl->request.header, hdr_get_len);
     kvlist_init(&cl->request.resetful_var, hdr_get_len);
+
+    /* get local endpoint addr */
+    sl = sizeof(struct sockaddr_in);
+    getsockname(sfd, (struct sockaddr *)&(cl->serv_addr), &sl);
+    cl->rpipe.fd = -1;
+    cl->wpipe.fd = -1;
     
     cl->srv = srv;
     cl->srv->nclients++;

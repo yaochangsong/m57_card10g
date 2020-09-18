@@ -232,6 +232,33 @@ static int tcp_send(struct net_tcp_client *cl, const void *data, int len)
     return s;
 }
 
+static void tcp_ustream_read_data_cb(struct net_tcp_client *cl)
+{
+    struct dispatch *d = &cl->dispatch;
+    struct net_tcp_request *r = &cl->request;
+    char *buf;
+    int len;
+
+    while (1) {
+        int cur_len = 0;
+        /* 根据数据长度；循环读取数据流 */
+        buf = ustream_get_read_buf(cl->us, &len);
+        if (!buf || !len)
+            break;
+
+        if (!d->post_data)
+            return;
+
+        if (d->post_data)
+            cur_len = d->post_data(cl, buf, len);
+        cur_len = min(cur_len, len);
+        ustream_consume(cl->us, cur_len);
+        continue;
+    }
+    if(cl->request_done)
+        cl->request_done(cl);
+}
+
 
 static void tcp_data_accept_cb(struct uloop_fd *fd, unsigned int events)
 {
@@ -260,10 +287,9 @@ static void tcp_data_accept_cb(struct uloop_fd *fd, unsigned int events)
     printf_debug("connect: %s", inet_ntoa(cl->peer_addr.sin_addr));
    
     cl->us = &cl->sfd.stream;
- //   cl->us->notify_read = tcp_ustream_read_cb;
+    cl->us->notify_read = tcp_ustream_read_data_cb;
     cl->us->notify_write = tcp_ustream_write_cb;
     cl->us->notify_state = tcp_notify_state;
-
     cl->us->string_data = true;
     ustream_fd_init(&cl->sfd, sfd);
 

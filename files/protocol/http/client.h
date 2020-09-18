@@ -34,6 +34,11 @@
 #define UH_POST_DATA_BUF_SIZE   1024
 #define UH_POST_MAX_POST_SIZE   4096
 
+#define UH_LIMIT_MSGHEAD 4096
+#define UH_LIMIT_HEADERS 64
+#define UH_LIMIT_CLIENTS 64
+
+
 enum request_status {
     UH_REQUEST_DONE,
     UH_REQUEST_CONTINUE
@@ -69,6 +74,14 @@ struct http_request {
     struct kvlist var;
     struct kvlist header;
     struct kvlist resetful_var;
+    int redirect_status;
+//    char *headers[UH_LIMIT_HEADERS];
+};
+
+struct http_response {
+  int statuscode;
+  char *statusmsg;
+  char *headers[UH_LIMIT_HEADERS];
 };
 
 struct http_srv_request {
@@ -102,17 +115,31 @@ struct dispatch {
 
 struct uh_client {
     struct list_head list;
+//    struct uloop_fd fd;
     struct uh_server *srv;
     struct ustream *us;
     struct ustream_fd sfd;
+    /*CGI*/
+    struct uloop_fd rpipe;
+    struct uloop_fd wpipe;
+    struct uloop_process proc;
+    void *priv;
+    struct {
+        char buf[UH_LIMIT_MSGHEAD];
+        char *ptr;
+        int len;
+    } httpbuf;
+    /*CGI end*/
 #if (UHTTPD_SSL_SUPPORT)
     struct ustream_ssl ssl;
 #endif
     struct uloop_timeout timeout;
     enum client_state state;
     struct http_request request;
+    struct http_response response;
     struct http_srv_request srv_request;    /* add by ycs */
     struct sockaddr_in peer_addr;
+    struct sockaddr_in serv_addr;
     struct dispatch dispatch;
     bool connection_close;
     int response_length;

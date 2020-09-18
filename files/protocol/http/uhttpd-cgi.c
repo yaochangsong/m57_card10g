@@ -386,8 +386,9 @@ static int uh_cgi_socket_send_cb(struct uh_client *cl, const char *data, int len
     /**
      * 将POST数据传给CGI脚本 等待时间 1s
      */
-    len = uh_raw_send(cl->wpipe.fd, data, len, 1);
+    len = uh_raw_send(cl->wpipe.fd, data, len, 5);
     
+    return (len >= 0 ? len : 0);
 }
 static void uh_cgi_socket_recv_cb(struct uh_client *cl)
 {
@@ -397,12 +398,16 @@ static void uh_cgi_socket_recv_cb(struct uh_client *cl)
     struct uh_cgi_state *state = (struct uh_cgi_state *)cl->priv;
     struct http_response *res = &cl->response;
     struct http_request *req = &cl->request;
-
+    
+    /* explicit EOF notification for the child */
+    uh_ufd_remove(&cl->wpipe);
+    
     state->httpbuf.ptr = state->httpbuf.buf;
     state->httpbuf.len = sizeof(state->httpbuf.buf);
+    
     while ((len = uh_raw_recv(
               cl->rpipe.fd, buf,
-              state->header_sent ? sizeof(buf) : state->httpbuf.len, 5)) > 0) {
+              state->header_sent ? sizeof(buf) : state->httpbuf.len, 1)) > 0) {
     /**
      * 先进行响应头部的解析
      * 当CGI执行程序没有封装好CGI协议内容，则必须自行输出响应头部
@@ -487,12 +492,6 @@ static void uh_cgi_socket_recv_cb(struct uh_client *cl)
         D("CGI: Child(%d) presumed dead [%s]\n", cl->proc.pid, strerror(errno));
 
         goto out;
-    }
-    if(len <= 0){
-         cl->send_error(cl, 504, "Gateway Timeout",
-                 "The CGI process took too long to produce a "
-                 "response\n");
-         return;
     }
     cl->request_done(cl);
     return;

@@ -48,7 +48,7 @@
 #include "uhttpd-cgi.h"
 #include "file.h"
 
-#define DEBUG
+//#define DEBUG
 #ifdef DEBUG
 #define D(...) fprintf(stderr, __VA_ARGS__)
 #else
@@ -407,7 +407,7 @@ static void uh_cgi_socket_recv_cb(struct uh_client *cl)
     
     while ((len = uh_raw_recv(
               cl->rpipe.fd, buf,
-              state->header_sent ? sizeof(buf) : state->httpbuf.len, 1)) > 0) {
+              state->header_sent ? sizeof(buf) : state->httpbuf.len, 180)) > 0) {
     /**
      * 先进行响应头部的解析
      * 当CGI执行程序没有封装好CGI协议内容，则必须自行输出响应头部
@@ -493,6 +493,10 @@ static void uh_cgi_socket_recv_cb(struct uh_client *cl)
 
         goto out;
     }
+    if(len == -1)
+      cl->send_error(cl, 504, "Gateway Timeout",
+             "The CGI process took too long to produce a "
+             "response\n");
     cl->request_done(cl);
     return;
 
@@ -638,7 +642,7 @@ bool uh_cgi_request(struct uh_client *cl, struct path_info *pi, struct interpret
       setenv("SCRIPT_FILENAME", pi->phys, 1);
       setenv("DOCUMENT_ROOT", pi->root, 1);
    //   setenv("QUERY_STRING", pi->query ? pi->query : "", 1);
-
+      D("pi->root=%s\n", pi->root);
       if (pi->info)
         setenv("PATH_INFO", pi->info, 1);
 
@@ -663,24 +667,29 @@ bool uh_cgi_request(struct uh_client *cl, struct path_info *pi, struct interpret
      //   setenv("REMOTE_USER", req->realm->user, 1);
 
       char *header_val;
-      if((header_val = cl->get_header(cl, "Accept")) != NULL){
+      if((header_val = cl->get_header(cl, "accept")) != NULL){
             setenv("HTTP_ACCEPT", header_val, 1);
-            
+            D("accept=%s\n", header_val);
       }
-      if((header_val = cl->get_header(cl, "Accept-Charset")) != NULL){
+      if((header_val = cl->get_header(cl, "accept-charset")) != NULL){
             setenv("HTTP_ACCEPT_CHARSET", header_val, 1);
+             D("accept-charset=%s\n", header_val);
       }
-      if((header_val = cl->get_header(cl, "Accept-Encoding")) != NULL){
+      if((header_val = cl->get_header(cl, "accept-encoding")) != NULL){
             setenv("HTTP_ACCEPT_ENCODING", header_val, 1);
+            D("accept-encoding=%s\n", header_val);
       }
-      if((header_val = cl->get_header(cl, "Content-Length")) != NULL){
+      if((header_val = cl->get_header(cl, "content-length")) != NULL){
             setenv("CONTENT_LENGTH", header_val, 1);
+            D("Content-Length=%s\n", header_val);
       }
-      if((header_val = cl->get_header(cl, "Host")) != NULL){
+      if((header_val = cl->get_header(cl, "host")) != NULL){
             setenv("HTTP_HOST", header_val, 1);
+             D("host=%s\n", header_val);
       }
-      if((header_val = cl->get_header(cl, "Content-Type")) != NULL){
+      if((header_val = cl->get_header(cl, "content-type")) != NULL){
             setenv("CONTENT_TYPE", header_val, 1);
+            D("content-type=%s\n", header_val);
       }
 #if 0
       /* request message headers */

@@ -12,10 +12,14 @@
 *  Rev 1.0   29 Feb 2020   yaochangsong
 *  Initial revision.
 ******************************************************************************/
-#include "config.h"
-#include "parse_cmd.h"
 #include <sys/types.h>
 #include <dirent.h>
+#include <unistd.h>
+#include <sys/stat.h>
+#include <sys/vfs.h>
+#include <sys/mman.h>
+#include "config.h"
+#include "parse_cmd.h"
 #include "parse_json.h"
 #include "../../dao/json/cJSON.h"
 
@@ -856,9 +860,9 @@ char *assemble_json_disk_info(void)
     cJSON *array = cJSON_CreateArray();
     cJSON* item = NULL;
     bool b_valid = false;
+    struct statfs diskInfo;
 #if defined(SUPPORT_FS)
     struct fs_context *fs_ctx;
-    struct statfs diskInfo;
     fs_ctx = get_fs_ctx_ex();
     b_valid = fs_ctx->ops->fs_disk_info(&diskInfo);
 #endif

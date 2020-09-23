@@ -1778,7 +1778,6 @@ uint8_t *akt_assamble_demodulation_data_extend_frame_header_data(uint32_t *len, 
     static uint8_t param_buf[sizeof(DATUM_DEMODULATE_HEADER_ST)];
     DATUM_DEMODULATE_HEADER_ST *ext_hdr = NULL;
     static bool start_flag = false;
-    uint32_t time_interval_ms;
 
     ext_hdr = (DATUM_DEMODULATE_HEADER_ST *)param_buf;
     
@@ -1790,15 +1789,7 @@ uint8_t *akt_assamble_demodulation_data_extend_frame_header_data(uint32_t *len, 
     ext_hdr->gain_mode = poal_config->rf_para[poal_config->cid].gain_ctrl_method;
     ext_hdr->gain = poal_config->rf_para[poal_config->cid].mgc_gain_value;
 
-    time_interval_ms=(uint32_t)diff_time();
-    if(start_flag == false){
-        ext_hdr->duration = 100; /* first time, set default duration time:  100ms */
-        start_flag = true;
-    }else{
-        ext_hdr->duration = (uint64_t)time_interval_ms;
-    }
-    printf_debug("ext_hdr->duration=%lu, time_interval_ms=%u\n", ext_hdr->duration,time_interval_ms);
-
+    ext_hdr->duration = 0;
     struct spm_run_parm *header_param;
     header_param = (struct spm_run_parm *)config;
     ext_hdr->cid = header_param->ch;
@@ -1844,7 +1835,7 @@ uint8_t *akt_assamble_data_extend_frame_header_data(uint32_t *len, void *config)
     static uint8_t param_buf[sizeof(DATUM_SPECTRUM_HEADER_ST)];
     DATUM_SPECTRUM_HEADER_ST *ext_hdr = NULL;
     static bool start_flag = false;
-    uint32_t time_interval_ms;
+
     ext_hdr = (DATUM_SPECTRUM_HEADER_ST *)param_buf;
     
     memset(param_buf, 0, sizeof(DATUM_SPECTRUM_HEADER_ST));
@@ -1855,14 +1846,7 @@ uint8_t *akt_assamble_data_extend_frame_header_data(uint32_t *len, void *config)
     ext_hdr->gain_mode = poal_config->rf_para[poal_config->cid].gain_ctrl_method;
     ext_hdr->gain = poal_config->rf_para[poal_config->cid].mgc_gain_value;
 
-    time_interval_ms=(uint32_t)diff_time();
-    if(start_flag == false){
-        ext_hdr->duration = 100; /* first time, set default duration time:  100ms */
-        start_flag = true;
-    }else{
-        ext_hdr->duration = (uint64_t)time_interval_ms;
-    }
-    printf_debug("ext_hdr->duration=%lu, time_interval_ms=%u\n", ext_hdr->duration,time_interval_ms);
+    ext_hdr->duration = 0;
     ext_hdr->datum_type = 1;
 
     struct spm_run_parm *header_param;
@@ -1947,7 +1931,7 @@ int8_t akt_assamble_data_frame_header_data( uint8_t *head_buf,  int buf_len, uin
     package_header->syn_flag = AKT_START_FLAG;
     package_header->type = header_param->type;
     gettimeofday(&tv,NULL);
-    package_header->toa = 0;//tv.tv_sec*1000 + tv.tv_usec/1000;
+    package_header->toa = tv.tv_sec*1000 + tv.tv_usec/1000;
     package_header->seqnum = seq_num[header_param->ch]++;
     package_header->virtual_ch = 0;
     memset(package_header->reserve, 0, sizeof(package_header->reserve));

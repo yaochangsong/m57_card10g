@@ -1059,8 +1059,7 @@ static int akt_execute_get_command(void *cl)
         case DEVICE_SELF_CHECK_CMD:
         {
             uint8_t lock_ok=0,external_clk=0;
-            struct tm *tm_on;
-            time_t start_time = get_system_power_on_time();
+            char *time_str= NULL;
             DEVICE_SELF_CHECK_STATUS_RSP_ST self_check;
             struct arg_s{
                 uint32_t temp;
@@ -1075,9 +1074,10 @@ static int akt_execute_get_command(void *cl)
             self_check.ext_clk = (external_clk == 0 ? 0 :1);
             self_check.ad_status = (io_get_adc_status(NULL) == true ? 0 : 1);
             self_check.pfga_temperature = fpga_status.temp;
-            tm_on = localtime(&start_time);
-            sprintf(self_check.system_power_on_time, "%04d-%02d-%02d-%02d:%02d:%02d",
-                tm_on->tm_year+1900, tm_on->tm_mon+1, tm_on->tm_mday, tm_on->tm_hour, tm_on->tm_min, tm_on->tm_sec);
+            bzero(self_check.system_power_on_time, sizeof(self_check.system_power_on_time));
+            if((time_str = get_proc_boot_time()) != NULL){
+                strncpy(self_check.system_power_on_time, time_str, sizeof(self_check.system_power_on_time));
+            }
             printf_note("power on time:%s\n", self_check.system_power_on_time);
             self_check.ch_num = MAX_RADIO_CHANNEL_NUM;
             executor_get_command(EX_RF_FREQ_CMD, EX_RF_STATUS_TEMPERAT, 0,  &self_check.t_s[0].rf_temperature);

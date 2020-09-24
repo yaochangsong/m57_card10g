@@ -23,6 +23,7 @@
 #include <net/if.h>  
 #include <error.h>  
 #include <net/route.h>  
+#include <sys/sysinfo.h>
 
 
 /** Duplicates a string or die if memory cannot be allocated
@@ -468,7 +469,56 @@ int32_t  diff_time(void)
     return ntime_ms;
 }
 
+long get_sys_boot_time(void)
+{
+    long timenum;
+    struct sysinfo info;
+    
+    if(sysinfo(&info)) {
+        fprintf(stderr, "Failed to get sysinfo, errnoï¼š %u, reason:%s\n", errno, strerror(errno));
+        return 0;
+    }
+    timenum = info.uptime;
+    char run_time[128];
+    int runday = timenum/86400;
+    int runhour = (timenum%86400)/3600;
+    int runmin = (timenum%3600)/60;
+    int runsec = timenum%60;
 
+    bzero(run_time, sizeof(run_time));
+    snprintf(run_time, sizeof(run_time) - 1, "system run time[%lu]: %d DAY, %d Hour, %d Min, %d Sec.",timenum, runday, runhour, runmin, runsec);
+    printf("===>%s\n", run_time);
+    return timenum;
+}
+
+/*Return Format: 2020-09-24-10:08:57 */
+char *get_proc_boot_time(void)
+{
+    struct sysinfo info;
+    time_t cur_time = 0;
+    time_t boot_time = 0;
+    struct tm *ptm;
+    static char time_buf[128] = {0};
+    
+    if(sysinfo(&info)) {
+        fprintf(stderr, "Failed to get sysinfo, errnoï¼š %u, reason:%s\n", errno, strerror(errno));
+        return NULL;
+    }
+
+    time(&cur_time);
+    if(cur_time > info.uptime) {
+        boot_time = cur_time - info.uptime;
+    }else {
+        boot_time = info.uptime - cur_time;
+    }
+
+    bzero(time_buf, sizeof(time_buf));
+    ptm = gmtime(&boot_time);
+    snprintf(time_buf, sizeof(time_buf) -1, "%04d-%02d-%02d-%02d:%02d:%02d", 
+            ptm->tm_year+1900, ptm->tm_mon+1, ptm->tm_mday, ptm->tm_hour, ptm->tm_min, ptm->tm_sec);
+    
+    return time_buf;
+}
 
 /* system() ´æÔÚ¸¸½ø³ÌÄÚ´æ´óµÄ»°£¬´æÔÚ¿Õ¼äÉêÇëÊ§°ÜµÄÎÊÌâ£¬ÕâÀï¸ÄĞ´system() */
 static int _system(const char * cmdstring)  

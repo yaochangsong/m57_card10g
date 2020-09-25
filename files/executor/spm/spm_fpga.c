@@ -28,7 +28,7 @@
 #include "spm_fpga.h"
 #include "../../protocol/resetful/data_frame.h"
 
-extern int8_t akt_assamble_data_frame_header_data( uint8_t *head_buf,  int buf_len, uint32_t *len, void *config);
+extern void *akt_assamble_data_frame_header_data(uint32_t *len, void *config);
 static int spm_stream_stop(enum stream_type type);
 static int spm_stream_back_stop(enum stream_type type);
 
@@ -369,17 +369,25 @@ static fft_t *spm_data_order(volatile fft_t *fft_data,
     return (fft_t *)run_args->fft_ptr + offset;
 }
 
+/*********************************************************
+    功能:FFT频谱数据发送
+    输入参数：
+        @data: FFT数据指针
+        @fft_len： FFT数据长度（双字节）
+        @arg: 属性指针
+    输出参数:
+        -1: 失败
+        >0: 发送字节总长度
+/*********************************************************/
 static int spm_send_fft_data(void *data, size_t fft_len, void *arg)
 {
     #define HEAD_BUFFER_LEN  512 
     uint8_t *ptr_header = NULL;
     uint32_t header_len = 0;
     size_t data_byte_size = 0;
-    uint8_t head_buf[HEAD_BUFFER_LEN];
 
     if(data == NULL || fft_len == 0 || arg == NULL)
         return -1;
-    memset(head_buf, 0, HEAD_BUFFER_LEN);
     data_byte_size = fft_len * sizeof(fft_t);
 #if (defined SUPPORT_DATA_PROTOCAL_AKT)
     struct spm_run_parm *hparam;
@@ -387,10 +395,9 @@ static int spm_send_fft_data(void *data, size_t fft_len, void *arg)
     hparam->data_len = data_byte_size; 
     hparam->type = SPECTRUM_DATUM_FLOAT;
     hparam->ex_type = SPECTRUM_DATUM;
-    if(akt_assamble_data_frame_header_data(head_buf, HEAD_BUFFER_LEN, &header_len, arg)!=0){
+    if((ptr_header = akt_assamble_data_frame_header_data(&header_len, arg)) == NULL){
         return -1;
     }
-    ptr_header = head_buf;
 #elif defined(SUPPORT_DATA_PROTOCAL_XW)
     struct spm_run_parm *hparam;
     hparam = (struct spm_run_parm *)arg;
@@ -401,17 +408,6 @@ static int spm_send_fft_data(void *data, size_t fft_len, void *arg)
     if(ptr_header == NULL)
         return -1;
 #endif
-#if 0
-    ptr = (uint8_t *)safe_malloc(header_len+ data_byte_size+2);
-    if (!ptr){
-        printf_err("malloc failed\n");
-        return -1;
-    }
-    memcpy(ptr, ptr_header, header_len);
-    memcpy(ptr+header_len, data, data_byte_size);
-    udp_send_data(ptr, header_len + data_byte_size);
-    safe_free(ptr);
-#else
     struct iovec iov[2];
 
     iov[0].iov_base = ptr_header;
@@ -420,55 +416,79 @@ static int spm_send_fft_data(void *data, size_t fft_len, void *arg)
     iov[1].iov_len = data_byte_size;
 
     udp_send_vec_data(iov, 2);
-#endif
-#if (defined SUPPORT_DATA_PROTOCAL_XW)
     safe_free(ptr_header);
-#endif
     return (header_len + data_byte_size);
+}
+
+
+/*********************************************************
+    功能:组装IQ数据协议头
+    输入参数：
+        @data_len: IQ数据长度
+        @arg: 数据属性指针
+    输出参数:
+        @hlen: (IQ)数据头长度
+    返回:
+        NULL: 失败
+        非空: 协议头指针; 使用后需要释放
+*********************************************************/
+static void *_assamble_iq_header(size_t subch, size_t *hlen, size_t data_len, void *arg)
+{
+    uint8_t *ptr = NULL, *ptr_header = NULL;
+    uint32_t header_len = 0;
+    
+    if(data_len == 0 || arg == NULL)
+        return NULL;
+    
+#ifdef SUPPORT_DATA_PROTOCAL_AKT
+    struct spm_run_parm *hparam;
+    hparam = (struct spm_run_parm *)arg;
+    hparam->data_len = data_len;
+    hparam->type = BASEBAND_DATUM_IQ;
+    hparam->ex_type = DEMODULATE_DATUM;
+    //hparam->sub_ch = subch;
+    if((ptr_header = akt_assamble_data_frame_header_data(&header_len, arg))== NULL){
+        return NULL;
+    }
+    
+#elif defined(SUPPORT_DATA_PROTOCAL_XW)
+    struct spm_run_parm *hparam;
+    hparam = (struct spm_run_parm *)arg;
+    hparam->data_len = data_len; 
+    hparam->type = DEFH_DTYPE_BB_IQ;
+    hparam->ex_type = DFH_EX_TYPE_DEMO;
+   // hparam->sub_ch = subch;
+    ptr_header = xw_assamble_frame_data(&header_len, arg);
+    if(ptr_header == NULL)
+        return NULL;
+#endif
+    *hlen = header_len;
+
+    return ptr_header;
+
 }
 
 static int spm_send_iq_data(void *data, size_t len, void *arg)
 {
-    #define HEAD_BUFFER_LEN  512 
-    uint8_t *ptr = NULL, *ptr_header = NULL;
     uint32_t header_len = 0;
     struct _spm_stream *pstream = spm_stream;
     size_t _send_byte = (iq_send_unit_byte > 0 ? iq_send_unit_byte : DEFAULT_IQ_SEND_BYTE);
-    uint8_t head_buf[HEAD_BUFFER_LEN];
+    uint8_t *hptr = NULL;
     
     if(data == NULL || len == 0 || arg == NULL)
         return -1;
 
     if(len < _send_byte)
         return -1;
-    memset(head_buf, 0, HEAD_BUFFER_LEN);
-#ifdef SUPPORT_DATA_PROTOCAL_AKT
-    struct spm_run_parm *hparam;
-    hparam = (struct spm_run_parm *)arg;
-    hparam->data_len = _send_byte;
-    hparam->type = BASEBAND_DATUM_IQ;
-    hparam->ex_type = DEMODULATE_DATUM;
-    if(akt_assamble_data_frame_header_data(head_buf, HEAD_BUFFER_LEN, &header_len, arg)!=0){
+    if((hptr = _assamble_iq_header(1, &header_len, _send_byte, arg)) == NULL){
+        printf_err("assamble head error\n");
         return -1;
     }
-    ptr_header = head_buf;
-#elif defined(SUPPORT_DATA_PROTOCAL_XW)
-    struct spm_run_parm *hparam;
-    hparam = (struct spm_run_parm *)arg;
-    hparam->data_len = _send_byte; 
-    hparam->type = DEFH_DTYPE_BB_IQ;
-    hparam->ex_type = DFH_EX_TYPE_DEMO;
-    ptr_header = xw_assamble_frame_data(&header_len, arg);
-    if(ptr_header == NULL)
-        return -1;
-#endif
-
-#if 1
-    #if 1
+   
     int i, index,sbyte;
     uint8_t *pdata;
     struct iovec iov[2];
-    iov[0].iov_base = ptr_header;
+    iov[0].iov_base = hptr;
     iov[0].iov_len = header_len;
     index = len / _send_byte;
     sbyte = index * _send_byte;
@@ -479,44 +499,13 @@ static int spm_send_iq_data(void *data, size_t len, void *arg)
         udp_send_vec_data(iov, 2);
         pdata += _send_byte;
     }
-    #else
-    int i, index,sbyte;
-    uint8_t *pdata;
-    struct iovec iov[1];
-    index = len / _send_byte;
-    sbyte = index * _send_byte;
-    pdata = (uint8_t *)data;
-    for(i = 0; i<index; i++){
-        iov[0].iov_base = pdata;
-        iov[0].iov_len = _send_byte;
-        udp_send_vec_data_to_taget_addr(iov, 1);
-        pdata += _send_byte;
-    }
-    #endif
-#else
-    int i, index,sbyte;
-    uint8_t *pdata;
-    ptr = (uint8_t *)safe_malloc(header_len+ _send_byte);
-    if (!ptr){
-        printf_err("malloc failed\n");
-        return -1;
-    }
-    index = len / _send_byte;
-    sbyte = index * _send_byte;
-    pdata = data;
-    memcpy(ptr, ptr_header, header_len);
-    for(i = 0; i<index; i++){
-        memcpy(ptr+header_len, pdata, _send_byte);
-        udp_send_data(ptr, header_len + _send_byte);
-        pdata += _send_byte;
-    }
-    safe_free(ptr);
-#endif
-
+    
     ioctl(pstream[STREAM_IQ].id, IOCTL_DMA_SET_ASYN_READ_INFO, &sbyte);
-
+    safe_free(hptr);
+    
     return (header_len + len);
 }
+
 
 static int spm_send_cmd(void *cmd, void *data, size_t data_len)
 {

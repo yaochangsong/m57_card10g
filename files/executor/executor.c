@@ -765,7 +765,9 @@ int8_t executor_set_command(exec_cmd cmd, uint8_t type, uint8_t ch,  void *data,
 #ifdef SUPPORT_LCD
             lcd_printf(cmd, type,data, &ch_dup);
 #endif
+#ifdef SUPPORT_RF
             rf_set_interface(type, ch, data);
+#endif
             //executor_set_rf_command(type,ch, data);
             break;
         }
@@ -822,7 +824,9 @@ int8_t executor_get_command(exec_cmd cmd, uint8_t type, uint8_t ch,  void *data)
         }
         case EX_RF_FREQ_CMD:
         {
+#ifdef SUPPORT_RF
             rf_read_interface(type, ch, data);
+#endif
             break;
         }
         case EX_NETWORK_CMD:

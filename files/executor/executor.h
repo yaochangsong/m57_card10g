@@ -174,22 +174,6 @@ struct spm_run_parm{
 #define middle_freq_resetting(bw, mfreq)    ((bw/2) >= (mfreq) ? (bw/2+delta_bw) : (mfreq))
 
 #include "config.h"
-#ifdef SUPPORT_PROTOCAL_AKT
-    #if defined(SUPPORT_SPECTRUM_KERNEL)
-    /* use kernel space to deal data(fft, iq) and send to client */
-    #define executor_assamble_header_response_data_cb  akt_assamble_data_extend_frame_header_data
-    /* use user space to send basic config parameter (TCP) */
-    #define executor_send_data_to_clent_cb             executor_send_config_data_to_clent
-    #else  
-    /* use user space to deal data(fft, iq) and send to client */
-    #define executor_assamble_header_response_data_cb  akt_assamble_data_frame_header_data
-    /* */
-    #define executor_send_data_to_clent_cb              executor_send_config_data_to_clent
-    #endif
-#else 
-#define executor_assamble_header_response_data_cb   
-#define executor_send_data_to_clent_cb              
-#endif
 
 extern struct sem_st work_sem;
 extern void executor_init(void);

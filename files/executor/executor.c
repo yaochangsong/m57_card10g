@@ -22,26 +22,6 @@ pthread_mutex_t set_cmd_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 struct sem_st work_sem;
 
-static void executor_send_config_data_to_clent(void *data)
-{
-    printf_note("send data to client\n");
-    struct spm_run_parm *send_param;
-    uint8_t *send_data = NULL;
-    uint32_t send_data_len = 0;
-    send_param = (struct spm_run_parm *)data;
-    printf_note("ch=%d,bandwidth=%u,m_freq=%llu\n", send_param->ch, send_param->bandwidth, send_param->m_freq);
-#ifdef SUPPORT_PROTOCAL_AKT
-    DEVICE_SIGNAL_PARAM_ST notify_param;
-    notify_param.bandwith = send_param->bandwidth;
-    notify_param.mid_freq = send_param->m_freq;
-    notify_param.cid = send_param->ch;
-    notify_param.status = 0;
-    send_data = (uint8_t *)&notify_param;
-    send_data_len = sizeof(DEVICE_SIGNAL_PARAM_ST);
-#endif
-  //  poal_send_active_to_all_client(send_data, send_data_len);
-}
-
 int executor_tcp_disconnect_notify(void *cl)
 {
     #define UDP_CLIENT_NUM 8
@@ -49,9 +29,7 @@ int executor_tcp_disconnect_notify(void *cl)
     struct net_udp_server *srv = get_udp_server();
     struct net_tcp_client *tcp_cl = (struct net_tcp_client *)cl;
     int index = 0, find = 0;
-    struct udp_client_info ucli[UDP_CLIENT_NUM];
     struct poal_config *poal_config = &(config_get_config()->oal_config);
-    memset(ucli, 0, sizeof(struct udp_client_info)*UDP_CLIENT_NUM);
     if(tcp_find_client(&tcp_cl->peer_addr)){
         find = 1;
         return 0;
@@ -65,29 +43,11 @@ int executor_tcp_disconnect_notify(void *cl)
            udp_free(cl_list);
         }
     }
-
-    /* reload udp client */
-    list_for_each_entry_safe(cl_list, list_tmp, &srv->clients, list){
-        ucli[index].cid = cl_list->ch;
-        /* UDP链表以大端模式存储客户端地址信息；内部以小端模式处理；注意转�?*/
-        ucli[index].ipaddr = ntohl(cl_list->peer_addr.sin_addr.s_addr);
-        ucli[index].port = ntohs(cl_list->peer_addr.sin_port);
-        printf_note("reload client index=%d, cid=%d, [ip:%x][port:%d][10g_ipaddr=0x%x][10g_port=%d], online\n", 
-                        index, ucli[index].cid, ucli[index].ipaddr, ucli[index].port);
-        index ++;
-        if(index >= UDP_CLIENT_NUM){
-            break;
-        }
-    }
-    printf_note("disconnect, free udp, remain udp client: %d\n", index);
-    io_set_udp_client_info(ucli);
     /* client is 0 */
-    if(index == 0){
+    printf_info("udp client number: %d\n", srv->nclients);
+    if(srv->nclients == 0){
         #if defined(SUPPORT_XWFS)
-        xwfs_stop_backtrace(NULL);  /* 停止回溯 ，回到正常状�?/
-        #endif
-        #ifdef SUPPORT_NET_WZ
-        io_set_10ge_net_onoff(0);   /* 客户端离线，关闭万兆传输 */
+        xwfs_stop_backtrace(NULL);  /* 停止回溯 ，回到正常状 */
         #endif
         /* 关闭所有子通道 */
         uint8_t enable =0;
@@ -103,27 +63,9 @@ int executor_tcp_disconnect_notify(void *cl)
             /* 所有客户端离线，关闭相关使能，线程复位到等待状�?*/
             memset(&poal_config->channel[ch].enable, 0, sizeof(poal_config->channel[ch].enable));
             poal_config->channel[ch].enable.bit_reset = true; /* reset(stop) all working task */
-            
         }
-        
-
     }
     
-}
-
-static inline int8_t executor_wait_kernel_deal(void)
-{
-    struct timespec ts;
-    if (clock_gettime(CLOCK_REALTIME, &ts) == -1) {
-        printf_note("clock_gettime failed\n");
-        sem_wait(&work_sem.kernel_sysn);
-    }else{
-        ts.tv_sec += DEFAULT_FFT_TIMEOUT;
-        if(sem_timedwait(&work_sem.kernel_sysn, &ts) == -1){
-            printf_note("sem waited timeout\n");
-        }
-    }
-    return 0;
 }
 
 static  int8_t  executor_fragment_scan(uint32_t fregment_num,uint8_t ch, work_mode_type mode, void *args)
@@ -162,7 +104,7 @@ static  int8_t  executor_fragment_scan(uint32_t fregment_num,uint8_t ch, work_mo
 
     uint64_t _s_freq_hz_offset, _e_freq_hz,_m_freq_hz;
     uint32_t index = 0, _bw_hz;
-    static uint32_t t_fft = 2;
+    static uint32_t t_fft = 0;
     _s_freq_hz_offset = s_freq;
     _e_freq_hz = e_freq;
     fftsize= poal_config->channel[ch].multi_freq_fregment_para.fregment[fregment_num].fft_size;
@@ -278,19 +220,10 @@ static int8_t  executor_points_scan(uint8_t ch, work_mode_type mode, void *args)
         executor_set_command(EX_MID_FREQ_CMD, EX_MID_FREQ,    ch, &point->points[i].center_freq);
         executor_set_command(EX_RF_FREQ_CMD,  EX_RF_LOW_NOISE, ch, &point->points[i].center_freq);
         //executor_set_command(EX_RF_FREQ_CMD,  EX_RF_MID_BW,   ch, &r_args->.scan_bw);
-#ifndef SUPPORT_SPECTRUM_FFT
         //executor_set_command(EX_MID_FREQ_CMD, EX_MID_FREQ,    ch, &point->points[i].center_freq);
         executor_set_command(EX_MID_FREQ_CMD, EX_FFT_SIZE, ch, &point->points[i].fft_size);
         /* 根据带宽设置边带�?*/
         executor_set_command(EX_CTRL_CMD, EX_CTRL_SIDEBAND, ch, &r_args->scan_bw);
-        #if defined(SUPPORT_SPECTRUM_KERNEL)
-        executor_set_command(EX_WORK_MODE_CMD,mode, ch, r_args);
-        #endif
-        /* notify client that some paramter has changed */
-       // poal_config->send_active((void *)r_args);
-        /* 解调参数: 音频 */
-        //printf_note("enable.audio_en=%d, residence_time=%u,points_count=%u\n",poal_config->channel[ch].enable.audio_en,point->residence_time, points_count);
-            
         printf_note("d_center_freq=%llu, d_method=%d, d_bandwith=%u noise=%d noise_en=%d volume=%d\n",poal_config->channel[ch].multi_freq_point_param.points[i].center_freq,
                     poal_config->channel[ch].multi_freq_point_param.points[i].d_method,poal_config->channel[ch].multi_freq_point_param.points[i].d_bandwith,
                     poal_config->channel[ch].multi_freq_point_param.points[i].noise_thrh,poal_config->channel[ch].multi_freq_point_param.points[i].noise_en,
@@ -309,7 +242,6 @@ static int8_t  executor_points_scan(uint8_t ch, work_mode_type mode, void *args)
             io_set_enable_command(AUDIO_MODE_DISABLE, ch, -1, 0);  //音频通道开�?
             
         }
-#endif
 #if defined (SUPPORT_RESIDENCY_STRATEGY) 
         uint16_t strength = 0;
         bool is_signal = false;
@@ -321,31 +253,19 @@ static int8_t  executor_points_scan(uint8_t ch, work_mode_type mode, void *args)
                 printf_note("is sigal: %s, strength:%d\n", (is_signal == true ? "Yes":"No"), strength);
             }
         }
-       
 #endif
-        //s_time = time(NULL);
         gettimeofday(&beginTime, NULL);
         do{
             executor_set_command(EX_MID_FREQ_CMD, EX_FPGA_CALIBRATE, ch, &point->points[0].fft_size, 0);
             if(poal_config->channel[ch].enable.psd_en){
                 io_set_enable_command(PSD_MODE_ENABLE, ch, -1, point->points[i].fft_size);
             }
-#if defined(SUPPORT_SPECTRUM_KERNEL)
-            executor_wait_kernel_deal();
-#elif defined (SUPPORT_SPECTRUM_FFT)
-            if(is_spectrum_aditool_debug() == false){
-                spectrum_psd_user_deal(r_args);
-            }else{
-                usleep(500);
-            }
-#elif defined (SUPPORT_SPECTRUM_V2)
             spmctx->ops->agc_ctrl(ch, spmctx);
             if(args != NULL)
                 spm_deal(args, r_args);
             if(poal_config->channel[ch].enable.psd_en){
                 io_set_enable_command(PSD_MODE_DISABLE, ch, -1, point->points[i].fft_size);
             }
-#endif
             if((poal_config->channel[ch].enable.bit_en == 0) || 
                poal_config->channel[ch].enable.bit_reset == true){
                     printf_warn("bit_reset...[%d, %d]\n", poal_config->channel[ch].enable.bit_en, poal_config->channel[ch].enable.bit_reset);
@@ -953,10 +873,7 @@ void executor_init(void)
     void *spmctx;
     struct poal_config *poal_config = &(config_get_config()->oal_config);
 #if defined(SUPPORT_PLATFORM_ARCH_ARM)
-#if defined(SUPPORT_SPECTRUM_KERNEL) 
-    io_init();
-#elif defined(SUPPORT_SPECTRUM_V2) 
-    //fpga_io_init();
+#if defined(SUPPORT_SPECTRUM_V2) 
     spmctx = spm_init();
     if(spmctx == NULL){
         printf_err("spm create failed\n");

@@ -1068,9 +1068,6 @@ static int spm_agc_ctrl(int ch, struct spm_context *ctx)
     }
     printf_note("rf_gain:%d  mid_gain:%d cur_dbm[ch]:%d\n", rf_gain,mid_gain,cur_dbm[ch]);
 exit_mode:
-    #if defined(SUPPORT_SPECTRUM_KERNEL) 
-    ret = executor_set_command(EX_MID_FREQ_CMD, EX_FILL_RF_PARAM, ch, &cur_dbm[ch], gain_ctrl_method);
-    #endif
     return 0;
 }
 

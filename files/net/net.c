@@ -105,9 +105,11 @@ static int on_request(struct uh_client *cl)
 int server_init(void)
 {
     struct poal_config *poal_config = &(config_get_config()->oal_config);
+    struct net_udp_server *udpsrv = NULL;
+    struct net_tcp_server *tcpsrv = NULL;
 
 #if (defined SUPPORT_PROTOCAL_AKT) 
-    struct net_tcp_server *tcpsrv = NULL;
+    
     printf_note("tcp server init [port:%d]\n", poal_config->network.port);
     tcpsrv = tcp_server_new("0.0.0.0", poal_config->network.port);
     if (!tcpsrv)
@@ -127,13 +129,19 @@ int server_init(void)
     tcpsrv->on_execute = akt_execute_method;
     tcpsrv->send_error =  akt_send_resp;
     tcpsrv->on_end = akt_parse_end;
-    struct net_udp_server *udpsrv = NULL;
+    
     printf_note("udp server init[port:%d]\n", 1234);
     udpsrv = udp_server_new("0.0.0.0",  1234);
     if (!udpsrv)
         return -1;
     pudp_srv = udpsrv;
     udpsrv->on_discovery = akt_parse_discovery;
+#elif defined(SUPPORT_DATA_PROTOCAL_XW)
+    printf_note("udp server init[port:%d]\n", 1234);
+    udpsrv = udp_server_new("0.0.0.0",  1234);
+    if (!udpsrv)
+        return -1;
+    pudp_srv = udpsrv;
 #endif
 
     struct net_tcp_server *tcpdatasrv = NULL;

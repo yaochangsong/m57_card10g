@@ -46,9 +46,6 @@
 #include "protocol/resetful/parse_json.h"
 
 #include "protocol/akt/akt.h"
-#include "protocol/xnrp/xnrp.h"
-#include "protocol/xnrp/xnrp-xml.h"
-
 #include "protocol/oal/poal.h"
 
 #include "net/net_tcp.h"

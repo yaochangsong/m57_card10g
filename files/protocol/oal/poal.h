@@ -85,8 +85,10 @@ struct sub_channel_freq_para_st{
     uint8_t frame_drop_cnt;
     uint16_t sub_channel_num;
     float audio_sample_rate;
+    struct output_en_st sub_ch_enable[MAX_SIGNAL_CHANNEL_NUM];
     struct freq_points_st  sub_ch[MAX_SIGNAL_CHANNEL_NUM];
 };//__attribute__ ((packed));
+
 
 /* 频段参数 */
 struct freq_fregment_para_st{
@@ -243,7 +245,7 @@ struct poal_fpga_Info{
 
 
 
-struct poal_status_infor{
+struct poal_status_info{
     struct poal_soft_version softVersion;
     struct poal_disk_Info diskInfo;
     struct poal_clk_Info  clkInfo;
@@ -367,7 +369,7 @@ struct calibration_info_st{
     struct cal_rf_mode_param rf_mode;
 };//__attribute__ ((packed));
 
-
+#if 0
 struct poal_config{
     uint8_t cid;
     volatile work_mode_type work_mode;
@@ -382,13 +384,32 @@ struct poal_config{
     struct network_st network_10g;
     #endif
     struct control_st ctrl_para;
-    struct poal_status_infor status_para; 
+    struct poal_status_info status_para; 
     struct calibration_info_st cal_level;
     uint8_t (*assamble_response_data)(uint32_t *, void *);
-    void (*send_active)(void *);
+};
+#endif
+
+struct channel_para{
+    volatile work_mode_type work_mode;                              /* 通道工作模式 */
+    struct output_en_st enable;                                     /* 通道使能 */
+    struct multi_freq_point_para_st  multi_freq_point_param;        /* 通道多频点 */
+    struct multi_freq_fregment_para_st  multi_freq_fregment_para;   /* 通道多频段 */
+    struct sub_channel_freq_para_st sub_channel_para;               /* 通道子通道参数 */
+    struct rf_para_st rf_para;                                      /* 通道射频参数 */
 };
 
 
-int poal_handle_request(struct net_tcp_client *cl, uint8_t *data, int len);
-int poal_udp_handle_request(struct net_udp_client *cl, uint8_t *data, int len);
+struct poal_config{
+    uint8_t cid;                                                    /* 设置通道*/
+    struct channel_para channel[MAX_RADIO_CHANNEL_NUM];                     /* 通道参数 */
+    struct network_st network;                                      /* 网络参数 */
+    #ifdef SUPPORT_NET_WZ
+    struct network_st network_10g;                                  /* 万兆网络参数 */
+    #endif
+    struct control_st ctrl_para;                                    /* 控制配置参数 */
+    struct poal_status_info status_para;                            /* 状态信息参数 */
+    struct calibration_info_st cal_level;                           /* 校准参数 */
+};
+
 #endif

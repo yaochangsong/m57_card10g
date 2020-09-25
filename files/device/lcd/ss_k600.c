@@ -463,9 +463,9 @@ int8_t k600_scanf(uint8_t *pdata, int32_t total_len)
                 k600_receive_write_data_from_user(ch+1, SCREEN_CHANNEL_AU_BUTTON_CTRL, &clear_data);
                 printf_note("[%s] play\n", start == 0 ? "stop":"start");
                 if(start)
-                    io_set_enable_command(AUDIO_MODE_ENABLE, ch, 0);
+                    io_set_enable_command(AUDIO_MODE_ENABLE, ch, -1, 0);
                 else
-                    io_set_enable_command(AUDIO_MODE_DISABLE, ch, 0);
+                    io_set_enable_command(AUDIO_MODE_DISABLE, ch,-1, 0);
             }
                 break;
             case SCREEN_CHANNEL_AU_BUTTON_CTRL:

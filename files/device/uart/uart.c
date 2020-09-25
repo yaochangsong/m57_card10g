@@ -384,10 +384,12 @@ static void uart1_read_cb(struct uloop_fd *fd, unsigned int events)
 	if (nread > 0){
 	/* deal uart1 read work */
 		printf_note("recv %d Bytes:\n%s\r\n",nread, buf);
+#ifdef SUPPORT_GPS
 		if (gps_parse_recv_msg(buf, nread) == 0)
 		{
 			io_set_fpga_sys_time(gps_get_utc_hms());		
 		}
+#endif
 	}
 }
 
@@ -403,7 +405,7 @@ void gps_timer_task_cb(struct uloop_timeout *t)
 	if(nread > 0)
 	{
 		//printf_note("\r\n*******************recv:%d Bytes*******************\r\n%s\n",nread,buf);
-
+#ifdef SUPPORT_GPS
 		if (gps_parse_recv_msg(buf, nread) == 0)
 		{
 		    if(timed_flag == 0)
@@ -427,6 +429,7 @@ void gps_timer_task_cb(struct uloop_timeout *t)
 			return;
 			#endif
 		}
+#endif
 	}
 	else
 	{

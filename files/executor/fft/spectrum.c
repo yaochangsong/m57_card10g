@@ -89,7 +89,7 @@ static inline float calc_resolution(uint32_t bw_hz, uint32_t fft_size)
 static inline  bool specturm_is_analysis_enable(void)
 {
     struct poal_config *poal_config = &(config_get_config()->oal_config);
-    if(poal_config->enable.spec_analy_en == 1)
+    if(poal_config->channel[ch].enable.spec_analy_en == 1)
         return true;
     else
         return false;
@@ -98,7 +98,7 @@ static inline  bool specturm_is_analysis_enable(void)
 static inline  bool specturm_is_psd_enable(void)
 {
     struct poal_config *poal_config = &(config_get_config()->oal_config);
-    if(poal_config->enable.psd_en == 1)
+    if(poal_config->channel[ch].enable.psd_en == 1)
         return true;
     else
         return false;
@@ -107,7 +107,7 @@ static inline  bool specturm_is_psd_enable(void)
 static inline  bool specturm_is_iq_enable(void)
 {
     struct poal_config *poal_config = &(config_get_config()->oal_config);
-    if(poal_config->enable.iq_en == 1) //|| poal_config->sub_ch_enable.iq_en == 1
+    if(poal_config->channel[ch].enable.iq_en == 1) //|| poal_config->channel[ch].sub_channel_para.sub_ch_enable.iq_en == 1
         return true;
     else
         return false;

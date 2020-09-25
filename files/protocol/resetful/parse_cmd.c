@@ -499,19 +499,19 @@ int cmd_ch_enable_set(struct uh_client *cl, void **arg, void **content)
     }
 
     printf_note("enable ch=%d, enable=%d\n", ch, enable);
-    poal_config->enable.cid = ch;
+    poal_config->channel[ch].enable.cid = ch;
     
     if(!strcmp(s_type, "psd")){
-        poal_config->enable.psd_en = enable;
+        poal_config->channel[ch].enable.psd_en = enable;
     }else if(!strcmp(s_type, "iq")){
-        poal_config->enable.iq_en = enable;
+        poal_config->channel[ch].enable.iq_en = enable;
     }else if(!strcmp(s_type, "audio")){
-        poal_config->enable.audio_en = enable;
+        poal_config->channel[ch].enable.audio_en = enable;
     }else{
         code = RESP_CODE_PATH_PARAM_ERR;
         goto error;
     }
-    INTERNEL_ENABLE_BIT_SET(poal_config->enable.bit_en,poal_config->enable);
+    INTERNEL_ENABLE_BIT_SET(poal_config->channel[ch].enable.bit_en,poal_config->channel[ch].enable);
     if(executor_set_enable_command(ch) != 0){
         code = RESP_CODE_UNKNOWN_OPS_MODE;
     }
@@ -549,16 +549,16 @@ int cmd_subch_enable_set(struct uh_client *cl, void **arg, void **content)
         code = RESP_CODE_CHANNEL_ERR;
         goto error;
     }
-    poal_config->sub_ch_enable[subch].cid = ch;
-    poal_config->sub_ch_enable[subch].sub_id = subch;
+    poal_config->channel[ch].sub_channel_para.sub_ch_enable[subch].cid = ch;
+    poal_config->channel[ch].sub_channel_para.sub_ch_enable[subch].sub_id = subch;
     
     if(!strcmp(s_type, "psd")){
-        poal_config->sub_ch_enable[subch].psd_en = enable;
+        poal_config->channel[ch].sub_channel_para.sub_ch_enable[subch].psd_en = enable;
     }else if(!strcmp(s_type, "iq")){
-        poal_config->sub_ch_enable[subch].iq_en = enable;
+        poal_config->channel[ch].sub_channel_para.sub_ch_enable[subch].iq_en = enable;
         executor_set_command(EX_MID_FREQ_CMD, EX_SUB_CH_ONOFF, subch, &enable);
     }else if(!strcmp(s_type, "audio")){
-        poal_config->sub_ch_enable[subch].audio_en = enable;
+        poal_config->channel[ch].sub_channel_para.sub_ch_enable[subch].audio_en = enable;
     }else{
         code = RESP_CODE_PATH_PARAM_ERR;
         goto error;
@@ -566,7 +566,7 @@ int cmd_subch_enable_set(struct uh_client *cl, void **arg, void **content)
 
     printf_note("enable type=%s,ch = %d, subch=%d, enable=%d\n", s_type, ch, subch, enable);
     /* 通道IQ使能 */
-    if(poal_config->sub_ch_enable[subch].iq_en){
+    if(poal_config->channel[ch].sub_channel_para.sub_ch_enable[subch].iq_en){
         /* NOTE:The parameter must be a MAIN channel, not a subchannel */
         io_set_enable_command(IQ_MODE_ENABLE, -1, subch, 0);
     }else{

@@ -752,25 +752,28 @@ void io_set_rf_calibration_source_level(int level)
     SET_RF_CALIB_SOURCE_ATTENUATION(get_fpga_reg(),reg_val);
     usleep(300);
 }
-void io_set_rf_calibration_source_enable(int enable)
+void io_set_rf_calibration_source_enable(int ch, int enable)
 {
     struct poal_config *poal_config = &(config_get_config()->oal_config);
     int reg;
+    if((ch >= MAX_RADIO_CHANNEL_NUM) || (ch < 0))
+        return;
     reg = (enable == 0 ? 0 : 1);
     /* 0 为外部射频输入，1 为校正源输入 */
     SET_RF_CALIB_SOURCE_CHOISE(get_fpga_reg(),reg);
     //get_fpga_reg()->rfReg->input = reg;
     usleep(300);
-    poal_config->enable.cali_source_en = (enable == 0 ? 0 : 1);
-    printf_note("cali_source_en: 0x%x\n", poal_config->enable.cali_source_en);
+    poal_config->channel[ch].enable.cali_source_en = (enable == 0 ? 0 : 1);
+    printf_note("cali_source_en: 0x%x\n", poal_config->channel[ch].enable.cali_source_en);
 }
 bool is_rf_calibration_source_enable(void)
 {
     struct poal_config *poal_config = &(config_get_config()->oal_config);
+    int ch = poal_config->cid;
     bool enable = false;
-    enable = poal_config->enable.cali_source_en & 0x01;
+    enable = poal_config->channel[ch].enable.cali_source_en & 0x01;
     enable = (enable == 0 ? false : true);
-    printf_note("calibration source enable: %s\n", (enable==true ? "true" : "false"));
+    printf_debug("calibration source enable: %s\n", (enable==true ? "true" : "false"));
     return enable;
 }
 

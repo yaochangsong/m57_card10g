@@ -128,24 +128,22 @@ int main(int argc, char **argv)
 #ifdef SUPPORT_AMBIENT_TEMP_HUMIDITY
     temp_humidity_init();
 #endif 
-    
 #ifdef  SUPPORT_CLOCK_ADC
     clock_adc_init();   /* 时钟/AD初始化 */
 #endif
     fpga_io_init();
+#ifdef SUPPORT_UART
+    uart_init();   /* PL UART依赖时钟 */
+#endif
     executor_init();   
  if(spectrum_aditool_debug == false){
 #ifdef SUPPORT_RF
     rf_init();  /* RF初始化， */
 #endif
-    
 #ifdef SUPPORT_SPECTRUM_FFT
     spectrum_init();
 #endif
     }
-#ifdef SUPPORT_UART
-    uart_init();   /* PL UART依赖时钟 */
-#endif
 #ifdef SUPPORT_LCD
     init_lcd(); /* 串口屏依赖串口 */
 #endif

@@ -757,6 +757,45 @@ struct response_set_data_v2{
 //    uint16_t end_flag;
 };
 
+typedef enum {
+    RET_CODE_SUCCSESS         = 0,
+    RET_CODE_FORMAT_ERR       = 1,
+    RET_CODE_PARAMTER_ERR     = 2,
+    RET_CODE_PARAMTER_INVALID = 3,
+    RET_CODE_CHANNEL_ERR      = 4,
+    RET_CODE_INVALID_MODULE   = 5,
+    RET_CODE_INTERNAL_ERR     = 6,
+    RET_CODE_PARAMTER_NOT_SET = 7,
+    RET_CODE_PARAMTER_TOO_LONG= 8,
+    RET_CODE_LOCAL_CTRL_MODE  = 9,
+    RET_CODE_DEVICE_BUSY      = 10,
+    RET_CODE_FILE_NOT_FOUND   = 11,
+    RET_CODE_FILE_EXISTS      = 12,
+    RET_CODE_HEADER_ERR       = 13,
+} x_return_code;
+
+/* method code */
+typedef enum {
+    METHOD_SET_COMMAND      = 0x01,
+    METHOD_GET_COMMAND      = 0x02,
+    METHOD_RESPONSE_COMMAND = 0x04,
+    METHOD_REPORT_COMMAND   = 0x08,
+}x_method_code;
+
+/* class code */
+typedef enum {
+    CLASS_CODE_REGISTER  = 0x00,
+    CLASS_CODE_NET       = 0x01,
+    CLASS_CODE_WORK_MODE = 0x02,
+    CLASS_CODE_MID_FRQ   = 0x04,
+    CLASS_CODE_RF        = 0x08,
+    CLASS_CODE_CONTROL   = 0x10,
+    CLASS_CODE_STATUS    = 0x11,
+    CLASS_CODE_JOURNAL   = 0x12,
+    CLASS_CODE_FILE      = 0x14,
+    CLASS_CODE_HEARTBEAT = 0xaa
+}x_class_code;
+
 
 extern bool akt_parse_header_v2(void *client, const char *buf, int len, int *head_len, int *code);
 extern bool akt_execute_method(void *cl, int *code);

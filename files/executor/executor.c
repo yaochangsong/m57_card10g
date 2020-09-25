@@ -376,21 +376,24 @@ void executor_spm_thread(void *arg)
 {
     struct poal_config *poal_config = &(config_get_config()->oal_config);
     uint32_t fft_size;
-    uint8_t ch = poal_config->channel[ch].enable.cid;
-    uint8_t sub_ch = poal_config->channel[ch].enable.sub_id;
     uint32_t j, i;
-
+    int ch = *(int *)arg;
+    void *spm_arg = (void *)get_spm_ctx();
+    pthread_detach(pthread_self());
+    if(ch >= MAX_RADIO_CHANNEL_NUM){
+        printf_err("channel[%d, %d] is too big\n", ch, *(int *)arg);
+        pthread_exit(0);
+    }
     //thread_bind_cpu(1);
     while(1)
     {
         
-loop:   printf_note("######wait to deal work######\n");
-        sem_wait(&work_sem.notify_deal);
+loop:   printf_note("######channel[%d] wait to deal work######\n", ch);
+        sem_wait(&work_sem.notify_deal[ch]);
         if(poal_config->channel[ch].enable.bit_en == 0)
             safe_system("/etc/led.sh transfer off &");
         else
             safe_system("/etc/led.sh transfer on &");
-        ch = poal_config->channel[ch].enable.cid;
         if(OAL_NULL_MODE == poal_config->channel[ch].work_mode){
             printf_warn("Work Mode not set\n");
             sleep(1);
@@ -430,7 +433,7 @@ loop:   printf_note("######wait to deal work######\n");
                     }
                     if(poal_config->channel[ch].enable.psd_en || poal_config->channel[ch].enable.spec_analy_en){
                         for(j = 0; j < poal_config->channel[ch].multi_freq_fregment_para.freq_segment_cnt; j++){
-                            if(executor_fragment_scan(j, ch, poal_config->channel[ch].work_mode, arg) == -1){
+                            if(executor_fragment_scan(j, ch, poal_config->channel[ch].work_mode, spm_arg) == -1){
                                 io_set_enable_command(PSD_MODE_DISABLE, ch, -1, 0);
                                 usleep(1000);
                                 goto loop;
@@ -453,7 +456,7 @@ loop:   printf_note("######wait to deal work######\n");
                     }
 
                     if(poal_config->channel[ch].enable.bit_en){
-                        if(executor_points_scan(ch, poal_config->channel[ch].work_mode, arg) == -1){
+                        if(executor_points_scan(ch, poal_config->channel[ch].work_mode, spm_arg) == -1){
                             io_set_enable_command(PSD_MODE_DISABLE, ch, -1,  0);
                             io_set_enable_command(AUDIO_MODE_DISABLE, ch, -1, 0);
                             for(i = 0; i< MAX_SIGNAL_CHANNEL_NUM; i++){
@@ -781,7 +784,8 @@ int8_t executor_set_command(exec_cmd cmd, uint8_t type, uint8_t ch,  void *data,
             /* notify thread to deal data */
             printf_note("notify thread to deal data\n");
             poal_config->channel[ch].enable.bit_reset = true; /* reset(stop) all working task */
-            sem_post(&work_sem.notify_deal);
+            if(ch < MAX_RADIO_CHANNEL_NUM)
+                sem_post(&work_sem.notify_deal[ch]);
             break;
         }
         case EX_WORK_MODE_CMD:
@@ -944,7 +948,7 @@ void executor_timer_task_init(void)
 
 void executor_init(void)
 {
-    int ret, i;
+    int ret, i, ch;
     pthread_t work_id;
     void *spmctx;
     struct poal_config *poal_config = &(config_get_config()->oal_config);
@@ -983,13 +987,17 @@ void executor_init(void)
         executor_set_command(EX_MID_FREQ_CMD, EX_SUB_CH_ONOFF, i, &enable);
         executor_set_command(EX_MID_FREQ_CMD, EX_SUB_CH_DEC_METHOD, i, &default_method);
     }
-    sem_init(&(work_sem.notify_deal), 0, 0);
+    
     sem_init(&(work_sem.kernel_sysn), 0, 0);
+    for(ch = 0; ch <MAX_RADIO_CHANNEL_NUM; ch++){
+        sem_init(&(work_sem.notify_deal[i]), 0, 0);
+        ret=pthread_create(&work_id, NULL, (void *)executor_spm_thread, &ch);
+        if(ret!=0)
+            perror("pthread cread spm");
+        usleep(50);
+        //pthread_detach(work_id);
+    }
 
-    ret=pthread_create(&work_id,NULL,(void *)executor_spm_thread, spmctx);
-    if(ret!=0)
-        perror("pthread cread spm");
-    pthread_detach(work_id);
 }
 
 void executor_close(void)

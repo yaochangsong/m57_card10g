@@ -127,8 +127,9 @@ enum {
     EX_CTRL_IQ_DATA_LENGTH       /* IQ数据长度 */
 };
 
+#include "config.h"
 struct sem_st{
-    sem_t   notify_deal;        /* 开启或关闭使能后，通知线程处理相关逻辑 */
+    sem_t   notify_deal[MAX_RADIO_CHANNEL_NUM];        /* 开启或关闭使能后，通知线程处理相关逻辑 */
     sem_t   kernel_sysn;        /* 频谱分析时，内核处理完数据后，异步消息通知应用层 */
 };
 

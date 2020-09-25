@@ -47,9 +47,6 @@ endif
 ifneq ($(findstring akt,$(SUPPORT_PROTOCAL)),)
 	SOURCE_DIR += protocol/akt
 	C_VAR += -DSUPPORT_PROTOCAL_AKT
-else ifneq ($(findstring xnrp,$(SUPPORT_PROTOCAL)),)
-	SOURCE_DIR += protocol/xnrp
-	C_VAR += -DSUPPORT_PROTOCAL_XNRP
 endif
 
 ifneq ($(findstring akt,$(SUPPORT_DATA_PROTOCAL)),)

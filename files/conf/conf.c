@@ -56,7 +56,8 @@ void config_init(void)
     config.configfile = safe_strdup(DEFAULT_CONFIGFILE);
     //config.calibrationfile = safe_strdup(CALIBRATION_FILE);
     config.daemon = -1;
-    config.oal_config.work_mode = OAL_NULL_MODE;
+    for(int i= 0; i< MAX_RADIO_CHANNEL_NUM; i++)
+        config.oal_config.channel[i].work_mode = OAL_NULL_MODE;
     #ifdef SUPPORT_NET_WZ
     config.oal_config.ctrl_para.wz_threshold_bandwidth = 1000000000; /* 万兆默认阀值; >=该值，用万兆传输 */
     #endif
@@ -138,11 +139,11 @@ uint32_t  config_get_fft_size(uint8_t ch)
     uint32_t fftsize = 0;
     uint8_t mode; 
     struct poal_config *poal_config = &(config_get_config()->oal_config);
-    mode = poal_config->work_mode;
+    mode = poal_config->channel[ch].work_mode;
     if((mode == OAL_FAST_SCAN_MODE) || (mode == OAL_MULTI_ZONE_SCAN_MODE)){
-        fftsize = poal_config->multi_freq_fregment_para[ch].fregment[0].fft_size;
+        fftsize = poal_config->channel[ch].multi_freq_fregment_para.fregment[0].fft_size;
     }else{
-        fftsize = poal_config->multi_freq_point_param[ch].points[0].fft_size;
+        fftsize = poal_config->channel[ch].multi_freq_point_param.points[0].fft_size;
     }
     if(fftsize == 0){
         printf_warn("fftsize %u not set!!!\n",fftsize);
@@ -198,7 +199,7 @@ int32_t  config_get_fft_calibration_value(uint8_t ch, uint32_t fft_size, uint64_
 
 #ifdef SUPPORT_CALIBRATION_GAIN
     /* ##NOTE: [重要]在常规模式下，0增益校准## */
-    if(poal_config->rf_para[ch].gain_ctrl_method != POAL_AGC_MODE && 
+    if(poal_config->channel[ch].rf_para.gain_ctrl_method != POAL_AGC_MODE && 
         poal_config->cal_level.specturm.gain_calibration_onoff == true){
         #if 0
         found = 0;
@@ -215,7 +216,7 @@ int32_t  config_get_fft_calibration_value(uint8_t ch, uint32_t fft_size, uint64_
 #endif
         /* 增益模式校准 */
         found = 0;
-        mode = poal_config->rf_para[ch].rf_mode_code;
+        mode = poal_config->channel[ch].rf_para.rf_mode_code;
         for(i = 0; i< ARRAY_SIZE(poal_config->cal_level.rf_mode.mag); i++){
             if(poal_config->cal_level.rf_mode.mag[i].mode == mode){
                 cal_value += poal_config->cal_level.rf_mode.mag[i].magification*10;
@@ -233,7 +234,7 @@ int32_t  config_get_fft_calibration_value(uint8_t ch, uint32_t fft_size, uint64_
         found = 0;
         struct rf_distortion_range range;
         int8_t attenuation = 0;
-        attenuation = poal_config->rf_para[ch].attenuation;
+        attenuation = poal_config->channel[ch].rf_para.attenuation;
         for(i = 0; i< ARRAY_SIZE(poal_config->cal_level.rf_mode.rf_distortion); i++){
             range = poal_config->cal_level.rf_mode.rf_distortion[i];
             if(range.mode == mode){
@@ -249,7 +250,7 @@ int32_t  config_get_fft_calibration_value(uint8_t ch, uint32_t fft_size, uint64_
         }
         found = 0;
         struct mgc_distortion_range mgc_range;
-        attenuation = poal_config->rf_para[ch].mgc_gain_value;
+        attenuation = poal_config->channel[ch].rf_para.mgc_gain_value;
         mgc_range = poal_config->cal_level.rf_mode.mgc_distortion;
         if(attenuation >= mgc_range.start_range && attenuation <= mgc_range.end_range){
             if(cal_value > attenuation*10){
@@ -335,28 +336,28 @@ int8_t config_write_data(exec_cmd cmd, uint8_t type, uint8_t ch, void *data)
                     if(*(uint8_t *)data > 1){
                         return -1;
                     }
-                    poal_config->multi_freq_point_param[ch].points[0].noise_en = *(int8_t *)data;
+                    poal_config->channel[ch].multi_freq_point_param.points[0].noise_en = *(int8_t *)data;
                     break;
                 case EX_MUTE_THRE:
-                    poal_config->multi_freq_point_param[ch].points[0].noise_thrh = *(int8_t *)data;
+                    poal_config->channel[ch].multi_freq_point_param.points[0].noise_thrh = *(int8_t *)data;
                     break;
                 case EX_DEC_METHOD:
-                    poal_config->multi_freq_point_param[ch].points[0].d_method = *(int8_t *)data;
+                    poal_config->channel[ch].multi_freq_point_param.points[0].d_method = *(int8_t *)data;
                     break;
                 case EX_DEC_BW:
-                    poal_config->multi_freq_point_param[ch].points[0].d_bandwith = *(int32_t *)data;
+                    poal_config->channel[ch].multi_freq_point_param.points[0].d_bandwith = *(int32_t *)data;
                     break;
                 case EX_AUDIO_SAMPLE_RATE:
-                    poal_config->multi_freq_point_param[ch].audio_sample_rate = *(float *)data;
+                    poal_config->channel[ch].multi_freq_point_param.audio_sample_rate = *(float *)data;
                     break;
                 case EX_MID_FREQ:
-                    poal_config->multi_freq_point_param[ch].points[0].center_freq = *(uint64_t *)data;
+                    poal_config->channel[ch].multi_freq_point_param.points[0].center_freq = *(uint64_t *)data;
                     break;
                 case EX_BANDWITH:
-                    poal_config->multi_freq_point_param[ch].points[0].bandwidth = *(uint64_t *)data;
+                    poal_config->channel[ch].multi_freq_point_param.points[0].bandwidth = *(uint64_t *)data;
                     break;
                 case EX_AUDIO_VOL_CTRL:
-                    poal_config->multi_freq_point_param[ch].points[0].audio_volume = *(int16_t *)data;
+                    poal_config->channel[ch].multi_freq_point_param.points[0].audio_volume = *(int16_t *)data;
                     break;
                 default:
                     printf_err("not surpport type\n");
@@ -369,35 +370,35 @@ int8_t config_write_data(exec_cmd cmd, uint8_t type, uint8_t ch, void *data)
             switch(type)
             {
                 case EX_RF_MID_FREQ:
-                    poal_config->rf_para[ch].mid_freq = *(int64_t *)data;
+                    poal_config->channel[ch].rf_para.mid_freq = *(int64_t *)data;
                     break;
                 case EX_RF_MID_BW:
-                    poal_config->rf_para[ch].mid_bw = *(uint32_t *)data;
-                    printf_note("mid_bw=%u\n", poal_config->rf_para[ch].mid_bw);
+                    poal_config->channel[ch].rf_para.mid_bw = *(uint32_t *)data;
+                    printf_note("mid_bw=%u\n", poal_config->channel[ch].rf_para.mid_bw);
                     break;
                 case EX_RF_MODE_CODE:
-                    poal_config->rf_para[ch].rf_mode_code = *(int8_t *)data;
-                    printf_note("rf_mode_code=%d\n", poal_config->rf_para[ch].rf_mode_code);
+                    poal_config->channel[ch].rf_para.rf_mode_code = *(int8_t *)data;
+                    printf_note("rf_mode_code=%d\n", poal_config->channel[ch].rf_para.rf_mode_code);
                     break;
                 case EX_RF_GAIN_MODE:
-                    poal_config->rf_para[ch].gain_ctrl_method = *(int8_t *)data;
-                    printf_note("gain_ctrl_method=%d\n", poal_config->rf_para[ch].gain_ctrl_method);
+                    poal_config->channel[ch].rf_para.gain_ctrl_method = *(int8_t *)data;
+                    printf_note("gain_ctrl_method=%d\n", poal_config->channel[ch].rf_para.gain_ctrl_method);
                     break;
                 case EX_RF_AGC_CTRL_TIME:
-                    poal_config->rf_para[ch].agc_ctrl_time = *(uint32_t *)data;
-                    printf_note("agc_ctrl_time=%u\n", poal_config->rf_para[ch].agc_ctrl_time);
+                    poal_config->channel[ch].rf_para.agc_ctrl_time = *(uint32_t *)data;
+                    printf_note("agc_ctrl_time=%u\n", poal_config->channel[ch].rf_para.agc_ctrl_time);
                     break;
                 case EX_RF_AGC_OUTPUT_AMP:
-                    poal_config->rf_para[ch].agc_mid_freq_out_level = *(int8_t *)data;
-                    printf_note("agc_mid_freq_out_level=%d\n", poal_config->rf_para[ch].agc_mid_freq_out_level);
+                    poal_config->channel[ch].rf_para.agc_mid_freq_out_level = *(int8_t *)data;
+                    printf_note("agc_mid_freq_out_level=%d\n", poal_config->channel[ch].rf_para.agc_mid_freq_out_level);
                     break;
                 case EX_RF_ATTENUATION:
-                    poal_config->rf_para[ch].attenuation = *(int8_t *)data;
-                    printf_note("attenuation=%d\n", poal_config->rf_para[ch].attenuation);
+                    poal_config->channel[ch].rf_para.attenuation = *(int8_t *)data;
+                    printf_note("attenuation=%d\n", poal_config->channel[ch].rf_para.attenuation);
                     break;
                 case EX_RF_MGC_GAIN:
-                    poal_config->rf_para[ch].mgc_gain_value = *(int8_t *)data;
-                    printf_note("mgc_gain_value=%d\n", poal_config->rf_para[ch].mgc_gain_value);
+                    poal_config->channel[ch].rf_para.mgc_gain_value = *(int8_t *)data;
+                    printf_note("mgc_gain_value=%d\n", poal_config->channel[ch].rf_para.mgc_gain_value);
                     break;
                 case EX_RF_ANTENNA_SELECT:
                     break;
@@ -479,26 +480,26 @@ int8_t config_read_by_cmd(exec_cmd cmd, uint8_t type, uint8_t ch, void *data, ..
             switch(type)
             {
                 case EX_MUTE_SW:
-                    *(uint8_t *)data = poal_config->multi_freq_point_param[ch].points[index].noise_en;
+                    *(uint8_t *)data = poal_config->channel[ch].multi_freq_point_param.points[index].noise_en;
                     break;
                 case EX_MUTE_THRE:
-                     *(int8_t *)data = poal_config->multi_freq_point_param[ch].points[index].noise_thrh;
+                     *(int8_t *)data = poal_config->channel[ch].multi_freq_point_param.points[index].noise_thrh;
                     break;
                 case EX_DEC_METHOD:
-                     *(uint8_t *)data = poal_config->multi_freq_point_param[ch].points[index].d_method;
+                     *(uint8_t *)data = poal_config->channel[ch].multi_freq_point_param.points[index].d_method;
                     break;
                 case EX_DEC_BW:
-                     *(uint32_t *)data = poal_config->multi_freq_point_param[ch].points[index].d_bandwith;
+                     *(uint32_t *)data = poal_config->channel[ch].multi_freq_point_param.points[index].d_bandwith;
                     break;
                 case EX_AUDIO_SAMPLE_RATE:
-                     *(float *)data = poal_config->multi_freq_point_param[ch].audio_sample_rate;
+                     *(float *)data = poal_config->channel[ch].multi_freq_point_param.audio_sample_rate;
                     break;
                 case EX_MID_FREQ:
-                    *(uint64_t *)data = poal_config->multi_freq_point_param[ch].points[index].center_freq;
+                    *(uint64_t *)data = poal_config->channel[ch].multi_freq_point_param.points[index].center_freq;
                     break;
                 case EX_BANDWITH:
                 {
-                    *(uint32_t *)data = poal_config->multi_freq_point_param[ch].points[index].bandwidth;
+                    *(uint32_t *)data = poal_config->channel[ch].multi_freq_point_param.points[index].bandwidth;
                     break;
                 }
                 default:
@@ -512,7 +513,7 @@ int8_t config_read_by_cmd(exec_cmd cmd, uint8_t type, uint8_t ch, void *data, ..
             switch(type)
             {
                 case EX_RF_MID_FREQ:
-                    *(uint64_t *)data = poal_config->rf_para[ch].mid_freq;
+                    *(uint64_t *)data = poal_config->channel[ch].rf_para.mid_freq;
                     break;
                 case EX_RF_MID_BW:{
                     
@@ -522,12 +523,12 @@ int8_t config_read_by_cmd(exec_cmd cmd, uint8_t type, uint8_t ch, void *data, ..
                         *(int32_t *)data = scanbw->work_bindwidth_hz;
                     }
                     else{
-                        if(poal_config->rf_para[ch].mid_bw != 0)
-                            *(int32_t *)data = poal_config->rf_para[ch].mid_bw;
+                        if(poal_config->channel[ch].rf_para.mid_bw != 0)
+                            *(int32_t *)data = poal_config->channel[ch].rf_para.mid_bw;
                         else
                             *(int32_t *)data = DEFAULT_BW_HZ;
                     }
-                    printf_debug("ch=%d, rf middle bw=%u, %u\n",ch, *(int32_t *)data, poal_config->rf_para[ch].mid_bw);
+                    printf_debug("ch=%d, rf middle bw=%u, %u\n",ch, *(int32_t *)data, poal_config->channel[ch].rf_para.mid_bw);
                     if(*(int32_t *)data == 0){
                         goto exit;
                     }
@@ -543,16 +544,16 @@ int8_t config_read_by_cmd(exec_cmd cmd, uint8_t type, uint8_t ch, void *data, ..
                 }
                     break;
                 case EX_RF_MODE_CODE:
-                    *(uint8_t *)data = poal_config->rf_para[ch].rf_mode_code;
+                    *(uint8_t *)data = poal_config->channel[ch].rf_para.rf_mode_code;
                     break;
                 case EX_RF_GAIN_MODE:
-                    *(uint8_t *)data = poal_config->rf_para[ch].gain_ctrl_method;
+                    *(uint8_t *)data = poal_config->channel[ch].rf_para.gain_ctrl_method;
                     break;
                 case EX_RF_MGC_GAIN:
-                    *(int8_t *)data = poal_config->rf_para[ch].mgc_gain_value;
+                    *(int8_t *)data = poal_config->channel[ch].rf_para.mgc_gain_value;
                     break;
                 case EX_RF_ATTENUATION:
-                    *(int8_t *)data = poal_config->rf_para[ch].attenuation;
+                    *(int8_t *)data = poal_config->channel[ch].rf_para.attenuation;
                     break;
                 default:
                     printf_err("not surpport type\n");

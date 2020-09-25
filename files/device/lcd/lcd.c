@@ -141,20 +141,20 @@ int8_t init_lcd(void)
     lcd_printf(EX_NETWORK_CMD, EX_NETWORK_PORT, &poal_config->network.port, NULL);
     for(i = 0; i< MAX_RADIO_CHANNEL_NUM; i++){
         ch = i +1;
-        printf_info("###noise_en=%d\n", poal_config->multi_freq_point_param[i].points[0].noise_en);
-        lcd_printf(EX_RF_FREQ_CMD, EX_RF_MID_BW,   &poal_config->rf_para[i].mid_bw, &ch);
-        printf_info("###dec_bandwith=%d\n", poal_config->multi_freq_point_param[i].points[0].d_bandwith);
-        lcd_printf(EX_MID_FREQ_CMD, EX_DEC_BW,   &poal_config->multi_freq_point_param[i].points[0].d_bandwith, &ch);
-        printf_info("###dec_method=%d\n", poal_config->multi_freq_point_param[i].points[0].d_method);
-        lcd_printf(EX_MID_FREQ_CMD, EX_DEC_METHOD,   &poal_config->multi_freq_point_param[i].points[0].d_method, &ch);
-        printf_info("###rf_mode_code=%d\n", poal_config->rf_para[i].rf_mode_code);
-        lcd_printf(EX_RF_FREQ_CMD,  EX_RF_MODE_CODE,   &poal_config->rf_para[i].rf_mode_code, &ch);
-        printf_info("###mid_freq=%llu\n", poal_config->rf_para[i].mid_freq);
-        lcd_printf(EX_RF_FREQ_CMD,  EX_RF_MID_FREQ,   &poal_config->rf_para[i].mid_freq, &ch); 
-        printf_info("###mgc_gain_value=%d\n", poal_config->rf_para[i].mgc_gain_value);
-        lcd_printf(EX_RF_FREQ_CMD,  EX_RF_MGC_GAIN,   &poal_config->rf_para[i].mgc_gain_value, &ch);
-        printf_info("###mid_bw=%d\n", poal_config->rf_para[i].mid_bw);
-        lcd_printf(EX_RF_FREQ_CMD,  SCREEN_CHANNEL_RF_BW,   &poal_config->rf_para[i].mid_bw, &ch);
+        printf_info("###noise_en=%d\n", poal_config->channel[i].multi_freq_point_param.points[0].noise_en);
+        lcd_printf(EX_RF_FREQ_CMD, EX_RF_MID_BW,   &poal_config->channel[i].rf_para.mid_bw, &ch);
+        printf_info("###dec_bandwith=%d\n", poal_config->channel[i].multi_freq_point_param.points[0].d_bandwith);
+        lcd_printf(EX_MID_FREQ_CMD, EX_DEC_BW,   &poal_config->channel[i].multi_freq_point_param.points[0].d_bandwith, &ch);
+        printf_info("###dec_method=%d\n", poal_config->channel[i].multi_freq_point_param.points[0].d_method);
+        lcd_printf(EX_MID_FREQ_CMD, EX_DEC_METHOD,   &poal_config->channel[i].multi_freq_point_param.points[0].d_method, &ch);
+        printf_info("###rf_mode_code=%d\n", poal_config->channel[i].rf_para.rf_mode_code);
+        lcd_printf(EX_RF_FREQ_CMD,  EX_RF_MODE_CODE,   &poal_config->channel[i].rf_para.rf_mode_code, &ch);
+        printf_info("###mid_freq=%llu\n", poal_config->channel[i].rf_para.mid_freq);
+        lcd_printf(EX_RF_FREQ_CMD,  EX_RF_MID_FREQ,   &poal_config->channel[i].rf_para.mid_freq, &ch); 
+        printf_info("###mgc_gain_value=%d\n", poal_config->channel[i].rf_para.mgc_gain_value);
+        lcd_printf(EX_RF_FREQ_CMD,  EX_RF_MGC_GAIN,   &poal_config->channel[i].rf_para.mgc_gain_value, &ch);
+        printf_info("###mid_bw=%d\n", poal_config->channel[i].rf_para.mid_bw);
+        lcd_printf(EX_RF_FREQ_CMD,  SCREEN_CHANNEL_RF_BW,   &poal_config->channel[i].rf_para.mid_bw, &ch);
     }
     return 0;
 }

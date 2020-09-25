@@ -92,16 +92,21 @@ int executor_tcp_disconnect_notify(void *cl)
         /* 关闭所有子通道 */
         uint8_t enable =0;
         uint8_t default_method = IO_DQ_MODE_IQ;
-        int i = 0;
-        for(i = 0; i< MAX_SIGNAL_CHANNEL_NUM; i++){
-            executor_set_command(EX_MID_FREQ_CMD, EX_SUB_CH_ONOFF, i, &enable);
-            executor_set_command(EX_MID_FREQ_CMD, EX_SUB_CH_DEC_METHOD, i, &default_method);
-            memset(&poal_config->sub_ch_enable[i], 0, sizeof(struct output_en_st));
+        int i = 0, ch;
+        for(ch = 0; ch< MAX_RADIO_CHANNEL_NUM; ch++){
+            for(i = 0; i< MAX_SIGNAL_CHANNEL_NUM; i++){
+                executor_set_command(EX_MID_FREQ_CMD, EX_SUB_CH_ONOFF, i, &enable);
+                executor_set_command(EX_MID_FREQ_CMD, EX_SUB_CH_DEC_METHOD, i, &default_method);
+                memset(&poal_config->channel[ch].sub_channel_para.sub_ch_enable[i], 0, sizeof(struct output_en_st));
+            }
+            io_set_rf_calibration_source_enable(ch, 0);
+            /* 所有客户端离线，关闭相关使能，线程复位到等待状�?*/
+            memset(&poal_config->channel[ch].enable, 0, sizeof(poal_config->channel[ch].enable));
+            poal_config->channel[ch].enable.bit_reset = true; /* reset(stop) all working task */
+            
         }
-        io_set_rf_calibration_source_enable(0);
-        /* 所有客户端离线，关闭相关使能，线程复位到等待状�?*/
-        memset(&poal_config->enable, 0, sizeof(poal_config->enable));
-        poal_config->enable.bit_reset = true; /* reset(stop) all working task */
+        
+
     }
     
 }
@@ -139,8 +144,8 @@ static  int8_t  executor_fragment_scan(uint32_t fregment_num,uint8_t ch, work_mo
         Step 1: 扫描次数计算
         扫描次数 = (截止频率 - 开始频�?)/中频扫描带宽，这里中频扫描带宽认为和射频带宽一�?;
     */
-    s_freq = poal_config->multi_freq_fregment_para[ch].fregment[fregment_num].start_freq;
-    e_freq = poal_config->multi_freq_fregment_para[ch].fregment[fregment_num].end_freq;
+    s_freq = poal_config->channel[ch].multi_freq_fregment_para.fregment[fregment_num].start_freq;
+    e_freq = poal_config->channel[ch].multi_freq_fregment_para.fregment[fregment_num].end_freq;
 #ifdef SUPPORT_PROJECT_SSA
     if((s_freq >= KU_FREQUENCY_START) && (s_freq <= KU_FREQUENCY_END)){
         s_freq -= KU_FREQUENCY_OFFSET;
@@ -160,7 +165,7 @@ static  int8_t  executor_fragment_scan(uint32_t fregment_num,uint8_t ch, work_mo
     static uint32_t t_fft = 2;
     _s_freq_hz_offset = s_freq;
     _e_freq_hz = e_freq;
-    fftsize= poal_config->multi_freq_fregment_para[ch].fregment[fregment_num].fft_size;
+    fftsize= poal_config->channel[ch].multi_freq_fregment_para.fregment[fregment_num].fft_size;
     executor_set_command(EX_MID_FREQ_CMD, EX_BANDWITH, ch, &scan_bw);
     executor_set_command(EX_MID_FREQ_CMD, EX_FFT_SIZE,  ch, &fftsize);
         r_args->ch = ch;
@@ -178,7 +183,7 @@ static  int8_t  executor_fragment_scan(uint32_t fregment_num,uint8_t ch, work_mo
         r_args->m_freq_s = _m_freq_hz;
         r_args->fft_sn = index;
         r_args->total_fft = t_fft;
-        r_args->freq_resolution = poal_config->multi_freq_fregment_para[ch].fregment[fregment_num].freq_resolution;
+        r_args->freq_resolution = poal_config->channel[ch].multi_freq_fregment_para.fregment[fregment_num].freq_resolution;
         printf_debug("[%d]s_freq=%llu, e_freq=%llu, scan_bw=%u, bandwidth=%u,m_freq=%llu, m_freq_s=%llu\n", 
             index, r_args->s_freq, r_args->e_freq, r_args->scan_bw, r_args->bandwidth, r_args->m_freq, r_args->m_freq_s);
         spmctx->ops->sample_ctrl(r_args->m_freq_s);
@@ -187,15 +192,15 @@ static  int8_t  executor_fragment_scan(uint32_t fregment_num,uint8_t ch, work_mo
         executor_set_command(EX_MID_FREQ_CMD, EX_MID_FREQ,    ch, &_m_freq_hz);
         executor_set_command(EX_MID_FREQ_CMD, EX_FPGA_CALIBRATE, ch, &fftsize, _m_freq_hz,0);
         index ++;
-        if(poal_config->enable.psd_en){
+        if(poal_config->channel[ch].enable.psd_en){
             io_set_enable_command(PSD_MODE_ENABLE, ch, -1, r_args->fft_size);
         }
         spm_deal(args, r_args);
-        if(poal_config->enable.psd_en){
+        if(poal_config->channel[ch].enable.psd_en){
             io_set_enable_command(PSD_MODE_DISABLE, ch, -1, r_args->fft_size);
         }
-        if(poal_config->enable.bit_reset == true){
-            poal_config->enable.bit_reset = false;
+        if(poal_config->channel[ch].enable.bit_reset == true){
+            poal_config->channel[ch].enable.bit_reset = false;
             printf_note("receive reset task sigal......\n");
             return -1;
         }
@@ -233,11 +238,11 @@ static int8_t  executor_points_scan(uint8_t ch, work_mode_type mode, void *args)
     double  diff_time_us = 0;
     bool residency_time_arrived = false;
     //int32_t policy = poal_config->ctrl_para.residency.policy[ch];
-    int32_t policy = poal_config->multi_freq_point_param[ch].residence_time;
+    int32_t policy = poal_config->channel[ch].multi_freq_point_param.residence_time;
     spmctx = (struct spm_context *)args;
     r_args = spmctx->run_args;
 
-    point = &poal_config->multi_freq_point_param[ch];
+    point = &poal_config->channel[ch].multi_freq_point_param;
     points_count = point->freq_point_cnt;
     printf_note("residence_time=%d, points_count=%d\n", point->residence_time, points_count);
     for(i = 0; i < points_count; i++){
@@ -255,15 +260,15 @@ static int8_t  executor_points_scan(uint8_t ch, work_mode_type mode, void *args)
         r_args->mode = mode;
         if(subch_bitmap_weight()!=0){
             if(i < MAX_SIGNAL_CHANNEL_NUM){
-                subch = poal_config->sub_ch_enable[i].sub_id ;
-                r_args->d_method = poal_config->sub_channel_para[ch].sub_ch[subch].raw_d_method;
+                subch = poal_config->channel[ch].sub_channel_para.sub_ch_enable[i].sub_id ;
+                r_args->d_method = poal_config->channel[ch].sub_channel_para.sub_ch[subch].raw_d_method;
             }
         }else{
             r_args->d_method = point->points[i].raw_d_method;
         }
         r_args->scan_bw = point->points[i].bandwidth;
-        r_args->gain_mode = poal_config->rf_para[ch].gain_ctrl_method;
-        r_args->gain_value = poal_config->rf_para[ch].mgc_gain_value;
+        r_args->gain_mode = poal_config->channel[ch].rf_para.gain_ctrl_method;
+        r_args->gain_value = poal_config->channel[ch].rf_para.mgc_gain_value;
         r_args->freq_resolution = (float)point->points[i].bandwidth * BAND_FACTOR / (float)point->points[i].fft_size;
         printf_info("ch=%d, s_freq=%llu, e_freq=%llu, fft_size=%u, d_method=%d\n", ch, s_freq, e_freq, r_args->fft_size,r_args->d_method);
         printf_info("rf scan bandwidth=%u, middlebw=%u, m_freq=%llu, freq_resolution=%f\n",r_args->scan_bw,r_args->bandwidth , r_args->m_freq, r_args->freq_resolution);
@@ -284,18 +289,18 @@ static int8_t  executor_points_scan(uint8_t ch, work_mode_type mode, void *args)
         /* notify client that some paramter has changed */
        // poal_config->send_active((void *)r_args);
         /* 解调参数: 音频 */
-        //printf_note("enable.audio_en=%d, residence_time=%u,points_count=%u\n",poal_config->enable.audio_en,point->residence_time, points_count);
+        //printf_note("enable.audio_en=%d, residence_time=%u,points_count=%u\n",poal_config->channel[ch].enable.audio_en,point->residence_time, points_count);
             
-        printf_note("d_center_freq=%llu, d_method=%d, d_bandwith=%u noise=%d noise_en=%d volume=%d\n",poal_config->multi_freq_point_param[ch].points[i].center_freq,
-                    poal_config->multi_freq_point_param[ch].points[i].d_method,poal_config->multi_freq_point_param[ch].points[i].d_bandwith,
-                    poal_config->multi_freq_point_param[ch].points[i].noise_thrh,poal_config->multi_freq_point_param[ch].points[i].noise_en,
-                    poal_config->multi_freq_point_param[ch].points[i].audio_volume);
-        if(poal_config->enable.audio_en){
+        printf_note("d_center_freq=%llu, d_method=%d, d_bandwith=%u noise=%d noise_en=%d volume=%d\n",poal_config->channel[ch].multi_freq_point_param.points[i].center_freq,
+                    poal_config->channel[ch].multi_freq_point_param.points[i].d_method,poal_config->channel[ch].multi_freq_point_param.points[i].d_bandwith,
+                    poal_config->channel[ch].multi_freq_point_param.points[i].noise_thrh,poal_config->channel[ch].multi_freq_point_param.points[i].noise_en,
+                    poal_config->channel[ch].multi_freq_point_param.points[i].audio_volume);
+        if(poal_config->channel[ch].enable.audio_en){
             subch = CONFIG_AUDIO_CHANNEL;
-            executor_set_command(EX_MID_FREQ_CMD, EX_DEC_METHOD, subch, &poal_config->multi_freq_point_param[ch].points[i].d_method);
-            executor_set_command(EX_MID_FREQ_CMD, EX_DEC_BW, subch, &poal_config->multi_freq_point_param[ch].points[i].d_bandwith);
-            executor_set_command(EX_MID_FREQ_CMD, EX_DEC_MID_FREQ, subch,&poal_config->multi_freq_point_param[ch].points[i].center_freq,poal_config->multi_freq_point_param[ch].points[i].center_freq);
-            executor_set_command(EX_MID_FREQ_CMD, EX_MUTE_THRE, subch,&poal_config->multi_freq_point_param[ch].points[i].noise_thrh,poal_config->multi_freq_point_param[ch].points[i].noise_en);
+            executor_set_command(EX_MID_FREQ_CMD, EX_DEC_METHOD, subch, &poal_config->channel[ch].multi_freq_point_param.points[i].d_method);
+            executor_set_command(EX_MID_FREQ_CMD, EX_DEC_BW, subch, &poal_config->channel[ch].multi_freq_point_param.points[i].d_bandwith);
+            executor_set_command(EX_MID_FREQ_CMD, EX_DEC_MID_FREQ, subch,&poal_config->channel[ch].multi_freq_point_param.points[i].center_freq,poal_config->channel[ch].multi_freq_point_param.points[i].center_freq);
+            executor_set_command(EX_MID_FREQ_CMD, EX_MUTE_THRE, subch,&poal_config->channel[ch].multi_freq_point_param.points[i].noise_thrh,poal_config->channel[ch].multi_freq_point_param.points[i].noise_en);
             
             executor_set_command(EX_MID_FREQ_CMD, EX_AUDIO_VOL_CTRL, subch,&point->points[i].audio_volume);
             io_set_enable_command(AUDIO_MODE_ENABLE, ch, -1, 0);  //音频通道开�?
@@ -322,7 +327,7 @@ static int8_t  executor_points_scan(uint8_t ch, work_mode_type mode, void *args)
         gettimeofday(&beginTime, NULL);
         do{
             executor_set_command(EX_MID_FREQ_CMD, EX_FPGA_CALIBRATE, ch, &point->points[0].fft_size, 0);
-            if(poal_config->enable.psd_en){
+            if(poal_config->channel[ch].enable.psd_en){
                 io_set_enable_command(PSD_MODE_ENABLE, ch, -1, point->points[i].fft_size);
             }
 #if defined(SUPPORT_SPECTRUM_KERNEL)
@@ -337,20 +342,20 @@ static int8_t  executor_points_scan(uint8_t ch, work_mode_type mode, void *args)
             spmctx->ops->agc_ctrl(ch, spmctx);
             if(args != NULL)
                 spm_deal(args, r_args);
-            if(poal_config->enable.psd_en){
+            if(poal_config->channel[ch].enable.psd_en){
                 io_set_enable_command(PSD_MODE_DISABLE, ch, -1, point->points[i].fft_size);
             }
 #endif
-            if((poal_config->enable.bit_en == 0) || 
-               poal_config->enable.bit_reset == true){
-                    printf_warn("bit_reset...[%d, %d]\n", poal_config->enable.bit_en, poal_config->enable.bit_reset);
-                    poal_config->enable.bit_reset = false;
+            if((poal_config->channel[ch].enable.bit_en == 0) || 
+               poal_config->channel[ch].enable.bit_reset == true){
+                    printf_warn("bit_reset...[%d, %d]\n", poal_config->channel[ch].enable.bit_en, poal_config->channel[ch].enable.bit_reset);
+                    poal_config->channel[ch].enable.bit_reset = false;
                     return -1;
             }
 #if defined (SUPPORT_RESIDENCY_STRATEGY) 
             /* 驻留时间是否到达判断;多频点模式下生效 */
             if(spmctx->ops->residency_time_arrived && (ret == 0) && (points_count > 1)){
-                policy = poal_config->multi_freq_point_param[ch].residence_time/1000;
+                policy = poal_config->channel[ch].multi_freq_point_param.residence_time/1000;
                 residency_time_arrived = spmctx->ops->residency_time_arrived(ch, policy, is_signal);
             }else
 #endif
@@ -371,65 +376,64 @@ void executor_spm_thread(void *arg)
 {
     struct poal_config *poal_config = &(config_get_config()->oal_config);
     uint32_t fft_size;
-    uint8_t ch = poal_config->enable.cid;
-    uint8_t sub_ch = poal_config->enable.sub_id;
     uint32_t j, i;
-
+    int ch = *(int *)arg;
+    void *spm_arg = (void *)get_spm_ctx();
+    pthread_detach(pthread_self());
+    if(ch >= MAX_RADIO_CHANNEL_NUM){
+        printf_err("channel[%d, %d] is too big\n", ch, *(int *)arg);
+        pthread_exit(0);
+    }
     //thread_bind_cpu(1);
     while(1)
     {
         
-loop:   printf_note("######wait to deal work######\n");
-        sem_wait(&work_sem.notify_deal);
-        if(poal_config->enable.bit_en == 0)
+loop:   printf_note("######channel[%d] wait to deal work######\n", ch);
+        sem_wait(&work_sem.notify_deal[ch]);
+        if(poal_config->channel[ch].enable.bit_en == 0)
             safe_system("/etc/led.sh transfer off &");
         else
             safe_system("/etc/led.sh transfer on &");
-        ch = poal_config->enable.cid;
-        if(OAL_NULL_MODE == poal_config->work_mode){
+        if(OAL_NULL_MODE == poal_config->channel[ch].work_mode){
             printf_warn("Work Mode not set\n");
             sleep(1);
             goto loop;
         }
         printf_note("receive notify, [Channel:%d]%s Work: [%s], [%s], [%s]\n", 
                      ch,
-                     poal_config->enable.bit_en == 0 ? "Stop" : "Start",
-                     poal_config->enable.psd_en == 0 ? "Psd Stop" : "Psd Start",
-                     poal_config->enable.audio_en == 0 ? "Audio Stop" : "Audio Start",
-                     poal_config->enable.iq_en == 0 ? "IQ Stop" : "IQ Start");
+                     poal_config->channel[ch].enable.bit_en == 0 ? "Stop" : "Start",
+                     poal_config->channel[ch].enable.psd_en == 0 ? "Psd Stop" : "Psd Start",
+                     poal_config->channel[ch].enable.audio_en == 0 ? "Audio Stop" : "Audio Start",
+                     poal_config->channel[ch].enable.iq_en == 0 ? "IQ Stop" : "IQ Start");
         
-        poal_config->enable.bit_reset = false;
+        poal_config->channel[ch].enable.bit_reset = false;
         printf_note("-------------------------------------\n");
-        #if (defined SUPPORT_PROTOCAL_AKT) || (defined SUPPORT_PROTOCAL_XNRP) 
-        //poal_config->assamble_response_data = executor_assamble_header_response_data_cb;
-        poal_config->send_active = executor_send_data_to_clent_cb;
-        #endif
-        if(poal_config->work_mode == OAL_FAST_SCAN_MODE){
+        if(poal_config->channel[ch].work_mode == OAL_FAST_SCAN_MODE){
             printf_note("            FastScan             \n");
-        }else if(poal_config->work_mode == OAL_MULTI_ZONE_SCAN_MODE){
+        }else if(poal_config->channel[ch].work_mode == OAL_MULTI_ZONE_SCAN_MODE){
             printf_note("             MultiZoneScan       \n");
-        }else if(poal_config->work_mode == OAL_FIXED_FREQ_ANYS_MODE){
+        }else if(poal_config->channel[ch].work_mode == OAL_FIXED_FREQ_ANYS_MODE){
             printf_note("             Fixed Freq          \n");
-        }else if(poal_config->work_mode == OAL_MULTI_POINT_SCAN_MODE){
+        }else if(poal_config->channel[ch].work_mode == OAL_MULTI_POINT_SCAN_MODE){
             printf_note("             MultiPointScan       \n");
         }else{
             goto loop;
         }
         printf_note("-------------------------------------\n");
         for(;;){
-            switch(poal_config->work_mode)
+            switch(poal_config->channel[ch].work_mode)
             {
                 case OAL_FAST_SCAN_MODE:
                 case OAL_MULTI_ZONE_SCAN_MODE:
                 {   
-                   // printf_debug("scan segment count: %d\n", poal_config->multi_freq_fregment_para[ch].freq_segment_cnt);
-                    if(poal_config->multi_freq_fregment_para[ch].freq_segment_cnt == 0){
+                   // printf_debug("scan segment count: %d\n", poal_config->channel[ch].multi_freq_fregment_para.freq_segment_cnt);
+                    if(poal_config->channel[ch].multi_freq_fregment_para.freq_segment_cnt == 0){
                         sleep(1);
                         goto loop;
                     }
-                    if(poal_config->enable.psd_en || poal_config->enable.spec_analy_en){
-                        for(j = 0; j < poal_config->multi_freq_fregment_para[ch].freq_segment_cnt; j++){
-                            if(executor_fragment_scan(j, ch, poal_config->work_mode, arg) == -1){
+                    if(poal_config->channel[ch].enable.psd_en || poal_config->channel[ch].enable.spec_analy_en){
+                        for(j = 0; j < poal_config->channel[ch].multi_freq_fregment_para.freq_segment_cnt; j++){
+                            if(executor_fragment_scan(j, ch, poal_config->channel[ch].work_mode, spm_arg) == -1){
                                 io_set_enable_command(PSD_MODE_DISABLE, ch, -1, 0);
                                 usleep(1000);
                                 goto loop;
@@ -445,14 +449,14 @@ loop:   printf_note("######wait to deal work######\n");
                 case OAL_FIXED_FREQ_ANYS_MODE:
                 case OAL_MULTI_POINT_SCAN_MODE:
                 {
-                    //printf_info("start point scan: points_count=%d\n", poal_config->multi_freq_point_param[ch].freq_point_cnt);
-                    if(poal_config->multi_freq_point_param[ch].freq_point_cnt == 0){
+                    //printf_info("start point scan: points_count=%d\n", poal_config->channel[ch].multi_freq_point_param.freq_point_cnt);
+                    if(poal_config->channel[ch].multi_freq_point_param.freq_point_cnt == 0){
                         sleep(1);
                         goto loop;
                     }
 
-                    if(poal_config->enable.bit_en){
-                        if(executor_points_scan(ch, poal_config->work_mode, arg) == -1){
+                    if(poal_config->channel[ch].enable.bit_en){
+                        if(executor_points_scan(ch, poal_config->channel[ch].work_mode, spm_arg) == -1){
                             io_set_enable_command(PSD_MODE_DISABLE, ch, -1,  0);
                             io_set_enable_command(AUDIO_MODE_DISABLE, ch, -1, 0);
                             for(i = 0; i< MAX_SIGNAL_CHANNEL_NUM; i++){
@@ -774,13 +778,14 @@ int8_t executor_set_command(exec_cmd cmd, uint8_t type, uint8_t ch,  void *data,
         case EX_ENABLE_CMD:
         {
             if(type == PSD_MODE_DISABLE){
-                poal_config->enable.psd_en = 0;
-                INTERNEL_ENABLE_BIT_SET(poal_config->enable.bit_en,poal_config->enable);
+                poal_config->channel[ch].enable.psd_en = 0;
+                INTERNEL_ENABLE_BIT_SET(poal_config->channel[ch].enable.bit_en,poal_config->channel[ch].enable);
             }
             /* notify thread to deal data */
             printf_note("notify thread to deal data\n");
-            poal_config->enable.bit_reset = true; /* reset(stop) all working task */
-            sem_post(&work_sem.notify_deal);
+            poal_config->channel[ch].enable.bit_reset = true; /* reset(stop) all working task */
+            if(ch < MAX_RADIO_CHANNEL_NUM)
+                sem_post(&work_sem.notify_deal[ch]);
             break;
         }
         case EX_WORK_MODE_CMD:
@@ -845,41 +850,41 @@ int8_t executor_set_enable_command(uint8_t ch)
     struct poal_config *poal_config = &(config_get_config()->oal_config);
     int i;
     
-    printf_debug("bit_en[%x]\n", poal_config->enable.bit_en);
-    if(poal_config->enable.bit_en == 0){
+    printf_debug("bit_en[%x]\n", poal_config->channel[ch].enable.bit_en);
+    if(poal_config->channel[ch].enable.bit_en == 0){
         printf_info("all Work disabled, waite thread stop...\n");
     }else{
-        printf_debug("akt_assamble work_mode[%d]\n", poal_config->work_mode);
-        printf_debug("bit_en=%x,psd_en=%d, audio_en=%d,iq_en=%d\n", poal_config->enable.bit_en, 
-            poal_config->enable.psd_en,poal_config->enable.audio_en,poal_config->enable.iq_en);
-        switch (poal_config->work_mode)
+        printf_debug("akt_assamble work_mode[%d]\n", poal_config->channel[ch].work_mode);
+        printf_debug("bit_en=%x,psd_en=%d, audio_en=%d,iq_en=%d\n", poal_config->channel[ch].enable.bit_en, 
+            poal_config->channel[ch].enable.psd_en,poal_config->channel[ch].enable.audio_en,poal_config->channel[ch].enable.iq_en);
+        switch (poal_config->channel[ch].work_mode)
         {
             case OAL_FIXED_FREQ_ANYS_MODE:
             {
                 uint32_t bandwidth = 0;
-                printf_debug("freq_point_cnt=%d\n", poal_config->multi_freq_point_param[ch].freq_point_cnt);
-                executor_set_command(EX_RF_FREQ_CMD, EX_RF_ATTENUATION, ch, &poal_config->rf_para[ch].attenuation);
-                executor_set_command(EX_RF_FREQ_CMD, EX_RF_MGC_GAIN, ch, &poal_config->rf_para[ch].mgc_gain_value);
-                printf_note("ch=%d,attenuation=%d, mgc_gain_value=%d\n",ch, poal_config->rf_para[ch].attenuation, 
-                    poal_config->rf_para[ch].mgc_gain_value);
-                //executor_set_command(EX_RF_FREQ_CMD, EX_RF_MID_FREQ, ch, &poal_config->rf_para[ch].mid_freq);
-                //executor_set_command(EX_RF_FREQ_CMD, EX_RF_MID_BW, ch, &poal_config->rf_para[ch].mid_bw);
-                //executor_set_command(EX_MID_FREQ_CMD, EX_BANDWITH, ch, &poal_config->rf_para[ch].mid_bw);
+                printf_debug("freq_point_cnt=%d\n", poal_config->channel[ch].multi_freq_point_param.freq_point_cnt);
+                executor_set_command(EX_RF_FREQ_CMD, EX_RF_ATTENUATION, ch, &poal_config->channel[ch].rf_para.attenuation);
+                executor_set_command(EX_RF_FREQ_CMD, EX_RF_MGC_GAIN, ch, &poal_config->channel[ch].rf_para.mgc_gain_value);
+                printf_note("ch=%d,attenuation=%d, mgc_gain_value=%d\n",ch, poal_config->channel[ch].rf_para.attenuation, 
+                    poal_config->channel[ch].rf_para.mgc_gain_value);
+                //executor_set_command(EX_RF_FREQ_CMD, EX_RF_MID_FREQ, ch, &poal_config->channel[ch].rf_para.mid_freq);
+                //executor_set_command(EX_RF_FREQ_CMD, EX_RF_MID_BW, ch, &poal_config->channel[ch].rf_para.mid_bw);
+                //executor_set_command(EX_MID_FREQ_CMD, EX_BANDWITH, ch, &poal_config->channel[ch].rf_para.mid_bw);
                 //executor_set_command(EX_MID_FREQ_CMD, EX_CHANNEL_SELECT, ch, &ch);
-                executor_set_command(EX_MID_FREQ_CMD, EX_SMOOTH_TIME, ch, &poal_config->multi_freq_point_param[ch].smooth_time);
+                executor_set_command(EX_MID_FREQ_CMD, EX_SMOOTH_TIME, ch, &poal_config->channel[ch].multi_freq_point_param.smooth_time);
                 //executor_set_command(EX_MID_FREQ_CMD, EX_FPGA_CALIBRATE, ch, NULL);
                 break;
             }
             case OAL_FAST_SCAN_MODE:
             {
                 uint32_t bw;
-                struct multi_freq_fregment_para_st *frp = &poal_config->multi_freq_fregment_para[ch];
-                struct rf_para_st *rf = &poal_config->rf_para[ch];
+                struct multi_freq_fregment_para_st *frp = &poal_config->channel[ch].multi_freq_fregment_para;
+                struct rf_para_st *rf = &poal_config->channel[ch].rf_para;
                 
-                executor_set_command(EX_RF_FREQ_CMD, EX_RF_ATTENUATION, ch, &poal_config->rf_para[ch].attenuation);
-                //executor_set_command(EX_RF_FREQ_CMD, EX_RF_MID_FREQ, ch, &poal_config->rf_para[ch].mid_freq);
-                executor_set_command(EX_RF_FREQ_CMD,EX_RF_MID_FREQ,ch,&poal_config->rf_para[ch].mid_freq);
-                executor_set_command(EX_RF_FREQ_CMD,EX_RF_MID_BW,ch,&poal_config->rf_para[ch].mid_bw);
+                executor_set_command(EX_RF_FREQ_CMD, EX_RF_ATTENUATION, ch, &poal_config->channel[ch].rf_para.attenuation);
+                //executor_set_command(EX_RF_FREQ_CMD, EX_RF_MID_FREQ, ch, &poal_config->channel[ch].rf_para.mid_freq);
+                executor_set_command(EX_RF_FREQ_CMD,EX_RF_MID_FREQ,ch,&poal_config->channel[ch].rf_para.mid_freq);
+                executor_set_command(EX_RF_FREQ_CMD,EX_RF_MID_BW,ch,&poal_config->channel[ch].rf_para.mid_bw);
                 /* 中频带宽和射频带宽一�?*/
                 //executor_set_command(EX_MID_FREQ_CMD, EX_CHANNEL_SELECT, ch, &ch);
                 executor_set_command(EX_MID_FREQ_CMD, EX_SMOOTH_TIME, ch,&frp->smooth_time);
@@ -891,19 +896,19 @@ int8_t executor_set_enable_command(uint8_t ch)
             case OAL_MULTI_ZONE_SCAN_MODE:
             {
                 uint32_t bandwidth = 0;
-                executor_set_command(EX_RF_FREQ_CMD, EX_RF_ATTENUATION, ch, &poal_config->rf_para[ch].attenuation);
-                executor_set_command(EX_RF_FREQ_CMD, EX_RF_MGC_GAIN, ch, &poal_config->rf_para[ch].mgc_gain_value);
-                executor_set_command(EX_MID_FREQ_CMD, EX_SMOOTH_TIME, ch, &poal_config->multi_freq_fregment_para[ch].smooth_time);
+                executor_set_command(EX_RF_FREQ_CMD, EX_RF_ATTENUATION, ch, &poal_config->channel[ch].rf_para.attenuation);
+                executor_set_command(EX_RF_FREQ_CMD, EX_RF_MGC_GAIN, ch, &poal_config->channel[ch].rf_para.mgc_gain_value);
+                executor_set_command(EX_MID_FREQ_CMD, EX_SMOOTH_TIME, ch, &poal_config->channel[ch].multi_freq_fregment_para.smooth_time);
                 //executor_set_command(EX_MID_FREQ_CMD, EX_FPGA_CALIBRATE, ch, NULL);
                 //executor_set_command(EX_MID_FREQ_CMD, EX_CHANNEL_SELECT, ch, &ch);
                 executor_set_command(EX_MID_FREQ_CMD, EX_FPGA_RESET, ch, NULL);
                 break;
             }
             case OAL_MULTI_POINT_SCAN_MODE:
-                executor_set_command(EX_RF_FREQ_CMD, EX_RF_ATTENUATION, ch, &poal_config->rf_para[ch].attenuation);
-                executor_set_command(EX_RF_FREQ_CMD, EX_RF_MGC_GAIN, ch, &poal_config->rf_para[ch].mgc_gain_value);
-                //executor_set_command(EX_MID_FREQ_CMD, EX_BANDWITH, ch, &poal_config->rf_para[ch].mid_bw);
-                executor_set_command(EX_MID_FREQ_CMD, EX_SMOOTH_TIME, ch, &poal_config->multi_freq_point_param[ch].smooth_time);
+                executor_set_command(EX_RF_FREQ_CMD, EX_RF_ATTENUATION, ch, &poal_config->channel[ch].rf_para.attenuation);
+                executor_set_command(EX_RF_FREQ_CMD, EX_RF_MGC_GAIN, ch, &poal_config->channel[ch].rf_para.mgc_gain_value);
+                //executor_set_command(EX_MID_FREQ_CMD, EX_BANDWITH, ch, &poal_config->channel[ch].rf_para.mid_bw);
+                executor_set_command(EX_MID_FREQ_CMD, EX_SMOOTH_TIME, ch, &poal_config->channel[ch].multi_freq_point_param.smooth_time);
                 //executor_set_command(EX_MID_FREQ_CMD, EX_FPGA_CALIBRATE, ch, NULL);
                // executor_set_command(EX_MID_FREQ_CMD, EX_CHANNEL_SELECT, ch, &ch);
                 executor_set_command(EX_MID_FREQ_CMD, EX_FPGA_RESET, ch, NULL);
@@ -943,7 +948,7 @@ void executor_timer_task_init(void)
 
 void executor_init(void)
 {
-    int ret, i;
+    int ret, i, ch;
     pthread_t work_id;
     void *spmctx;
     struct poal_config *poal_config = &(config_get_config()->oal_config);
@@ -982,13 +987,17 @@ void executor_init(void)
         executor_set_command(EX_MID_FREQ_CMD, EX_SUB_CH_ONOFF, i, &enable);
         executor_set_command(EX_MID_FREQ_CMD, EX_SUB_CH_DEC_METHOD, i, &default_method);
     }
-    sem_init(&(work_sem.notify_deal), 0, 0);
+    
     sem_init(&(work_sem.kernel_sysn), 0, 0);
+    for(ch = 0; ch <MAX_RADIO_CHANNEL_NUM; ch++){
+        sem_init(&(work_sem.notify_deal[i]), 0, 0);
+        ret=pthread_create(&work_id, NULL, (void *)executor_spm_thread, &ch);
+        if(ret!=0)
+            perror("pthread cread spm");
+        usleep(50);
+        //pthread_detach(work_id);
+    }
 
-    ret=pthread_create(&work_id,NULL,(void *)executor_spm_thread, spmctx);
-    if(ret!=0)
-        perror("pthread cread spm");
-    pthread_detach(work_id);
 }
 
 void executor_close(void)

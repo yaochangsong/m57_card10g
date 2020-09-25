@@ -708,7 +708,7 @@ static inline int _get_range_min(int ch, uint8_t rf_mode, int dst_val, int *min_
 static inline int _set_half_attenuation_value(int ch, struct spm_context *ctx)
 {
     int8_t  rf_attenuation = 0, mgc_attenuation = 0;
-    uint8_t rf_mode = ctx->pdata->rf_para[ch].rf_mode_code; /* 射频模式 */
+    uint8_t rf_mode = ctx->pdata->channel[ch].rf_para.rf_mode_code; /* 射频模式 */
     int i, half_attenuation_value = 0, found = 0;
     for(i = 0; i< ARRAY_SIZE(ctx->pdata->cal_level.rf_mode.rf_distortion); i++){
         if(ctx->pdata->cal_level.rf_mode.rf_distortion[i].mode == rf_mode){
@@ -737,7 +737,7 @@ static inline int _set_half_attenuation_value(int ch, struct spm_context *ctx)
 
 static inline int _get_max_rf_attenuation_value(int ch, struct spm_context *ctx)
 {
-    uint8_t rf_mode_code = ctx->pdata->rf_para[ch].rf_mode_code;
+    uint8_t rf_mode_code = ctx->pdata->channel[ch].rf_para.rf_mode_code;
     int max_attenuation_value = 0;
     int i, found = 0;
     for(i = 0; i< ARRAY_SIZE(ctx->pdata->cal_level.rf_mode.rf_distortion); i++){
@@ -755,7 +755,7 @@ static inline int _get_max_rf_attenuation_value(int ch, struct spm_context *ctx)
 
 static inline int  _get_min_rf_attenuation_value(int ch, struct spm_context *ctx)
 {
-    uint8_t rf_mode_code = ctx->pdata->rf_para[ch].rf_mode_code;
+    uint8_t rf_mode_code = ctx->pdata->channel[ch].rf_para.rf_mode_code;
     int min_attenuation_value = 0;
     int i, found = 0;
     for(i = 0; i< ARRAY_SIZE(ctx->pdata->cal_level.rf_mode.rf_distortion); i++){
@@ -774,7 +774,7 @@ static inline int  _get_min_rf_attenuation_value(int ch, struct spm_context *ctx
 
 static inline int   _get_min_mgc_attenuation_value(int ch, struct spm_context *ctx)
 {
-    uint8_t rf_mode_code = ctx->pdata->rf_para[ch].rf_mode_code;
+    uint8_t rf_mode_code = ctx->pdata->channel[ch].rf_para.rf_mode_code;
     uint8_t min_attenuation_value = 0;
     int i, found = 0;
     min_attenuation_value = ctx->pdata->cal_level.rf_mode.mgc_distortion.start_range;
@@ -786,7 +786,7 @@ static inline int   _get_min_mgc_attenuation_value(int ch, struct spm_context *c
 
 static inline int _get_max_mgc_attenuation_value(int ch, struct spm_context *ctx)
 {
-    uint8_t rf_mode_code = ctx->pdata->rf_para[ch].rf_mode_code;
+    uint8_t rf_mode_code = ctx->pdata->channel[ch].rf_para.rf_mode_code;
     uint8_t max_attenuation_value = 0;
     int i, found = 0;
     max_attenuation_value = ctx->pdata->cal_level.rf_mode.mgc_distortion.end_range;
@@ -849,10 +849,10 @@ static inline _spm_read_signal_value(int ch)
 static int spm_agc_ctrl_v3(int ch, struct spm_context *ctx)
 {
     #define AGC_CTRL_PRECISION      0       /* 控制精度+-2dbm */
-    uint8_t gain_ctrl_method = ctx->pdata->rf_para[ch].gain_ctrl_method; /* 自动增益or手动增益 */
-    uint16_t agc_ctrl_time= ctx->pdata->rf_para[ch].agc_ctrl_time;       /* 自动增益步进控制时间 */
-    int8_t agc_ctrl_dbm = ctx->pdata->rf_para[ch].agc_mid_freq_out_level;/* 自动增益目标控制功率db值 */
-    uint8_t rf_mode = ctx->pdata->rf_para[ch].rf_mode_code; /* 射频模式 */
+    uint8_t gain_ctrl_method = ctx->pdata->channel[ch].rf_para.gain_ctrl_method; /* 自动增益or手动增益 */
+    uint16_t agc_ctrl_time= ctx->pdata->channel[ch].rf_para.agc_ctrl_time;       /* 自动增益步进控制时间 */
+    int8_t agc_ctrl_dbm = ctx->pdata->channel[ch].rf_para.agc_mid_freq_out_level;/* 自动增益目标控制功率db值 */
+    uint8_t rf_mode = ctx->pdata->channel[ch].rf_para.rf_mode_code; /* 射频模式 */
     int8_t agc_dbm_val = 0;     /* 读取信号db值 */
     int ret = -1;
     static int8_t ctrl_method_dup[MAX_RADIO_CHANNEL_NUM]={-1};
@@ -951,10 +951,10 @@ static int spm_agc_ctrl(int ch, struct spm_context *ctx)
     #define RF_GAIN_THRE            30      /* 增益到达该阀值，开启射频增益/衰减 */
     #define MID_GAIN_THRE           60      /* 增益到达该阀值，开启中频增益 */
 
-    uint8_t gain_ctrl_method = ctx->pdata->rf_para[ch].gain_ctrl_method;
-    uint16_t agc_ctrl_time= ctx->pdata->rf_para[ch].agc_ctrl_time;
-    int8_t agc_ctrl_dbm = ctx->pdata->rf_para[ch].agc_mid_freq_out_level;
-    uint32_t fft_size_agc = ctx->pdata->multi_freq_point_param[ch].points[0].fft_size;
+    uint8_t gain_ctrl_method = ctx->pdata->channel[ch].rf_para.gain_ctrl_method;
+    uint16_t agc_ctrl_time= ctx->pdata->channel[ch].rf_para.agc_ctrl_time;
+    int8_t agc_ctrl_dbm = ctx->pdata->channel[ch].rf_para.agc_mid_freq_out_level;
+    uint32_t fft_size_agc = ctx->pdata->channel[ch].multi_freq_point_param.points[0].fft_size;
     uint16_t agc_val = 0;
     int8_t dbm_val = 0;
     int ret = -1,rf_mode;
@@ -967,7 +967,7 @@ static int spm_agc_ctrl(int ch, struct spm_context *ctx)
     
     printf_note("gain_ctrl_method:%d agc_ctrl_time:%d agc_ctrl_dbm:%d\n", gain_ctrl_method,agc_ctrl_time,agc_ctrl_dbm);
     //rf_mode = io_get_rf_mode();
-    rf_mode = ctx->pdata->rf_para[ch].rf_mode_code;
+    rf_mode = ctx->pdata->channel[ch].rf_para.rf_mode_code;
 
     /* 当模式变化时， 需要通知内核更新模式信息 */
     if(ctrl_method[ch] != gain_ctrl_method){

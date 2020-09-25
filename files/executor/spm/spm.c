@@ -75,6 +75,7 @@ void spm_iq_handle_thread(void *arg)
     iq_t *ptr_iq = NULL;
     ssize_t  len = 0, i;
     struct poal_config *poal_config = &(config_get_config()->oal_config);
+    int ch = poal_config->cid;
    // thread_bind_cpu(1);
     ctx = (struct spm_context *)arg;
 
@@ -83,7 +84,7 @@ loop:
     //notify = 1;
     /* 通过条件变量阻塞方式等待数据使能 */
     pthread_mutex_lock(&spm_iq_cond_mutex);
-    while(subch_bitmap_weight() == 0 && poal_config->enable.audio_en == 0)
+    while(subch_bitmap_weight() == 0 && poal_config->channel[ch].enable.audio_en == 0)
         pthread_cond_wait(&spm_iq_cond, &spm_iq_cond_mutex);
     pthread_mutex_unlock(&spm_iq_cond_mutex);
     
@@ -101,7 +102,7 @@ loop:
            // printfd("\n----------[%d]---------\n", len);
             ctx->ops->send_iq_data(ptr_iq, len, &run);
         }
-        if(subch_bitmap_weight() == 0 && poal_config->enable.audio_en == 0){
+        if(subch_bitmap_weight() == 0 && poal_config->channel[ch].enable.audio_en == 0){
             printf_note("iq disabled\n");
             sleep(1);
             goto loop;
@@ -116,12 +117,12 @@ void spm_deal(struct spm_context *ctx, void *args)
 {   
     struct spm_context *pctx = ctx;
     struct poal_config *poal_config = &(config_get_config()->oal_config);
-    
+    int ch = poal_config->cid;
     if(pctx == NULL){
         printf_err("spm is not init!!\n");
         return;
     }
-    if(subch_bitmap_weight() != 0 || poal_config->enable.audio_en != 0){
+    if(subch_bitmap_weight() != 0 || poal_config->channel[ch].enable.audio_en != 0){
   
         struct spm_run_parm *ptr_run;
         ptr_run = (struct spm_run_parm *)args;
@@ -130,7 +131,7 @@ void spm_deal(struct spm_context *ctx, void *args)
         spm_iq_deal_notify(&args);
         
     }
-    if(pctx->pdata->enable.psd_en){
+    if(pctx->pdata->channel[ch].enable.psd_en){
         volatile fft_t *ptr = NULL, *ord_ptr = NULL;
         ssize_t  byte_len = 0; /* fft byte size len */
         size_t fft_len = 0, fft_ord_len = 0;

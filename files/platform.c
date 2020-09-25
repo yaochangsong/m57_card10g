@@ -71,13 +71,6 @@ bool is_spectrum_continuous_mode(void)
     return spectrum_continuous_mode;
 }
 
-time_t system_power_on_time = 0;
-
-time_t get_system_power_on_time(void)
-{
-    return system_power_on_time;
-}
-
 int main(int argc, char **argv)
 {
     int debug_level = -1;
@@ -115,7 +108,6 @@ int main(int argc, char **argv)
             usage(argv[0]);
         }
     }
-    system_power_on_time = time((time_t *)NULL);
     log_init(debug_level);
     printf("Platform Start...\n");
 #if (defined SUPPORT_DATA_PROTOCAL_AKT)
@@ -123,7 +115,6 @@ int main(int argc, char **argv)
 #elif defined(SUPPORT_DATA_PROTOCAL_XW)
     printf("XW Protocal\n");
 #endif
-    printf("%s\n", ctime(&system_power_on_time));
     printf("VERSION:%s\n",get_version_string());
     config_init();
     uloop_init();

@@ -46,6 +46,25 @@ typedef struct image_header {
     uint8_t     ih_name[IH_NMLEN];  /* Image Name       */
 } image_header_t;
 
+#define BOOT_ARM_VEC_TAB    0xEAFFFFFE
+#define WIDTH_DECT_WORD     0xAA995566
+#define HEADER_SIGN         0x584c4e58
+typedef struct boot_header {
+    uint32_t arm_vector_table[8];       /* 0xEAFFFFFE offset: 0x00~0x1f */
+    uint32_t wdw;                       /*Width Detection Word 0xAA995566 offset: 020 */
+    uint32_t header_sign;               /*  ‘X’,’N’,’L’,’X’  0x584c4e58 offset: 024 */
+    uint32_t key_source;                /* 0x00000000: Not Encrypted offset: 0x28 */
+    uint32_t header_version;            /* 0x01010000   offset: 0x2c */
+    uint32_t source_offset;             /*  offset: 0x30 */
+    uint32_t fsbl_image_len;            /*  offset: 0x34 */
+}boot_header_t;
+
+#define JFFS2_BITMASK    0x8519
+typedef struct jffs2_header {
+    uint16_t magic_bitmask;             /* 0x19 0x85 */
+}jffs2_header_t;
+
+
 struct image_part_type {
     char *filename;
     char *mtdname;

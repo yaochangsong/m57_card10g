@@ -270,7 +270,7 @@ int main(int argc, char **argv)
     char *file, *nodevaule, *nodestr;
     static cJSON* root_json = NULL;
     int action = 0; /* 0: read, 1:write */
-    
+
     while ((opt = getopt(argc, argv, "rwf:n:v:")) != -1) {
         switch (opt)
         {
@@ -293,6 +293,11 @@ int main(int argc, char **argv)
                 usage(argv[0]);
                 exit(0);
         }
+    }
+    argc -= optind;
+    if (argc < 1){
+        usage(argv[0]);
+        exit(1);
     }
 
     for(i = 0; i<JSON_NODE_MAX_NUM ;i++)

@@ -1330,14 +1330,16 @@ static int spm_stream_stop(enum stream_type type)
 static int _spm_close(struct spm_context *ctx)
 {
     struct _spm_stream *pstream = spm_stream;
-    int i;
+    int i, ch;
 
     for(i = 0; i< ARRAY_SIZE(spm_stream) ; i++){
         spm_stream_stop(i);
         close(pstream[i].id);
     }
-    safe_free(ctx->run_args->fft_ptr);
-    safe_free(ctx->run_args);
+    for(ch = 0; ch< MAX_RADIO_CHANNEL_NUM; ch++){
+        safe_free(ctx->run_args[ch]->fft_ptr);
+        safe_free(ctx->run_args[ch]);
+    }
     printf_note("close..\n");
     return 0;
 }

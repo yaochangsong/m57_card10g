@@ -80,7 +80,7 @@ static  int8_t  executor_fragment_scan(uint32_t fregment_num,uint8_t ch, work_mo
     struct spm_context *spmctx;
     struct spm_run_parm *r_args;
     spmctx = (struct spm_context *)args;
-    r_args = spmctx->run_args;
+    r_args = spmctx->run_args[ch];
 
     /* 
         Step 1: 扫描次数计算
@@ -182,7 +182,7 @@ static int8_t  executor_points_scan(uint8_t ch, work_mode_type mode, void *args)
     //int32_t policy = poal_config->ctrl_para.residency.policy[ch];
     int32_t policy = poal_config->channel[ch].multi_freq_point_param.residence_time;
     spmctx = (struct spm_context *)args;
-    r_args = spmctx->run_args;
+    r_args = spmctx->run_args[ch];
 
     point = &poal_config->channel[ch].multi_freq_point_param;
     points_count = point->freq_point_cnt;

@@ -60,11 +60,11 @@ struct spm_backend_ops {
 };
 
 
-
+#include "config.h"
 struct spm_context {
     struct poal_config *pdata;
     const struct spm_backend_ops *ops;
-    struct spm_run_parm *run_args;
+    struct spm_run_parm *run_args[MAX_RADIO_CHANNEL_NUM];
 };
 
 extern void *spm_init(void);

@@ -48,8 +48,9 @@
 #include "protocol/akt/akt.h"
 #include "protocol/oal/poal.h"
 
+#include "net/net.h"
 #include "net/net_tcp.h"
-//#include "net/net_data.h"
+#include "net/net_data.h"
 #include "net/net_udp.h"
 #ifdef SUPPORT_DAO_XML
 #include "dao/mxml-3.0/mxml.h"

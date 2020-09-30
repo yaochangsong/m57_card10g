@@ -200,6 +200,7 @@ static int8_t  executor_points_scan(uint8_t ch, work_mode_type mode, void *args)
         r_args->bandwidth = point->points[i].bandwidth;
         r_args->m_freq = point->points[i].center_freq;
         r_args->mode = mode;
+        #if 0
         if(subch_bitmap_weight()!=0){
             if(i < MAX_SIGNAL_CHANNEL_NUM){
                 subch = poal_config->channel[ch].sub_channel_para.sub_ch_enable[i].sub_id ;
@@ -208,6 +209,10 @@ static int8_t  executor_points_scan(uint8_t ch, work_mode_type mode, void *args)
         }else{
             r_args->d_method = point->points[i].raw_d_method;
         }
+        #endif
+        
+        /* fixed bug for IQ &audio decode type error */
+        r_args->d_method = 0;
         r_args->scan_bw = point->points[i].bandwidth;
         r_args->gain_mode = poal_config->channel[ch].rf_para.gain_ctrl_method;
         r_args->gain_value = poal_config->channel[ch].rf_para.mgc_gain_value;
@@ -378,10 +383,12 @@ loop:   printf_note("######channel[%d] wait to deal work######\n", ch);
                     if(poal_config->channel[ch].enable.bit_en){
                         if(executor_points_scan(ch, poal_config->channel[ch].work_mode, spm_arg) == -1){
                             io_set_enable_command(PSD_MODE_DISABLE, ch, -1,  0);
+                            #if 0
                             io_set_enable_command(AUDIO_MODE_DISABLE, ch, -1, 0);
                             for(i = 0; i< MAX_SIGNAL_CHANNEL_NUM; i++){
                                 io_set_enable_command(IQ_MODE_DISABLE, ch, i, 0);
                             }
+                            #endif
                             usleep(1000);
                             goto loop;
                         }
@@ -907,7 +914,7 @@ void executor_init(void)
     
     sem_init(&(work_sem.kernel_sysn), 0, 0);
     for(ch = 0; ch <MAX_RADIO_CHANNEL_NUM; ch++){
-        sem_init(&(work_sem.notify_deal[i]), 0, 0);
+        sem_init(&(work_sem.notify_deal[ch]), 0, 0);
         ret=pthread_create(&work_id, NULL, (void *)executor_spm_thread, &ch);
         if(ret!=0)
             perror("pthread cread spm");

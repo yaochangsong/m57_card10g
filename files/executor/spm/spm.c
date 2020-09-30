@@ -84,7 +84,7 @@ loop:
     //notify = 1;
     /* 通过条件变量阻塞方式等待数据使能 */
     pthread_mutex_lock(&spm_iq_cond_mutex);
-    while(subch_bitmap_weight() == 0 && poal_config->channel[ch].enable.audio_en == 0)
+    while(subch_bitmap_weight() == 0)
         pthread_cond_wait(&spm_iq_cond, &spm_iq_cond_mutex);
     pthread_mutex_unlock(&spm_iq_cond_mutex);
     
@@ -102,7 +102,7 @@ loop:
            // printfd("\n----------[%d]---------\n", len);
             ctx->ops->send_iq_data(ptr_iq, len, &run);
         }
-        if(subch_bitmap_weight() == 0 && poal_config->channel[ch].enable.audio_en == 0){
+        if(subch_bitmap_weight() == 0){
             printf_note("iq disabled\n");
             sleep(1);
             goto loop;
@@ -122,8 +122,7 @@ void spm_deal(struct spm_context *ctx, void *args)
         printf_err("spm is not init!!\n");
         return;
     }
-    if(subch_bitmap_weight() != 0 || poal_config->channel[ch].enable.audio_en != 0){
-  
+    if(subch_bitmap_weight() != 0){
         struct spm_run_parm *ptr_run;
         ptr_run = (struct spm_run_parm *)args;
         printf_debug("send:ch:%d, s_freq:%llu, e_freq:%llu, bandwidth=%u\n", 

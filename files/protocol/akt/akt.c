@@ -1772,17 +1772,18 @@ int  akt_assamble_send_active_data(uint8_t *send_buf, uint8_t *payload, uint32_t
 }
 
 
-uint8_t *akt_assamble_demodulation_data_extend_frame_header_data(uint32_t *len, void *config)
+uint8_t *akt_assamble_demodulation_header_data(uint32_t *len, void *config)
 {
     struct poal_config *poal_config = &(config_get_config()->oal_config);
-    static uint8_t param_buf[sizeof(DATUM_DEMODULATE_HEADER_ST)];
     DATUM_DEMODULATE_HEADER_ST *ext_hdr = NULL;
-    static bool start_flag = false;
+    char *ptr;
     int ch = poal_config->cid;
 
-    ext_hdr = (DATUM_DEMODULATE_HEADER_ST *)param_buf;
-    
-    memset(param_buf, 0, sizeof(DATUM_DEMODULATE_HEADER_ST));
+    ext_hdr = calloc(1, sizeof(DATUM_SPECTRUM_HEADER_ST));
+    if(ext_hdr == NULL){
+        return NULL;
+    }
+    ptr = (char *)ext_hdr;
     printf_debug("akt_assamble_data_extend_frame_header_data\n");
     ext_hdr->dev_id = akt_get_device_id();
     
@@ -1811,12 +1812,12 @@ uint8_t *akt_assamble_demodulation_data_extend_frame_header_data(uint32_t *len, 
 #endif
     printfd("DEMODULATE Extend frame header:\n");
     for(int i = 0; i< sizeof(DATUM_DEMODULATE_HEADER_ST); i++){
-        printfd("%x ", *(param_buf+i));
+        printfd("%x ", *(ptr+i));
     }
     printfd("\n");
 
     *len = sizeof(DATUM_DEMODULATE_HEADER_ST);
-    return param_buf;
+    return ptr;
 }
 
 
@@ -1833,14 +1834,16 @@ uint8_t *akt_assamble_demodulation_data_extend_frame_header_data(uint32_t *len, 
 uint8_t *akt_assamble_data_extend_frame_header_data(uint32_t *len, void *config)
 {
     struct poal_config *poal_config = &(config_get_config()->oal_config);
-    static uint8_t param_buf[sizeof(DATUM_SPECTRUM_HEADER_ST)];
+    //static uint8_t param_buf[sizeof(DATUM_SPECTRUM_HEADER_ST)];
     DATUM_SPECTRUM_HEADER_ST *ext_hdr = NULL;
-    static bool start_flag = false;
+    char *ptr;
     int ch = poal_config->cid;
 
-    ext_hdr = (DATUM_SPECTRUM_HEADER_ST *)param_buf;
-    
-    memset(param_buf, 0, sizeof(DATUM_SPECTRUM_HEADER_ST));
+    ext_hdr = calloc(1, sizeof(DATUM_SPECTRUM_HEADER_ST));
+    if(ext_hdr == NULL){
+        return NULL;
+    }
+    ptr = (char *)ext_hdr;
     printf_debug("akt_assamble_data_extend_frame_header_data\n");
     ext_hdr->dev_id = akt_get_device_id();
     ext_hdr->work_mode =  poal_config->channel[ch].work_mode;
@@ -1881,12 +1884,12 @@ uint8_t *akt_assamble_data_extend_frame_header_data(uint32_t *len, void *config)
     //memcpy(param_buf, ex_buf, sizeof(DATUM_SPECTRUM_HEADER_ST));
     printfd("Extend frame header:\n");
     for(int i = 0; i< sizeof(DATUM_SPECTRUM_HEADER_ST); i++){
-        printfd("%x ", *(param_buf+i));
+        printfd("%x ", *(ptr+i));
     }
     printfd("\n");
 
     *len = sizeof(DATUM_SPECTRUM_HEADER_ST);
-    return param_buf;
+    return ptr;
 }
 
 /******************************************************************************
@@ -1897,43 +1900,41 @@ uint8_t *akt_assamble_data_extend_frame_header_data(uint32_t *len, void *config)
 *     assamble data(FFT/IQ...) frame header
 * PARAMETERS: 
 *       @len: return total header len(data header+extend data header)
-* RETURNS
+* RETURNS Need to Free
 ******************************************************************************/
-int8_t akt_assamble_data_frame_header_data( uint8_t *head_buf,  int buf_len, uint32_t *len, void *config)
+void *akt_assamble_data_frame_header_data(uint32_t *len, void *config)
 {
     DATUM_PDU_HEADER_ST *package_header;
     static unsigned short seq_num[MAX_RADIO_CHANNEL_NUM] = {0};
     struct spm_run_parm *header_param;
-    //static uint8_t head_buf[sizeof(DATUM_PDU_HEADER_ST)+sizeof(DATUM_SPECTRUM_HEADER_ST)+sizeof(DATUM_DEMODULATE_HEADER_ST)];
     uint8_t *pextend;
     uint32_t extend_data_header_len;
     struct timeval tv;
+    uint8_t *ptr = NULL;
 
     printf_debug("akt_assamble_data_frame_header_data. v3\n");
     header_param = (struct spm_run_parm *)config;
     printf_debug("header_param->ex_type:%d\n", header_param->ex_type);
     if(header_param->ex_type == SPECTRUM_DATUM)
         pextend = akt_assamble_data_extend_frame_header_data(&extend_data_header_len, config);
-    else if(header_param->ex_type == DEMODULATE_DATUM)
-        pextend = akt_assamble_demodulation_data_extend_frame_header_data(&extend_data_header_len, config);
-    else{
+    else if(header_param->ex_type == DEMODULATE_DATUM){
+        pextend = akt_assamble_demodulation_header_data(&extend_data_header_len,  config);
+    }else{
         printf_err("extend type is not valid!\n");
-        return -1;
+        return NULL;
     }
-    if(head_buf == NULL)
-        return -1;
-    if(buf_len <sizeof(DATUM_PDU_HEADER_ST)+extend_data_header_len ){
-        printf_err("header len is too long: %d, %d\n, ",buf_len, sizeof(DATUM_PDU_HEADER_ST)+extend_data_header_len);
-        return -1;
+    ptr = calloc(1, sizeof(DATUM_PDU_HEADER_ST) + extend_data_header_len);
+    if(ptr == NULL){
+        safe_free(pextend);
+        return NULL;
     }
-    memset(head_buf, 0, sizeof(DATUM_PDU_HEADER_ST)+extend_data_header_len);
-    memcpy(head_buf+ sizeof(DATUM_PDU_HEADER_ST), pextend, extend_data_header_len);
+    memcpy(ptr+ sizeof(DATUM_PDU_HEADER_ST), pextend, extend_data_header_len);
     
-    package_header = (DATUM_PDU_HEADER_ST*)head_buf;
+    package_header = (DATUM_PDU_HEADER_ST*)ptr;
     package_header->syn_flag = AKT_START_FLAG;
     package_header->type = header_param->type;
     gettimeofday(&tv,NULL);
-    package_header->toa = tv.tv_sec*1000 + tv.tv_usec/1000;
+    package_header->toa = tv.tv_sec*1000000 + tv.tv_usec;
     package_header->seqnum = seq_num[header_param->ch]++;
     package_header->virtual_ch = 0;
     memset(package_header->reserve, 0, sizeof(package_header->reserve));
@@ -1947,15 +1948,16 @@ int8_t akt_assamble_data_frame_header_data( uint8_t *head_buf,  int buf_len, uin
     *len = sizeof(DATUM_PDU_HEADER_ST) + extend_data_header_len;
     printfd("Header len[%d]: \n", sizeof(DATUM_PDU_HEADER_ST));
     for(int i = 0; i< sizeof(DATUM_PDU_HEADER_ST); i++){
-        printfd("%x ", *(head_buf + i));
+        printfd("%x ", *(ptr + i));
     }
     printfd("\n");
     printfd("extend header len[%d]: \n", extend_data_header_len);
     for(int i = 0; i< extend_data_header_len; i++){
-        printfd("%x ", *(head_buf + sizeof(DATUM_PDU_HEADER_ST)+i));
+        printfd("%x ", *(ptr + sizeof(DATUM_PDU_HEADER_ST)+i));
     }
     printfd("\n");
-    return 0;
+    safe_free(pextend);
+    return ptr;
 }
 
 

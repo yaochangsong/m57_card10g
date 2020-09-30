@@ -88,9 +88,9 @@ loop:
         pthread_cond_wait(&spm_iq_cond, &spm_iq_cond_mutex);
     pthread_mutex_unlock(&spm_iq_cond_mutex);
     
-    printf_note(">>>>>IQ start\n");
+    printf_note(">>>>>[ch=%d]IQ start\n", ch);
     memset(&run, 0, sizeof(run));
-    memcpy(&run, ctx->run_args, sizeof(run));
+    memcpy(&run, ctx->run_args[ch], sizeof(run));
     do{
         len = ctx->ops->read_iq_data(&ptr_iq);
         
@@ -178,7 +178,7 @@ void thread_attr_set(pthread_attr_t *attr, int policy, int prio)
 void *spm_init(void)
 {
     static pthread_t send_thread_id, recv_thread_id;
-    int ret;
+    int ret, ch;
     pthread_attr_t attr;
 #if defined(SUPPORT_PLATFORM_ARCH_ARM)
 #if defined(SUPPORT_SPECTRUM_CHIP)
@@ -195,14 +195,13 @@ void *spm_init(void)
         return NULL;
     }
 
-    //mqctx = mq_create_ctx(SPM_MQ_NAME, NULL, -1);
-    //mqctx->ops->getattr(SPM_MQ_NAME);
-
-    spmctx->run_args = calloc(1, sizeof(struct spm_run_parm));
-    spmctx->run_args->fft_ptr = malloc(MAX_FFT_SIZE*sizeof(fft_t));///calloc(1, MAX_FFT_SIZE*sizeof(fft_t));
-    if(spmctx->run_args->fft_ptr == NULL){
+    for(ch = 0; ch< MAX_RADIO_CHANNEL_NUM; ch++){
+        spmctx->run_args[ch] = calloc(1, sizeof(struct spm_run_parm));
+        spmctx->run_args[ch]->fft_ptr = malloc(MAX_FFT_SIZE*sizeof(fft_t));///calloc(1, MAX_FFT_SIZE*sizeof(fft_t));
+        if(spmctx->run_args[ch]->fft_ptr == NULL){
         printf("malloc failed\n");
         exit(1);
+        }
     }
 
     ret=pthread_create(&recv_thread_id,NULL,(void *)spm_iq_handle_thread, spmctx);

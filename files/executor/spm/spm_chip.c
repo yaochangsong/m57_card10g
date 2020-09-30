@@ -24,20 +24,52 @@ static inline void *zalloc(size_t size)
 	return calloc(1, size);
 }
 
-
 static int spm_chip_create(void)
 {
 
 }
 
+iq_t *_iqdata_once  = NULL;
+
 static ssize_t spm_chip_read_iq_data(void **data)
 {
+    ssize_t r = 0;
+    iq_t *iqdata = NULL;
     
+    //iqdata = specturm_rx0_read_data(&r);
+    *data = iqdata;
+    return r;
 }
 
-static ssize_t spm_chip_read_fft_data(void **data)
+/* need to free */
+static ssize_t spm_chip_read_fft_data(void **data, uint32_t fft_size)
 {
+    float *floatdata = NULL;
+    fft_t *fftdata = NULL;
+    iq_t *iqdata = NULL;
+    ssize_t r = 0;
+    //iqdata = specturm_rx0_read_data(&r);
     
+    floatdata = zalloc(fft_size*4);
+    if(floatdata == NULL)
+        goto err;
+    //fft_spectrum_iq_to_fft_handle(iqdata, fft_size, fft_size*2, floatdata);
+    
+    fftdata = zalloc(fft_size*4);
+    if(fftdata == NULL){
+        free(floatdata);
+        floatdata = NULL;
+        goto err;
+    }
+    FLOAT_TO_SHORT(floatdata, fftdata, fft_size);
+    free(floatdata);
+    floatdata = NULL;
+    *data = fftdata;
+    
+    return fft_size;
+err:
+    *data = NULL;
+    return -1;
 }
 
 static  float get_side_band_rate(uint32_t bandwidth)
@@ -78,57 +110,132 @@ static fft_data_type *spm_chip_data_order(fft_data_type *fft_data,
 }
 
 
-static int spm_chip_send_fft_data(void *data, size_t len, void *arg)
+static int spm_chip_send_fft_data(void *data, size_t fft_len, void *arg)
 {
-    uint8_t *ptr = NULL, *ptr_header = NULL;
+    #define HEAD_BUFFER_LEN  512 
+    uint8_t *ptr_header = NULL;
     uint32_t header_len = 0;
+    size_t data_byte_size = 0;
 
-    if(data == NULL || len == 0 || arg == NULL)
+    if(data == NULL || fft_len == 0 || arg == NULL)
         return -1;
-#ifdef SUPPORT_PROTOCAL_AKT
+    data_byte_size = fft_len * sizeof(fft_t);
+#if (defined SUPPORT_DATA_PROTOCAL_AKT)
     struct spm_run_parm *hparam;
     hparam = (struct spm_run_parm *)arg;
-    hparam->data_len = len; 
+    hparam->data_len = data_byte_size; 
     hparam->type = SPECTRUM_DATUM_FLOAT;
     hparam->ex_type = SPECTRUM_DATUM;
-    //ptr_header = akt_assamble_data_frame_header_data(&header_len, arg);
-#endif
-    ptr = (uint8_t *)safe_malloc(header_len+ len);
-    if (!ptr){
-        printf_err("malloc failed\n");
+    if((ptr_header = akt_assamble_data_frame_header_data(&header_len, arg)) == NULL){
         return -1;
     }
-    memcpy(ptr, ptr_header, header_len);
-    memcpy(ptr+header_len, data, len);
-    udp_send_data(ptr, header_len + len);
-    safe_free(ptr);
+#elif defined(SUPPORT_DATA_PROTOCAL_XW)
+    struct spm_run_parm *hparam;
+    hparam = (struct spm_run_parm *)arg;
+    hparam->data_len = data_byte_size; 
+    hparam->type = DEFH_DTYPE_FLOAT;
+    hparam->ex_type = DFH_EX_TYPE_PSD;
+    ptr_header = xw_assamble_frame_data(&header_len, arg);
+    if(ptr_header == NULL)
+        return -1;
+#endif
+    struct iovec iov[2];
+
+    iov[0].iov_base = ptr_header;
+    iov[0].iov_len = header_len;
+    iov[1].iov_base = data;
+    iov[1].iov_len = data_byte_size;
+
+    udp_send_vec_data(iov, 2);
+    safe_free(ptr_header);
+    return (header_len + data_byte_size);
 }
 
-static int spm_chip_send_iq_data(void *data, size_t len, void *arg)
+/*********************************************************
+    功能:组装IQ数据协议头
+    输入参数：
+        @data_len: IQ数据长度
+        @arg: 数据属性指针
+    输出参数:
+        @hlen: (IQ)数据头长度
+    返回:
+        NULL: 失败
+        非空: 协议头指针; 使用后需要释放
+*********************************************************/
+static void *_assamble_iq_header(size_t subch, size_t *hlen, size_t data_len, void *arg)
 {
     uint8_t *ptr = NULL, *ptr_header = NULL;
     uint32_t header_len = 0;
-
-    if(data == NULL || len == 0 || arg == NULL)
-        return -1;
-#ifdef SUPPORT_PROTOCAL_AKT
+    
+    if(data_len == 0 || arg == NULL)
+        return NULL;
+    
+#ifdef SUPPORT_DATA_PROTOCAL_AKT
     struct spm_run_parm *hparam;
     hparam = (struct spm_run_parm *)arg;
-    hparam->data_len = len; 
+    hparam->data_len = data_len;
     hparam->type = BASEBAND_DATUM_IQ;
     hparam->ex_type = DEMODULATE_DATUM;
-    //ptr_header = akt_assamble_data_frame_header_data(&header_len, arg);
+    //hparam->sub_ch = subch;
+    if((ptr_header = akt_assamble_data_frame_header_data(&header_len, arg))== NULL){
+        return NULL;
+    }
+    
+#elif defined(SUPPORT_DATA_PROTOCAL_XW)
+    struct spm_run_parm *hparam;
+    hparam = (struct spm_run_parm *)arg;
+    hparam->data_len = data_len; 
+    hparam->type = DEFH_DTYPE_BB_IQ;
+    hparam->ex_type = DFH_EX_TYPE_DEMO;
+   // hparam->sub_ch = subch;
+    ptr_header = xw_assamble_frame_data(&header_len, arg);
+    if(ptr_header == NULL)
+        return NULL;
 #endif
-    ptr = (uint8_t *)safe_malloc(header_len+ len);
-    if (!ptr){
-        printf_err("malloc failed\n");
+    *hlen = header_len;
+
+    return ptr_header;
+
+}
+
+#define DEFAULT_IQ_SEND_BYTE 512
+static size_t iq_send_unit_byte = DEFAULT_IQ_SEND_BYTE;    /* IQ发送长度 */
+static int spm_chip_send_iq_data(void *data, size_t len, void *arg)
+{
+    uint32_t header_len = 0;
+    size_t _send_byte = (iq_send_unit_byte > 0 ? iq_send_unit_byte : DEFAULT_IQ_SEND_BYTE);
+    uint8_t *hptr = NULL;
+    
+    if(data == NULL || len == 0 || arg == NULL)
+        return -1;
+
+    if(len < _send_byte)
+        return -1;
+    if((hptr = _assamble_iq_header(1, &header_len, _send_byte, arg)) == NULL){
+        printf_err("assamble head error\n");
         return -1;
     }
-    memcpy(ptr, ptr_header, header_len);
-    memcpy(ptr+header_len, data, len);
-    udp_send_data(ptr, header_len + len);
-    safe_free(ptr);
+   
+    int i, index,sbyte;
+    uint8_t *pdata;
+    struct iovec iov[2];
+    iov[0].iov_base = hptr;
+    iov[0].iov_len = header_len;
+    index = len / _send_byte;
+    sbyte = index * _send_byte;
+    pdata = (uint8_t *)data;
+    for(i = 0; i<index; i++){
+        iov[1].iov_base = pdata;
+        iov[1].iov_len = _send_byte;
+        udp_send_vec_data(iov, 2);
+        pdata += _send_byte;
+    }
+   
+    safe_free(hptr);
+    
+    return (header_len + len);
 }
+
 
 static int spm_chip_send_cmd(void *cmd, void *data, size_t data_len)
 {

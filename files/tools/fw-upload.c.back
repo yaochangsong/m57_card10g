@@ -118,16 +118,25 @@ void *getMemInFile(char *filename, int offset, int len)
 /*
  *  taken from "mkimage -l" with few modified....
  */
-int check(char *imagefile, int offset, int len, char *err_msg, char *mtd_name)
+int check(char *imagefile, int offset, int len, char *err_msg)
 {
     struct stat sbuf;
-    int ret = 0;
+
     int  data_len;
     char *data;
     unsigned char *ptr;
     unsigned long checksum;
+
+    image_header_t header;
+    image_header_t *hdr = &header;
+
     int ifd;
-    
+
+    if ((unsigned)len < sizeof(image_header_t)) {
+        sprintf (err_msg, "Bad size: \"%s\" is no valid image\n", imagefile);
+        return 0;
+    }
+
     ifd = open(imagefile, O_RDONLY);
     if(!ifd){
         sprintf (err_msg, "Can't open %s: %s\n", imagefile, strerror(errno));
@@ -148,64 +157,21 @@ int check(char *imagefile, int offset, int len, char *err_msg, char *mtd_name)
     }
     ptr += offset;
 
-    int size_len = 0;
-    if(!strcmp(mtd_name, "\"jffs2\"")){
-        size_len = sizeof(jffs2_header_t);
-        jffs2_header_t header;
-        jffs2_header_t *hdr = &header;
-        memcpy (hdr, ptr, sizeof(jffs2_header_t));
-        if (ntohl(hdr->magic_bitmask) != JFFS2_BITMASK) {
-            munmap(ptr, len);
-            close(ifd);
-            sprintf (err_msg, "Bad Magic Bitmask: \"%s\" is no valid image\n", imagefile);
-            ret = 0;
-            goto err;
-        }
-    } else if (!strcmp(mtd_name, "\"boot\"")){
-        size_len = sizeof(boot_header_t);
-        boot_header_t header;
-        boot_header_t *hdr = &header;
-        memcpy (hdr, ptr, sizeof(boot_header_t));
-        for(int i = 0; i< (sizeof(hdr->arm_vector_table) / sizeof(hdr->arm_vector_table[0])); i++){
-            if (ntohl(hdr->arm_vector_table[i]) != BOOT_ARM_VEC_TAB) {
-                sprintf (err_msg, "Bad arm vector table: \"%s\" is no valid image\n", imagefile);
-                ret = 0;
-                goto err;
-            }
-        }
-        if (ntohl(hdr->wdw) != WIDTH_DECT_WORD) {
-                sprintf (err_msg, "Bad Width Detection Word: \"%s\" is no valid image\n", imagefile);
-                ret = 0;
-                goto err;
-         }
-         if (ntohl(hdr->header_sign) != HEADER_SIGN) {
-                sprintf (err_msg, "Bad Header sign: \"%s\" is no valid image\n", imagefile);
-                ret = 0;
-                goto err;
-         }
-    }
-
-    if ((unsigned)len < size_len) {
-        sprintf (err_msg, "Bad size: \"%s\" is no valid image\n", imagefile);
-        ret = 0;
-        goto err;
-    }
-
     /*
     * compare MTD partition size and image size
     */
     if(len > getMTDPartSize("\"jffs2\"")){
+        munmap(ptr, len);
+        close(ifd);
         sprintf(err_msg, "*** Warning: the image file(0x%x) is bigger than Kernel_RootFS MTD partition.\n", len);
-        ret = 0;
-        goto err;
+        return 0;
     }
-    
-    ret = 1;
-err:
+    D("getMTDPartSize: %u\n", getMTDPartSize("\"jffs2\""));
+
     munmap(ptr, len);
     close(ifd);
 
-    return ret;
+    return 1;
 }
 
 
@@ -225,18 +191,38 @@ int main (int argc, char *argv[])
     int file_begin, file_end;
     int line_begin, line_end;
     char *boundary; int boundary_len;
-    char err_msg[256];
-    char buffer[512];
+
+    char buffer[512] = {0};
     int r, fd = -1,fd1 = -1;
     char *filename="upload.f.tmp";
     char *lockfile = ".fwupload.lock";
-
+#if 0
+HTTP/1.1 200 OK
+Date: Wed Apr 25 05:55:41 2103
+Transfer-Encoding: chunked
+Connection: keep-alive
+X-Frame-Options: SAMEORIGIN
+Pragma: no-cache
+Cache-Control: no-cache
+Content-Type:  text/html
+#endif
+    printf("HTTP/1.0 200 OK\r\n");
+//    printf("Date: Wed Apr 25 05:55:41 2103\r\n");
+    printf("Connection: keep-alive\r\n");
+//    printf("X-CGI-CustomHeader: Any value at all\r\n");
+    printf("Content-type: text/html\r\n") ;
+    printf("\r\n");
+    printf("CGI Hello\r\n");
+    fflush(stderr);
+    fflush(stdout);
+    return 0;
+ #if 0
     if (chdir(ROOT_DIR))
       perror("chdir()");
 
     if(!access(lockfile, F_OK)){
         printf("fw upload deamon is busy\n");
-        return;
+        return -1;
     }
     
     fd1 = open(lockfile, O_CREAT, 0666);
@@ -263,6 +249,7 @@ int main (int argc, char *argv[])
         return -1;
     }
     D("[%d]line_end: %d\n", __LINE__, line_end);
+    
 
     boundary_len = line_end - line_begin;
     boundary = getMemInFile(filename, line_begin, boundary_len);
@@ -274,6 +261,7 @@ int main (int argc, char *argv[])
         D("%s %d", RFC_ERROR, 2);
         goto err;
     }
+    D("[%d]line_begin=%d, line_end: %d\n", __LINE__,line_begin, line_end);
     
     line = getMemInFile(filename, line_begin, line_end - line_begin);
     if(strncasecmp(line, "content-disposition: form-data;", strlen("content-disposition: form-data;"))){
@@ -326,7 +314,12 @@ int main (int argc, char *argv[])
         goto err;
     }
     file_end -= 2;        // back 2 chars.(\r\n);
-
+#if 0
+    if(!check(filename, file_begin, file_end - file_begin, err_msg) ){
+        printf("Not a valid firmware. %s", err_msg);
+        goto err;
+    }
+#endif
     user_filename = user_filename + 1;
     user_filename[strlen(user_filename) - 1] = 0;
     D("user_filename=%s\n",user_filename);
@@ -348,12 +341,6 @@ int main (int argc, char *argv[])
         goto err;
     }
     D("_mtd_name=%s\n", _mtd_name);
-#if 1
-    if(!check(user_filename, 0, file_end - file_begin, err_msg, _mtd_name) ){
-        printf("Not a valid firmware. %s", err_msg);
-        goto err;
-    }
-#endif
     // flash write
     if( mtd_write_part(user_filename, _mtd_name) == -1){
         printf("mtd_write fatal error! The corrupted image has ruined the flash!!");
@@ -377,4 +364,5 @@ err:
     free(boundary);
     remove(lockfile);
     exit(-1);
+#endif
 }

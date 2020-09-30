@@ -389,7 +389,7 @@ int32_t io_set_dec_method(uint32_t ch, uint8_t dec_method){
 #if defined(SUPPORT_SPECTRUM_KERNEL) 
     ret = ioctl(io_ctrl_fd,IOCTL_EXTRACT_CH0,d_method|0x4000000);
 #elif defined(SUPPORT_SPECTRUM_V2) 
-    SET_NARROW_BAND(get_fpga_reg(),ch,dec_method);
+    SET_NARROW_DECODE_TYPE(get_fpga_reg(),ch,dec_method);;
     //get_fpga_reg()->narrow_band[ch]->decode_type = dec_method;
 #endif
 #endif

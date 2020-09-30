@@ -19,7 +19,7 @@
 #include "spm.h"
 #include "utils/mq.h"
 #include <assert.h>
-
+#include "spm_fpga.h"
 
 
 //struct mq_ctx *mqctx;

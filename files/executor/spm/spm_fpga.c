@@ -55,7 +55,7 @@ static  void init_write_file(char *filename)
 {
     _file_fd = fopen(filename, "w+b");
     if(!_file_fd){
-        printf("Open file error!\n");
+        printf_err("Open file error!\n");
     }
 }
 
@@ -255,8 +255,9 @@ static ssize_t spm_read_iq_data(void **data)
     return spm_stream_read(STREAM_IQ, data);
 }
 
-static ssize_t spm_read_fft_data(void **data)
+static ssize_t spm_read_fft_data(void **data, void *args)
 {
+    args = args;
     return spm_stream_read(STREAM_FFT, data);
 }
 
@@ -1060,9 +1061,12 @@ exit_mode:
     return 0;
 }
 
-static int spm_sample_ctrl(uint64_t freq_hz)
+static int spm_sample_ctrl(void *args)
 {
+    struct spm_run_parm *r_args;
+    r_args = (struct spm_run_parm *)args;
 #if defined(SUPPORT_DIRECT_SAMPLE)
+    uint64_t freq_hz = r_args->m_freq_s;
     uint8_t val = 0;
     static int8_t val_dup = -1;
     #define _200MHZ 200000000

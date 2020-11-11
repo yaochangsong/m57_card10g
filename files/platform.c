@@ -118,9 +118,10 @@ int main(int argc, char **argv)
     printf("VERSION:%s\n",get_version_string());
     config_init();
     uloop_init();
-    gpio_raw_init();
-#ifdef SUPPORT_PROJECT_SSA
+#if defined(SUPPORT_PROJECT_SSA) || defined(SUPPORT_PROJECT_SSA_MONITOR)
     gpio_init_control();
+#else
+    gpio_raw_init();
 #endif
 #ifdef SUPPORT_AUDIO
     audio_init();
@@ -131,7 +132,9 @@ int main(int argc, char **argv)
 #ifdef  SUPPORT_CLOCK_ADC
     clock_adc_init();   /* 时钟/AD初始化 */
 #endif
+#if defined(SUPPORT_SPECTRUM_FPGA)
     fpga_io_init();
+#endif
 #ifdef SUPPORT_UART
     uart_init();   /* PL UART依赖时钟 */
 #endif
@@ -139,9 +142,6 @@ int main(int argc, char **argv)
  if(spectrum_aditool_debug == false){
 #ifdef SUPPORT_RF
     rf_init();  /* RF初始化， */
-#endif
-#ifdef SUPPORT_SPECTRUM_FFT
-    spectrum_init();
 #endif
     }
 #ifdef SUPPORT_LCD

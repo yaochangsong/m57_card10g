@@ -1,40 +1,45 @@
 #!/bin/sh
 
+set -e
 DAEMON=/usr/bin/platform
 start()
 {
     echo " Start FlatForm."
-    #LED灯控制
+    #LED
     /etc/led.sh init	>/dev/null 2>&1
     /etc/led.sh power on >/dev/null 2>&1
     /etc/led.sh check on >/dev/null 2>&1
-    #网络初始化
+    #network
     /etc/network.sh >/dev/null 2>&1
     /etc/led.sh work on	>/dev/null 2>&1
-    #网络发送缓冲区最大修改位8m
+    #udp send buffer 8m
     echo 8388608 > /proc/sys/net/core/wmem_max
-    #磁盘挂载
+    #disk
     /etc/disk.sh mount >/dev/null 2>&1
-    #启动状态检测
+    #status check
     /etc/check.sh stop >/dev/null 2>&1
     /etc/check.sh start
-    #启动复位按钮检测
+    #reset
     /etc/reset-button.sh stop >/dev/null 2>&1
     /etc/reset-button.sh start
-    #调整内核部分打印级别
+    #printk
     echo 3 4 1 3 > /proc/sys/kernel/printk
     sleep 1
     start-stop-daemon -S -o --background -x $DAEMON
     sleep 1
-    #启动进程监控
-    /etc/checkproc.sh stop >/dev/null 2>&1
-    /etc/checkproc.sh start >/dev/null 2>&1
+    #daemon check
+    is_running=$(ps -ef|grep "checkproc.sh"|grep -v grep|wc -l)
+    if [ $is_running -eq 0 ]; then
+	/etc/checkproc.sh start >/dev/null 2>&1
+    fi
+
 }
 
 stop()
 {
-	echo " Stop FlatForm..."
-    start-stop-daemon -K -x $DAEMON
+    if start-stop-daemon -K -x $DAEMON >/dev/null 2>&1; then
+    	echo "Stop FlatForm..."
+    fi
     /etc/led.sh work off >/dev/null 2>&1
 }
 

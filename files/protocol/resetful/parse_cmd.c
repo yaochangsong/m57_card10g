@@ -354,7 +354,6 @@ int cmd_if_multi_value_set(struct uh_client *cl, void **arg, void **content)
     printf_note("%s\n", cl->dispatch.body);
     code = parse_json_if_multi_value(cl->dispatch.body, ch);
     
-error:
     *arg = get_resp_message(code);
     return code;
 }
@@ -449,7 +448,7 @@ int cmd_netset(struct uh_client *cl, void **arg, void **content)
     if(parse_json_net(cl->dispatch.body) != 0){
         code = RESP_CODE_PARSE_ERR;
     }
-error:
+
     *arg = get_resp_message(code);
     return code;
 }
@@ -621,7 +620,7 @@ int cmd_file_download(struct uh_client *cl, void **arg, void **content)
 #if defined(SUPPORT_XWFS)
     file_download(cl, filename);
 #endif
-error:
+
     *arg = get_resp_message(code);
     return code;
 
@@ -652,8 +651,8 @@ int cmd_file_delete(struct uh_client *cl, void **arg, void **content)
     ret = fs_ctx->ops->fs_delete(filename);
     if(ret != 0)
         code = RESP_CODE_EXECMD_ERR;
+    error:
 #endif
-error:
     *arg = get_resp_message(code);
     return code;
 }
@@ -694,7 +693,7 @@ int cmd_file_list(struct uh_client *cl, void **arg, void **content)
     *content = assemble_json_file_list();
     if(*content == NULL)
         code = RESP_CODE_DISK_DETECTED_ERR;
-error:
+
     *arg = get_resp_message(code);
     return code;
 }
@@ -711,7 +710,7 @@ int cmd_file_find(struct uh_client *cl, void **arg, void **content)
     *content = assemble_json_find_file(filename);
     if(*content == NULL)
         code = RESP_CODE_DISK_DETECTED_ERR;
-error:
+
     *arg = get_resp_message(code);
     return code;
 }
@@ -731,8 +730,8 @@ int cmd_disk_format(struct uh_client *cl, void **arg, void **content)
     ret = fs_ctx->ops->fs_format();
     if(ret != 0)
         code = RESP_CODE_DISK_FORMAT_ERR;
+    error:
 #endif
-error:
     *arg = get_resp_message(code);
     return code;
 }
@@ -749,7 +748,7 @@ int cmd_get_softversion(struct uh_client *cl, void **arg, void **content)
     *content = assemble_json_softversion();
     if(*content == NULL)
         code = RESP_CODE_EXECMD_ERR;
-error:
+
     *arg = get_resp_message(code);
     return code;
 }
@@ -760,7 +759,7 @@ int cmd_get_fpga_info(struct uh_client *cl, void **arg, void **content)
     *content = assemble_json_fpag_info();
     if(*content == NULL)
         code = RESP_CODE_EXECMD_ERR;
-error:
+
     *arg = get_resp_message(code);
     return code;
 }
@@ -770,7 +769,7 @@ int cmd_get_temp_info(struct uh_client *cl, void **arg, void **content)
     *content = assemble_json_temp_info();
     if(*content == NULL)
         code = RESP_CODE_EXECMD_ERR;
-error:
+
     *arg = get_resp_message(code);
     return code;
 }
@@ -780,7 +779,7 @@ int cmd_get_all_info(struct uh_client *cl, void **arg, void **content)
     *content = assemble_json_all_info();
     if(*content == NULL)
         code = RESP_CODE_EXECMD_ERR;
-error:
+    
     *arg = get_resp_message(code);
     return code;
 }

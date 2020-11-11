@@ -1,17 +1,30 @@
 
 #include "config.h"
 
-
+#if 0
 static RF_CHANNEL_SN rf_bw_data[]= {
     {HPF1,RF_START_0M,RF_END_80M},
     {HPF2,RF_START_0M,RF_END_160M},
     {HPF3,RF_START_145M,RF_END_320M},
-    {HPF4,RF_START_145M,RF_END_630M},
+    //{HPF4,RF_START_145M,RF_END_630M},
+    {HPF4,RF_START_145M,RF_START_650M},
     {HPF5,RF_START_650M,RF_END_1325M},
     {HPF6,RF_START_1150M,RF_END_2750M},
     {HPF7,RF_START_2100M,RF_END_3800M},
     {HPF8,RF_START_2700M,RF_END_6000M}
 };
+#else
+static RF_CHANNEL_SN rf_bw_data[]= {
+    {HPF1,RF_START_1,RF_END_1},
+    {HPF2,RF_START_2,RF_END_2},
+    {HPF3,RF_START_3,RF_END_3},
+    {HPF4,RF_START_4,RF_END_4},
+    {HPF5,RF_START_5,RF_END_5},
+    {HPF6,RF_START_6,RF_END_6},
+    {HPF7,RF_START_7,RF_END_7},
+    {HPF8,RF_START_8,RF_END_8}
+};
+#endif
 
 float pre_buf[8] ={0,0.5,1,2,4,8,16,31.5};
 float pos_buf[8] ={0,0.5,1,2,4,8,16,31.5};
@@ -23,7 +36,7 @@ void rf_db_arrange()       //剔除衰减库里重复的元素
 {
    int i = 0,j=0;
    for(i=0;i<ARRAY_SIZE(db_array);i++){
-       if(db_array[i] != db_array[i+1]){
+       if(f_sgn(db_array[i] - db_array[i+1]) != 0){
             db_arrange[j++] = db_array[i];
        }
    }
@@ -36,7 +49,7 @@ void BubbleSort(float a[],int n)   //将数从小到大排序
         for(j=0;j<n-1-i;j++)  //每趟比较的次数
         {
             //由小到大排序
-            if(a[j]>a[j+1])  //a[j]<a[j+1]由大到小排序
+           if(f_sgn(a[j] - a[j+1]) > 0)
             {
                 temp=a[j];
                 a[j]=a[j+1];
@@ -59,13 +72,15 @@ int rf_db_attenuation_init()        //生成衰减库
 
 float  rf_db_select(float db_attenuation){     //找出衰减库里DB值值
     uint8_t i;
+    float _db_attenuation;
     for(i = 0;i<ARRAY_SIZE(db_arrange);i++){
-        if(db_attenuation == db_arrange[i+1]) {  //只要用户设置的衰减值等于后级DB值，就使用后级DB值，否则使用前级DB值
+        if(f_sgn(db_attenuation - db_arrange[i+1]) == 0){
            db_attenuation = db_arrange[i+1];
            return db_attenuation;
         }
-        else if((db_attenuation >= db_arrange[i]) && (db_attenuation < db_arrange[i+1])){
-           if(db_attenuation >= db_arrange[i]) db_attenuation = db_arrange[i]; //使用前级DB值
+        //else if((db_attenuation >= db_arrange[i]) && (db_attenuation < db_arrange[i+1])){
+        else if ((f_sgn(db_attenuation - db_arrange[i]) >= 0) && (f_sgn(db_attenuation - db_arrange[i+1]) < 0)){
+          if(f_sgn(db_attenuation-db_arrange[i]) >= 0)db_attenuation = db_arrange[i];
            return db_attenuation;
         }
     }
@@ -80,7 +95,7 @@ int gpio_select_rf_attenuation(float attenuation_val)   //衰减DB值
          uint8_t pre,pos;
          for(pre=0;pre<ARRAY_SIZE(pre_buf);pre++){
              for(pos=0;pos<ARRAY_SIZE(pos_buf);pos++){
-                 if(attenuation == (pre_buf[pre] + pos_buf[pos])){
+                if(f_sgn(attenuation - (pre_buf[pre] + pos_buf[pos])) == 0){
                     gpio_attenuation_rf(pre,pos);
                     printf_note("attenuation %f pre :%d pos :%d\n",attenuation,pre,pos);
                     return 0;
@@ -100,31 +115,44 @@ void gpio_select_rf_channel(uint64_t mid_freq)  //射频通道选择
     int i = 0;
     int found = 0;
     static uint8_t rf_channel_value = 0;
-    if((int64_t)(mid_freq - BAND_WITH_100M) < 0){
+    uint64_t mid_freq_val = mid_freq;// - BAND_WITH_100M;
+   // if((int64_t)(mid_freq - BAND_WITH_100M) < 0){
+   if((int64_t)(mid_freq) < 0){
         printf_warn("middle freq is less than band, set defaut gpio ctrl pin:2\n");
+   #ifdef SUPPORT_PROJECT_SSA_MONITOR
+        if(rf_channel_value != HPF7){
+            rf_channel_value = HPF7;
+            gpio_control_rf(rf_channel_value);
+        }
+   #else
         if(rf_channel_value != HPF2){
             rf_channel_value = HPF2;
             gpio_control_rf(rf_channel_value);  //2通道  0 - 160M
         }
+   #endif
         return;
     }
     else{
-        uint64_t mid_freq_val = mid_freq - BAND_WITH_100M;
         for(i=0;i<ARRAY_SIZE(rf_bw_data);i++){
             //printf_note("freq=%llu, s_freq=%llu, end_freq=%llu\n", mid_freq_val, rf_bw_data[i].s_freq_rf, rf_bw_data[i].e_freq_rf);
             if((mid_freq_val >= rf_bw_data[i].s_freq_rf) && (mid_freq_val <= rf_bw_data[i].e_freq_rf)){
                 if(rf_channel_value != rf_bw_data[i].index_rf){   //扫频范围有变化
                     rf_channel_value = rf_bw_data[i].index_rf;    //选择新的通道
+                    printf_debug("find mid_freq_val=%lluhz, rf_channel_value=%d\n", mid_freq_val, rf_channel_value);
                     gpio_control_rf(rf_channel_value);
                 }
                 found++;
             }
         }
     }
-    printf_debug("rf channel found=%d\n", found);
+   // printf_debug("rf channel found=%d\n", found);
     if(found == 0){
-        printf_warn("not find, set defaut gpio ctrl pin:2\n");
+        printf_warn("[%lluhz]not find, set defaut gpio ctrl pin:2\n", mid_freq_val);
+    #ifdef SUPPORT_PROJECT_SSA_MONITOR
+        gpio_control_rf(HPF7);
+    #else
         gpio_control_rf(HPF2);
+    #endif
     }
 }
 
@@ -137,7 +165,7 @@ int gpio_set(int spidev_index,char val){
 
     valuefd = open(spi_gpio_value, O_WRONLY);
     if (valuefd < 0){
-        printf("Cannot open GPIO value\n"); 
+        printf_note("Cannot open GPIO value\n"); 
         return -1;
     }
 

@@ -69,5 +69,6 @@ extern bool io_get_inout_clock_status(void *args);
 extern void io_set_rf_calibration_source_level(int level);
 extern void io_set_rf_calibration_source_enable(int ch, int enable);
 extern bool is_rf_calibration_source_enable(void);
-
+extern void io_set_gain_calibrate_val(uint32_t ch, int32_t  gain_val);
+extern void io_set_dc_offset_calibrate_val(uint32_t ch, int32_t  val);
 #endif

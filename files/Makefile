@@ -181,9 +181,10 @@ ifneq ($(findstring y,$(SUPPORT_SPECTRUM_FFT)),)
 	C_VAR += -DSUPPORT_SPECTRUM_FFT
 endif
 
-#specturm fft analysis
-ifneq ($(findstring y,$(SUPPORT_SPECTRUM_FFT_ANALYSIS)),)
-	C_VAR += -DSUPPORT_SPECTRUM_FFT_ANALYSIS
+#specturm analysis
+ifneq ($(findstring y,$(SUPPORT_SPECTRUM_ANALYSIS)),)
+	SOURCE_DIR += executor/analysis
+	C_VAR += -DSUPPORT_SPECTRUM_ANALYSIS
 endif
 
 #specturm kernel
@@ -217,6 +218,9 @@ else ifneq ($(findstring y,$(SUPPORT_PROJECT_160M_V2)),)
 endif
 ifneq ($(findstring y,$(SUPPORT_PROJECT_SSA)),)
 	C_VAR += -DSUPPORT_PROJECT_SSA
+endif
+ifneq ($(findstring y,$(SUPPORT_PROJECT_SSA_MONITOR)),)
+	C_VAR += -DSUPPORT_PROJECT_SSA_MONITOR
 endif
 ifneq ($(findstring y,$(SUPPORT_PROJECT_SSA_9361)),)
 	C_VAR += -DSUPPORT_PROJECT_SSA_9361

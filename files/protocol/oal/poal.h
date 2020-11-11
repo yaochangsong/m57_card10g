@@ -293,6 +293,14 @@ struct calibration_specturm_v2_st{
     int global_roughly_power_lever;
 }__attribute__ ((packed));
 
+/* For ADRVxxxx CHIP */
+struct calibration_dc_offset_info_st{
+    uint32_t start_freq_khz[40];
+    uint32_t end_freq_khz[40];
+    int mshift[40];
+    int global_mshift;  /* mShift (valid value range is 8 to 20). */
+    bool is_open;
+};
 
 struct calibration_analysis_info_st{
     uint32_t start_freq_khz[40];
@@ -310,9 +318,9 @@ struct calibration_lo_leakage_info_st{
 };//__attribute__ ((packed));
 
 struct calibration_mgc_info_st{
-    uint32_t start_freq_khz[16];
-    uint32_t end_freq_khz[16];
-    int32_t  gain_val[16];
+    uint32_t start_freq_khz[32];
+    uint32_t end_freq_khz[32];
+    int32_t  gain_val[32];
     int32_t  global_gain_val;
 };//__attribute__ ((packed));
 
@@ -322,8 +330,8 @@ struct calibration_low_noise_info_st{
 
 
 struct calibration_fft_st{
-    uint32_t  fftsize[8];
-    int32_t   cali_value[8];
+    uint32_t  fftsize[16];
+    int32_t   cali_value[16];
 };
 
 /*射频各模式放大倍数*/
@@ -367,6 +375,7 @@ struct calibration_info_st{
     struct calibration_mgc_info_st mgc;
     struct calibration_fft_st cali_fft;
     struct cal_rf_mode_param rf_mode;
+    struct calibration_dc_offset_info_st dc_offset;
 };//__attribute__ ((packed));
 
 #if 0

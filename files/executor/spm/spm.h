@@ -31,7 +31,7 @@ enum stream_type {
 struct spm_backend_ops {
     int (*create)(void);
     ssize_t (*read_iq_data)(void **);
-    ssize_t (*read_fft_data)(void **);
+    ssize_t (*read_fft_data)(void **, void*);
     ssize_t (*read_adc_data)(void **);
     int (*read_adc_over_deal)(void *);
     int (*read_iq_over_deal)(void *);
@@ -53,8 +53,11 @@ struct spm_backend_ops {
     int (*back_running_file)(uint8_t, char *);
     int (*stream_start)(uint32_t ,uint8_t , int);
     int (*stream_stop)(uint8_t);
-    int (*sample_ctrl)(uint64_t);
+    int (*sample_ctrl)(void *);
     int (*spm_scan)(uint64_t *, uint64_t* , uint32_t* , uint32_t *, uint64_t *);
+    int (*set_calibration_value)(int);
+    void (*set_smooth_time)(int32_t);
+    int (*set_flush_trigger)(bool);
     int (*close)(void *);
     
 };

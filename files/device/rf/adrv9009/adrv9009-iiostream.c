@@ -303,7 +303,7 @@ int16_t adrv9009_iio_set_freq(uint64_t freq_hz)
 	struct iio_channel *chn = NULL;
 	if (!get_lo_chan(ctx, &chn)) { return -1; }
 	wr_ch_lli(chn, "frequency", freq_hz);
-    usleep(10000);
+	usleep(3000);
 	return 0;
 }
 
@@ -344,6 +344,38 @@ int16_t adrv9009_iio_set_bw(uint32_t bw_hz)
 }
 
 
+int8_t adrv9009_iio_set_gain(uint8_t gain)
+{
+    static FILE *hw_gain_fp = NULL;
+    if(hw_gain_fp == NULL){
+        hw_gain_fp = fopen("/sys/bus/iio/devices/iio:device2/in_voltage1_hardwaregain","wr");
+    }
+    if(hw_gain_fp){
+        fseek(hw_gain_fp, 0, SEEK_SET);
+        fprintf(hw_gain_fp,"%d\n",gain);
+        fflush(hw_gain_fp);
+    }else{
+        printf_warn("open hard gain failed\n");
+        return -1;
+    }
+    return 0;
+}
+int8_t adrv9009_iio_set_dc_offset_mshift(uint8_t mshift)
+{
+    static FILE *mshift_fp = NULL;
+    if(mshift_fp == NULL){
+        mshift_fp = fopen("/sys/bus/iio/devices/iio:device2/in_voltage1_dc_offset_mshift","wr");
+    }
+    if(mshift_fp){
+        fseek(mshift_fp, 0, SEEK_SET);
+        fprintf(mshift_fp,"%d\n",mshift);
+        fflush(mshift_fp);
+    }else{
+        printf_warn("open dc offset mshift failed\n");
+        return -1;
+    }
+    return 0;
+}
 int16_t *adrv9009_iio_read_rx0_data(ssize_t *rsize)
 {
 	ssize_t nbytes_rx;
@@ -354,6 +386,7 @@ int16_t *adrv9009_iio_read_rx0_data(ssize_t *rsize)
 	/* It is very important to refill three times here, for some unknown reason...
 	   otherwise it will cause the order of IQ data to be disordered.
 	*/
+	iio_buffer_refill(rxbuf);
 	iio_buffer_refill(rxbuf);
 	iio_buffer_refill(rxbuf);
 	nbytes_rx = iio_buffer_refill(rxbuf);

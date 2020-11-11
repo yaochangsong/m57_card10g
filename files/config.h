@@ -30,8 +30,6 @@
 #elif defined(SUPPORT_PROJECT_160M_V2) 
 #include "bsp/160m_v2/_reg.h"
 #include "bsp/160m_v2/_reg_clk_adc.h"
-#else
-    #error "NOT DEFINE PROJECT!!"
 #endif
 #include "bsp/io.h"
 #include "lib/libubox/ulog.h"
@@ -68,8 +66,11 @@
 
 
 #ifdef SUPPORT_SPECTRUM_FFT
-#include "executor/fft/spectrum.h"
+//#include "executor/fft/spectrum.h"
 #include "executor/fft/fft.h"
+#endif
+#ifdef SUPPORT_SPECTRUM_ANALYSIS
+#include "executor/analysis/spm_analysis.h"
 #endif
 
 #include "device/uart/uart.h"
@@ -121,7 +122,7 @@
 
 #define MAX_RADIO_CHANNEL_NUM 1         /* 最大射频通道数 */
 #define MAX_SIGNAL_CHANNEL_NUM (17)     /* 最大解调子通道数 */
-#define MAX_SIG_CHANNLE 7000             /* 最大频点数 */
+#define MAX_SIG_CHANNLE 100             /* 最大频点数 */
 #define CONFIG_AUDIO_CHANNEL            16  /* 音频解调子通道 */
 #define CONFIG_SIGNAL_CHECK_CHANNEL     1   /* 信号检测子通道(多频点模式下有效) */
 

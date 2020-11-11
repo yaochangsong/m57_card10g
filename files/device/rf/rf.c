@@ -14,10 +14,14 @@ uint8_t rf_set_interface(uint8_t cmd,uint8_t ch,void *data){
             }else{
                 break;
             }
-            printf_note("[**RF**]ch=%d, middle_freq=%llu\n",ch, *(uint64_t*)data);
+            printf_debug("[**RF**]ch=%d, middle_freq=%llu\n",ch, *(uint64_t*)data);
 #ifdef SUPPORT_RF_ADRV9009
-            gpio_select_rf_channel(*(uint64_t*)data);
-            adrv9009_iio_set_freq(*(uint64_t*)data);
+            uint64_t mid_freq = *(uint64_t*)data;
+       #ifdef SUPPORT_PROJECT_SSA_MONITOR
+            mid_freq = lvttv_freq_convert(mid_freq);
+       #endif
+            gpio_select_rf_channel(mid_freq);
+            adrv9009_iio_set_freq(mid_freq);
 #elif defined(SUPPORT_RF_SPI)
             uint64_t freq_khz = old_freq/1000;/* NOTE: Hz => KHz */
             uint64_t host_freq=htobe64(freq_khz) >> 24; //小端转大端（文档中心频率为大端字节序列，5个字节,单位为Hz,实际为Khz）
@@ -50,9 +54,20 @@ uint8_t rf_set_interface(uint8_t cmd,uint8_t ch,void *data){
             break; 
         }
          case EX_RF_MID_BW :   {
-            printf_note("[**RF**]ch=%d, middle bw=%uHz\n", ch, *(uint32_t *) data);
-            uint32_t mbw= *(uint32_t *)data;
-#ifdef  SUPPORT_RF_SPI
+            uint32_t mbw;
+            if(data == NULL){
+                if(config_read_by_cmd(EX_RF_FREQ_CMD, EX_RF_MID_BW, ch, &mbw) == -1){
+                    printf_err("Error read scan bandwidth=%u\n", mbw);
+                    break;
+                }
+            }else{
+                mbw= *(uint32_t *)data;
+            }
+            printf_note("[**RF**]ch=%d, middle bw=%uHz\n", ch, mbw);
+            
+#ifdef SUPPORT_RF_ADRV9009
+            adrv9009_iio_set_bw(mbw);
+#elif  SUPPORT_RF_SPI
             //uint32_t filter=htobe32(*(uint32_t *)data) >> 24;
             ret = spi_rf_set_command(SPI_RF_MIDFREQ_BW_FILTER_SET, &mbw);
             usleep(300);
@@ -143,8 +158,16 @@ uint8_t rf_set_interface(uint8_t cmd,uint8_t ch,void *data){
         case EX_RF_MGC_GAIN : {
             int8_t mgc_gain_value;
             mgc_gain_value = *((int8_t *)data);
+            /* only set once when value changed */
+            static int32_t old_data = -1000;
+            if(old_data != mgc_gain_value){
+                old_data = mgc_gain_value;
+            }else{
+                break;
+            }
             printf_note("[**RF**]ch=%d, mgc_gain_value=%d\n",ch, mgc_gain_value);
 #ifdef SUPPORT_RF_ADRV9009
+            adrv9009_iio_set_gain(mgc_gain_value);
 #elif defined(SUPPORT_RF_SPI)
             ret = spi_rf_set_command(SPI_RF_MIDFREQ_GAIN_SET, &mgc_gain_value);
             usleep(300);
@@ -211,25 +234,6 @@ uint8_t rf_set_interface(uint8_t cmd,uint8_t ch,void *data){
 #if defined(SUPPORT_RF_SPI)
             ret = spi_rf_set_command(SPI_RF_CALIBRATE_SOURCE_SET, &cs);
 #endif
-
-#if defined(SUPPORT_RF_FPGA)
-                        //uint8_t val = 0;
-                        //val = (*((int8_t *)data) == 0 ? 0 : 0x01);
-                        /* 0关闭直采，1开启直采 */
-                        //usleep(500);
-                        SET_RF_MID_FREQ(get_fpga_reg(),cs.middle_freq_khz);
-                        //get_fpga_reg()->rfReg->freq_khz = cs.middle_freq_khz;
-                        usleep(500);
-                        SET_RF_CALIB_SOURCE_CHOISE(get_fpga_reg(),cs.source);
-                        //get_fpga_reg()->rfReg->input = cs.source;
-                        usleep(500);
-                        SET_RF_CALIB_SOURCE_ATTENUATION(get_fpga_reg(),-akt_cs->power);
-                        //get_fpga_reg()->rfReg->revise_minus = -akt_cs->power;
-                        usleep(500);
-                       // printf_note("write:input=%d revise_minus=%d  freq_khz=%x\n",cs.source,-akt_cs->power,cs.middle_freq_khz);
-                        //printf_note("read: input=%d revise_minus=%d  freq_khz=%x\n",get_fpga_reg()->rfReg->input&0xffff,get_fpga_reg()->rfReg->revise_minus&0xffff,get_fpga_reg()->rfReg->freq_khz);
-#endif
-
             break;
         }
         case EX_RF_SAMPLE_CTRL:
@@ -248,6 +252,7 @@ uint8_t rf_set_interface(uint8_t cmd,uint8_t ch,void *data){
         }
         case EX_RF_LOW_NOISE:
         {
+#if defined(SUPPORT_RS485_AMPLIFIER)
             uint32_t freq_mhz;
             int found = 0, i, r;
             int8_t vdata = 0, rdata = 0;
@@ -281,7 +286,6 @@ uint8_t rf_set_interface(uint8_t cmd,uint8_t ch,void *data){
                 break;
             }
             
-#if defined(SUPPORT_RS485_AMPLIFIER)
            static int8_t vdata_dup = -1;
             if(vdata_dup == vdata){
                 printf_info("set EX_RF_LOW_NOISE value is equal:%d no need set\n" , vdata_dup);

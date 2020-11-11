@@ -85,7 +85,20 @@ static int on_request(struct uh_client *cl)
  #endif
 }
 
-
+/* 功能：TCP数据服务初始化
+    在读取数据对应线程初始化调用
+*/
+int server_data_init(void)
+{
+    struct net_tcp_server *tcpdatasrv = NULL;
+    printf_note("tcp data server init [port:%d]\n", 6080);
+    tcpdatasrv = tcp_data_server_new("0.0.0.0", 6080);
+    if (!tcpdatasrv)
+        return -1;
+    ptcp_data_srv = tcpdatasrv;
+    
+    return 0;
+}
 
 /******************************************************************************
 * FUNCTION:
@@ -143,14 +156,6 @@ int server_init(void)
         return -1;
     pudp_srv = udpsrv;
 #endif
-
-    struct net_tcp_server *tcpdatasrv = NULL;
-    printf_note("tcp data server init [port:%d]\n", 6080);
-    tcpdatasrv = tcp_data_server_new("0.0.0.0", 6080);
-    if (!tcpdatasrv)
-        return -1;
-    ptcp_data_srv = tcpdatasrv;
-
 
 #ifdef  SUPPORT_PROTOCAL_HTTP
     struct uh_server *srv = NULL;

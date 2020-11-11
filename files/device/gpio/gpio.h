@@ -30,9 +30,53 @@
 #define SEC_H_42442_V1   22
 #define SEC_42422_V1     23
 
+
+#ifdef SUPPORT_PROJECT_SSA_MONITOR
+#define SW_TO_2_4_G()          gpio_set(SEC_L_42442_V1, 1)
+
+#define SW_TO_7_75_G()          do{ \
+                                        gpio_set(SEC_L_42442_V1, 0); \
+                                        gpio_set(PRI_L_42442_V1, 1); \
+                                    }while(0)
+
+#define SW_TO_75_9_G()          do{ \
+                                        gpio_set(SEC_L_42442_V1, 0); \
+                                        gpio_set(PRI_L_42442_V1, 0); \
+                                    }while(0)
+
+#define LVTTL_FREQ_START1   (2000000000ULL)
+#define LVTTL_FREQ_end1     (4000000000ULL)
+
+//(3.9-4.4G)
+#define LVTTL_FREQ_START2   (7000000000ULL)
+#define LVTTL_FREQ_end2     (7500000000ULL)
+#define LVTTL_FREQ_BZ2      (11400000000ULL)   //本振输出11.4G
+
+//(2.1-3.6G)
+#define LVTTL_FREQ_START3   (7500000000ULL)
+#define LVTTL_FREQ_end3     (9000000000ULL)
+#define LVTTL_FREQ_BZ3      (11100000000ULL)   //本振输出11.1G
+
+static inline uint64_t lvttv_freq_convert(uint64_t m_freq)
+{
+    uint64_t tmp_freq;
+    if (m_freq >= LVTTL_FREQ_START2 && m_freq < LVTTL_FREQ_end2) {
+        tmp_freq = LVTTL_FREQ_BZ2 - m_freq;
+    } else if (m_freq >= LVTTL_FREQ_START3 && m_freq <= LVTTL_FREQ_end3) {
+        tmp_freq = LVTTL_FREQ_BZ3 - m_freq;
+    } else {
+        tmp_freq = m_freq;
+    }
+    return tmp_freq;
+}
+
+#endif
+
+                                    
 #define  BAND_WITH_100M (100000000ULL)
 #define  BAND_WITH_200M (200000000ULL)
 
+#if 0
 #define  RF_START_0M (000000000ULL)
 //#define  RF_START_0M (000000000ULL)
 #define  RF_START_145M (145000000ULL)
@@ -51,6 +95,24 @@
 #define  RF_END_2750M (2750000000ULL)
 #define  RF_END_3800M (3800000000ULL)
 #define  RF_END_6000M (6000000000ULL)
+#else
+#define  RF_START_1 (50000000ULL)
+#define  RF_START_2 (120000000ULL)
+#define  RF_START_3 (210000000ULL)
+#define  RF_START_4 (420000000ULL)
+#define  RF_START_5 (680000000ULL)
+#define  RF_START_6 (1240000000ULL)
+#define  RF_START_7 (2180000000ULL)
+#define  RF_START_8 (3340000000ULL)
+#define  RF_END_1 (120000000ULL)
+#define  RF_END_2 (210000000ULL)
+#define  RF_END_3 (420000000ULL)
+#define  RF_END_4 (680000000ULL)  
+#define  RF_END_5 (1240000000ULL)
+#define  RF_END_6 (2180000000ULL)
+#define  RF_END_7 (3340000000ULL)
+#define  RF_END_8 (5880000000ULL)
+#endif
 
 typedef struct  {
      uint8_t  index_rf;

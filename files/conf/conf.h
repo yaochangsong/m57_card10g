@@ -55,7 +55,10 @@ extern int8_t config_save_batch(exec_cmd cmd, uint8_t type,s_config *config);
 extern int8_t config_read_by_cmd(exec_cmd cmd, uint8_t type, uint8_t ch, void *data, ...);
 extern int8_t config_write_data(exec_cmd cmd, uint8_t type, uint8_t ch, void *data);
 extern int8_t config_write_save_data(exec_cmd cmd, uint8_t type, uint8_t ch, void *data);
-
+extern int32_t config_get_gain_calibration_value(uint8_t ch, uint32_t fft_size, uint64_t m_freq);
+extern int32_t config_get_fft_calibration_value(uint8_t ch, uint32_t fft_size, uint64_t m_freq);
+extern int32_t config_get_analysis_calibration_value(uint64_t m_freq_hz);
+extern int32_t config_get_dc_offset_nshift_calibration_value(uint8_t ch, uint32_t fft_size, uint64_t m_freq);
 #endif
 
 

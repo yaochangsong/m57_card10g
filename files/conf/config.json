@@ -128,6 +128,20 @@
                 "renew_data_len":2
             }
         ],
+	"dc_offset_mshift_onoff" : 0,
+	"dc_offset_mshift_global" : 15,
+	"dc_offset_mshift" : [
+		{
+			"start_freq":	100000,
+			"end_freq":	500000,
+			"value":	0
+		},
+		{
+			"start_freq":	500000,
+			"end_freq":	1000000,
+			"value":	0
+		}
+	],
         "mgc_gain_global":4,
         "low_distortion_power_agc":-150,
         "low_noise_power_agc":150,

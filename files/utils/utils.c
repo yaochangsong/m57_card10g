@@ -363,7 +363,7 @@ int write_file_in_int16(void *pdata, unsigned int data_len, char *filename)
 
     file = fopen(filename, "w+b");
     if(!file){
-        printf("Open file error!\n");
+        printf_err("Open file error!\n");
         return -1;
     }
 
@@ -384,7 +384,7 @@ int write_file_in_float(void *pdata, unsigned int data_len, char *filename)
 
     file = fopen(filename, "w+b");
     if(!file){
-        printf("Open file error!\n");
+        printf_err("Open file error!\n");
         return -1;
     }
 
@@ -408,7 +408,7 @@ int read_file(void *pdata, unsigned int data_len, char *filename)
 
     file = fopen(filename, "r");
     if(!file){
-        printf("Open file error!\n");
+        printf_err("Open file error!\n");
         return -1;
     }
 

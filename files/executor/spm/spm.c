@@ -20,6 +20,7 @@
 #include "utils/mq.h"
 #include <assert.h>
 #include "spm_fpga.h"
+#include "spm_chip.h"
 
 
 //struct mq_ctx *mqctx;
@@ -136,7 +137,7 @@ void spm_deal(struct spm_context *ctx, void *args)
         size_t fft_len = 0, fft_ord_len = 0;
         struct spm_run_parm *ptr_run;
         ptr_run = (struct spm_run_parm *)args;
-        byte_len = pctx->ops->read_fft_data(&ptr);
+        byte_len = pctx->ops->read_fft_data(&ptr, ptr_run);
         if(byte_len < 0){
             return;
         }

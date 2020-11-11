@@ -116,7 +116,6 @@ static void tcp_dispatch_done(struct net_tcp_client *cl)
 static void tcp_data_client_request_done(struct net_tcp_client *cl)
 {
     cl->us->eof = true;
-    ustream_state_change(cl->us);
     tcp_dispatch_done(cl);
     safe_free(cl->request.header);
     safe_free(cl->response.data);
@@ -152,10 +151,11 @@ static void tcp_file_data_write_loop(struct net_tcp_client *cl)
 
 static void tcp_raw_data_write_loop(struct net_tcp_client *cl)
 {
+    #define ONCE_SEND_MAX_BYTE (4096)
     int fd = cl->dispatch.file.fd;
     int r = 0,s = 0;
     void *ptr;
-    usleep(1);
+
     while (cl->us->w.data_bytes < 256) {
         if(cl->srv->read_raw_data)
             r = cl->srv->read_raw_data(&ptr);
@@ -171,6 +171,8 @@ static void tcp_raw_data_write_loop(struct net_tcp_client *cl)
             return;
         }
         if(cl->send){
+            if(r > ONCE_SEND_MAX_BYTE)
+                r = ONCE_SEND_MAX_BYTE;
             s = cl->send(cl, ptr, r);
             if(s == 0){
                 cl->request_done(cl);

@@ -816,8 +816,8 @@ char *assemble_json_net_info(void)
         {SPEED_10000, "10Gbps"},
     };
     cJSON *root = cJSON_CreateObject();
-    int32_t link = get_netlink_status("eth1");
-    int32_t speed = get_ifname_speed("eth1");
+    int32_t link = get_netlink_status(NETWORK_EHTHERNET_POINT);
+    int32_t speed = get_ifname_speed(NETWORK_EHTHERNET_POINT);
     if(link >= 0)
         s_link = (link == 0 ? "down" : "up");
     for(i = 0; i < ARRAY_SIZE(spt); i++){

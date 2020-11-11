@@ -152,6 +152,94 @@ uint32_t  config_get_fft_size(uint8_t ch)
     return fftsize;
 }
 
+int32_t config_get_analysis_calibration_value(uint64_t m_freq_hz)
+{
+    struct poal_config *poal_config = &(config_get_config()->oal_config);
+    int32_t cal_value = 0, found = 0;
+    int i;
+
+    for(i = 0; i< sizeof(poal_config->cal_level.analysis.start_freq_khz)/sizeof(uint32_t); i++){
+        if((m_freq_hz >= (uint64_t)poal_config->cal_level.analysis.start_freq_khz[i]*1000) && (m_freq_hz < (uint64_t)poal_config->cal_level.analysis.end_freq_khz[i]*1000)){
+            cal_value = poal_config->cal_level.analysis.power_level[i];
+            found = 1;
+            break;
+        }
+    }
+    if(found){
+        printf_debug("find the calibration level: %llu, %d\n", m_freq_hz, cal_value);
+    }else{
+        printf_note("Not find the calibration level, use default value: %d\n", cal_value);
+    }
+    cal_value += poal_config->cal_level.analysis.global_roughly_power_lever;
+
+    return cal_value;
+}
+
+int32_t config_get_dc_offset_nshift_calibration_value(uint8_t ch, uint32_t fft_size, uint64_t m_freq)
+{
+    #define MSHIFT_MIN_RANGE  0x08
+    #define MSHIFT_MAX_RANGE  0x14
+    struct poal_config *poal_config = &(config_get_config()->oal_config);
+    int32_t cal_value=0,freq_cal_value=0, found = 0;
+    uint32_t  _start_freq_khz = 0, _end_freq_khz = 0;
+    int i;
+    fft_size = fft_size;
+    
+    if(poal_config->cal_level.dc_offset.is_open == false)
+        return -1;
+    
+    cal_value = poal_config->cal_level.dc_offset.global_mshift;
+    if(m_freq > 0){
+        for(i = 0; i< ARRAY_SIZE(poal_config->cal_level.dc_offset.mshift); i++){
+            _start_freq_khz =poal_config->cal_level.dc_offset.start_freq_khz[i];
+            _end_freq_khz = poal_config->cal_level.dc_offset.end_freq_khz[i];
+            if(_start_freq_khz ==0 && _end_freq_khz == 0){
+                break;
+            }
+            printf_debug("[%d],m_freq=%u, _start_freq_khz=%u, _end_freq_khz=%u\n", i, m_freq,  _start_freq_khz, _end_freq_khz);
+            if((m_freq >= (uint64_t)_start_freq_khz*1000) &&  (m_freq < (uint64_t)_end_freq_khz *1000)){
+                freq_cal_value = poal_config->cal_level.dc_offset.mshift[i];
+                cal_value += freq_cal_value;
+                found ++;
+                break;
+            }
+        }
+    }
+    if ((cal_value < MSHIFT_MIN_RANGE) ||(cal_value > MSHIFT_MAX_RANGE)){
+        return -1;
+    }
+    return cal_value;
+}
+
+
+int32_t config_get_gain_calibration_value(uint8_t ch, uint32_t fft_size, uint64_t m_freq)
+{
+    struct poal_config *poal_config = &(config_get_config()->oal_config);
+    int32_t cal_value=0,freq_cal_value=0, found = 0;
+    uint32_t  _start_freq_khz = 0, _end_freq_khz = 0;
+    int i;
+    fft_size = fft_size;
+    cal_value = poal_config->cal_level.mgc.global_gain_val;
+    if(m_freq > 0){
+        for(i = 0; i< ARRAY_SIZE(poal_config->cal_level.mgc.gain_val); i++){
+            _start_freq_khz =poal_config->cal_level.mgc.start_freq_khz[i];
+            _end_freq_khz = poal_config->cal_level.mgc.end_freq_khz[i];
+            if(_start_freq_khz ==0 && _end_freq_khz == 0){
+                break;
+            }
+            printf_debug("[%d],m_freq=%u, _start_freq_khz=%u, _end_freq_khz=%u\n", i, m_freq,  _start_freq_khz, _end_freq_khz);
+            if((m_freq >= (uint64_t)_start_freq_khz*1000) &&  (m_freq < (uint64_t)_end_freq_khz *1000)){
+                freq_cal_value = poal_config->cal_level.mgc.gain_val[i];
+                cal_value += freq_cal_value;
+                found ++;
+                break;
+            }
+        }
+    }
+    cal_value += poal_config->channel[ch].rf_para.mgc_gain_value;
+
+    return cal_value;
+}
 int32_t  config_get_fft_calibration_value(uint8_t ch, uint32_t fft_size, uint64_t m_freq)
 {
     struct poal_config *poal_config = &(config_get_config()->oal_config);
@@ -182,10 +270,11 @@ int32_t  config_get_fft_calibration_value(uint8_t ch, uint32_t fft_size, uint64_
             }
             printf_debug("[%d], _fft=%u[%u],m_freq=%u, _start_freq_khz=%u, _end_freq_khz=%u\n", i, _fft,fft_size, m_freq,  _start_freq_khz, _end_freq_khz);
             if(_fft == fft_size || _fft == 0){
-                if((m_freq >= _start_freq_khz*1000) &&  (m_freq < _end_freq_khz *1000)){
+                if((m_freq >= (uint64_t)_start_freq_khz*1000) &&  (m_freq < (uint64_t)_end_freq_khz *1000)){
                     freq_cal_value = poal_config->cal_level.spm_level.cal_node[i].power_level;
                     cal_value += freq_cal_value;
                     freq_found = 1;
+                    break;
                 }
             }
         }
@@ -463,7 +552,7 @@ int8_t config_write_save_data(exec_cmd cmd, uint8_t type, uint8_t ch, void *data
 
 int8_t config_read_by_cmd(exec_cmd cmd, uint8_t type, uint8_t ch, void *data, ...)
 {
-    #define DEFAULT_BW_HZ (20000000)
+    #define DEFAULT_BW_HZ (40000000)
     struct poal_config *poal_config = &(config_get_config()->oal_config);
     int ret=  -1;
     va_list argp;
@@ -518,29 +607,22 @@ int8_t config_read_by_cmd(exec_cmd cmd, uint8_t type, uint8_t ch, void *data, ..
                 case EX_RF_MID_BW:{
                     
                     struct scan_bindwidth_info *scanbw;
+                    int i, found = 0;
                     scanbw = &poal_config->ctrl_para.scan_bw; 
-                    if(scanbw->work_fixed_bindwidth_flag){
-                        *(int32_t *)data = scanbw->work_bindwidth_hz;
+                    for(i = 0; i < ARRAY_SIZE(scanbw->fixed_bindwidth_flag); i++){
+                        if(scanbw->fixed_bindwidth_flag[i] == true){
+                            *(int32_t *)data = scanbw->bindwidth_hz[i];
+                            found ++;
+                            break;
                     }
-                    else{
-                        if(poal_config->channel[ch].rf_para.mid_bw != 0)
+                    }
+                    if(found == 0){
+                        if(poal_config->channel[ch].rf_para.mid_bw > 0)
                             *(int32_t *)data = poal_config->channel[ch].rf_para.mid_bw;
                         else
                             *(int32_t *)data = DEFAULT_BW_HZ;
                     }
                     printf_debug("ch=%d, rf middle bw=%u, %u\n",ch, *(int32_t *)data, poal_config->channel[ch].rf_para.mid_bw);
-                    if(*(int32_t *)data == 0){
-                        goto exit;
-                    }
-                    /* Update sideband rate based on bandwidth 
-                    for(int i = 0; i<sizeof(scanbw->bindwidth_hz)/sizeof(uint32_t); i++){
-                        if(*(int32_t *)data == scanbw->bindwidth_hz[i]){
-                            scanbw->work_sideband_rate = scanbw->sideband_rate[i];
-                            printf_debug("Update sideband rate[%f] based on bandwidth[%u]\n", scanbw->work_sideband_rate, scanbw->bindwidth_hz[i]);
-                            break;
-                        }
-                    }
-                    */
                 }
                     break;
                 case EX_RF_MODE_CODE:

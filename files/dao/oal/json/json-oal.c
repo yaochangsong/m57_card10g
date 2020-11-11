@@ -62,7 +62,7 @@ static int json_write_file(char *filename, cJSON *root)
     
     fp = fopen(filename, "w");
     if(!fp){
-        printf("Open file error!\n");
+        printf_err("Open file error!\n");
         return -1;
     }
 
@@ -903,13 +903,47 @@ static int json_parse_config_param(const cJSON* root, struct poal_config *config
              printfd("\n");
         }
     }
-     
-    /* mgc_gain_global */
-    value = cJSON_GetObjectItem(calibration, "mgc_gain_global");
+
+    /* dc offset mshift  */
+    value = cJSON_GetObjectItem(calibration, "dc_offset_mshift_onoff");
     if(value!= NULL && cJSON_IsNumber(value)){
-        config->cal_level.mgc.global_gain_val = value->valueint;
-        printf_debug("mgc_gain_global=>value is:%d\n",value->valueint);
+        config->cal_level.dc_offset.is_open = (value->valueint == 0 ? false : true);
+        printf_debug("calibration dc offset is:%s\n", config->cal_level.dc_offset.is_open == true ? "open" : "close");
     } 
+
+    if(config->cal_level.dc_offset.is_open){
+        value = cJSON_GetObjectItem(calibration, "dc_offset_mshift_global");
+        if(value!= NULL && cJSON_IsNumber(value)){
+            config->cal_level.dc_offset.global_mshift = value->valueint;
+            printf_debug("calibration dc offset global mshift is:%d\n", config->cal_level.dc_offset.global_mshift);
+        } 
+        
+        cJSON *dc_offset_mshift=NULL;
+        dc_offset_mshift = cJSON_GetObjectItem(calibration, "dc_offset_mshift");
+        if(dc_offset_mshift!=NULL){
+            printf_debug("dc offset:\n");
+            for(int i = 0; i < cJSON_GetArraySize(dc_offset_mshift); i++){
+                printfd("index:%d ", i);
+                node = cJSON_GetArrayItem(dc_offset_mshift, i);            
+                value = cJSON_GetObjectItem(node, "start_freq");
+                if(cJSON_IsNumber(value)){
+                    config->cal_level.dc_offset.start_freq_khz[i]=value->valueint;
+                     printfd("start_freq:%ukhz, ", config->cal_level.dc_offset.start_freq_khz[i]);
+                }
+                value = cJSON_GetObjectItem(node, "end_freq");
+                if(cJSON_IsNumber(value)){
+                    config->cal_level.dc_offset.end_freq_khz[i]=value->valueint;
+                     printfd("end_freq:%ukhz, ", config->cal_level.dc_offset.end_freq_khz[i]);
+                } 
+                value = cJSON_GetObjectItem(node, "value");
+                 if(cJSON_IsNumber(value)){
+                    config->cal_level.dc_offset.mshift[i]=value->valueint;
+                    printfd("value:%d", config->cal_level.dc_offset.mshift[i]);
+                } 
+                printfd("\n");
+            }
+        }
+    }
 
     value = cJSON_GetObjectItem(calibration, "low_distortion_power_agc");
     if(value!= NULL && cJSON_IsNumber(value)){
@@ -967,6 +1001,11 @@ static int json_parse_config_param(const cJSON* root, struct poal_config *config
         for(int i = 0; i < cJSON_GetArraySize(side_bandrate); i++){
             printfd("index:%d ", i);
             node = cJSON_GetArrayItem(side_bandrate, i);            
+            value = cJSON_GetObjectItem(node, "fixed");
+            if(cJSON_IsNumber(value)){
+                config->ctrl_para.scan_bw.fixed_bindwidth_flag[i]=(value->valueint == 0 ? false : true);
+                printfd("[%d]fixed:%d, ", i, config->ctrl_para.scan_bw.fixed_bindwidth_flag[i]);
+            }
             value = cJSON_GetObjectItem(node, "rate");
             if(cJSON_IsNumber(value)){
                // printfd("rate:%d, ", value->valueint);

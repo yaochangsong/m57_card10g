@@ -97,6 +97,8 @@ float bottom_maxvalue=0;
 static float fuzzy_bottom=0;
 
 
+static float gonglv=0;
+static float ture_bottom=0;
 
 /*static int cenfrepointnum=0;
 static int y[SIGNALNUM];
@@ -294,7 +296,7 @@ void writefileArr(const char* filename, float *arr, int rank)
 	FILE *fp;
 	if ((fp = fopen(filename, "w")) == NULL)
 	{
-		printf_warn("file open error");
+		printf_note("file open error");
 	}
 	for (int i = 0; i<rank; ++i)
 	{
@@ -310,7 +312,7 @@ void writefileArrint(const char* filename, int *arr, int rank)
 	FILE *fp;
 	if ((fp = fopen(filename, "w")) == NULL)
 	{
-		printf_warn("file open error");
+		printf_note("file open error");
 	}
 	for (int i = 0; i<rank; ++i)
 	{
@@ -326,7 +328,7 @@ void Verification(const char* filename, float* num, int rank)       //从文件�
 	FILE *fp;
 	if ((fp = fopen(filename, "rb")) == NULL)
 	{
-		printf_warn("file not exist\n");
+		printf_note("file not exist\n");
 	}
 	for (int i = 0; i<rank; i++)
 	{
@@ -339,7 +341,7 @@ void Verificationfloat(const char* filename, short* num, int rank)       //从�
 	FILE *fp;
 	if ((fp = fopen(filename, "r")) == NULL)
 	{
-		printf_warn("file not exist\n");
+		printf_note("file not exist\n");
         return ;
 	}
 	for (int i = 0; i<rank; i++)
@@ -459,6 +461,123 @@ void fft_fftw_calculate_hann(short *iqdata,int32_t fftsize,int datalen,float *mo
     if(out!=NULL) fftwf_free(out);
     free(hann);
     pthread_mutex_unlock(&fft_data_mutex);
+    return 0;
+}
+void fft_fftw_calculate_hann_addsmooth(short *iqdata,int32_t fftsize,int datalen,float *smoothdata)
+{
+    int i;
+    fftwf_plan p;
+    short* wavdatafp;
+    short* wandateimage;
+    pthread_mutex_lock(&fft_data_mutex);
+    fftwf_complex *din = (fftwf_complex*) fftwf_malloc(sizeof(fftwf_complex) * fftsize);
+    fftwf_complex *out = (fftwf_complex*) fftwf_malloc(sizeof(fftwf_complex) * fftsize);
+    float *hann=(float*)malloc(sizeof(float)*fftsize);
+    memset(hann,0,sizeof(float)*fftsize );
+
+	float *mozhi=(float*)malloc(sizeof(float)*fftsize);
+    memset(mozhi,0,sizeof(float)*fftsize );
+    if(din==NULL||out==NULL||hann==NULL||mozhi==NULL)
+    {
+        printf_note("fft_fftw_calculate Memory allocation failed!!\n");
+
+    }
+     hannwindow(fftsize,hann);
+    //writefileArr("hann.txt",hann,fftsize);
+
+    wavdatafp=iqdata;
+    wandateimage=iqdata+1;
+    int j=0;
+    int num=0;
+    for(i=0; i<datalen; i+=2)
+    {
+        din[j++][0] = (*wavdatafp);
+        din[num++][1] = (*wandateimage);
+        wavdatafp+=2;
+        wandateimage+=2;
+    }
+    for(i=0; i<fftsize; i++)
+    {
+        din[i][0] = (din[i][0])*(hann[i]);
+        din[i][1] = (din[i][1])*(hann[i]);
+    }
+    double costtime;
+    clock_t start,end;
+    start=clock();
+    p = fftwf_plan_dft_1d(fftsize,din, out, FFTW_FORWARD,FFTW_ESTIMATE);
+    fftwf_execute(p);
+
+    end=clock();
+    costtime=(double)(end-start)/CLOCKS_PER_SEC;
+    printf_debug("======costtime=%.20lf\n",costtime);
+    CfftAbs(out,fftsize,mozhi);
+    Rfftshift(mozhi,fftsize);
+	smooth2(mozhi,fftsize,smoothdata);
+    fftwf_destroy_plan(p);
+   // fftwf_cleanup();
+    if(din!=NULL) fftwf_free(din);
+    if(out!=NULL) fftwf_free(out);
+    free(hann);
+	free(mozhi);
+    pthread_mutex_unlock(&fft_data_mutex);
+    return 0;
+}
+
+void fft_fftw_calculate_hann_addsmooth_ex(short *iqdata,int32_t fftsize,int datalen,float *smoothdata)
+{
+    int i;
+    fftwf_plan p;
+    short* wavdatafp;
+    short* wandateimage;
+    fftwf_complex *din = (fftwf_complex*) fftwf_malloc(sizeof(fftwf_complex) * fftsize);
+    fftwf_complex *out = (fftwf_complex*) fftwf_malloc(sizeof(fftwf_complex) * fftsize);
+    float *hann=(float*)malloc(sizeof(float)*fftsize);
+    memset(hann,0,sizeof(float)*fftsize );
+
+	float *mozhi=(float*)malloc(sizeof(float)*fftsize);
+    memset(mozhi,0,sizeof(float)*fftsize );
+    if(din==NULL||out==NULL||hann==NULL||mozhi==NULL)
+    {
+        printf_note("fft_fftw_calculate Memory allocation failed!!\n");
+
+    }
+     hannwindow(fftsize,hann);
+    //writefileArr("hann.txt",hann,fftsize);
+    wavdatafp=iqdata;
+    wandateimage=iqdata+1;
+    int j=0;
+    int num=0;
+    for(i=0; i<datalen; i+=2)
+    {
+        din[j++][0] = (*wavdatafp);
+        din[num++][1] = (*wandateimage);
+        wavdatafp+=2;
+        wandateimage+=2;
+    }
+    for(i=0; i<fftsize; i++)
+    {
+        din[i][0] = (din[i][0])*(hann[i]);
+        din[i][1] = (din[i][1])*(hann[i]);
+    }
+    double costtime;
+    clock_t start,end;
+    start=clock();
+    pthread_mutex_lock(&fft_data_mutex);
+    p = fftwf_plan_dft_1d(fftsize,din, out, FFTW_FORWARD,FFTW_ESTIMATE);
+    pthread_mutex_unlock(&fft_data_mutex);
+    fftwf_execute(p);
+    end=clock();
+    costtime=(double)(end-start)/CLOCKS_PER_SEC;
+    CfftAbs(out,fftsize,mozhi);
+    Rfftshift(mozhi,fftsize);
+	smooth2(mozhi,fftsize,smoothdata);
+    fftwf_destroy_plan(p);
+   // fftwf_cleanup();
+    if(din!=NULL) fftwf_free(din);
+    if(out!=NULL) fftwf_free(out);
+    free(hann);
+	free(mozhi);
+
     return 0;
 }
 
@@ -936,7 +1055,7 @@ void  calculatebandwidth2(float *fftdata,int fftnum ,float* temp,float *maxvalue
             printf_debug("\nThe threshold is higher than 3db bandwidth\n");
         }
         //printf_debug("fftstate.arvcentfreq[i]=%f,*temp=%f",fftstate.arvcentfreq[i],*temp);
-        printf_warn("threedbpoint=%f,Threshold=%f,dbvalue=%f\n",threedbpoint,*maxvalue,dbvalue);
+        printf_note("threedbpoint=%f,Threshold=%f,dbvalue=%f\n",threedbpoint,*maxvalue,dbvalue);
         fftstate.arvcentfreq[i]=fftstate.arvcentfreq[i]-CORRECTIONSIGNAL;
         int endzuobiao;
         
@@ -1046,10 +1165,10 @@ void findBottomnoise(float *mozhi,int xiafamenxian,float *Bottomnoise,float *Thr
 }
 void findBottomnoisenomax(float *mozhi,int xiafamenxian,float *Bottomnoise,float *Threshold,int datalen,float *maxvalue,float *minvalue)
 {
-	//printf_warn("+++++++++++++++++++底噪计算+++++++++++++++++++++++\n");
+	//printf_note("+++++++++++++++++++底噪计算+++++++++++++++++++++++\n");
    
-    findcomplexcentfrequencypoint(mozhi,maxvalue,minvalue,datalen);
-	if(((*maxvalue-*minvalue)/3)<THRESHOLD)
+         findcomplexcentfrequencypoint(mozhi,maxvalue,minvalue,datalen);
+	/*if(((*maxvalue-*minvalue)/3)<THRESHOLD)
 	{
 		*Bottomnoise=*minvalue+THRESHOLD;
 	     get_bottomnoise = *minvalue;	
@@ -1057,11 +1176,17 @@ void findBottomnoisenomax(float *mozhi,int xiafamenxian,float *Bottomnoise,float
 		
 		*Bottomnoise=*minvalue+(*maxvalue-*minvalue)/3;
         get_bottomnoise = *minvalue;		
-	}
-   // *Bottomnoise=*minvalue+(*maxvalue-*minvalue)/3;
-    *Threshold=*Bottomnoise+xiafamenxian;
-  //  printf_warn("++++++++++++++++++maxvalue=%f,",*maxvalue);
-  //  printf_warn("Bottomnoise=%f++++++++++++++,\n",*Bottomnoise);
+	}*/
+
+
+	//*Bottomnoise=*minvalue+THRESHOLD;
+
+
+
+      *Bottomnoise=*minvalue+(*maxvalue-*minvalue)/3;
+      *Threshold=*Bottomnoise+xiafamenxian;
+  //  printf_note("++++++++++++++++++maxvalue=%f,",*maxvalue);
+  //  printf_note("Bottomnoise=%f++++++++++++++,\n",*Bottomnoise);
     printf_debug("Thresholdmenxian=%f\n",*Threshold);
 }
 
@@ -1095,7 +1220,7 @@ void findBottomnoiseprecise(float *mozhi,int xiafamenxian,float *Bottomnoise,flo
     }
 
     printf_debug("minvalue=%f,\n",*minvalue);
-    printf_warn("maxvalue-minvalue=%f,\n",*maxvalue-*minvalue);
+    printf_note("maxvalue-minvalue=%f,\n",*maxvalue-*minvalue);
     printf_debug("Bottomnoise=%f,",*Bottomnoise);
     printf_debug("Thresholdmenxian=%f\n",*Threshold);
 }
@@ -1209,7 +1334,7 @@ void hannwindow(int num,float *w)               //汉宁窗
     ret=(float*)malloc(sizeof(float)*num);
     if(ret==NULL)
     {
-    	printf_warn("hannwindow malloc fail\n");
+    	printf_note("hannwindow malloc fail\n");
     }
     for(int i=0;i<num;i++)
     {
@@ -1326,11 +1451,41 @@ void  fft_calculate_finaldata()
 			num++;
 		}
 	}
+    gonglv=fftstate.arvcentfreq[0];
 	fftstate.cenfrepointnum=num;
 	//printf_debug("\n\n*********************First fuzzy calculation****************************\n");
 	for(int i=0;i<fftstate.cenfrepointnum;i++)
 	{
-		printf_debug("fftstate.centfeqpoint[%d]=%d,fftstate.bandwidth[%d]=%d,maxcentfrequency[%d]=%f\n\n",
+		printf_note("fftstate.centfeqpoint[%d]=%d,fftstate.bandwidth[%d]=%d,maxcentfrequency[%d]=%f\n\n",
+		i,fftstate.centfeqpoint[i],i,fftstate.bandwidth[i],i,fftstate.arvcentfreq[i]);
+	}
+}
+void  fft_calculate_finaldata_xijian()
+{
+    int num1=0;
+	int num2=0;
+	int num3=0;
+	int num=0;
+
+	for(int i=0;i<fftstate.cenfrepointnum;i++)
+	{
+		if((fftstate.arvcentfreq[i]>0 )&&(fftstate.bandwidth[i]>0)&&(fftstate.bandwidth[i]<N)&&((fftstate.arvcentfreq[i]-ture_bottom)>=get_signal_snr()))
+		{
+		
+			printf_note("**************fftstate.arvcentfreq[i]-fftstate.Bottomnoise)=%f,**fftstate.bandwidth[i]=%d***\n",
+				fftstate.arvcentfreq[i]-fftstate.Bottomnoise,fftstate.bandwidth[i]);
+			fftstate.arvcentfreq[num1++]=fftstate.arvcentfreq[i];
+			fftstate.bandwidth[num2++]=fftstate.bandwidth[i];
+			fftstate.centfeqpoint[num3++]=fftstate.centfeqpoint[i];	
+			num++;
+		}
+	}
+ 	gonglv=fftstate.arvcentfreq[0];
+	fftstate.cenfrepointnum=num;
+	//printf_debug("\n\n*********************First fuzzy calculation****************************\n");
+	for(int i=0;i<fftstate.cenfrepointnum;i++)
+	{
+		printf_note("fftstate.centfeqpoint[%d]=%d,fftstate.bandwidth[%d]=%d,maxcentfrequency[%d]=%f\n\n",
 		i,fftstate.centfeqpoint[i],i,fftstate.bandwidth[i],i,fftstate.arvcentfreq[i]);
 	}
 }
@@ -1678,7 +1833,7 @@ int fft_Precise_iqdata_calculation(int threshordnum,short *iqdata,int32_t fftsiz
                 impairment=0;
                 //printf("fftstate.y[i]=%d,fftstate.z[i]=%d\n",fftstate.y[i],fftstate.z[i]);
                 int temp;
-                temp=(fftstate.z[i]*multiple-fftstate.y[i]*multiple)/10;
+                temp=(fftstate.z[i]*multiple-fftstate.y[i]*multiple)/20;
                 printf_debug("temp=%d,fftstate.z[i]*multiple=%d,fftstate.y[i]*multiple-temp=%d\n",temp,fftstate.z[i]*multiple,fftstate.y[i]*multiple-temp);
                 for(j=fftstate.z[i]*multiple;j>=fftstate.y[i]*multiple-temp;j--)
                 {
@@ -1698,7 +1853,7 @@ int fft_Precise_iqdata_calculation(int threshordnum,short *iqdata,int32_t fftsiz
                 }
                 fftstate.centfeqpoint[i]=(secondtemp-firsttemp)/2+firsttemp;//计算中心频点
 
-                printf_warn("firsttemp=%d  ,secondtemp=%d\n",firsttemp,secondtemp);
+                printf_note("firsttemp=%d  ,secondtemp=%d\n",firsttemp,secondtemp);
 
                 
                 float max;
@@ -1716,7 +1871,7 @@ int fft_Precise_iqdata_calculation(int threshordnum,short *iqdata,int32_t fftsiz
                 }
                // impairment=max-(max-minvalue)/3;
                 impairment=max-(max-maxvalue)*2/3;
-                printf_warn("threedbvalue=%f,dbvalue=%f\n",impairment,(max-maxvalue)*2/3);
+                printf_note("threedbvalue=%f,dbvalue=%f\n",impairment,(max-maxvalue)*2/3);
                 for(int p=firsttemp;p<secondtemp;p++)
                 {
                    //printf_info("smoothdata[%d]=%f   ,",p,fftdata.smoothdata[p]);
@@ -1770,7 +1925,7 @@ int fft_Precise_iqdata_calculation(int threshordnum,short *iqdata,int32_t fftsiz
 
     
     printf_debug("\n\n*********************最终数据****************************\n");
-    fft_calculate_finaldata();
+    fft_calculate_finaldata_xijian();
 
 }
 int fft_iqdata_testfrequency(int threshordnum,short *iqdata,int32_t fftsize,int datalen,uint32_t midpoint,uint32_t bigbw,uint32_t littlebw)
@@ -1814,7 +1969,7 @@ void fft_iqdata_handle(int bd,short *data,int fftsize, int datalen,uint32_t midp
 {
     if(data==NULL)
     {
-        printf_warn("\n\nThe IQ data you entered is empty, please enter again！\n\n");
+        printf_note("\n\nThe IQ data you entered is empty, please enter again！\n\n");
         return ;
     }
     //midpoint = bigbw/2;
@@ -1855,8 +2010,16 @@ float *fft_get_data(uint32_t *len)
 
 void fft_set_smoothcount(uint32_t smoothcount)
 {
-    
-   SMOOTHPOINT=smoothcount;
+   if(smoothcount==1){
+
+     SMOOTHPOINT=2;
+
+   }else{
+	   SMOOTHPOINT=smoothcount;
+
+   }
+   
+  // printf_note("---SMOOTHPOINT=%d",SMOOTHPOINT);
 
 }
 float fft_get_average_value(float *mozhi,int count)
@@ -1898,7 +2061,7 @@ float fft_get_bottom(float *data,uint32_t datalen)
     float *smoothdata=(float*)malloc(sizeof(float)*datalen);
     if(smoothdata==NULL)
     {
-        printf_warn("fft_get_bottom smooth malloc fail!!!!!");
+        printf_note("fft_get_bottom smooth malloc fail!!!!!");
 
     }
     smooth(data,datalen,smoothdata);
@@ -1958,6 +2121,8 @@ int  fft_fuzzy_fftdata_handle(int threshordnum,float *fsdata,int datalen,uint32_
     cutdata_count=0;
     bottom_maxvalue=0;
     fuzzy_bottom=0;
+    gonglv=0;
+    ture_bottom=0;
 	
 	for(i=0;i<datalen;i++)
     {
@@ -1988,6 +2153,7 @@ int  fft_fuzzy_fftdata_handle(int threshordnum,float *fsdata,int datalen,uint32_
     float minvalue;
     float maxvalue;
     findBottomnoisenomax(fftdata.cutoffdata,threshordnum,&fftstate.Bottomnoise,&fftstate.Threshold,cutoffdatacount,&maxvalue,&minvalue);
+    ture_bottom=minvalue-CORRECTIONSIGNAL;
 	
     if(findCentfreqpoint(fftdata.cutoffdata,cutoffdatacount, fftstate.centfeqpoint,&fftstate.Threshold ,&fftstate.cenfrepointnum,fftstate.y,fftstate.z,&maxvalue)==-1)
     {
@@ -2064,7 +2230,7 @@ int  fft_fuzzy_fftdata_handle(int threshordnum,float *fsdata,int datalen,uint32_
             fft_calculate_finaldata();
             fft_find_midpoint(fftdata.smoothdata,narrowbandlen);
         }else{
-            printf_warn("\n============宽带信号===============\n");
+            printf_note("\n============宽带信号===============\n");
 #ifdef PLAT_FORM_ARCH_X86
             writefileArr("firstsmoothdata0904.txt",fftdata.cutoffdata, cutoffdatacount);
             writefileArr("firstmozhi0904.txt",fftdata.cutoffdataraw, cutoffdatacount);
@@ -2094,7 +2260,7 @@ int  fft_fuzzy_fftdata_handle(int threshordnum,float *fsdata,int datalen,uint32_
             
             calculatebandwidth2(fftdata.cutoffdataraw,cutoffdatacount,&temp,&maxvalue);
             
-            printf_warn("*********************模糊数据****************************\n");
+            printf_note("*********************模糊数据****************************\n");
             fft_calculate_finaldata();
             //fft_find_midpoint(fftdata.cutoffdataraw,cutoffdatacount);
 			
@@ -2197,11 +2363,11 @@ void fft_precise_fftdata_calculation(int threshordnum,float *fsdata,uint32_t dat
         for(i=0;i<fftstate.cenfrepointnum;i++)  /*计算信号个数*/
         {
                 impairment=0;
-                printf_warn("fftstate.y[i]=%d,fftstate.z[i]=%d\n",fftstate.y[i],fftstate.z[i]);
+                printf_note("fftstate.y[i]=%d,fftstate.z[i]=%d\n",fftstate.y[i],fftstate.z[i]);
                 int temp;
                 temp=(fftstate.z[i]*multiple-fftstate.y[i]*multiple)/10;
-                printf_warn("第一个点范围fftstate.z[i]*multiple=%d,j>=fftstate.y[i]*multiple-temp=%d\n",fftstate.z[i]*multiple,j>=fftstate.y[i]*multiple-temp);
-				printf_warn("第二个点范围fftstate.y[i]*multiple=%d,fftstate.z[i]*multiple+temp=%d\n",fftstate.z[i]*multiple,j>=fftstate.y[i]*multiple-temp);
+                printf_note("第一个点范围fftstate.z[i]*multiple=%d,j>=fftstate.y[i]*multiple-temp=%d\n",fftstate.z[i]*multiple,j>=fftstate.y[i]*multiple-temp);
+				printf_note("第二个点范围fftstate.y[i]*multiple=%d,fftstate.z[i]*multiple+temp=%d\n",fftstate.z[i]*multiple,j>=fftstate.y[i]*multiple-temp);
 	
 				
                 for(j=fftstate.z[i]*multiple;j>=fftstate.y[i]*multiple-temp;j--)
@@ -2222,7 +2388,7 @@ void fft_precise_fftdata_calculation(int threshordnum,float *fsdata,uint32_t dat
                 }
                 fftstate.centfeqpoint[i]=(secondtemp-firsttemp)/2+firsttemp;//计算中心频点
 
-                printf_warn("firsttemp=%d  ,secondtemp=%d\n",firsttemp,secondtemp);
+                printf_note("firsttemp=%d  ,secondtemp=%d\n",firsttemp,secondtemp);
 
                 
                 float max;
@@ -2293,13 +2459,13 @@ void fft_precise_fftdata_calculation(int threshordnum,float *fsdata,uint32_t dat
         for(i=0;i<fftstate.cenfrepointnum;i++)  /*计算信号个数*/
         {   
                 impairment=0;
-                printf_warn("粗检范围fftstate.y[i]=%d,fftstate.z[i]=%d\n",fftstate.y[i],fftstate.z[i]);
+                printf_note("粗检范围fftstate.y[i]=%d,fftstate.z[i]=%d\n",fftstate.y[i],fftstate.z[i]);
                 int temp;
                 temp=(fftstate.z[i]*multiple-fftstate.y[i]*multiple)/20;
-                printf_warn("第一个点范围fftstate.z[i]*multiple=%d,j>=fftstate.y[i]*multiple-temp=%d\n",fftstate.z[i]*multiple,j=fftstate.y[i]*multiple-temp);
-				printf_warn("第二个点范围fftstate.y[i]*multiple=%d,fftstate.z[i]*multiple+temp=%d\n",fftstate.y[i]*multiple,j=fftstate.z[i]*multiple+temp);
-				printf_warn("倍数关系=%d,门限=%f\n",multiple,maxvalue);
-				printf_warn("temp=%d\n",temp);
+                printf_note("第一个点范围fftstate.z[i]*multiple=%d,j>=fftstate.y[i]*multiple-temp=%d\n",fftstate.z[i]*multiple,j=fftstate.y[i]*multiple-temp);
+				printf_note("第二个点范围fftstate.y[i]*multiple=%d,fftstate.z[i]*multiple+temp=%d\n",fftstate.y[i]*multiple,j=fftstate.z[i]*multiple+temp);
+				printf_note("倍数关系=%d,门限=%f\n",multiple,maxvalue);
+				printf_note("temp=%d\n",temp);
 
 
 				
@@ -2343,7 +2509,7 @@ void fft_precise_fftdata_calculation(int threshordnum,float *fsdata,uint32_t dat
                 }
 				float  linjie_point;
 				linjie_point=(raw_max-maxvalue)/5+maxvalue;
-				printf_warn("linjie_point=%f,(raw_max-maxvalue)/5=%f\n",linjie_point,(raw_max-maxvalue)/5);
+				printf_note("linjie_point=%f,(raw_max-maxvalue)/5=%f\n",linjie_point,(raw_max-maxvalue)/5);
 
                 for(j=fftstate.z[i]*multiple;j>=fftstate.y[i]*multiple-temp;j--)
                 {
@@ -2364,7 +2530,7 @@ void fft_precise_fftdata_calculation(int threshordnum,float *fsdata,uint32_t dat
                 }
                 fftstate.centfeqpoint[i]=(secondtemp-firsttemp)/2+firsttemp;//计算中心频点
 
-                printf_warn("firsttemp=%d  ,secondtemp=%d\n",firsttemp,secondtemp);
+                printf_note("firsttemp=%d  ,secondtemp=%d\n",firsttemp,secondtemp);
 
                 
                 float max;
@@ -2382,15 +2548,15 @@ void fft_precise_fftdata_calculation(int threshordnum,float *fsdata,uint32_t dat
                 }
                // impairment=max-(max-minvalue)/3;
                 impairment=max-(max-maxvalue)*2/3;
-                printf_warn("threedbvalue=%f,dbvalue=%f\n",impairment,(max-maxvalue)*2/3);
-				printf_warn("3db门限=%f,底噪门限=%f,db值=%f\n",impairment,fftstate.Threshold,(max-maxvalue)*2/3);
+                printf_note("threedbvalue=%f,dbvalue=%f\n",impairment,(max-maxvalue)*2/3);
+				printf_note("3db门限=%f,底噪门限=%f,db值=%f\n",impairment,fftstate.Threshold,(max-maxvalue)*2/3);
                 for(int p=firsttemp;p<secondtemp;p++)
                 {
                    //printf_info("smoothdata[%d]=%f   ,",p,fftdata.smoothdata[p]);
 
                      
                    // fftstate.arvcentfreq[i]=max-CORRECTIONSIGNAL;      //计算中心频率
-                    fftstate.arvcentfreq[i]=max; 
+                   fftstate.arvcentfreq[i]=gonglv; 
                     
 
                     if((fftdata.cutoffdataraw[p]<=impairment)&&(fftdata.cutoffdataraw[p+1]>=impairment))//带宽阈值处
@@ -2438,7 +2604,7 @@ void fft_precise_fftdata_calculation(int threshordnum,float *fsdata,uint32_t dat
 
     
     printf_debug("\n\n*********************最终数据****************************\n");
-    fft_calculate_finaldata();
+    fft_calculate_finaldata_xijian();
 
 }
 
@@ -2448,7 +2614,7 @@ int  fft_fftdata_handle(int threshold,float *fuzzydata,uint32_t fuzzylen,float *
 {
     if((fuzzydata==NULL)&&(bigdata==NULL))
     {
-        printf_warn("\n\nThe IQ data you entered is empty, please enter again！\n\n");
+        printf_note("\n\nThe IQ data you entered is empty, please enter again！\n\n");
         return 0;
     }
    // fft_fftdata_testfrequency(bd,fuzzydata,fuzzylen,fuzzymidpoint,fuzzybw,bigdata,biglen,bigmidpoint,bigbw);//iq数据，下发门限，fft大小，下发数据长度 
@@ -2472,9 +2638,9 @@ fft_result *fft_get_result(void)
     fftresult.signalsnumber=fftstate.cenfrepointnum;
     if(fftresult.signalsnumber == 0){
 
-        get_bottomnoise=fuzzy_bottom- CORRECTIONSIGNAL;
-        printf_warn("+++++++++++++fuzzy_bottom=%f++++++++++++++++\n", fuzzy_bottom);
-        fftresult.arvcentfreq[0] = get_bottomnoise-BOTTOM_CORRECT;
+        get_bottomnoise=fuzzy_bottom;//- CORRECTIONSIGNAL;
+        printf_note("+++++++++++++fuzzy_bottom=%f++++++++++++++++\n", fuzzy_bottom);
+       fftresult.arvcentfreq[0] = get_bottomnoise;//-BOTTOM_CORRECT;
        //fftresult.arvcentfreq[0] = CORRECTIONSIGNAL - get_bottomnoise;
 
 
@@ -2485,11 +2651,11 @@ fft_result *fft_get_result(void)
 	   // fftresult.arvcentfreq[0] = fftresult.Bottomnoise;
 
         
-		//printf_warn("+++++++fftresult.Bottomnoise=%f,get_bottomnoise=%f\n",fftresult.Bottomnoise,get_bottomnoise);
+		//printf_note("+++++++fftresult.Bottomnoise=%f,get_bottomnoise=%f\n",fftresult.Bottomnoise,get_bottomnoise);
                          //fftresult.arvcentfreq[0] = CORRECTIONSIGNAL - fftstate.Bottomnoise;
                         // fftresult.arvcentfreq[0] = fftstate.Bottomnoise;
-		//printf_warn("fftresult.Bottomnoise=%f\n",fftresult.Bottomnoise);
-		//printf_warn("++++++++++++++++++++++++++fftresult.arvcentfreq[0]=%f\n",fftresult.arvcentfreq[0]);
+		//printf_note("fftresult.Bottomnoise=%f\n",fftresult.Bottomnoise);
+		//printf_note("++++++++++++++++++++++++++fftresult.arvcentfreq[0]=%f\n",fftresult.arvcentfreq[0]);
 		//fftresult.arvcentfreq[0] = fftstate.Bottomnoise;
 		//fftresult.arvcentfreq[0] = CORRECTIONSIGNAL - fftstate.Bottomnoise;
         fftresult.bandwidth[0] = 0;

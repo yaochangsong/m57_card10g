@@ -142,6 +142,5 @@ typedef enum _IOCTL_CMD_
 
 
 extern struct spm_context * spm_create_fpga_context(void);
-extern struct spm_context * spm_create_chip_context(void);
 
 #endif

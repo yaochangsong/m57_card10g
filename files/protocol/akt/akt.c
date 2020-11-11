@@ -73,7 +73,7 @@ int8_t akt_decode_method_convert(uint8_t method)
 uint32_t fftsize_check(uint32_t fft_size)
 {
     #define _DEFAULT_FFT_SIZE 2048
-    uint32_t t_fftsize[] = {128,256,512,1024,2048,4096,8192,16384,32768,65536};
+    uint32_t t_fftsize[] = {64,128,256,512,1024,2048,4096,8192,16384,32768,65536};
     int i;
     for(i=0; i< ARRAY_SIZE(t_fftsize); i++){
         if(t_fftsize[i] == fft_size)
@@ -678,7 +678,7 @@ static int akt_execute_set_command(void *cl)
             memcpy(&(pakt_config->mid_freq_bandwidth[ch]), payload, sizeof(DIRECTION_MID_FREQ_BANDWIDTH_PARAM));
             poal_config->channel[ch].rf_para.mid_bw = *((uint32_t *)(payload+1));
             printf_warn("ch=%d, bandwidth:%u\n", ch, poal_config->channel[ch].rf_para.mid_bw);
-            executor_set_command(EX_RF_FREQ_CMD, EX_RF_MID_BW, ch, &poal_config->channel[ch].rf_para.mid_bw);
+            executor_set_command(EX_RF_FREQ_CMD, EX_RF_MID_BW, ch, NULL);
             break;
         }
         case RF_ATTENUATION_CMD:
@@ -832,12 +832,13 @@ static int akt_execute_set_command(void *cl)
         case SPCTRUM_ANALYSIS_CTRL_EN_CMD:
         {
             bool enable;
+            ch = 0;
             enable =  (bool)payload[0];
             printf_note("Spctrum Analysis Ctrl  %s\n", enable == false ? "Enable" : "Disable");
             poal_config->channel[ch].enable.spec_analy_en = !enable;
             INTERNEL_ENABLE_BIT_SET(poal_config->channel[ch].enable.bit_en,poal_config->channel[ch].enable);
-            printf_info("spec_analy_en=%d\n",  poal_config->channel[ch].enable.spec_analy_en);
-            executor_set_enable_command(0);
+            printf_note("ch=%d, spec_analy_en=%d\n",  ch, poal_config->channel[ch].enable.spec_analy_en);
+            //executor_set_enable_command(0);
             break;
         }
         case SYSTEM_TIME_SET_REQ:
@@ -1015,7 +1016,7 @@ static int akt_execute_set_command(void *cl)
             break;
         }
         default:
-          printf_err("not support class code[%x]\n",header->code);
+          printf_err("not support class code[0x%x]\n",header->code);
           err_code = RET_CODE_PARAMTER_ERR;
           goto set_exit;
     }
@@ -1101,81 +1102,45 @@ static int akt_execute_get_command(void *cl)
         }
         case SPCTRUM_PARAM_CMD:
         {
-        #ifdef SUPPORT_SPECTRUM_FFT_ANALYSIS
-            #define AVG_FREQ_POINT  16  
-            int i, datalen;
+        #ifdef SUPPORT_SPECTRUM_ANALYSIS
             FFT_SIGNAL_RESPINSE_ST *resp_result;
-            struct spectrum_fft_result_st *fft_result;
-            static uint64_t center_freq_buf[AVG_FREQ_POINT], cnt = 0;
-            uint64_t avg_freq = 0;
-            uint32_t result_num = 0;
-
-
-            fft_result = (struct spectrum_fft_result_st *)spectrum_rw_fft_result(NULL, 0, 0, 0, NULL);
-            if(fft_result == NULL){
-                err_code = RET_CODE_INTERNAL_ERR;
-                printf_info("error fft_result\n");
-                return -1;
+            struct spectrum_analysis_result_vec **r;
+            ssize_t number;
+            size_t payload_len, i;
+            
+            number = spm_analysis_get_info(&r);
+            payload_len = sizeof(FFT_SIGNAL_RESPINSE_ST) + sizeof(FFT_SIGNAL_RESULT_ST)*number;
+            resp_result = safe_malloc(payload_len);
+            printf_warn("#########Find SPM ANALYSIS Parameter[%d]:###############\n",number);
+            for(i = 0; i < number; i++){
+                resp_result->signal_array[i].center_freq = r[i]->mid_freq_hz;
+                resp_result->signal_array[i].bandwidth = r[i]->bw_hz;
+                resp_result->signal_array[i].power_level = r[i]->level;
+                printf_warn("[%d] middle_freq=%lluHz, bw=%uHz, level=%f\n", i,
+                    resp_result->signal_array[i].center_freq, resp_result->signal_array[i].bandwidth, resp_result->signal_array[i].power_level);
             }
-
-            printf_warn("#########Find FFT Parameter[%d]:###############\n",fft_result->result_num);
-            result_num = 1;
-            if(fft_result->result_num > 1){
-                fft_result->result_num = 1;
-            }
-            resp_result = (FFT_SIGNAL_RESPINSE_ST *)safe_malloc(sizeof(FFT_SIGNAL_RESPINSE_ST) + sizeof(FFT_SIGNAL_RESULT_ST)*result_num);
-            resp_result->signal_num = fft_result->result_num;
-            printf_debug("malloc size:%d\n",sizeof(FFT_SIGNAL_RESPINSE_ST) + sizeof(FFT_SIGNAL_RESULT_ST) * result_num);
-            for(i = 0; i < resp_result->signal_num; i++){
-                resp_result->signal_array[i].center_freq = fft_result->mid_freq_hz[i];
-                resp_result->signal_array[i].bandwidth = fft_result->bw_hz[i];
-                resp_result->signal_array[i].power_level = fft_result->level[i];
-                
-                center_freq_buf[cnt++] = resp_result->signal_array[i].center_freq;
-                if(cnt >= AVG_FREQ_POINT){
-                    for(int i = 0; i< AVG_FREQ_POINT; i++){
-                        avg_freq +=  center_freq_buf[i];
-                    }
-                    printf_warn("After %d times filter: center freq:%llu\n", AVG_FREQ_POINT, avg_freq/AVG_FREQ_POINT);
-                    cnt = 0;
-                    avg_freq = 0;
-                }
-                
-                printf_warn("[%d]center_freq=%lluHz, bandwidth=%llu, power_level=%f, peak:%d\n", i,
-                    resp_result->signal_array[i].center_freq,
-                    resp_result->signal_array[i].bandwidth,
-                    resp_result->signal_array[i].power_level,
-                    fft_result->peak_value);
-            }
-            /* not find signal */
-            if(resp_result->signal_num == 0){
-                 resp_result->signal_num = 1;
-                 resp_result->signal_array[0].center_freq = fft_result->mid_freq_hz[0];
-                 resp_result->signal_array[0].bandwidth = fft_result->bw_hz[0];
-                 resp_result->signal_array[0].power_level = fft_result->level[0];
-                 printf_warn("No Signal Found!!!\n");
-                 printf_warn("center_freq=%lluHz, bandwidth=%llu, power_level=%f\n",
-                    resp_result->signal_array[0].center_freq,
-                    resp_result->signal_array[0].bandwidth,
-                    resp_result->signal_array[0].power_level);
-            }
+            resp_result->signal_num = number;
             resp_result->temperature = io_get_ambient_temperature();
             resp_result->humidity = io_get_ambient_humidity();
+            if(number > 0){
+                for(i = 0; i < number; i++)
+                    safe_free(r[i]);
+                safe_free(r);
+            }
             printf_warn("temperature:%0.2f℃, humidity:%0.2f%\n", resp_result->temperature, resp_result->humidity);
-            datalen = sizeof(FFT_SIGNAL_RESPINSE_ST) + sizeof(FFT_SIGNAL_RESULT_ST)*result_num;
-            client->response.response_length = datalen;
+            client->response.response_length = payload_len;
             client->response.data = calloc(1, client->response.response_length);
             if(client->response.data == NULL){
+                safe_free(resp_result);
                 printf_err("calloc err!");
                 break;
             }
             memcpy(client->response.data, resp_result, client->response.response_length);
-           // memcpy(akt_get_response_data.payload_data, resp_result, datalen);
-            //akt_get_response_data.header.len = datalen;
             safe_free(resp_result);
         #else
             printf_warn("###########SPECTRUM ANALYSIS NOT SUPPORT#############\n");
         #endif
+            break;
         }
         case SOFTWARE_VERSION_CMD:
         {

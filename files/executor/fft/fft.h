@@ -11,10 +11,10 @@
 //#define  N  256
 static unsigned int N=16*1024*1024;
 #define  SIGNALNUM        (20000)//输入信号数
-#define  THRESHOLD         (7)//门限
+#define  THRESHOLD         (8)//门限
 #define  CORRECTIONSIGNAL  (300)
 
-#define BOTTOM_CORRECT  450    //没有信号时候的底噪校正值
+#define BOTTOM_CORRECT  562//没有信号时候的底噪校正值
 #define   SMOOTHPOINT_BOTTOM        (64)//滑动平均滤波计算平均值时所取的点数
 #define   TRANNUM     (1024)      //每次传1K的点
 #define  FILTER_A      (0.01)
@@ -123,6 +123,9 @@ void fft_set_smoothcount(uint32_t smoothcount);
 *********************************************************************************/
 
 float fft_get_bottom(float *data,uint32_t datalen);
+
+void fft_fftw_calculate_hann_addsmooth(short *iqdata,int32_t fftsize,int datalen,float *smoothdata);
+extern void fft_fftw_calculate_hann_addsmooth_ex(short *iqdata,int32_t fftsize,int datalen,float *smoothdata);
 
 #endif
 

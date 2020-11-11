@@ -88,14 +88,6 @@ static  int8_t  executor_fragment_scan(uint32_t fregment_num,uint8_t ch, work_mo
     */
     s_freq = poal_config->channel[ch].multi_freq_fregment_para.fregment[fregment_num].start_freq;
     e_freq = poal_config->channel[ch].multi_freq_fregment_para.fregment[fregment_num].end_freq;
-#ifdef SUPPORT_PROJECT_SSA
-    if((s_freq >= KU_FREQUENCY_START) && (s_freq <= KU_FREQUENCY_END)){
-        s_freq -= KU_FREQUENCY_OFFSET;
-    }
-    if((e_freq >= KU_FREQUENCY_START) && (e_freq <= KU_FREQUENCY_END)){
-        e_freq -= KU_FREQUENCY_OFFSET;
-    }
-#endif
 
     if(config_read_by_cmd(EX_RF_FREQ_CMD, EX_RF_MID_BW, ch, &scan_bw) == -1){
             printf_err("Error read scan bandwidth=%u\n", scan_bw);
@@ -116,6 +108,7 @@ static  int8_t  executor_fragment_scan(uint32_t fregment_num,uint8_t ch, work_mo
     do{
         r_args->s_freq_offset = _s_freq_hz_offset;
         r_args->s_freq = s_freq;
+        if(spmctx->ops->spm_scan)
         spmctx->ops->spm_scan(&_s_freq_hz_offset, &_e_freq_hz, &scan_bw, &_bw_hz, &_m_freq_hz);
         printf_debug("[%d] s_freq_offset=%lluHz,scan_bw=%uHz _bw_hz=%u, _m_freq_hz=%lluHz\n", index, r_args->s_freq_offset, scan_bw, _bw_hz, _m_freq_hz);
         r_args->e_freq = e_freq;
@@ -128,7 +121,8 @@ static  int8_t  executor_fragment_scan(uint32_t fregment_num,uint8_t ch, work_mo
         r_args->freq_resolution = poal_config->channel[ch].multi_freq_fregment_para.fregment[fregment_num].freq_resolution;
         printf_debug("[%d]s_freq=%llu, e_freq=%llu, scan_bw=%u, bandwidth=%u,m_freq=%llu, m_freq_s=%llu\n", 
             index, r_args->s_freq, r_args->e_freq, r_args->scan_bw, r_args->bandwidth, r_args->m_freq, r_args->m_freq_s);
-        spmctx->ops->sample_ctrl(r_args->m_freq_s);
+        if(spmctx->ops->sample_ctrl)
+            spmctx->ops->sample_ctrl(r_args);
         executor_set_command(EX_RF_FREQ_CMD, EX_RF_MID_FREQ, ch, &_m_freq_hz);
         executor_set_command(EX_RF_FREQ_CMD, EX_RF_LOW_NOISE, ch, &_m_freq_hz);
         executor_set_command(EX_MID_FREQ_CMD, EX_MID_FREQ,    ch, &_m_freq_hz);
@@ -219,7 +213,8 @@ static int8_t  executor_points_scan(uint8_t ch, work_mode_type mode, void *args)
         r_args->freq_resolution = (float)point->points[i].bandwidth * BAND_FACTOR / (float)point->points[i].fft_size;
         printf_info("ch=%d, s_freq=%llu, e_freq=%llu, fft_size=%u, d_method=%d\n", ch, s_freq, e_freq, r_args->fft_size,r_args->d_method);
         printf_info("rf scan bandwidth=%u, middlebw=%u, m_freq=%llu, freq_resolution=%f\n",r_args->scan_bw,r_args->bandwidth , r_args->m_freq, r_args->freq_resolution);
-        spmctx->ops->sample_ctrl(r_args->m_freq);
+        if(spmctx->ops->sample_ctrl)
+            spmctx->ops->sample_ctrl(r_args);
         executor_set_command(EX_RF_FREQ_CMD,  EX_RF_MID_FREQ, ch, &point->points[i].center_freq);
         executor_set_command(EX_MID_FREQ_CMD, EX_BANDWITH, ch, &point->points[i].bandwidth);
         executor_set_command(EX_MID_FREQ_CMD, EX_MID_FREQ,    ch, &point->points[i].center_freq);
@@ -253,9 +248,11 @@ static int8_t  executor_points_scan(uint8_t ch, work_mode_type mode, void *args)
         int32_t ret = -1;
         if(is_rf_calibration_source_enable() == false){
             usleep(20000);
+            if(spmctx->ops->signal_strength){
             ret = spmctx->ops->signal_strength(ch, subch, i, &is_signal, &strength);
             if(ret == 0){
                 printf_note("is sigal: %s, strength:%d\n", (is_signal == true ? "Yes":"No"), strength);
+                }
             }
         }
 #endif
@@ -265,6 +262,7 @@ static int8_t  executor_points_scan(uint8_t ch, work_mode_type mode, void *args)
             if(poal_config->channel[ch].enable.psd_en){
                 io_set_enable_command(PSD_MODE_ENABLE, ch, -1, point->points[i].fft_size);
             }
+            if(spmctx->ops->agc_ctrl)
             spmctx->ops->agc_ctrl(ch, spmctx);
             if(args != NULL)
                 spm_deal(args, r_args);
@@ -315,10 +313,12 @@ void executor_spm_thread(void *arg)
         
 loop:   printf_note("######channel[%d] wait to deal work######\n", ch);
         sem_wait(&work_sem.notify_deal[ch]);
+#if defined(SUPPORT_PROJECT_WD_XCR)
         if(poal_config->channel[ch].enable.bit_en == 0)
             safe_system("/etc/led.sh transfer off &");
         else
             safe_system("/etc/led.sh transfer on &");
+#endif
         if(OAL_NULL_MODE == poal_config->channel[ch].work_mode){
             printf_warn("Work Mode not set\n");
             sleep(1);
@@ -533,8 +533,15 @@ static int8_t executor_set_kernel_command(uint8_t type, uint8_t ch, void *data, 
             }
             m_freq = (uint64_t)va_arg(ap, uint64_t);
             value = config_get_fft_calibration_value(ch, fftsize, m_freq);
-            printf_debug("ch:%d, fft calibration value:%d m_freq :%d\n", ch, value,m_freq);
-            io_set_calibrate_val(ch, (uint32_t)value);
+            //printf_debug("ch:%d, fft calibration value:%d m_freq :%d\n", ch, value,m_freq);
+            io_set_calibrate_val(ch, value);
+            #if defined(SUPPORT_PROJECT_SSA) || defined(SUPPORT_PROJECT_SSA_MONITOR)
+                value = config_get_gain_calibration_value(ch, fftsize, m_freq);
+                io_set_gain_calibrate_val(ch, value);
+                value = config_get_dc_offset_nshift_calibration_value(ch, fftsize, m_freq);
+                if(value > 0)
+                    io_set_dc_offset_calibrate_val(ch, value);
+            #endif
             break;
         }
 
@@ -711,6 +718,8 @@ int8_t executor_set_command(exec_cmd cmd, uint8_t type, uint8_t ch,  void *data,
             /* notify thread to deal data */
             printf_note("notify thread to deal data\n");
             poal_config->channel[ch].enable.bit_reset = true; /* reset(stop) all working task */
+            if(get_spm_ctx()->ops->set_flush_trigger)
+                get_spm_ctx()->ops->set_flush_trigger(true);
             if(ch < MAX_RADIO_CHANNEL_NUM)
                 sem_post(&work_sem.notify_deal[ch]);
             break;
@@ -809,9 +818,10 @@ int8_t executor_set_enable_command(uint8_t ch)
                 struct rf_para_st *rf = &poal_config->channel[ch].rf_para;
                 
                 executor_set_command(EX_RF_FREQ_CMD, EX_RF_ATTENUATION, ch, &poal_config->channel[ch].rf_para.attenuation);
+                executor_set_command(EX_RF_FREQ_CMD, EX_RF_MGC_GAIN, ch, &poal_config->channel[ch].rf_para.mgc_gain_value);
                 //executor_set_command(EX_RF_FREQ_CMD, EX_RF_MID_FREQ, ch, &poal_config->channel[ch].rf_para.mid_freq);
                 executor_set_command(EX_RF_FREQ_CMD,EX_RF_MID_FREQ,ch,&poal_config->channel[ch].rf_para.mid_freq);
-                executor_set_command(EX_RF_FREQ_CMD,EX_RF_MID_BW,ch,&poal_config->channel[ch].rf_para.mid_bw);
+                executor_set_command(EX_RF_FREQ_CMD,EX_RF_MID_BW,ch,NULL);
                 /* 中频带宽和射频带宽一�?*/
                 //executor_set_command(EX_MID_FREQ_CMD, EX_CHANNEL_SELECT, ch, &ch);
                 executor_set_command(EX_MID_FREQ_CMD, EX_SMOOTH_TIME, ch,&frp->smooth_time);
@@ -851,9 +861,7 @@ int8_t executor_set_enable_command(uint8_t ch)
 
 void executor_timer_task1_cb(struct uloop_timeout *t)
 {
-#ifdef SUPPORT_SPECTRUM_FFT
-    spectrum_send_fft_data_interval();
-#endif
+
 }
 void executor_timer_task_init(void)
 {
@@ -875,7 +883,8 @@ void executor_timer_task_init(void)
 
 void executor_init(void)
 {
-    int ret, i, ch;
+    int ret, i;
+    static int ch[MAX_RADIO_CHANNEL_NUM];
     pthread_t work_id;
     void *spmctx;
     struct poal_config *poal_config = &(config_get_config()->oal_config);
@@ -893,6 +902,7 @@ void executor_init(void)
     executor_set_command(EX_NETWORK_CMD, EX_NETWORK, 0, NULL);
     /* shutdown all channel */
     for(i = 0; i<MAX_RADIO_CHANNEL_NUM ; i++){
+        executor_set_command(EX_RF_FREQ_CMD, EX_RF_MID_BW, i, NULL);
         io_set_enable_command(PSD_MODE_DISABLE, i, -1, 0);
         io_set_enable_command(AUDIO_MODE_DISABLE, i, -1, 0);
         //io_set_enable_command(FREQUENCY_BAND_ENABLE_DISABLE, i, 0);
@@ -913,9 +923,10 @@ void executor_init(void)
     }
     
     sem_init(&(work_sem.kernel_sysn), 0, 0);
-    for(ch = 0; ch <MAX_RADIO_CHANNEL_NUM; ch++){
-        sem_init(&(work_sem.notify_deal[ch]), 0, 0);
-        ret=pthread_create(&work_id, NULL, (void *)executor_spm_thread, &ch);
+    for(i = 0; i <MAX_RADIO_CHANNEL_NUM; i++){
+        sem_init(&(work_sem.notify_deal[i]), 0, 0);
+        ch[i] = i;
+        ret=pthread_create(&work_id, NULL, (void *)executor_spm_thread, &ch[i]);
         if(ret!=0)
             perror("pthread cread spm");
         usleep(50);
@@ -927,7 +938,9 @@ void executor_init(void)
 void executor_close(void)
 {
 #ifdef SUPPORT_SPECTRUM_V2
+    #if defined(SUPPORT_SPECTRUM_FPGA)
     fpga_io_close();
+    #endif
     spm_close();
 #endif
 #ifdef  SUPPORT_CLOCK_ADC

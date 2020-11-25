@@ -70,6 +70,34 @@ struct spm_context {
     struct spm_run_parm *run_args[MAX_RADIO_CHANNEL_NUM];
 };
 
+extern pthread_mutex_t send_fft_mutex;
+extern pthread_mutex_t send_iq_mutex;
+
+#define __lock_fft_send__() do { \
+    pthread_mutex_lock(&send_fft_mutex); \
+} while (0)
+
+#define __unlock_fft_send__() do { \
+    pthread_mutex_unlock(&send_fft_mutex); \
+} while (0)
+
+#define __lock_iq_send__() do { \
+    pthread_mutex_lock(&send_iq_mutex); \
+} while (0)
+
+#define __unlock_iq_send__() do { \
+    pthread_mutex_unlock(&send_iq_mutex); \
+} while (0)
+
+#define __lock_send__() do { \
+    __lock_fft_send__(); \
+    __lock_iq_send__(); \
+} while (0)
+
+#define __unlock_send__() do { \
+    __unlock_fft_send__(); \
+    __unlock_iq_send__(); \
+} while (0)
 extern void *spm_init(void);
 extern struct spm_context *get_spm_ctx(void);
 extern void spm_deal(struct spm_context *ctx, void *args);

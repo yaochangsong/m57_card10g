@@ -142,7 +142,9 @@ void udp_add_client_to_list(struct sockaddr_in *addr, int ch)
     list_for_each_entry_safe(cl_list, list_tmp, &srv->clients, list){
         if(memcmp(&cl_list->peer_addr.sin_addr, &addr->sin_addr, sizeof(addr->sin_addr)) == 0){
             printf_warn("Find ipaddress on list:%s:%d，delete it\n",  cl_list->get_peer_addr(cl_list), cl_list->get_peer_port(cl_list));
+            __lock_send__();
             udp_free(cl_list);
+            __unlock_send__();
         }
     }
 /*

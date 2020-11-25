@@ -50,6 +50,7 @@
 #include "net/net_tcp.h"
 #include "net/net_data.h"
 #include "net/net_udp.h"
+#include "executor/spm/spm.h"
 #ifdef SUPPORT_DAO_XML
 #include "dao/mxml-3.0/mxml.h"
 #include "dao/oal/xml/dao_oal.h"

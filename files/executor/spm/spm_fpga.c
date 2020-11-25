@@ -415,8 +415,9 @@ static int spm_send_fft_data(void *data, size_t fft_len, void *arg)
     iov[0].iov_len = header_len;
     iov[1].iov_base = data;
     iov[1].iov_len = data_byte_size;
-
+    __lock_fft_send__();
     udp_send_vec_data(iov, 2);
+    __unlock_fft_send__();
     safe_free(ptr_header);
     return (header_len + data_byte_size);
 }
@@ -494,12 +495,14 @@ static int spm_send_iq_data(void *data, size_t len, void *arg)
     index = len / _send_byte;
     sbyte = index * _send_byte;
     pdata = (uint8_t *)data;
+    __lock_iq_send__();
     for(i = 0; i<index; i++){
         iov[1].iov_base = pdata;
         iov[1].iov_len = _send_byte;
         udp_send_vec_data(iov, 2);
         pdata += _send_byte;
     }
+    __unlock_iq_send__();
     
     ioctl(pstream[STREAM_IQ].id, IOCTL_DMA_SET_ASYN_READ_INFO, &sbyte);
     safe_free(hptr);

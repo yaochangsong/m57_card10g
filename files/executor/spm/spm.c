@@ -28,6 +28,10 @@
 
 static pthread_cond_t spm_iq_cond = PTHREAD_COND_INITIALIZER;
 static pthread_mutex_t spm_iq_cond_mutex = PTHREAD_MUTEX_INITIALIZER;
+/* send mutex */
+pthread_mutex_t send_fft_mutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t send_iq_mutex = PTHREAD_MUTEX_INITIALIZER;
+
 
 static void show_thread_priority(pthread_attr_t *attr,int policy)
 {

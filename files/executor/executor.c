@@ -40,7 +40,9 @@ int executor_tcp_disconnect_notify(void *cl)
         printf_info("udp client list %s:%d\n", inet_ntoa(cl_list->peer_addr.sin_addr), cl_list->peer_addr.sin_port);
         if(memcmp(&cl_list->peer_addr.sin_addr, &tcp_cl->peer_addr.sin_addr, sizeof(tcp_cl->peer_addr.sin_addr)) == 0){
            printf_info("del udp client %s:%d\n", inet_ntoa(cl_list->peer_addr.sin_addr), cl_list->peer_addr.sin_port);
+           __lock_send__();
            udp_free(cl_list);
+           __unlock_send__();
         }
     }
     /* client is 0 */

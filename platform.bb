@@ -14,7 +14,7 @@ S = "${WORKDIR}"
 
 inherit update-rc.d
 INITSCRIPT_NAME = "platform.sh"
-INITSCRIPT_PARAMS = "start 99 S ."
+INITSCRIPT_PARAMS = "start 99 5 ."
 
 do_compile() {
 	     oe_runmake
@@ -33,6 +33,7 @@ do_install() {
          install -m 0755 shell/reset-event.sh ${D}/etc/
          install -m 0755 shell/reset-button.sh ${D}/etc/
          install -m 0755 conf/config.json ${D}/etc/
+	 install -m 0755 conf/compile.info ${D}/etc/
          install -m 0755 tools/xjson ${D}${bindir}
          install -m 0755 tools/reset-button  ${D}${bindir}
 }

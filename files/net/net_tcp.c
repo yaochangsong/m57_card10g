@@ -345,6 +345,7 @@ void update_tcp_keepalive(struct net_tcp_client *cl)
 {
     if(&cl->timeout && (sizeof(struct uloop_timeout) == sizeof(cl->timeout))){
         uloop_timeout_set(&cl->timeout, TCP_CONNECTION_TIMEOUT * 1000);
+        cl->tcp_keepalive_probes = 0;
     } 
 }
 

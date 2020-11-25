@@ -24,7 +24,8 @@
 	"status_parm":	{
 		"soft_version":	{
 			"app":	"1.0.0_debug(2020-07-28-17:09:44)-27aedee4adf7284f5227ce316dc60e0c1897490f ",
-			"fpga":	"202012"
+			"fpga":	"202012",
+			"kernel":""
 		},
 		"device_sn":	"ACTI-0204"
 	},

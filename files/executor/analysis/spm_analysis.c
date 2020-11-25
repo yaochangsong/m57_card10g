@@ -16,6 +16,7 @@
 #include "config.h"
 #include "spm_analysis.h"
 #include "../spm/spm_chip.h"
+#include "../../device/rf/adrv/adrv.h"
 
 
 struct spm_pool pool;
@@ -483,15 +484,15 @@ void spm_analysis_start(int ch, void *data, size_t data_len, void *args)
 void spm_analysis_init(void)
 {
     #define  SPECTRUM_SMALL_FFT_SIZE   (2048)
-    #define  SPECTRUM_IQ_SIZE   RF_ADRV9009_IQ_SIZE
-    #define  SPECTRUM_BIG_FFT_SIZE  (SPECTRUM_IQ_SIZE/2)
+    #define  SPECTRUM_BIG_FFT_SIZE  (adrv_get_rx_samples_count()/2)
+
     int ret, i;
     pthread_t work_id;
 
     memset(&pool, 0, sizeof(pool));
     /* create memory pool */
     /* 128K fft, 1fft=4byte */
-    pool.iq = memory_pool_create(SPECTRUM_IQ_SIZE*4, SPECTRUM_MAX_SCAN_COUNT);
+    pool.iq = memory_pool_create(adrv_get_rx_samples_count()*4, SPECTRUM_MAX_SCAN_COUNT);
     pool.fft_raw_small = memory_pool_create(SPECTRUM_SMALL_FFT_SIZE*4, SPECTRUM_MAX_SCAN_COUNT);
     pool.fft_raw_big = memory_pool_create(SPECTRUM_BIG_FFT_SIZE*4, SPECTRUM_MAX_SCAN_COUNT);
 

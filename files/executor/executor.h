@@ -140,6 +140,7 @@ struct spm_run_parm{
     uint32_t fft_size;
     uint32_t fft_sn;
     uint32_t total_fft;
+    uint32_t fregment_num;
     uint64_t s_freq;             /* 开始频率 */
     uint64_t s_freq_offset;      /* 开始频率偏移 */
     uint64_t e_freq;             /* 截止频率 */

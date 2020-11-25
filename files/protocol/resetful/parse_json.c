@@ -711,6 +711,34 @@ char *assemble_json_find_file(char *filename)
 }
 
 
+char *assemble_json_build_info(void)
+{
+    char *str_json = NULL;
+    cJSON *root = cJSON_CreateObject();
+    struct poal_compile_Info *pinfo;
+    pinfo = (struct poal_compile_Info *)get_compile_info();
+    if(pinfo){
+        if(pinfo->build_jenkins_id)
+            cJSON_AddStringToObject(root, "build_id", pinfo->build_jenkins_id);
+        if(pinfo->build_name)
+        cJSON_AddStringToObject(root, "build_name", pinfo->build_name);
+        if(pinfo->build_time)
+            cJSON_AddStringToObject(root, "build_time", pinfo->build_time);
+        if(pinfo->build_version)
+            cJSON_AddStringToObject(root, "build_version", pinfo->build_version);
+        if(pinfo->code_branch)
+            cJSON_AddStringToObject(root, "code_branch", pinfo->code_branch);
+        if(pinfo->code_hash)
+            cJSON_AddStringToObject(root, "code_hash", pinfo->code_hash); 
+        if(pinfo->code_url)
+            cJSON_AddStringToObject(root, "code_url", pinfo->code_url);
+        if(pinfo->release_debug)
+            cJSON_AddStringToObject(root, "release_debug", pinfo->release_debug);
+    }
+    json_print(root, 1);
+    str_json = cJSON_PrintUnformatted(root);
+    return str_json;
+}
 char *assemble_json_softversion(void)
 {
     char *str_json = NULL;
@@ -719,7 +747,7 @@ char *assemble_json_softversion(void)
     snprintf(version, sizeof(version), "%x", get_fpga_version());
     version[sizeof(version) - 1] = 0;
     cJSON_AddStringToObject(root, "appversion", get_version_string());
-    cJSON_AddStringToObject(root, "kernelversion", "1.0.0");
+    cJSON_AddStringToObject(root, "kernelversion", get_kernel_version());
     cJSON_AddStringToObject(root, "fpgaversion", version);
     json_print(root, 1);
     str_json = cJSON_PrintUnformatted(root);
@@ -891,6 +919,7 @@ char *assemble_json_all_info(void)
     cJSON_AddItemToObject(root, "fpgaInfo", cJSON_Parse(assemble_json_fpag_info()));
     cJSON_AddItemToObject(root, "gpsInfo", cJSON_Parse(assemble_json_gps_info()));
     cJSON_AddItemToObject(root, "netInfo", cJSON_Parse(assemble_json_net_info()));
+    cJSON_AddItemToObject(root, "buildInfo", cJSON_Parse(assemble_json_build_info()));
     json_print(root, 1);
     str_json = cJSON_PrintUnformatted(root);
     return str_json;

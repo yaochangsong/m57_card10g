@@ -751,8 +751,8 @@ void io_set_gain_calibrate_val(uint32_t ch, int32_t  gain_val)
     #if defined(SUPPORT_SPECTRUM_FPGA)
 
     #elif defined(SUPPORT_SPECTRUM_CHIP) 
-        #ifdef SUPPORT_RF_ADRV9009
-            adrv9009_iio_set_gain(gain_val&0xff);
+        #ifdef SUPPORT_RF_ADRV
+            adrv_set_rx_gain(gain_val&0xff);
         #endif
     #endif
 #endif
@@ -773,8 +773,8 @@ void io_set_dc_offset_calibrate_val(uint32_t ch, int32_t  val)
     #if defined(SUPPORT_SPECTRUM_FPGA)
 
     #elif defined(SUPPORT_SPECTRUM_CHIP) 
-        #ifdef SUPPORT_RF_ADRV9009
-            adrv9009_iio_set_dc_offset_mshift(val&0xff);
+        #ifdef SUPPORT_RF_ADRV
+            adrv_set_rx_dc_offset(val&0xff);
         #endif
     #endif
 #endif

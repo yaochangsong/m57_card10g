@@ -138,12 +138,12 @@ int main(int argc, char **argv)
 #ifdef SUPPORT_UART
     uart_init();   /* PL UART依赖时钟 */
 #endif
-    executor_init();   
  if(spectrum_aditool_debug == false){
 #ifdef SUPPORT_RF
     rf_init();  /* RF初始化， */
 #endif
     }
+    executor_init();
 #ifdef SUPPORT_LCD
     init_lcd(); /* 串口屏依赖串口 */
 #endif

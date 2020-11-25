@@ -15,13 +15,13 @@ uint8_t rf_set_interface(uint8_t cmd,uint8_t ch,void *data){
                 break;
             }
             printf_debug("[**RF**]ch=%d, middle_freq=%llu\n",ch, *(uint64_t*)data);
-#ifdef SUPPORT_RF_ADRV9009
+#ifdef SUPPORT_RF_ADRV
             uint64_t mid_freq = *(uint64_t*)data;
        #ifdef SUPPORT_PROJECT_SSA_MONITOR
             mid_freq = lvttv_freq_convert(mid_freq);
        #endif
             gpio_select_rf_channel(mid_freq);
-            adrv9009_iio_set_freq(mid_freq);
+            adrv_set_rx_freq(mid_freq);
 #elif defined(SUPPORT_RF_SPI)
             uint64_t freq_khz = old_freq/1000;/* NOTE: Hz => KHz */
             uint64_t host_freq=htobe64(freq_khz) >> 24; //小端转大端（文档中心频率为大端字节序列，5个字节,单位为Hz,实际为Khz）
@@ -65,8 +65,8 @@ uint8_t rf_set_interface(uint8_t cmd,uint8_t ch,void *data){
             }
             printf_note("[**RF**]ch=%d, middle bw=%uHz\n", ch, mbw);
             
-#ifdef SUPPORT_RF_ADRV9009
-            adrv9009_iio_set_bw(mbw);
+#ifdef SUPPORT_RF_ADRV
+            adrv_set_rx_bw(mbw);
 #elif  SUPPORT_RF_SPI
             //uint32_t filter=htobe32(*(uint32_t *)data) >> 24;
             ret = spi_rf_set_command(SPI_RF_MIDFREQ_BW_FILTER_SET, &mbw);
@@ -111,7 +111,7 @@ uint8_t rf_set_interface(uint8_t cmd,uint8_t ch,void *data){
             /* noise_mode: 低失真模式(0x00)     常规模式(0x01) 低噪声模式(0x02) */
             noise_mode = *((uint8_t *)data);
             printf_note("[**RF**]ch=%d, noise_mode=%d\n", ch, noise_mode);
-#ifdef defined(SUPPORT_RF_ADRV9009)
+#ifdef defined(SUPPORT_RF_ADRV)
 #elif  defined(SUPPORT_RF_SPI)
             ret = spi_rf_set_command(SPI_RF_NOISE_MODE_SET, &noise_mode);
             usleep(300);
@@ -166,8 +166,8 @@ uint8_t rf_set_interface(uint8_t cmd,uint8_t ch,void *data){
                 break;
             }
             printf_note("[**RF**]ch=%d, mgc_gain_value=%d\n",ch, mgc_gain_value);
-#ifdef SUPPORT_RF_ADRV9009
-            adrv9009_iio_set_gain(mgc_gain_value);
+#ifdef SUPPORT_RF_ADRV
+            adrv_set_rx_gain(mgc_gain_value);
 #elif defined(SUPPORT_RF_SPI)
             ret = spi_rf_set_command(SPI_RF_MIDFREQ_GAIN_SET, &mgc_gain_value);
             usleep(300);
@@ -198,7 +198,7 @@ uint8_t rf_set_interface(uint8_t cmd,uint8_t ch,void *data){
             int8_t rf_gain_value = 0;
             rf_gain_value = *((int8_t *)data);
             printf_note("[**RF**]ch=%d, rf_gain_value=%d\n",ch, rf_gain_value);
-#ifdef SUPPORT_RF_ADRV9009
+#ifdef SUPPORT_RF_ADRV
             gpio_select_rf_attenuation(rf_gain_value);
 #elif defined(SUPPORT_RF_SPI)
             ret = spi_rf_set_command(SPI_RF_GAIN_SET, &rf_gain_value);
@@ -376,8 +376,8 @@ int8_t rf_init(void)
     int ret = -1;
     uint8_t status = 0;
     printf_note("RF init...!\n");
-#ifdef SUPPORT_RF_ADRV9009
-    adrv9009_iio_init();
+#ifdef SUPPORT_RF_ADRV
+    adrv_init();
 #endif
 #if defined(SUPPORT_RF_SPI)
     ret = spi_rf_init();

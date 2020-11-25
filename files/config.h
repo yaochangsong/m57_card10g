@@ -82,11 +82,8 @@
 #include "device/gps/gps_com.h"
 #endif
 
-#if defined (SUPPORT_RF_ADRV9009)
-#include "device/rf/adrv9009/adrv9009-iiostream.h"
-#endif
-#if defined (SUPPORT_RF_ADRV9361)
-#include "device/rf/adrv9361/adrv9361.h"
+#if defined (SUPPORT_RF_ADRV)
+#include "device/rf/adrv/adrv.h"
 #endif
 #if defined (SUPPORT_TEMP_HUMIDITY_SI7021)
 #include "device/humidity/si7021.h" 

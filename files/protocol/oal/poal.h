@@ -243,6 +243,16 @@ struct poal_fpga_Info{
     uint16_t temprature;
 }__attribute__ ((packed));
 
+struct poal_compile_Info{
+    char *build_name;
+    char *build_time;
+    char *build_version;
+    char *build_jenkins_id;
+    char *code_url;
+    char *code_branch;
+    char *code_hash;
+    char *release_debug;
+}__attribute__ ((packed));
 
 
 struct poal_status_info{
@@ -252,6 +262,7 @@ struct poal_status_info{
     struct poal_ad_Info   adInfo;  
     struct poal_rf_Info   rfInfo;
     struct poal_fpga_Info  fpgaInfo;
+    struct poal_compile_Info compileInfo;
     char *device_sn;
 }__attribute__ ((packed));
 
@@ -287,7 +298,7 @@ struct calibration_mgc_attenuation_node_st{
 
 
 struct calibration_specturm_v2_st{
-    struct calibration_specturm_node_st cal_node[32];
+    struct calibration_specturm_node_st cal_node[128];
     struct calibration_attenuation_node_st att_node[3];
     struct calibration_mgc_attenuation_node_st mgc_attr_node;
     int global_roughly_power_lever;

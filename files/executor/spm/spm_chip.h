@@ -15,10 +15,8 @@
 #ifndef _SPM_CHIP_H
 
 
-#ifdef SUPPORT_RF_ADRV9009
-#define specturm_rx0_read_data adrv9009_iio_read_rx0_data
-#elif defined (SUPPORT_RF_ADRV9361)
-#define specturm_rx0_read_data adrv9361_iio_read_rx0_data
+#ifdef SUPPORT_RF_ADRV
+#define specturm_rx0_read_data adrv_read_rx_data
 #else
 #define specturm_rx0_read_data
 #endif

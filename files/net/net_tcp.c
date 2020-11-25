@@ -332,8 +332,12 @@ static inline void tcp_keepalive_cb(struct uloop_timeout *timeout)
 {
     
     struct net_tcp_client *cl = container_of(timeout, struct net_tcp_client, timeout);
+    uloop_timeout_set(&cl->timeout, TCP_CONNECTION_TIMEOUT * 1000);
+    printf_note("tcp_keepalive_probes = %d\n", cl->tcp_keepalive_probes);
+    if(++cl->tcp_keepalive_probes >= TCP_MAX_KEEPALIVE_PROBES){
     printf_note("keepalive: find %s:%d disconnect; free\n", cl->get_peer_addr(cl), cl->get_peer_port(cl));
     tcp_free(cl);
+    }
 }
 
 /* 网络连接时，保活定时器更新；此操作为TCP客户端连接 */
@@ -383,6 +387,7 @@ static void tcp_accept_cb(struct uloop_fd *fd, unsigned int events)
     cl->us->string_data = true;
     ustream_fd_init(&cl->sfd, sfd);
 
+    cl->tcp_keepalive_probes = 0;
     cl->timeout.cb = tcp_keepalive_cb;
     uloop_timeout_set(&cl->timeout, TCP_CONNECTION_TIMEOUT * 1000);
 
@@ -456,7 +461,7 @@ uint32_t tcp_get_addr(void)
 struct net_tcp_server *tcp_server_new(const char *host, int port)
 {
     struct net_tcp_server *srv;
-    int sock;
+    int sock, _err;
     
     sock = usock(USOCK_TCP | USOCK_SERVER | USOCK_IPV4ONLY, host, usock_port(port));
     if (sock < 0) {
@@ -464,6 +469,11 @@ struct net_tcp_server *tcp_server_new(const char *host, int port)
         return NULL;
     }
     printf_debug("sock=%d\n", sock);
+    int opt = 6;
+    _err = setsockopt(sock, SOL_SOCKET, SO_PRIORITY, &opt, sizeof(opt));
+    if(_err){
+        printf_err("setsockopt SO_PRIORITY failure \n");
+    }
     srv = calloc(1, sizeof(struct net_tcp_server));
     if (!srv) {
         uh_log_err("calloc");

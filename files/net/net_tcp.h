@@ -8,6 +8,7 @@
 
 #define MAX_SEND_DATA_LEN  1024
 #define TCP_CONNECTION_TIMEOUT 60
+#define TCP_MAX_KEEPALIVE_PROBES 3
 
 enum net_tcp_state {
     NET_TCP_CLIENT_STATE_HEADER,
@@ -42,6 +43,7 @@ struct net_tcp_client {
     struct dispatch dispatch;
     bool connection_close;
     int response_length;
+    int tcp_keepalive_probes;
     void (*parse_header)(struct net_tcp_client *cl, const void *data, int len);
     void (*parse_data)(struct net_tcp_client *cl, const void *data, int len);
     void (*free)(struct net_tcp_client *cl);

@@ -1800,7 +1800,7 @@ uint8_t *akt_assamble_demodulation_header_data(uint32_t *len, void *config)
     ext_hdr->center_freq = header_param->m_freq;
     ext_hdr->bandwidth = header_param->bandwidth;
     ext_hdr->demodulate_type = header_param->d_method;
-    ext_hdr->sample_rate = 0;
+    ext_hdr->sample_rate = header_param->sample_rate;
     ext_hdr->frag_total_num = 1;
     ext_hdr->frag_cur_num = 0;
     ext_hdr->frag_data_len = (int16_t)(header_param->data_len);
@@ -1863,7 +1863,7 @@ uint8_t *akt_assamble_data_extend_frame_header_data(uint32_t *len, void *config)
     ext_hdr->bandwidth = header_param->bandwidth;
     ext_hdr->start_freq = header_param->s_freq;
     ext_hdr->cutoff_freq = header_param->e_freq;
-    ext_hdr->sample_rate = 0;
+    ext_hdr->sample_rate = header_param->sample_rate;;
     ext_hdr->fft_len = header_param->fft_size;
     ext_hdr->freq_resolution = header_param->freq_resolution;
     ext_hdr->frag_total_num = 1;

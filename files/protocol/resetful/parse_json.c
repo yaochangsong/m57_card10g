@@ -870,19 +870,13 @@ char *assemble_json_rf_info(void)
     int16_t  rf_temp = 0;
     for(i = 0; i <MAX_RADIO_CHANNEL_NUM; i++){
         cJSON_AddItemToArray(array, item = cJSON_CreateObject());
-        cJSON_AddNumberToObject(item, "ch", i);
-#ifdef SUPPORT_SPECTRUM_SCAN_SEGMENT
-    for(j = 0; j < RF_ONE_CHANNEL_NUM; j++)
-#endif
-        {
-            cJSON_AddNumberToObject(item, "index", j);
-            executor_get_command(EX_RF_FREQ_CMD, EX_RF_STATUS_TEMPERAT, i,  &rf_temp, j);
-            if(rf_temp > 200 || rf_temp < -100 || rf_temp == 0)
-                cJSON_AddStringToObject(item, "status", "no");
-            else
-                cJSON_AddStringToObject(item, "status", "ok");
-            cJSON_AddNumberToObject(item, "temperature", rf_temp);
-        }
+        cJSON_AddNumberToObject(item, "index", i);
+        executor_get_command(EX_RF_FREQ_CMD, EX_RF_STATUS_TEMPERAT, i,  &rf_temp, 0);
+        if(rf_temp > 200 || rf_temp < -100 || rf_temp == 0)
+            cJSON_AddStringToObject(item, "status", "no");
+        else
+            cJSON_AddStringToObject(item, "status", "ok");
+        cJSON_AddNumberToObject(item, "temperature", rf_temp);
     }
    str_json = cJSON_PrintUnformatted(array);
    return str_json;

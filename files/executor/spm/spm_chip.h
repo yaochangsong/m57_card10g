@@ -33,11 +33,7 @@
 #define fft_spectrum_get_result       
 #endif
 
-#ifdef SUPPORT_SPECTRUM_SCAN_SEGMENT
-#ifndef RF_ONE_CHANNEL_NUM
-#define RF_ONE_CHANNEL_NUM 1            /* 一个通道射频数 */
-#endif
-
+#ifdef  SUPPORT_SPECTRUM_SCAN_SEGMENT
 #ifndef RF_DIVISION_FREQ_HZ
     #ifdef SUPPORT_PROJECT_SSA_MONITOR
     #define RF_DIVISION_FREQ_HZ   GHZ(7.5) 

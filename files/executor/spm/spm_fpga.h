@@ -16,6 +16,7 @@
 #define _SPM_FPGA_H
 
 #define DMA_FFT_DEV "/dev/dma_fft"
+#define DMA_FFT2_DEV "/dev/dma_fft2"
 #define DMA_IQ_DEV  "/dev/dma_iq"
 #define DMA_ADC_TX_DEV "/dev/dma_adc_tx"
 #define DMA_ADC_RX_DEV "/dev/dma_adc_rx"

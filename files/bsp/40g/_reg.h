@@ -35,9 +35,6 @@
 #define CONFG_AUDIO_OFFSET       0x800
 
 
-#ifndef RF_ONE_CHANNEL_NUM
-#define RF_ONE_CHANNEL_NUM 2            /* 一个通道射频数 */
-#endif
 #ifndef RF_DIVISION_FREQ_HZ
 #define RF_DIVISION_FREQ_HZ  GHZ(18)    /* 射频频段划分 */
 #endif
@@ -138,7 +135,7 @@ typedef struct _FPGA_CONFIG_REG_
 	SYSTEM_CONFG_REG *system;
     ADC_REG         *adcReg;
     SIGNAL_REG      *signal;
-    RF_REG          *rfReg[RF_ONE_CHANNEL_NUM];
+    RF_REG          *rfReg[MAX_RADIO_CHANNEL_NUM];
     AUDIO_REG		*audioReg;
 	BROAD_BAND_REG  *broad_band;
 	NARROW_BAND_REG *narrow_band[NARROW_BAND_CHANNEL_MAX_NUM];
@@ -200,11 +197,10 @@ static inline int32_t _reg_get_rf_temperature(int ch, int index, FPGA_CONFIG_REG
     #define RF_TEMPERATURE_FACTOR 0.0625
     int16_t  rf_temperature = 0;
 
-    if(index >= RF_ONE_CHANNEL_NUM)
-        return -1;
-    rf_temperature = reg->rfReg[index]->temperature;
+    index = index;
+    rf_temperature = reg->rfReg[ch]->temperature;
     usleep(100);
-    rf_temperature = reg->rfReg[index]->temperature;
+    rf_temperature = reg->rfReg[ch]->temperature;
     rf_temperature = rf_temperature * RF_TEMPERATURE_FACTOR;
     
     return rf_temperature;
@@ -215,12 +211,10 @@ static inline bool _reg_get_rf_ext_clk(int ch, int index, FPGA_CONFIG_REG *reg)
     int32_t  inout = 0;
     bool is_ext = false;
 
-    if(index >= RF_ONE_CHANNEL_NUM)
-        return -1;
-    
-    inout = reg->rfReg[index]->in_out_clk;
+    index = index;
+    inout = reg->rfReg[ch]->in_out_clk;
     usleep(100);
-    inout = reg->rfReg[index]->in_out_clk;
+    inout = reg->rfReg[ch]->in_out_clk;
     /*  1: out clock 0: in clock */
     is_ext = (((inout & 0x01) == 0) ? false : true);
     
@@ -232,12 +226,10 @@ static inline bool _reg_get_rf_lock_clk(int ch, int index, FPGA_CONFIG_REG *reg)
     int32_t  lock = 0;
     bool is_lock = false;
 
-    if(index >= RF_ONE_CHANNEL_NUM)
-        return -1;
-    
-    lock = reg->rfReg[index]->clk_lock;
+    index = index;
+    lock = reg->rfReg[ch]->clk_lock;
     usleep(100);
-    lock = reg->rfReg[index]->clk_lock;
+    lock = reg->rfReg[ch]->clk_lock;
     
     is_lock = (lock == 0 ? false : true);
     return is_lock;
@@ -248,7 +240,10 @@ static inline bool _reg_get_rf_lock_clk(int ch, int index, FPGA_CONFIG_REG *reg)
 static inline void _reg_set_rf_frequency(int ch, int index, uint32_t freq_hz, FPGA_CONFIG_REG *reg)
 {
     uint32_t freq_khz = freq_hz/1000;
-    reg->rfReg[0]->freq_khz = freq_khz;
+    if(freq_hz > RF_DIVISION_FREQ_HZ)
+        reg->rfReg[1]->freq_khz = freq_khz;
+    else
+        reg->rfReg[0]->freq_khz = freq_khz;
     usleep(300);
 }
 
@@ -279,7 +274,7 @@ static inline void _reg_set_rf_bandwidth(int ch, int index, uint32_t bw_hz, FPGA
         printf("NOT found bandwidth %uHz in tables,use default[200Mhz]\n", mbw);
         set_val = 0x03; /* default 200MHz */
     }
-    for(i = 0; i < RF_ONE_CHANNEL_NUM; i++){
+    for(i = 0; i < MAX_RADIO_CHANNEL_NUM; i++){
         reg->rfReg[i]->mid_band = set_val;
         usleep(100);
         reg->rfReg[i]->mid_band = set_val;
@@ -313,7 +308,7 @@ static inline void _reg_set_rf_mode_code(int ch, int index, uint8_t code, FPGA_C
             printf("NOT found noise mode %uHz in tables,use default normal mode[0]\n", code);
             set_val = 0x00; /* default normal mode */
         }
-        for(i = 0; i < RF_ONE_CHANNEL_NUM; i++){
+        for(i = 0; i < MAX_RADIO_CHANNEL_NUM; i++){
             reg->rfReg[i]->rf_mode = set_val;
             usleep(100);
             reg->rfReg[i]->rf_mode = set_val;
@@ -327,7 +322,7 @@ static inline void _reg_set_rf_mgc_gain(int ch, int index, uint8_t gain, FPGA_CO
         gain = 30;
     else if(gain < 0)
         gain = 0;
-    for(i = 0; i < RF_ONE_CHANNEL_NUM; i++){
+    for(i = 0; i < MAX_RADIO_CHANNEL_NUM; i++){
         reg->rfReg[i]->midband_minus = gain;
         usleep(100);
         reg->rfReg[i]->midband_minus = gain;
@@ -342,7 +337,7 @@ static inline void _reg_set_rf_attenuation(int ch, int index, uint8_t atten, FPG
         atten = 30;
     else if(atten < 0)
         atten = 0;
-    for(i = 0; i < RF_ONE_CHANNEL_NUM; i++){
+    for(i = 0; i < MAX_RADIO_CHANNEL_NUM; i++){
         reg->rfReg[i]->rf_minus = atten;
         usleep(100);
         reg->rfReg[i]->rf_minus = atten;
@@ -365,7 +360,7 @@ static inline void _reg_set_rf_cali_source_attenuation(int ch, int index, uint8_
     level = -level;
     reg_val = level - 30;
 
-    for(i = 0; i < RF_ONE_CHANNEL_NUM; i++){
+    for(i = 0; i < MAX_RADIO_CHANNEL_NUM; i++){
         reg->rfReg[i]->revise_minus = reg_val;
         usleep(100);
         reg->rfReg[i]->revise_minus = reg_val;
@@ -381,7 +376,7 @@ static inline void _reg_set_rf_direct_sample_ctrl(int ch, int index, uint8_t val
     index = index;
     data = (val == 0 ? 0 : 0x01);
     /* 0关闭直采，1开启直采 */
-    for(i = 0; i < RF_ONE_CHANNEL_NUM; i++){
+    for(i = 0; i < MAX_RADIO_CHANNEL_NUM; i++){
         reg->rfReg[i]->direct_control = data;
         usleep(100);
         reg->rfReg[i]->direct_control = data;
@@ -394,7 +389,7 @@ static inline void _reg_set_rf_cali_source_choise(int ch, int index, uint8_t val
     
     /* 0 为外部射频输入，1 为校正源输入 */
     _reg = (val == 0 ? 0 : 1);
-    for(i = 0; i < RF_ONE_CHANNEL_NUM; i++){
+    for(i = 0; i < MAX_RADIO_CHANNEL_NUM; i++){
         reg->rfReg[i]->input = _reg;
         usleep(100);
         reg->rfReg[i]->input = _reg;

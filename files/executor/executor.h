@@ -141,6 +141,8 @@ struct spm_run_parm{
     uint32_t fft_sn;
     uint32_t total_fft;
     uint32_t fregment_num;
+    uint32_t sample_rate;
+    uint32_t data_len;
     uint64_t s_freq;             /* 开始频率 */
     uint64_t s_freq_offset;      /* 开始频率偏移 */
     uint64_t e_freq;             /* 截止频率 */
@@ -150,7 +152,6 @@ struct spm_run_parm{
     uint8_t ch;
     uint8_t datum_type;          /* 0x00：字符型 0x01：短整型 0x02 浮点型 */
     uint8_t mode;
-    uint32_t data_len;
     uint8_t d_method;           /* 解调类型 */
     uint8_t type;               /* 数据类型： 频谱数据/IQ数据/音频数据 */
     uint8_t ex_type;            /* 扩展帧类型： 频谱帧/解调帧 */

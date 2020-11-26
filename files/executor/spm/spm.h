@@ -23,6 +23,7 @@ typedef int16_t iq_t;
 enum stream_type {
     STREAM_IQ = 0,
     STREAM_FFT,
+    STREAM_FFT_2,
     STREAM_ADC_WRITE,
     STREAM_ADC_READ,
 };
@@ -63,7 +64,7 @@ struct spm_backend_ops {
 };
 
 
-#include "config.h"
+#include "platform.h"
 struct spm_context {
     struct poal_config *pdata;
     const struct spm_backend_ops *ops;
@@ -71,15 +72,25 @@ struct spm_context {
 };
 
 extern pthread_mutex_t send_fft_mutex;
+extern pthread_mutex_t send_fft2_mutex;
 extern pthread_mutex_t send_iq_mutex;
 
-#define __lock_fft_send__() do { \
-    pthread_mutex_lock(&send_fft_mutex); \
+#define __lock_fft_send__() do {           \
+        pthread_mutex_lock(&send_fft_mutex); \
 } while (0)
 
 #define __unlock_fft_send__() do { \
     pthread_mutex_unlock(&send_fft_mutex); \
 } while (0)
+
+#define __lock_fft2_send__() do { \
+    pthread_mutex_lock(&send_fft2_mutex); \
+} while (0)
+
+#define __unlock_fft2_send__() do { \
+    pthread_mutex_unlock(&send_fft2_mutex); \
+} while (0)
+
 
 #define __lock_iq_send__() do { \
     pthread_mutex_lock(&send_iq_mutex); \
@@ -91,11 +102,13 @@ extern pthread_mutex_t send_iq_mutex;
 
 #define __lock_send__() do { \
     __lock_fft_send__(); \
+    __lock_fft2_send__(); \
     __lock_iq_send__(); \
 } while (0)
 
 #define __unlock_send__() do { \
     __unlock_fft_send__(); \
+    __unlock_fft2_send__(); \
     __unlock_iq_send__(); \
 } while (0)
 extern void *spm_init(void);

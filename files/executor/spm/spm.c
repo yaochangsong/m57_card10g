@@ -30,6 +30,7 @@ static pthread_cond_t spm_iq_cond = PTHREAD_COND_INITIALIZER;
 static pthread_mutex_t spm_iq_cond_mutex = PTHREAD_MUTEX_INITIALIZER;
 /* send mutex */
 pthread_mutex_t send_fft_mutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t send_fft2_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t send_iq_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 
@@ -99,12 +100,7 @@ loop:
     do{
         len = ctx->ops->read_iq_data(&ptr_iq);
         
-       // printf_debug("reve handle: len=%d, ptr=%p, %d\n", len, ptr_iq, ctx->pdata->sub_ch_enable.iq_en);
         if(len > 0){
-           // for(i = 0; i < 16; i++){
-           //    printfd("%x ", ptr_iq[i]);
-           // }
-           // printfd("\n----------[%d]---------\n", len);
             ctx->ops->send_iq_data(ptr_iq, len, &run);
         }
         if(subch_bitmap_weight() == 0){

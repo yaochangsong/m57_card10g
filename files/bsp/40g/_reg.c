@@ -54,7 +54,7 @@ static int fpga_memmap(int fd_dev, FPGA_CONFIG_REG *fpga_reg)
     }
     printf_debug("virtual address:%p, physical address:0x%x\n", fpga_reg->system, FPGA_SYSETM_BASE);
 
-    for(i = 0; i < RF_ONE_CHANNEL_NUM; i++){
+    for(i = 0; i < MAX_RADIO_CHANNEL_NUM; i++){
         fpga_reg->rfReg[i] = (uint8_t *)fpga_reg->system +CONFG_REG_LEN;
         if (!fpga_reg->rfReg[i])
         {

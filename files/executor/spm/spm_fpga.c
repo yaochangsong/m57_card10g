@@ -159,6 +159,7 @@ static inline const char * get_str_by_code(const char *const *list, int max, int
 static struct _spm_stream spm_stream[] = {
         {DMA_IQ_DEV,  -1, NULL, DMA_BUFFER_16M_SIZE, "IQ Stream", DMA_READ},
         {DMA_FFT_DEV, -1, NULL, DMA_BUFFER_16M_SIZE, "FFT Stream", DMA_READ},
+        {DMA_FFT2_DEV, -1, NULL, DMA_BUFFER_16M_SIZE, "FFT2 Stream", DMA_READ},
         {DMA_ADC_TX_DEV, -1, NULL, DMA_BUFFER_128M_SIZE, "ADC Tx Stream", DMA_WRITE},
         {DMA_ADC_RX_DEV, -1, NULL, DMA_BUFFER_128M_SIZE, "ADC Rx Stream", DMA_READ},
 };
@@ -257,8 +258,14 @@ static ssize_t spm_read_iq_data(void **data)
 
 static ssize_t spm_read_fft_data(void **data, void *args)
 {
-    args = args;
-    return spm_stream_read(STREAM_FFT, data);
+    ssize_t nread;
+    
+    struct spm_run_parm *run_args = args;
+    if(run_args->ch == 0)
+        nread = spm_stream_read(STREAM_FFT, data);
+    else
+        nread = spm_stream_read(STREAM_FFT_2, data);
+    return nread;
 }
 
 static ssize_t spm_read_adc_data(void **data)
@@ -394,6 +401,7 @@ static int spm_send_fft_data(void *data, size_t fft_len, void *arg)
     struct spm_run_parm *hparam;
     hparam = (struct spm_run_parm *)arg;
     hparam->data_len = data_byte_size; 
+    hparam->sample_rate = get_side_band_rate(hparam->scan_bw)*hparam->scan_bw;
     hparam->type = SPECTRUM_DATUM_FLOAT;
     hparam->ex_type = SPECTRUM_DATUM;
     if((ptr_header = akt_assamble_data_frame_header_data(&header_len, arg)) == NULL){
@@ -415,9 +423,15 @@ static int spm_send_fft_data(void *data, size_t fft_len, void *arg)
     iov[0].iov_len = header_len;
     iov[1].iov_base = data;
     iov[1].iov_len = data_byte_size;
-    __lock_fft_send__();
+    if(hparam->ch == 0)
+        __lock_fft_send__();
+    else
+        __lock_fft2_send__();
     udp_send_vec_data(iov, 2);
-    __unlock_fft_send__();
+    if(hparam->ch == 0)
+        __unlock_fft_send__();
+    else
+        __unlock_fft2_send__();
     safe_free(ptr_header);
     return (header_len + data_byte_size);
 }

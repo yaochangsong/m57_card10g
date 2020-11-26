@@ -12,5 +12,4 @@
 *  Rev 1.0   06 July 2019   yaochangsong
 *  Initial revision.
 ******************************************************************************/
-#include "config.h"
 

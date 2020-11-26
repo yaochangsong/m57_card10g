@@ -16,6 +16,8 @@
 #define _FPGA_REG_H_
 
 #include <stdint.h>
+#include "platform.h"
+
 
 #define FPGA_REG_DEV "/dev/mem"
 

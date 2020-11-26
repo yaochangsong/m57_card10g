@@ -83,7 +83,41 @@ uint32_t fftsize_check(uint32_t fft_size)
     return _DEFAULT_FFT_SIZE;
 }
 
+#ifdef SUPPORT_SPECTRUM_SCAN_SEGMENT
+static int scan_segment_param_convert(uint8_t ch)
+{
+    uint32_t i = 0, j = 0;
+    struct poal_config *poal_config = &(config_get_config()->oal_config);
+    struct multi_freq_fregment_para_st *fregment;
+    struct freq_fregment_para_st  array_fregment[MAX_SIG_CHANNLE];
+    if (poal_config->channel[ch].work_mode != OAL_FAST_SCAN_MODE && poal_config->channel[ch].work_mode != OAL_MULTI_ZONE_SCAN_MODE) {
+        return 0;
+    }
+    fregment = &poal_config->channel[ch].multi_freq_fregment_para;
+    for (i = 0; i < fregment->freq_segment_cnt; i++) {
+        if (fregment->fregment[i].start_freq < SCAN_1SEGMENT_FREQ_HZ && fregment->fregment[i].end_freq > SCAN_1SEGMENT_FREQ_HZ) {
+             memcpy(&array_fregment[j], &fregment->fregment[i], sizeof(struct freq_fregment_para_st));
+             array_fregment[j].end_freq = SCAN_1SEGMENT_FREQ_HZ;
+             j++;
+             memcpy(&array_fregment[j], &fregment->fregment[i], sizeof(struct freq_fregment_para_st));
+             array_fregment[j].start_freq = SCAN_1SEGMENT_FREQ_HZ;
+             j++;
+        } else {
+            memcpy(&array_fregment[j], &fregment->fregment[i], sizeof(struct freq_fregment_para_st));
+            j++;
+        }
+    }
+    if (j > fregment->freq_segment_cnt) {
+        fregment->freq_segment_cnt = j;
+        if(fregment->freq_segment_cnt > 1) {
+            poal_config->channel[ch].work_mode = OAL_MULTI_ZONE_SCAN_MODE;
+        }
+        memcpy(&fregment->fregment[0], &array_fregment[0], sizeof(struct freq_fregment_para_st)*MAX_SIG_CHANNLE);
+    }
 
+    return 0;
+}
+#endif
 /******************************************************************************
 * FUNCTION:
 *     akt_convert_oal_config
@@ -561,6 +595,9 @@ static int akt_execute_set_command(void *cl)
                 err_code = RET_CODE_PARAMTER_NOT_SET;
                 goto set_exit;
             }
+            #ifdef SUPPORT_SPECTRUM_SCAN_SEGMENT
+            scan_segment_param_convert(ch);
+            #endif
             /*need to enable out, take effect*/
             break;
         }

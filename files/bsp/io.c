@@ -429,7 +429,7 @@ int32_t io_set_dec_parameter(uint32_t ch, uint64_t dec_middle_freq, uint8_t dec_
 static uint32_t io_set_dec_middle_freq_reg(uint64_t dec_middle_freq, uint64_t middle_freq)
 {
         /* delta_freq = (reg* 204800000)/2^32 ==>  reg= delta_freq*2^32/204800000 */
-#if defined(SUPPORT_PROJECT_WD_XCR)
+#if defined(SUPPORT_PROJECT_WD_XCR) || defined(SUPPORT_PROJECT_WD_XCR_40G)
 #define FREQ_MAGIC1 (256000000)
 #else
 #define FREQ_MAGIC1 (204800000)
@@ -794,10 +794,13 @@ void io_set_rf_calibration_source_level(int level)
     level = -level;
     reg_val = level - 30;
     printf_note("calibration source level = %d\n", reg_val);
-    #if defined(SUPPORT_SPECTRUM_FPGA)
+#if defined(SUPPORT_SPECTRUM_FPGA)
     //get_fpga_reg()->rfReg->revise_minus = reg_val;
     SET_RF_CALIB_SOURCE_ATTENUATION(get_fpga_reg(),reg_val);
+    #if defined(SUPPORT_SPECTRUM_SCAN_SEGMENT)
+    SET_RF2_CALIB_SOURCE_ATTENUATION(get_fpga_reg(),reg_val);
     #endif
+#endif
     usleep(300);
 }
 void io_set_rf_calibration_source_enable(int ch, int enable)
@@ -808,10 +811,12 @@ void io_set_rf_calibration_source_enable(int ch, int enable)
         return;
     reg = (enable == 0 ? 0 : 1);
     /* 0 为外部射频输入，1 为校正源输入 */
-    #if defined(SUPPORT_SPECTRUM_FPGA)
+#if defined(SUPPORT_SPECTRUM_FPGA)
     SET_RF_CALIB_SOURCE_CHOISE(get_fpga_reg(),reg);
-    //get_fpga_reg()->rfReg->input = reg;
+    #if defined(SUPPORT_SPECTRUM_SCAN_SEGMENT)
+    SET_RF2_CALIB_SOURCE_CHOISE(get_fpga_reg(),reg);
     #endif
+#endif
     usleep(300);
     poal_config->channel[ch].enable.cali_source_en = (enable == 0 ? 0 : 1);
     printf_note("cali_source_en: 0x%x\n", poal_config->channel[ch].enable.cali_source_en);

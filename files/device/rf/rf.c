@@ -46,9 +46,15 @@ uint8_t rf_set_interface(uint8_t cmd,uint8_t ch,void *data){
                 break;
             }
     #endif
+    #if defined(SUPPORT_SPECTRUM_SCAN_SEGMENT)
+            if(old_freq > SCAN_1SEGMENT_FREQ_HZ){
+                SET_RF2_MID_FREQ(get_fpga_reg(),freq_khz);
+            }else
+    #endif
+    {
             printf_note("freq_khz=%ukhz\n", freq_khz);
             SET_RF_MID_FREQ(get_fpga_reg(),freq_khz);
-            //get_fpga_reg()->rfReg->freq_khz = freq_khz;
+    }
             usleep(300);
 #endif
             break; 
@@ -98,10 +104,14 @@ uint8_t rf_set_interface(uint8_t cmd,uint8_t ch,void *data){
                 set_val = 0x03; /* default 200MHz */
             }
             SET_RF_BAND(get_fpga_reg(),set_val);
-            //get_fpga_reg()->rfReg->mid_band = set_val;
+            #if defined(SUPPORT_SPECTRUM_SCAN_SEGMENT)
+            SET_RF2_BAND(get_fpga_reg(),set_val);
+            #endif
             usleep(100);
             SET_RF_BAND(get_fpga_reg(),set_val);
-            //get_fpga_reg()->rfReg->mid_band = set_val;
+            #if defined(SUPPORT_SPECTRUM_SCAN_SEGMENT)
+            SET_RF2_BAND(get_fpga_reg(),set_val);
+            #endif
 #endif
             break; 
         }
@@ -143,10 +153,14 @@ uint8_t rf_set_interface(uint8_t cmd,uint8_t ch,void *data){
                 set_val = 0x00; /* default normal mode */
             }
             printf_note("[**RF**]ch=%d, set rel noise mode=%d\n", ch, noise_mode);
-           //get_fpga_reg()->rfReg->rf_mode = set_val;
+            #if defined(SUPPORT_SPECTRUM_SCAN_SEGMENT)
+            SET_RF2_MODE(get_fpga_reg(),set_val);
+            #endif
             SET_RF_MODE(get_fpga_reg(),set_val);
             usleep(100);
-            //get_fpga_reg()->rfReg->rf_mode = set_val;
+            #if defined(SUPPORT_SPECTRUM_SCAN_SEGMENT)
+            SET_RF2_MODE(get_fpga_reg(),set_val);
+            #endif
             SET_RF_MODE(get_fpga_reg(),set_val);
 #endif
             break; 
@@ -177,10 +191,15 @@ uint8_t rf_set_interface(uint8_t cmd,uint8_t ch,void *data){
                 mgc_gain_value = 30;
             else if(mgc_gain_value < 0)
                 mgc_gain_value = 0;
+            
+            #if defined(SUPPORT_SPECTRUM_SCAN_SEGMENT)
+            SET_RF2_IF_ATTENUATION(get_fpga_reg(),mgc_gain_value);
+            #endif
             SET_RF_IF_ATTENUATION(get_fpga_reg(),mgc_gain_value);
-            //get_fpga_reg()->rfReg->midband_minus = mgc_gain_value;
             usleep(100);
-            //get_fpga_reg()->rfReg->midband_minus = mgc_gain_value;
+            #if defined(SUPPORT_SPECTRUM_SCAN_SEGMENT)
+            SET_RF2_IF_ATTENUATION(get_fpga_reg(),mgc_gain_value);
+            #endif
             SET_RF_IF_ATTENUATION(get_fpga_reg(),mgc_gain_value);
 #endif
             break; 
@@ -209,10 +228,14 @@ uint8_t rf_set_interface(uint8_t cmd,uint8_t ch,void *data){
                 rf_gain_value = 30;
             else if(rf_gain_value < 0)
                 rf_gain_value = 0;
+            #if defined(SUPPORT_SPECTRUM_SCAN_SEGMENT)
+            SET_RF2_ATTENUATION(get_fpga_reg(),rf_gain_value);
+             #endif
             SET_RF_ATTENUATION(get_fpga_reg(),rf_gain_value);
-            //get_fpga_reg()->rfReg->rf_minus = rf_gain_value;
             usleep(100);
-            //get_fpga_reg()->rfReg->rf_minus = rf_gain_value;
+            #if defined(SUPPORT_SPECTRUM_SCAN_SEGMENT)
+            SET_RF2_ATTENUATION(get_fpga_reg(),rf_gain_value);
+             #endif
             SET_RF_ATTENUATION(get_fpga_reg(),rf_gain_value);
 #endif
             break; 

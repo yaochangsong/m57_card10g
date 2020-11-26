@@ -316,7 +316,7 @@ void executor_spm_thread(void *arg)
         
 loop:   printf_note("######channel[%d] wait to deal work######\n", ch);
         sem_wait(&work_sem.notify_deal[ch]);
-#if defined(SUPPORT_PROJECT_WD_XCR)
+#if defined(SUPPORT_PROJECT_WD_XCR) || defined(SUPPORT_PROJECT_WD_XCR_40G)
         if(poal_config->channel[ch].enable.bit_en == 0)
             safe_system("/etc/led.sh transfer off &");
         else

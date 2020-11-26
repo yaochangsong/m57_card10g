@@ -190,6 +190,11 @@ ifneq ($(findstring y,$(SUPPORT_SPECTRUM_ANALYSIS)),)
 	C_VAR += -DSUPPORT_SPECTRUM_ANALYSIS
 endif
 
+ifneq ($(findstring y,$(SUPPORT_SPECTRUM_SCAN_SEGMENT)),)
+	C_VAR += -DSUPPORT_SPECTRUM_SCAN_SEGMENT
+endif
+
+
 #specturm kernel
 ifneq ($(findstring y,$(SUPPORT_SPECTRUM_KERNEL)),)
 	C_VAR += -DSUPPORT_SPECTRUM_KERNEL
@@ -218,6 +223,9 @@ ifneq ($(findstring y,$(SUPPORT_PROJECT_WD_XCR)),)
 else ifneq ($(findstring y,$(SUPPORT_PROJECT_160M_V2)),)
 	C_VAR += -DSUPPORT_PROJECT_160M_V2
 	SOURCE_DIR += bsp/160m_v2
+else ifneq ($(findstring y,$(SUPPORT_PROJECT_WD_XCR_40G)),)
+	C_VAR += -DSUPPORT_PROJECT_WD_XCR_40G
+	SOURCE_DIR += bsp/40g
 endif
 ifneq ($(findstring y,$(SUPPORT_PROJECT_SSA)),)
 	C_VAR += -DSUPPORT_PROJECT_SSA

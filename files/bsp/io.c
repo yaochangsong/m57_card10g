@@ -783,39 +783,20 @@ void io_set_dc_offset_calibrate_val(uint32_t ch, int32_t  val)
 
 void io_set_rf_calibration_source_level(int level)
 {
-    /*  射频模块-90～-30dBm 功率可调，步进 1dB 
-        接收机校正衰减有效范围为 寄存器0 dB～60dB
-    */
-    int reg_val;
-    if(level > -30)
-        level = -30;
-    else if(level < -90)
-        level = -90;
-    level = -level;
-    reg_val = level - 30;
-    printf_note("calibration source level = %d\n", reg_val);
+    
+    printf_note("calibration source level = %d\n", level);
 #if defined(SUPPORT_SPECTRUM_FPGA)
-    //get_fpga_reg()->rfReg->revise_minus = reg_val;
-    SET_RF_CALIB_SOURCE_ATTENUATION(get_fpga_reg(),reg_val);
-    #if defined(SUPPORT_SPECTRUM_SCAN_SEGMENT)
-    SET_RF2_CALIB_SOURCE_ATTENUATION(get_fpga_reg(),reg_val);
-    #endif
+    _reg_set_rf_cali_source_attenuation(0, 0, level, get_fpga_reg());
 #endif
-    usleep(300);
 }
 void io_set_rf_calibration_source_enable(int ch, int enable)
 {
     struct poal_config *poal_config = &(config_get_config()->oal_config);
-    int reg;
     if((ch >= MAX_RADIO_CHANNEL_NUM) || (ch < 0))
         return;
-    reg = (enable == 0 ? 0 : 1);
-    /* 0 为外部射频输入，1 为校正源输入 */
+    
 #if defined(SUPPORT_SPECTRUM_FPGA)
-    SET_RF_CALIB_SOURCE_CHOISE(get_fpga_reg(),reg);
-    #if defined(SUPPORT_SPECTRUM_SCAN_SEGMENT)
-    SET_RF2_CALIB_SOURCE_CHOISE(get_fpga_reg(),reg);
-    #endif
+    _reg_set_rf_cali_source_choise(ch, 0, enable, get_fpga_reg());
 #endif
     usleep(300);
     poal_config->channel[ch].enable.cali_source_en = (enable == 0 ? 0 : 1);
@@ -1360,23 +1341,13 @@ bool io_get_clock_status(void *args)
 /*  1: out clock 0: in clock */
 bool io_get_inout_clock_status(void *args)
 {
-    int lock_ok=0, external_clk=0;
-    bool ret = false;
+    bool ret = false, is_lock_ok = false;
 #if defined(SUPPORT_SPECTRUM_FPGA)
-    external_clk = GET_RF_INOUT_CLK(get_fpga_reg());
-    //external_clk = get_fpga_reg()->rfReg->in_out_clk;
-    lock_ok=GET_RF_CLK_LOCK(get_fpga_reg());
-    //lock_ok = get_fpga_reg()->rfReg->clk_lock;
-    usleep(50);
-    external_clk = GET_RF_INOUT_CLK(get_fpga_reg());
-    //external_clk = get_fpga_reg()->rfReg->in_out_clk;
-    //lock_ok = get_fpga_reg()->rfReg->clk_lock;
-    lock_ok=GET_RF_CLK_LOCK(get_fpga_reg());
-    printf_note("external_clk=%d, lock_ok=%d\n", external_clk, lock_ok);
-    *(uint8_t *)args = (((external_clk & 0x01) == 0) ? 1 : 0);
-    ret = (lock_ok == 0 ? false : true);
+    ret = _reg_get_rf_ext_clk(0, 0, get_fpga_reg());
+    *(uint8_t *)args = (((ret & 0x01) == 0) ? 1 : 0);
+    is_lock_ok = _reg_get_rf_lock_clk(0, 0, get_fpga_reg());
 #endif
-    return ret;
+    return is_lock_ok;
 }
 
 uint32_t get_fpga_version(void)

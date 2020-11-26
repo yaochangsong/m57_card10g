@@ -115,21 +115,74 @@ typedef struct _FPGA_CONFIG_REG_
 #define AUDIO_REG(reg)                      0
 
 
-/*****rf*****/
+/* RF */
 /*GET*/
-#define GET_RF_TEMPERATURE(reg)				0
-#define GET_RF_CLK_LOCK(reg)				0
-#define GET_RF_INOUT_CLK(reg)				0
+/* 
+@ch: rf control channel
+@index: a channel may have multiple RF controls
+*/
+static inline int32_t _reg_get_rf_temperature(int ch, int index, FPGA_CONFIG_REG *reg)
+{
+    return 0;
+}
+
+static inline bool _reg_get_rf_ext_clk(int ch, int index, FPGA_CONFIG_REG *reg)
+{
+    int32_t  inout = false;
+    
+    return inout;
+}
+
+static inline bool _reg_get_rf_lock_clk(int ch, int index, FPGA_CONFIG_REG *reg)
+{
+    int32_t  lock = 0;
+    bool is_lock = false;
+    return is_lock;
+}
+
+/* RF */
 /*SET*/
-#define SET_RF_MID_FREQ(reg,v) 				
-#define SET_RF_ATTENUATION(reg,v) 			
-#define SET_RF_IF_ATTENUATION(reg,v) 		
-#define SET_RF_MODE(reg,v) 					
-#define SET_RF_BAND(reg,v) 					
-#define SET_RF_CALIB_SOURCE_CHOISE(reg,v) 	
-#define SET_RF_DIRECT_SAMPLE_CTRL(reg,v) 	
-#define SET_RF_CALIB_SOURCE_ATTENUATION(reg,v) 
-#define SET_RF_DIRECT_SAMPLE_ATTENUATION(reg,v)
+static inline void _reg_set_rf_frequency(int ch, int index, uint32_t freq_hz, FPGA_CONFIG_REG *reg)
+{
+
+}
+
+static inline void _reg_set_rf_bandwidth(int ch, int index, uint32_t bw_hz, FPGA_CONFIG_REG *reg)
+{
+  
+}
+
+static inline void _reg_set_rf_mode_code(int ch, int index, uint8_t code, FPGA_CONFIG_REG *reg)
+{
+
+}
+
+static inline void _reg_set_rf_mgc_gain(int ch, int index, uint8_t gain, FPGA_CONFIG_REG *reg)
+{
+
+}
+
+
+static inline void _reg_set_rf_attenuation(int ch, int index, uint8_t atten, FPGA_CONFIG_REG *reg)
+{
+ 
+}
+
+static inline void _reg_set_rf_cali_source_attenuation(int ch, int index, uint8_t level, FPGA_CONFIG_REG *reg)
+{
+ 
+}
+
+static inline void _reg_set_rf_direct_sample_ctrl(int ch, int index, uint8_t val, FPGA_CONFIG_REG *reg)
+{
+ 
+}
+
+static inline void _reg_set_rf_cali_source_choise(int ch, int index, uint8_t val, FPGA_CONFIG_REG *reg)
+{
+
+}
+
 
 extern FPGA_CONFIG_REG *get_fpga_reg(void);
 extern void fpga_io_init(void);

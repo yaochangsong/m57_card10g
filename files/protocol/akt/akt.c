@@ -95,12 +95,12 @@ static int scan_segment_param_convert(uint8_t ch)
     }
     fregment = &poal_config->channel[ch].multi_freq_fregment_para;
     for (i = 0; i < fregment->freq_segment_cnt; i++) {
-        if (fregment->fregment[i].start_freq < SCAN_1SEGMENT_FREQ_HZ && fregment->fregment[i].end_freq > SCAN_1SEGMENT_FREQ_HZ) {
+        if (fregment->fregment[i].start_freq < RF_DIVISION_FREQ_HZ && fregment->fregment[i].end_freq > RF_DIVISION_FREQ_HZ) {
              memcpy(&array_fregment[j], &fregment->fregment[i], sizeof(struct freq_fregment_para_st));
-             array_fregment[j].end_freq = SCAN_1SEGMENT_FREQ_HZ;
+             array_fregment[j].end_freq = RF_DIVISION_FREQ_HZ;
              j++;
              memcpy(&array_fregment[j], &fregment->fregment[i], sizeof(struct freq_fregment_para_st));
-             array_fregment[j].start_freq = SCAN_1SEGMENT_FREQ_HZ;
+             array_fregment[j].start_freq = RF_DIVISION_FREQ_HZ;
              j++;
         } else {
             memcpy(&array_fregment[j], &fregment->fregment[i], sizeof(struct freq_fregment_para_st));

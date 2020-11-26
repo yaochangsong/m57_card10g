@@ -121,16 +121,6 @@
 #define GHZ(x) ((long long)(x*1000000000.0 + .5))
 #endif
 
-/* 分段 */
-#ifdef SUPPORT_SPECTRUM_SCAN_SEGMENT
-    #ifdef SUPPORT_PROJECT_SSA_MONITOR
-    #define SCAN_1SEGMENT_FREQ_HZ   GHZ(7.5)
-    #elif defined(SUPPORT_PROJECT_WD_XCR_40G)
-     #define SCAN_1SEGMENT_FREQ_HZ  GHZ(18)
-    #else
-    #error "NOT Define Scan Segment"
-    #endif
-#endif
 
 #define MAX_RADIO_CHANNEL_NUM 1         /* 最大射频通道数 */
 #define MAX_SIGNAL_CHANNEL_NUM (17)     /* 最大解调子通道数 */

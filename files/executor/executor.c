@@ -757,8 +757,10 @@ int8_t executor_set_command(exec_cmd cmd, uint8_t type, uint8_t ch,  void *data,
      return 0;
 }
 
-int8_t executor_get_command(exec_cmd cmd, uint8_t type, uint8_t ch,  void *data)
-{
+int8_t executor_get_command(exec_cmd cmd, uint8_t type, uint8_t ch,  void *data, ...)
+{    
+    va_list argp;
+    va_start (argp, data);
     switch(cmd)
     {
         case EX_MID_FREQ_CMD:
@@ -769,7 +771,7 @@ int8_t executor_get_command(exec_cmd cmd, uint8_t type, uint8_t ch,  void *data)
         case EX_RF_FREQ_CMD:
         {
 #ifdef SUPPORT_RF
-            rf_read_interface(type, ch, data);
+            rf_read_interface(type, ch, data, argp);
 #endif
             break;
         }
@@ -780,6 +782,7 @@ int8_t executor_get_command(exec_cmd cmd, uint8_t type, uint8_t ch,  void *data)
         default:
             printf_err("invalid get command[%d]\n", cmd);
     }
+    va_end(argp);
     return 0;
 
 }

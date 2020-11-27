@@ -289,10 +289,9 @@ static ssize_t spm_read_fft_data(void **data, void *args)
     
     int index, ch;
     ch = run_args->ch;
-    index = spm_find_index_by_type(ch, -1, STREAM_IQ);
+    index = spm_find_index_by_type(ch, -1, STREAM_FFT);
     if(index < 0)
         return -1;
-
 
     return spm_stream_read(index, data);
 }
@@ -468,6 +467,7 @@ static int spm_send_fft_data(void *data, size_t fft_len, void *arg)
     iov[0].iov_len = header_len;
     iov[1].iov_base = data;
     iov[1].iov_len = data_byte_size;
+    
     if(hparam->ch == 0)
         __lock_fft_send__();
     else
@@ -1372,8 +1372,6 @@ static int spm_stream_start(int ch, int subch, uint32_t len,uint8_t continuous, 
     struct _spm_stream *pstream = spm_stream;
     IOCTL_DMA_START_PARA para;
     int index;
-    
-    printf_debug("stream type:%d, start, continuous[%d], len=%u\n", type, continuous, len);
 
     if(continuous)
         para.mode = DMA_MODE_CONTINUOUS;
@@ -1386,6 +1384,9 @@ static int spm_stream_start(int ch, int subch, uint32_t len,uint8_t continuous, 
     if(index < 0)
         return -1;
 
+    printf_debug("%d stream start, pstream[%d].name = %s, continuous[%d], len=%u\n",
+                type,  index, pstream[index].name, continuous, len);
+    
     if(pstream[index].rd_wr == DMA_READ)
         ioctl(pstream[index].id, IOCTL_DMA_ASYN_READ_START, &para);
     else
@@ -1406,7 +1407,7 @@ static int spm_stream_stop(int ch, int subch, enum stream_type type)
         ioctl(pstream[index].id, IOCTL_DMA_ASYN_READ_STOP, NULL);
     else
         ioctl(pstream[index].id, IOCTL_DMA_ASYN_WRITE_STOP, NULL);
-    printf_note("stream_stop: %d, %s\n", index, pstream[index].name);
+    printf_debug("stream_stop: %d, %s\n", index, pstream[index].name);
     return 0;
 }
 

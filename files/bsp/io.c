@@ -965,7 +965,7 @@ static void io_set_dma_SPECTRUM_out_en(int ch, int subch, uint32_t trans_len,uin
     io_dma_dev_trans_len(ch,IO_SPECTRUM_TYPE, trans_len*2);
 #elif defined(SUPPORT_SPECTRUM_V2)
     if(get_spm_ctx()->ops->stream_start)
-    get_spm_ctx()->ops->stream_start(trans_len*sizeof(fft_t), continuous, STREAM_FFT);
+    get_spm_ctx()->ops->stream_start(ch, subch, trans_len*sizeof(fft_t), continuous, STREAM_FFT);
 #endif
 #endif
 }
@@ -979,7 +979,7 @@ static void io_set_dma_adc_out_en(int ch, int subch, uint32_t trans_len,uint8_t 
 
 #elif defined(SUPPORT_SPECTRUM_V2)
     if(get_spm_ctx()->ops->stream_start)
-    get_spm_ctx()->ops->stream_start(trans_len, continuous, STREAM_ADC_READ);
+    get_spm_ctx()->ops->stream_start(ch, subch, trans_len, continuous, STREAM_ADC_READ);
 #endif
 #endif
 }
@@ -992,7 +992,7 @@ static void io_set_dma_adc_out_disable(int ch, int subch)
 
 #elif defined(SUPPORT_SPECTRUM_V2)
     if(get_spm_ctx()->ops->stream_stop)
-    get_spm_ctx()->ops->stream_stop(STREAM_ADC_READ);
+    get_spm_ctx()->ops->stream_stop(ch, subch, STREAM_ADC_READ);
 #endif
 #endif
 }
@@ -1005,7 +1005,7 @@ static void io_set_dma_SPECTRUM_out_disable(int ch, int subch)
     io_dma_dev_disable(ch, IO_SPECTRUM_TYPE);
 #elif defined(SUPPORT_SPECTRUM_V2)
     if(get_spm_ctx()->ops->stream_stop)
-    get_spm_ctx()->ops->stream_stop(STREAM_FFT);
+    get_spm_ctx()->ops->stream_stop(ch, subch, STREAM_FFT);
 #endif
 #endif
 
@@ -1022,7 +1022,7 @@ static void io_set_IQ_out_disable(int ch, int subch)
     io_dma_dev_disable(ch, IO_IQ_TYPE);
 #elif defined(SUPPORT_SPECTRUM_V2) 
     if(subch_bitmap_weight() == 0 && get_spm_ctx()->ops->stream_stop){
-        get_spm_ctx()->ops->stream_stop(STREAM_IQ);
+        get_spm_ctx()->ops->stream_stop(ch, subch, STREAM_IQ);
     }
 #endif 
 #endif
@@ -1040,7 +1040,7 @@ static void io_set_IQ_out_en(int ch, int subch, uint32_t trans_len,uint8_t conti
     io_dma_dev_trans_len(0,IO_IQ_TYPE, trans_len);
 #elif defined(SUPPORT_SPECTRUM_V2) 
     if(get_spm_ctx()->ops->stream_start)
-    get_spm_ctx()->ops->stream_start(trans_len, continuous, STREAM_IQ);
+    get_spm_ctx()->ops->stream_start(ch, subch, trans_len, continuous, STREAM_IQ);
 #endif
 #endif
     if(subch >= 0){
@@ -1526,7 +1526,7 @@ int32_t io_start_backtrace_file(void *arg){
     ret = ioctl(io_ctrl_fd,IOCTL_DISK_START_BACKTRACE_FILE_INFO,arg);
 #elif defined(SUPPORT_SPECTRUM_V2) 
     if(get_spm_ctx()->ops->stream_start)
-    get_spm_ctx()->ops->stream_start(0x1000, 1, STREAM_ADC_WRITE);
+    get_spm_ctx()->ops->stream_start(0, 0, 0x1000, 1, STREAM_ADC_WRITE);
 #endif
 #endif
     return ret;
@@ -1541,7 +1541,7 @@ int32_t io_stop_backtrace_file(void *arg){
     ret = ioctl(io_ctrl_fd,IOCTL_DISK_STOP_BACKTRACE_FILE_INFO,arg);
 #elif defined(SUPPORT_SPECTRUM_V2) 
     if(get_spm_ctx()->ops->stream_stop)
-    get_spm_ctx()->ops->stream_stop(STREAM_ADC_WRITE);
+    get_spm_ctx()->ops->stream_stop(0, 0, STREAM_ADC_WRITE);
 #endif
 #endif
     return ret;

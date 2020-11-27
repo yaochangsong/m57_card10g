@@ -23,7 +23,6 @@ typedef int16_t iq_t;
 enum stream_type {
     STREAM_IQ = 0,
     STREAM_FFT,
-    STREAM_FFT_2,
     STREAM_ADC_WRITE,
     STREAM_ADC_READ,
 };
@@ -52,8 +51,8 @@ struct spm_backend_ops {
     int (*save_data)(void *, size_t);
     int (*backtrace_data)(void *, size_t);
     int (*back_running_file)(uint8_t, char *);
-    int (*stream_start)(uint32_t ,uint8_t , int);
-    int (*stream_stop)(uint8_t);
+    int (*stream_start)(int, int, uint32_t ,uint8_t , int);
+    int (*stream_stop)(int, int, uint8_t);
     int (*sample_ctrl)(void *);
     int (*spm_scan)(uint64_t *, uint64_t* , uint32_t* , uint32_t *, uint64_t *);
     int (*set_calibration_value)(int);

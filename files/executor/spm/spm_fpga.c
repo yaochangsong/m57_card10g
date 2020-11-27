@@ -29,7 +29,7 @@
 #include "../../protocol/resetful/data_frame.h"
 
 extern void *akt_assamble_data_frame_header_data(uint32_t *len, void *config);
-static int spm_stream_stop(enum stream_type type);
+static int spm_stream_stop(int ch, int subch, enum stream_type type);
 static int spm_stream_back_stop(enum stream_type type);
 
 
@@ -157,11 +157,11 @@ static inline const char * get_str_by_code(const char *const *list, int max, int
 
 
 static struct _spm_stream spm_stream[] = {
-        {DMA_IQ_DEV,  -1, NULL, DMA_BUFFER_16M_SIZE, "IQ Stream", DMA_READ},
-        {DMA_FFT_DEV, -1, NULL, DMA_BUFFER_16M_SIZE, "FFT Stream", DMA_READ},
-        {DMA_FFT2_DEV, -1, NULL, DMA_BUFFER_16M_SIZE, "FFT2 Stream", DMA_READ},
-        {DMA_ADC_TX_DEV, -1, NULL, DMA_BUFFER_128M_SIZE, "ADC Tx Stream", DMA_WRITE},
-        {DMA_ADC_RX_DEV, -1, NULL, DMA_BUFFER_128M_SIZE, "ADC Rx Stream", DMA_READ},
+        {DMA_IQ_DEV,  -1, 0, NULL, DMA_BUFFER_16M_SIZE, "IQ Stream", DMA_READ, STREAM_IQ},
+        {DMA_FFT_DEV, -1, 0,NULL, DMA_BUFFER_16M_SIZE, "FFT Stream", DMA_READ, STREAM_FFT},
+        {DMA_FFT2_DEV, -1, 1, NULL, DMA_BUFFER_16M_SIZE, "FFT2 Stream", DMA_READ, STREAM_FFT},
+        {DMA_ADC_TX_DEV, -1, 0, NULL, DMA_BUFFER_128M_SIZE, "ADC Tx Stream", DMA_WRITE, STREAM_ADC_WRITE},
+        {DMA_ADC_RX_DEV, -1, 0, NULL, DMA_BUFFER_128M_SIZE, "ADC Rx Stream", DMA_READ, STREAM_ADC_READ},
 };
 
 static const char *const dma_status_array[] = {
@@ -192,7 +192,7 @@ static int spm_create(void)
             continue;
         }
         /* first of all, stop stream */
-        spm_stream_stop(i);
+        spm_stream_stop(-1, -1, i);
         ioctl(pstream[i].id, IOCTL_DMA_INIT_BUFFER, &pstream[i].len);
         pstream[i].ptr = mmap(NULL, pstream[i].len, PROT_READ | PROT_WRITE,MAP_SHARED, pstream[i].id, 0);
         if (pstream[i].ptr == (void*) -1) {
@@ -212,7 +212,7 @@ static int spm_create(void)
     return 0;
 }
 
-static ssize_t spm_stream_read(enum stream_type type, volatile void **data)
+static ssize_t spm_stream_read(int type, volatile void **data)
 {
     struct _spm_stream *pstream;
     ioctl_dma_status status;
@@ -251,26 +251,60 @@ static ssize_t spm_stream_read(enum stream_type type, volatile void **data)
     return readn;
 }
 
+static inline int spm_find_index_by_type(int ch, int subch, enum stream_type type)
+{
+    struct _spm_stream *pstream = spm_stream;
+    int i, find = 0, index;
+
+    subch = subch;
+    for(i = 0; i < ARRAY_SIZE(spm_stream); i++){
+        if(type == pstream[i].type){
+            if((ch != -1 && ch == pstream[i].ch) || ch == -1){
+                index = i;
+                find = 1;
+                break;
+            }
+        }
+    }
+    
+    if(find == 0)
+        return -1;
+    
+    return index;
+}
+
 static ssize_t spm_read_iq_data(void **data)
 {
-    return spm_stream_read(STREAM_IQ, data);
+    int index;
+    index = spm_find_index_by_type(-1, -1, STREAM_IQ);
+    if(index < 0)
+        return -1;
+    
+    return spm_stream_read(index, data);
 }
 
 static ssize_t spm_read_fft_data(void **data, void *args)
 {
-    ssize_t nread;
-    
     struct spm_run_parm *run_args = args;
-    if(run_args->ch == 0)
-        nread = spm_stream_read(STREAM_FFT, data);
-    else
-        nread = spm_stream_read(STREAM_FFT_2, data);
-    return nread;
+    
+    int index, ch;
+    ch = run_args->ch;
+    index = spm_find_index_by_type(ch, -1, STREAM_IQ);
+    if(index < 0)
+        return -1;
+
+
+    return spm_stream_read(index, data);
 }
 
 static ssize_t spm_read_adc_data(void **data)
 {
-    return spm_stream_read(STREAM_ADC_READ, data);
+    int index;
+    index = spm_find_index_by_type(-1, -1, STREAM_ADC_READ);
+    if(index < 0)
+        return -1;
+
+    return spm_stream_read(index, data);
 }
 
 
@@ -278,10 +312,15 @@ static int spm_read_adc_over_deal(void *arg)
 {
     unsigned int nwrite_byte;
     nwrite_byte = *(unsigned int *)arg;
-    
     struct _spm_stream *pstream = spm_stream;
+    int index;
+    
+    index = spm_find_index_by_type(-1, -1, STREAM_ADC_READ);
+    if(index < 0)
+        return -1;
+    
     if(pstream){
-        ioctl(pstream[STREAM_ADC_READ].id, IOCTL_DMA_SET_ASYN_READ_INFO, &nwrite_byte);
+        ioctl(pstream[index].id, IOCTL_DMA_SET_ASYN_READ_INFO, &nwrite_byte);
     }
     return 0;
 }
@@ -291,8 +330,14 @@ static int spm_read_iq_over_deal(void *arg)
     unsigned int nwrite_byte;
     nwrite_byte = *(unsigned int *)arg;
     struct _spm_stream *pstream = spm_stream;
+    int index;
+    
+    index = spm_find_index_by_type(-1, -1, STREAM_IQ);
+    if(index < 0)
+        return -1;
+    
     if(pstream){
-        ioctl(pstream[STREAM_IQ].id, IOCTL_DMA_SET_ASYN_READ_INFO, &nwrite_byte);
+        ioctl(pstream[index].id, IOCTL_DMA_SET_ASYN_READ_INFO, &nwrite_byte);
     }
     return 0;
 }
@@ -518,7 +563,8 @@ static int spm_send_iq_data(void *data, size_t len, void *arg)
     }
     __unlock_iq_send__();
     
-    ioctl(pstream[STREAM_IQ].id, IOCTL_DMA_SET_ASYN_READ_INFO, &sbyte);
+    spm_read_iq_over_deal(&sbyte);
+    //ioctl(pstream[STREAM_IQ].id, IOCTL_DMA_SET_ASYN_READ_INFO, &sbyte);
     safe_free(hptr);
     
     return (header_len + len);
@@ -1266,14 +1312,19 @@ static int spm_stream_back_running_file(enum stream_type type, int fd)
     write_info info;
     int try_count = 0;
     int file_fd;
+    int index;
 
     struct _spm_stream *pstream = spm_stream;
 
     if(fd <= 0)
         return -1;
     file_fd = fd;
+
+    index = spm_find_index_by_type(-1, -1, type);
+    if(index < 0)
+        return -1;
 try_gain:
-    ioctl(pstream[type].id, IOCTL_DMA_GET_ASYN_WRITE_INFO, &info);
+    ioctl(pstream[index].id, IOCTL_DMA_GET_ASYN_WRITE_INFO, &info);
     if(info.status != 0){   /* NOT OK */
         printf_debug("write status:%d, block_num:%d\n", info.status, info.block_num);
         if(info.status == WRITE_BUFFER_STATUS_FAIL){
@@ -1291,7 +1342,7 @@ try_gain:
 
     for(i = 0; i < info.block_num; i++){
         size = info.blocks[i].length;
-        w_addr = pstream[type].ptr + info.blocks[i].offset;
+        w_addr = pstream[index].ptr + info.blocks[i].offset;
        // printf_debug("file_fd=%d,ptr=%p, w_addr=%p, info.blocks[%d].offset=%x, size=%u\n",file_fd,pstream[type].ptr,  w_addr, i, info.blocks[i].offset,  size);
         rc = read(file_fd, w_addr, size);
         if (rc < 0){
@@ -1310,17 +1361,18 @@ try_gain:
             }
             
         }       
-        ioctl(pstream[type].id, IOCTL_DMA_SET_ASYN_WRITE_INFO, &rc);
+        ioctl(pstream[index].id, IOCTL_DMA_SET_ASYN_WRITE_INFO, &rc);
         total_Byte += rc;
         ret = total_Byte;
     }
     return ret;
 }
 
-static int spm_stream_start(uint32_t len,uint8_t continuous, enum stream_type type)
+static int spm_stream_start(int ch, int subch, uint32_t len,uint8_t continuous, enum stream_type type)
 {
     struct _spm_stream *pstream = spm_stream;
     IOCTL_DMA_START_PARA para;
+    int i, find = 0, index;
     
     printf_debug("stream type:%d, start, continuous[%d], len=%u\n", type, continuous, len);
 
@@ -1330,21 +1382,32 @@ static int spm_stream_start(uint32_t len,uint8_t continuous, enum stream_type ty
         para.mode = DMA_MODE_ONCE;
         para.trans_len = len;
     }
-    if(pstream[type].rd_wr == DMA_READ)
-        ioctl(pstream[type].id, IOCTL_DMA_ASYN_READ_START, &para);
+        
+    index = spm_find_index_by_type(ch, subch, type);
+    if(index < 0)
+        return -1;
+
+    if(pstream[index].rd_wr == DMA_READ)
+        ioctl(pstream[index].id, IOCTL_DMA_ASYN_READ_START, &para);
     else
-        ioctl(pstream[type].id, IOCTL_DMA_ASYN_WRITE_START, &para);
+        ioctl(pstream[index].id, IOCTL_DMA_ASYN_WRITE_START, &para);
     return 0;
 }
 
-static int spm_stream_stop(enum stream_type type)
+static int spm_stream_stop(int ch, int subch, enum stream_type type)
 {
     struct _spm_stream *pstream = spm_stream;
-    if(pstream[type].rd_wr == DMA_READ)
-        ioctl(pstream[type].id, IOCTL_DMA_ASYN_READ_STOP, NULL);
+    int i, find = 0, index;
+    
+    index = spm_find_index_by_type(ch, subch, type);
+    if(index < 0)
+        return -1;
+
+    if(pstream[index].rd_wr == DMA_READ)
+        ioctl(pstream[index].id, IOCTL_DMA_ASYN_READ_STOP, NULL);
     else
-        ioctl(pstream[type].id, IOCTL_DMA_ASYN_WRITE_STOP, NULL);
-    printf_debug("stream_stop: %d\n", type);
+        ioctl(pstream[index].id, IOCTL_DMA_ASYN_WRITE_STOP, NULL);
+    printf_note("stream_stop: %d, %s\n", index, pstream[index].name);
     return 0;
 }
 
@@ -1354,7 +1417,7 @@ static int _spm_close(struct spm_context *ctx)
     int i, ch;
 
     for(i = 0; i< ARRAY_SIZE(spm_stream) ; i++){
-        spm_stream_stop(i);
+        spm_stream_stop(-1, -1, i);
         close(pstream[i].id);
     }
     for(ch = 0; ch< MAX_RADIO_CHANNEL_NUM; ch++){

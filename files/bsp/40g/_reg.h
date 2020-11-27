@@ -198,6 +198,8 @@ static inline int32_t _reg_get_rf_temperature(int ch, int index, FPGA_CONFIG_REG
     int16_t  rf_temperature = 0;
 
     index = index;
+    if(reg->rfReg[ch] == NULL)
+        return -1;
     rf_temperature = reg->rfReg[ch]->temperature;
     usleep(100);
     rf_temperature = reg->rfReg[ch]->temperature;
@@ -212,6 +214,10 @@ static inline bool _reg_get_rf_ext_clk(int ch, int index, FPGA_CONFIG_REG *reg)
     bool is_ext = false;
 
     index = index;
+    
+    if(reg->rfReg[ch] == NULL)
+        return false;
+    
     inout = reg->rfReg[ch]->in_out_clk;
     usleep(100);
     inout = reg->rfReg[ch]->in_out_clk;
@@ -227,6 +233,10 @@ static inline bool _reg_get_rf_lock_clk(int ch, int index, FPGA_CONFIG_REG *reg)
     bool is_lock = false;
 
     index = index;
+    
+    if(reg->rfReg[ch] == NULL)
+        return false;
+    
     lock = reg->rfReg[ch]->clk_lock;
     usleep(100);
     lock = reg->rfReg[ch]->clk_lock;
@@ -240,10 +250,17 @@ static inline bool _reg_get_rf_lock_clk(int ch, int index, FPGA_CONFIG_REG *reg)
 static inline void _reg_set_rf_frequency(int ch, int index, uint32_t freq_hz, FPGA_CONFIG_REG *reg)
 {
     uint32_t freq_khz = freq_hz/1000;
-    if(freq_hz > RF_DIVISION_FREQ_HZ)
+    
+    if(freq_hz > RF_DIVISION_FREQ_HZ){
+        if(reg->rfReg[1] == NULL)
+            return;
         reg->rfReg[1]->freq_khz = freq_khz;
-    else
+    }
+    else{
+        if(reg->rfReg[0] == NULL)
+            return;
         reg->rfReg[0]->freq_khz = freq_khz;
+    }
     usleep(300);
 }
 
@@ -275,6 +292,8 @@ static inline void _reg_set_rf_bandwidth(int ch, int index, uint32_t bw_hz, FPGA
         set_val = 0x03; /* default 200MHz */
     }
     for(i = 0; i < MAX_RADIO_CHANNEL_NUM; i++){
+        if(reg->rfReg[i] == NULL)
+            continue;
         reg->rfReg[i]->mid_band = set_val;
         usleep(100);
         reg->rfReg[i]->mid_band = set_val;
@@ -309,6 +328,8 @@ static inline void _reg_set_rf_mode_code(int ch, int index, uint8_t code, FPGA_C
             set_val = 0x00; /* default normal mode */
         }
         for(i = 0; i < MAX_RADIO_CHANNEL_NUM; i++){
+            if(reg->rfReg[i] == NULL)
+                continue;
             reg->rfReg[i]->rf_mode = set_val;
             usleep(100);
             reg->rfReg[i]->rf_mode = set_val;
@@ -323,6 +344,8 @@ static inline void _reg_set_rf_mgc_gain(int ch, int index, uint8_t gain, FPGA_CO
     else if(gain < 0)
         gain = 0;
     for(i = 0; i < MAX_RADIO_CHANNEL_NUM; i++){
+        if(reg->rfReg[i] == NULL)
+            continue;
         reg->rfReg[i]->midband_minus = gain;
         usleep(100);
         reg->rfReg[i]->midband_minus = gain;
@@ -338,6 +361,8 @@ static inline void _reg_set_rf_attenuation(int ch, int index, uint8_t atten, FPG
     else if(atten < 0)
         atten = 0;
     for(i = 0; i < MAX_RADIO_CHANNEL_NUM; i++){
+        if(reg->rfReg[i] == NULL)
+            continue;
         reg->rfReg[i]->rf_minus = atten;
         usleep(100);
         reg->rfReg[i]->rf_minus = atten;
@@ -361,6 +386,8 @@ static inline void _reg_set_rf_cali_source_attenuation(int ch, int index, uint8_
     reg_val = level - 30;
 
     for(i = 0; i < MAX_RADIO_CHANNEL_NUM; i++){
+        if(reg->rfReg[i] == NULL)
+            continue;
         reg->rfReg[i]->revise_minus = reg_val;
         usleep(100);
         reg->rfReg[i]->revise_minus = reg_val;
@@ -377,6 +404,8 @@ static inline void _reg_set_rf_direct_sample_ctrl(int ch, int index, uint8_t val
     data = (val == 0 ? 0 : 0x01);
     /* 0关闭直采，1开启直采 */
     for(i = 0; i < MAX_RADIO_CHANNEL_NUM; i++){
+        if(reg->rfReg[i] == NULL)
+            continue;
         reg->rfReg[i]->direct_control = data;
         usleep(100);
         reg->rfReg[i]->direct_control = data;
@@ -390,6 +419,8 @@ static inline void _reg_set_rf_cali_source_choise(int ch, int index, uint8_t val
     /* 0 为外部射频输入，1 为校正源输入 */
     _reg = (val == 0 ? 0 : 1);
     for(i = 0; i < MAX_RADIO_CHANNEL_NUM; i++){
+        if(reg->rfReg[i] == NULL)
+            continue;
         reg->rfReg[i]->input = _reg;
         usleep(100);
         reg->rfReg[i]->input = _reg;

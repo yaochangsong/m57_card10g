@@ -1255,7 +1255,6 @@ static int32_t  spm_get_signal_strength(uint8_t ch,uint8_t subch, uint32_t index
             sig_max = sig_amp;
         }
         usleep(20000);
-        printf_debug("----------sig:%d\n", sig_amp);
     }
     if(strength != NULL)
         *strength = sig_max;
@@ -1372,7 +1371,7 @@ static int spm_stream_start(int ch, int subch, uint32_t len,uint8_t continuous, 
 {
     struct _spm_stream *pstream = spm_stream;
     IOCTL_DMA_START_PARA para;
-    int i, find = 0, index;
+    int index;
     
     printf_debug("stream type:%d, start, continuous[%d], len=%u\n", type, continuous, len);
 
@@ -1397,7 +1396,7 @@ static int spm_stream_start(int ch, int subch, uint32_t len,uint8_t continuous, 
 static int spm_stream_stop(int ch, int subch, enum stream_type type)
 {
     struct _spm_stream *pstream = spm_stream;
-    int i, find = 0, index;
+    int index;
     
     index = spm_find_index_by_type(ch, subch, type);
     if(index < 0)

@@ -459,7 +459,8 @@ void ad_9680_ddc_5g_int(volatile char *Spi_synth,uint8_t cs)
     spi_wrapper(Spi_synth, 0x330,0x43,cs);// 03
     spi_wrapper(Spi_synth, 0x331,0x00,cs);//ddc1 b
     spi_wrapper(Spi_synth, 0x334,0x00,cs);//nco1 f/fs*4096
-    spi_wrapper(Spi_synth, 0x335,0x04,cs);//nco1 f/fs*4096
+   // spi_wrapper(Spi_synth, 0x335,0x04,cs);//nco1 f/fs*4096
+    spi_wrapper(Spi_synth, 0x335,0x0c,cs);//nco1 f/fs*4096
     spi_wrapper(Spi_synth, 0x340,0x00,cs);//nco1 phase
     spi_wrapper(Spi_synth, 0x341,0x00,cs);
 

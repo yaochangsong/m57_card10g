@@ -22,7 +22,10 @@
 #include <pthread.h>
 #include <time.h>
 #include <sys/time.h>
+#include <signal.h>
+#include "errno.h"
 #include "utils.h"
+
 
 #define MAX_TEST_BITS 20
 
@@ -168,6 +171,26 @@ int pthread_exit_by_name(char *name)
     }
     printf("NOT find thread %s\n", name);
     return -1;
+}
+
+
+bool pthread_check_alive_by_name(char *name)
+{
+    int i, kill_rc;
+    bool is_alive = false;
+    
+    for(i = 0; i< ARRAY_SIZE(tbmp.thread_t); i++){
+        if(tbmp.thread_t[i].name &&  !strcmp(tbmp.thread_t[i].name, name)){
+                kill_rc = pthread_kill(tbmp.thread_t[i].tid, 0);
+                if(kill_rc == ESRCH || kill_rc == EINVAL){
+                    printf("[%s]thread not exists\n", name);
+                }else{
+                    is_alive = true;
+                }
+                break;
+        }
+    }
+    return is_alive;
 }
 
 

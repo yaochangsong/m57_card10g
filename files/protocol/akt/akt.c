@@ -1738,12 +1738,57 @@ exit:
     safe_free(rsp_header);
 }
 
-
-void akt_send(void *cl, const void *data, int len)
+int  akt_assamble_send_data(uint8_t *send_buf, uint8_t *payload, uint32_t payload_len, int code)
 {
+    struct response_get_data *response_data;
+    int len = 0;
+    int header_len=0;
 
-
+    if(send_buf == NULL || payload == NULL || payload_len == 0){
+        return -1;
+    }
+    header_len = sizeof(PDU_CFG_RSP_HEADER_ST);
+    printf_info("header_len:%d\n", header_len);
+    response_data = (struct response_get_data *)send_buf;
+    response_data->header.start_flag = AKT_START_FLAG; 
+    response_data->header.receiver_id = 0;
+    if(payload_len > sizeof(response_data->payload_data)){
+        payload_len = sizeof(response_data->payload_data);
+    }
+    memcpy(response_data->payload_data, payload, payload_len);
+    memset(response_data->header.usr_id, 0, sizeof(response_data->header.usr_id));
+    response_data->header.len = payload_len;
+    response_data->header.crc = crc16_caculate((uint8_t *)response_data->payload_data, payload_len);
+    response_data->header.operation = SET_CMD_RSP;
+    response_data->header.code = code;//NOTIFY_SIGNALl_STATUS;
+    response_data->end_flag = AKT_END_FLAG;
+    len = header_len + response_data->header.len;
+    memcpy(send_buf+len, (uint8_t *)&response_data->end_flag, sizeof(response_data->end_flag));
+    len +=  sizeof(response_data->end_flag);
+    return len;
 }
+
+void akt_send(void *client, const void *data, int len, int code)
+{
+    char *psend;
+    size_t send_len, offset = 0;
+    send_len = sizeof(struct response_get_data);
+    struct net_tcp_client *cl = client;
+    
+    psend = calloc(1, send_len);
+    if(psend == NULL){
+        printf_err("psend err!\n");
+        return;
+    }
+    if(akt_assamble_send_data(psend, data, len, code) != 0){
+        goto exit;
+    }
+    cl->send(cl, psend, send_len);
+
+exit:
+    safe_free(psend);
+}
+
 
 
 int  akt_assamble_send_active_data(uint8_t *send_buf, uint8_t *payload, uint32_t payload_len)

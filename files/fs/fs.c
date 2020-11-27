@@ -50,8 +50,11 @@ static void  *disk_buffer_ptr  = NULL;
 volatile bool disk_is_format = false;
 volatile int disk_error_num = DISK_CODE_OK;
 
+static inline void _fs_init_(void);
+
+
 #define THREAD_FS_BACK_NAME "FS_BACK_FILE"
-#define THREAD_NAME         "FS_SAVE_FILE"
+#define THREAD_FS_SAVE_NAME "FS_SAVE_FILE"
 
 struct push_arg{
     struct timeval ct;
@@ -114,9 +117,9 @@ char *fs_get_root_dir(void)
 
 bool _fs_disk_valid(void)
 {
-    if(access(MOUNT_DIR, F_OK)){
+    if(access(DEV_NAME, F_OK)){
         disk_error_num = DISK_CODE_NOT_FOUND;
-        printf_note("Disk node[%s] is not valid\n", MOUNT_DIR);
+        printf_note("SSD Disk [%s] check failed\n", DEV_NAME);
         return false;
     }
     return true;
@@ -125,19 +128,19 @@ bool _fs_disk_valid(void)
 bool _fs_disk_info(struct statfs *diskInfo)
 {
     
-    if(access(MOUNT_DIR, F_OK)){
+    if(access(DEV_NAME, F_OK)){
         disk_error_num = DISK_CODE_NOT_FOUND;
-        printf_note("Disk node[%s] is not valid\n", MOUNT_DIR);
+        printf_note("SSD Disk [%s] check failed\n", DEV_NAME);
         return false;
     }
 
-	if(statfs(MOUNT_DIR, diskInfo))
+	if(statfs(MOUNT_DIR, diskInfo) != 0)
 	{
         disk_error_num = DISK_CODE_NOT_FORAMT;
 		printf_note("Disk node[%s] is unknown filesystem\n", MOUNT_DIR);
         return false;
 	}
-    
+
     return true;
 }
 
@@ -370,9 +373,9 @@ static ssize_t _fs_start_save_file(char *filename)
     p_args->nbyte = 0;
     p_args->count = 0;
     p_args->fd = fd;
-    p_args->name=THREAD_NAME;
+    p_args->name=THREAD_FS_SAVE_NAME;
     ret =  pthread_create_detach (NULL, _fs_start_save_file_thread, _thread_exit_callback,  
-                                THREAD_NAME, p_args, p_args);
+                                THREAD_FS_SAVE_NAME, p_args, p_args);
     if(ret != 0){
         perror("pthread save file thread!!");
         safe_free(p_args);
@@ -385,8 +388,8 @@ static ssize_t _fs_start_save_file(char *filename)
 static ssize_t _fs_stop_save_file(char *filename)
 {
     io_set_enable_command(ADC_MODE_DISABLE, -1, -1, 0);
-    printf("stop save file : %s\n", THREAD_NAME);
-    pthread_cancel_by_name(THREAD_NAME);
+    printf("stop save file : %s\n", THREAD_FS_SAVE_NAME);
+    pthread_cancel_by_name(THREAD_FS_SAVE_NAME);
 }
 
 static ssize_t _fs_start_read_raw_file_loop(void *arg)
@@ -528,14 +531,72 @@ struct fs_context * fs_create_context(void)
     return ctx;
 }
 
-void fs_init(void)
+void fs_disk_check_thread(void *args)
 {
-    disk_is_valid = _fs_disk_valid();
-    if(disk_is_valid == false)
+    #define _SLOW_CHECK_TIME_INTERVAL_US  (1000000)
+    #define _FAST_CHECK_TIME_INTERVAL_US  (100000)
+    
+    struct statfs sfs;
+    bool disk_check = false;
+    int check_time = _SLOW_CHECK_TIME_INTERVAL_US;
+    pthread_detach(pthread_self());
+    
+    while(1){
+        do{
+            disk_check = _fs_disk_info(&sfs);
+            if(disk_check == false){
+                if(disk_error_num == DISK_CODE_NOT_FOUND){
+                    //send error
+                } else if(disk_error_num == DISK_CODE_NOT_FORAMT){
+                    //send format
+                }
+                usleep(check_time);
+            }
+        }while(disk_check == false);
+            
+        _fs_init_();
+        /* now disk is ok */
+        if(pthread_check_alive_by_name(THREAD_FS_SAVE_NAME) == true){
+            check_time = _FAST_CHECK_TIME_INTERVAL_US;
+        }else{
+            check_time = _SLOW_CHECK_TIME_INTERVAL_US;
+        }
+        usleep(check_time);
+    }
+}
+
+int fs_disk_start_check(void)
+{
+    int ret;
+    pthread_t work_id;
+    ret=pthread_create(&work_id, NULL, fs_disk_check_thread, NULL);
+    if(ret!=0){
+        perror("pthread cread check");
+        return -1;
+    }
+    return 0;
+}
+
+static inline void _fs_init_(void) 
+{
+    static bool fs_has_inited = false;
+    
+    if(fs_has_inited == true)
         return;
     fs_ctx = fs_create_context();
     pthread_bmp_init();
     _fs_mkdir(fs_get_root_dir());
     _fs_dir(fs_get_root_dir(), NULL, NULL);
+    fs_has_inited = true;
+}
+
+
+void fs_init(void)
+{
+    fs_disk_start_check();
+    disk_is_valid = _fs_disk_valid();
+    if(disk_is_valid == false)
+        return;
+    _fs_init_();
 }
 

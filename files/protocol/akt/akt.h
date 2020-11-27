@@ -801,7 +801,7 @@ extern bool akt_parse_header_v2(void *client, const char *buf, int len, int *hea
 extern bool akt_execute_method(void *cl, int *code);
 extern uint8_t *akt_assamble_data_extend_frame_header_data(uint32_t *len, void *config);
 extern void *akt_assamble_data_frame_header_data(uint32_t *len, void *config);
-extern void akt_send(void *cl, const void *data, int len);
+extern void akt_send(void *client, const void *data, int len, int code);
 extern void akt_send_resp(void *client, int code, void *args);
 extern int  akt_parse_end(void *cl, char *buf, int len);
 extern bool akt_parse_discovery(void *client, const char *buf, int len);

@@ -81,7 +81,7 @@ void spm_iq_handle_thread(void *arg)
     iq_t *ptr_iq = NULL;
     ssize_t  len = 0, i;
     struct poal_config *poal_config = &(config_get_config()->oal_config);
-    int ch = poal_config->cid;
+    int ch;
    // thread_bind_cpu(1);
     ctx = (struct spm_context *)arg;
 
@@ -93,10 +93,12 @@ loop:
     while(subch_bitmap_weight() == 0)
         pthread_cond_wait(&spm_iq_cond, &spm_iq_cond_mutex);
     pthread_mutex_unlock(&spm_iq_cond_mutex);
-    
+
+    ch = poal_config->cid;
     printf_note(">>>>>[ch=%d]IQ start\n", ch);
     memset(&run, 0, sizeof(run));
     memcpy(&run, ctx->run_args[ch], sizeof(run));
+
     do{
         len = ctx->ops->read_iq_data(&ptr_iq);
         

@@ -170,7 +170,7 @@ typedef struct _FPGA_CONFIG_REG_
 #define SET_NARROW_BAND(reg,id,v) 			(reg->narrow_band[id]->band=v)
 #define SET_NARROW_FIR_COEFF(reg,id,v) 		(reg->narrow_band[id]->fir_coeff=v)
 #define SET_NARROW_DECODE_TYPE(reg,id,v) 	(reg->narrow_band[id]->decode_type=v)
-#define SET_NARROW_ENABLE(reg,id,v) 		(reg->narrow_band[id]->enable=v)
+//#define SET_NARROW_ENABLE(reg,id,v) 		(reg->narrow_band[id]->enable=v)
 #define SET_NARROW_SIGNAL_CARRIER(reg,id,v) (reg->narrow_band[id]->signal_carrier=v)
 #define SET_NARROW_NOISE_LEVEL(reg,id,v) 	(reg->narrow_band[id]->noise_level=v)
 
@@ -182,6 +182,14 @@ typedef struct _FPGA_CONFIG_REG_
 #define SET_TRIG_COUNT(reg,v)			    (reg->signal->trig_count=v)
 
 #define AUDIO_REG(reg)                      (reg->audioReg)
+
+static inline void _set_narrow_channel(FPGA_CONFIG_REG *reg, int ch, int subch, int enable)
+{
+    uint32_t _reg;
+
+    _reg = enable &0x01;
+    reg->narrow_band[subch]->enable = _reg;
+}
 
 
 /* RF */

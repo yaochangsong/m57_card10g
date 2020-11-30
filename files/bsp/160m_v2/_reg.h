@@ -116,6 +116,14 @@ typedef struct _FPGA_CONFIG_REG_
 #define SET_TRIG_COUNT(reg,v)			
 #define AUDIO_REG(reg)                      0
 
+static inline void _set_narrow_channel(FPGA_CONFIG_REG *reg, int ch, int subch, int enable)
+{
+    uint32_t _reg;
+    
+    _reg = enable &0x01;
+    reg->narrow_band[subch]->enable = _reg;
+}
+
 
 /* RF */
 /*GET*/

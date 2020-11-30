@@ -57,7 +57,7 @@ int executor_tcp_disconnect_notify(void *cl)
         int i = 0, ch;
         for(ch = 0; ch< MAX_RADIO_CHANNEL_NUM; ch++){
             for(i = 0; i< MAX_SIGNAL_CHANNEL_NUM; i++){
-                executor_set_command(EX_MID_FREQ_CMD, EX_SUB_CH_ONOFF, i, &enable);
+                executor_set_command(EX_MID_FREQ_CMD, EX_SUB_CH_ONOFF, ch, &enable, i);
                 executor_set_command(EX_MID_FREQ_CMD, EX_SUB_CH_DEC_METHOD, i, &default_method);
                 memset(&poal_config->channel[ch].sub_channel_para.sub_ch_enable[i], 0, sizeof(struct output_en_st));
             }
@@ -550,7 +550,9 @@ static int8_t executor_set_kernel_command(uint8_t type, uint8_t ch, void *data, 
 
         case EX_SUB_CH_ONOFF:
         {
-            io_set_subch_onoff(ch, *(uint8_t *)data);
+            uint32_t subch;
+            subch = va_arg(ap, uint32_t);
+            io_set_subch_onoff(ch, subch, *(uint8_t *)data);
             break;
         }
         case EX_SUB_CH_DEC_BW:
@@ -889,7 +891,7 @@ void executor_timer_task_init(void)
 
 void executor_init(void)
 {
-    int ret, i;
+    int ret, i, j;
     static int ch[MAX_RADIO_CHANNEL_NUM];
     pthread_t work_id;
     void *spmctx;
@@ -922,14 +924,14 @@ void executor_init(void)
     printf_note("clear all sub ch\n");
     uint8_t enable =0;
     uint8_t default_method = IO_DQ_MODE_IQ;
-    for(i = 0; i< MAX_SIGNAL_CHANNEL_NUM; i++){
-        printf_debug("clear all sub ch: %d\n", i);
-        executor_set_command(EX_MID_FREQ_CMD, EX_SUB_CH_ONOFF, i, &enable);
-        executor_set_command(EX_MID_FREQ_CMD, EX_SUB_CH_DEC_METHOD, i, &default_method);
-    }
-    
+
     sem_init(&(work_sem.kernel_sysn), 0, 0);
     for(i = 0; i <MAX_RADIO_CHANNEL_NUM; i++){
+        for(j = 0; j< MAX_SIGNAL_CHANNEL_NUM; j++){
+            printf_debug("clear all ch: %d, subch: %d\n", i, j);
+            executor_set_command(EX_MID_FREQ_CMD, EX_SUB_CH_ONOFF, i, &enable, j);
+            executor_set_command(EX_MID_FREQ_CMD, EX_SUB_CH_DEC_METHOD, j, &default_method);
+        }
         sem_init(&(work_sem.notify_deal[i]), 0, 0);
         ch[i] = i;
         ret=pthread_create(&work_id, NULL, (void *)executor_spm_thread, &ch[i]);

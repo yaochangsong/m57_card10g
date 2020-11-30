@@ -71,4 +71,8 @@ extern void io_set_rf_calibration_source_enable(int ch, int enable);
 extern bool is_rf_calibration_source_enable(void);
 extern void io_set_gain_calibrate_val(uint32_t ch, int32_t  gain_val);
 extern void io_set_dc_offset_calibrate_val(uint32_t ch, int32_t  val);
+extern int32_t io_set_subch_dec_middle_freq(uint32_t subch, uint64_t dec_middle_freq, uint64_t middle_freq);
+extern int32_t io_set_subch_onoff(uint32_t ch, uint32_t subch, uint8_t onoff);
+extern int32_t io_set_subch_bandwidth(uint32_t subch, uint32_t bandwidth, uint8_t dec_method);
+extern int32_t io_set_subch_dec_method(uint32_t subch, uint8_t dec_method);
 #endif

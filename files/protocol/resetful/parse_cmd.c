@@ -555,7 +555,7 @@ int cmd_subch_enable_set(struct uh_client *cl, void **arg, void **content)
         poal_config->channel[ch].sub_channel_para.sub_ch_enable[subch].psd_en = enable;
     }else if(!strcmp(s_type, "iq")){
         poal_config->channel[ch].sub_channel_para.sub_ch_enable[subch].iq_en = enable;
-        executor_set_command(EX_MID_FREQ_CMD, EX_SUB_CH_ONOFF, subch, &enable);
+        executor_set_command(EX_MID_FREQ_CMD, EX_SUB_CH_ONOFF, ch, &enable, subch);
     }else if(!strcmp(s_type, "audio")){
         poal_config->channel[ch].sub_channel_para.sub_ch_enable[subch].audio_en = enable;
     }else{
@@ -567,9 +567,9 @@ int cmd_subch_enable_set(struct uh_client *cl, void **arg, void **content)
     /* 通道IQ使能 */
     if(poal_config->channel[ch].sub_channel_para.sub_ch_enable[subch].iq_en){
         /* NOTE:The parameter must be a MAIN channel, not a subchannel */
-        io_set_enable_command(IQ_MODE_ENABLE, -1, subch, 0);
+        io_set_enable_command(IQ_MODE_ENABLE, ch, subch, 0);
     }else{
-        io_set_enable_command(IQ_MODE_DISABLE, -1,subch, 0);
+        io_set_enable_command(IQ_MODE_DISABLE, ch,subch, 0);
     }
 
 error:

@@ -522,6 +522,7 @@ int32_t io_set_middle_freq(uint32_t ch, uint64_t middle_freq)
     return 0;
 }
 
+
 /*设置子通道解调中心频率因子*/
 int32_t io_set_subch_dec_middle_freq(uint32_t subch, uint64_t dec_middle_freq, uint64_t middle_freq)
 {
@@ -546,7 +547,7 @@ int32_t io_set_subch_dec_middle_freq(uint32_t subch, uint64_t dec_middle_freq, u
 }
 
 /*设置子通道开关*/
-int32_t io_set_subch_onoff(uint32_t subch, uint8_t onoff)
+int32_t io_set_subch_onoff(uint32_t ch, uint32_t subch, uint8_t onoff)
 {
     int32_t ret = 0;
 #if defined(SUPPORT_PLATFORM_ARCH_ARM)
@@ -557,16 +558,14 @@ int32_t io_set_subch_onoff(uint32_t subch, uint8_t onoff)
     ret = ioctl(io_ctrl_fd, IOCTL_SUB_CH_ONOFF, &odata);
 #elif defined(SUPPORT_SPECTRUM_V2) 
     #if defined(SUPPORT_SPECTRUM_FPGA)
-    printf_debug("subch=%u, onoff=%d, ptr=%p\n", subch, onoff, get_fpga_reg()->narrow_band[subch]);
+    printf_debug("ch=%u, subch=%u, onoff=%d, ptr=%p\n", ch, subch, onoff, get_fpga_reg()->narrow_band[subch]);
     if(onoff){
         subch_bitmap_set(subch);
-        SET_NARROW_ENABLE(get_fpga_reg(),subch,0x01);
-        //get_fpga_reg()->narrow_band[subch]->enable =0x01;
+        _set_narrow_channel(get_fpga_reg(),ch, subch,0x01);
     }
     else{
         subch_bitmap_clear(subch);
-        SET_NARROW_ENABLE(get_fpga_reg(),subch,0x00);
-        //get_fpga_reg()->narrow_band[subch]->enable = 0x00;
+        _set_narrow_channel(get_fpga_reg(),ch, subch,0x00);
     }
     #endif
 #endif
@@ -1015,14 +1014,14 @@ static void io_set_dma_SPECTRUM_out_disable(int ch, int subch)
 static void io_set_IQ_out_disable(int ch, int subch)
 {
     if(subch >= 0){
-        io_set_subch_onoff(subch, 0);
+        io_set_subch_onoff(ch, subch, 0);
     }
 #if defined(SUPPORT_PLATFORM_ARCH_ARM)
 #if defined(SUPPORT_SPECTRUM_KERNEL)
     io_dma_dev_disable(ch, IO_IQ_TYPE);
 #elif defined(SUPPORT_SPECTRUM_V2) 
     if(subch_bitmap_weight() == 0 && get_spm_ctx()->ops->stream_stop){
-        get_spm_ctx()->ops->stream_stop(ch, subch, STREAM_IQ);
+        get_spm_ctx()->ops->stream_stop(-1, subch, STREAM_IQ);
     }
 #endif 
 #endif
@@ -1040,11 +1039,11 @@ static void io_set_IQ_out_en(int ch, int subch, uint32_t trans_len,uint8_t conti
     io_dma_dev_trans_len(0,IO_IQ_TYPE, trans_len);
 #elif defined(SUPPORT_SPECTRUM_V2) 
     if(get_spm_ctx()->ops->stream_start)
-    get_spm_ctx()->ops->stream_start(ch, subch, trans_len, continuous, STREAM_IQ);
+    get_spm_ctx()->ops->stream_start(-1, subch, trans_len, continuous, STREAM_IQ);
 #endif
 #endif
     if(subch >= 0){
-        io_set_subch_onoff(subch, 1);
+        io_set_subch_onoff(ch, subch, 1);
     }
 
 }

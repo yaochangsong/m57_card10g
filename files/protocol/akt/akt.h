@@ -805,7 +805,7 @@ extern void akt_send(void *client, const void *data, int len, int code);
 extern void akt_send_resp(void *client, int code, void *args);
 extern int  akt_parse_end(void *cl, char *buf, int len);
 extern bool akt_parse_discovery(void *client, const char *buf, int len);
-
+extern void akt_send_alert(void *client, int code);
 
 #endif
 

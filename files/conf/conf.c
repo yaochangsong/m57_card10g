@@ -134,6 +134,17 @@ bool config_get_is_internal_clock(void)
     return true;
 }
 
+uint64_t config_get_disk_alert_threshold(void)
+{
+    return config.oal_config.status_para.diskInfo.alert.alert_threshold_byte;
+}
+
+void config_set_disk_alert_threshold(uint64_t val)
+{
+    config.oal_config.status_para.diskInfo.alert.alert_threshold_byte = val;
+}
+
+
 uint32_t  config_get_fft_size(uint8_t ch)
 {
     uint32_t fftsize = 0;

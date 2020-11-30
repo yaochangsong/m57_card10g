@@ -200,9 +200,9 @@ static int akt_convert_oal_config(uint8_t ch, int8_t subch,uint8_t cmd)
             poal_config->channel[ch].enable.iq_en = convert_enable_mode(pakt_config->enable.output_en, IQ_OUT_MASK);
            // poal_config->channel[ch].enable.bit_en = pakt_config->enable.output_en;
             INTERNEL_ENABLE_BIT_SET(poal_config->channel[ch].enable.bit_en,poal_config->channel[ch].enable);
-            printf_info("bit_en=%x,psd_en=%d, audio_en=%d,iq_en=%d\n", poal_config->channel[ch].enable.bit_en, 
+            printf_note("bit_en=%x,psd_en=%d, audio_en=%d,iq_en=%d\n", poal_config->channel[ch].enable.bit_en, 
                         poal_config->channel[ch].enable.psd_en,poal_config->channel[ch].enable.audio_en,poal_config->channel[ch].enable.iq_en);
-            printf_info("work_mode=%d\n", poal_config->channel[ch].work_mode);
+            printf_note("work_mode=%d\n", poal_config->channel[ch].work_mode);
             break;
         case SUB_SIGNAL_OUTPUT_ENABLE_CMD:
             poal_config->channel[ch].sub_channel_para.sub_ch_enable[subch].cid = pakt_config->sub_channel_enable[subch].cid;
@@ -1744,7 +1744,7 @@ int  akt_assamble_send_data(uint8_t *send_buf, uint8_t *payload, uint32_t payloa
     int len = 0;
     int header_len=0;
 
-    if(send_buf == NULL || payload == NULL || payload_len == 0){
+    if(send_buf == NULL || payload_len == 0){
         return -1;
     }
     header_len = sizeof(PDU_CFG_RSP_HEADER_ST);
@@ -1755,7 +1755,8 @@ int  akt_assamble_send_data(uint8_t *send_buf, uint8_t *payload, uint32_t payloa
     if(payload_len > sizeof(response_data->payload_data)){
         payload_len = sizeof(response_data->payload_data);
     }
-    memcpy(response_data->payload_data, payload, payload_len);
+    if(payload != NULL)
+        memcpy(response_data->payload_data, payload, payload_len);
     memset(response_data->header.usr_id, 0, sizeof(response_data->header.usr_id));
     response_data->header.len = payload_len;
     response_data->header.crc = crc16_caculate((uint8_t *)response_data->payload_data, payload_len);
@@ -1787,6 +1788,12 @@ void akt_send(void *client, const void *data, int len, int code)
 
 exit:
     safe_free(psend);
+}
+
+
+void akt_send_alert(void *client, int code)
+{
+    akt_send(client, NULL, 0, code);
 }
 
 

@@ -15,6 +15,7 @@
 *  Paring data through function callback.
 ******************************************************************************/
 #include "config.h"
+#include <pthread.h>
 #include <arpa/inet.h>
 #include <sys/socket.h>
 #include <netdb.h>
@@ -25,8 +26,6 @@
 #include <string.h>
 #include <linux/if_link.h>
 #include "../protocol/http/file.h"
-
-
 
 int get_ifa_name_by_ip(char *ipaddr, char *ifa_name)
 {
@@ -272,8 +271,10 @@ static void tcp_ustream_write_cb(struct ustream *s, int bytes)
 
 void tcp_free(struct net_tcp_client *cl)
 {
+    struct net_tcp_server *srv = (struct net_tcp_server *)net_get_tcp_srv_ctx();
     printf_info("tcp_free:");
     printf_info(": %s:%d\n", cl->get_peer_addr(cl), cl->get_peer_port(cl));
+    pthread_mutex_lock(&srv->tcp_client_lock);
     if (cl) {
         uloop_timeout_cancel(&cl->timeout);
         ustream_free(&cl->sfd.stream);
@@ -284,6 +285,7 @@ void tcp_free(struct net_tcp_client *cl)
         executor_tcp_disconnect_notify(cl);
         free(cl);
     }
+    pthread_mutex_unlock(&srv->tcp_client_lock);
 }
 
 
@@ -335,8 +337,8 @@ static inline void tcp_keepalive_cb(struct uloop_timeout *timeout)
     uloop_timeout_set(&cl->timeout, TCP_CONNECTION_TIMEOUT * 1000);
     printf_note("tcp_keepalive_probes = %d\n", cl->tcp_keepalive_probes);
     if(++cl->tcp_keepalive_probes >= TCP_MAX_KEEPALIVE_PROBES){
-    printf_note("keepalive: find %s:%d disconnect; free\n", cl->get_peer_addr(cl), cl->get_peer_port(cl));
-    tcp_free(cl);
+        printf_note("keepalive: find %s:%d disconnect; free\n", cl->get_peer_addr(cl), cl->get_peer_port(cl));
+        tcp_free(cl);
     }
 }
 
@@ -379,7 +381,7 @@ static void tcp_accept_cb(struct uloop_fd *fd, unsigned int events)
 
     memcpy(&cl->peer_addr, &addr, sizeof(addr));
     printf_debug("connect: %s", inet_ntoa(cl->peer_addr.sin_addr));
-   
+
     cl->us = &cl->sfd.stream;
     cl->us->notify_read = tcp_ustream_read_cb;
     cl->us->notify_write = tcp_ustream_write_cb;
@@ -415,14 +417,27 @@ err:
 }
 
 
-int tcp_active_send_all_client(uint8_t *data, int len)
+void tcp_active_send_all_client(uint8_t *data, int len, int code)
 {
     struct net_tcp_client *cl_list, *list_tmp;
-     struct net_tcp_server *srv = (struct net_tcp_server *)net_get_tcp_srv_ctx();
+    struct net_tcp_server *srv = (struct net_tcp_server *)net_get_tcp_srv_ctx();
+    pthread_mutex_lock(&srv->tcp_client_lock);
     list_for_each_entry_safe(cl_list, list_tmp, &srv->clients, list){
-            printf_debug("Find ipaddree on list:%s, port=%d\n",  cl_list->get_peer_addr(cl_list), cl_list->get_peer_port(cl_list));
-            ustream_write(cl_list->us, data, len, true);
+            srv->send(cl_list,data, len, code);
     }
+    pthread_mutex_unlock(&srv->tcp_client_lock);
+}
+
+void tcp_send_alert_to_all_client(int code)
+{
+    struct net_tcp_client *cl_list, *list_tmp;
+    struct net_tcp_server *srv = (struct net_tcp_server *)net_get_tcp_srv_ctx();
+    
+    pthread_mutex_lock(&srv->tcp_client_lock);
+    list_for_each_entry_safe(cl_list, list_tmp, &srv->clients, list){
+            srv->send_alert(cl_list, code);
+    }
+    pthread_mutex_unlock(&srv->tcp_client_lock);
 }
 
 
@@ -482,6 +497,7 @@ struct net_tcp_server *tcp_server_new(const char *host, int port)
     }
     srv->fd.fd = sock;
     srv->fd.cb = tcp_accept_cb;
+    pthread_mutex_init(&srv->tcp_client_lock,  NULL);
    
     uloop_fd_add(&srv->fd, ULOOP_READ);
     

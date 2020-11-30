@@ -212,9 +212,15 @@ struct poal_disk_Node{
     uint8_t status;
 }__attribute__ ((packed));
 
+struct poal_disk_alert{
+    uint64_t alert_threshold_byte;
+    uint64_t split_file_threshold_byte;
+};
+
 struct poal_disk_Info{
     uint16_t diskNum; //?
     struct poal_disk_Node diskNode;
+    struct poal_disk_alert alert;
 }__attribute__ ((packed));     
 
 struct poal_clk_Info{

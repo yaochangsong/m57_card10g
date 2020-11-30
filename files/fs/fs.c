@@ -49,6 +49,8 @@ static bool disk_is_valid = false;
 static void  *disk_buffer_ptr  = NULL;
 volatile bool disk_is_format = false;
 volatile int disk_error_num = DISK_CODE_OK;
+volatile bool disk_is_full_alert = false;
+
 
 static inline void _fs_init_(void);
 
@@ -326,6 +328,10 @@ static int _fs_start_save_file_thread(void *arg)
     p_args = (struct push_arg *)arg;
     _ctx = get_spm_ctx();
     nread = _ctx->ops->read_adc_data(&ptr);
+    /* disk is full */
+    if(disk_is_full_alert == true){
+        return -1;
+    }
     if(nread > 0){
         p_args->nbyte += nread;
         p_args->count ++;
@@ -539,6 +545,7 @@ void fs_disk_check_thread(void *args)
     struct statfs sfs;
     bool disk_check = false;
     int check_time = _SLOW_CHECK_TIME_INTERVAL_US;
+    uint64_t threshold_byte = 0, used_byte = 0;
     pthread_detach(pthread_self());
     
     while(1){
@@ -546,8 +553,10 @@ void fs_disk_check_thread(void *args)
             disk_check = _fs_disk_info(&sfs);
             if(disk_check == false){
                 if(disk_error_num == DISK_CODE_NOT_FOUND){
+                    tcp_send_alert_to_all_client(1);
                     //send error
                 } else if(disk_error_num == DISK_CODE_NOT_FORAMT){
+                    tcp_send_alert_to_all_client(2);
                     //send format
                 }
                 usleep(check_time);
@@ -556,6 +565,15 @@ void fs_disk_check_thread(void *args)
             
         _fs_init_();
         /* now disk is ok */
+        if((threshold_byte = config_get_disk_alert_threshold()) > 0){
+            used_byte = sfs.f_bsize * (sfs.f_blocks - sfs.f_bfree);
+            if(threshold_byte <= used_byte){
+                disk_is_full_alert = true;
+                tcp_send_alert_to_all_client(0);
+            }else {
+                disk_is_full_alert =  false;
+            }
+        }
         if(pthread_check_alive_by_name(THREAD_FS_SAVE_NAME) == true){
             check_time = _FAST_CHECK_TIME_INTERVAL_US;
         }else{

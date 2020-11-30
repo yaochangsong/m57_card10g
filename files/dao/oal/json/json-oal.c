@@ -608,6 +608,16 @@ static int json_parse_config_param(const cJSON* root, struct poal_config *config
         config->ctrl_para.iq_data_length=value->valueint;
         printf_debug("iq_data_length:%d, \n",config->ctrl_para.iq_data_length);
     }
+    value = cJSON_GetObjectItem(control_parm, "disk_full_alert_threshold");
+    if(value!= NULL && cJSON_IsNumber(value)){
+        config->status_para.diskInfo.alert.alert_threshold_byte = value->valuedouble;
+        printf_debug("alert_threshold_byte:%llu, \n",config->status_para.diskInfo.alert.alert_threshold_byte);
+    }
+    value = cJSON_GetObjectItem(control_parm, "disk_split_file_threshold");
+    if(value!= NULL && cJSON_IsNumber(value)){
+        config->status_para.diskInfo.alert.split_file_threshold_byte = value->valuedouble;
+        printf_debug("split_file_threshold_byte:%llu, \n",config->status_para.diskInfo.alert.split_file_threshold_byte);
+    }
     /*
     value = cJSON_GetObjectItem(control_parm, "agc_ref_val_0dbm");
     if(value!= NULL && cJSON_IsNumber(value)){

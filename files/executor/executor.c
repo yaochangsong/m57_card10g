@@ -487,7 +487,7 @@ static int8_t executor_set_kernel_command(uint8_t type, uint8_t ch, void *data, 
         }
         case EX_SMOOTH_TIME:
         {
-            io_set_smooth_time(*(uint16_t *)data);
+            io_set_smooth_time(ch, *(uint16_t *)data);
             break;
         }
         case EX_RESIDENCE_TIME:

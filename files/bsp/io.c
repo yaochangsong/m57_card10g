@@ -269,7 +269,7 @@ int32_t io_set_bandwidth(uint32_t ch, uint32_t bandwidth){
 #elif defined(SUPPORT_SPECTRUM_V2) 
     #if defined(SUPPORT_SPECTRUM_FPGA)
     //get_fpga_reg()->broad_band->band = band_factor;
-    SET_BROAD_BAND(get_fpga_reg(),band_factor);
+    SET_BROAD_BAND(get_fpga_reg(),band_factor, ch);
     #endif
 #endif
 #endif /* SUPPORT_PLATFORM_ARCH_ARM */
@@ -515,7 +515,7 @@ int32_t io_set_middle_freq(uint32_t ch, uint64_t middle_freq)
         }
     }
     #if defined(SUPPORT_SPECTRUM_FPGA)
-    SET_BROAD_SIGNAL_CARRIER(get_fpga_reg(),reg);
+    SET_BROAD_SIGNAL_CARRIER(get_fpga_reg(),reg, ch);
     #endif
     printf_debug(">>>>>>feq:%llu, reg=0x%x\n", middle_freq, reg);
 #endif
@@ -680,7 +680,7 @@ static void io_set_common_param(uint8_t type, uint8_t *buf,uint32_t buf_len)
 }
 
 /* 设置平滑数 */
-void io_set_smooth_time(uint16_t stime)
+void io_set_smooth_time(uint32_t ch, uint16_t stime)
 {
     static uint16_t old_val = 0;
     
@@ -690,7 +690,7 @@ void io_set_smooth_time(uint16_t stime)
     }
     old_val = stime;
 
-    printf_note("[**REGISTER**]Set Smooth time: factor=%d[0x%x]\n",stime, stime);
+    printf_note("[**REGISTER**]ch:%u, Set Smooth time: factor=%d[0x%x]\n",ch, stime, stime);
     
 #if defined(SUPPORT_PLATFORM_ARCH_ARM)
 #if defined(SUPPORT_SPECTRUM_KERNEL)
@@ -700,8 +700,8 @@ void io_set_smooth_time(uint16_t stime)
     ioctl(io_ctrl_fd,IOCTL_SMOOTH_CH0,stime);
 #elif defined(SUPPORT_SPECTRUM_V2) 
     #if defined(SUPPORT_SPECTRUM_FPGA)
-    SET_FFT_SMOOTH_TYPE(get_fpga_reg(),0);
-    SET_FFT_MEAN_TIME(get_fpga_reg(),stime);
+    SET_FFT_SMOOTH_TYPE(get_fpga_reg(),0, ch);
+    SET_FFT_MEAN_TIME(get_fpga_reg(),stime, ch);
     #elif defined(SUPPORT_SPECTRUM_CHIP) 
     if(get_spm_ctx()->ops->set_smooth_time)
         get_spm_ctx()->ops->set_smooth_time(stime);
@@ -727,7 +727,7 @@ void io_set_calibrate_val(uint32_t ch, int32_t  cal_value)
     ioctl(io_ctrl_fd,IOCTL_CALIBRATE_CH0,&cal_value);
 #elif defined(SUPPORT_SPECTRUM_V2) 
     #if defined(SUPPORT_SPECTRUM_FPGA)
-    SET_FFT_CALIB(get_fpga_reg(),(uint32_t)cal_value);
+    SET_FFT_CALIB(get_fpga_reg(),(uint32_t)cal_value, ch);
     #elif defined(SUPPORT_SPECTRUM_CHIP) 
     if(get_spm_ctx()->ops->set_calibration_value)
         get_spm_ctx()->ops->set_calibration_value(cal_value);
@@ -893,7 +893,7 @@ void io_set_fft_size(uint32_t ch, uint32_t fft_size)
     ioctl(io_ctrl_fd,IOCTL_FFT_SIZE_CH0,factor);
 #elif defined(SUPPORT_SPECTRUM_V2) 
     #if defined(SUPPORT_SPECTRUM_FPGA)
-    SET_FFT_FFT_LEN(get_fpga_reg(),factor);
+    SET_FFT_FFT_LEN(get_fpga_reg(),factor, ch);
     //get_fpga_reg()->broad_band->fft_lenth = factor;
     #endif
 #endif
@@ -1207,7 +1207,7 @@ int32_t io_get_agc_thresh_val(int ch)
     }
 #elif defined(SUPPORT_SPECTRUM_V2) 
     #if defined(SUPPORT_SPECTRUM_FPGA)
-    agc_val = GET_BROAD_AGC_THRESH(get_fpga_reg());
+    agc_val = GET_BROAD_AGC_THRESH(get_fpga_reg(), ch);
     //agc_val = get_fpga_reg()->broad_band->agc_thresh;
     #endif
 #endif

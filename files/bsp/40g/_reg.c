@@ -88,14 +88,16 @@ static int fpga_memmap(int fd_dev, FPGA_CONFIG_REG *fpga_reg)
     }
     printf_debug("virtual address:%p, physical address:0x%x\n", fpga_reg->signal, FPGA_SIGNAL_BASE);
 
-    fpga_reg->broad_band = memmap(fd_dev, FPGA_BRAOD_BAND_BASE, SYSTEM_CONFG_REG_LENGTH); 
-    if (!fpga_reg->broad_band)
+    base_addr =  memmap(fd_dev, FPGA_BRAOD_BAND_BASE, SYSTEM_CONFG_4K_LENGTH); 
+    if (!base_addr)
     {
         printf("mmap failed, NULL pointer!\n");
-        return -1;
+        exit(1);
     }
-    printf_debug("virtual address:%p, physical address:0x%x\n", fpga_reg->broad_band, FPGA_BRAOD_BAND_BASE);
-
+    for(i = 0; i < MAX_RADIO_CHANNEL_NUM; i++){
+        fpga_reg->broad_band[i] = base_addr + BROAD_BAND_REG_OFFSET*i;
+        printf_note("virtual address:%p, physical address:0x%x\n", fpga_reg->broad_band[i], FPGA_BRAOD_BAND_BASE+BROAD_BAND_REG_OFFSET*i);
+    }
 
     fpga_reg->narrow_band[0] = memmap(fd_dev, FPGA_NARROR_BAND_BASE, SYSTEM_CONFG_REG_LENGTH * NARROW_BAND_CHANNEL_MAX_NUM); 
     if (!fpga_reg->narrow_band[0])
@@ -131,13 +133,15 @@ static int fpga_unmemmap(FPGA_CONFIG_REG *fpga_reg)
         return -1;
     }
     
-
-    ret = munmap(fpga_reg->broad_band, SYSTEM_CONFG_REG_LENGTH); 
-    if (ret)
-    {
-    	perror("munmap");
-        return -1;
+    for(i = 0; i < MAX_RADIO_CHANNEL_NUM; i++){
+        ret = munmap(fpga_reg->broad_band[i], SYSTEM_CONFG_REG_LENGTH); 
+        if (ret)
+        {
+        	perror("munmap");
+            return -1;
+        }
     }
+
 
     ret = munmap(fpga_reg->narrow_band[0], SYSTEM_CONFG_REG_LENGTH); 
     if (ret)
@@ -166,7 +170,7 @@ FPGA_CONFIG_REG *get_fpga_reg(void)
 
 void fpga_io_init(void)
 {
-    int fd_fpga;
+    int fd_fpga, i;
     static FPGA_CONFIG_REG _fpga_reg;
     
     if(fpga_init_flag)
@@ -185,12 +189,14 @@ void fpga_io_init(void)
     usleep(100);
     fpga_reg->signal->data_path_reset = 1;
     usleep(100);
-    fpga_reg->broad_band->enable = 0xff;
-    usleep(100);
-    fpga_reg->broad_band->band = 0; //200Mhz
-    usleep(100);
-    fpga_reg->broad_band->signal_carrier = 0;
-    usleep(100);
+    for(i = 0; i < MAX_RADIO_CHANNEL_NUM; i++){
+        fpga_reg->broad_band[i]->enable = 0xff;
+        usleep(100);
+        fpga_reg->broad_band[i]->band = 0; //200Mhz
+        usleep(100);
+        fpga_reg->broad_band[i]->signal_carrier = 0;
+        usleep(100);
+    }
     fpga_init_flag = true;
 }
 

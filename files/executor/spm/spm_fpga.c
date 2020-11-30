@@ -254,7 +254,7 @@ static ssize_t spm_stream_read(int type, volatile void **data)
 static inline int spm_find_index_by_type(int ch, int subch, enum stream_type type)
 {
     struct _spm_stream *pstream = spm_stream;
-    int i, find = 0, index;
+    int i, find = 0, index = -1;
 
     subch = subch;
     for(i = 0; i < ARRAY_SIZE(spm_stream); i++){

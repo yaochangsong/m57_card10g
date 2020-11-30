@@ -69,7 +69,7 @@ typedef struct _NARROW_BAND_REG_
 typedef struct _FPGA_CONFIG_REG_
 {
     SYSTEM_CONFG_REG *system;
-    BROAD_BAND_REG	*broad_band;
+    BROAD_BAND_REG	*broad_band[MAX_RADIO_CHANNEL_NUM];
     NARROW_BAND_REG *narrow_band[NARROW_BAND_CHANNEL_MAX_NUM];
 }FPGA_CONFIG_REG;
 
@@ -85,17 +85,17 @@ typedef struct _FPGA_CONFIG_REG_
 
 /*****broad band*****/
 /*GET*/
-#define GET_BROAD_AGC_THRESH(reg) 			(reg->broad_band->agc_thresh)
+#define GET_BROAD_AGC_THRESH(reg, ch) 			(reg->broad_band[ch]->agc_thresh)
 /*SET*/
-#define SET_BROAD_SIGNAL_CARRIER(reg,v) 	(reg->broad_band->signal_carrier=v)
-#define SET_BROAD_ENABLE(reg,v) 			(reg->broad_band->enable=v)
-#define SET_BROAD_BAND(reg,v) 				(reg->broad_band->band=v)
-#define SET_BROAD_FIR_COEFF(reg,v) 			(reg->broad_band->fir_coeff=v)
+#define SET_BROAD_SIGNAL_CARRIER(reg,v, ch) 	(reg->broad_band[ch]->signal_carrier=v)
+#define SET_BROAD_ENABLE(reg,v, ch) 			(reg->broad_band[ch]->enable=v)
+#define SET_BROAD_BAND(reg,v, ch) 				(reg->broad_band[ch]->band=v)
+#define SET_BROAD_FIR_COEFF(reg,v, ch) 			(reg->broad_band[ch]->fir_coeff=v)
 /*fft smooth */
-#define SET_FFT_SMOOTH_TYPE(reg,v) 			(reg->broad_band->fft_smooth_type=v)
-#define SET_FFT_MEAN_TIME(reg,v) 			(reg->broad_band->fft_mean_time=v)
-#define SET_FFT_CALIB(reg,v) 				(reg->broad_band->fft_calibration=v)
-#define SET_FFT_FFT_LEN(reg,v) 				(reg->broad_band->fft_lenth=v)
+#define SET_FFT_SMOOTH_TYPE(reg,v, ch) 			(reg->broad_band[ch]->fft_smooth_type=v)
+#define SET_FFT_MEAN_TIME(reg,v, ch) 			(reg->broad_band[ch]->fft_mean_time=v)
+#define SET_FFT_CALIB(reg,v, ch) 				(reg->broad_band[ch]->fft_calibration=v)
+#define SET_FFT_FFT_LEN(reg,v, ch) 				(reg->broad_band[ch]->fft_lenth=v)
 
 /*****narrow band*****/
 /*GET*/

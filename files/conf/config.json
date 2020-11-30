@@ -19,7 +19,9 @@
 		"internal_clock":	1,
 		"net10g_threshold_bandwidth":	10000000,
 		"signal_threshold":	90,
-		"iq_data_length":	8192
+		"iq_data_length":	8192,
+		"disk_full_alert_threshold_MB": 4000000,
+		"disk_split_file_threshold_MB": 100 
 	},
 	"status_parm":	{
 		"soft_version":	{

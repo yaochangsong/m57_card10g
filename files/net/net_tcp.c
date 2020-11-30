@@ -421,6 +421,9 @@ void tcp_active_send_all_client(uint8_t *data, int len, int code)
 {
     struct net_tcp_client *cl_list, *list_tmp;
     struct net_tcp_server *srv = (struct net_tcp_server *)net_get_tcp_srv_ctx();
+    
+    if(srv == NULL)
+        return;
     pthread_mutex_lock(&srv->tcp_client_lock);
     list_for_each_entry_safe(cl_list, list_tmp, &srv->clients, list){
             srv->send(cl_list,data, len, code);
@@ -433,6 +436,8 @@ void tcp_send_alert_to_all_client(int code)
     struct net_tcp_client *cl_list, *list_tmp;
     struct net_tcp_server *srv = (struct net_tcp_server *)net_get_tcp_srv_ctx();
     
+    if(srv == NULL)
+        return;
     pthread_mutex_lock(&srv->tcp_client_lock);
     list_for_each_entry_safe(cl_list, list_tmp, &srv->clients, list){
             srv->send_alert(cl_list, code);

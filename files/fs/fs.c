@@ -330,6 +330,8 @@ static int _fs_start_save_file_thread(void *arg)
     nread = _ctx->ops->read_adc_data(&ptr);
     /* disk is full */
     if(disk_is_full_alert == true){
+        printf_warn("disk is full exit save thread\n");
+        pthread_exit_by_name(THREAD_FS_SAVE_NAME);
         return -1;
     }
     if(nread > 0){
@@ -539,7 +541,7 @@ struct fs_context * fs_create_context(void)
 
 void fs_disk_check_thread(void *args)
 {
-    #define _SLOW_CHECK_TIME_INTERVAL_US  (1000000)
+    #define _SLOW_CHECK_TIME_INTERVAL_US  (5000000)
     #define _FAST_CHECK_TIME_INTERVAL_US  (100000)
     
     struct statfs sfs;
@@ -547,6 +549,7 @@ void fs_disk_check_thread(void *args)
     int check_time = _SLOW_CHECK_TIME_INTERVAL_US;
     uint64_t threshold_byte = 0, used_byte = 0;
     pthread_detach(pthread_self());
+    sleep(1);
     
     while(1){
         do{
@@ -568,9 +571,11 @@ void fs_disk_check_thread(void *args)
         if((threshold_byte = config_get_disk_alert_threshold()) > 0){
             used_byte = sfs.f_bsize * (sfs.f_blocks - sfs.f_bfree);
             if(threshold_byte <= used_byte){
+                printf_note("%llu >= threshold_byte[%llu], send alert to client\n", used_byte, threshold_byte);
                 disk_is_full_alert = true;
                 tcp_send_alert_to_all_client(0);
             }else {
+                printf_debug("%llu < threshold_byte[%llu], disk not full\n", used_byte, threshold_byte);
                 disk_is_full_alert =  false;
             }
         }

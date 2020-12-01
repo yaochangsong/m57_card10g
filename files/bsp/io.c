@@ -1491,7 +1491,7 @@ int32_t io_stop_save_file(void *arg){
     return ret;
 }
 
-int32_t io_set_backtrace_mode(bool args)
+int32_t io_set_backtrace_mode(int ch, bool args)
 {
 #if defined(SUPPORT_PLATFORM_ARCH_ARM)
 #if defined(SUPPORT_SPECTRUM_KERNEL) 
@@ -1503,11 +1503,9 @@ int32_t io_set_backtrace_mode(bool args)
 #elif defined(SUPPORT_SPECTRUM_V2) 
     #if defined(SUPPORT_SPECTRUM_FPGA)
     if(args){
-        SET_SYS_SSD_MODE(get_fpga_reg(),1);
-        //get_fpga_reg()->system->ssd_mode = 1;
+        _set_ssd_mode(get_fpga_reg(), ch, 1);
     }else{
-        SET_SYS_SSD_MODE(get_fpga_reg(),0);
-       // get_fpga_reg()->system->ssd_mode = 0;
+        _set_ssd_mode(get_fpga_reg(), ch, 0);
     }
     #endif
 #endif
@@ -1518,14 +1516,16 @@ int32_t io_set_backtrace_mode(bool args)
 
 int32_t io_start_backtrace_file(void *arg){
     int32_t ret = 0;
-    io_set_backtrace_mode(true);
 #if defined(SUPPORT_PLATFORM_ARCH_ARM)
 #if defined(SUPPORT_SPECTRUM_KERNEL) 
     //SW_TO_BACKTRACE_MODE();
     ret = ioctl(io_ctrl_fd,IOCTL_DISK_START_BACKTRACE_FILE_INFO,arg);
 #elif defined(SUPPORT_SPECTRUM_V2) 
+    int ch;
+    ch = *(int*)arg;
+    io_set_backtrace_mode(ch, true);
     if(get_spm_ctx()->ops->stream_start)
-    get_spm_ctx()->ops->stream_start(0, 0, 0x1000, 1, STREAM_ADC_WRITE);
+        get_spm_ctx()->ops->stream_start(ch, 0, 0x1000, 1, STREAM_ADC_WRITE);
 #endif
 #endif
     return ret;
@@ -1533,14 +1533,16 @@ int32_t io_start_backtrace_file(void *arg){
 
 int32_t io_stop_backtrace_file(void *arg){
     int32_t ret = 0;
-    io_set_backtrace_mode(false);
 #if defined(SUPPORT_PLATFORM_ARCH_ARM)
 #if defined(SUPPORT_SPECTRUM_KERNEL) 
     //SW_TO_AD_MODE();
     ret = ioctl(io_ctrl_fd,IOCTL_DISK_STOP_BACKTRACE_FILE_INFO,arg);
 #elif defined(SUPPORT_SPECTRUM_V2) 
+    int ch;
+    ch = *(int*)arg;
+    io_set_backtrace_mode(ch, false);
     if(get_spm_ctx()->ops->stream_stop)
-    get_spm_ctx()->ops->stream_stop(0, 0, STREAM_ADC_WRITE);
+        get_spm_ctx()->ops->stream_stop(ch, 0, STREAM_ADC_WRITE);
 #endif
 #endif
     return ret;

@@ -35,10 +35,10 @@ struct fs_ops {
     int (*fs_delete)(char *);
     int (*fs_find)(char *,int (*callback) (char *,void *, void *), void *);
     ssize_t (*fs_dir)(char *,  int(*callback) (char *, void *, void *), void *);
-    ssize_t (*fs_start_save_file)(char *);
-    ssize_t (*fs_stop_save_file)(char *);
-    ssize_t (*fs_start_read_raw_file)(char *);
-    ssize_t (*fs_stop_read_raw_file)(char *);
+    ssize_t (*fs_start_save_file)(int, char *);
+    ssize_t (*fs_stop_save_file)(int, char *);
+    ssize_t (*fs_start_read_raw_file)(int,char *);
+    ssize_t (*fs_stop_read_raw_file)(int,char *);
     disk_err_code (*fs_get_err_code)(void);
     int (*fs_close)(void);
 };

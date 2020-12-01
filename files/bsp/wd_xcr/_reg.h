@@ -191,6 +191,21 @@ static inline void _set_narrow_channel(FPGA_CONFIG_REG *reg, int ch, int subch, 
     reg->narrow_band[subch]->enable = _reg;
 }
 
+/*
+    @back:1 playback  0: normal
+*/
+static inline void _set_ssd_mode(FPGA_CONFIG_REG *reg, int ch,int back)
+{
+    uint32_t _reg = 0;
+
+    if(ch >= 0)
+        _reg = ((back &0x01) << ch);
+    else
+        _reg = back &0x01;
+
+    reg->system->ssd_mode = _reg;
+}
+
 
 /* RF */
 /*GET*/

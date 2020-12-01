@@ -913,6 +913,7 @@ void executor_init(void)
         executor_set_command(EX_RF_FREQ_CMD, EX_RF_MID_BW, i, NULL);
         io_set_enable_command(PSD_MODE_DISABLE, i, -1, 0);
         io_set_enable_command(AUDIO_MODE_DISABLE, i, -1, 0);
+        io_stop_backtrace_file(&i);
         //io_set_enable_command(FREQUENCY_BAND_ENABLE_DISABLE, i, 0);
         //executor_set_command(EX_RF_FREQ_CMD, EX_RF_ATTENUATION, 0, &poal_config->rf_para[i].attenuation);
     }
@@ -920,7 +921,6 @@ void executor_init(void)
 #ifdef SUPPORT_NET_WZ
     io_set_10ge_net_onoff(0); /* 关闭万兆传输 */
 #endif
-    io_stop_backtrace_file(NULL);
     printf_note("clear all sub ch\n");
     uint8_t enable =0;
     uint8_t default_method = IO_DQ_MODE_IQ;

@@ -63,6 +63,7 @@ struct push_arg{
     uint64_t nbyte;
     uint64_t count;
     int  fd;
+    int ch;
     char *name;
 };
 static double difftime_us_val(const struct timeval *start, const struct timeval *end)
@@ -292,12 +293,13 @@ static void _thread_exit_callback(void *arg){
     float speed = 0;
     double  diff_time_us = 0;
     float diff_time_s = 0;
-    int fd = -1;
+    int fd = -1, ch;
     struct push_arg *pargs;
     pargs = (struct push_arg *)arg;
     memcpy(&beginTime, &pargs->ct, sizeof(struct timeval));
     nbyte = pargs->nbyte;
     fd = pargs->fd;
+    ch = pargs->ch;
     fprintf(stderr, ">>start time %ld.%.9ld., nbyte=%llu, fd=%d\n",beginTime.tv_sec, beginTime.tv_usec, nbyte, fd);
     gettimeofday(&endTime, NULL);
     fprintf(stderr, ">>end time %ld.%.9ld.\n",endTime.tv_sec, endTime.tv_usec);
@@ -308,7 +310,7 @@ static void _thread_exit_callback(void *arg){
      fprintf(stdout,"speed: %.2f MBps, count=%llu\n", speed, pargs->count);
     if(pargs->name && !strcmp(pargs->name, THREAD_FS_BACK_NAME)){
         printf_note("Stop Backtrace, Stop Psd!!!\n");
-        io_stop_backtrace_file(NULL);
+        io_stop_backtrace_file(&ch);
         executor_set_command(EX_ENABLE_CMD, PSD_MODE_DISABLE, 0, NULL);
     }
     if(fd > 0)
@@ -322,12 +324,13 @@ static int _fs_start_save_file_thread(void *arg)
     typedef int16_t adc_t;
     adc_t *ptr = NULL;
     ssize_t nread = 0; 
-    int ret;
+    int ret, ch;
     struct push_arg *p_args;
     struct spm_context *_ctx;
     p_args = (struct push_arg *)arg;
     _ctx = get_spm_ctx();
-    nread = _ctx->ops->read_adc_data(&ptr);
+    ch = p_args->ch;
+    nread = _ctx->ops->read_adc_data(ch, &ptr);
     /* disk is full */
     if(disk_is_full_alert == true){
         printf_warn("disk is full exit save thread\n");
@@ -338,7 +341,7 @@ static int _fs_start_save_file_thread(void *arg)
         p_args->nbyte += nread;
         p_args->count ++;
         ret = _write_disk_run(p_args->fd, nread, ptr);
-        _ctx->ops->read_adc_over_deal(&nread);
+        _ctx->ops->read_adc_over_deal(ch, &nread);
     }else{
         usleep(1000);
         printf("read_adc_data err:%d\n", nread);
@@ -347,7 +350,7 @@ static int _fs_start_save_file_thread(void *arg)
 
 }
 
-static ssize_t _fs_start_save_file(char *filename)
+static ssize_t _fs_start_save_file(int ch, char *filename)
 {
     #define     _START_SAVE     1
     #define     _STOP_SAVE      0
@@ -359,10 +362,9 @@ static ssize_t _fs_start_save_file(char *filename)
     
     if(disk_is_valid == false || disk_is_format == true)
         return -1;
-    if(filename == NULL)
+    if(filename == NULL || ch >= MAX_RADIO_CHANNEL_NUM)
         return -1;
-    
-    io_set_enable_command(ADC_MODE_ENABLE, -1, -1, 0);
+
     snprintf(path, sizeof(path), "%s/%s", fs_get_root_dir(), filename);
     printf("start save file: %s\n", path);
         
@@ -381,7 +383,9 @@ static ssize_t _fs_start_save_file(char *filename)
     p_args->nbyte = 0;
     p_args->count = 0;
     p_args->fd = fd;
+    p_args->ch = ch;
     p_args->name=THREAD_FS_SAVE_NAME;
+    io_set_enable_command(ADC_MODE_ENABLE, ch, -1, 0);
     ret =  pthread_create_detach (NULL, _fs_start_save_file_thread, _thread_exit_callback,  
                                 THREAD_FS_SAVE_NAME, p_args, p_args);
     if(ret != 0){
@@ -393,9 +397,9 @@ static ssize_t _fs_start_save_file(char *filename)
     return ret;
 }
 
-static ssize_t _fs_stop_save_file(char *filename)
+static ssize_t _fs_stop_save_file(int ch, char *filename)
 {
-    io_set_enable_command(ADC_MODE_DISABLE, -1, -1, 0);
+    io_set_enable_command(ADC_MODE_DISABLE, ch, -1, 0);
     printf("stop save file : %s\n", THREAD_FS_SAVE_NAME);
     pthread_cancel_by_name(THREAD_FS_SAVE_NAME);
 }
@@ -403,10 +407,11 @@ static ssize_t _fs_stop_save_file(char *filename)
 static ssize_t _fs_start_read_raw_file_loop(void *arg)
 {
     ssize_t nread = 0; 
+    int ch;
     struct push_arg *p_args;
     p_args = arg;
-    
-    nread = get_spm_ctx()->ops->back_running_file(STREAM_ADC_WRITE, p_args->fd);
+    ch = p_args->ch;
+    nread = get_spm_ctx()->ops->back_running_file(ch, STREAM_ADC_WRITE, p_args->fd);
     p_args->count ++;
     if(nread > 0){
          p_args->nbyte += nread;
@@ -431,19 +436,18 @@ static void _fs_read_exit_callback(void *arg){
 }
 
 
-static ssize_t _fs_start_read_raw_file(char *filename)
+static ssize_t _fs_start_read_raw_file(int ch, char *filename)
 {
     int ret = -1;
     static int file_fd;
     char path[512];
     uint32_t band;
     uint64_t freq;
-    int ch = 0;
     struct timeval beginTime;
     if(disk_is_valid == false || disk_is_format == true)
         return -1;
 
-    if(filename == NULL)
+    if(filename == NULL || ch >= MAX_RADIO_CHANNEL_NUM)
         return -1;
     snprintf(path, sizeof(path), "%s/%s", fs_get_root_dir(), filename);
     file_fd = open(path, O_RDONLY | O_DIRECT | O_SYNC, 0666);
@@ -452,7 +456,7 @@ static ssize_t _fs_start_read_raw_file(char *filename)
         return -1;
     } 
     printf_note("start read file: %s, file_fd=%d\n", path, file_fd);
-    io_start_backtrace_file(NULL);
+    
     struct push_arg *p_args;
     p_args = safe_malloc(sizeof(struct push_arg));
     gettimeofday(&beginTime, NULL);
@@ -461,25 +465,28 @@ static ssize_t _fs_start_read_raw_file(char *filename)
     memcpy(&p_args->ct, &beginTime, sizeof(struct timeval));
     p_args->nbyte = 0;
     p_args->count = 0;
-    p_args->fd= file_fd;
+    p_args->fd = file_fd;
+    p_args->ch = ch;
     p_args->name=THREAD_FS_BACK_NAME;
+    io_start_backtrace_file(&ch);
     ret =  pthread_create_detach (NULL, _fs_start_read_raw_file_loop, _thread_exit_callback,  
                                 THREAD_FS_BACK_NAME, p_args, p_args);
     if(ret != 0){
         perror("pthread read file thread!!");
         safe_free(p_args);
-        io_stop_backtrace_file(NULL);
+        io_stop_backtrace_file(&ch);
     }
 
     return 0;
 }
 
-static ssize_t _fs_stop_read_raw_file(char *filename)
+static ssize_t _fs_stop_read_raw_file(int ch, char *filename)
 {
-    if(disk_is_valid == false)
+    if(disk_is_valid == false || ch >= MAX_RADIO_CHANNEL_NUM)
         return -1;
+    
     pthread_cancel_by_name(THREAD_FS_BACK_NAME);
-    io_stop_backtrace_file(NULL);
+    io_stop_backtrace_file(&ch);
     return 0;
 }
 

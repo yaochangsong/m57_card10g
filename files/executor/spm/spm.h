@@ -32,8 +32,8 @@ struct spm_backend_ops {
     int (*create)(void);
     ssize_t (*read_iq_data)(void **);
     ssize_t (*read_fft_data)(void **, void*);
-    ssize_t (*read_adc_data)(void **);
-    int (*read_adc_over_deal)(void *);
+    ssize_t (*read_adc_data)(int,void **);
+    int (*read_adc_over_deal)(int,void *);
     int (*read_iq_over_deal)(void *);
     fft_t *(*data_order)(fft_t *, size_t,  size_t *, void *);
     int (*send_fft_data)(void *, size_t, void *);
@@ -50,7 +50,7 @@ struct spm_backend_ops {
     int (*get_psd_analysis_result)(void *);
     int (*save_data)(void *, size_t);
     int (*backtrace_data)(void *, size_t);
-    int (*back_running_file)(uint8_t, char *);
+    int (*back_running_file)(int, uint8_t, char *);
     int (*stream_start)(int, int, uint32_t ,uint8_t , int);
     int (*stream_stop)(int, int, uint8_t);
     int (*sample_ctrl)(void *);

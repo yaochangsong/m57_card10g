@@ -149,7 +149,7 @@ typedef struct _FPGA_CONFIG_REG_
 /*SET*/
 #define SET_SYS_RESET(reg,v) 				(reg->system->system_reset=v)
 #define SET_SYS_IF_CH(reg,v) 				(reg->system->if_ch=v)
-#define SET_SYS_SSD_MODE(reg,v) 			(reg->system->ssd_mode=v)
+//#define SET_SYS_SSD_MODE(reg,v) 			(reg->system->ssd_mode=v)
 
 /*****broad band*****/
 /*GET*/
@@ -193,6 +193,22 @@ static inline void _set_narrow_channel(FPGA_CONFIG_REG *reg, int ch, int subch, 
     else
         _reg = enable &0x01;
     reg->narrow_band[subch]->enable = _reg;
+}
+
+/*
+    @back:1 playback  0: normal
+*/
+static inline void _set_ssd_mode(FPGA_CONFIG_REG *reg, int ch,int back)
+{
+    uint32_t _reg = 0;
+
+    if(ch >= 0)
+        _reg = ((back &0x01) << ch);
+    else
+        _reg = back &0x01;
+
+    reg->system->ssd_mode = _reg;
+    printf("_set_ssd_mode _reg = 0x%x", _reg);
 }
 
 

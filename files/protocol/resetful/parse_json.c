@@ -568,9 +568,9 @@ int parse_json_file_backtrace(const char * const body, uint8_t ch,  uint8_t enab
         return RESP_CODE_DISK_DETECTED_ERR;
     }
     if(enable)
-        ret = fs_ctx->ops->fs_start_read_raw_file(filename);
+        ret = fs_ctx->ops->fs_start_read_raw_file(ch, filename);
     else
-        ret = fs_ctx->ops->fs_stop_read_raw_file(filename);
+        ret = fs_ctx->ops->fs_stop_read_raw_file(ch, filename);
 #endif
     if(ret != 0)
         return RESP_CODE_EXECMD_ERR;
@@ -611,9 +611,9 @@ int parse_json_file_store(const char * const body, uint8_t ch,  uint8_t enable, 
             return RESP_CODE_EXECMD_ERR;
         }
         if(enable)
-            fs_ctx->ops->fs_start_save_file(filename);
+            fs_ctx->ops->fs_start_save_file(ch, filename);
         else
-            fs_ctx->ops->fs_stop_save_file(filename);
+            fs_ctx->ops->fs_stop_save_file(ch, filename);
 #endif
     if(ret != 0)
         return RESP_CODE_EXECMD_ERR;

@@ -925,7 +925,7 @@ static int akt_execute_set_command(void *cl)
             check_valid_channel(payload[0]);
             memcpy(&sis, payload, sizeof(STORAGE_IQ_ST));
             if(sis.cmd == 1){/* start add iq file */
-                printf_note("Start add file:%s, bandwidth=%u\n", sis.filepath, sis.bandwidth);
+                printf_note("ch:%d, Start add file:%s, bandwidth=%u\n", ch, sis.filepath, sis.bandwidth);
                 executor_set_command(EX_MID_FREQ_CMD, EX_BANDWITH, ch, &sis.bandwidth);
 #if defined(SUPPORT_XWFS)
                 ret = xwfs_start_save_file(sis.filepath);
@@ -936,7 +936,7 @@ static int akt_execute_set_command(void *cl)
                     printf_warn("NOT FOUND DISK!!\n");
                     break;
                 }
-                fs_ctx->ops->fs_start_save_file(sis.filepath);
+                fs_ctx->ops->fs_start_save_file(ch, sis.filepath);
 #endif
             }else if(sis.cmd == 0){/* stop add iq file */
                 printf_note("Stop add file:%s\n", sis.filepath);
@@ -950,7 +950,7 @@ static int akt_execute_set_command(void *cl)
                     printf_warn("NOT FOUND DISK!!\n");
                     break;
                 }
-                fs_ctx->ops->fs_stop_save_file(sis.filepath);
+                fs_ctx->ops->fs_stop_save_file(ch, sis.filepath);
 #endif
             }else{
                 printf_err("error cmd\n");
@@ -981,7 +981,7 @@ static int akt_execute_set_command(void *cl)
                     printf_warn("NOT FOUND DISK!!\n");
                     break;
                 }
-                fs_ctx->ops->fs_start_read_raw_file(bis.filepath);
+                fs_ctx->ops->fs_start_read_raw_file(ch, bis.filepath);
 #endif
             }else if(bis.cmd == 0){/* stop backtrace iq file */
                 printf_note("Stop backtrace file:%s\n", bis.filepath);
@@ -994,7 +994,7 @@ static int akt_execute_set_command(void *cl)
                     printf_warn("NOT FOUND DISK!!\n");
                     break;
                 }
-                fs_ctx->ops->fs_stop_read_raw_file(bis.filepath);
+                fs_ctx->ops->fs_stop_read_raw_file(ch, bis.filepath);
 #endif
             }else{
                 printf_err("error cmd\n");

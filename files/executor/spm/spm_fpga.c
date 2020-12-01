@@ -157,11 +157,13 @@ static inline const char * get_str_by_code(const char *const *list, int max, int
 
 
 static struct _spm_stream spm_stream[] = {
-        {DMA_IQ_DEV,  -1, 0, NULL, DMA_BUFFER_16M_SIZE, "IQ Stream", DMA_READ, STREAM_IQ},
-        {DMA_FFT_DEV, -1, 0,NULL, DMA_BUFFER_16M_SIZE, "FFT Stream", DMA_READ, STREAM_FFT},
-        {DMA_FFT2_DEV, -1, 1, NULL, DMA_BUFFER_16M_SIZE, "FFT2 Stream", DMA_READ, STREAM_FFT},
-        {DMA_ADC_TX_DEV, -1, 0, NULL, DMA_BUFFER_128M_SIZE, "ADC Tx Stream", DMA_WRITE, STREAM_ADC_WRITE},
-        {DMA_ADC_RX_DEV, -1, 0, NULL, DMA_BUFFER_128M_SIZE, "ADC Rx Stream", DMA_READ, STREAM_ADC_READ},
+        {DMA_IQ_DEV,        -1, 0, NULL, DMA_BUFFER_16M_SIZE, "IQ Stream",      DMA_READ, STREAM_IQ},
+        {DMA_FFT0_DEV,      -1, 0, NULL, DMA_BUFFER_16M_SIZE, "FFT0 Stream",    DMA_READ, STREAM_FFT},
+        {DMA_FFT1_DEV,      -1, 1, NULL, DMA_BUFFER_16M_SIZE, "FFT1 Stream",    DMA_READ, STREAM_FFT},
+        {DMA_ADC_TX0_DEV,   -1, 0, NULL, DMA_BUFFER_64M_SIZE, "ADC Tx0 Stream", DMA_WRITE, STREAM_ADC_WRITE},
+        {DMA_ADC_TX1_DEV,   -1, 1, NULL, DMA_BUFFER_64M_SIZE, "ADC Tx1 Stream", DMA_WRITE, STREAM_ADC_WRITE},
+        {DMA_ADC_RX0_DEV,   -1, 0, NULL, DMA_BUFFER_64M_SIZE, "ADC Rx0 Stream", DMA_READ, STREAM_ADC_READ},
+        {DMA_ADC_RX1_DEV,   -1, 1, NULL, DMA_BUFFER_64M_SIZE, "ADC Rx1 Stream", DMA_READ, STREAM_ADC_READ},
 };
 
 static const char *const dma_status_array[] = {
@@ -296,25 +298,25 @@ static ssize_t spm_read_fft_data(void **data, void *args)
     return spm_stream_read(index, data);
 }
 
-static ssize_t spm_read_adc_data(void **data)
+static ssize_t spm_read_adc_data(int ch, void **data)
 {
     int index;
-    index = spm_find_index_by_type(-1, -1, STREAM_ADC_READ);
+    index = spm_find_index_by_type(ch, -1, STREAM_ADC_READ);
     if(index < 0)
         return -1;
-
+    
     return spm_stream_read(index, data);
 }
 
 
-static int spm_read_adc_over_deal(void *arg)
+static int spm_read_adc_over_deal(int ch, void *arg)
 {
     unsigned int nwrite_byte;
     nwrite_byte = *(unsigned int *)arg;
     struct _spm_stream *pstream = spm_stream;
     int index;
     
-    index = spm_find_index_by_type(-1, -1, STREAM_ADC_READ);
+    index = spm_find_index_by_type(ch, -1, STREAM_ADC_READ);
     if(index < 0)
         return -1;
     
@@ -1302,7 +1304,7 @@ static int32_t  spm_get_signal_strength(uint8_t ch,uint8_t subch, uint32_t index
     return 0;
 }
 
-static int spm_stream_back_running_file(enum stream_type type, int fd)
+static int spm_stream_back_running_file(int ch, enum stream_type type, int fd)
 {
     void *w_addr = NULL;
     int i, rc, ret = 0;
@@ -1319,7 +1321,7 @@ static int spm_stream_back_running_file(enum stream_type type, int fd)
         return -1;
     file_fd = fd;
 
-    index = spm_find_index_by_type(-1, -1, type);
+    index = spm_find_index_by_type(ch, -1, type);
     if(index < 0)
         return -1;
 try_gain:

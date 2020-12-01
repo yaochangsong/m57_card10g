@@ -137,7 +137,6 @@ static inline void _set_ssd_mode(FPGA_CONFIG_REG *reg, int ch,int back)
         _reg = back &0x01;
 
     reg->system->ssd_mode = _reg;
-    printf("_reg=%d, ch=%d, back = %d\n", _reg, ch, back);
 }
 
 

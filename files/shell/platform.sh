@@ -1,12 +1,12 @@
 #!/bin/sh
 
-set -e
+#set -e
 DAEMON=/usr/bin/platform
 start()
 {
     echo " Start FlatForm."
     str=$(cat /etc/profile | grep 'export TZ')
-    if [ -z $str ]; then
+    if [ -z "$str" ]; then
 		echo "TZ=UTC-08:00" >> /etc/profile
 		echo "export TZ" >> /etc/profile
     fi

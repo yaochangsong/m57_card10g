@@ -871,7 +871,7 @@ char *assemble_json_rf_info(void)
     for(i = 0; i <MAX_RADIO_CHANNEL_NUM; i++){
         cJSON_AddItemToArray(array, item = cJSON_CreateObject());
         cJSON_AddNumberToObject(item, "index", i);
-        executor_get_command(EX_RF_FREQ_CMD, EX_RF_STATUS_TEMPERAT, i,  &rf_temp, 0);
+        executor_get_command(EX_RF_FREQ_CMD, EX_RF_STATUS_TEMPERAT, i,  &rf_temp);
         if(rf_temp > 200 || rf_temp < -100 || rf_temp == 0)
             cJSON_AddStringToObject(item, "status", "no");
         else

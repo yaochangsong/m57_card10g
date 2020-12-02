@@ -229,7 +229,7 @@ static inline int32_t _reg_get_rf_temperature(int ch, int index, FPGA_CONFIG_REG
 
     index = index;
     if(reg->rfReg[ch] == NULL)
-        return -1;
+        return 0;
     rf_temperature = reg->rfReg[ch]->temperature;
     usleep(100);
     rf_temperature = reg->rfReg[ch]->temperature;

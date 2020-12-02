@@ -65,6 +65,7 @@ struct push_arg{
     int  fd;
     int ch;
     char *name;
+    char *filename;
 };
 static double difftime_us_val(const struct timeval *start, const struct timeval *end)
 {
@@ -137,14 +138,32 @@ bool _fs_disk_info(struct statfs *diskInfo)
         return false;
     }
 
-	if(statfs(MOUNT_DIR, diskInfo) != 0)
-	{
+    if(statfs(MOUNT_DIR, diskInfo) != 0)
+    {
         disk_error_num = DISK_CODE_NOT_FORAMT;
-		printf_note("Disk node[%s] is unknown filesystem\n", MOUNT_DIR);
+    	printf_note("Disk node[%s] is unknown filesystem\n", MOUNT_DIR);
         return false;
-	}
+    }
 
     return true;
+}
+
+uint64_t _fs_get_file_size(char *filename)
+{
+    struct statfs sfs;
+    char cmd[256];
+    
+    if(filename == NULL || strlen(filename) == 0)
+        return 0;
+    
+    snprintf(cmd, sizeof(cmd)-1, "%s/%s", fs_get_root_dir(), filename);
+    printf_note("cmd:%s\n", cmd);
+    if(statfs(cmd, &sfs) != 0){
+        printf_err("file not found: %s\n", cmd);
+        return 0;
+    }
+    printf_note("fs size: %llu\n", sfs.f_bsize * sfs.f_blocks);
+    return (sfs.f_bsize * sfs.f_blocks);
 }
 
 static disk_err_code _fs_get_err_code(void)
@@ -289,11 +308,12 @@ static ssize_t _fs_dir(char *dirname, int (*callback) (char *,void *, void *), v
 
 static void _thread_exit_callback(void *arg){  
     struct timeval beginTime, endTime;
-    uint64_t nbyte;
+    uint64_t nbyte, filesize = 0;
     float speed = 0;
     double  diff_time_us = 0;
     float diff_time_s = 0;
     int fd = -1, ch;
+    char command[256];
     struct push_arg *pargs;
     pargs = (struct push_arg *)arg;
     memcpy(&beginTime, &pargs->ct, sizeof(struct timeval));
@@ -313,11 +333,25 @@ static void _thread_exit_callback(void *arg){
         io_stop_backtrace_file(&ch);
         executor_set_command(EX_ENABLE_CMD, PSD_MODE_DISABLE, 0, NULL);
     }
+    
+    /* check split file */
+    filesize = _fs_get_file_size(pargs->filename);
+    printf_note("%s filesize: %llu, %llu\n", pargs->filename, filesize, config_get_split_file_threshold());
+    if(config_get_split_file_threshold() > 0 && filesize > config_get_split_file_threshold()){
+        chdir(ROOT_DIR);
+        printf_note("cd %s\n", ROOT_DIR);
+        snprintf(command, sizeof(command) - 1, "split -b %llu %s -a 2 %s. &", config_get_split_file_threshold(), pargs->filename, pargs->filename);
+        printf_note(" %s\n", command);
+        safe_system(command);
+        snprintf(command, sizeof(command) - 1, "rm %s &", pargs->filename);
+        printf_note("%s\n", command);
+        safe_system(command);
+    }
     if(fd > 0)
         close(fd);
+    safe_free(pargs->filename);
     if(arg)
         safe_free(arg);
-
 }  
 static int _fs_start_save_file_thread(void *arg)
 {
@@ -385,11 +419,13 @@ static ssize_t _fs_start_save_file(int ch, char *filename)
     p_args->fd = fd;
     p_args->ch = ch;
     p_args->name=THREAD_FS_SAVE_NAME;
+    p_args->filename = safe_strdup(filename);
     io_set_enable_command(ADC_MODE_ENABLE, ch, -1, 0);
     ret =  pthread_create_detach (NULL, _fs_start_save_file_thread, _thread_exit_callback,  
                                 THREAD_FS_SAVE_NAME, p_args, p_args);
     if(ret != 0){
         perror("pthread save file thread!!");
+        safe_free(p_args->filename);
         safe_free(p_args);
         exit(1);
     }

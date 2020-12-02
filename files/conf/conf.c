@@ -144,6 +144,17 @@ void config_set_disk_alert_threshold(uint64_t val)
     config.oal_config.status_para.diskInfo.alert.alert_threshold_byte = val;
 }
 
+void config_set_split_file_threshold(uint64_t val)
+{
+    config.oal_config.status_para.diskInfo.alert.split_file_threshold_byte = val;
+}
+
+uint64_t config_get_split_file_threshold(void)
+{
+    return config.oal_config.status_para.diskInfo.alert.split_file_threshold_byte;
+}
+
+
 
 uint32_t  config_get_fft_size(uint8_t ch)
 {

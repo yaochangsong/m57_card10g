@@ -267,9 +267,8 @@ uint8_t rf_read_interface(uint8_t cmd,uint8_t ch,void *data, va_list ap){
 #if defined(SUPPORT_RF_SPI)
             ret = spi_rf_get_command(SPI_RF_TEMPRATURE_GET, &rf_temperature);
 #elif defined(SUPPORT_RF_FPGA)
-            int32_t index  = va_arg(ap, int32_t);
-            rf_temperature = _reg_get_rf_temperature(ch, index, get_fpga_reg());
-            printf_note("[ch=%d]get rf index=%d temperature = %d\n", ch, index, rf_temperature);
+            rf_temperature = _reg_get_rf_temperature(ch, 0, get_fpga_reg());
+            printf_note("[ch=%d]get rf temperature = %d\n", ch, rf_temperature);
 #endif
 #endif
             *(int16_t *)data = rf_temperature;

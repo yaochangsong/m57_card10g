@@ -1289,8 +1289,9 @@ void io_get_board_power(void *args)
 
 bool io_get_adc_status(void *args)
 {
+    #define STATUS_ADC_OK  "ok"
     static FILE * fp = NULL;
-    int status;
+    char status[32];
     bool ret;
     args = args;
     if(fp == NULL){
@@ -1301,22 +1302,31 @@ bool io_get_adc_status(void *args)
         }
     }
     rewind(fp);
-    fscanf(fp, "%d", &status);
-    printf_note("adc status: %d\n", status);
-    
-    ret = (status == 0 ? false : true);
+    fscanf(fp, "%s", status);
+    status[sizeof(status) -1] = 0;
+    printf_debug("adc status: %s\n", status);
+    if(strncmp(STATUS_ADC_OK, status, sizeof(STATUS_ADC_OK)) == 0){
+        ret = true;
+    }else{
+        ret = false;
+    }
     return ret;
 }
 
 bool io_get_clock_status(void *args)
 {
-
+    #define STATUS_IN_CLK     "inner_clock"
+    #define STATUS_OUT_CLK    "external_clock"
+    #define STATUS_LOCKED     "locked"
+    #define STATUS_NO_LOCKED  "no_locked"
+    
     static FILE * fp = NULL;
 
     /**** stack smashing detected ***: <unknown> terminated; then exit
       if we use uint8 lock_ok=0, external_clk=0;
     */
-    int lock_ok=0, external_clk=0;
+    //int lock_ok=0, external_clk=0;
+    char external_clk[32], lock_ok[32];
     bool ret = false;
     
     if(fp == NULL){
@@ -1328,11 +1338,23 @@ bool io_get_clock_status(void *args)
     }
     
     rewind(fp);
-    fscanf(fp, "%d %d", &external_clk, &lock_ok);
-    printf_debug("external_clk:%d, lock_ok: %d\n", external_clk, lock_ok);
+    fscanf(fp, "%s %s", external_clk, lock_ok);
     
-    *(uint8_t *)args = external_clk;
-    ret = (lock_ok == 0 ? false : true);
+    external_clk[sizeof(external_clk) -1] = 0;
+    lock_ok[sizeof(lock_ok) -1] = 0;
+    printf_debug("external_clk:%s, lock_ok: %s\n", external_clk, lock_ok);
+
+    if(strncmp(external_clk, STATUS_OUT_CLK, sizeof(STATUS_OUT_CLK)) == 0){
+        *(uint8_t *)args = 1;       /* out */
+    }else{
+        *(uint8_t *)args = 0;       /* in */
+    }
+    
+    if(strncmp(lock_ok, STATUS_LOCKED, sizeof(STATUS_LOCKED)) == 0){
+        ret = true;        /* locked */
+    }else{
+        ret = false;       /* unlocked */
+    }
 
     return ret;
 }
@@ -1342,9 +1364,22 @@ bool io_get_inout_clock_status(void *args)
 {
     bool ret = false, is_lock_ok = false;
 #if defined(SUPPORT_SPECTRUM_FPGA)
-    ret = _reg_get_rf_ext_clk(0, 0, get_fpga_reg());
-    *(uint8_t *)args = (((ret & 0x01) == 0) ? 1 : 0);
-    is_lock_ok = _reg_get_rf_lock_clk(0, 0, get_fpga_reg());
+    if(io_get_adc_status(NULL) == false){
+        *(uint8_t *)args = 0;
+        is_lock_ok = false;
+    }else{
+        int32_t rf_temp =  _reg_get_rf_temperature(0, 0, get_fpga_reg());
+        if(rf_temp > 200 || rf_temp < -100 || rf_temp == 0){
+            /* GET status from FPGA  */
+            io_get_clock_status(args);
+        } else{
+            /* GET status from RF  */
+            ret = _reg_get_rf_ext_clk(0, 0, get_fpga_reg());
+            *(uint8_t *)args = (((ret & 0x01) == 0) ? 1 : 0);
+            _reg_get_rf_lock_clk(0, 0, get_fpga_reg());
+        }
+        is_lock_ok = true;
+    }
 #endif
     return is_lock_ok;
 }

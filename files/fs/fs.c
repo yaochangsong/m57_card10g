@@ -368,6 +368,8 @@ static int _fs_start_save_file_thread(void *arg)
     /* disk is full */
     if(disk_is_full_alert == true){
         printf_warn("disk is full exit save thread\n");
+        _ctx->ops->read_adc_over_deal(ch, &nread);
+        io_set_enable_command(ADC_MODE_DISABLE, ch, -1, 0);
         pthread_exit_by_name(THREAD_FS_SAVE_NAME);
         return -1;
     }

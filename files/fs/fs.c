@@ -112,6 +112,18 @@ static inline  int _write_disk_run(int fd, size_t size, void *pdata)
     return 0;
 }
 
+void fs_file_list(char *filename, struct stat *stats, void *arg_array)
+{
+    cJSON *item = NULL;
+    cJSON *array = (cJSON *)arg_array;
+    if(stats == NULL || filename == NULL || array == NULL)
+        return;
+    cJSON_AddItemToArray(array, item = cJSON_CreateObject());
+    cJSON_AddStringToObject(item, "filename", filename);
+    cJSON_AddNumberToObject(item, "size", (off_t)stats->st_size);
+    cJSON_AddNumberToObject(item, "createTime", stats->st_mtime);
+}
+
 
 char *fs_get_root_dir(void)
 {

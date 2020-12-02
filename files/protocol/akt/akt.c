@@ -1056,7 +1056,21 @@ static int akt_execute_set_command(void *cl)
         case DEVICE_REBOOT_CMD:
         {
             check_valid_channel(payload[0]);
+            printf_note("remote reboot!\n");
             safe_system("reboot -f");
+            break;
+        }
+        case FILE_STROE_SIZE_CMD:
+        {
+            struct _file_store{
+                uint8_t ch;
+                uint64_t split_threshold;
+            }__attribute__ ((packed));
+            struct _file_store para;
+            memcpy(&para, payload, sizeof(para));
+            check_valid_channel(para.ch);
+            config_set_split_file_threshold(para.split_threshold);
+            printf_note("set split file threshold:%llu Bytes, %llu MB\n", para.split_threshold, (para.split_threshold / 1024 / 1024));
             break;
         }
         default:

@@ -582,6 +582,8 @@ typedef struct  _DEVICE_SELF_CHECK_STATUS_RSP_ST{
     int8_t system_power_on_time[20];
     uint8_t ch_num;
     DEVICE_SELF_CHECK_TEMPERATUE_ST t_s[MAX_RADIO_CHANNEL_NUM];
+    uint8_t irig_b_status;
+    uint8_t gps_status;
 }__attribute__ ((packed)) DEVICE_SELF_CHECK_STATUS_RSP_ST; 
 
 

@@ -1132,6 +1132,9 @@ static int akt_execute_get_command(void *cl)
             printf_note("ext_clk:%d, ad_status=%d,pfga_temperature=%d,ch_num=%d, rf_temperature=%d, ch_status=%d\n", 
                 self_check.ext_clk, self_check.ad_status, self_check.pfga_temperature, self_check.ch_num,
                 self_check.t_s[0].rf_temperature, self_check.t_s[0].ch_status);
+
+            self_check.irig_b_status = 0;  //0:正常 1：异常
+            self_check.gps_status = (gps_location_is_valid() == true ? 0 : 1);
             client->response.response_length = sizeof(DEVICE_SELF_CHECK_STATUS_RSP_ST);
             client->response.data = calloc(1, client->response.response_length);
             if(client->response.data == NULL){

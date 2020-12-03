@@ -52,5 +52,6 @@ extern char *fs_get_root_dir(void);
 extern struct fs_context *get_fs_ctx(void);
 extern struct fs_context *get_fs_ctx_ex(void);
 extern struct fs_context * fs_create_context(void);
+extern void fs_file_list(char *filename, struct stat *stats, void *arg_array);
 #endif
 

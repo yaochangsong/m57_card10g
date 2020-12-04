@@ -190,6 +190,7 @@ static int8_t  executor_points_scan(uint8_t ch, work_mode_type mode, void *args)
         e_freq = point->points[i].center_freq + point->points[i].bandwidth/2;
         r_args->ch = ch;
         r_args->fft_sn = i;
+        r_args->audio_points = i;
         r_args->s_freq = s_freq;
         r_args->e_freq = e_freq;
         r_args->total_fft = points_count;

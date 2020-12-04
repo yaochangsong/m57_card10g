@@ -81,7 +81,7 @@ void spm_iq_handle_thread(void *arg)
     iq_t *ptr_iq = NULL;
     ssize_t  len = 0, i;
     struct poal_config *poal_config = &(config_get_config()->oal_config);
-    int ch;
+    int ch, type;
    // thread_bind_cpu(1);
     ctx = (struct spm_context *)arg;
 
@@ -103,7 +103,16 @@ loop:
         len = ctx->ops->read_iq_data(&ptr_iq);
         
         if(len > 0){
+            if(ctx->ops->iq_dispatcher){
+                ctx->ops->iq_dispatcher(ptr_iq, len, &run);
+                for_each_iq_type(type, run){
+                    if(ctx->ops->send_iq_type)
+                        ctx->ops->send_iq_type(type, run.dis_iq.send_ptr, run.dis_iq.send_len, &run);
+                }
+                ctx->ops->read_iq_over_deal(&len);
+            }else{
             ctx->ops->send_iq_data(ptr_iq, len, &run);
+            }
         }
         if(subch_bitmap_weight() == 0){
             printf_note("iq disabled\n");
@@ -180,7 +189,7 @@ void thread_attr_set(pthread_attr_t *attr, int policy, int prio)
 void *spm_init(void)
 {
     static pthread_t send_thread_id, recv_thread_id;
-    int ret, ch;
+    int ret, ch, type;
     pthread_attr_t attr;
 #if defined(SUPPORT_PLATFORM_ARCH_ARM)
 #if defined(SUPPORT_SPECTRUM_CHIP)
@@ -203,6 +212,15 @@ void *spm_init(void)
         if(spmctx->run_args[ch]->fft_ptr == NULL){
         printf("malloc failed\n");
         exit(1);
+        }
+        for(type = 0; type < STREAM_IQ_TYPE_MAX; type++){
+            spmctx->run_args[ch]->dis_iq.ptr[type] = calloc(1, DMA_IQ_TYPE_BUFFER_SIZE);
+            if(spmctx->run_args[ch]->dis_iq.ptr[type] == NULL){
+                printf("malloc failed\n");
+                exit(1);
+            }
+            printf_note("type=%d, ptr=%p\n", type, spmctx->run_args[ch]->dis_iq.ptr[type]);
+            spmctx->run_args[ch]->dis_iq.len[type] = 0;
         }
     }
 

@@ -30,6 +30,7 @@
 #define DMA_BUFFER_64M_SIZE (64 * 1024 * 1024)
 #define DMA_BUFFER_128M_SIZE (128 * 1024 * 1024)
 
+#define DMA_IQ_BUFFER_SIZE DMA_BUFFER_16M_SIZE
 typedef enum _read_status_
 {
     READ_BUFFER_STATUS_OK = 0x0,//读数据成功

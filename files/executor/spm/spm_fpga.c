@@ -157,7 +157,7 @@ static inline const char * get_str_by_code(const char *const *list, int max, int
 
 
 static struct _spm_stream spm_stream[] = {
-        {DMA_IQ_DEV,        -1, 0, NULL, DMA_BUFFER_16M_SIZE, "IQ Stream",      DMA_READ, STREAM_IQ},
+        {DMA_IQ_DEV,        -1, 0, NULL, DMA_IQ_BUFFER_SIZE,  "IQ Stream",      DMA_READ, STREAM_IQ},
         {DMA_FFT0_DEV,      -1, 0, NULL, DMA_BUFFER_16M_SIZE, "FFT0 Stream",    DMA_READ, STREAM_FFT},
         {DMA_FFT1_DEV,      -1, 1, NULL, DMA_BUFFER_16M_SIZE, "FFT1 Stream",    DMA_READ, STREAM_FFT},
         {DMA_ADC_TX0_DEV,   -1, 0, NULL, DMA_BUFFER_64M_SIZE, "ADC Tx0 Stream", DMA_WRITE, STREAM_ADC_WRITE},
@@ -531,6 +531,51 @@ static void *_assamble_iq_header(size_t subch, size_t *hlen, size_t data_len, vo
 
 }
 
+static void *_assamble_audio_header(size_t subch, size_t *hlen, size_t data_len, void *arg)
+{
+    uint8_t *ptr = NULL, *ptr_header = NULL;
+    uint32_t header_len = 0;
+    struct spm_run_parm *hparam;
+    uint32_t d_bandwidth_hz;
+    uint64_t d_m_freq_hz;
+    uint32_t d_method;
+    
+    hparam = (struct spm_run_parm *)arg;
+    
+    if(data_len == 0 || arg == NULL)
+        return NULL;
+
+    hparam->sample_rate = get_side_band_rate(hparam->scan_bw)*hparam->scan_bw;
+    hparam->sub_ch_index = subch;
+    config_read_by_cmd(EX_MID_FREQ_CMD, EX_DEC_BW,      hparam->ch, &d_bandwidth_hz, hparam->audio_points);
+    config_read_by_cmd(EX_MID_FREQ_CMD, EX_MID_FREQ,    hparam->ch, &d_m_freq_hz, hparam->audio_points);
+    config_read_by_cmd(EX_MID_FREQ_CMD, EX_DEC_METHOD,  hparam->ch, &d_method, hparam->audio_points);
+    hparam->sub_ch_para.bandwidth_hz = d_bandwidth_hz;
+    hparam->sub_ch_para.m_freq_hz = d_m_freq_hz;
+    hparam->sub_ch_para.d_method = d_method;
+
+#ifdef SUPPORT_DATA_PROTOCAL_AKT
+    hparam->data_len = data_len;
+    hparam->type = BASEBAND_DATUM_IQ;
+    hparam->ex_type = DEMODULATE_DATUM;
+    if((ptr_header = akt_assamble_data_frame_header_data(&header_len, arg))== NULL){
+        return NULL;
+    }
+    
+#elif defined(SUPPORT_DATA_PROTOCAL_XW)
+    hparam->data_len = data_len; 
+    hparam->type = DEFH_DTYPE_BB_IQ;
+    hparam->ex_type = DFH_EX_TYPE_DEMO;
+   // hparam->sub_ch = subch;
+    ptr_header = xw_assamble_frame_data(&header_len, arg);
+    if(ptr_header == NULL)
+        return NULL;
+#endif
+    *hlen = header_len;
+
+    return ptr_header;
+
+}
 static int spm_send_iq_data(void *data, size_t len, void *arg)
 {
     uint32_t header_len = 0;
@@ -572,42 +617,128 @@ static int spm_send_iq_data(void *data, size_t len, void *arg)
     return (header_len + len);
 }
 
-
-static int spm_send_cmd(void *cmd, void *data, size_t data_len)
+static void spm_send_dispatcher_iq(enum stream_iq_type type, iq_t *data, size_t len, void *arg)
 {
-#ifdef SUPPORT_PROTOCAL_AKT
-   // poal_send_active_to_all_client((uint8_t *)data, data_len);
-#endif
-}
+    
+    uint32_t header_len = 0, subch = 0;
+    struct _spm_stream *pstream = spm_stream;
+    size_t _send_byte = (iq_send_unit_byte > 0 ? iq_send_unit_byte : DEFAULT_IQ_SEND_BYTE);
+    uint8_t *hptr = NULL;
+    struct spm_run_parm *hparam;
+    hparam = (struct spm_run_parm *)arg;
 
-static int spm_convet_iq_to_fft(void *iq, void *fft, size_t fft_len)
-{
-    if(iq == NULL || fft == NULL || fft_len == 0)
+    if(data == NULL || len == 0 || arg == NULL)
         return -1;
-    //fft_spectrum_iq_to_fft_handle((short *)iq, fft_len, fft_len*2, (float *)fft);
-    return 0;
+
+    //printf_note("type=%s, ptr=%p, len = %d, offset=%u\n", 
+    //        type == STREAM_IQ_TYPE_AUDIO ? "audio" : "iq" , data, len,hparam->dis_iq.offset[type]);
+    
+    if(len < _send_byte)
+        return -1;
+
+    if(type == STREAM_IQ_TYPE_AUDIO){
+        if((hptr = _assamble_audio_header(CONFIG_AUDIO_CHANNEL, &header_len, _send_byte, arg)) == NULL){
+            printf_err("assamble head error\n");
+            return -1;
+        }
+    } else if(type == STREAM_IQ_TYPE_RAW){
+        if((hptr = _assamble_iq_header(1, &header_len, _send_byte, arg)) == NULL){
+            printf_err("assamble head error\n");
+            return -1;
+        }
+
+    } else{
+        printf_err("unknow type: %d\n", type);
+        return -1;
+    }
+    
+    int i, index,sbyte;
+    uint8_t *pdata;
+    struct iovec iov[2];
+    iov[0].iov_base = hptr;
+    iov[0].iov_len = header_len;
+    index = len / _send_byte;
+    sbyte = index * _send_byte;
+    pdata = (uint8_t *)data;
+    __lock_iq_send__();
+    for(i = 0; i<index; i++){
+        iov[1].iov_base = pdata;
+        iov[1].iov_len = _send_byte;
+        udp_send_vec_data(iov, 2);
+        pdata += _send_byte;
+    }
+    __unlock_iq_send__();
+
+    safe_free(hptr);
+    if(hparam->dis_iq.offset[type] >= (sbyte/sizeof(iq_t)))
+        hparam->dis_iq.offset[type] -= (sbyte/sizeof(iq_t));
+    else{
+        printf_err("iq offset err %u < %d\n", hparam->dis_iq.offset[type], sbyte/sizeof(iq_t));
+        hparam->dis_iq.offset[type] = 0;
+    }
+    
+    printf_debug("%s, offset = %u, send=%u, len=%u\n", 
+            type == STREAM_IQ_TYPE_AUDIO ? "audio" : "iq" , hparam->dis_iq.offset[type], sbyte, len);
+
+    return sbyte;
 }
 
-static int spm_save_data(void *data, size_t len)
-{
-    return 0;
-}
 
-static int spm_backtrace_data(void *data, size_t len)
+/* 将窄带iq不同类型进行分发 */
+static int spm_iq_dispatcher(iq_t *ptr_iq, size_t len, void *arg)
 {
-    return 0;
-}
+#define IQ_DATA_PACKAGE_BYTE 512
+#define IQ_DATA_TYPE_PACKAGE_NUM 262144
+#define AUDIO_CHANNEL CONFIG_AUDIO_CHANNEL
 
-static int spm_set_psd_analysis_enable(bool enable)
-{
-    return 0;
-}
+    #define IQ_HEADER_1 0x55aa
+    #define IQ_HEADER_2 0xe700
+    
+    size_t offset = 0, i, index = 0;
+    int subch, type;
+    iq_t *ptr_offset = ptr_iq, *type_offset[STREAM_IQ_TYPE_MAX], *iq_raw_offset;
+    struct spm_run_parm *hparam;
+    hparam = (struct spm_run_parm *)arg;
 
-#include <math.h>
-
-static int spm_get_psd_analysis_result(void *data, size_t len)
-{
-    return 0;
+    offset = IQ_DATA_PACKAGE_BYTE/sizeof(iq_t);
+    
+    for(i = 0; i< STREAM_IQ_TYPE_MAX; i++){
+        type_offset[i] = hparam->dis_iq.ptr[i] + hparam->dis_iq.offset[i];
+        hparam->dis_iq.len[type] = 0;
+    }
+    
+    for(i = 0, index = 0; i< len; i += IQ_DATA_PACKAGE_BYTE, index++){
+        if(((*ptr_offset & 0x0ff00) == IQ_HEADER_2) && (*(ptr_offset+1) == IQ_HEADER_1)){
+            subch = *ptr_offset & 0x00ff;
+            if(AUDIO_CHANNEL == subch){
+                type = STREAM_IQ_TYPE_AUDIO;
+            }else {
+                type = STREAM_IQ_TYPE_RAW;
+            }
+            memcpy(type_offset[type], ptr_offset, IQ_DATA_PACKAGE_BYTE);
+            type_offset[type] += offset;
+            hparam->dis_iq.len[type] += IQ_DATA_PACKAGE_BYTE;
+            if(hparam->dis_iq.len[type] >= DMA_IQ_TYPE_BUFFER_SIZE) {
+                printf_warn("type: %s, is overrun len[%u], %u\n",
+                    type == STREAM_IQ_TYPE_AUDIO ? "audio" : "iq" , hparam->dis_iq.len[type], DMA_IQ_TYPE_BUFFER_SIZE);
+                hparam->dis_iq.len[type] = DMA_IQ_TYPE_BUFFER_SIZE;
+                break;
+            }
+        }
+        ptr_offset += offset;
+    }
+    
+    for(i = 0; i< STREAM_IQ_TYPE_MAX; i++){
+        if(hparam->dis_iq.len[i] > 0){
+            hparam->dis_iq.offset[i] +=  hparam->dis_iq.len[i]/sizeof(iq_t);
+            if(hparam->dis_iq.offset[i] > DMA_IQ_TYPE_BUFFER_SIZE/sizeof(iq_t)){
+                hparam->dis_iq.offset[i] = DMA_IQ_TYPE_BUFFER_SIZE/sizeof(iq_t);
+                printf_warn("offset type: %s, is overrun[%u]\n",
+                    i == STREAM_IQ_TYPE_AUDIO ? "audio" : "iq" , hparam->dis_iq.offset[i]);
+            }
+        }
+       // printf_note("[%d], %p, len=%u, offset=%u\n", i, hparam->dis_iq.ptr[i], hparam->dis_iq.len[i], hparam->dis_iq.offset[i]);
+    }
 }
 
 static int spm_scan(uint64_t *s_freq_offset, uint64_t *e_freq, uint32_t *scan_bw, uint32_t *bw, uint64_t *m_freq)
@@ -1441,12 +1572,8 @@ static const struct spm_backend_ops spm_ops = {
     .data_order = spm_data_order,
     .send_fft_data = spm_send_fft_data,
     .send_iq_data = spm_send_iq_data,
-    .send_cmd = spm_send_cmd,
-    .convet_iq_to_fft = spm_convet_iq_to_fft,
-    .set_psd_analysis_enable = spm_set_psd_analysis_enable,
-    .get_psd_analysis_result = spm_get_psd_analysis_result,
-    .save_data = spm_save_data,
-    .backtrace_data = spm_backtrace_data,
+//    .iq_dispatcher = spm_iq_dispatcher,
+    .send_iq_type = spm_send_dispatcher_iq,
     .agc_ctrl = spm_agc_ctrl_v3,//spm_agc_ctrl,
     .residency_time_arrived = is_sigal_residency_time_arrived,
     .signal_strength = spm_get_signal_strength,

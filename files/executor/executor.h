@@ -133,6 +133,21 @@ struct sem_st{
     sem_t   kernel_sysn;        /* 频谱分析时，内核处理完数据后，异步消息通知应用层 */
 };
 
+struct spm_iq_parm{
+    uint64_t m_freq_hz;
+    uint32_t bandwidth_hz;
+    uint8_t d_method;
+    uint8_t resv1;
+    uint8_t resv2;
+    uint8_t resv3;
+};
+struct spm_dispatcher_iq{
+    uint32_t len[STREAM_IQ_TYPE_MAX];
+    uint32_t offset[STREAM_IQ_TYPE_MAX];
+    iq_t *ptr[STREAM_IQ_TYPE_MAX];
+    char *send_ptr;
+    char *send_len;
+};
 /* 频谱运行中，可能变化的参数 */
 struct spm_run_parm{
     uint32_t scan_bw;
@@ -157,7 +172,11 @@ struct spm_run_parm{
     uint8_t ex_type;            /* 扩展帧类型： 频谱帧/解调帧 */
     uint8_t gain_mode;
     int8_t gain_value;
+    uint32_t sub_ch_index;      /* 子通道索引 */
+    uint32_t audio_points;
+    struct spm_iq_parm sub_ch_para; /* 子通道参数 */
     void *fft_ptr;              /* fft数据缓冲区 */
+    struct spm_dispatcher_iq dis_iq;
 };
 
 

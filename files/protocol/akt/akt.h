@@ -187,6 +187,9 @@ typedef enum _BUSINESS_CODE{
     SET_NET_WZ_NETWORK_CMD=0x26,
 #endif
     AUDIO_VOLUME_CMD=0x28,
+    DEVICE_REBOOT_CMD=0x29,
+    FILE_LIST_CMD=0x2a,
+    FILE_STROE_SIZE_CMD=0x2b,
 
 }BUSINESS_CODE;
 
@@ -580,6 +583,8 @@ typedef struct  _DEVICE_SELF_CHECK_STATUS_RSP_ST{
     int8_t system_power_on_time[20];
     uint8_t ch_num;
     DEVICE_SELF_CHECK_TEMPERATUE_ST t_s[MAX_RADIO_CHANNEL_NUM];
+    uint8_t irig_b_status;
+    uint8_t gps_status;
 }__attribute__ ((packed)) DEVICE_SELF_CHECK_STATUS_RSP_ST; 
 
 
@@ -703,6 +708,18 @@ struct udp_client_info{
     uint16_t wz_port;
 #endif
 }__attribute__ ((packed));
+
+
+typedef struct _SINGLE_FILE_INFO{
+    uint8_t file_path[128];
+    uint64_t file_size;
+    uint64_t file_mtime;
+}__attribute__ ((packed)) SINGLE_FILE_INFO;
+
+typedef struct _FILE_LIST_INFO{
+    int32_t file_num;
+    SINGLE_FILE_INFO files[0];
+}__attribute__ ((packed)) FILE_LIST_INFO;
 
 
 /*************************************************************************/

@@ -1053,6 +1053,26 @@ static int akt_execute_set_command(void *cl)
             #endif
             break;
         }
+        case DEVICE_REBOOT_CMD:
+        {
+            check_valid_channel(payload[0]);
+            printf_note("remote reboot!\n");
+            safe_system("reboot -f");
+            break;
+        }
+        case FILE_STROE_SIZE_CMD:
+        {
+            struct _file_store{
+                uint8_t ch;
+                uint64_t split_threshold;
+            }__attribute__ ((packed));
+            struct _file_store para;
+            memcpy(&para, payload, sizeof(para));
+            check_valid_channel(para.ch);
+            config_set_split_file_threshold(para.split_threshold);
+            printf_note("set split file threshold:%llu Bytes, %llu MB\n", para.split_threshold, (para.split_threshold / 1024 / 1024));
+            break;
+        }
         default:
           printf_err("not support class code[0x%x]\n",header->code);
           err_code = RET_CODE_PARAMTER_ERR;
@@ -1126,6 +1146,9 @@ static int akt_execute_get_command(void *cl)
             printf_note("ext_clk:%d, ad_status=%d,pfga_temperature=%d,ch_num=%d, rf_temperature=%d, ch_status=%d\n", 
                 self_check.ext_clk, self_check.ad_status, self_check.pfga_temperature, self_check.ch_num,
                 self_check.t_s[0].rf_temperature, self_check.t_s[0].ch_status);
+
+            self_check.irig_b_status = 0;  //0:正常 1：异常
+            self_check.gps_status = (gps_location_is_valid() == true ? 0 : 1);
             client->response.response_length = sizeof(DEVICE_SELF_CHECK_STATUS_RSP_ST);
             client->response.data = calloc(1, client->response.response_length);
             if(client->response.data == NULL){
@@ -1332,6 +1355,53 @@ static int akt_execute_get_command(void *cl)
                 break;
             }
             memcpy(client->response.data, &model, client->response.response_length);
+            break;
+        }
+
+        case FILE_LIST_CMD:
+        {
+            FILE_LIST_INFO *file_list = NULL;
+            int32_t payload_len = 0;
+        #if defined(SUPPORT_FS)
+            cJSON *value = NULL;
+            cJSON *node = NULL;
+            cJSON *array = cJSON_CreateArray();
+            struct fs_context *fs_ctx;
+            fs_ctx = get_fs_ctx();
+            if(fs_ctx == NULL) {
+                printf_err("get fd ctx failed!");
+                break;
+            }
+            fs_ctx->ops->fs_dir(NULL, fs_file_list, array);
+            payload_len = sizeof(FILE_LIST_INFO) + sizeof(SINGLE_FILE_INFO) * cJSON_GetArraySize(array);
+            file_list = (FILE_LIST_INFO *)safe_malloc(payload_len);
+            file_list->file_num = cJSON_GetArraySize(array);
+            for (int i = 0; i < cJSON_GetArraySize(array); i++) {
+                node = cJSON_GetArrayItem(array, i);            
+                value = cJSON_GetObjectItem(node, "size");
+                if(cJSON_IsNumber(value)){
+                    file_list->files[i].file_size = value->valueint;
+                }
+                value = cJSON_GetObjectItem(node, "createTime");
+                if(cJSON_IsNumber(value)){
+                    file_list->files[i].file_mtime = value->valueint;
+                }
+                value = cJSON_GetObjectItem(node, "filename");
+                if(cJSON_IsString(value)){
+                    memcpy(file_list->files[i].file_path, value->valuestring, strlen(value->valuestring));
+                }
+            }
+
+            client->response.response_length = payload_len;
+            client->response.data = calloc(1, client->response.response_length);
+            if(client->response.data == NULL){
+                safe_free(file_list);
+                printf_err("calloc err!");
+                break;
+            }
+            memcpy(client->response.data, file_list, client->response.response_length);
+            safe_free(file_list);
+         #endif
             break;
         }
         default:

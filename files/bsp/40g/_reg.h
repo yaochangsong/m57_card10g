@@ -201,16 +201,12 @@ static inline void _set_narrow_channel(FPGA_CONFIG_REG *reg, int ch, int subch, 
 static inline void _set_ssd_mode(FPGA_CONFIG_REG *reg, int ch,int back)
 {
     uint32_t _reg = 0;
-#if 0
+
     if(ch >= 0)
         _reg = ((back &0x01) << ch);
     else
         _reg = back &0x01;
-#endif
-    if(back)
-        _reg = 0x3;
-    else
-        _reg = 0x0;
+
     reg->system->ssd_mode = _reg;
 }
 

@@ -567,6 +567,13 @@ int32_t io_set_subch_onoff(uint32_t ch, uint32_t subch, uint8_t onoff)
         subch_bitmap_clear(subch);
         _set_narrow_channel(get_fpga_reg(),ch, subch,0x00);
     }
+    #else
+    if(onoff){
+        subch_bitmap_set(subch);
+    }
+    else{
+        subch_bitmap_clear(subch);
+    }
     #endif
 #endif
 #endif

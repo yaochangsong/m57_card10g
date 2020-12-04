@@ -54,6 +54,20 @@ static int get_thread_priority(pthread_attr_t *attr)
 }
 
 
+static void spm_iq_dispatcher_buffer_clear(void)
+{
+    int type, ch;
+    struct spm_context *ctx = NULL;
+    
+    ctx = get_spm_ctx();
+    for(ch = 0; ch< MAX_RADIO_CHANNEL_NUM; ch++){
+        for(type = 0; type < STREAM_IQ_TYPE_MAX; type++){
+            memset(ctx->run_args[ch]->dis_iq.ptr[type], 0, DMA_IQ_TYPE_BUFFER_SIZE);
+            ctx->run_args[ch]->dis_iq.len[type] = 0;
+            ctx->run_args[ch]->dis_iq.offset[type] = 0;
+        }
+    }
+}
 
 static inline void spm_iq_deal_notify(void *arg)
 {
@@ -98,7 +112,7 @@ loop:
     printf_note(">>>>>[ch=%d]IQ start\n", ch);
     memset(&run, 0, sizeof(run));
     memcpy(&run, ctx->run_args[ch], sizeof(run));
-
+    spm_iq_dispatcher_buffer_clear();
     do{
         len = ctx->ops->read_iq_data(&ptr_iq);
         if(len > 0){

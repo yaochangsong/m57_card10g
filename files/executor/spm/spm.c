@@ -101,17 +101,17 @@ loop:
 
     do{
         len = ctx->ops->read_iq_data(&ptr_iq);
-        
         if(len > 0){
-            if(ctx->ops->iq_dispatcher){
+            if(ctx->ops->iq_dispatcher && test_audio_on()){
                 ctx->ops->iq_dispatcher(ptr_iq, len, &run);
                 for_each_iq_type(type, run){
-                    if(ctx->ops->send_iq_type)
+                    if(ctx->ops->send_iq_type){
                         ctx->ops->send_iq_type(type, run.dis_iq.send_ptr, run.dis_iq.send_len, &run);
+                    }
                 }
                 ctx->ops->read_iq_over_deal(&len);
             }else{
-            ctx->ops->send_iq_data(ptr_iq, len, &run);
+                ctx->ops->send_iq_data(ptr_iq, len, &run);
             }
         }
         if(subch_bitmap_weight() == 0){

@@ -94,6 +94,11 @@ void subch_bitmap_set(uint8_t subch)
     set_bit(subch, subch_bmp);
 }
 
+bool test_audio_on(void)
+{
+    return test_bit(CONFIG_AUDIO_CHANNEL, subch_bmp);
+}
+
 void subch_bitmap_clear(uint8_t subch)
 {
     clear_bit(subch, subch_bmp);

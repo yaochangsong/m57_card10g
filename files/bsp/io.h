@@ -45,6 +45,7 @@ extern void subch_bitmap_init(void);
 extern void subch_bitmap_set(uint8_t subch);
 extern void subch_bitmap_clear(uint8_t subch);
 extern size_t subch_bitmap_weight(void);
+extern bool test_audio_on(void);
 extern int8_t io_set_enable_command(uint8_t type, int ch, int subch, uint32_t fftsize);
 extern int8_t io_set_work_mode_command(void *data);
 extern int8_t io_set_para_command(uint8_t type, int ch, void *data);

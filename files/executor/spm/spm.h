@@ -35,7 +35,7 @@ enum stream_iq_type {
 };
 #define for_each_iq_type(type, run) \
     for (int i = 0; \
-            type = i, run.dis_iq.send_ptr = run.dis_iq.ptr[i],run.dis_iq.send_len = run.dis_iq.len[i], i < STREAM_IQ_TYPE_MAX; \
+            type = i, run.dis_iq.send_ptr = run.dis_iq.ptr[i],run.dis_iq.send_len = run.dis_iq.offset[i]*sizeof(iq_t), i < STREAM_IQ_TYPE_MAX; \
             i++)
 
 struct spm_backend_ops {

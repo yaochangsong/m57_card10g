@@ -630,9 +630,6 @@ static void spm_send_dispatcher_iq(enum stream_iq_type type, iq_t *data, size_t 
     if(data == NULL || len == 0 || arg == NULL)
         return -1;
 
-    //printf_note("type=%s, ptr=%p, len = %d, offset=%u\n", 
-    //        type == STREAM_IQ_TYPE_AUDIO ? "audio" : "iq" , data, len,hparam->dis_iq.offset[type]);
-    
     if(len < _send_byte)
         return -1;
 
@@ -670,8 +667,9 @@ static void spm_send_dispatcher_iq(enum stream_iq_type type, iq_t *data, size_t 
     __unlock_iq_send__();
 
     safe_free(hptr);
-    if(hparam->dis_iq.offset[type] >= (sbyte/sizeof(iq_t)))
-        hparam->dis_iq.offset[type] -= (sbyte/sizeof(iq_t));
+    if(hparam->dis_iq.offset[type] >= (sbyte/sizeof(iq_t))){
+        hparam->dis_iq.offset[type] = hparam->dis_iq.offset[type] - (sbyte/sizeof(iq_t));
+    }
     else{
         printf_err("iq offset err %u < %d\n", hparam->dis_iq.offset[type], sbyte/sizeof(iq_t));
         hparam->dis_iq.offset[type] = 0;
@@ -704,7 +702,7 @@ static int spm_iq_dispatcher(iq_t *ptr_iq, size_t len, void *arg)
     
     for(i = 0; i< STREAM_IQ_TYPE_MAX; i++){
         type_offset[i] = hparam->dis_iq.ptr[i] + hparam->dis_iq.offset[i];
-        hparam->dis_iq.len[type] = 0;
+        hparam->dis_iq.len[i] = 0;
     }
     
     for(i = 0, index = 0; i< len; i += IQ_DATA_PACKAGE_BYTE, index++){
@@ -727,7 +725,7 @@ static int spm_iq_dispatcher(iq_t *ptr_iq, size_t len, void *arg)
         }
         ptr_offset += offset;
     }
-    
+   
     for(i = 0; i< STREAM_IQ_TYPE_MAX; i++){
         if(hparam->dis_iq.len[i] > 0){
             hparam->dis_iq.offset[i] +=  hparam->dis_iq.len[i]/sizeof(iq_t);
@@ -737,7 +735,6 @@ static int spm_iq_dispatcher(iq_t *ptr_iq, size_t len, void *arg)
                     i == STREAM_IQ_TYPE_AUDIO ? "audio" : "iq" , hparam->dis_iq.offset[i]);
             }
         }
-       // printf_note("[%d], %p, len=%u, offset=%u\n", i, hparam->dis_iq.ptr[i], hparam->dis_iq.len[i], hparam->dis_iq.offset[i]);
     }
 }
 
@@ -1572,7 +1569,7 @@ static const struct spm_backend_ops spm_ops = {
     .data_order = spm_data_order,
     .send_fft_data = spm_send_fft_data,
     .send_iq_data = spm_send_iq_data,
-//    .iq_dispatcher = spm_iq_dispatcher,
+    .iq_dispatcher = spm_iq_dispatcher,
     .send_iq_type = spm_send_dispatcher_iq,
     .agc_ctrl = spm_agc_ctrl_v3,//spm_agc_ctrl,
     .residency_time_arrived = is_sigal_residency_time_arrived,

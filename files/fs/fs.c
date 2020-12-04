@@ -333,7 +333,7 @@ static void _thread_exit_callback(void *arg){
         io_stop_backtrace_file(&ch);
         executor_set_command(EX_ENABLE_CMD, PSD_MODE_DISABLE, 0, NULL);
     }
-    
+    #if 0
     /* check split file */
     filesize = _fs_get_file_size(pargs->filename);
     printf_note("%s filesize: %llu, %llu\n", pargs->filename, filesize, config_get_split_file_threshold());
@@ -347,6 +347,7 @@ static void _thread_exit_callback(void *arg){
         printf_note("%s\n", command);
         safe_system(command);
     }
+    #endif
     if(fd > 0)
         close(fd);
     safe_free(pargs->filename);

@@ -20,7 +20,7 @@ d_format()
     umount $MOUNT_DIR
     mkfs.ext2 $DEV_NAME
     d_mount
-    /etc/init.d/platform.sh restart &
+#    /etc/init.d/platform.sh restart &
 }
 
 case $1 in

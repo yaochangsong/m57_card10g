@@ -1283,7 +1283,8 @@ static int akt_execute_get_command(void *cl)
             SEARCH_FILE_STATUS_RSP_ST fsp;
             char filename[FILE_PATH_MAX_LEN];
             
-            memcpy(filename, header->buf, FILE_PATH_MAX_LEN);
+            memcpy(filename, client->dispatch.body, FILE_PATH_MAX_LEN);
+            filename[sizeof(filename) - 1] = 0;
             memset(&fsp, 0 ,sizeof(SEARCH_FILE_STATUS_RSP_ST));
             strcpy(fsp.filepath, filename);
             #if defined(SUPPORT_XWFS)

@@ -136,6 +136,7 @@ struct sem_st{
 struct spm_iq_parm{
     uint64_t m_freq_hz;
     uint32_t bandwidth_hz;
+    uint32_t sample_rate;
     uint8_t d_method;
     uint8_t resv1;
     uint8_t resv2;

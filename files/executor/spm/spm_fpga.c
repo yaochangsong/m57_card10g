@@ -498,18 +498,36 @@ static int spm_send_fft_data(void *data, size_t fft_len, void *arg)
 static void *_assamble_iq_header(size_t subch, size_t *hlen, size_t data_len, void *arg)
 {
     uint8_t *ptr = NULL, *ptr_header = NULL;
-    uint32_t header_len = 0;
-    
+    uint32_t header_len = 0, ch;
+
     if(data_len == 0 || arg == NULL)
         return NULL;
-    
+
 #ifdef SUPPORT_DATA_PROTOCAL_AKT
     struct spm_run_parm *hparam;
+    struct poal_config *poal_config = &(config_get_config()->oal_config);
+    struct sub_channel_freq_para_st *sub_channel_array;
+
     hparam = (struct spm_run_parm *)arg;
     hparam->data_len = data_len;
     hparam->type = BASEBAND_DATUM_IQ;
     hparam->ex_type = DEMODULATE_DATUM;
-    //hparam->sub_ch = subch;
+    ch = hparam->ch;
+    sub_channel_array = &poal_config->channel[ch].sub_channel_para;
+    hparam->sub_ch_para.bandwidth_hz = sub_channel_array->sub_ch[subch].d_bandwith;
+    hparam->sub_ch_para.m_freq_hz = sub_channel_array->sub_ch[subch].center_freq;
+    hparam->sub_ch_para.d_method = sub_channel_array->sub_ch[subch].raw_d_method;
+    hparam->sub_ch_para.sample_rate = io_get_narrowband_iq_factor(hparam->bandwidth) * hparam->sub_ch_para.bandwidth_hz; 
+    
+    printf_debug("ch=%d, subch = %d, factor:%f,m_freq_hz=%llu, bandwidth:%uhz, sample_rate=%u, d_method=%d\n", 
+        ch,
+        subch,
+        io_get_narrowband_iq_factor(hparam->bandwidth), 
+        hparam->sub_ch_para.m_freq_hz,
+        hparam->sub_ch_para.bandwidth_hz, 
+        hparam->sub_ch_para.sample_rate,  
+        hparam->sub_ch_para.d_method );
+    
     if((ptr_header = akt_assamble_data_frame_header_data(&header_len, arg))== NULL){
         return NULL;
     }
@@ -536,23 +554,30 @@ static void *_assamble_audio_header(size_t subch, size_t *hlen, size_t data_len,
     uint8_t *ptr = NULL, *ptr_header = NULL;
     uint32_t header_len = 0;
     struct spm_run_parm *hparam;
-    uint32_t d_bandwidth_hz;
+    uint32_t i, ch;
     uint64_t d_m_freq_hz;
     uint32_t d_method;
-    
+    struct poal_config *poal_config = &(config_get_config()->oal_config);
     hparam = (struct spm_run_parm *)arg;
+    struct multi_freq_point_para_st  *points = &poal_config->channel[hparam->ch].multi_freq_point_param;
     
     if(data_len == 0 || arg == NULL)
         return NULL;
 
-    hparam->sample_rate = get_side_band_rate(hparam->scan_bw)*hparam->scan_bw;
-    hparam->sub_ch_index = subch;
-    config_read_by_cmd(EX_MID_FREQ_CMD, EX_DEC_BW,      hparam->ch, &d_bandwidth_hz, hparam->audio_points);
-    config_read_by_cmd(EX_MID_FREQ_CMD, EX_MID_FREQ,    hparam->ch, &d_m_freq_hz, hparam->audio_points);
-    config_read_by_cmd(EX_MID_FREQ_CMD, EX_DEC_METHOD,  hparam->ch, &d_method, hparam->audio_points);
-    hparam->sub_ch_para.bandwidth_hz = d_bandwidth_hz;
-    hparam->sub_ch_para.m_freq_hz = d_m_freq_hz;
-    hparam->sub_ch_para.d_method = d_method;
+    ch = hparam->ch;
+    i = hparam->audio_points;
+    hparam->sub_ch_para.bandwidth_hz = points->points[i].d_bandwith;
+    hparam->sub_ch_para.m_freq_hz =  points->points[i].center_freq;
+    hparam->sub_ch_para.d_method = points->points[i].raw_d_method;
+    hparam->sub_ch_para.sample_rate = 32000;    /* audio 32Khz */
+
+    printf_debug("ch=%d, subch = %d, i=%d,m_freq_hz=%llu, bandwidth:%uhz, sample_rate=%u, d_method=%d\n", 
+        ch,
+        subch, i,
+        hparam->sub_ch_para.m_freq_hz,
+        hparam->sub_ch_para.bandwidth_hz, 
+        hparam->sub_ch_para.sample_rate,  
+        hparam->sub_ch_para.d_method );
 
 #ifdef SUPPORT_DATA_PROTOCAL_AKT
     hparam->data_len = data_len;
@@ -639,7 +664,7 @@ static void spm_send_dispatcher_iq(enum stream_iq_type type, iq_t *data, size_t 
             return -1;
         }
     } else if(type == STREAM_IQ_TYPE_RAW){
-        if((hptr = _assamble_iq_header(1, &header_len, _send_byte, arg)) == NULL){
+        if((hptr = _assamble_iq_header(hparam->sub_ch_index, &header_len, _send_byte, arg)) == NULL){
             printf_err("assamble head error\n");
             return -1;
         }
@@ -721,6 +746,7 @@ static int spm_iq_dispatcher(iq_t *ptr_iq, size_t len, void *arg)
                 type = STREAM_IQ_TYPE_AUDIO;
             }else {
                 type = STREAM_IQ_TYPE_RAW;
+                hparam->sub_ch_index = subch;
             }
             memcpy(type_offset[type], ptr_offset, IQ_DATA_PACKAGE_BYTE);
             type_offset[type] += offset;

@@ -212,7 +212,7 @@ static int akt_convert_oal_config(uint8_t ch, int8_t subch,uint8_t cmd)
             poal_config->channel[ch].sub_channel_para.sub_ch_enable[subch].iq_en = convert_enable_mode(pakt_config->sub_channel_enable[subch].en, IQ_OUT_MASK);
             INTERNEL_ENABLE_BIT_SET(poal_config->channel[ch].sub_channel_para.sub_ch_enable[subch].bit_en,poal_config->channel[ch].sub_channel_para.sub_ch_enable[subch]);
             printf_debug("pakt_config->sub_channel_enable[%d].en = %x\n",subch, pakt_config->sub_channel_enable[subch].en);
-            printf_note("enable subch=%d, sub_ch bit_en=%x, sub_ch psd_en=%d, sub_ch audio_en=%d,sub_ch iq_en=%d\n", ch, poal_config->channel[ch].sub_channel_para.sub_ch_enable[subch].bit_en, 
+            printf_debug("enable ch=%d,sub_ch=%d bit_en=%x, sub_ch psd_en=%d, sub_ch audio_en=%d,sub_ch iq_en=%d\n", ch, subch,poal_config->channel[ch].sub_channel_para.sub_ch_enable[subch].bit_en, 
             poal_config->channel[ch].sub_channel_para.sub_ch_enable[subch].psd_en,poal_config->channel[ch].sub_channel_para.sub_ch_enable[subch].audio_en,poal_config->channel[ch].sub_channel_para.sub_ch_enable[subch].iq_en);
             break;
         case SAMPLE_CONTROL_FFT_CMD:
@@ -1971,7 +1971,7 @@ uint8_t *akt_assamble_demodulation_header_data(uint32_t *len, void *config)
     ext_hdr->center_freq = header_param->sub_ch_para.m_freq_hz;
     ext_hdr->bandwidth = header_param->sub_ch_para.bandwidth_hz;
     ext_hdr->demodulate_type = header_param->sub_ch_para.d_method;
-    ext_hdr->sample_rate = header_param->sample_rate;
+    ext_hdr->sample_rate = header_param->sub_ch_para.sample_rate;
     ext_hdr->frag_total_num = 1;
     ext_hdr->frag_cur_num = 0;
     ext_hdr->frag_data_len = (int16_t)(header_param->data_len);

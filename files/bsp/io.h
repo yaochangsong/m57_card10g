@@ -15,6 +15,7 @@ struct  band_table_t{
     uint32_t extract_factor;
     uint32_t filter_factor;
     uint32_t band;
+    float factor;
 }__attribute__ ((packed)); 
     
 #ifdef SUPPORT_PLATFORM_ARCH_ARM
@@ -45,6 +46,7 @@ extern void subch_bitmap_init(void);
 extern void subch_bitmap_set(uint8_t subch);
 extern void subch_bitmap_clear(uint8_t subch);
 extern size_t subch_bitmap_weight(void);
+extern float io_get_narrowband_iq_factor(uint32_t bindwidth);
 extern bool test_audio_on(void);
 extern int8_t io_set_enable_command(uint8_t type, int ch, int subch, uint32_t fftsize);
 extern int8_t io_set_work_mode_command(void *data);

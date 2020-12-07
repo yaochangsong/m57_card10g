@@ -16,6 +16,9 @@ d_mount()
 
 d_format()
 {
+    kill -9 $(fuser -m /run/media/nvme0n1) &
+    echo "kill -9 $(fuser -m /run/media/nvme0n1)"
+    sleep 1
     rm $FILE_DIR
     umount $MOUNT_DIR
     mkfs.ext2 $DEV_NAME

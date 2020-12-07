@@ -266,6 +266,12 @@ static char *file_unix2date(time_t ts, char *buf, int len)
     return buf;
 }
 
+static char *file_Etag(struct stat *s, char *buf, int len)
+{
+    memset(buf, 0, len);
+    snprintf(buf, len, "%x-%llu", (uint64_t)s->st_mtime, (uint64_t)s->st_size);
+    return buf;
+}
 static const char * uh_file_mime_lookup(const char *path)
 {
     const struct mimetype *m = &uh_mime_types[0];
@@ -293,6 +299,7 @@ static void uh_file_response_ok_hdrs(struct uh_client *cl, struct stat *s)
     cl->printf(cl, "Access-Control-Allow-Origin:*\r\n");/* 允许跨域 add by yaocs */
     cl->printf(cl, "Content-Disposition:attachement\r\n");
     cl->printf(cl, "Last-Modified: %s\r\n", file_unix2date(s->st_mtime, buf, sizeof(buf)));
+    cl->printf(cl, "Etag: %s\r\n", file_Etag(s, buf, sizeof(buf)));    //Etag字段add by wzq
     cl->printf(cl, "Date: %s\r\n", file_unix2date(time(NULL), buf, sizeof(buf)));
 }
 
@@ -306,6 +313,13 @@ static void uh_file_response_200(struct uh_client *cl, struct stat *s)
 {
     cl->send_header(cl, 200, "OK", s->st_size);
     uh_file_response_ok_hdrs(cl, s);
+}
+static void uh_file_response_206(struct uh_client *cl, struct stat *s)
+{
+    cl->send_header(cl, 206, "Partial Content", cl->range.length);
+    uh_file_response_ok_hdrs(cl, s);
+    cl->printf(cl, "Accept-Ranges: bytes\r\n");
+    cl->printf(cl, "Content-Ranges: bytes %llu-%llu/%llu\r\n", cl->range.offset, cl->range.offset+cl->range.length-1, s->st_size);
 }
 
 static int uh_file_if_modified_since(struct uh_client *cl, struct stat *s)
@@ -326,12 +340,93 @@ static int uh_file_if_modified_since(struct uh_client *cl, struct stat *s)
     return true;
 }
 
+static int uh_prase_range(struct uh_client *cl, char *bytes, struct stat *s)
+{
+    uint64_t offset = 0;
+    uint64_t length = 0;
+    int res;
+    char *bytes_cpy = strdup(bytes);
+    char *p = NULL;
+    if((p = strchr(bytes_cpy, ','))) {  //不允许多个区间
+        *p = 0;
+    }
+    if (*bytes_cpy == '-') {  //例：bytes=-100
+        p = bytes_cpy + 1;
+        length = strtoul(p, NULL, 0) + 1;
+        if (length > s->st_size) {
+            res = false;
+            goto exit;
+        }
+        offset = s->st_size - length;
+    } else if (bytes_cpy[strlen(bytes_cpy) - 1] == '-') { //例：bytes=100-
+        offset = strtoul(bytes_cpy, NULL, 0);
+        if (offset >= s->st_size) {
+            res = false;
+            goto exit;
+        }
+        length = s->st_size - offset;
+    } else {    //例：bytes=0-100
+        offset = strtoul(bytes_cpy, NULL, 0);
+        p = strchr(bytes_cpy, '-');
+        if (p) {
+            p++;
+            length = strtoul(p, NULL, 0);
+            if (length >= s->st_size || offset > length) {
+                res = false;
+                goto exit;
+            } else {
+                length = length - offset + 1;
+            }
+        } else {
+            goto exit;
+        }
+    }
+    cl->range.offset = offset;
+    cl->range.length = length;
+    res = true;
+exit:
+    if (bytes_cpy)
+        free(bytes_cpy);
+    return res;
+}
+
+static int uh_file_if_range(struct uh_client *cl, struct stat *s)
+{
+    char buf[128];
+    char *pbytes = NULL;
+    int res;
+    
+    const char *range = kvlist_get(&cl->request.header, "range");
+    if (!range) {
+        goto exit;
+    }
+
+    const char *if_range = kvlist_get(&cl->request.header, "if-range");
+
+    if (!if_range || !strcmp(if_range, file_Etag(s, buf, sizeof(buf))) || 
+            !strcmp(if_range, file_unix2date(s->st_mtime, buf, sizeof(buf)))) {  //If-Range = Etag or Last-Modified
+        printf_note("range: %s\n", range);
+        pbytes = strchr(range, '=');  //bytes=
+        if (pbytes)
+            pbytes++;
+        else
+            return false;
+
+        res = uh_prase_range(cl, pbytes, s);
+        return res;
+    }
+exit:
+    cl->range.offset = 0;
+    cl->range.length = s->st_size;
+    return true;
+}
 static void file_write_cb(struct uh_client *cl)
 {
     static char buf[4096];
     int fd = cl->dispatch.file.fd;
     int r;
-
+    uint64_t write_left = cl->range.length;
+    lseek(fd, cl->range.offset, SEEK_SET);
     while (cl->us->w.data_bytes < 256) {
         r = read(fd, buf, sizeof(buf));
         if (r < 0) {
@@ -340,12 +435,18 @@ static void file_write_cb(struct uh_client *cl)
             uh_log_err("read");
         }
 
-        if (r <= 0) {
+        if (r <= 0 || write_left <= 0) {
             cl->request_done(cl);
             return;
         }
-
-        cl->send(cl, buf, r);
+        
+        if (r <= write_left) {
+            cl->send(cl, buf, r);
+            write_left -= r;
+        } else {
+            cl->send(cl, buf, write_left);
+            write_left = 0;
+        }
     }
 }
 
@@ -365,8 +466,18 @@ static void uh_file_data(struct uh_client *cl, struct path_info *pi, int fd)
     }
      printf_warn("pi->phys[%s], pi->name:%s,pi->info=%s\n", pi->phys,pi->name, pi->info);
 
+    if (!uh_file_if_range(cl, &pi->stat)) {
+        cl->printf(cl, "\r\n");
+        cl->request_done(cl);
+        close(fd);
+        return;
+    }
     /* write status */
+    if (cl->range.length == pi->stat.st_size) {
     uh_file_response_200(cl, &pi->stat);
+    } else {
+        uh_file_response_206(cl, &pi->stat);
+    }
 
     cl->printf(cl, "Content-Type: %s\r\n\r\n", uh_file_mime_lookup(pi->name));
 

@@ -140,7 +140,7 @@ int parse_json_client_net(int ch, const char * const body)
                 sclient.sin_port = ntohs(value->valueint);
                 printf_note("port: %d, 0x%x\n", value->valueint, value->valueint);
             }
-            udp_add_client_to_list(&sclient, ch);
+            udp_add_client_to_list(&sclient, ch, TAG_FFT);
         }
     }
     

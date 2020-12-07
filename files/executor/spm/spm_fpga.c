@@ -474,7 +474,7 @@ static int spm_send_fft_data(void *data, size_t fft_len, void *arg)
         __lock_fft_send__();
     else
         __lock_fft2_send__();
-    udp_send_vec_data(iov, 2);
+    udp_send_vec_data(iov, 2, TAG_FFT);
     if(hparam->ch == 0)
         __unlock_fft_send__();
     else
@@ -556,7 +556,7 @@ static void *_assamble_audio_header(size_t subch, size_t *hlen, size_t data_len,
 
 #ifdef SUPPORT_DATA_PROTOCAL_AKT
     hparam->data_len = data_len;
-    hparam->type = BASEBAND_DATUM_IQ;
+    hparam->type = DIGITAL_AUTDIO;
     hparam->ex_type = DEMODULATE_DATUM;
     if((ptr_header = akt_assamble_data_frame_header_data(&header_len, arg))== NULL){
         return NULL;
@@ -564,7 +564,7 @@ static void *_assamble_audio_header(size_t subch, size_t *hlen, size_t data_len,
     
 #elif defined(SUPPORT_DATA_PROTOCAL_XW)
     hparam->data_len = data_len; 
-    hparam->type = DEFH_DTYPE_BB_IQ;
+    hparam->type = DEFH_DTYPE_AUDIO;
     hparam->ex_type = DFH_EX_TYPE_DEMO;
    // hparam->sub_ch = subch;
     ptr_header = xw_assamble_frame_data(&header_len, arg);
@@ -605,7 +605,7 @@ static int spm_send_iq_data(void *data, size_t len, void *arg)
     for(i = 0; i<index; i++){
         iov[1].iov_base = pdata;
         iov[1].iov_len = _send_byte;
-        udp_send_vec_data(iov, 2);
+        udp_send_vec_data(iov, 2, TAG_IQ);
         pdata += _send_byte;
     }
     __unlock_iq_send__();
@@ -658,12 +658,21 @@ static void spm_send_dispatcher_iq(enum stream_iq_type type, iq_t *data, size_t 
     sbyte = index * _send_byte;
     pdata = (uint8_t *)data;
     __lock_iq_send__();
-    for(i = 0; i<index; i++){
-        iov[1].iov_base = pdata;
-        iov[1].iov_len = _send_byte;
-        udp_send_vec_data(iov, 2);
-        pdata += _send_byte;
-    }
+	if(type == STREAM_IQ_TYPE_AUDIO){
+		for(i = 0; i<index; i++){
+	        iov[1].iov_base = pdata;
+	        iov[1].iov_len = _send_byte;
+	        udp_send_vec_data(iov, 2, TAG_AUDIO);
+	        pdata += _send_byte;
+	    }
+	} else if(type == STREAM_IQ_TYPE_RAW){
+		for(i = 0; i<index; i++){
+	        iov[1].iov_base = pdata;
+	        iov[1].iov_len = _send_byte;
+	        udp_send_vec_data(iov, 2, TAG_IQ);
+	        pdata += _send_byte;
+	    }
+	}
     __unlock_iq_send__();
 
     safe_free(hptr);

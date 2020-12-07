@@ -346,6 +346,11 @@ static void _thread_exit_callback(void *arg){
         executor_set_command(EX_ENABLE_CMD, PSD_MODE_DISABLE, 0, NULL);
     }
     #if 0
+    else if(pargs->name && !strcmp(pargs->name, THREAD_FS_SAVE_NAME)) {
+        wav_write_header(fd, nbyte);
+    }
+#endif
+#if 0
     /* check split file */
     filesize = _fs_get_file_size(pargs->filename);
     printf_note("%s filesize: %llu, %llu\n", pargs->filename, filesize, config_get_split_file_threshold());

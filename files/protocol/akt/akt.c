@@ -696,7 +696,23 @@ static int akt_execute_set_command(void *cl)
             printf_note("[%s]udp client ipstr=%s, port=%d, type=%d\n",ifname, 
                 inet_ntoa(client.sin_addr),  client.sin_port, net_para.type);
             /* UDP链表以大端模式存储客户端地址信息；内部以小端模式处理；注意转换 */
-            udp_add_client_to_list(&client, ch);
+            udp_add_client_to_list(&client, ch, TAG_FFT);
+
+            /*分端口*/
+            if (payload_len == sizeof(SNIFFER_DATA_REPORT_ST) && net_para.iq_port != 0) {
+                client.sin_port = net_para.iq_port;
+            } else {
+                client.sin_port = net_para.port;
+            }
+            udp_add_client_to_list(&client, ch, TAG_IQ);
+
+            if (payload_len == sizeof(SNIFFER_DATA_REPORT_ST) && net_para.audio_port != 0) {
+                client.sin_port = net_para.audio_port;
+            } else {
+                client.sin_port = net_para.port;
+            }
+            udp_add_client_to_list(&client, ch, TAG_AUDIO);
+            
             //akt_add_udp_client(&net_para);
             break;
         }
@@ -1359,6 +1375,37 @@ static int akt_execute_get_command(void *cl)
             break;
         }
 
+        case DEVICE_LOCATION_REQ_CMD:
+        {
+            #define UNSUPPORT_GPS_DATA (400000000)
+            struct gps_data {
+                int32_t longitude;
+                int32_t latitude;
+                int32_t altitude;
+            }__attribute__ ((packed));
+            
+            struct gps_data _gps_data;
+            
+            #if defined(SUPPORT_GPS)
+            _gps_data.longitude = gps_get_longitude();
+            _gps_data.latitude  = gps_get_latitude();
+            _gps_data.altitude  = gps_get_altitude();
+            #else
+            _gps_data.longitude = UNSUPPORT_GPS_DATA;
+            _gps_data.latitude  = UNSUPPORT_GPS_DATA;
+            _gps_data.altitude  = 0;
+            #endif
+
+            client->response.response_length = sizeof(_gps_data);
+            client->response.data = calloc(1, client->response.response_length);
+            if(client->response.data == NULL){
+                printf_err("calloc err!");
+                break;
+            }
+            memcpy(client->response.data, &_gps_data, sizeof(_gps_data));
+            break;
+        }
+        
         case FILE_LIST_CMD:
         {
             FILE_LIST_INFO *file_list = NULL;
@@ -1921,9 +1968,9 @@ uint8_t *akt_assamble_demodulation_header_data(uint32_t *len, void *config)
     struct spm_run_parm *header_param;
     header_param = (struct spm_run_parm *)config;
     ext_hdr->cid = header_param->ch;
-    ext_hdr->center_freq = header_param->m_freq;
-    ext_hdr->bandwidth = header_param->bandwidth;
-    ext_hdr->demodulate_type = header_param->d_method;
+    ext_hdr->center_freq = header_param->sub_ch_para.m_freq_hz;
+    ext_hdr->bandwidth = header_param->sub_ch_para.bandwidth_hz;
+    ext_hdr->demodulate_type = header_param->sub_ch_para.d_method;
     ext_hdr->sample_rate = header_param->sample_rate;
     ext_hdr->frag_total_num = 1;
     ext_hdr->frag_cur_num = 0;

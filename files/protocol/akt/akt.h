@@ -346,6 +346,8 @@ typedef struct _SNIFFER_DATA_REPORT{
     uint32_t wz_ipaddr; /* 添加上位机万兆IP和端口*/
     uint16_t wz_port;
 #endif
+    uint16_t iq_port;
+    uint16_t audio_port; 
 }__attribute__ ((packed)) SNIFFER_DATA_REPORT_ST;
 
 //table 12 page 26

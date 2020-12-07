@@ -21,25 +21,44 @@
 
 
 #include<config.h>
-unsigned long  speed_arr[] = {B115200,B57600,B38400, B19200, B9600, B4800, B2400, B1200, B300,
-          B38400, B19200, B9600, B4800, B2400, B1200, B300, };
-unsigned long name_arr[] = {115200,57600,38400,  19200,  9600,  4800,  2400,  1200,  300, 38400,
-          19200,  9600, 4800, 2400, 1200,  300, };
 
-static void uart1_read_cb(struct uloop_fd *fd, unsigned int events);
+#define SERIAL_BUF_LEN 1024
+#define UART_HANDER_TIMROUT 1000   //ms
+#define FPGA_TIME_INTERVAL (1000 * 360)
+
+unsigned long speed_arr[] = {B230400, B115200, B57600, B38400, B19200, B9600, B4800, B2400, B1200, B300,};
+unsigned long name_arr[] = {230400, 115200, 57600, 38400, 19200, 9600, 4800, 2400, 1200, 300,};
+
 static void uart0_read_cb(struct uloop_fd *fd, unsigned int events);
-void gps_timer_task_cb(struct uloop_timeout *t);
 
-#define  GPS_INDEX 1    //gps 设备索引
+struct uloop_timeout *gps_timer = NULL;
+struct uloop_timeout *fpga_timer = NULL;
 
-struct uart_t uart[2];
+#define  GPS_INDEX      0     //gps节点在uartinfo中的索引
+#define  COMPASS1_INDEX 3     //电子罗盘1 30M-1350M
+#define  COMPASS2_INDEX 2     //电子罗盘2 1G-6G
+
+
 struct uart_info uartinfo[] = {
-    /* NOTE:  坑：ttyUL0为PL侧控制，波特率由PL侧设置（默认为115200，不可更改），需要更改连续FPGA同事 */
-   {0, "/dev/ttyUL2", 9600, "ttyUL4 rs485", NULL, NULL, NULL,              NULL},               //接低噪放 A0/B0
-   {1, "/dev/ttyUL1", 9600,   "ttyUL1 gps",    NULL, NULL,          gps_timer_task_cb, NULL},
-   {2, "/dev/ttyUL4", 9600,   "ttyUL2 compass1",    NULL, NULL,          NULL, NULL},           //接电子罗盘1 30M-1350M A2/B2
-   {3, "/dev/ttyUL3", 9600,   "ttyUL3 compass2",    NULL, NULL,          NULL, NULL},           //接电子罗盘2 1G-6G A1/B1
+    /* NOTE:  坑：ttyUL0为PL侧控制，波特率由PL侧设置（默认为9600，不可更改），需要更改连续FPGA同事 */
+   {"/dev/ttyUL1", 9600,   "gps",               -1,   NULL, NULL},
+   {"/dev/ttyUL2", 9600,   "low noiser",        -1,   NULL, NULL},             //接低噪放
+   {"/dev/ttyUL3", 9600,   "compass 1-6G",      -1,   NULL, NULL},             //接电子罗盘2 1G-6G
+   {"/dev/ttyUL4", 9600,   "compass 30-1350M",  -1,   NULL, NULL},             //接电子罗盘1 30M-1350M
 };
+
+
+
+long uart0_send_data(uint8_t *buf, uint32_t len)
+{
+    return write(uartinfo[1].sfd,buf,len);
+}
+
+long uart0_send_string(uint8_t *buf)
+{
+    return write(uartinfo[1].sfd,buf,strlen(buf));
+}
+
 
 
 static void set_speed(int fd, unsigned long speed)
@@ -76,31 +95,12 @@ static int set_Parity(int fd,int databits,int stopbits,int parity)
     if  ( tcgetattr( fd,&options)  !=  0)
     { 
     perror("SetupSerial 1");
-    return(false);
+        return(false);
     }
-    #if 0
-    options.c_lflag &= ~(ICANON|ECHO|ECHOE|ECHOK|ECHONL|NOFLSH|ISIG);
-    //options.c_lflag |= (ICANON | ECHO | ECHOE);
-   // options.c_lflag |= (ICANON | ECHO | ECHOE |ISIG);
-    options.c_oflag = 0;
-    options.c_cflag &= ~CSIZE;
-    options.c_cflag &= ~CRTSCTS;
-    
-    options.c_iflag &= ~(BRKINT | ICRNL | ISTRIP | IXON);
-   // options.c_iflag &= ~(IGNCR);
 
-    //options.c_cflag |= CLOCAL | CREAD;  
-   // options.c_cflag &= ~CSIZE;
-   // options.c_lflag &=~ICANON;
-   #else
    options.c_iflag &= ~(IGNBRK | BRKINT | PARMRK | ISTRIP| INLCR | IGNCR | ICRNL | IXON);
    options.c_oflag = 0;// &= ~OPOST;
    options.c_lflag &= ~(ECHO | ECHONL | ICANON | ISIG | IEXTEN);
- //  options.c_cflag &= ~(CSIZE | PARENB);
- //  options.c_cflag |= CS8;
- //  options.c_cflag &= ~CRTSCTS;
-  // options.c_cflag |= CLOCAL | CREAD;  
-   #endif
 
 switch (databits) /*设置数据位数*/
     {
@@ -186,15 +186,16 @@ static int openserial(char *name)
 
 int uart_init_dev(char *name, uint32_t baudrate)
 {
-
     int fd;
     fd = openserial(name);
-    if(fd<0)return -1;
-
+    if ( fd < 0) {
+        return -1;
+    }
     set_speed(fd, baudrate);
-    if (set_Parity(fd,8,1,'N') == false)  {
+    if (set_Parity(fd, 8, 1, 'N') == false) {
         printf_note("Set Parity Error\n");
-        exit (0);
+        close(fd);
+        return -1;
     }
     usleep(1000);
     return fd;
@@ -243,72 +244,74 @@ static void uart0_read_cb(struct uloop_fd *fd, unsigned int events)
     }
 }
 
-long rs4850_send_data(uint8_t *buf, uint32_t len)
+long rs485_compass1_send_data(uint8_t *buf, uint32_t len)
 {
-    return write(uartinfo[2].fd->fd,buf,len);
+    return write(uartinfo[COMPASS1_INDEX].sfd,buf,len);
 }
 
-int rs4850_read_block_timeout(uint8_t *buf, int time_sec_ms)
+int rs485_compass1_read_block_timeout(uint8_t *buf, int time_sec_ms)
 {
-    int fd = uartinfo[2].fd->fd;
+    int fd = uartinfo[COMPASS1_INDEX].sfd;
     int ret = -1;
     int ms_count = 0, i = 0;
     
-    if(time_sec_ms < 0)
+    if(time_sec_ms < 0) {
         time_sec_ms = 1;
-    do{
+    }
+    do {
         ret = read(fd, buf, SERIAL_BUF_LEN);
-        if(ret == 0){
+        if (ret == 0) {
             usleep(1000);
             if(ms_count++ >= time_sec_ms){
                 break;
             }
-        }else if(ret < 0){
+        } else if (ret < 0) {
             printf_err("read error\n", ret);
             break;
-        }else{  /* read ok */
-            printf("uart recv[%d]:\n", ret);
-            for(i = 0; i < ret; i++)
-                printf("%02x ", buf[i]);
-            printf("\n");
+        } else {
+            printf_debug("uart recv[%d]:\n", ret);
+            for (i = 0; i < ret; i++)
+                printf_debug("%02x ", buf[i]);
+            printf_debug("\n");
             break;
         }
-    }while(1);
+    } while(1);
 
     return ret;
 }
 
-long rs4851_send_data(uint8_t *buf, uint32_t len)
+long rs485_compass2_send_data(uint8_t *buf, uint32_t len)
 {
-    return write(uartinfo[3].fd->fd,buf,len);
+    return write(uartinfo[COMPASS2_INDEX].sfd,buf,len);
 }
 
-int rs4851_read_block_timeout(uint8_t *buf, int time_sec_ms)
+int rs485_compass2_read_block_timeout(uint8_t *buf, int time_sec_ms)
 {
-    int fd = uartinfo[3].fd->fd;
+    int fd = uartinfo[COMPASS2_INDEX].sfd;
     int ret = -1;
     int ms_count = 0, i = 0;
    
-    if(time_sec_ms < 0)
+    if(time_sec_ms < 0) {
         time_sec_ms = 1;
-    do{
+    }
+    do {
         ret = read(fd, buf, SERIAL_BUF_LEN);
-        if(ret == 0){
+        if (ret == 0) {
             usleep(1000);
-            if(ms_count++ >= time_sec_ms){
+            if (ms_count++ >= time_sec_ms) {
                 break;
             }
-        }else if(ret < 0){
+        } else if(ret < 0) {
             printf_err("read error\n", ret);
             break;
-        }else{  /* read ok */
-            printf("uart recv[%d]:\n", ret);
+        } else {
+            printf_debug("uart recv[%d]:\n", ret);
             for(i = 0; i < ret; i++)
-                printf("%02x ", buf[i]);
-            printf("\n");
+                printf_debug("%02x ", buf[i]);
+            printf_debug("\n");
             break;
         }
-    }while(1);
+    } while(1);
 
     return ret;
 }
@@ -317,7 +320,7 @@ int rs4851_read_block_timeout(uint8_t *buf, int time_sec_ms)
 int uart0_read_block_timeout(uint8_t *buf, int time_sec_ms)
 {
 
-    int fd = uartinfo[0].fd->fd;
+    int fd = uartinfo[1].sfd;
     int ret = -1;
     int ms_count = 0, i = 0;
    
@@ -347,125 +350,97 @@ int uart0_read_block_timeout(uint8_t *buf, int time_sec_ms)
 }
 
 
-long uart0_send_data(uint8_t *buf, uint32_t len)
-{
-    return write(uartinfo[0].fd->fd,buf,len);
-}
-
-long uart0_send_string(uint8_t *buf)
-{
-    return write(uartinfo[0].fd->fd,buf,strlen(buf));
-}
-
-
-long uart1_send_data(uint8_t *buf, uint32_t len)
-{
-#if defined(SUPPORT_UART)
-    return write(uartinfo[1].fd->fd,buf,len);
-#else
-    return 0;
-#endif
-}
-
-long uart1_send_string(uint8_t *buf)
-{
-    return write(uartinfo[1].fd->fd,buf,strlen(buf));
-}
-
-
-static void uart1_read_cb(struct uloop_fd *fd, unsigned int events)
-{
-	uint8_t buf[SERIAL_BUF_LEN]; 
-	int32_t  nread; 
-
-	//printf_note("uart1 read cb\n");
-	memset(buf,0,SERIAL_BUF_LEN);
-	nread = read(fd->fd, buf, SERIAL_BUF_LEN);
-	if (nread > 0){
-	/* deal uart1 read work */
-		printf_note("recv %d Bytes:\n%s\r\n",nread, buf);
-#ifdef SUPPORT_GPS
-		if (gps_parse_recv_msg(buf, nread) == 0)
-		{
-			io_set_fpga_sys_time(gps_get_utc_hms());		
-		}
-#endif
-	}
-}
 
 void gps_timer_task_cb(struct uloop_timeout *t)
 {
-	char buf[SERIAL_BUF_LEN];
-	char cmdbuf[128];
-	
-	int32_t  nread; 
-    static uint8_t timed_flag = 0;
-	memset(buf,0,SERIAL_BUF_LEN);
-	nread = read(uartinfo[GPS_INDEX].fd->fd, buf, SERIAL_BUF_LEN);
-	if(nread > 0)
-	{
-		//printf_note("\r\n*******************recv:%d Bytes*******************\r\n%s\n",nread,buf);
-#ifdef SUPPORT_GPS
-		if (gps_parse_recv_msg(buf, nread) == 0)
-		{
-		    if(timed_flag == 0)
-		    {
-    			io_set_fpga_sys_time(gps_get_format_date());
-    			memset(cmdbuf, 0, sizeof(cmdbuf));
-    			if(0 == gps_get_date_cmdstring(cmdbuf))
-    			{
-    				printf("set sys time:%s\n", cmdbuf);
-    				system(cmdbuf);
-    			}
-    			timed_flag = 1;
-			}
-			#if 0
-			uloop_timeout_cancel(t);
-			free(t);
-			t = NULL;
-			close( uartinfo[1].fd->fd);
-			uartinfo[1].fd->fd = -1;
-			printf("gps exit!\n");
-			return;
-			#endif
-		}
-#endif
-	}
-	else
-	{
-		if((nread < 0) && (EAGAIN != errno) && (EINTR != errno))
-		{
-			printf("gps fd err!\r\n");
-			close( uartinfo[GPS_INDEX].fd->fd);
-			uartinfo[GPS_INDEX].fd->fd = uart_init_dev(uartinfo[GPS_INDEX].devname, uartinfo[GPS_INDEX].baudrate);
-		}
-	}
-
-	tcflush(uartinfo[GPS_INDEX].fd->fd, TCIOFLUSH);
+    #define TIME_INTERVAL_SEC   (300)
+    char buf[SERIAL_BUF_LEN];
+    char cmdbuf[128];
+    int32_t  nread; 
+    static uint8_t timed_flag = 0;   //授时完成标志
+    static int tick = 0;
+    memset(buf,0,SERIAL_BUF_LEN);
+    
+    tick++;
+    int fd = uartinfo[GPS_INDEX].sfd;
+    nread = read(fd, buf, SERIAL_BUF_LEN);
+    if(nread > 0) {
+        if (0 == gps_parse_recv_msg_rmc(buf, nread)) {
+            if(timed_flag == 0) {
+                io_set_fpga_sys_time(gps_get_format_date());  //fpga
+                memset(cmdbuf, 0, sizeof(cmdbuf));
+                gps_get_date_cmdstring(cmdbuf);
+                printf_note("set sys time:%s\n", cmdbuf);
+                safe_system(cmdbuf);
+                safe_system("hwclock -w");
+                timed_flag = 1;
+            } else if (tick >= TIME_INTERVAL_SEC) {
+                memset(cmdbuf, 0, sizeof(cmdbuf));
+                gps_get_date_cmdstring(cmdbuf);
+                printf_note("set sys time:%s\n", cmdbuf);
+                safe_system(cmdbuf);
+                safe_system("hwclock -w");
+                tick = 0;
+            }
+        }
+        gps_parse_recv_msg_gga(buf, nread);
+    } else {
+        if((nread < 0) && (EAGAIN != errno) && (EINTR != errno)) {
+            printf_err("gps fd err!\r\n");
+            close(fd);
+            usleep(100);
+            uartinfo[GPS_INDEX].sfd = uart_init_dev(uartinfo[GPS_INDEX].devname, uartinfo[GPS_INDEX].baudrate);
+        }
+    }
+   
+    tcflush(uartinfo[GPS_INDEX].sfd, TCIOFLUSH);
     uloop_timeout_set(t, UART_HANDER_TIMROUT);
 }
 
-void uart_timer_task_init(int index)
+
+int gps_task_init(void)
 {
-	if(index < 0 || index > 3)
-	{
-		return;
-	}
-    if(NULL == uartinfo[index].timeout)
-    {
-		uartinfo[index].timeout = (struct uloop_timeout *)malloc(sizeof(struct uloop_timeout));
-		if(NULL == uartinfo[index].timeout)
-		{
-			printf("malloc uart uloop_timeout struct fail!\n");
-			return;
-		}
+    if (!gps_timer) {
+        gps_timer = (struct uloop_timeout *)malloc(sizeof(struct uloop_timeout));
+        if (!gps_timer) {
+            printf_err("create gps task failed!\n");
+            return -1;
+        }
     }
-    
-    uartinfo[index].timeout->cb = uartinfo[index].timeout_hander;
-    uartinfo[index].timeout->pending = false;
-    uloop_timeout_set(uartinfo[index].timeout, UART_HANDER_TIMROUT);
+
+    gps_timer->cb = gps_timer_task_cb;
+    gps_timer->pending = false;
+    uloop_timeout_set(gps_timer, UART_HANDER_TIMROUT);
+    printf_note("create gps task ok!\n");
+    return 0;
 }
 
+//将系统时间设置到fpga
+void fpga_timer_task_cb(struct uloop_timeout *t)
+{
+    uint32_t date = syscall_get_format_date();
+    if (date > 0) {
+        io_set_fpga_sys_time(date);
+    }
+    uloop_timeout_set(t, FPGA_TIME_INTERVAL);
+}
+
+int time_fpga_task_init(void)
+{
+    if (!fpga_timer) {
+        fpga_timer = (struct uloop_timeout *)malloc(sizeof(struct uloop_timeout));
+        if (!fpga_timer) {
+            printf_err("create fpga timer task failed!\n");
+            return -1;
+        }
+    }
+
+    fpga_timer->cb = fpga_timer_task_cb;
+    fpga_timer->pending = false;
+    uloop_timeout_set(fpga_timer, FPGA_TIME_INTERVAL);
+    printf_note("create fpga task ok!\n");
+    return 0;
+}
 
 void uart_init(void)
 {
@@ -479,25 +454,25 @@ void uart_init(void)
             printf_err("%s[%s]init failed\n", uartinfo[i].devname, uartinfo[i].info);
             continue;
         }
-        printf_note("[%d]%s[%s]init ok,fd:%d\n", uartinfo[i].index, uartinfo[i].devname, uartinfo[i].info, fd);
-        uartinfo[i].fd = safe_malloc(sizeof(struct uloop_fd));
-        memset(uartinfo[i].fd, 0, sizeof(struct uloop_fd));
-        uartinfo[i].fd->fd = fd;
-	    if(uartinfo[i].cb)
-	    {
-	    	uartinfo[i].fd->cb = uartinfo[i].cb;
-	        uloop_fd_add(uartinfo[i].fd, ULOOP_READ);
-        }
-        else
+        uartinfo[i].sfd = fd;
+        printf_note("%s[%s]init ok,fd:%d\n", uartinfo[i].devname, uartinfo[i].info, fd);
+        
+        if(uartinfo[i].cb)
         {
-        	if(uartinfo[i].timeout_hander)
-        	{
-        		uart_timer_task_init(i);
-        	}
+            uartinfo[i].fd = safe_malloc(sizeof(struct uloop_fd));
+            memset(uartinfo[i].fd, 0, sizeof(struct uloop_fd));
+            uartinfo[i].fd->fd = fd;
+            uartinfo[i].fd->cb = uartinfo[i].cb;
+            uloop_fd_add(uartinfo[i].fd, ULOOP_READ);
         }
     }
 #endif
 #if defined(SUPPORT_RS485)
     rs485_com_init();
 #endif
+#if defined(SUPPORT_GPS)
+    gps_task_init();
+    gps_init();
+#endif
+    time_fpga_task_init();
 }

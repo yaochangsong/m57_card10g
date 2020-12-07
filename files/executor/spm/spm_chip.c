@@ -431,7 +431,7 @@ static int spm_chip_send_fft_data(void *data, size_t fft_len, void *arg)
     iov[1].iov_base = data;
     iov[1].iov_len = data_byte_size;
 
-    udp_send_vec_data(iov, 2);
+    udp_send_vec_data(iov, 2, TAG_FFT);
     safe_free(ptr_header);
     return (header_len + data_byte_size);
 }
@@ -512,7 +512,7 @@ static int spm_chip_send_iq_data(void *data, size_t len, void *arg)
     for(i = 0; i<index; i++){
         iov[1].iov_base = pdata;
         iov[1].iov_len = _send_byte;
-        udp_send_vec_data(iov, 2);
+        udp_send_vec_data(iov, 2, TAG_IQ);
         pdata += _send_byte;
     }
    

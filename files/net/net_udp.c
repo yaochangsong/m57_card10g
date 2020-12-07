@@ -89,12 +89,13 @@ static inline int udp_send_vec_data_to_client(struct net_udp_client *client, str
     return 0;
 }
 
-int udp_send_vec_data(struct iovec *iov, int iov_len)
+int udp_send_vec_data(struct iovec *iov, int iov_len, int tag)
 {
     struct net_udp_server *srv = get_udp_server();
     struct net_udp_client *cl_list, *list_tmp;
     int ret = 0;
     list_for_each_entry_safe(cl_list, list_tmp, &srv->clients, list){
+        if (cl_list->tag == tag)
         udp_send_vec_data_to_client(cl_list, iov, iov_len);
     }
     return ret;
@@ -132,7 +133,7 @@ void udp_client_dump(void)
        }
 }
 
-void udp_add_client_to_list(struct sockaddr_in *addr, int ch)
+void udp_add_client_to_list(struct sockaddr_in *addr, int ch, int tag)
 {
     struct net_udp_client *cl = NULL;
     struct net_udp_client *cl_list, *list_tmp;
@@ -140,7 +141,9 @@ void udp_add_client_to_list(struct sockaddr_in *addr, int ch)
     if(srv == NULL)
         return;
     list_for_each_entry_safe(cl_list, list_tmp, &srv->clients, list){
-        if(memcmp(&cl_list->peer_addr.sin_addr, &addr->sin_addr, sizeof(addr->sin_addr)) == 0){
+        if((memcmp(&cl_list->peer_addr.sin_addr, &addr->sin_addr, sizeof(addr->sin_addr)) == 0) && 
+            (memcmp(&cl_list->peer_addr.sin_port, &addr->sin_port, sizeof(addr->sin_port)) == 0) &&
+            (cl_list->tag == tag)) {
             printf_warn("Find ipaddress on list:%s:%d，delete it\n",  cl_list->get_peer_addr(cl_list), cl_list->get_peer_port(cl_list));
             __lock_send__();
             udp_free(cl_list);
@@ -162,6 +165,7 @@ void udp_add_client_to_list(struct sockaddr_in *addr, int ch)
         return;
     }
     memcpy(&cl->peer_addr, addr, sizeof(struct sockaddr_in));
+    cl->tag = tag;
     cl->get_peer_addr = udp_get_peer_addr;
     cl->get_peer_port = udp_get_peer_port;
     cl->peer_addr.sin_family = AF_INET;

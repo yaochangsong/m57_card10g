@@ -61,8 +61,10 @@ static inline void _fs_init_(void);
 struct push_arg{
     struct timeval ct;
     uint64_t nbyte;
+    uint64_t split_nbyte;
     uint64_t count;
     int  fd;
+    int split_num;
     int ch;
     char *name;
     char *filename;
@@ -107,6 +109,7 @@ static inline  int _write_disk_run(int fd, size_t size, void *pdata)
     rc = write(fd, pdata, size);
     if (rc < 0){
         perror("write file");
+        return -1;
     }
     sync();
     return 0;
@@ -345,38 +348,46 @@ static void _thread_exit_callback(void *arg){
         io_stop_backtrace_file(&ch);
         executor_set_command(EX_ENABLE_CMD, PSD_MODE_DISABLE, 0, NULL);
     }
-    #if 0
+#if 0
     else if(pargs->name && !strcmp(pargs->name, THREAD_FS_SAVE_NAME)) {
         wav_write_header(fd, nbyte);
     }
 #endif
-#if 0
-    /* check split file */
-    filesize = _fs_get_file_size(pargs->filename);
-    printf_note("%s filesize: %llu, %llu\n", pargs->filename, filesize, config_get_split_file_threshold());
-    if(config_get_split_file_threshold() > 0 && filesize > config_get_split_file_threshold()){
-        chdir(ROOT_DIR);
-        printf_note("cd %s\n", ROOT_DIR);
-        snprintf(command, sizeof(command) - 1, "split -b %llu %s -a 2 %s. &", config_get_split_file_threshold(), pargs->filename, pargs->filename);
-        printf_note(" %s\n", command);
-        safe_system(command);
-        snprintf(command, sizeof(command) - 1, "rm %s &", pargs->filename);
-        printf_note("%s\n", command);
-        safe_system(command);
-    }
-    #endif
     if(fd > 0)
         close(fd);
     safe_free(pargs->filename);
     if(arg)
         safe_free(arg);
 }  
+
+static inline int _fs_split_file(void *args)
+{
+    struct push_arg *p_args;
+
+    p_args = (struct push_arg *)args;
+    if((config_get_split_file_threshold() > 0) && (p_args->split_nbyte >= config_get_split_file_threshold())){
+        char path[512];
+        int fd = 0;
+        if(p_args->fd > 0)
+            close(p_args->fd);
+        p_args->split_num++;
+        p_args->split_nbyte = 0;
+        snprintf(path, sizeof(path), "%s/%s.%d", fs_get_root_dir(), p_args->filename, p_args->split_num);
+        fd = open(path, O_RDWR | O_CREAT | O_TRUNC | O_DIRECT | O_SYNC, 0666);
+        if (fd < 0) {
+            printf_err("open %s fail\n", path);
+            return -1;
+        }
+        p_args->fd = fd;
+    }
+    return 0;
+}
 static int _fs_start_save_file_thread(void *arg)
 {
     typedef int16_t adc_t;
     adc_t *ptr = NULL;
     ssize_t nread = 0; 
-    int ret, ch;
+    int ret = 0, ch;
     struct push_arg *p_args;
     struct spm_context *_ctx;
     p_args = (struct push_arg *)arg;
@@ -384,8 +395,11 @@ static int _fs_start_save_file_thread(void *arg)
     ch = p_args->ch;
     nread = _ctx->ops->read_adc_data(ch, &ptr);
     /* disk is full */
-    if(disk_is_full_alert == true){
-        printf_warn("disk is full exit save thread\n");
+    if(disk_is_full_alert == true || ret == -1){
+        if(disk_is_full_alert)
+            printf_warn("disk is full, save thread exit\n");
+        if(ret == -1)
+            printf_warn("write file error, save thread exit\n");
         _ctx->ops->read_adc_over_deal(ch, &nread);
         io_set_enable_command(ADC_MODE_DISABLE, ch, -1, 0);
         pthread_exit_by_name(THREAD_FS_SAVE_NAME);
@@ -393,9 +407,12 @@ static int _fs_start_save_file_thread(void *arg)
     }
     if(nread > 0){
         p_args->nbyte += nread;
+        p_args->split_nbyte += nread;
         p_args->count ++;
-        ret = _write_disk_run(p_args->fd, nread, ptr);
-        _ctx->ops->read_adc_over_deal(ch, &nread);
+        if((ret = _fs_split_file(p_args)) == 0){
+            ret = _write_disk_run(p_args->fd, nread, ptr);
+            _ctx->ops->read_adc_over_deal(ch, &nread);
+        } 
     }else{
         usleep(1000);
         printf("read_adc_data err:%d\n", nread);
@@ -436,6 +453,8 @@ static ssize_t _fs_start_save_file(int ch, char *filename)
     memcpy(&p_args->ct, &beginTime, sizeof(struct timeval));
     p_args->nbyte = 0;
     p_args->count = 0;
+    p_args->split_num = 0;
+    p_args->split_nbyte = 0;
     p_args->fd = fd;
     p_args->ch = ch;
     p_args->name=THREAD_FS_SAVE_NAME;

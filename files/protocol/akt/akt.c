@@ -1428,11 +1428,11 @@ static int akt_execute_get_command(void *cl)
                 node = cJSON_GetArrayItem(array, i);            
                 value = cJSON_GetObjectItem(node, "size");
                 if(cJSON_IsNumber(value)){
-                    file_list->files[i].file_size = value->valueint;
+                    file_list->files[i].file_size = value->valuedouble;
                 }
                 value = cJSON_GetObjectItem(node, "createTime");
                 if(cJSON_IsNumber(value)){
-                    file_list->files[i].file_mtime = value->valueint;
+                    file_list->files[i].file_mtime = value->valuedouble;
                 }
                 value = cJSON_GetObjectItem(node, "filename");
                 if(cJSON_IsString(value)){

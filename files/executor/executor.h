@@ -205,7 +205,7 @@ extern int8_t executor_get_command(exec_cmd cmd, uint8_t type, uint8_t ch,  void
 extern int8_t executor_set_enable_command(uint8_t ch);
 extern int8_t executor_set_command(exec_cmd cmd, uint8_t type, uint8_t ch,  void *data, ...);
 extern uint32_t executor_get_audio_point(uint8_t ch);
-
+extern uint64_t executor_get_mid_freq(uint8_t ch);
 extern void executor_close(void);
 
 #endif

@@ -135,7 +135,7 @@ typedef struct _FPGA_CONFIG_REG_
 	SYSTEM_CONFG_REG *system;
     ADC_REG         *adcReg;
     SIGNAL_REG      *signal;
-    RF_REG          *rfReg[MAX_RADIO_CHANNEL_NUM];
+    RF_REG          *rfReg[MAX_RF_NUM];
     AUDIO_REG		*audioReg;
 	BROAD_BAND_REG  *broad_band[MAX_RADIO_CHANNEL_NUM];
 	NARROW_BAND_REG *narrow_band[NARROW_BAND_CHANNEL_MAX_NUM];
@@ -184,6 +184,7 @@ typedef struct _FPGA_CONFIG_REG_
 #define SET_TRIG_COUNT(reg,v)			    (reg->signal->trig_count=v)
 
 #define AUDIO_REG(reg)                      (reg->audioReg)
+
 
 static inline void _set_narrow_channel(FPGA_CONFIG_REG *reg, int ch, int subch, int enable)
 {
@@ -273,13 +274,18 @@ static inline bool _reg_get_rf_lock_clk(int ch, int index, FPGA_CONFIG_REG *reg)
 
 /* RF */
 /*SET*/
-static inline void _reg_set_rf_frequency(int ch, int index, uint32_t freq_hz, FPGA_CONFIG_REG *reg)
+static inline void _reg_set_rf_frequency(int ch, int index, uint64_t freq_hz, FPGA_CONFIG_REG *reg)
 {
     uint32_t freq_khz = freq_hz/1000;
     
-    if(freq_hz > RF_DIVISION_FREQ_HZ){
+    if(ch == 1){
         if(reg->rfReg[1] == NULL)
             return;
+        if(freq_hz > GHZ(18)){
+            /*channel 1: 40G => 6G */
+            freq_khz = GHZ(6)/1000;
+            reg->rfReg[2]->freq_khz = GHZ(6);
+        }
         reg->rfReg[1]->freq_khz = freq_khz;
     }
     else{

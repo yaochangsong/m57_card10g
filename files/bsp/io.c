@@ -576,7 +576,7 @@ int32_t io_set_subch_onoff(uint32_t ch, uint32_t subch, uint8_t onoff)
     ret = ioctl(io_ctrl_fd, IOCTL_SUB_CH_ONOFF, &odata);
 #elif defined(SUPPORT_SPECTRUM_V2) 
     #if defined(SUPPORT_SPECTRUM_FPGA)
-    printf_debug("ch=%u, subch=%u, onoff=%d, ptr=%p\n", ch, subch, onoff, get_fpga_reg()->narrow_band[subch]);
+   // printf_debug("ch=%u, subch=%u, onoff=%d, ptr=%p\n", ch, subch, onoff, get_fpga_reg()->narrow_band[subch]);
     if(onoff){
         subch_bitmap_set(subch);
         _set_narrow_channel(get_fpga_reg(),ch, subch,0x01);

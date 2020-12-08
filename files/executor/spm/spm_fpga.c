@@ -1291,27 +1291,7 @@ exit_mode:
 
 static int spm_sample_ctrl(void *args)
 {
-    struct spm_run_parm *r_args;
-    r_args = (struct spm_run_parm *)args;
-#if defined(SUPPORT_DIRECT_SAMPLE)
-    uint64_t freq_hz = r_args->m_freq_s;
-    uint8_t val = 0;
-    static int8_t val_dup = -1;
-    #define _200MHZ 200000000
-    if(freq_hz < _200MHZ){
-        val = 1;    /* 直采开启 */
-    }else{
-        val = 0;    /* 直采关闭 */
-    }
-    if(val_dup == val){
-        return 0;
-    }else{
-        val_dup = val;
-    }
-    printf_note("samle ctrl:freq_hz =%lluHz, direct %d\n", freq_hz, val);
-    executor_set_command(EX_MID_FREQ_CMD, EX_SAMPLE_CTRL,    0, &val);
-    executor_set_command(EX_RF_FREQ_CMD,  EX_RF_SAMPLE_CTRL, 0, &val);
-#endif
+    _ctrl_freq(args);
     return 0;
 }
 

@@ -170,6 +170,13 @@ uint32_t executor_get_audio_point(uint8_t ch)
     return _ctx->run_args[ch]->audio_points;
 }
 
+uint64_t executor_get_mid_freq(uint8_t ch)
+{
+    struct spm_context *_ctx;
+    _ctx = get_spm_ctx();
+    return _ctx->run_args[ch]->m_freq;
+}
+
 static int8_t  executor_points_scan(uint8_t ch, work_mode_type mode, void *args)
 {
     struct poal_config *poal_config = &(config_get_config()->oal_config);

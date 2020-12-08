@@ -10,6 +10,7 @@
 
 
 #define MAX_RADIO_CHANNEL_NUM 2         /* 最大射频通道数 */
+#define MAX_RF_NUM 3                    /* 最大射频数 */
 #define MAX_SIGNAL_CHANNEL_NUM (17)     /* 最大解调子通道数 */
 #define MAX_SIG_CHANNLE 700             /* 最大频点数 */
 #define CONFIG_AUDIO_CHANNEL            16  /* 音频解调子通道 */

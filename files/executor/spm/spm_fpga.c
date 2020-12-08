@@ -565,7 +565,7 @@ static void *_assamble_audio_header(size_t subch, size_t *hlen, size_t data_len,
         return NULL;
 
     ch = hparam->ch;
-    i = hparam->audio_points;
+    i = executor_get_audio_point(ch);
     hparam->sub_ch_para.bandwidth_hz = points->points[i].d_bandwith;
     hparam->sub_ch_para.m_freq_hz =  points->points[i].center_freq;
     hparam->sub_ch_para.d_method = points->points[i].raw_d_method;

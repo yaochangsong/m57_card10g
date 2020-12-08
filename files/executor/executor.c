@@ -163,6 +163,13 @@ static double difftime_us_val(const struct timeval *start, const struct timeval 
     return d;
 }
 
+uint32_t executor_get_audio_point(uint8_t ch)
+{
+    struct spm_context *_ctx;
+    _ctx = get_spm_ctx();
+    return _ctx->run_args[ch]->audio_points;
+}
+
 static int8_t  executor_points_scan(uint8_t ch, work_mode_type mode, void *args)
 {
     struct poal_config *poal_config = &(config_get_config()->oal_config);
@@ -267,7 +274,7 @@ static int8_t  executor_points_scan(uint8_t ch, work_mode_type mode, void *args)
                 io_set_enable_command(PSD_MODE_ENABLE, ch, -1, point->points[i].fft_size);
             }
             if(spmctx->ops->agc_ctrl)
-            spmctx->ops->agc_ctrl(ch, spmctx);
+                spmctx->ops->agc_ctrl(ch, spmctx);
             if(args != NULL)
                 spm_deal(args, r_args);
             if(poal_config->channel[ch].enable.psd_en){

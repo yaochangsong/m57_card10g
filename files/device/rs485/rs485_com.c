@@ -36,7 +36,7 @@ static struct _elec_compass{
     uint8_t     header;
     uint8_t     data_len;
     uint8_t     addr;
-    uint16_t    cmd;
+    uint8_t    cmd;
     uint8_t     data[0];
     uint8_t     crc;
 }__attribute__ ((packed));
@@ -325,7 +325,7 @@ int elec_compass1_com_get(void *data, int time_sec_ms)
     int time_passed_ms = 0;
     int i = 0;
     do{
-        nbyte = comp1_read_block_timeout(buffer, TIME_OUT_RESOLUTION);
+        nbyte = rs485_compass1_read_block_timeout(buffer, TIME_OUT_RESOLUTION);
         if (nbyte > 0)
         {
             memcpy(response+offset, buffer, nbyte);
@@ -374,16 +374,13 @@ int elec_compass1_com_get_angle(float *angle)
     fdata->cmd = 0x03;  
     fdata->crc = 0x07;
     
-    SW_TO_UART0_WRITE();  //A0/B0
-    comp1_send_data_by_serial((uint8_t *)fdata, 5);
+    gpio_raw_write_value(GPIO_FUNC_COMPASS1, 1);   //write
+    rs485_compass1_send_data((uint8_t *)fdata, 5);
     usleep(20000);  //等待发送完毕，在切换方向
-    SW_TO_UART0_READ();
+    gpio_raw_write_value(GPIO_FUNC_COMPASS1, 0);   //read
     free(fdata);
     nbyte = elec_compass1_com_get(buffer, 200);
-    if(nbyte <= 0)
-    {
-        return -1;
-    }
+
     
     if(nbyte < 8 || buffer[0] != HEADER || buffer[3] != 0x83)
     {
@@ -417,7 +414,7 @@ int elec_compass2_com_get(void *data, int time_sec_ms)
     int time_passed_ms = 0;
     memset(response, 0, sizeof(response));
     do{
-        nbyte = comp2_read_block_timeout(buffer, TIME_OUT_RESOLUTION);
+        nbyte = rs485_compass2_read_block_timeout(buffer, TIME_OUT_RESOLUTION);
         if (nbyte > 0)
         {
             memcpy(response+offset, buffer, nbyte);
@@ -456,10 +453,10 @@ int elec_compass2_com_get_angle(float *angle)
     uint8_t buffer[FRAME_MAX_LEN];
     int nbyte = 0;
 
-    SW_TO_UART1_WRITE();  //A1/B1
-    comp2_send_data_by_serial(HPR_CMD, strlen(HPR_CMD));
+    gpio_raw_write_value(GPIO_FUNC_COMPASS2, 1);   //write
+    rs485_compass2_send_data(HPR_CMD, strlen(HPR_CMD));
     usleep(50000);  //等待发送完毕，在切换方向
-    SW_TO_UART1_READ();
+    gpio_raw_write_value(GPIO_FUNC_COMPASS2, 0);  //read
     nbyte = elec_compass2_com_get(buffer, 200);
     if (nbyte <= 0)
     {

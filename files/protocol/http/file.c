@@ -322,6 +322,11 @@ static void uh_file_response_206(struct uh_client *cl, struct stat *s)
     cl->printf(cl, "Content-Ranges: bytes %llu-%llu/%llu\r\n", cl->range.offset, cl->range.offset+cl->range.length-1, s->st_size);
 }
 
+static void uh_file_response_416(struct uh_client *cl, struct stat *s)
+{
+    cl->send_header(cl, 416, "Requested Range Not Satisfiable", s->st_size);
+    uh_file_response_ok_hdrs(cl, s);
+}
 static int uh_file_if_modified_since(struct uh_client *cl, struct stat *s)
 {
     const char *date = kvlist_get(&cl->request.header, "if-modified-since");
@@ -467,6 +472,7 @@ static void uh_file_data(struct uh_client *cl, struct path_info *pi, int fd)
      printf_warn("pi->phys[%s], pi->name:%s,pi->info=%s\n", pi->phys,pi->name, pi->info);
 
     if (!uh_file_if_range(cl, &pi->stat)) {
+        uh_file_response_416(cl, &pi->stat);
         cl->printf(cl, "\r\n");
         cl->request_done(cl);
         close(fd);

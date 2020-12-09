@@ -16,16 +16,18 @@
 #include "gpio_raw.h"
 
 struct gpio_node_info gpio_node[] ={
-//#if defined(SUPPORT_PROJECT_WD_XCR)
 
-//#else
     /* pin   direction  default gpio value   func_code    func_name    fd */
     {63,      "out",       0,               GPIO_FUNC_ADC,          "ADC&Backtrace gpio ctrl",    -1 },  /* low:  adc ; high : backtrace*/
     {62,      "in",        -1,              GPIO_FUNC_ADC_STATUS,   "ADC Status",                 -1 },
     {4,      "out",        0,               GPIO_FUNC_LOW_NOISER,     "RS485 0 ctrl",                 -1 },
     {5,      "out",        0,               GPIO_FUNC_COMPASS2,     "RS485 1 ctrl",                 -1 },
     {6,      "out",        0,               GPIO_FUNC_COMPASS1,   "RS485 2 ctrl",                 -1 },
-//#endif
+#ifdef SUPPORT_PROJECT_WD_XCR_40G
+    {8,      "out",        0,               GPIO_RF_CH1,            "RF CH1",                        -1 },
+    {9,      "out",        0,               GPIO_RF_CH2,            "RF CH2",                        -1 },
+    {10,     "out",        0,               GPIO_RF_CH3,            "RF CH3",                        -1 },
+#endif
 };
 
 static int gpio_export(int pin_number)

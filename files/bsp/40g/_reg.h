@@ -278,6 +278,9 @@ static inline void _reg_set_rf_frequency(int ch, int index, uint64_t freq_hz, FP
 {
     uint32_t freq_khz = freq_hz/1000;
     
+    if(ch >= MAX_RADIO_CHANNEL_NUM)
+        return;
+    
     if(ch == 1){
         if(reg->rfReg[1] == NULL)
             return;
@@ -301,6 +304,10 @@ static inline void _reg_set_rf_bandwidth(int ch, int index, uint32_t bw_hz, FPGA
     uint32_t mbw;
     int i, found = 0;
     uint8_t set_val = 0;
+    
+    if(ch >= MAX_RADIO_CHANNEL_NUM)
+        return;
+    
     /* 400KH(0) 4MHz(0x01) 40MHz(0x02) 200MHz(0x03)  */
     struct rf_bw_reg{
         uint32_t bw_hz;
@@ -323,13 +330,12 @@ static inline void _reg_set_rf_bandwidth(int ch, int index, uint32_t bw_hz, FPGA
         printf("NOT found bandwidth %uHz in tables,use default[200Mhz]\n", mbw);
         set_val = 0x03; /* default 200MHz */
     }
-    for(i = 0; i < MAX_RADIO_CHANNEL_NUM; i++){
-        if(reg->rfReg[i] == NULL)
-            continue;
-        reg->rfReg[i]->mid_band = set_val;
-        usleep(100);
-        reg->rfReg[i]->mid_band = set_val;
-    }
+    
+    if(reg->rfReg[ch] == NULL)
+        return;
+    reg->rfReg[ch]->mid_band = set_val;
+    usleep(100);
+    reg->rfReg[ch]->mid_band = set_val;
 }
 
 static inline void _reg_set_rf_mode_code(int ch, int index, uint8_t code, FPGA_CONFIG_REG *reg)
@@ -348,7 +354,9 @@ static inline void _reg_set_rf_mode_code(int ch, int index, uint8_t code, FPGA_C
                 {2,     0x01},
         };
 
-        
+        if(ch >= MAX_RADIO_CHANNEL_NUM)
+            return;
+
         for(i = 0; i < ARRAY_SIZE(_reg); i++){
             if(code == _reg[i].mode){
                 set_val = _reg[i].reg_val;
@@ -359,46 +367,47 @@ static inline void _reg_set_rf_mode_code(int ch, int index, uint8_t code, FPGA_C
             printf("NOT found noise mode %uHz in tables,use default normal mode[0]\n", code);
             set_val = 0x00; /* default normal mode */
         }
-        for(i = 0; i < MAX_RADIO_CHANNEL_NUM; i++){
-            if(reg->rfReg[i] == NULL)
-                continue;
-            reg->rfReg[i]->rf_mode = set_val;
-            usleep(100);
-            reg->rfReg[i]->rf_mode = set_val;
-        }
+        
+        if(reg->rfReg[ch] == NULL)
+            return;
+        reg->rfReg[ch]->rf_mode = set_val;
+        usleep(100);
+        reg->rfReg[ch]->rf_mode = set_val;
 }
 
 static inline void _reg_set_rf_mgc_gain(int ch, int index, uint8_t gain, FPGA_CONFIG_REG *reg)
 {
-    int i;
+    if(ch >= MAX_RADIO_CHANNEL_NUM)
+        return;
+    
     if(gain > 30)
         gain = 30;
     else if(gain < 0)
         gain = 0;
-    for(i = 0; i < MAX_RADIO_CHANNEL_NUM; i++){
-        if(reg->rfReg[i] == NULL)
-            continue;
-        reg->rfReg[i]->midband_minus = gain;
-        usleep(100);
-        reg->rfReg[i]->midband_minus = gain;
-    }
+    
+    if(reg->rfReg[ch] == NULL)
+        return;
+    reg->rfReg[ch]->midband_minus = gain;
+    usleep(100);
+    reg->rfReg[ch]->midband_minus = gain;
 }
 
 
 static inline void _reg_set_rf_attenuation(int ch, int index, uint8_t atten, FPGA_CONFIG_REG *reg)
 {
-    int i;
+    if(ch >= MAX_RADIO_CHANNEL_NUM)
+        return;
     if(atten > 30)
         atten = 30;
     else if(atten < 0)
         atten = 0;
-    for(i = 0; i < MAX_RADIO_CHANNEL_NUM; i++){
-        if(reg->rfReg[i] == NULL)
-            continue;
-        reg->rfReg[i]->rf_minus = atten;
-        usleep(100);
-        reg->rfReg[i]->rf_minus = atten;
-    }
+    
+    if(reg->rfReg[ch] == NULL)
+        return;
+    
+    reg->rfReg[ch]->rf_minus = atten;
+    usleep(100);
+    reg->rfReg[ch]->rf_minus = atten;
 }
 
 static inline void _reg_set_rf_cali_source_attenuation(int ch, int index, uint8_t level, FPGA_CONFIG_REG *reg)
@@ -406,8 +415,7 @@ static inline void _reg_set_rf_cali_source_attenuation(int ch, int index, uint8_
     /*  射频模块-90～-30dBm 功率可调，步进 1dB 
         接收机校正衰减有效范围为 寄存器0 dB～60dB
     */
-    int reg_val, i;
-    ch = ch;
+    int reg_val;
     index = index;
     
     if(level > -30)
@@ -417,46 +425,41 @@ static inline void _reg_set_rf_cali_source_attenuation(int ch, int index, uint8_
     level = -level;
     reg_val = level - 30;
 
-    for(i = 0; i < MAX_RADIO_CHANNEL_NUM; i++){
-        if(reg->rfReg[i] == NULL)
-            continue;
-        reg->rfReg[i]->revise_minus = reg_val;
-        usleep(100);
-        reg->rfReg[i]->revise_minus = reg_val;
-    }
+    if(reg->rfReg[ch] == NULL)
+        return;
+    reg->rfReg[ch]->revise_minus = reg_val;
+    usleep(100);
+    reg->rfReg[ch]->revise_minus = reg_val;
 }
 
 static inline void _reg_set_rf_direct_sample_ctrl(int ch, int index, uint8_t val, FPGA_CONFIG_REG *reg)
 {
     uint8_t data;
-    int i;
-    
-    ch = ch;
+
     index = index;
     data = (val == 0 ? 0 : 0x01);
     /* 0关闭直采，1开启直采 */
-    for(i = 0; i < MAX_RADIO_CHANNEL_NUM; i++){
-        if(reg->rfReg[i] == NULL)
-            continue;
-        reg->rfReg[i]->direct_control = data;
-        usleep(100);
-        reg->rfReg[i]->direct_control = data;
-    }
+    if(reg->rfReg[ch] == NULL)
+        return;
+    reg->rfReg[ch]->direct_control = data;
+    usleep(100);
+    reg->rfReg[ch]->direct_control = data;
 }
 
 static inline void _reg_set_rf_cali_source_choise(int ch, int index, uint8_t val, FPGA_CONFIG_REG *reg)
 {
-    int _reg, i;
+    int _reg;
+
+    if(ch >= MAX_RADIO_CHANNEL_NUM)
+        return;
     
     /* 0 为外部射频输入，1 为校正源输入 */
     _reg = (val == 0 ? 0 : 1);
-    for(i = 0; i < MAX_RADIO_CHANNEL_NUM; i++){
-        if(reg->rfReg[i] == NULL)
-            continue;
-        reg->rfReg[i]->input = _reg;
-        usleep(100);
-        reg->rfReg[i]->input = _reg;
-    }
+    if(reg->rfReg[ch] == NULL)
+        return;
+    reg->rfReg[ch]->input = _reg;
+    usleep(100);
+    reg->rfReg[ch]->input = _reg;
 }
 
 extern FPGA_CONFIG_REG *get_fpga_reg(void);

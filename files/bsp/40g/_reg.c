@@ -41,9 +41,10 @@ void *memmap(int fd_dev, void *phr_addr, int length)
 
 #define SYSTEM_CONFG_4K_LENGTH 0x1000
 
+
 static int fpga_memmap(int fd_dev, FPGA_CONFIG_REG *fpga_reg)
 {
-    void *base_addr = NULL;
+    void *tmp_addr = NULL;
     int i = 0;
 
     fpga_reg->system = memmap(fd_dev, FPGA_SYSETM_BASE, SYSTEM_CONFG_4K_LENGTH); 
@@ -54,14 +55,15 @@ static int fpga_memmap(int fd_dev, FPGA_CONFIG_REG *fpga_reg)
     }
     printf_debug("virtual address:%p, physical address:0x%x\n", fpga_reg->system, FPGA_SYSETM_BASE);
 
+    tmp_addr = fpga_reg->system +CONFG_REG_LEN;
     for(i = 0; i < MAX_RF_NUM; i++){
-        fpga_reg->rfReg[i] = (uint8_t *)fpga_reg->system +CONFG_REG_LEN;
+        fpga_reg->rfReg[i] = (uint8_t *)tmp_addr +i*CONFG_REG_LEN;
         if (!fpga_reg->rfReg[i])
         {
             printf("mmap failed, NULL pointer!\n");
             return -1;
         }
-        printf_debug("virtual address:%p, physical address:0x%x\n", fpga_reg->rfReg[i], FPGA_RF_BASE);
+        printf_debug("rf: %d virtual address:%p, physical address:0x%x\n", i, fpga_reg->rfReg[i], FPGA_RF_BASE + i*CONFG_REG_LEN);
     }
 
     fpga_reg->audioReg = (uint8_t *)fpga_reg->system + CONFG_AUDIO_OFFSET;
@@ -88,14 +90,14 @@ static int fpga_memmap(int fd_dev, FPGA_CONFIG_REG *fpga_reg)
     }
     printf_debug("virtual address:%p, physical address:0x%x\n", fpga_reg->signal, FPGA_SIGNAL_BASE);
 
-    base_addr =  memmap(fd_dev, FPGA_BRAOD_BAND_BASE, SYSTEM_CONFG_4K_LENGTH); 
-    if (!base_addr)
+    tmp_addr =  memmap(fd_dev, FPGA_BRAOD_BAND_BASE, SYSTEM_CONFG_4K_LENGTH); 
+    if (!tmp_addr)
     {
         printf("mmap failed, NULL pointer!\n");
         exit(1);
     }
     for(i = 0; i < MAX_RADIO_CHANNEL_NUM; i++){
-        fpga_reg->broad_band[i] = base_addr + BROAD_BAND_REG_OFFSET*i;
+        fpga_reg->broad_band[i] = tmp_addr + BROAD_BAND_REG_OFFSET*i;
         printf_note("virtual address:%p, physical address:0x%x\n", fpga_reg->broad_band[i], FPGA_BRAOD_BAND_BASE+BROAD_BAND_REG_OFFSET*i);
     }
 

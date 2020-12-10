@@ -120,7 +120,7 @@ typedef struct _RF_REG_
     uint32_t direct_control; //直采控制数据
     uint32_t revise_minus;   //校正衰减控制数据
     uint32_t direct_minus;   //直采衰减控制数据
-    int32_t  temperature;    //射频温度
+    uint32_t  temperature;    //射频温度
     uint32_t clk_lock;       //时钟锁定
     uint32_t in_out_clk;     //内外时钟
 }RF_REG;
@@ -223,15 +223,15 @@ static inline int32_t _reg_get_rf_temperature(int ch, int index, FPGA_CONFIG_REG
 {
     #define RF_TEMPERATURE_FACTOR 0.0625
     int16_t  rf_temperature = 0;
+    uint32_t u_rf_temperature;
 
     index = index;
     if(reg->rfReg[ch] == NULL)
         return 0;
-    rf_temperature = reg->rfReg[ch]->temperature;
+    u_rf_temperature = reg->rfReg[ch]->temperature;
     usleep(100);
-    rf_temperature = reg->rfReg[ch]->temperature;
-    rf_temperature = rf_temperature * RF_TEMPERATURE_FACTOR;
-    
+    u_rf_temperature = reg->rfReg[ch]->temperature;
+    rf_temperature = u_rf_temperature * RF_TEMPERATURE_FACTOR;
     return rf_temperature;
 }
 

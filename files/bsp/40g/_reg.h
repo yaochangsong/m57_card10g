@@ -294,9 +294,9 @@ CH1:
 射频38600M-40000M: 中频为5820M（包括40000M这个点）
 */
     struct _param_freq_t{
-        uint64_t start_rf_freq_mhz;
-        uint64_t end_rf_freq_mhz;
-        uint64_t mid_freq_mhz;
+        uint32_t start_rf_freq_mhz;
+        uint32_t end_rf_freq_mhz;
+        uint32_t mid_freq_mhz;
     };
     struct _param_freq_t _freqtable[] = {
             {18000,    19000, 7880},
@@ -310,6 +310,9 @@ CH1:
     uint32_t freq_10khz = freq_hz/10000, freq_set_val_mhz;
     uint32_t freq_mhz = freq_hz/1000000;
     int i, found = 0;
+    int is_cepstrum[MAX_RADIO_CHANNEL_NUM] = {0, 0};
+    static  int cepstrum_dup[MAX_RADIO_CHANNEL_NUM] = {-1, -1};
+    static uint32_t freq_10khz_dup = 0; //only ch1
 
     if(ch >= MAX_RADIO_CHANNEL_NUM || freq_hz > GHZ(40))
         return;
@@ -324,12 +327,20 @@ CH1:
             printf_info("rf2 ch=%d, freq=%llu 10khz\n", ch, freq_10khz);
             if(freq_mhz <= 32000){
                 //倒谱
-                printf_info("reg_set_cepstrum 1\n");
-                reg_set_cepstrum(ch, 1);
+                is_cepstrum[ch] = 1;
+                if(is_cepstrum[ch] != cepstrum_dup[ch]){
+                    printf_info("reg_set_cepstrum 1\n");
+                    reg_set_cepstrum(ch, 1);
+                }
             }else{
-                printf_info("reg_set_cepstrum 0\n");
-                reg_set_cepstrum(ch, 0);
+                is_cepstrum[ch] = 0;
+                if(is_cepstrum[ch] != cepstrum_dup[ch]){
+                    printf_info("reg_set_cepstrum 0\n");
+                    reg_set_cepstrum(ch, 0);
+                }
             }
+            cepstrum_dup[ch] = is_cepstrum[ch];
+            
             for(i = 0; i < ARRAY_SIZE(_freqtable); i++){
                 if((freq_mhz > _freqtable[i].start_rf_freq_mhz) && (freq_mhz <= _freqtable[i].end_rf_freq_mhz)){
                     freq_set_val_mhz = _freqtable[i].mid_freq_mhz;
@@ -342,10 +353,13 @@ CH1:
             }
             freq_10khz = freq_set_val_mhz * 100;
         }
-        reg->rfReg[1]->freq_khz = freq_10khz;
-        usleep(500);
-        reg->rfReg[1]->freq_khz = freq_10khz;
-        printf_info("rf1 ch=%d, freq=%llu 10khz\n", ch, freq_10khz);
+        if(freq_10khz != freq_10khz_dup){
+            reg->rfReg[1]->freq_khz = freq_10khz;
+            usleep(500);
+            reg->rfReg[1]->freq_khz = freq_10khz;
+            printf_info("rf1 ch=%d, freq=%llu 10khz\n", ch, freq_10khz);
+        }
+        freq_10khz_dup = freq_10khz;
     }
     else{
         if(reg->rfReg[0] == NULL)

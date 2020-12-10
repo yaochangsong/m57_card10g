@@ -1317,7 +1317,7 @@ static int akt_execute_get_command(void *cl)
             struct fs_context *fs_ctx;
             fs_ctx = get_fs_ctx();
             if(fs_ctx != NULL){
-                fs_ctx->ops->fs_find(filename, _find_file_list, &f_bg_size);
+                ret = fs_ctx->ops->fs_find(filename, _find_file_list, &f_bg_size);
             }
             if(ret != 0){
                 fsp.status = 0;
@@ -1343,8 +1343,10 @@ static int akt_execute_get_command(void *cl)
         case COMPASS_REQ_CMD:
         {
             float angle = -1.0f;
+        #if defined(SUPPORT_RS485)
         #if defined(SUPPORT_RS485_EC)
             elec_compass1_com_get_angle(&angle);
+            #endif
         #endif
             client->response.response_length = sizeof(float);
             client->response.data = calloc(1, client->response.response_length);

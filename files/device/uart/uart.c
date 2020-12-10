@@ -20,23 +20,15 @@
 ******************************************************************************/
 
 
-#include<config.h>
+#include "config.h"
 
-#define SERIAL_BUF_LEN 1024
-#define UART_HANDER_TIMROUT 1000   //ms
-#define FPGA_TIME_INTERVAL (1000 * 360)
 
 unsigned long speed_arr[] = {B230400, B115200, B57600, B38400, B19200, B9600, B4800, B2400, B1200, B300,};
 unsigned long name_arr[] = {230400, 115200, 57600, 38400, 19200, 9600, 4800, 2400, 1200, 300,};
 
 static void uart0_read_cb(struct uloop_fd *fd, unsigned int events);
 
-struct uloop_timeout *gps_timer = NULL;
-struct uloop_timeout *fpga_timer = NULL;
 
-#define  GPS_INDEX      0     //gps节点在uartinfo中的索引
-#define  COMPASS1_INDEX 3     //电子罗盘1 30M-1350M
-#define  COMPASS2_INDEX 2     //电子罗盘2 1G-6G
 
 
 struct uart_info uartinfo[] = {
@@ -244,14 +236,14 @@ static void uart0_read_cb(struct uloop_fd *fd, unsigned int events)
     }
 }
 
-long rs485_compass1_send_data(uint8_t *buf, uint32_t len)
+long uart_compass1_send_data(uint8_t *buf, uint32_t len)
 {
-    return write(uartinfo[COMPASS1_INDEX].sfd,buf,len);
+    return write(uartinfo[UART_INFO_COMPASS2_30_1350M].sfd,buf,len);
 }
 
-int rs485_compass1_read_block_timeout(uint8_t *buf, int time_sec_ms)
+int uart_compass1_read_block_timeout(uint8_t *buf, int time_sec_ms)
 {
-    int fd = uartinfo[COMPASS1_INDEX].sfd;
+    int fd = uartinfo[UART_INFO_COMPASS2_30_1350M].sfd;
     int ret = -1;
     int ms_count = 0, i = 0;
     
@@ -280,14 +272,14 @@ int rs485_compass1_read_block_timeout(uint8_t *buf, int time_sec_ms)
     return ret;
 }
 
-long rs485_compass2_send_data(uint8_t *buf, uint32_t len)
+long uart_compass2_send_data(uint8_t *buf, uint32_t len)
 {
-    return write(uartinfo[COMPASS2_INDEX].sfd,buf,len);
+    return write(uartinfo[UART_INFO_COMPASS_1_6G].sfd,buf,len);
 }
 
-int rs485_compass2_read_block_timeout(uint8_t *buf, int time_sec_ms)
+int uart_compass2_read_block_timeout(uint8_t *buf, int time_sec_ms)
 {
-    int fd = uartinfo[COMPASS2_INDEX].sfd;
+    int fd = uartinfo[UART_INFO_COMPASS_1_6G].sfd;
     int ret = -1;
     int ms_count = 0, i = 0;
    
@@ -350,96 +342,13 @@ int uart0_read_block_timeout(uint8_t *buf, int time_sec_ms)
 }
 
 
-
-void gps_timer_task_cb(struct uloop_timeout *t)
+struct uart_info *get_uart_info_by_index(int index)
 {
-    #define TIME_INTERVAL_SEC   (300)
-    char buf[SERIAL_BUF_LEN];
-    char cmdbuf[128];
-    int32_t  nread; 
-    static uint8_t timed_flag = 0;   //授时完成标志
-    static int tick = 0;
-    memset(buf,0,SERIAL_BUF_LEN);
-    
-    tick++;
-    int fd = uartinfo[GPS_INDEX].sfd;
-    nread = read(fd, buf, SERIAL_BUF_LEN);
-    if(nread > 0) {
-        if (0 == gps_parse_recv_msg_rmc(buf, nread)) {
-            if(timed_flag == 0) {
-                io_set_fpga_sys_time(gps_get_format_date());  //fpga
-                memset(cmdbuf, 0, sizeof(cmdbuf));
-                gps_get_date_cmdstring(cmdbuf);
-                printf_note("set sys time:%s\n", cmdbuf);
-                safe_system(cmdbuf);
-                safe_system("hwclock -w");
-                timed_flag = 1;
-            } else if (tick >= TIME_INTERVAL_SEC) {
-                memset(cmdbuf, 0, sizeof(cmdbuf));
-                gps_get_date_cmdstring(cmdbuf);
-                printf_note("set sys time:%s\n", cmdbuf);
-                safe_system(cmdbuf);
-                safe_system("hwclock -w");
-                tick = 0;
-            }
-        }
-        gps_parse_recv_msg_gga(buf, nread);
-    } else {
-        if((nread < 0) && (EAGAIN != errno) && (EINTR != errno)) {
-            printf_err("gps fd err!\r\n");
-            close(fd);
-            usleep(100);
-            uartinfo[GPS_INDEX].sfd = uart_init_dev(uartinfo[GPS_INDEX].devname, uartinfo[GPS_INDEX].baudrate);
-        }
+    if (index >= ARRAY_SIZE(uartinfo)) {
+        printf_warn("get uart fd fail!\n");
+        return NULL;
     }
-   
-    tcflush(uartinfo[GPS_INDEX].sfd, TCIOFLUSH);
-    uloop_timeout_set(t, UART_HANDER_TIMROUT);
-}
-
-
-int gps_task_init(void)
-{
-    if (!gps_timer) {
-        gps_timer = (struct uloop_timeout *)malloc(sizeof(struct uloop_timeout));
-        if (!gps_timer) {
-            printf_err("create gps task failed!\n");
-            return -1;
-        }
-    }
-
-    gps_timer->cb = gps_timer_task_cb;
-    gps_timer->pending = false;
-    uloop_timeout_set(gps_timer, UART_HANDER_TIMROUT);
-    printf_note("create gps task ok!\n");
-    return 0;
-}
-
-//将系统时间设置到fpga
-void fpga_timer_task_cb(struct uloop_timeout *t)
-{
-    uint32_t date = syscall_get_format_date();
-    if (date > 0) {
-        io_set_fpga_sys_time(date);
-    }
-    uloop_timeout_set(t, FPGA_TIME_INTERVAL);
-}
-
-int time_fpga_task_init(void)
-{
-    if (!fpga_timer) {
-        fpga_timer = (struct uloop_timeout *)malloc(sizeof(struct uloop_timeout));
-        if (!fpga_timer) {
-            printf_err("create fpga timer task failed!\n");
-            return -1;
-        }
-    }
-
-    fpga_timer->cb = fpga_timer_task_cb;
-    fpga_timer->pending = false;
-    uloop_timeout_set(fpga_timer, FPGA_TIME_INTERVAL);
-    printf_note("create fpga task ok!\n");
-    return 0;
+    return (struct uart_info *)&uartinfo[index];
 }
 
 void uart_init(void)
@@ -466,13 +375,13 @@ void uart_init(void)
             uloop_fd_add(uartinfo[i].fd, ULOOP_READ);
         }
     }
-#endif
+    
 #if defined(SUPPORT_RS485)
     rs485_com_init();
 #endif
 #if defined(SUPPORT_GPS)
-    gps_task_init();
     gps_init();
 #endif
-    time_fpga_task_init();
+
+#endif   
 }

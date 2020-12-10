@@ -63,6 +63,10 @@ void wav_format_header(Wav *header, uint16_t formatType, uint16_t channelCount,
 }
 
 
+void wav_write_header_before(int fd)
+{
+    lseek(fd, 512, SEEK_SET);
+}
 int wav_write_header(int fd, uint64_t datalen)
 {
     int write_len = -1;

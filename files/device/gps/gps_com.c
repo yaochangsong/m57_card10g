@@ -17,6 +17,8 @@
 ******************************************************************************/
 #include "config.h"
 
+#define UART_HANDER_TIMROUT 1000   //ms
+#define FPGA_TIME_INTERVAL (1000 * 360)
 /*
     $GNGGA:GPGGA(时间、定位质量)
     $GPGGA,<1>,<2>,<3>,<4>,<5>,<6>,<7>,<8>,<9>,M,<10>,M,<11>,<12>xx
@@ -38,133 +40,6 @@
     * 语句结束标志符
     xx 从$开始到之间的所有ASCII码的异或校验
 */
-
-#if 0
-struct gps_gngga_info{
-    float utc_hms;
-    float latitude;
-    float longitude;
-    int status;
-    int num_satellites_used;
-    float hdop;
-    float altitude;
-    float ghad;
-    float duration;
-    int station;
-    char  ns;
-    char  ew;
-};
-
-
-static struct gps_gngga_info g_gps_info;
-
-int gps_parse_txt(char *str, size_t nbyte)
-{
-    #define GPS_HEADER      "$GNGGA"
-    #define GPS_SEPARATOR   ","
-    char *str_cpy = NULL,*saveptr = NULL, *cur_ptr=NULL;
-    char* str_end;
-    int param_num = 0, ret = 0;
-    struct gps_gngga_info gps_info;
-    
-    if(str == NULL || nbyte == 0)
-        return -1;
-    str_cpy = strdup(str);
-    printf_note("GPS text: %s\n", str_cpy);
-    memset(&gps_info, 0, sizeof(struct gps_gngga_info));
-    
-    cur_ptr = strtok_r( str_cpy, GPS_SEPARATOR, &saveptr );
-    printf_note("header: %s\n", cur_ptr);
-    if(memcmp(GPS_HEADER, cur_ptr, sizeof(GPS_HEADER) != 0)){
-        ret = -1;
-        goto exit;
-    }
-    while (cur_ptr != NULL){
-        cur_ptr = strtok_r( NULL, GPS_SEPARATOR, &saveptr );
-        param_num ++;
-        switch(param_num){
-            case 1:
-            {
-                gps_info.utc_hms = strtof(cur_ptr, NULL);
-                printf_note("utc hms: %f\n", gps_info.utc_hms);
-                break;
-            }
-            case 2:
-            {
-                gps_info.latitude= strtof(cur_ptr, NULL);
-                printf_note("latitude: %.4f\n", gps_info.latitude);
-                break;
-            }
-            case 4:
-            {
-                gps_info.longitude= strtof(cur_ptr, NULL);
-                printf_note("longitude: %.4f\n", gps_info.longitude);
-                break;
-            }
-            case 6:
-            {
-                gps_info.status = (int) strtol(cur_ptr, &str_end, 10);
-                printf_note("status: %d\n", gps_info.status);
-                break;
-            }
-            case 7:
-            {
-                gps_info.num_satellites_used = (int) strtol(cur_ptr, &str_end, 10);
-                printf_note("num_satellites_used: %d\n", gps_info.num_satellites_used);
-                break;
-            }
-            case 9:
-            {
-                gps_info.altitude = strtof(cur_ptr, NULL);
-                printf_note("altitude: %.4f\n", gps_info.altitude);
-                break;
-            }
-        }
-        
-    }
-    memcpy(&g_gps_info, &gps_info, sizeof(gps_info));
-exit:
-    safe_free(str_cpy);
-    return ret;
-}
-
-uint32_t gps_get_utc_hms(void)
-{
-    /* get time for fpga */
-    uint32_t i_hms;
-    uint8_t h,m,s;
-    i_hms = (uint32_t)g_gps_info.utc_hms;
-    h = (i_hms/10000)%10000;
-    m = (i_hms /100)%100;
-    s = i_hms %100;
-    i_hms = s|(m<<8)|(h<<16);
-    return (uint32_t)i_hms;
-}
-
-int gps_get_latitude(void)
-{
-    int32_t latitude;
-    float flatitude;
-    flatitude = g_gps_info.latitude;
-    latitude = (int32_t)(((int32_t)(flatitude/100) + fmod(flatitude,100)/60)*1000000);
-    return latitude;
-}
-
-int gps_get_longitude(void)
-{
-    int32_t longitude;
-    float flongitude;
-    flongitude = g_gps_info.longitude;
-    longitude = (int32_t)(((int32_t)(flongitude/100) + fmod(flongitude,100)/60)*1000000);
-    return longitude;
-}
-
-int gps_init(void)
-{
-    memset(&g_gps_info, 0, sizeof(struct gps_gngga_info));
-}
-#endif
-
 
 enum GGA_PARA_INDEX{
     GGA_ID = 1,
@@ -199,17 +74,20 @@ enum RMC_PARA_INDEX{
 
 
 struct gps_info {
-	float utc_hms;		/*utc时间*/	
-	int utc_ymd;		
+    float utc_hms;		/*utc时间*/	
+    int utc_ymd;		
     float latitude;		/*纬度*/
     float longitude;	/*经度*/
-	char  ns;			/*南北指示*/
+    char  ns;			/*南北指示*/
     char  ew;			/*东西指示*/
     float   altitude;     /*海拔高度*/
 };
 
+struct uloop_timeout *gps_timer = NULL;
+struct uloop_timeout *fpga_timer = NULL;
+
 static struct gps_info g_gps_info;
-static bool gps_status = false;  /*定位状态*/
+static bool gps_status = false;         /*定位状态*/
 
 
 
@@ -582,11 +460,108 @@ bool gps_location_is_valid(void)
     return gps_status;
 }
 
+
+
+void gps_timer_task_cb(struct uloop_timeout *t)
+{
+    #define TIME_INTERVAL_SEC   (300)
+    char buf[SERIAL_BUF_LEN];
+    char cmdbuf[128];
+    int32_t  nread; 
+    static uint8_t timed_flag = 0;   //授时完成标志
+    static int tick = 0;
+    memset(buf,0,SERIAL_BUF_LEN);
+    tick++;
+    struct uart_info *gps_uart = get_uart_info_by_index(UART_INFO_GPS);
+    if (!gps_uart)
+        return;
+    int fd = gps_uart->sfd;
+    nread = read(fd, buf, SERIAL_BUF_LEN);
+    if(nread > 0) {
+        if (0 == gps_parse_recv_msg_rmc(buf, nread)) {
+            if(timed_flag == 0) {
+                io_set_fpga_sys_time(gps_get_format_date());  //fpga
+                memset(cmdbuf, 0, sizeof(cmdbuf));
+                gps_get_date_cmdstring(cmdbuf);
+                printf_note("set sys time:%s\n", cmdbuf);
+                safe_system(cmdbuf);
+                safe_system("hwclock -w");
+                timed_flag = 1;
+            } else if (tick >= TIME_INTERVAL_SEC) {
+                memset(cmdbuf, 0, sizeof(cmdbuf));
+                gps_get_date_cmdstring(cmdbuf);
+                printf_note("set sys time:%s\n", cmdbuf);
+                safe_system(cmdbuf);
+                safe_system("hwclock -w");
+                tick = 0;
+            }
+        } else {
+            if((nread < 0) && (EAGAIN != errno) && (EINTR != errno)) {
+                printf_err("gps fd err!\r\n");
+                close(fd);
+                usleep(100);
+                gps_uart->sfd = uart_init_dev(gps_uart->devname, gps_uart->baudrate);
+            }
+        }
+        gps_parse_recv_msg_gga(buf, nread);
+    } 
+    
+    tcflush(fd, TCIOFLUSH);
+    uloop_timeout_set(t, UART_HANDER_TIMROUT);
+}
+
+int gps_task_init(void)
+{
+    if (!gps_timer) {
+        gps_timer = (struct uloop_timeout *)malloc(sizeof(struct uloop_timeout));
+        if (!gps_timer) {
+            printf_err("create gps task failed!\n");
+            return -1;
+        }
+    }
+
+    gps_timer->cb = gps_timer_task_cb;
+    gps_timer->pending = false;
+    uloop_timeout_set(gps_timer, UART_HANDER_TIMROUT);
+    printf_note("create gps task ok!\n");
+    return 0;
+}
+
+
+//将系统时间设置到fpga
+void fpga_timer_task_cb(struct uloop_timeout *t)
+{
+    uint32_t date = syscall_get_format_date();
+    if (date > 0) {
+        io_set_fpga_sys_time(date);
+    }
+    uloop_timeout_set(t, FPGA_TIME_INTERVAL);
+}
+
+int time_fpga_task_init(void)
+{
+    if (!fpga_timer) {
+        fpga_timer = (struct uloop_timeout *)malloc(sizeof(struct uloop_timeout));
+        if (!fpga_timer) {
+            printf_err("create fpga timer task failed!\n");
+            return -1;
+        }
+    }
+
+    fpga_timer->cb = fpga_timer_task_cb;
+    fpga_timer->pending = false;
+    uloop_timeout_set(fpga_timer, FPGA_TIME_INTERVAL);
+    printf_note("create fpga task ok!\n");
+    return 0;
+}
+
 int gps_init(void)
 {
     memset(&g_gps_info, 0, sizeof(struct gps_info));
     g_gps_info.latitude = 400000000;
     g_gps_info.longitude = 400000000;
+    gps_task_init();
+    time_fpga_task_init();
 }
 
 

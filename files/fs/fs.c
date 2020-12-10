@@ -256,7 +256,7 @@ static inline int _fs_find(char *filename,  int (*callback) (char *,void *, void
     struct dirent *dirp;
     struct stat stats;
     char *dirname;
-    
+    uint8_t find = 0;
     if(disk_is_valid == false || disk_is_format == true)
         return -1;
 
@@ -283,10 +283,15 @@ static inline int _fs_find(char *filename,  int (*callback) (char *,void *, void
         if(callback)
             callback(dirp->d_name, &stats, args);
         //printf_note("PATH_MAX:%d, (%s)st_size:%llu, st_blocks:%u, st_mode:%x, st_mtime=0x%x\n", PATH_MAX, dirp->d_name, (off_t)stats.st_size, stats.st_blocks, stats.st_mode, stats.st_mtime);
+        find = 1;
         break;
     }
     closedir(dp);
         
+    if (find)
+        ret = 0;
+    else
+        ret = -1;
     return ret;
 }
 
@@ -348,9 +353,9 @@ static void _thread_exit_callback(void *arg){
         io_stop_backtrace_file(&ch);
         executor_set_command(EX_ENABLE_CMD, PSD_MODE_DISABLE, 0, NULL);
     }
-#if 0
+#if defined(SUPPORT_WAV)
     else if(pargs->name && !strcmp(pargs->name, THREAD_FS_SAVE_NAME)) {
-        wav_write_header(fd, nbyte);
+        wav_write_header(fd, pargs->split_nbyte);
     }
 #endif
     if(fd > 0)
@@ -368,6 +373,9 @@ static inline int _fs_split_file(void *args)
     if((config_get_split_file_threshold() > 0) && (p_args->split_nbyte >= config_get_split_file_threshold())){
         char path[512];
         int fd = 0;
+    #if defined(SUPPORT_WAV)
+        wav_write_header(p_args->fd, p_args->split_nbyte);
+    #endif
         if(p_args->fd > 0)
             close(p_args->fd);
         p_args->split_num++;
@@ -379,6 +387,9 @@ static inline int _fs_split_file(void *args)
             return -1;
         }
         p_args->fd = fd;
+    #if defined(SUPPORT_WAV)
+        wav_write_header_before(fd);
+    #endif
     }
     return 0;
 }
@@ -407,12 +418,12 @@ static int _fs_start_save_file_thread(void *arg)
     }
     if(nread > 0){
         p_args->nbyte += nread;
-        p_args->split_nbyte += nread;
         p_args->count ++;
         if((ret = _fs_split_file(p_args)) == 0){
             ret = _write_disk_run(p_args->fd, nread, ptr);
             _ctx->ops->read_adc_over_deal(ch, &nread);
         } 
+        p_args->split_nbyte += nread;
     }else{
         usleep(1000);
         printf("read_adc_data err:%d\n", nread);
@@ -459,6 +470,9 @@ static ssize_t _fs_start_save_file(int ch, char *filename)
     p_args->ch = ch;
     p_args->name=THREAD_FS_SAVE_NAME;
     p_args->filename = safe_strdup(filename);
+#if defined(SUPPORT_WAV)
+    wav_write_header_before(fd);
+#endif
     io_set_enable_command(ADC_MODE_ENABLE, ch, -1, 0);
     ret =  pthread_create_detach (NULL, _fs_start_save_file_thread, _thread_exit_callback,  
                                 THREAD_FS_SAVE_NAME, p_args, p_args);

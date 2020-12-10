@@ -210,7 +210,9 @@ uint8_t rf_set_interface(uint8_t cmd,uint8_t ch,void *data){
                 break;
             }else{
                 vdata_dup = vdata;
+                #if defined(SUPPORT_RS485)
                 rs485_com_set_v2(RS_485_LOW_NOISE_SET_CMD, &vdata);
+                #endif
                 usleep(20000);
             }
            // rs485_com_set(RS_485_LOW_NOISE_SET_CMD, &vdata, sizeof(vdata));

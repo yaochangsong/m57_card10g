@@ -325,7 +325,7 @@ int elec_compass1_com_get(void *data, int time_sec_ms)
     int time_passed_ms = 0;
     int i = 0;
     do{
-        nbyte = rs485_compass1_read_block_timeout(buffer, TIME_OUT_RESOLUTION);
+        nbyte = uart_compass1_read_block_timeout(buffer, TIME_OUT_RESOLUTION);
         if (nbyte > 0)
         {
             memcpy(response+offset, buffer, nbyte);
@@ -375,7 +375,7 @@ int elec_compass1_com_get_angle(float *angle)
     fdata->crc = 0x07;
     
     gpio_raw_write_value(GPIO_FUNC_COMPASS1, 1);   //write
-    rs485_compass1_send_data((uint8_t *)fdata, 5);
+    uart_compass1_send_data((uint8_t *)fdata, 5);
     usleep(20000);  //等待发送完毕，在切换方向
     gpio_raw_write_value(GPIO_FUNC_COMPASS1, 0);   //read
     free(fdata);
@@ -414,7 +414,7 @@ int elec_compass2_com_get(void *data, int time_sec_ms)
     int time_passed_ms = 0;
     memset(response, 0, sizeof(response));
     do{
-        nbyte = rs485_compass2_read_block_timeout(buffer, TIME_OUT_RESOLUTION);
+        nbyte = uart_compass2_read_block_timeout(buffer, TIME_OUT_RESOLUTION);
         if (nbyte > 0)
         {
             memcpy(response+offset, buffer, nbyte);
@@ -454,7 +454,7 @@ int elec_compass2_com_get_angle(float *angle)
     int nbyte = 0;
 
     gpio_raw_write_value(GPIO_FUNC_COMPASS2, 1);   //write
-    rs485_compass2_send_data(HPR_CMD, strlen(HPR_CMD));
+    uart_compass2_send_data(HPR_CMD, strlen(HPR_CMD));
     usleep(50000);  //等待发送完毕，在切换方向
     gpio_raw_write_value(GPIO_FUNC_COMPASS2, 0);  //read
     nbyte = elec_compass2_com_get(buffer, 200);

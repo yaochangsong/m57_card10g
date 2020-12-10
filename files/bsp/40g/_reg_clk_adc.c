@@ -30,6 +30,8 @@
 #define REG_WRITE(base, data) (*(volatile uint32_t *)(base) = data, usleep(100))
 #define REG_READ(base)  (*(volatile uint32_t *)(base))
 
+struct clock_adc_t ca_ctx;
+
 uint8_t apb_i2c_write(intptr_t base,uint8_t data)
 {
 	uint8_t tmp;
@@ -427,6 +429,16 @@ static void hmc7044_generate_sync(char *Spi_synth,uint8_t cs)
     printf_note("gen pluse \r\n");
 }
 
+//倒谱
+void reg_set_cepstrum(int ch, int args)
+{
+    ch = ch;
+    if(args == 1)
+        spi_wrapper(ca_ctx.vir_addr, 0x335,0x04,1);//nco1 f/fs*4096
+    else
+        spi_wrapper(ca_ctx.vir_addr, 0x335,0x0c,1);//nco1 f/fs*4096
+}
+
 void ad_9680_ddc_5g_int(volatile char *Spi_synth,uint8_t cs)
 {
     printf_note("%s......\r\n",__FUNCTION__);
@@ -450,14 +462,14 @@ void ad_9680_ddc_5g_int(volatile char *Spi_synth,uint8_t cs)
     spi_wrapper(Spi_synth, 0x201,0x01,cs);//dec 2
 //----ddc0 mode
     spi_wrapper(Spi_synth, 0x310,0x43,cs);//test mode and dec 2 == 0x33 03
-    spi_wrapper(Spi_synth, 0x311,0x05,cs);//ddc0 a
+    spi_wrapper(Spi_synth, 0x311,0x00,cs);//ddc0 a
     spi_wrapper(Spi_synth, 0x314,0x00,cs);//nco0 f/fs*4096
     spi_wrapper(Spi_synth, 0x315,0x0c,cs);//nco0 f/fs*4096
     spi_wrapper(Spi_synth, 0x320,0x00,cs);//nco0 phase
     spi_wrapper(Spi_synth, 0x321,0x00,cs);
 //----ddc1 mode
     spi_wrapper(Spi_synth, 0x330,0x43,cs);// 03
-    spi_wrapper(Spi_synth, 0x331,0x00,cs);//ddc1 b
+    spi_wrapper(Spi_synth, 0x331,0x05,cs);//ddc1 b
     spi_wrapper(Spi_synth, 0x334,0x00,cs);//nco1 f/fs*4096
    // spi_wrapper(Spi_synth, 0x335,0x04,cs);//nco1 f/fs*4096
     spi_wrapper(Spi_synth, 0x335,0x0c,cs);//nco1 f/fs*4096
@@ -540,8 +552,6 @@ static void *_memmap(int fd_dev, void *phr_addr, int length)
 
     return base_addr;
 }
-
-struct clock_adc_t ca_ctx;
 
 #define  _MEM_64K (0x10000)
 

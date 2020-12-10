@@ -82,6 +82,6 @@ static inline  void _ctrl_freq(void *args)
             printf_info("Not support freq: ch0:%llu, ch1:%llu\n", mid_freq[0], mid_freq[1]);
         }
     }
-    changed_value_dup[ch] = changed_value[ch];
+   // changed_value_dup[ch] = changed_value[ch];
 }
 #endif

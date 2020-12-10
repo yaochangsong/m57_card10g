@@ -7,6 +7,8 @@
 
 #include <stdint.h>
 #include "../../utils/utils.h"
+#include "../../log/log.h"
+
 
 #ifndef MHZ
 #define MHZ(x) ((long long)(x*1000000.0+0.5))
@@ -229,8 +231,10 @@ static inline int32_t _reg_get_rf_temperature(int ch, int index, FPGA_CONFIG_REG
     if(reg->rfReg[ch] == NULL)
         return 0;
     u_rf_temperature = reg->rfReg[ch]->temperature;
-    usleep(100);
+    usleep(500);
     u_rf_temperature = reg->rfReg[ch]->temperature;
+    usleep(100);
+    printf_info("ch=%d, u_rf_temperature = 0x%x\n", ch, u_rf_temperature);
     rf_temperature = u_rf_temperature * RF_TEMPERATURE_FACTOR;
     return rf_temperature;
 }
@@ -276,27 +280,83 @@ static inline bool _reg_get_rf_lock_clk(int ch, int index, FPGA_CONFIG_REG *reg)
 /*SET*/
 static inline void _reg_set_rf_frequency(int ch, int index, uint64_t freq_hz, FPGA_CONFIG_REG *reg)
 {
-    uint32_t freq_khz = freq_hz/1000;
-    
-    if(ch >= MAX_RADIO_CHANNEL_NUM)
+/*
+CH1:
+18000M-40000M模块(1840G30):
+18000M-32000M为倒谱关系 （包含18000M和32000M这两个点）
+32000M~40000M均为正谱关系（包含40G这个点）
+
+射频18000M-19000M: 中频为7880M（包括19000M这个点）
+射频19000M-26500M: 中频为5820M（包括26500M这个点）
+射频26500M-30500M: 中频为7880M（包括30500M这个点）
+射频30500M-34000M: 中频为5820M（包括34000M这个点）
+射频34000M-38600M: 中频为7880M（包括38600M这个点）
+射频38600M-40000M: 中频为5820M（包括40000M这个点）
+*/
+    struct _param_freq_t{
+        uint64_t start_rf_freq_mhz;
+        uint64_t end_rf_freq_mhz;
+        uint64_t mid_freq_mhz;
+    };
+    struct _param_freq_t _freqtable[] = {
+            {18000,    19000, 7880},
+            {19000,    26500, 5820},
+            {26500,    30500, 7880},
+            {30500,    34000, 5820},
+            {34000,    38600, 7880},
+            {38600,    40000, 5820},
+    };
+    //freq_hz = GHZ(19); //test
+    uint32_t freq_10khz = freq_hz/10000, freq_set_val_mhz;
+    uint32_t freq_mhz = freq_hz/1000000;
+    int i, found = 0;
+
+    if(ch >= MAX_RADIO_CHANNEL_NUM || freq_hz > GHZ(40))
         return;
     
     if(ch == 1){
         if(reg->rfReg[1] == NULL)
             return;
-        if(freq_hz > GHZ(18)){
-            /*channel 1: 40G => 6G */
-            freq_khz = GHZ(6)/1000;
-            reg->rfReg[2]->freq_khz = GHZ(6);
+        if(freq_hz >= GHZ(18)){
+            reg->rfReg[2]->freq_khz = freq_10khz;
+            usleep(500);
+            reg->rfReg[2]->freq_khz = freq_10khz;
+            printf_info("rf2 ch=%d, freq=%llu 10khz\n", ch, freq_10khz);
+            if(freq_mhz <= 32000){
+                //倒谱
+                printf_info("reg_set_cepstrum 1\n");
+                reg_set_cepstrum(ch, 1);
+            }else{
+                printf_info("reg_set_cepstrum 0\n");
+                reg_set_cepstrum(ch, 0);
+            }
+            for(i = 0; i < ARRAY_SIZE(_freqtable); i++){
+                if((freq_mhz > _freqtable[i].start_rf_freq_mhz) && (freq_mhz <= _freqtable[i].end_rf_freq_mhz)){
+                    freq_set_val_mhz = _freqtable[i].mid_freq_mhz;
+                    found ++;
+                }
+            }
+            if(found == 0){
+                printf_info("NOT found freq %uMHz in tables, use default 18000mhz \n", freq_set_val_mhz);
+                freq_set_val_mhz = 18000; /* default 18GHz */
+            }
+            freq_10khz = freq_set_val_mhz * 100;
         }
-        reg->rfReg[1]->freq_khz = freq_khz;
+        reg->rfReg[1]->freq_khz = freq_10khz;
+        usleep(500);
+        reg->rfReg[1]->freq_khz = freq_10khz;
+        printf_info("rf1 ch=%d, freq=%llu 10khz\n", ch, freq_10khz);
     }
     else{
         if(reg->rfReg[0] == NULL)
             return;
-        reg->rfReg[0]->freq_khz = freq_khz;
+        reg->rfReg[0]->freq_khz = freq_10khz;
+        usleep(500);
+        reg->rfReg[0]->freq_khz = freq_10khz;
+        printf_info("rf0 ch=%d, freq=%llu 10khz\n", ch, freq_10khz);
     }
-    usleep(300);
+    
+    usleep(100);
 }
 
 static inline void _reg_set_rf_bandwidth(int ch, int index, uint32_t bw_hz, FPGA_CONFIG_REG *reg)

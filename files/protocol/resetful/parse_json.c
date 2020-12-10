@@ -141,6 +141,8 @@ int parse_json_client_net(int ch, const char * const body)
                 printf_note("port: %d, 0x%x\n", value->valueint, value->valueint);
             }
             udp_add_client_to_list(&sclient, ch, TAG_FFT);
+            udp_add_client_to_list(&sclient, ch, TAG_IQ);
+            udp_add_client_to_list(&sclient, ch, TAG_AUDIO);
         }
     }
     
@@ -868,7 +870,7 @@ char *assemble_json_rf_info(void)
     cJSON *array = cJSON_CreateArray();
     cJSON* item = NULL;
     int16_t  rf_temp = 0;
-    for(i = 0; i <MAX_RADIO_CHANNEL_NUM; i++){
+    for(i = 0; i <MAX_RF_NUM; i++){
         cJSON_AddItemToArray(array, item = cJSON_CreateObject());
         cJSON_AddNumberToObject(item, "index", i);
         executor_get_command(EX_RF_FREQ_CMD, EX_RF_STATUS_TEMPERAT, i,  &rf_temp);

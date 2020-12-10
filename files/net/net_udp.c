@@ -96,7 +96,7 @@ int udp_send_vec_data(struct iovec *iov, int iov_len, int tag)
     int ret = 0;
     list_for_each_entry_safe(cl_list, list_tmp, &srv->clients, list){
         if (cl_list->tag == tag)
-        udp_send_vec_data_to_client(cl_list, iov, iov_len);
+            udp_send_vec_data_to_client(cl_list, iov, iov_len);
     }
     return ret;
 }

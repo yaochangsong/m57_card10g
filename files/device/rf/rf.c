@@ -45,7 +45,6 @@ uint8_t rf_set_interface(uint8_t cmd,uint8_t ch,void *data){
                 break;
             }
     #endif
-            printf_note("freq_hz=%uhz\n", old_freq);
             _reg_set_rf_frequency(ch, 0, old_freq, get_fpga_reg());
 #endif
             break; 

@@ -118,7 +118,7 @@ typedef struct _RF_REG_
     uint32_t direct_control; //直采控制数据
     uint32_t revise_minus;   //校正衰减控制数据
     uint32_t direct_minus;   //直采衰减控制数据
-    int32_t  temperature;    //射频温度
+    uint32_t  temperature;    //射频温度
     uint32_t clk_lock;       //时钟锁定
     uint32_t in_out_clk;     //内外时钟
 }RF_REG;
@@ -133,7 +133,7 @@ typedef struct _FPGA_CONFIG_REG_
 	SYSTEM_CONFG_REG *system;
     ADC_REG         *adcReg;
     SIGNAL_REG      *signal;
-    RF_REG          *rfReg[MAX_RADIO_CHANNEL_NUM];
+    RF_REG          *rfReg[MAX_RF_NUM];
     AUDIO_REG		*audioReg;
 	BROAD_BAND_REG  *broad_band[MAX_RADIO_CHANNEL_NUM];
 	NARROW_BAND_REG *narrow_band[NARROW_BAND_CHANNEL_MAX_NUM];

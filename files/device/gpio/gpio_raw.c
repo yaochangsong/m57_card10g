@@ -24,9 +24,9 @@ struct gpio_node_info gpio_node[] ={
     {5,      "out",        0,               GPIO_FUNC_COMPASS2,     "RS485 1 ctrl",                 -1 },
     {6,      "out",        0,               GPIO_FUNC_COMPASS1,   "RS485 2 ctrl",                 -1 },
 #ifdef SUPPORT_PROJECT_WD_XCR_40G
-    {8,      "out",        0,               GPIO_RF_CH1,            "RF CH1",                        -1 },
-    {9,      "out",        0,               GPIO_RF_CH2,            "RF CH2",                        -1 },
-    {10,     "out",        0,               GPIO_RF_CH3,            "RF CH3",                        -1 },
+    {8,      "out",        0,               GPIO_RF_CH1,            "RF C1",                        -1 },
+    {9,      "out",        0,               GPIO_RF_CH2,            "RF C2",                        -1 },
+    {10,     "out",        0,               GPIO_RF_CH3,            "RF C3",                        -1 },
 #endif
 };
 
@@ -163,7 +163,7 @@ int gpio_raw_write_value(enum gpio_func_code func_code, int value)
                 return -1;
             }
             
-            printf_note("write gpio %s[%d]: %d OK!\n", ptr[i].func_name, ptr[i].pin_num,value);
+            printf_info("write gpio %s[%d]: %d OK!\n", ptr[i].func_name, ptr[i].pin_num,value);
             found = 1;
             break;
         }

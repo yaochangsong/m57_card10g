@@ -55,7 +55,7 @@ static int fpga_memmap(int fd_dev, FPGA_CONFIG_REG *fpga_reg)
     }
     printf_debug("virtual address:%p, physical address:0x%x\n", fpga_reg->system, FPGA_SYSETM_BASE);
 
-    tmp_addr = fpga_reg->system +CONFG_REG_LEN;
+    tmp_addr = (uint8_t *)fpga_reg->system +CONFG_REG_LEN;
     for(i = 0; i < MAX_RF_NUM; i++){
         fpga_reg->rfReg[i] = (uint8_t *)tmp_addr +i*CONFG_REG_LEN;
         if (!fpga_reg->rfReg[i])
@@ -63,7 +63,7 @@ static int fpga_memmap(int fd_dev, FPGA_CONFIG_REG *fpga_reg)
             printf("mmap failed, NULL pointer!\n");
             return -1;
         }
-        printf_debug("rf: %d virtual address:%p, physical address:0x%x\n", i, fpga_reg->rfReg[i], FPGA_RF_BASE + i*CONFG_REG_LEN);
+        printf_debug("rf: %d virtual address:%p, physical address:0x%x\n", i, fpga_reg->rfReg[i], FPGA_SYSETM_BASE + (i+1)*CONFG_REG_LEN);
     }
 
     fpga_reg->audioReg = (uint8_t *)fpga_reg->system + CONFG_AUDIO_OFFSET;

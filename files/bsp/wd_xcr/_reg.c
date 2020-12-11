@@ -24,6 +24,8 @@
 #include "config.h"
 #include "_reg.h"
 
+pthread_mutex_t rf_param_mutex[MAX_RF_NUM] = {PTHREAD_MUTEX_INITIALIZER};
+
 void *memmap(int fd_dev, void *phr_addr, int length)
 {
     void *base_addr = NULL;

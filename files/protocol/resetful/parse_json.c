@@ -874,11 +874,12 @@ char *assemble_json_rf_info(void)
         cJSON_AddItemToArray(array, item = cJSON_CreateObject());
         cJSON_AddNumberToObject(item, "index", i);
         executor_get_command(EX_RF_FREQ_CMD, EX_RF_STATUS_TEMPERAT, i,  &rf_temp);
-        if(rf_temp > 200 || rf_temp < -100 || rf_temp == 0)
+        if(rf_temp < 0)
             cJSON_AddStringToObject(item, "status", "no");
-        else
+        else{
             cJSON_AddStringToObject(item, "status", "ok");
-        cJSON_AddNumberToObject(item, "temperature", rf_temp);
+            cJSON_AddNumberToObject(item, "temperature", rf_temp);
+        }
     }
    str_json = cJSON_PrintUnformatted(array);
    return str_json;
@@ -934,7 +935,8 @@ char *assemble_json_temp_info(void)
     executor_get_command(EX_RF_FREQ_CMD, EX_RF_STATUS_TEMPERAT, 0,  &rf_temp);
     cJSON *root = cJSON_CreateObject();
     cJSON_AddNumberToObject(root, "dbTemp", ps_temp);
-    cJSON_AddNumberToObject(root, "rfTemp", rf_temp);
+    if(rf_temp > 0)
+        cJSON_AddNumberToObject(root, "rfTemp", rf_temp);
     json_print(root, 1);
     str_json = cJSON_PrintUnformatted(root);
     return str_json;

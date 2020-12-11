@@ -1393,9 +1393,9 @@ bool io_get_inout_clock_status(void *args)
         *(uint8_t *)args = 0;
         is_lock_ok = false;
     }else{
-        int32_t rf_temp =  _reg_get_rf_temperature(0, 0, get_fpga_reg());
-        if(rf_temp > 200 || rf_temp < -100 || rf_temp == 0){
-            /* GET status from FPGA  */
+        int32_t rf_temp =  _reg_get_rf_temperature(1, 0, get_fpga_reg());
+        if(rf_temp < 0){
+            /* GET status from FPGA  false */
             io_get_clock_status(args);
         } else{
             /* GET status from RF  */

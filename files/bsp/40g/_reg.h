@@ -220,7 +220,7 @@ static inline void set_rf_safe(int ch, uint32_t *reg, uint32_t val)
 {
     pthread_mutex_lock(&rf_param_mutex[ch]);
     *reg = val;
-    usleep(100);
+    usleep(40);
     pthread_mutex_unlock(&rf_param_mutex[ch]);
 }
 
@@ -229,7 +229,7 @@ static inline uint32_t get_rf_safe(int ch, uint32_t *reg)
     pthread_mutex_lock(&rf_param_mutex[ch]);
     uint32_t val;
     val = *reg;
-    usleep(500);
+    usleep(40);
     pthread_mutex_unlock(&rf_param_mutex[ch]);
     return val;
 }
@@ -265,7 +265,7 @@ static inline int32_t _reg_get_rf_temperature(int ch, int index, FPGA_CONFIG_REG
         if(++tye_count > 4)
             time_out = true;
     }while(!read_ok && !time_out);
-    printf_info("read ch=%d,rf_temperature = 0x%x, tye_count=%d, read_ok=%d\n",
+    printf_note("read ch=%d,rf_temperature = 0x%x, tye_count=%d, read_ok=%d\n",
                 ch, rf_temp_reg,  tye_count, read_ok);
     
     if(read_ok == false)
@@ -358,7 +358,7 @@ CH1:
             return;
         if(freq_hz >= GHZ(18)){
             set_rf_safe(ch, &reg->rfReg[2]->freq_khz, freq_10khz);
-            set_rf_safe(ch, &reg->rfReg[2]->freq_khz, freq_10khz);
+            //set_rf_safe(ch, &reg->rfReg[2]->freq_khz, freq_10khz);
             printf_info("rf2 ch=%d, freq=%llu 10khz\n", ch, freq_10khz);
             if(freq_mhz <= 32000){
                 //倒谱
@@ -390,7 +390,7 @@ CH1:
         }
         if(freq_10khz != freq_10khz_dup){
             set_rf_safe(ch, &reg->rfReg[1]->freq_khz, freq_10khz);
-            set_rf_safe(ch, &reg->rfReg[1]->freq_khz, freq_10khz);
+           // set_rf_safe(ch, &reg->rfReg[1]->freq_khz, freq_10khz);
             printf_info("rf1 ch=%d, freq=%llu 10khz\n", ch, freq_10khz);
         }
         freq_10khz_dup = freq_10khz;
@@ -398,7 +398,7 @@ CH1:
     else{
         if(reg->rfReg[0] == NULL)
             return;
-        set_rf_safe(ch, &reg->rfReg[0]->freq_khz, freq_10khz);
+        //set_rf_safe(ch, &reg->rfReg[0]->freq_khz, freq_10khz);
         set_rf_safe(ch, &reg->rfReg[0]->freq_khz, freq_10khz);
         printf_info("rf0 ch=%d, freq=%llu 10khz\n", ch, freq_10khz);
     }
@@ -441,7 +441,7 @@ static inline void _reg_set_rf_bandwidth(int ch, int index, uint32_t bw_hz, FPGA
     if(reg->rfReg[ch] == NULL)
         return;
     
-    set_rf_safe(ch, &reg->rfReg[ch]->mid_band, set_val);
+    //set_rf_safe(ch, &reg->rfReg[ch]->mid_band, set_val);
     set_rf_safe(ch, &reg->rfReg[ch]->mid_band, set_val);
 }
 
@@ -478,7 +478,7 @@ static inline void _reg_set_rf_mode_code(int ch, int index, uint8_t code, FPGA_C
         if(reg->rfReg[ch] == NULL)
             return;
 
-        set_rf_safe(ch, &reg->rfReg[ch]->rf_mode, set_val);
+        //set_rf_safe(ch, &reg->rfReg[ch]->rf_mode, set_val);
         set_rf_safe(ch, &reg->rfReg[ch]->rf_mode, set_val);
 }
 
@@ -495,7 +495,7 @@ static inline void _reg_set_rf_mgc_gain(int ch, int index, uint8_t gain, FPGA_CO
     if(reg->rfReg[ch] == NULL)
         return;
 
-    set_rf_safe(ch, &reg->rfReg[ch]->midband_minus, gain);
+    //set_rf_safe(ch, &reg->rfReg[ch]->midband_minus, gain);
     set_rf_safe(ch, &reg->rfReg[ch]->midband_minus, gain);
 }
 
@@ -512,7 +512,7 @@ static inline void _reg_set_rf_attenuation(int ch, int index, uint8_t atten, FPG
     if(reg->rfReg[ch] == NULL)
         return;
     
-    set_rf_safe(ch, &reg->rfReg[ch]->rf_minus, atten);
+    //set_rf_safe(ch, &reg->rfReg[ch]->rf_minus, atten);
     set_rf_safe(ch, &reg->rfReg[ch]->rf_minus, atten);
 }
 
@@ -537,7 +537,7 @@ static inline void _reg_set_rf_cali_source_attenuation(int ch, int index, uint8_
     if(reg->rfReg[ch] == NULL)
         return;
     
-    set_rf_safe(ch, &reg->rfReg[ch]->revise_minus, reg_val);
+    //set_rf_safe(ch, &reg->rfReg[ch]->revise_minus, reg_val);
     set_rf_safe(ch, &reg->rfReg[ch]->revise_minus, reg_val);
 }
 
@@ -553,7 +553,7 @@ static inline void _reg_set_rf_direct_sample_ctrl(int ch, int index, uint8_t val
     /* 0关闭直采，1开启直采 */
     if(reg->rfReg[ch] == NULL)
         return;
-    set_rf_safe(ch, &reg->rfReg[ch]->direct_control, data);
+    //set_rf_safe(ch, &reg->rfReg[ch]->direct_control, data);
     set_rf_safe(ch, &reg->rfReg[ch]->direct_control, data);
 }
 
@@ -568,7 +568,7 @@ static inline void _reg_set_rf_cali_source_choise(int ch, int index, uint8_t val
     _reg = (val == 0 ? 0 : 1);
     if(reg->rfReg[ch] == NULL)
         return;
-    set_rf_safe(ch, &reg->rfReg[ch]->input, _reg);
+    //set_rf_safe(ch, &reg->rfReg[ch]->input, _reg);
     set_rf_safe(ch, &reg->rfReg[ch]->input, _reg);
 }
 

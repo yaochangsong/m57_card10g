@@ -1064,9 +1064,10 @@ static inline _spm_read_signal_value(int ch)
     return agc_dbm_val;
 }
 
+
 static int spm_agc_ctrl_v3(int ch, struct spm_context *ctx)
 {
-    #define AGC_CTRL_PRECISION      0       /* 控制精度+-2dbm */
+    #define AGC_CTRL_PRECISION      1       /* 控制精度+-2dbm */
     uint8_t gain_ctrl_method = ctx->pdata->channel[ch].rf_para.gain_ctrl_method; /* 自动增益or手动增益 */
     uint16_t agc_ctrl_time= ctx->pdata->channel[ch].rf_para.agc_ctrl_time;       /* 自动增益步进控制时间 */
     int8_t agc_ctrl_dbm = ctx->pdata->channel[ch].rf_para.agc_mid_freq_out_level;/* 自动增益目标控制功率db值 */
@@ -1100,15 +1101,15 @@ static int spm_agc_ctrl_v3(int ch, struct spm_context *ctx)
             dst_val[ch] = agc_ctrl_dbm;//_spm_read_signal_value(ch);
             _get_range_max(ch, rf_mode, dst_val[ch], &max_val[ch], ctx);
             _get_range_min(ch, rf_mode, dst_val[ch], &min_val[ch], ctx);
-            down_val[ch]= max_val[ch] - dst_val[ch];
-            up_val[ch]   = dst_val[ch] - min_val[ch];
+            down_val[ch]= 100; //max_val[ch] - dst_val[ch];
+            up_val[ch]   = 100; //dst_val[ch] - min_val[ch];
             if(up_val[ch] < 0)
                 up_val[ch] = -up_val[ch];
-            printf_info("up_val=%d, down_val=%d, dst_val=%d, max_val=%d, min_val=%d\n", 
+            printf_debug("up_val=%d, down_val=%d, dst_val=%d, max_val=%d, min_val=%d\n", 
                         up_val[ch], down_val[ch], dst_val[ch], max_val[ch], min_val[ch]);
             config_read_by_cmd(EX_RF_FREQ_CMD, EX_RF_ATTENUATION, ch, &rf_attenuation[ch]);
             config_read_by_cmd(EX_RF_FREQ_CMD, EX_RF_MGC_GAIN, ch, &mgc_attenuation[ch]);
-            printf_info("rf_attenuation[ch]=%d,mgc_attenuation[ch]=%d\n", rf_attenuation[ch],mgc_attenuation[ch]);
+            printf_note("rf_attenuation[ch]=%d,mgc_attenuation[ch]=%d\n", rf_attenuation[ch],mgc_attenuation[ch]);
         }
     }
 
@@ -1127,7 +1128,7 @@ static int spm_agc_ctrl_v3(int ch, struct spm_context *ctx)
     agc_dbm_val =  _spm_read_signal_value(ch);
     usleep(1000);
 
-    printf_info("[%d]dst_val=%d, read signal value: %d, up_val=%d, down_val=%d, rf_attenuation=%d, mgc_attenuation=%d\n", agc_ctrl_dbm,dst_val[ch], agc_dbm_val, up_val[ch], down_val[ch], rf_attenuation[ch], mgc_attenuation[ch]);
+    printf_debug("[%d]dst_val=%d, read signal value: %d, up_val=%d, down_val=%d, rf_attenuation=%d, mgc_attenuation=%d\n", agc_ctrl_dbm,dst_val[ch], agc_dbm_val, up_val[ch], down_val[ch], rf_attenuation[ch], mgc_attenuation[ch]);
 
     if(agc_dbm_val < (dst_val[ch] - AGC_CTRL_PRECISION)){
         if(up_val[ch] <= 0){

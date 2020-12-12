@@ -324,7 +324,7 @@ int32_t  config_get_fft_calibration_value(uint8_t ch, uint32_t fft_size, uint64_
          if(found == 0){
             printf_err("Not find magification in rf normal mode!!!\n");
         }
-#endif
+        #endif
         /* 增益模式校准 */
         found = 0;
         mode = poal_config->channel[ch].rf_para.rf_mode_code;

@@ -342,7 +342,7 @@ CH1:
             {34000,    38600, 7880},
             {38600,    40000, 5820},
     };
-    //freq_hz = GHZ(19); //test
+    //freq_hz = GHZ(18.5); //test
     uint32_t freq_10khz = freq_hz/10000, freq_set_val_mhz;
     uint32_t freq_mhz = freq_hz/1000000;
     int i, found = 0;

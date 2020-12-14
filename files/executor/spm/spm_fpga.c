@@ -832,9 +832,9 @@ static inline int _get_range_max(int ch, uint8_t rf_mode, int dst_val, int *max_
     int mode = 0, i, mag_val = 0, dec_val = 0, found = 0, rang_max = 0;
     mode = rf_mode;
     /* 获取射频模式增益最大值 */
-    for(i = 0; i< ARRAY_SIZE(ctx->pdata->cal_level.rf_mode.mag); i++){
-        if(ctx->pdata->cal_level.rf_mode.mag[i].mode == mode){
-            mag_val = ctx->pdata->cal_level.rf_mode.mag[i].magification;
+    for(i = 0; i< ARRAY_SIZE(ctx->pdata->channel[ch].rf_para.rf_mode.mag); i++){
+        if(ctx->pdata->channel[ch].rf_para.rf_mode.mode[i] == mode){
+            mag_val = ctx->pdata->channel[ch].rf_para.rf_mode.mag[i];
             found = 1;
             break;
         }
@@ -848,9 +848,9 @@ static inline int _get_range_max(int ch, uint8_t rf_mode, int dst_val, int *max_
 
     /* 获取模式信号检测最大值 */
     found = 0;
-    for(i = 0; i< ARRAY_SIZE(ctx->pdata->cal_level.rf_mode.detection); i++){
-        if(ctx->pdata->cal_level.rf_mode.detection[i].mode == mode){
-            dec_val = ctx->pdata->cal_level.rf_mode.detection[i].max;
+    for(i = 0; i< ARRAY_SIZE(ctx->pdata->channel[ch].rf_para.rf_mode.detection); i++){
+        if(ctx->pdata->channel[ch].rf_para.rf_mode.mode[i] == mode){
+            dec_val = ctx->pdata->channel[ch].rf_para.rf_mode.detection[i].start;
             found = 1;
             break;
         }
@@ -874,9 +874,9 @@ static inline int _get_range_min(int ch, uint8_t rf_mode, int dst_val, int *min_
     int max_attenuation_value = 0, rang_min = 0;
     mode = rf_mode;
     /* 获取射频模式增益最大值 */
-    for(i = 0; i< ARRAY_SIZE(ctx->pdata->cal_level.rf_mode.mag); i++){
-        if(ctx->pdata->cal_level.rf_mode.mag[i].mode == mode){
-            mag_val = ctx->pdata->cal_level.rf_mode.mag[i].magification;
+    for(i = 0; i< ARRAY_SIZE(ctx->pdata->channel[ch].rf_para.rf_mode.mag); i++){
+        if(ctx->pdata->channel[ch].rf_para.rf_mode.mode[i] == mode){
+            mag_val = ctx->pdata->channel[ch].rf_para.rf_mode.mag[i];
             found = 1;
             break;
         }
@@ -888,14 +888,15 @@ static inline int _get_range_min(int ch, uint8_t rf_mode, int dst_val, int *min_
 
     /* 获取最大衰减 */
     found = 0;
-    for(i = 0; i< ARRAY_SIZE(ctx->pdata->cal_level.rf_mode.rf_distortion); i++){
-        if(ctx->pdata->cal_level.rf_mode.rf_distortion[i].mode == mode){
-            max_attenuation_value = ctx->pdata->cal_level.rf_mode.rf_distortion[i].end_range;
+    for(i = 0; i< ARRAY_SIZE(ctx->pdata->channel[ch].rf_para.rf_mode.rf_attenuation); i++){
+        if(ctx->pdata->channel[ch].rf_para.rf_mode.mode[i] == mode){
+            max_attenuation_value = ctx->pdata->channel[ch].rf_para.rf_mode.rf_attenuation[i].end;
             found = 1;
             break;
         }
     }
-    max_attenuation_value += ctx->pdata->cal_level.rf_mode.mgc_distortion.end_range;
+    //max_attenuation_value += ctx->pdata->cal_level.rf_mode.mgc_distortion.end_range;
+    max_attenuation_value += ctx->pdata->channel[ch].rf_para.rf_mode.mgc_attenuation[i].end;
     
     /* 获取衰减最小值后信号值 */
     rang_min = mag_val -max_attenuation_value + dst_val;
@@ -905,9 +906,10 @@ static inline int _get_range_min(int ch, uint8_t rf_mode, int dst_val, int *min_
 
     /* 获取检测范围最小值 */
     found = 0;
-    for(i = 0; i< ARRAY_SIZE(ctx->pdata->cal_level.rf_mode.detection); i++){
-        if(ctx->pdata->cal_level.rf_mode.detection[i].mode == mode){
-            dec_val = ctx->pdata->cal_level.rf_mode.detection[i].min;
+    for(i = 0; i< ARRAY_SIZE(ctx->pdata->channel[ch].rf_para.rf_mode.detection); i++){
+        //if(ctx->pdata->cal_level.rf_mode.detection[i].mode == mode){
+        if(ctx->pdata->channel[ch].rf_para.rf_mode.mode[i] == mode){
+            dec_val = ctx->pdata->channel[ch].rf_para.rf_mode.detection[i].end;
             found = 1;
             break;
         }
@@ -928,14 +930,19 @@ static inline int _set_half_attenuation_value(int ch, struct spm_context *ctx)
     int8_t  rf_attenuation = 0, mgc_attenuation = 0;
     uint8_t rf_mode = ctx->pdata->channel[ch].rf_para.rf_mode_code; /* 射频模式 */
     int i, half_attenuation_value = 0, found = 0;
-    for(i = 0; i< ARRAY_SIZE(ctx->pdata->cal_level.rf_mode.rf_distortion); i++){
-        if(ctx->pdata->cal_level.rf_mode.rf_distortion[i].mode == rf_mode){
-            rf_attenuation = ctx->pdata->cal_level.rf_mode.rf_distortion[i].end_range;
+    for(i = 0; i< ARRAY_SIZE(ctx->pdata->channel[ch].rf_para.rf_mode.rf_attenuation); i++){
+        if(ctx->pdata->channel[ch].rf_para.rf_mode.mode[i] == rf_mode){
+            //rf_attenuation = ctx->pdata->cal_level.rf_mode.rf_distortion[i].end_range;
+            rf_attenuation = ctx->pdata->channel[ch].rf_para.rf_mode.rf_attenuation[i].end;
+            mgc_attenuation= ctx->pdata->channel[ch].rf_para.rf_mode.mgc_attenuation[i].end;
             found = 1;
             break;
         }
     }
-    mgc_attenuation= ctx->pdata->cal_level.rf_mode.mgc_distortion.end_range;
+    //mgc_attenuation= ctx->pdata->cal_level.rf_mode.mgc_distortion.end_range;
+    if(found == 0)
+        return -1;
+    
     half_attenuation_value = (rf_attenuation + mgc_attenuation)/2;
     if(half_attenuation_value > rf_attenuation){
         mgc_attenuation = half_attenuation_value - rf_attenuation; 
@@ -958,9 +965,10 @@ static inline int _get_max_rf_attenuation_value(int ch, struct spm_context *ctx)
     uint8_t rf_mode_code = ctx->pdata->channel[ch].rf_para.rf_mode_code;
     int max_attenuation_value = 0;
     int i, found = 0;
-    for(i = 0; i< ARRAY_SIZE(ctx->pdata->cal_level.rf_mode.rf_distortion); i++){
-        if(ctx->pdata->cal_level.rf_mode.rf_distortion[i].mode == rf_mode_code){
-            max_attenuation_value = ctx->pdata->cal_level.rf_mode.rf_distortion[i].end_range;
+    for(i = 0; i< ARRAY_SIZE(ctx->pdata->channel[ch].rf_para.rf_mode.rf_attenuation); i++){
+        if(ctx->pdata->channel[ch].rf_para.rf_mode.mode[i] == rf_mode_code){
+            //max_attenuation_value = ctx->pdata->cal_level.rf_mode.rf_distortion[i].end_range;
+            max_attenuation_value = ctx->pdata->channel[ch].rf_para.rf_mode.rf_attenuation[i].end;
             found = 1;
             break;
         }
@@ -976,9 +984,9 @@ static inline int  _get_min_rf_attenuation_value(int ch, struct spm_context *ctx
     uint8_t rf_mode_code = ctx->pdata->channel[ch].rf_para.rf_mode_code;
     int min_attenuation_value = 0;
     int i, found = 0;
-    for(i = 0; i< ARRAY_SIZE(ctx->pdata->cal_level.rf_mode.rf_distortion); i++){
-        if(ctx->pdata->cal_level.rf_mode.rf_distortion[i].mode == rf_mode_code){
-            min_attenuation_value = ctx->pdata->cal_level.rf_mode.rf_distortion[i].start_range;
+    for(i = 0; i< ARRAY_SIZE(ctx->pdata->channel[ch].rf_para.rf_mode.rf_attenuation); i++){
+        if(ctx->pdata->channel[ch].rf_para.rf_mode.mode[i] == rf_mode_code){
+            min_attenuation_value = ctx->pdata->channel[ch].rf_para.rf_mode.rf_attenuation[i].start;
             found = 1;
             break;
         }
@@ -993,22 +1001,37 @@ static inline int  _get_min_rf_attenuation_value(int ch, struct spm_context *ctx
 static inline int   _get_min_mgc_attenuation_value(int ch, struct spm_context *ctx)
 {
     uint8_t rf_mode_code = ctx->pdata->channel[ch].rf_para.rf_mode_code;
-    uint8_t min_attenuation_value = 0;
+    int min_attenuation_value = 0;
     int i, found = 0;
-    min_attenuation_value = ctx->pdata->cal_level.rf_mode.mgc_distortion.start_range;
-    printf_debug("min_attenuation_value: %d\n", min_attenuation_value);
+    for(i = 0; i< ARRAY_SIZE(ctx->pdata->channel[ch].rf_para.rf_mode.mgc_attenuation); i++){
+        if(ctx->pdata->channel[ch].rf_para.rf_mode.mode[i] == rf_mode_code){
+            min_attenuation_value = ctx->pdata->channel[ch].rf_para.rf_mode.mgc_attenuation[i].start;
+            found = 1;
+            break;
+        }
+    }
+    if(found == 0)
+        printf_err("not find min mgc attenuation value\n");
+    printf_debug("mgc min_attenuation_value: %d\n", min_attenuation_value);
     return min_attenuation_value;
-
 }
 
 
 static inline int _get_max_mgc_attenuation_value(int ch, struct spm_context *ctx)
 {
     uint8_t rf_mode_code = ctx->pdata->channel[ch].rf_para.rf_mode_code;
-    uint8_t max_attenuation_value = 0;
+    int max_attenuation_value = 0;
     int i, found = 0;
-    max_attenuation_value = ctx->pdata->cal_level.rf_mode.mgc_distortion.end_range;
-    printf_debug("max_attenuation_value: %d\n", max_attenuation_value);
+    for(i = 0; i< ARRAY_SIZE(ctx->pdata->channel[ch].rf_para.rf_mode.mgc_attenuation); i++){
+        if(ctx->pdata->channel[ch].rf_para.rf_mode.mode[i] == rf_mode_code){
+            max_attenuation_value = ctx->pdata->channel[ch].rf_para.rf_mode.mgc_attenuation[i].end;
+            found = 1;
+            break;
+        }
+    }
+    if(found == 0)
+        printf_err("not find max mgc attenuation value\n");
+    printf_debug("mgc max_attenuation_value: %d\n", max_attenuation_value);
     return max_attenuation_value;
 }
 

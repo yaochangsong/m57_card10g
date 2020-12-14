@@ -45,8 +45,8 @@ uint8_t cur_dbm[MAX_RADIO_CHANNEL_NUM] = {0};
 
 size_t pagesize = 0;
 size_t iq_send_unit_byte = DEFAULT_IQ_SEND_BYTE;    /* IQ发送长度 */
-int32_t agc_ref_val_0dbm = DEFAULT_AGC_REF_VAL;     /* 信号为0DBm时对应的FPGA幅度值 */
-int32_t subch_ref_val_0dbm  = DEFAULT_SUBCH_REF_VAL;
+int32_t agc_ref_val_0dbm[MAX_RF_NUM];     /* 信号为0DBm时对应的FPGA幅度值 */
+int32_t subch_ref_val_0dbm[MAX_RF_NUM];
 
 
 
@@ -1082,7 +1082,7 @@ static inline _spm_read_signal_value(int ch)
     }
     
     /* 信号强度转换为db值 */
-    agc_dbm_val = (int32_t)(20 * log10((double)agc_reg_val / ((double)agc_ref_val_0dbm)));
+    agc_dbm_val = (int32_t)(20 * log10((double)agc_reg_val / ((double)agc_ref_val_0dbm[ch])));
     printf_debug("agc_reg_val=0x%x[%d], agc_dbm_val=%d\n", agc_reg_val, agc_reg_val, agc_dbm_val);
     return agc_dbm_val;
 }
@@ -1249,8 +1249,8 @@ static int spm_agc_ctrl(int ch, struct spm_context *ctx)
     if((agc_val = io_get_agc_thresh_val(ch)) < 0){
         return -1;
     }
-    printf_note("read agc ch=%d value=%d agc_ref_val_0dbm=%d \n",ch, agc_val,agc_ref_val_0dbm);
-    dbm_val = (int32_t)(20 * log10((double)agc_val / ((double)agc_ref_val_0dbm)));
+    printf_note("read agc ch=%d value=%d agc_ref_val_0dbm=%d \n",ch, agc_val,agc_ref_val_0dbm[ch]);
+    dbm_val = (int32_t)(20 * log10((double)agc_val / ((double)agc_ref_val_0dbm[ch])));
     
     /* 判断读取的幅度值是否>设置的输出幅度+控制精度 */
     /*
@@ -1447,7 +1447,7 @@ static int32_t  spm_get_signal_strength(uint8_t ch,uint8_t subch, uint32_t index
         return -1;
     }
     
-    mute_thre_val = subch_ref_val_0dbm * pow(10.0f, (double)mute_thre_db / 20);
+    mute_thre_val = subch_ref_val_0dbm[ch] * pow(10.0f, (double)mute_thre_db / 20);
     printf_note("sig_amp:%d, mute_thre_val:%d\n", sig_amp, mute_thre_val);
     if (sig_amp >= mute_thre_val){
         *is_singal = true;
@@ -1623,7 +1623,7 @@ static const struct spm_backend_ops spm_ops = {
 
 struct spm_context * spm_create_fpga_context(void)
 {
-    int ret = -ENOMEM;
+    int ret = -ENOMEM, ch;
     unsigned int len;
     struct spm_context *ctx = zalloc(sizeof(*ctx));
     if (!ctx)
@@ -1638,13 +1638,20 @@ struct spm_context * spm_create_fpga_context(void)
     printf_note("iq send unit byte:%u\n", iq_send_unit_byte);
     ctx->ops = &spm_ops;
     ctx->pdata = &config_get_config()->oal_config;
-    
-    if( config_get_config()->oal_config.ctrl_para.agc_ref_val_0dbm != 0)
-        agc_ref_val_0dbm = config_get_config()->oal_config.ctrl_para.agc_ref_val_0dbm;
 
-    if( config_get_config()->oal_config.ctrl_para.subch_ref_val_0dbm != 0)
-        subch_ref_val_0dbm = config_get_config()->oal_config.ctrl_para.subch_ref_val_0dbm;
+    for(ch = 0; ch<MAX_RF_NUM; ch++){
+        if( config_get_config()->oal_config.channel[ch].rf_para.agc_ref_val_0dbm != 0)
+            agc_ref_val_0dbm[ch] = config_get_config()->oal_config.channel[ch].rf_para.agc_ref_val_0dbm;
+        else
+            agc_ref_val_0dbm[ch]  = DEFAULT_AGC_REF_VAL;
+
+        if( config_get_config()->oal_config.channel[ch].rf_para.subch_ref_val_0dbm != 0)
+            subch_ref_val_0dbm[ch] = config_get_config()->oal_config.channel[ch].rf_para.subch_ref_val_0dbm;
+        else
+            subch_ref_val_0dbm[ch] = DEFAULT_SUBCH_REF_VAL;
         
+    }
+
     _init_run_timer(MAX_RADIO_CHANNEL_NUM);
 err_set_errno:
     errno = -ret;

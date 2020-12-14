@@ -632,12 +632,6 @@ static int json_parse_config_param(const cJSON* root, struct poal_config *config
         config->status_para.diskInfo.alert.split_file_threshold_byte = (uint64_t)value->valueint * 1024 * 1024;
         printf_note("split_file_threshold_mb:%dMbyte, %llu, \n",value->valueint, config->status_para.diskInfo.alert.split_file_threshold_byte);
     }
-    /*
-    value = cJSON_GetObjectItem(control_parm, "agc_ref_val_0dbm");
-    if(value!= NULL && cJSON_IsNumber(value)){
-        config->ctrl_para.agc_ref_val_0dbm=value->valueint;
-        printf_debug("agc_ref_val_0dbm:%d, \n",config->ctrl_para.agc_ref_val_0dbm);
-    } */
     
 /* calibration_parm */
     cJSON *calibration = NULL;
@@ -1010,13 +1004,13 @@ static int json_parse_config_param(const cJSON* root, struct poal_config *config
             }
             value = cJSON_GetObjectItem(node, "agc_ref_val_0dbm");
             if(cJSON_IsNumber(value)){
-                config->ctrl_para.agc_ref_val_0dbm=value->valueint;
-                printf_debug("agc_ref_val_0dbm:%d, \n",config->ctrl_para.agc_ref_val_0dbm);
+                config->channel[ch].rf_para.agc_ref_val_0dbm = value->valueint;
+                printf_debug("agc_ref_val_0dbm:%d, \n",config->channel[ch].rf_para.agc_ref_val_0dbm);
             } 
             value = cJSON_GetObjectItem(node, "subch_ref_val_0dbm");
             if(cJSON_IsNumber(value)){
-                config->ctrl_para.subch_ref_val_0dbm=value->valueint;
-                printf_debug("subch_ref_val_0dbm:%d, \n",config->ctrl_para.subch_ref_val_0dbm);
+                config->channel[ch].rf_para.subch_ref_val_0dbm = value->valueint;
+                printf_debug("subch_ref_val_0dbm:%d, \n", config->channel[ch].rf_para.subch_ref_val_0dbm);
             } 
             value = cJSON_GetObjectItem(node, "agc_output_amp_dbm");
             if(cJSON_IsNumber(value)){

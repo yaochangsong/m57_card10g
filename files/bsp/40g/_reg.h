@@ -358,7 +358,7 @@ CH1:
             return;
         if(freq_hz >= GHZ(18)){
             set_rf_safe(ch, &reg->rfReg[2]->freq_khz, freq_10khz);
-            //set_rf_safe(ch, &reg->rfReg[2]->freq_khz, freq_10khz);
+            set_rf_safe(ch, &reg->rfReg[2]->freq_khz, freq_10khz);
             printf_info("rf2 ch=%d, freq=%llu 10khz\n", ch, freq_10khz);
             if(freq_mhz <= 32000){
                 //倒谱
@@ -390,7 +390,7 @@ CH1:
         }
         if(freq_10khz != freq_10khz_dup){
             set_rf_safe(ch, &reg->rfReg[1]->freq_khz, freq_10khz);
-           // set_rf_safe(ch, &reg->rfReg[1]->freq_khz, freq_10khz);
+            set_rf_safe(ch, &reg->rfReg[1]->freq_khz, freq_10khz);
             printf_info("rf1 ch=%d, freq=%llu 10khz\n", ch, freq_10khz);
         }
         freq_10khz_dup = freq_10khz;
@@ -399,6 +399,7 @@ CH1:
         if(reg->rfReg[0] == NULL)
             return;
         //set_rf_safe(ch, &reg->rfReg[0]->freq_khz, freq_10khz);
+        set_rf_safe(ch, &reg->rfReg[0]->freq_khz, freq_10khz);
         set_rf_safe(ch, &reg->rfReg[0]->freq_khz, freq_10khz);
         printf_info("rf0 ch=%d, freq=%llu 10khz\n", ch, freq_10khz);
     }

@@ -36,10 +36,20 @@
 #define CONFG_REG_LEN 0x100
 #define CONFG_AUDIO_OFFSET       0x800
 
-
-#ifndef RF_DIVISION_FREQ_HZ
-#define RF_DIVISION_FREQ_HZ  GHZ(18)    /* 射频频段划分 */
+#ifndef RF_DIVISION_FREQ_COUNT
+#define RF_DIVISION_FREQ_COUNT  2    /* 射频频段数 */
 #endif
+#ifndef RF_DIVISION_FREQ_HZ
+#define RF_DIVISION_FREQ_HZ  MHZ(1350)//GHZ(18)    /* 射频频段划分 */
+#endif
+#ifndef RF_DIVISION_FREQ2_HZ
+#define RF_DIVISION_FREQ2_HZ  GHZ(18)    /* 射频频段2划分 */
+#endif
+
+#ifndef MAX_SCAN_FREQ_HZ
+#define MAX_SCAN_FREQ_HZ (40000000000)
+#endif
+
 
 typedef struct _SYSTEM_CONFG_REG_
 {
@@ -480,6 +490,10 @@ static inline void _reg_set_rf_mode_code(int ch, int index, uint8_t code, FPGA_C
             return;
 
         //set_rf_safe(ch, &reg->rfReg[ch]->rf_mode, set_val);
+        if(ch == 1){
+            set_rf_safe(ch, &reg->rfReg[ch]->rf_mode, 0x00);     //rf1 normal
+            set_rf_safe(ch, &reg->rfReg[ch+1]->rf_mode, set_val);
+        }
         set_rf_safe(ch, &reg->rfReg[ch]->rf_mode, set_val);
 }
 
@@ -497,6 +511,10 @@ static inline void _reg_set_rf_mgc_gain(int ch, int index, uint8_t gain, FPGA_CO
         return;
 
     //set_rf_safe(ch, &reg->rfReg[ch]->midband_minus, gain);
+    if(ch == 1){
+        set_rf_safe(ch, &reg->rfReg[ch]->midband_minus, 0);
+        set_rf_safe(ch, &reg->rfReg[ch+1]->midband_minus, gain);
+    }
     set_rf_safe(ch, &reg->rfReg[ch]->midband_minus, gain);
 }
 
@@ -512,7 +530,11 @@ static inline void _reg_set_rf_attenuation(int ch, int index, uint8_t atten, FPG
     
     if(reg->rfReg[ch] == NULL)
         return;
-    
+
+    if(ch == 1){
+        set_rf_safe(ch, &reg->rfReg[ch]->rf_minus, atten);
+        set_rf_safe(ch, &reg->rfReg[ch+1]->rf_minus, 0);
+    }
     //set_rf_safe(ch, &reg->rfReg[ch]->rf_minus, atten);
     set_rf_safe(ch, &reg->rfReg[ch]->rf_minus, atten);
 }

@@ -775,7 +775,7 @@ static int spm_iq_dispatcher(iq_t *ptr_iq, size_t len, void *arg)
 
 static int spm_scan(uint64_t *s_freq_offset, uint64_t *e_freq, uint32_t *scan_bw, uint32_t *bw, uint64_t *m_freq)
 {
-    #define MAX_SCAN_FREQ_HZ (6000000000)
+   // #define MAX_SCAN_FREQ_HZ (6000000000)
     uint64_t _m_freq;
     uint64_t _s_freq, _e_freq;
     uint32_t _scan_bw, _bw;

@@ -733,6 +733,7 @@ typedef struct _FILE_LIST_INFO{
                 err_code = RET_CODE_PARAMTER_ERR;           \
                 goto set_exit;                              \
             }                                               \
+            data = 1;                                        \
             pakt_config->cid = data;                        \
             ch = poal_config->cid = pakt_config->cid;       \
 }while(0)

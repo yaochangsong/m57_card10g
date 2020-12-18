@@ -86,23 +86,40 @@ uint32_t fftsize_check(uint32_t fft_size)
 #ifdef SUPPORT_SPECTRUM_SCAN_SEGMENT
 static int scan_segment_param_convert(uint8_t ch)
 {
-    uint32_t i = 0, j = 0;
+    uint8_t finish = 0;
+    uint32_t i = 0, j = 0, k = 0;
     struct poal_config *poal_config = &(config_get_config()->oal_config);
     struct multi_freq_fregment_para_st *fregment;
     struct freq_fregment_para_st  array_fregment[MAX_SIG_CHANNLE];
     if (poal_config->channel[ch].work_mode != OAL_FAST_SCAN_MODE && poal_config->channel[ch].work_mode != OAL_MULTI_ZONE_SCAN_MODE) {
         return 0;
     }
+    int array_len = 0;
+    int64_t *division_point_array =  get_division_point_array(ch, &array_len);
+    if (!division_point_array || array_len == 0) {
+        printf("don't need to divise\n");
+        return 0;
+    }
     fregment = &poal_config->channel[ch].multi_freq_fregment_para;
     for (i = 0; i < fregment->freq_segment_cnt; i++) {
-        if (fregment->fregment[i].start_freq < RF_DIVISION_FREQ_HZ && fregment->fregment[i].end_freq > RF_DIVISION_FREQ_HZ) {
-             memcpy(&array_fregment[j], &fregment->fregment[i], sizeof(struct freq_fregment_para_st));
-             array_fregment[j].end_freq = RF_DIVISION_FREQ_HZ;
-             j++;
-             memcpy(&array_fregment[j], &fregment->fregment[i], sizeof(struct freq_fregment_para_st));
-             array_fregment[j].start_freq = RF_DIVISION_FREQ_HZ;
-             j++;
-        } else {
+        finish = 0;  //
+        for (k = 0; k < array_len; k++) {
+            if (fregment->fregment[i].end_freq <= division_point_array[k]) {
+                memcpy(&array_fregment[j], &fregment->fregment[i], sizeof(struct freq_fregment_para_st));
+                j++;
+                finish = 1;
+                break;
+            } else if (fregment->fregment[i].start_freq >= division_point_array[k]) {
+                continue;
+            } else { //if(fregment->fregment[i].start_freq < division_point_array[k] && fregment->fregment[i].end_freq > division_point_array[k]) {
+                 memcpy(&array_fregment[j], &fregment->fregment[i], sizeof(struct freq_fregment_para_st));
+                 array_fregment[j].end_freq = division_point_array[k];
+                 j++;
+                 fregment->fregment[i].start_freq = division_point_array[k];  //note
+                 continue;
+            }
+        }
+        if (!finish) {
             memcpy(&array_fregment[j], &fregment->fregment[i], sizeof(struct freq_fregment_para_st));
             j++;
         }
@@ -115,6 +132,10 @@ static int scan_segment_param_convert(uint8_t ch)
         memcpy(&fregment->fregment[0], &array_fregment[0], sizeof(struct freq_fregment_para_st)*MAX_SIG_CHANNLE);
     }
 
+    printf_debug("--------------after division------------------\n");
+    for (i = 0; i < fregment->freq_segment_cnt; i++) {
+        printf_debug("i:%d, start:%llu, end:%llu\n", i, fregment->fregment[i].start_freq, fregment->fregment[i].end_freq);
+    }
     return 0;
 }
 #endif
@@ -560,6 +581,9 @@ static int akt_execute_set_command(void *cl)
                 err_code = RET_CODE_PARAMTER_NOT_SET;
                 goto set_exit;
             }
+            #ifdef SUPPORT_SPECTRUM_SCAN_SEGMENT
+            scan_segment_param_convert(ch);
+            #endif
             executor_set_enable_command(ch);
             break;
         }
@@ -595,9 +619,7 @@ static int akt_execute_set_command(void *cl)
                 err_code = RET_CODE_PARAMTER_NOT_SET;
                 goto set_exit;
             }
-            #ifdef SUPPORT_SPECTRUM_SCAN_SEGMENT
-            scan_segment_param_convert(ch);
-            #endif
+            
             /*need to enable out, take effect*/
             break;
         }

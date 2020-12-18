@@ -25,6 +25,21 @@
 #include "_reg.h"
 
 pthread_mutex_t rf_param_mutex[MAX_RF_NUM] = {PTHREAD_MUTEX_INITIALIZER, PTHREAD_MUTEX_INITIALIZER, PTHREAD_MUTEX_INITIALIZER};
+static int64_t division_point_array[][2] = 
+    {
+        {MHZ(1350)},            //ch0
+        {MHZ(1350),GHZ(18)}     //ch1
+    };
+
+int64_t *get_division_point_array(int ch, int *array_len)
+{
+    if(ch >= MAX_RADIO_CHANNEL_NUM){
+        *array_len = 0;
+        return NULL;
+    }
+    *array_len = ARRAY_SIZE(division_point_array[ch]);
+    return division_point_array[ch];
+}
 
 void *memmap(int fd_dev, void *phr_addr, int length)
 {

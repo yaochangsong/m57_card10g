@@ -622,4 +622,5 @@ static inline void _reg_set_rf_cali_source_choise(int ch, int index, uint8_t val
 extern FPGA_CONFIG_REG *get_fpga_reg(void);
 extern void fpga_io_init(void);
 extern void fpga_io_close(void);
+extern int64_t *get_division_point_array(int ch, int *array_len);
 #endif

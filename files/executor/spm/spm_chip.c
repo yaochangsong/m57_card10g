@@ -18,6 +18,15 @@
 #include "spm_chip.h"
 #include "../../protocol/resetful/data_frame.h"
 
+#ifdef SUPPORT_PROJECT_SSA_MONITOR
+static int64_t division_point_array[] = {GHZ(7.5)};
+
+int64_t *get_division_point_array(int ch, int *array_len)
+{
+    *array_len = ARRAY_SIZE(division_point_array);
+    return division_point_array;
+}
+#endif
 static struct _vec_fft{
     fft_t *data;
     size_t len;

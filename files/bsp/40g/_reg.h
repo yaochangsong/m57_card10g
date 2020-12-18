@@ -8,6 +8,8 @@
 #include <stdint.h>
 #include "../../utils/utils.h"
 #include "../../log/log.h"
+#include "../../protocol/oal/poal.h"
+
 
 
 #ifndef MHZ
@@ -40,7 +42,7 @@
 #define RF_DIVISION_FREQ_COUNT  2    /* 射频频段数 */
 #endif
 #ifndef RF_DIVISION_FREQ_HZ
-#define RF_DIVISION_FREQ_HZ  MHZ(1350)//GHZ(18)    /* 射频频段划分 */
+#define RF_DIVISION_FREQ_HZ  GHZ(18)    /* 射频频段划分 */
 #endif
 #ifndef RF_DIVISION_FREQ2_HZ
 #define RF_DIVISION_FREQ2_HZ  GHZ(18)    /* 射频频段2划分 */
@@ -285,6 +287,27 @@ static inline int32_t _reg_get_rf_temperature(int ch, int index, FPGA_CONFIG_REG
     return rf_temperature;
 }
 
+/* 获取射频不同工作模式下放大倍数 ;
+   通道1: 射频1常规模式放大倍数+射频2指定模式放大倍数
+    @ch: 工作通道
+    @index: 射频模式
+    @args: 通道参数指针
+*/
+static inline int32_t _get_rf_magnification(int ch, int index,void *args)
+{
+    struct poal_config *config = args;
+
+    if(config == NULL || ch >= MAX_RADIO_CHANNEL_NUM || index >= RF_MODE_NUMBER)
+        return 0;
+
+    if(ch == 0)
+       return config->channel[ch].rf_para.rf_mode.mag[index];
+    else if(ch == 1){
+        return (config->channel[ch].rf_para.rf_mode.mag[POAL_NORMAL] + config->channel[ch+1].rf_para.rf_mode.mag[index]);
+    }
+    else
+        return 0;
+}
 static inline bool _reg_get_rf_ext_clk(int ch, int index, FPGA_CONFIG_REG *reg)
 {
     int32_t  inout = 0;
@@ -370,22 +393,6 @@ CH1:
             set_rf_safe(ch, &reg->rfReg[2]->freq_khz, freq_10khz);
             set_rf_safe(ch, &reg->rfReg[2]->freq_khz, freq_10khz);
             printf_info("rf2 ch=%d, freq=%llu 10khz\n", ch, freq_10khz);
-            if(freq_mhz <= 32000){
-                //倒谱
-                is_cepstrum[ch] = 1;
-                if(is_cepstrum[ch] != cepstrum_dup[ch]){
-                    printf_info("reg_set_cepstrum 1\n");
-                    reg_set_cepstrum(ch, 1);
-                }
-            }else{
-                is_cepstrum[ch] = 0;
-                if(is_cepstrum[ch] != cepstrum_dup[ch]){
-                    printf_info("reg_set_cepstrum 0\n");
-                    reg_set_cepstrum(ch, 0);
-                }
-            }
-            cepstrum_dup[ch] = is_cepstrum[ch];
-            
             for(i = 0; i < ARRAY_SIZE(_freqtable); i++){
                 if((freq_mhz > _freqtable[i].start_rf_freq_mhz) && (freq_mhz <= _freqtable[i].end_rf_freq_mhz)){
                     freq_set_val_mhz = _freqtable[i].mid_freq_mhz;
@@ -413,6 +420,22 @@ CH1:
         set_rf_safe(ch, &reg->rfReg[0]->freq_khz, freq_10khz);
         printf_info("rf0 ch=%d, freq=%llu 10khz\n", ch, freq_10khz);
     }
+    
+    if((freq_hz >= GHZ(13)) && (freq_hz <= GHZ(32))){
+        //倒谱
+        is_cepstrum[ch] = 1;
+        if(is_cepstrum[ch] != cepstrum_dup[ch]){
+            printf_info("reg_set_cepstrum 1\n");
+            reg_set_cepstrum(ch, 1);
+        }
+    }else{
+        is_cepstrum[ch] = 0;
+        if(is_cepstrum[ch] != cepstrum_dup[ch]){
+            printf_info("reg_set_cepstrum 0\n");
+            reg_set_cepstrum(ch, 0);
+        }
+    }
+    cepstrum_dup[ch] = is_cepstrum[ch];
     
     usleep(100);
 }
@@ -512,8 +535,8 @@ static inline void _reg_set_rf_mgc_gain(int ch, int index, uint8_t gain, FPGA_CO
 
     //set_rf_safe(ch, &reg->rfReg[ch]->midband_minus, gain);
     if(ch == 1){
-        set_rf_safe(ch, &reg->rfReg[ch]->midband_minus, 0);
-        set_rf_safe(ch, &reg->rfReg[ch+1]->midband_minus, gain);
+        set_rf_safe(ch, &reg->rfReg[ch]->midband_minus, gain);
+       // set_rf_safe(ch, &reg->rfReg[ch+1]->midband_minus, 0);
     }
     set_rf_safe(ch, &reg->rfReg[ch]->midband_minus, gain);
 }
@@ -532,8 +555,9 @@ static inline void _reg_set_rf_attenuation(int ch, int index, uint8_t atten, FPG
         return;
 
     if(ch == 1){
-        set_rf_safe(ch, &reg->rfReg[ch]->rf_minus, atten);
-        set_rf_safe(ch, &reg->rfReg[ch+1]->rf_minus, 0);
+        set_rf_safe(ch, &reg->rfReg[ch]->rf_minus, 0);
+        set_rf_safe(ch, &reg->rfReg[ch+1]->midband_minus, atten);
+        //set_rf_safe(ch, &reg->rfReg[ch+1]->rf_minus, atten);
     }
     //set_rf_safe(ch, &reg->rfReg[ch]->rf_minus, atten);
     set_rf_safe(ch, &reg->rfReg[ch]->rf_minus, atten);

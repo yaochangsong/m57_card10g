@@ -275,6 +275,25 @@ static inline int32_t _reg_get_rf_temperature(int ch, int index, FPGA_CONFIG_REG
 }
 
 
+/* 获取射频不同工作模式下放大倍数 
+    @ch: 工作通道
+    @index: 射频模式
+    @args: 通道参数指针
+*/
+static inline int32_t _get_rf_magnification(int ch, int index,void *args)
+{
+    struct poal_config *config = args;
+
+    if(config == NULL || ch >= MAX_RADIO_CHANNEL_NUM || index >= RF_MODE_NUMBER)
+        return 0;
+
+    if(ch == 0)
+       return config->channel[ch].rf_para.rf_mode.mag[index];
+    else
+        return 0;
+}
+
+
 static inline bool _reg_get_rf_ext_clk(int ch, int index, FPGA_CONFIG_REG *reg)
 {
     int32_t  inout = 0;

@@ -37,8 +37,9 @@
 #ifndef RF_DIVISION_FREQ_HZ
     #ifdef SUPPORT_PROJECT_SSA_MONITOR
     #define RF_DIVISION_FREQ_HZ   GHZ(7.5) 
+    #else
+    #define RF_DIVISION_FREQ_HZ   GHZ(0) 
     #endif  
-#error "Not defined RF_DIVISION_FREQ_HZ!!"
 #endif  /* RF_DIVISION_FREQ_HZ */
 #endif  /*SUPPORT_SPECTRUM_SCAN_SEGMENT */
 

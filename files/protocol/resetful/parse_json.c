@@ -22,6 +22,7 @@
 #include "parse_cmd.h"
 #include "parse_json.h"
 #include "../../dao/json/cJSON.h"
+#include "../../bsp/io.h"
 
 
 static inline bool str_to_int(char *str, int *ivalue, bool(*_check)(int))

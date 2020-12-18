@@ -25,20 +25,6 @@
 #ifdef SUPPORT_SPECTRUM_FFT
 #include <fftw3.h>
 #endif
-#if defined  SUPPORT_PROJECT_WD_XCR
-#include "bsp/wd_xcr/_reg.h"
-#include "bsp/wd_xcr/_reg_clk_adc.h"
-#include "bsp/wd_xcr/_ctrl.h"
-#elif defined(SUPPORT_PROJECT_160M_V2) 
-#include "bsp/160m_v2/_reg.h"
-#include "bsp/160m_v2/_reg_clk_adc.h"
-#include "bsp/160m_v2/_ctrl.h"
-#elif defined(SUPPORT_PROJECT_WD_XCR_40G) 
-#include "bsp/40g/_reg.h"
-#include "bsp/40g/_reg_clk_adc.h"
-#include "bsp/40g/_ctrl.h"
-#endif
-#include "bsp/io.h"
 #include "lib/libubox/ulog.h"
 #include "lib/libubox/uloop.h"
 #include "lib/libubox/usock.h"

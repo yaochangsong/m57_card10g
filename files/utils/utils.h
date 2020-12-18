@@ -53,6 +53,19 @@ sgn(a - b) == 0         sgn(a - b) != 0       sgn(a - b) <  0         sgn(a - b)
                 *_data = *_data*offset; _n--; _data++; \
 }}while(0)
 
+
+#ifdef SUPPORT_PLATFORM_ARCH_ARM
+#ifdef SUPPORT_NET_WZ
+#define NETWORK_10G_EHTHERNET_POINT       "eth0"
+#define NETWORK_EHTHERNET_POINT           "eth1"
+#else
+#define NETWORK_EHTHERNET_POINT       "eth0"
+#endif
+#else
+#define NETWORK_10G_EHTHERNET_POINT   "eno2"
+#define NETWORK_EHTHERNET_POINT       "eno1"
+#endif
+
 #define SPEED_10        10
 #define SPEED_100       100
 #define SPEED_1000      1000

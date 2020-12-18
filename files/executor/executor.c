@@ -14,6 +14,8 @@
 ******************************************************************************/
 #include "config.h"
 #include "spm/spm.h"
+#include "../bsp/io.h"
+
 
 /**
  * Mutex for the set command, used by command setting related functions. 

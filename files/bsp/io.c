@@ -17,7 +17,6 @@
 #include "../utils/bitops.h"
 #include "io.h"
 
-
 static int io_ctrl_fd = -1;
 
 /* 窄带表：解调方式为IQ系数表 */

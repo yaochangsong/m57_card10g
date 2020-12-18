@@ -1,6 +1,20 @@
 #ifndef __IO_H__
 #define __IO_H__
 
+#if defined  SUPPORT_PROJECT_WD_XCR
+#include "wd_xcr/_reg.h"
+#include "wd_xcr/_reg_clk_adc.h"
+#include "wd_xcr/_ctrl.h"
+#elif defined(SUPPORT_PROJECT_160M_V2) 
+#include "160m_v2/_reg.h"
+#include "160m_v2/_reg_clk_adc.h"
+#include "160m_v2/_ctrl.h"
+#elif defined(SUPPORT_PROJECT_WD_XCR_40G) 
+#include "40g/_reg.h"
+#include "40g/_reg_clk_adc.h"
+#include "40g/_ctrl.h"
+#endif
+
 typedef enum _io_dq_method_code{
     IO_DQ_MODE_AM = 0x00,
     IO_DQ_MODE_FM = 0x01,
@@ -18,17 +32,7 @@ struct  band_table_t{
     float factor;
 }__attribute__ ((packed)); 
     
-#ifdef SUPPORT_PLATFORM_ARCH_ARM
-#ifdef SUPPORT_NET_WZ
-#define NETWORK_10G_EHTHERNET_POINT       "eth0"
-#define NETWORK_EHTHERNET_POINT           "eth1"
-#else
-#define NETWORK_EHTHERNET_POINT       "eth0"
-#endif
-#else
-#define NETWORK_10G_EHTHERNET_POINT   "eno2"
-#define NETWORK_EHTHERNET_POINT       "eno1"
-#endif
+
 #ifdef SUPPORT_AMBIENT_TEMP_HUMIDITY
     #ifdef SUPPORT_TEMP_HUMIDITY_SI7021
     #define io_get_ambient_temperature() si7021_read_temperature()

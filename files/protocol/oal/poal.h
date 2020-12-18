@@ -1,7 +1,7 @@
 #ifndef _PROTOCOL_OAL_H_
 #define _PROTOCOL_OAL_H_
 
-#include "config.h"
+//#include "config.h"
 #define FILE_PATH_MAX_LEN 256
 
 /* 工作模式参数参数 */

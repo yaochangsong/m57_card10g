@@ -429,14 +429,25 @@ static void hmc7044_generate_sync(char *Spi_synth,uint8_t cs)
     printf_note("gen pluse \r\n");
 }
 
-//倒谱
+/*
+    倒谱功能
+    @ch 通道
+    @args: 1: 倒谱， 0：不倒谱
+*/
 void reg_set_cepstrum(int ch, int args)
 {
     ch = ch;
-    if(args == 1)
-        spi_wrapper(ca_ctx.vir_addr, 0x335,0x04,1);//nco1 f/fs*4096
-    else
-        spi_wrapper(ca_ctx.vir_addr, 0x335,0x0c,1);//nco1 f/fs*4096
+    if(ch == 0){
+        if(args == 1)
+            spi_wrapper(ca_ctx.vir_addr, 0x315,0x04,1);//nco1 f/fs*4096
+        else
+            spi_wrapper(ca_ctx.vir_addr, 0x315,0x0c,1);//nco1 f/fs*4096
+    } else{ //ch =2
+        if(args == 1)
+            spi_wrapper(ca_ctx.vir_addr, 0x335,0x04,1);//nco1 f/fs*4096
+        else
+            spi_wrapper(ca_ctx.vir_addr, 0x335,0x0c,1);//nco1 f/fs*4096
+    }
 }
 
 void ad_9680_ddc_5g_int(volatile char *Spi_synth,uint8_t cs)

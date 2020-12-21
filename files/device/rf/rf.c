@@ -81,7 +81,7 @@ uint8_t rf_set_interface(uint8_t cmd,uint8_t ch,void *data){
             uint8_t noise_mode;
             /* noise_mode: 低失真模式(0x00)     常规模式(0x01) 低噪声模式(0x02) */
             noise_mode = *((uint8_t *)data);
-            printf_note("[**RF**]ch=%d, noise_mode=%d\n", ch, noise_mode);
+            printf_debug("[**RF**]ch=%d, noise_mode=%d\n", ch, noise_mode);
 #ifdef defined(SUPPORT_RF_ADRV)
 #elif  defined(SUPPORT_RF_SPI)
             ret = spi_rf_set_command(SPI_RF_NOISE_MODE_SET, &noise_mode);

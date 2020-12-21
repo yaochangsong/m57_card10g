@@ -483,6 +483,10 @@ static inline void _reg_set_rf_mode_code(int ch, int index, uint8_t code, FPGA_C
 {
         int i, found = 0;
         uint8_t set_val = 0;
+        uint64_t mid_freq;
+        static int set_mode_dup[MAX_RADIO_CHANNEL_NUM] = {-1, -1};
+        static int set_val_dup[MAX_RADIO_CHANNEL_NUM]= {-1, -1};
+        int set_mode[MAX_RADIO_CHANNEL_NUM] = {0, 0};
         /*这里需要转换 =>常规模式(0) 低噪声模式(0x01) 低失真模式(0x02)    */
         struct _reg{
             uint8_t mode;
@@ -512,12 +516,34 @@ static inline void _reg_set_rf_mode_code(int ch, int index, uint8_t code, FPGA_C
         if(reg->rfReg[ch] == NULL)
             return;
 
-        //set_rf_safe(ch, &reg->rfReg[ch]->rf_mode, set_val);
         if(ch == 1){
-            set_rf_safe(ch, &reg->rfReg[ch]->rf_mode, 0x00);     //rf1 normal
-            set_rf_safe(ch, &reg->rfReg[ch+1]->rf_mode, set_val);
+            mid_freq = executor_get_mid_freq(ch);
+            if(mid_freq >= GHZ(18)){
+                set_mode[ch] = 0;
+                if((set_mode_dup[ch] != set_mode[ch]) || (set_val_dup[ch] != set_val)){
+                    set_rf_safe(ch, &reg->rfReg[ch]->rf_mode, 0x00);     //rf1 normal
+                    set_rf_safe(ch, &reg->rfReg[ch+1]->rf_mode, set_val);
+                    set_mode_dup[ch] = set_mode[ch];
+                    set_val_dup[ch] = set_val;
+                    printf_debug("rf mode set: ch:%d, rf_mode[1]=00, rf_mode[2]=%d\n", ch, set_val);
+                }
+            } else{
+                set_mode[ch] = 1;
+                if((set_mode_dup[ch] != set_mode[ch]) || (set_val_dup[ch] != set_val)){
+                    set_rf_safe(ch, &reg->rfReg[ch]->rf_mode, set_val);
+                    set_mode_dup[ch] = set_mode[ch];
+                    set_val_dup[ch] = set_val;
+                    printf_debug("rf mode set: ch:%d, rf_mode[1]=%d\n", ch, set_val);
+                }
+            }
+        }else{
+            if(set_val_dup[ch] != set_val){
+                set_rf_safe(ch, &reg->rfReg[ch]->rf_mode, set_val);
+                set_val_dup[ch] = set_val;
+                printf_debug("rf mode set: ch:%d, rf_mode[0]=%d\n", ch, set_val);
+            }
         }
-        set_rf_safe(ch, &reg->rfReg[ch]->rf_mode, set_val);
+        
 }
 
 static inline void _reg_set_rf_mgc_gain(int ch, int index, uint8_t gain, FPGA_CONFIG_REG *reg)

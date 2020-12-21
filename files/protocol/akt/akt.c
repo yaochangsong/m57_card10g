@@ -1987,15 +1987,13 @@ uint8_t *akt_assamble_demodulation_header_data(uint32_t *len, void *config)
     ptr = (char *)ext_hdr;
     printf_debug("akt_assamble_data_extend_frame_header_data\n");
     ext_hdr->dev_id = akt_get_device_id();
-    
-    ext_hdr->work_mode =  poal_config->channel[ch].work_mode;
-    ext_hdr->gain_mode = poal_config->channel[ch].rf_para.gain_ctrl_method;
-    ext_hdr->gain = poal_config->channel[ch].rf_para.mgc_gain_value;
-
     ext_hdr->duration = 0;
     struct spm_run_parm *header_param;
     header_param = (struct spm_run_parm *)config;
     ext_hdr->cid = header_param->ch;
+    ext_hdr->work_mode =  header_param->mode;
+    ext_hdr->gain_mode = header_param->gain_mode;
+    ext_hdr->gain = header_param->gain_value;
     ext_hdr->center_freq = header_param->sub_ch_para.m_freq_hz;
     ext_hdr->bandwidth = header_param->sub_ch_para.bandwidth_hz;
     ext_hdr->demodulate_type = header_param->sub_ch_para.d_method;
@@ -2047,15 +2045,16 @@ uint8_t *akt_assamble_data_extend_frame_header_data(uint32_t *len, void *config)
     ptr = (char *)ext_hdr;
     printf_debug("akt_assamble_data_extend_frame_header_data\n");
     ext_hdr->dev_id = akt_get_device_id();
-    ext_hdr->work_mode =  poal_config->channel[ch].work_mode;
-    ext_hdr->gain_mode = poal_config->channel[ch].rf_para.gain_ctrl_method;
-    ext_hdr->gain = poal_config->channel[ch].rf_para.mgc_gain_value;
+
     ext_hdr->duration = 0;
     ext_hdr->datum_type = 1;
 
     struct spm_run_parm *header_param;
     header_param = (struct spm_run_parm *)config;
     ext_hdr->cid = header_param->ch;
+    ext_hdr->work_mode =  header_param->mode;
+    ext_hdr->gain_mode = header_param->gain_mode;
+    ext_hdr->gain = header_param->gain_value;
     ext_hdr->center_freq = header_param->m_freq;
     ext_hdr->sn = header_param->fft_sn;
     ext_hdr->datum_total = header_param->total_fft;

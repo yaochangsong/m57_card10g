@@ -109,6 +109,9 @@ static  int8_t  executor_fragment_scan(uint32_t fregment_num,uint8_t ch, work_mo
         r_args->ch = ch;
         r_args->fft_size = fftsize;
         r_args->mode = mode;
+        r_args->gain_mode = poal_config->channel[ch].rf_para.gain_ctrl_method;
+        r_args->gain_value = poal_config->channel[ch].rf_para.mgc_gain_value;
+        r_args->rf_mode = poal_config->channel[ch].rf_para.rf_mode_code;
     do{
         r_args->s_freq_offset = _s_freq_hz_offset;
         r_args->s_freq = s_freq;
@@ -129,6 +132,7 @@ static  int8_t  executor_fragment_scan(uint32_t fregment_num,uint8_t ch, work_mo
         if(spmctx->ops->sample_ctrl)
             spmctx->ops->sample_ctrl(r_args);
         executor_set_command(EX_RF_FREQ_CMD, EX_RF_MID_FREQ, ch, &_m_freq_hz);
+        executor_set_command(EX_RF_FREQ_CMD, EX_RF_MODE_CODE, ch, &r_args->rf_mode);
         //executor_set_command(EX_RF_FREQ_CMD, EX_RF_LOW_NOISE, ch, &_m_freq_hz);
         executor_set_command(EX_MID_FREQ_CMD, EX_MID_FREQ,    ch, &_m_freq_hz);
         executor_set_command(EX_MID_FREQ_CMD, EX_FPGA_CALIBRATE, ch, &fftsize, _m_freq_hz,0);

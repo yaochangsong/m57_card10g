@@ -173,6 +173,7 @@ struct spm_run_parm{
     uint8_t ex_type;            /* 扩展帧类型： 频谱帧/解调帧 */
     uint8_t gain_mode;
     int8_t gain_value;
+    int8_t rf_mode;
     uint32_t sub_ch_index;      /* 子通道索引 */
     uint32_t audio_points;
     struct spm_iq_parm sub_ch_para; /* 子通道参数 */

@@ -21,7 +21,8 @@
 		"signal_threshold":	90,
 		"iq_data_length":	8192,
 		"disk_full_alert_threshold_MB": 0,
-		"disk_split_file_threshold_MB": 0 
+		"disk_split_file_threshold_MB": 0, 
+		"disk_file_notifier_timeout_ms" : 2000
 	},
 	"status_parm":	{
 		"soft_version":	{

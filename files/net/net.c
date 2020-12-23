@@ -128,6 +128,11 @@ int server_init(void)
     if (!tcpsrv)
         return -1;
     ptcp_srv_1gnet = tcpsrv;
+    tcpsrv->on_header = akt_parse_header_v2;
+    tcpsrv->on_execute = akt_execute_method;
+    tcpsrv->send_error =  akt_send_resp;
+    tcpsrv->on_end = akt_parse_end;
+    tcpsrv->send_alert = akt_send_alert;
     #ifdef SUPPORT_NET_WZ
     if(poal_config->network.port != poal_config->network_10g.port){
         struct net_tcp_server *tcpsrv_10g = NULL;
@@ -137,13 +142,12 @@ int server_init(void)
             return -1;
         ptcp_srv_10gnet = tcpsrv;
     }
-    #endif
     tcpsrv->on_header = akt_parse_header_v2;
     tcpsrv->on_execute = akt_execute_method;
     tcpsrv->send_error =  akt_send_resp;
     tcpsrv->on_end = akt_parse_end;
     tcpsrv->send_alert = akt_send_alert;
-    
+    #endif
     printf_note("udp server init[port:%d]\n", 1234);
     udpsrv = udp_server_new("0.0.0.0",  1234);
     if (!udpsrv)

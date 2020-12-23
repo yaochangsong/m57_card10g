@@ -157,6 +157,15 @@ uint64_t config_get_split_file_threshold(void)
 }
 
 
+uint32_t config_get_disk_file_notifier_timeout(void)
+{
+    #define NOTIFIER_TIMEOUT 1000
+    if(config.oal_config.ctrl_para.disk_file_notifier_timeout_ms == 0)
+        return NOTIFIER_TIMEOUT;
+    else 
+        config.oal_config.ctrl_para.disk_file_notifier_timeout_ms;
+}
+
 
 uint32_t  config_get_fft_size(uint8_t ch)
 {

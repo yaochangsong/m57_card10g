@@ -1916,22 +1916,22 @@ int  akt_assamble_send_data(uint8_t *send_buf, uint8_t *payload, uint32_t payloa
     return len;
 }
 
-void akt_send(void *client, const void *data, int len, int code)
+void akt_send(const void *data, int len, int code)
 {
     char *psend;
     size_t send_len, offset = 0;
     send_len = sizeof(struct response_get_data);
-    struct net_tcp_client *cl = client;
     
     psend = calloc(1, send_len);
     if(psend == NULL){
         printf_err("psend err!\n");
         return;
     }
-    if(akt_assamble_send_data(psend, data, len, code) != 0){
+    if(akt_assamble_send_data(psend, data, len, code) == -1){
+        printf_err("assamble err!\n");
         goto exit;
     }
-    cl->send(cl, psend, send_len);
+    tcp_active_send_all_client(psend, send_len);
 
 exit:
     safe_free(psend);
@@ -1940,9 +1940,34 @@ exit:
 
 void akt_send_alert(void *client, int code)
 {
-    akt_send(client, NULL, 0, code);
 }
 
+void akt_send_file_status(void *data, size_t data_len)
+{
+    struct fs_notify_status *fns = data;
+    struct fs_status {
+        char path[256];
+        uint64_t filesize;
+        uint64_t duration_time;
+        uint64_t middle_freq;
+        uint64_t bindwidth;
+        uint64_t sample_rate;
+    };
+    struct fs_status _fss;
+    if(fns == NULL || fns->filename == NULL)
+        return;
+
+    memset(&_fss, 0, sizeof(_fss));
+    strncpy(_fss.path, fns->filename, sizeof(_fss.path));
+    _fss.filesize = fns->filesize;
+    _fss.duration_time = fns->duration_time;
+    _fss.middle_freq = 0;
+    _fss.bindwidth = 0;
+    _fss.sample_rate = 0;
+    printf_note("path=%s, filesize=%llu[0x%x], time=%llu, middle_freq=%llu, bindwidth=%llu, sample_rate=%llu\n", 
+        _fss.path, _fss.filesize,_fss.filesize,  _fss.duration_time, _fss.middle_freq, _fss.bindwidth, _fss.sample_rate);
+    akt_send(&_fss, sizeof(_fss), FILE_STATUS_NOTIFY);
+}
 
 
 int  akt_assamble_send_active_data(uint8_t *send_buf, uint8_t *payload, uint32_t payload_len)

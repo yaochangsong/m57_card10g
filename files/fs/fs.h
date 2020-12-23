@@ -17,6 +17,8 @@
 
 #include <stdbool.h>
 #include <sys/statfs.h>
+#include "../lib/libubox/uloop.h"
+
 
 typedef enum _disk_err_code {
 
@@ -45,6 +47,16 @@ struct fs_ops {
 
 struct fs_context {
     const struct fs_ops *ops;
+};
+
+struct fs_notify_status {
+    char *filename;
+    size_t filesize;
+    time_t duration_time;
+    time_t timeout_ms;
+    struct timeval start_time;
+    struct uloop_timeout timeout;
+    void *args;
 };
 
 extern void fs_init(void);

@@ -417,17 +417,28 @@ err:
 }
 
 
-void tcp_active_send_all_client(uint8_t *data, int len, int code)
+void tcp_active_send_all_client(uint8_t *data, int len)
 {
     struct net_tcp_client *cl_list, *list_tmp;
     struct net_tcp_server *srv = (struct net_tcp_server *)net_get_tcp_srv_ctx();
-    
-    if(srv == NULL)
+    struct net_tcp_server *srv10g = (struct net_tcp_server *)net_get_10g_tcp_srv_ctx();
+
+    if(srv == NULL && srv10g == NULL)
         return;
     pthread_mutex_lock(&srv->tcp_client_lock);
-    list_for_each_entry_safe(cl_list, list_tmp, &srv->clients, list){
-            srv->send(cl_list,data, len, code);
+    if(srv != NULL){
+        list_for_each_entry_safe(cl_list, list_tmp, &srv->clients, list){
+            printf_debug("1g send status to %s:%d\n", cl_list->get_peer_addr(cl_list), cl_list->get_peer_port(cl_list));
+            cl_list->send(cl_list,data, len);
+        }
     }
+    if(srv10g != NULL){
+        list_for_each_entry_safe(cl_list, list_tmp, &srv10g->clients, list){
+                printf_debug("10g send status to %s:%d\n", cl_list->get_peer_addr(cl_list), cl_list->get_peer_port(cl_list));
+                cl_list->send(cl_list,data, len);
+        }
+    }
+
     pthread_mutex_unlock(&srv->tcp_client_lock);
 }
 

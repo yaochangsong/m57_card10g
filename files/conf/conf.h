@@ -63,7 +63,7 @@ extern uint64_t config_get_disk_alert_threshold(void);
 extern void config_set_disk_alert_threshold(uint64_t val);
 extern uint64_t config_get_split_file_threshold(void);
 extern void config_set_split_file_threshold(uint64_t val);
-
+extern uint32_t config_get_disk_file_notifier_timeout(void);
 #endif
 
 

@@ -46,6 +46,7 @@ struct thread_args{
     char *name;
     void *arg_exit;
     void *arg_cb;
+    void *(*init_callback)(void *);
     void *(*callback)(void *);
     void *(*exit_callback)(void *);
 };
@@ -73,6 +74,8 @@ void *thread_loop_cb (void *s)
     
     pthread_cleanup_push(args.exit_callback, args.arg_exit);
     printf("%s thread run\n", args.name);
+    if(args.init_callback)
+        args.init_callback(args.arg_cb);
     while(1){
         stateval = pthread_setcancelstate (PTHREAD_CANCEL_DISABLE , NULL);
         if (stateval != 0){
@@ -89,13 +92,14 @@ void *thread_loop_cb (void *s)
     return (void *)0;
 }
 
-int pthread_create_detach (const pthread_attr_t *attr, 
+int pthread_create_detach (const pthread_attr_t *attr, int (*init_callback) (void *),
                                         int (*start_routine) (void *), int (*exit_callback) (void *), 
                                         char *name, void *arg_cb,void *arg_exit)
 {
 
     struct thread_args args;
     args.name = name;
+    args.init_callback = init_callback;
     args.arg_exit = arg_exit;
     args.arg_cb = arg_cb;
     args.callback = start_routine;
@@ -207,22 +211,22 @@ int main_thread_test(void)
     int i = 1, j, k,l,m,n,o;
     pthread_bmp_init();
     i = 1;
-    pthread_create_detach(NULL, thread_test, NULL, "thead name test1", &i, NULL);
+    pthread_create_detach(NULL,NULL, thread_test, NULL, "thead name test1", &i, NULL);
     //pthread_create_detach(NULL, thread_test, NULL, "thead name test1", &i, NULL);
     j = 2;
-    pthread_create_detach(NULL, thread_test, NULL, "thead name test2", &j, NULL);
+    pthread_create_detach(NULL,NULL, thread_test, NULL, "thead name test2", &j, NULL);
     //pthread_cancel_by_name("thead name test1");
     k = 3;
-    pthread_create_detach(NULL, thread_test, NULL, "thead name test3", &k, NULL);
+    pthread_create_detach(NULL,NULL, thread_test, NULL, "thead name test3", &k, NULL);
     l=4;
-    pthread_create_detach(NULL, thread_test, NULL, "thead name test4", &l, NULL);
+    pthread_create_detach(NULL,NULL, thread_test, NULL, "thead name test4", &l, NULL);
     //pthread_cancel_by_name("thead name test2");
     m=5;
-    pthread_create_detach(NULL, thread_test, NULL, "thead name test5", &m, NULL);
+    pthread_create_detach(NULL,NULL, thread_test, NULL, "thead name test5", &m, NULL);
     n=6;
-    pthread_create_detach(NULL, thread_test, NULL, "thead name test6", &n, NULL);
+    pthread_create_detach(NULL,NULL, thread_test, NULL, "thead name test6", &n, NULL);
     o=7;
-    pthread_create_detach(NULL, thread_test, NULL, "thead name test7", &o, NULL);
+    pthread_create_detach(NULL,NULL, thread_test, NULL, "thead name test7", &o, NULL);
 
     sleep(5);
     pthread_cancel_by_name("thead name test1");

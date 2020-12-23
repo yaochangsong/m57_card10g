@@ -632,6 +632,11 @@ static int json_parse_config_param(const cJSON* root, struct poal_config *config
         config->status_para.diskInfo.alert.split_file_threshold_byte = (uint64_t)value->valueint * 1024 * 1024;
         printf_note("split_file_threshold_mb:%dMbyte, %llu, \n",value->valueint, config->status_para.diskInfo.alert.split_file_threshold_byte);
     }
+    value = cJSON_GetObjectItem(control_parm, "disk_file_notifier_timeout_ms");
+    if(value!= NULL && cJSON_IsNumber(value)){
+        config->ctrl_para.disk_file_notifier_timeout_ms = value->valueint;
+        printf_note("disk_file_notifier_timeout_ms:%dms, %ums, \n",value->valueint, config->ctrl_para.disk_file_notifier_timeout_ms);
+    }
     
 /* calibration_parm */
     cJSON *calibration = NULL;

@@ -53,6 +53,8 @@ volatile bool disk_is_full_alert = false;
 
 
 static inline void _fs_init_(void);
+static int _fs_notifier_exit(void *args);
+
 
 
 #define THREAD_FS_BACK_NAME "FS_BACK_FILE"
@@ -68,6 +70,7 @@ struct push_arg{
     int ch;
     char *name;
     char *filename;
+    void *notifier;
 };
 static double difftime_us_val(const struct timeval *start, const struct timeval *end)
 {
@@ -360,6 +363,7 @@ static void _thread_exit_callback(void *arg){
 #endif
     if(fd > 0)
         close(fd);
+    _fs_notifier_exit(pargs);
     safe_free(pargs->filename);
     if(arg)
         safe_free(arg);
@@ -432,6 +436,59 @@ static int _fs_start_save_file_thread(void *arg)
 
 }
 
+void _fs_save_file_status_timer_notify(struct uloop_timeout *timeout)
+{
+    double  diff_time_us = 0;
+    struct timeval *beginTime, endTime;
+    struct fs_notify_status *fsns = container_of(timeout, struct fs_notify_status, timeout);
+    struct push_arg *p_args =  fsns->args;
+    
+    fsns->filesize = p_args->nbyte;
+    beginTime = &fsns->start_time;
+
+    gettimeofday(&endTime, NULL);
+    diff_time_us = difftime_us_val(beginTime, &endTime);
+    fsns->duration_time = diff_time_us/1000000;
+    
+    printf_debug("name=%s, size=%u,duration time us=%fus, %us\n",
+        fsns->filename, fsns->filesize,  diff_time_us, fsns->duration_time);
+    
+#if (defined SUPPORT_PROTOCAL_AKT) 
+    akt_send_file_status(fsns, sizeof(struct fs_notify_status));
+#endif
+    uloop_timeout_set(timeout, fsns->timeout_ms); /* 5000 ms */
+}
+
+
+static int _fs_notifier_init(void *args)
+{
+    struct push_arg *p_args = args;
+    static  struct uloop_timeout task1_timeout;
+    static struct fs_notify_status *fs_status;
+    fs_status = calloc(1, sizeof(struct fs_notify_status));
+    
+    printf_note("fs notifier init\n");
+    fs_status->filename = p_args->filename;
+    fs_status->filesize = 0;
+    fs_status->duration_time = 0;
+    fs_status->timeout_ms = config_get_disk_file_notifier_timeout();
+    memcpy(&fs_status->start_time, &p_args->ct, sizeof(struct timeval));
+    fs_status->args = args;
+    p_args->notifier = fs_status;
+
+    fs_status->timeout.cb = _fs_save_file_status_timer_notify;
+    uloop_timeout_set(&fs_status->timeout, fs_status->timeout_ms);
+    
+}
+
+static int _fs_notifier_exit(void *args)
+{
+    struct push_arg *p_args = args;
+    struct fs_notify_status  *fss = p_args->notifier;
+    uloop_timeout_cancel(&fss->timeout);
+    safe_free(fss);
+}
+
 static ssize_t _fs_start_save_file(int ch, char *filename)
 {
     #define     _START_SAVE     1
@@ -474,7 +531,7 @@ static ssize_t _fs_start_save_file(int ch, char *filename)
     wav_write_header_before(fd);
 #endif
     io_set_enable_command(ADC_MODE_ENABLE, ch, -1, 0);
-    ret =  pthread_create_detach (NULL, _fs_start_save_file_thread, _thread_exit_callback,  
+    ret =  pthread_create_detach (NULL,_fs_notifier_init, _fs_start_save_file_thread, _thread_exit_callback,  
                                 THREAD_FS_SAVE_NAME, p_args, p_args);
     if(ret != 0){
         perror("pthread save file thread!!");
@@ -558,7 +615,7 @@ static ssize_t _fs_start_read_raw_file(int ch, char *filename)
     p_args->ch = ch;
     p_args->name=THREAD_FS_BACK_NAME;
     io_start_backtrace_file(&ch);
-    ret =  pthread_create_detach (NULL, _fs_start_read_raw_file_loop, _thread_exit_callback,  
+    ret =  pthread_create_detach (NULL,NULL, _fs_start_read_raw_file_loop, _thread_exit_callback,  
                                 THREAD_FS_BACK_NAME, p_args, p_args);
     if(ret != 0){
         perror("pthread read file thread!!");

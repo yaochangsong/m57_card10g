@@ -1947,13 +1947,14 @@ void akt_send_file_status(void *data, size_t data_len)
     struct fs_notify_status *fns = data;
     struct push_arg *push_args;
     struct fs_status {
+        uint8_t ch;
         char path[256];
         uint64_t filesize;
         uint64_t duration_time;
         uint64_t middle_freq;
         uint64_t bindwidth;
         uint64_t sample_rate;
-    };
+    }__attribute__ ((packed));
     struct fs_status _fss;
     if(fns == NULL || fns->filename == NULL)
         return;
@@ -1961,13 +1962,14 @@ void akt_send_file_status(void *data, size_t data_len)
     push_args = fns->args;
     memset(&_fss, 0, sizeof(_fss));
     strncpy(_fss.path, fns->filename, sizeof(_fss.path));
+    _fss.ch = fns->ch;
     _fss.filesize = fns->filesize;
     _fss.duration_time = fns->duration_time;
     _fss.middle_freq = executor_get_mid_freq(fns->ch);
     _fss.bindwidth = push_args->args;
     _fss.sample_rate = 0;
-    printf_note("path=%s, filesize=%llu[0x%x], time=%llu, middle_freq=%llu, bindwidth=%llu, sample_rate=%llu\n", 
-        _fss.path, _fss.filesize,_fss.filesize,  _fss.duration_time, _fss.middle_freq, _fss.bindwidth, _fss.sample_rate);
+    printf_note("ch=%d, path=%s, filesize=%llu[0x%x], time=%llu, middle_freq=%llu, bindwidth=%llu, sample_rate=%llu\n", 
+        _fss.ch, _fss.path, _fss.filesize,_fss.filesize,  _fss.duration_time, _fss.middle_freq, _fss.bindwidth, _fss.sample_rate);
     akt_send(&_fss, sizeof(_fss), FILE_STATUS_NOTIFY);
 }
 

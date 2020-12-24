@@ -705,13 +705,13 @@ static void io_set_common_param(uint8_t type, uint8_t *buf,uint32_t buf_len)
 /* 设置平滑数 */
 void io_set_smooth_time(uint32_t ch, uint16_t stime)
 {
-    static uint16_t old_val = 0;
+    static uint16_t old_val[MAX_RADIO_CHANNEL_NUM] = {0};
     
-    if(old_val == stime){
+    if(old_val[ch] == stime || ch >= MAX_RADIO_CHANNEL_NUM){
         /* 避免重复设置相同参数 */
         return;
     }
-    old_val = stime;
+    old_val[ch] = stime;
 
     printf_note("[**REGISTER**]ch:%u, Set Smooth time: factor=%d[0x%x]\n",ch, stime, stime);
     
@@ -738,12 +738,13 @@ void io_set_smooth_time(uint32_t ch, uint16_t stime)
 /* 设置FPGA校准值 */
 void io_set_calibrate_val(uint32_t ch, int32_t  cal_value)
 {
-    static int32_t old_val = -1;
-    if(old_val == cal_value){
+    static int32_t old_val[MAX_RADIO_CHANNEL_NUM] = {0};
+
+    if(old_val[ch] == cal_value || ch >= MAX_RADIO_CHANNEL_NUM){
         /* 避免重复设置相同参数 */
         return;
     }
-    old_val = cal_value;
+    old_val[ch] = cal_value;
     printf_note("[**REGISTER**][ch=%d]Set Calibrate Val factor=%d[0x%x]\n",ch, cal_value,cal_value);
 #if defined(SUPPORT_PLATFORM_ARCH_ARM)
 #if defined(SUPPORT_SPECTRUM_KERNEL)
@@ -762,12 +763,20 @@ void io_set_calibrate_val(uint32_t ch, int32_t  cal_value)
 /* 设置频谱增益校准值 */
 void io_set_gain_calibrate_val(uint32_t ch, int32_t  gain_val)
 {
-    static int32_t old_val = -1000;
-    if(old_val == gain_val){
+    static int32_t old_val[MAX_RADIO_CHANNEL_NUM];
+    static bool has_inited = false;
+    
+    if(has_inited == false){
+        for(int i = 0; i < MAX_RADIO_CHANNEL_NUM; i++)
+            old_val[i] = -1000;
+        has_inited = true;
+    }
+        
+    if(old_val[ch] == gain_val || ch >= MAX_RADIO_CHANNEL_NUM){
         /* 避免重复设置相同参数 */
         return;
     }
-    old_val = gain_val;
+    old_val[ch] = gain_val;
     printf_note("[**REGISTER**][ch=%d]Set Gain Calibrate Val factor=%u[0x%x]\n",ch, gain_val,gain_val);
 #if defined(SUPPORT_PLATFORM_ARCH_ARM)
 #if defined(SUPPORT_SPECTRUM_V2) 
@@ -883,12 +892,12 @@ void io_set_fft_size(uint32_t ch, uint32_t fft_size)
 {
     printf_debug("set fft size:%d\n",ch, fft_size);
     uint32_t factor;
-    static uint32_t old_value = 0;
+    static uint32_t old_value[MAX_RADIO_CHANNEL_NUM] = {0, 0};
 
-    if(old_value == fft_size){
+    if(old_value[ch] == fft_size || ch >= MAX_RADIO_CHANNEL_NUM){
         return;
     }
-    old_value = fft_size;
+    old_value[ch] = fft_size;
     factor = 0xc;
     if(fft_size == FFT_SIZE_256){
         factor = 0x8;

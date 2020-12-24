@@ -974,7 +974,7 @@ static int akt_execute_set_command(void *cl)
                     printf_warn("NOT FOUND DISK!!\n");
                     break;
                 }
-                fs_ctx->ops->fs_start_save_file(ch, sis.filepath);
+                fs_ctx->ops->fs_start_save_file(ch, sis.filepath, &sis.bandwidth);
 #endif
             }else if(sis.cmd == 0){/* stop add iq file */
                 printf_note("Stop add file:%s\n", sis.filepath);
@@ -1945,6 +1945,7 @@ void akt_send_alert(void *client, int code)
 void akt_send_file_status(void *data, size_t data_len)
 {
     struct fs_notify_status *fns = data;
+    struct push_arg *push_args;
     struct fs_status {
         char path[256];
         uint64_t filesize;
@@ -1957,12 +1958,13 @@ void akt_send_file_status(void *data, size_t data_len)
     if(fns == NULL || fns->filename == NULL)
         return;
 
+    push_args = fns->args;
     memset(&_fss, 0, sizeof(_fss));
     strncpy(_fss.path, fns->filename, sizeof(_fss.path));
     _fss.filesize = fns->filesize;
     _fss.duration_time = fns->duration_time;
-    _fss.middle_freq = 0;
-    _fss.bindwidth = 0;
+    _fss.middle_freq = executor_get_mid_freq(fns->ch);
+    _fss.bindwidth = push_args->args;
     _fss.sample_rate = 0;
     printf_note("path=%s, filesize=%llu[0x%x], time=%llu, middle_freq=%llu, bindwidth=%llu, sample_rate=%llu\n", 
         _fss.path, _fss.filesize,_fss.filesize,  _fss.duration_time, _fss.middle_freq, _fss.bindwidth, _fss.sample_rate);

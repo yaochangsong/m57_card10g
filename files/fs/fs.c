@@ -60,18 +60,7 @@ static int _fs_notifier_exit(void *args);
 #define THREAD_FS_BACK_NAME "FS_BACK_FILE"
 #define THREAD_FS_SAVE_NAME "FS_SAVE_FILE"
 
-struct push_arg{
-    struct timeval ct;
-    uint64_t nbyte;
-    uint64_t split_nbyte;
-    uint64_t count;
-    int  fd;
-    int split_num;
-    int ch;
-    char *name;
-    char *filename;
-    void *notifier;
-};
+
 static double difftime_us_val(const struct timeval *start, const struct timeval *end)
 {
     double d;
@@ -369,22 +358,67 @@ static void _thread_exit_callback(void *arg){
         safe_free(arg);
 }  
 
+
+static inline char *_fs_split_file_rename(void *args)
+{
+    
+    #define FILE_NAME_LEN (256)
+    #define _SPLIT_FILE_TAG_STR "_N"
+    struct push_arg *p_args;
+    char *ptr_tag, *filename;
+    char part[8][64];
+    char *path;
+    int num;
+    
+    p_args = (struct push_arg *)args;
+    path = calloc(1, FILE_NAME_LEN);
+    if(path == NULL)
+        goto exit;
+
+    filename = p_args->filename;
+    ptr_tag = strstr(filename, _SPLIT_FILE_TAG_STR);
+    if(ptr_tag == NULL){
+        sscanf(filename, "%[^_]_%[^_]_%[^_]_%[^_]_%[^_]_%[^_]", 
+            part[0],part[1],part[2],part[3],part[4],part[5]);
+        snprintf(path, FILE_NAME_LEN, "%s_%s_%s_%s_%s_TIQ.wav.%d", part[0],part[1],part[2],part[3],part[4], p_args->split_num);
+        printf_debug("filename=%s\n",path);
+        goto exit;
+    }
+    sscanf(filename, "%[^_]_%[^_]_%[^_]_%[^_]_%[^_]_%[^_]_%[^_]", 
+            part[0],part[1],part[2],part[3],part[4],part[5],part[6]);
+    //CH0_D20201218180001034_F70.000M_B80.000M_R409.600M_N0001_TIQ.wav
+    snprintf(path, FILE_NAME_LEN, "%s_%s_%s_%s_%s"_SPLIT_FILE_TAG_STR"%04d_%s", part[0],part[1],part[2],part[3],part[4],p_args->split_num+1, part[6]);
+    printf_debug("filename=%s\n", path);
+    
+exit:
+    safe_free(p_args->filename);
+    return path;
+}
+
 static inline int _fs_split_file(void *args)
 {
     struct push_arg *p_args;
 
     p_args = (struct push_arg *)args;
     if((config_get_split_file_threshold() > 0) && (p_args->split_nbyte >= config_get_split_file_threshold())){
-        char path[512];
         int fd = 0;
-    #if defined(SUPPORT_WAV)
-        wav_write_header(p_args->fd, p_args->split_nbyte);
-    #endif
-        if(p_args->fd > 0)
+        char *ptr = NULL, path[512];
+        int offset = 0;
+        if(p_args->fd > 0) {
+            #if defined(SUPPORT_WAV)
+            struct spm_context *ctx = get_spm_ctx();
+            struct spm_run_parm *run_para = ctx->run_args[p_args->ch];
+            uint64_t middle_freq = run_para->m_freq;
+            uint32_t sample_rate = io_get_raw_sample_rate(p_args->ch, middle_freq);
+            wav_write_header(fd, sample_rate, p_args->split_nbyte);
+            #endif
             close(p_args->fd);
+        }
         p_args->split_num++;
         p_args->split_nbyte = 0;
-        snprintf(path, sizeof(path), "%s/%s.%d", fs_get_root_dir(), p_args->filename, p_args->split_num);
+        p_args->filename = _fs_split_file_rename(p_args);
+        snprintf(path, sizeof(path), "%s/%s", fs_get_root_dir(), p_args->filename);
+        printf_debug("path:%s\n", path);
         fd = open(path, O_RDWR | O_CREAT | O_TRUNC | O_DIRECT | O_SYNC, 0666);
         if (fd < 0) {
             printf_err("open %s fail\n", path);
@@ -445,14 +479,13 @@ void _fs_save_file_status_timer_notify(struct uloop_timeout *timeout)
     
     fsns->filesize = p_args->nbyte;
     beginTime = &fsns->start_time;
-
     gettimeofday(&endTime, NULL);
     diff_time_us = difftime_us_val(beginTime, &endTime);
     fsns->duration_time = diff_time_us/1000000;
+    fsns->filename = p_args->filename;
     
     printf_debug("name=%s, size=%u,duration time us=%fus, %us\n",
         fsns->filename, fsns->filesize,  diff_time_us, fsns->duration_time);
-    
 #if (defined SUPPORT_PROTOCAL_AKT) 
     akt_send_file_status(fsns, sizeof(struct fs_notify_status));
 #endif
@@ -469,13 +502,13 @@ static int _fs_notifier_init(void *args)
     
     printf_note("fs notifier init\n");
     fs_status->filename = p_args->filename;
+    fs_status->ch = p_args->ch;
     fs_status->filesize = 0;
     fs_status->duration_time = 0;
     fs_status->timeout_ms = config_get_disk_file_notifier_timeout();
     memcpy(&fs_status->start_time, &p_args->ct, sizeof(struct timeval));
     fs_status->args = args;
     p_args->notifier = fs_status;
-
     fs_status->timeout.cb = _fs_save_file_status_timer_notify;
     uloop_timeout_set(&fs_status->timeout, fs_status->timeout_ms);
     
@@ -489,7 +522,7 @@ static int _fs_notifier_exit(void *args)
     safe_free(fss);
 }
 
-static ssize_t _fs_start_save_file(int ch, char *filename)
+static ssize_t _fs_start_save_file(int ch, char *filename, void *args)
 {
     #define     _START_SAVE     1
     #define     _STOP_SAVE      0
@@ -526,6 +559,7 @@ static ssize_t _fs_start_save_file(int ch, char *filename)
     p_args->fd = fd;
     p_args->ch = ch;
     p_args->name=THREAD_FS_SAVE_NAME;
+    p_args->args = *(uint32_t *)args;
     p_args->filename = safe_strdup(filename);
 #if defined(SUPPORT_WAV)
     wav_write_header_before(fd);

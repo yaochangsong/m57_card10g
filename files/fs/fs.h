@@ -37,7 +37,7 @@ struct fs_ops {
     int (*fs_delete)(char *);
     int (*fs_find)(char *,int (*callback) (char *,void *, void *), void *);
     ssize_t (*fs_dir)(char *,  int(*callback) (char *, void *, void *), void *);
-    ssize_t (*fs_start_save_file)(int, char *);
+    ssize_t (*fs_start_save_file)(int, char *, void*);
     ssize_t (*fs_stop_save_file)(int, char *);
     ssize_t (*fs_start_read_raw_file)(int,char *);
     ssize_t (*fs_stop_read_raw_file)(int,char *);
@@ -45,11 +45,27 @@ struct fs_ops {
     int (*fs_close)(void);
 };
 
+struct push_arg{
+    struct timeval ct;
+    uint64_t nbyte;
+    uint64_t split_nbyte;
+    uint64_t count;
+    int  fd;
+    int split_num;
+    int ch;
+    char *name;
+    char *filename;
+    void *notifier;
+    uint32_t args;
+};
+
+
 struct fs_context {
     const struct fs_ops *ops;
 };
 
 struct fs_notify_status {
+    int ch;
     char *filename;
     size_t filesize;
     time_t duration_time;

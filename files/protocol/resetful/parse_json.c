@@ -614,7 +614,7 @@ int parse_json_file_store(const char * const body, uint8_t ch,  uint8_t enable, 
             return RESP_CODE_EXECMD_ERR;
         }
         if(enable)
-            fs_ctx->ops->fs_start_save_file(ch, filename);
+            fs_ctx->ops->fs_start_save_file(ch, filename, &bandwidth);
         else
             fs_ctx->ops->fs_stop_save_file(ch, filename);
 #endif

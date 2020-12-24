@@ -67,6 +67,11 @@ int executor_tcp_disconnect_notify(void *cl)
             /* 所有客户端离线，关闭相关使能，线程复位到等待状�?*/
             memset(&poal_config->channel[ch].enable, 0, sizeof(poal_config->channel[ch].enable));
             poal_config->channel[ch].enable.bit_reset = true; /* reset(stop) all working task */
+            struct fs_context *fs_ctx;
+            fs_ctx = get_fs_ctx();
+            if(fs_ctx != NULL){
+                fs_ctx->ops->fs_stop_save_file(ch, NULL);
+            }
         }
     }
     

@@ -347,7 +347,11 @@ static void _thread_exit_callback(void *arg){
     }
 #if defined(SUPPORT_WAV)
     else if(pargs->name && !strcmp(pargs->name, THREAD_FS_SAVE_NAME)) {
-        wav_write_header(fd, pargs->split_nbyte);
+        struct spm_context *ctx = get_spm_ctx();
+        struct spm_run_parm *run_para = ctx->run_args[pargs->ch];
+        uint64_t middle_freq = run_para->m_freq;
+        uint32_t sample_rate = io_get_raw_sample_rate(pargs->ch, middle_freq);
+        wav_write_header(fd, sample_rate, pargs->split_nbyte);
     }
 #endif
     if(fd > 0)
@@ -425,9 +429,6 @@ static inline int _fs_split_file(void *args)
             return -1;
         }
         p_args->fd = fd;
-    #if defined(SUPPORT_WAV)
-        wav_write_header_before(fd);
-    #endif
     }
     return 0;
 }
@@ -518,8 +519,11 @@ static int _fs_notifier_exit(void *args)
 {
     struct push_arg *p_args = args;
     struct fs_notify_status  *fss = p_args->notifier;
+    if(fss == NULL)
+        return -1;
     uloop_timeout_cancel(&fss->timeout);
     safe_free(fss);
+    return 0;
 }
 
 static ssize_t _fs_start_save_file(int ch, char *filename, void *args)

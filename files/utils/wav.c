@@ -67,7 +67,7 @@ void wav_write_header_before(int fd)
 {
     lseek(fd, 512, SEEK_SET);
 }
-int wav_write_header(int fd, uint64_t datalen)
+int wav_write_header(int fd,uint32_t sample_rate, uint64_t datalen)
 {
     int write_len = -1;
     int header_len = sizeof(Wav);
@@ -86,7 +86,7 @@ int wav_write_header(int fd, uint64_t datalen)
     }
     lseek(fd, 0, SEEK_SET);
     memset(user_mem, 0, BLOCK_SIZE); 
-    wav_format_header(&header, WAV_FORMAT_PCM, AUDIO_CH_NUM, SAMPLE_RATE, SAMPLE_BITS, datalen+BLOCK_SIZE-header_len); //为保持对齐，除去头外，填充部分数据0
+    wav_format_header(&header, WAV_FORMAT_PCM, AUDIO_CH_NUM, sample_rate, SAMPLE_BITS, datalen+BLOCK_SIZE-header_len); //为保持对齐，除去头外，填充部分数据0
     memcpy(user_mem, &header, header_len);
     write_len = write(fd, user_mem, BLOCK_SIZE);
     if (user_mem)

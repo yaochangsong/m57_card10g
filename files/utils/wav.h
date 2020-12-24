@@ -50,7 +50,7 @@ typedef struct WAV_FORMAT {
 }__attribute__ ((packed)) Wav;
 
 extern void wav_write_header_before(int fd);
-extern int wav_write_header(int fd, uint64_t datalen);
+extern int wav_write_header(int fd,uint32_t sample_rate, uint64_t datalen);
 #endif
 
 

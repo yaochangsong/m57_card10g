@@ -513,6 +513,12 @@ int32_t io_set_dec_middle_freq(uint32_t ch, uint64_t dec_middle_freq, uint64_t m
 }
 
 
+uint64_t io_get_raw_sample_rate(uint32_t ch, uint64_t middle_freq)
+{
+    #define _SAMPLE_RATE_ MHZ(512)
+    
+    return _SAMPLE_RATE_;
+}
 int32_t io_set_middle_freq(uint32_t ch, uint64_t middle_freq)
 {
 #if defined(SUPPORT_DIRECT_SAMPLE)

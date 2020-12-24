@@ -808,7 +808,7 @@ char *assemble_json_clock_info(void)
     lock_ok =  io_get_inout_clock_status(&external_clk);
     cJSON_AddStringToObject(root, "inout", (external_clk == 1 ? "out" : "in"));
     cJSON_AddStringToObject(root, "status", (lock_ok == false ? "no":"ok"));
-    cJSON_AddNumberToObject(root, "frequency", 512000000);
+    cJSON_AddNumberToObject(root, "frequency", io_get_raw_sample_rate(0,0));
     json_print(root, 1);
     str_json = cJSON_PrintUnformatted(root);
     return str_json;

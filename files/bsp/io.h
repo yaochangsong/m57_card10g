@@ -82,4 +82,5 @@ extern int32_t io_set_subch_dec_middle_freq(uint32_t subch, uint64_t dec_middle_
 extern int32_t io_set_subch_onoff(uint32_t ch, uint32_t subch, uint8_t onoff);
 extern int32_t io_set_subch_bandwidth(uint32_t subch, uint32_t bandwidth, uint8_t dec_method);
 extern int32_t io_set_subch_dec_method(uint32_t subch, uint8_t dec_method);
+extern uint64_t io_get_raw_sample_rate(uint32_t ch, uint64_t middle_freq);
 #endif

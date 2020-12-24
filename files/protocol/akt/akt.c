@@ -1967,7 +1967,7 @@ void akt_send_file_status(void *data, size_t data_len)
     _fss.duration_time = fns->duration_time;
     _fss.middle_freq = executor_get_mid_freq(fns->ch);
     _fss.bindwidth = push_args->args;
-    _fss.sample_rate = 0;
+    _fss.sample_rate = io_get_raw_sample_rate(fns->ch, _fss.middle_freq);
     printf_note("ch=%d, path=%s, filesize=%llu[0x%x], time=%llu, middle_freq=%llu, bindwidth=%llu, sample_rate=%llu\n", 
         _fss.ch, _fss.path, _fss.filesize,_fss.filesize,  _fss.duration_time, _fss.middle_freq, _fss.bindwidth, _fss.sample_rate);
     akt_send(&_fss, sizeof(_fss), FILE_STATUS_NOTIFY);

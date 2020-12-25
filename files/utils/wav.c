@@ -5,7 +5,7 @@
 
 
 #define WAV_FORMAT_PCM  (0x0001)
-#define AUDIO_CH_NUM    (2)
+#define AUDIO_CH_NUM    (1)
 #define SAMPLE_RATE     (32000)
 #define SAMPLE_BITS     (16)
 

@@ -341,10 +341,9 @@ int32_t  config_get_fft_calibration_value(uint8_t ch, uint32_t fft_size, uint64_
         mode = poal_config->channel[ch].rf_para.rf_mode_code;
         for(i = 0; i< ARRAY_SIZE(poal_config->channel[ch].rf_para.rf_mode.mag); i++){
             if(poal_config->channel[ch].rf_para.rf_mode.mode[i] == mode){
-                cal_value += _get_rf_magnification(ch, mode, poal_config)*10;
-                //cal_value += poal_config->channel[ch].rf_para.rf_mode.mag[i]*10;
-                printf_debug("after rf mode magification,mode:%d magification:%d, cal_value=%d\n", mode, 
-                        _get_rf_magnification(ch, mode, poal_config), cal_value);
+                cal_value += _get_rf_magnification(ch, mode, poal_config, m_freq)*10;
+                printf_debug("after rf mode magification,mode:%d magification:%d, cal_value=%d, m_freq=%llu\n", mode, 
+                        _get_rf_magnification(ch, mode, poal_config, m_freq), cal_value, m_freq);
                 found = 1;
                 break;
             }

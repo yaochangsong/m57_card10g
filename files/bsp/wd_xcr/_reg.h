@@ -280,7 +280,7 @@ static inline int32_t _reg_get_rf_temperature(int ch, int index, FPGA_CONFIG_REG
     @index: 射频模式
     @args: 通道参数指针
 */
-static inline int32_t _get_rf_magnification(int ch, int index,void *args)
+static inline int32_t _get_rf_magnification(int ch, int index,void *args, uint64_t mid_freq)
 {
     struct poal_config *config = args;
 

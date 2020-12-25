@@ -236,6 +236,9 @@ endif
 ifneq ($(findstring y,$(SUPPORT_PROJECT_SSA_9361)),)
 	C_VAR += -DSUPPORT_PROJECT_SSA_9361
 endif
+ifneq ($(findstring y,$(SUPPORT_WAV)),)
+	C_VAR += -DSUPPORT_WAV
+endif
 #export CC=arm-linux-gnueabihf-gcc
 
 #dao lib

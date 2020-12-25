@@ -293,17 +293,22 @@ static inline int32_t _reg_get_rf_temperature(int ch, int index, FPGA_CONFIG_REG
     @index: 射频模式
     @args: 通道参数指针
 */
-static inline int32_t _get_rf_magnification(int ch, int index,void *args)
+static inline int32_t _get_rf_magnification(int ch, int index,void *args, uint64_t mid_freq)
 {
     struct poal_config *config = args;
-
+    
     if(config == NULL || ch >= MAX_RADIO_CHANNEL_NUM || index >= RF_MODE_NUMBER)
         return 0;
 
     if(ch == 0)
        return config->channel[ch].rf_para.rf_mode.mag[index];
     else if(ch == 1){
-        return (config->channel[ch].rf_para.rf_mode.mag[POAL_NORMAL] + config->channel[ch+1].rf_para.rf_mode.mag[index]);
+        if(mid_freq < GHZ(18)){
+            return config->channel[ch].rf_para.rf_mode.mag[index];
+        }else{
+            return (config->channel[ch].rf_para.rf_mode.mag[POAL_NORMAL] + config->channel[ch+1].rf_para.rf_mode.mag[index]);
+        }
+        
     }
     else
         return 0;

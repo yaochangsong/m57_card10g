@@ -140,7 +140,7 @@ static  int8_t  executor_fragment_scan(uint32_t fregment_num,uint8_t ch, work_mo
         executor_set_command(EX_RF_FREQ_CMD, EX_RF_MODE_CODE, ch, &r_args->rf_mode);
         //executor_set_command(EX_RF_FREQ_CMD, EX_RF_LOW_NOISE, ch, &_m_freq_hz);
         executor_set_command(EX_MID_FREQ_CMD, EX_MID_FREQ,    ch, &_m_freq_hz);
-        executor_set_command(EX_MID_FREQ_CMD, EX_FPGA_CALIBRATE, ch, &fftsize, _m_freq_hz,0);
+        executor_set_command(EX_MID_FREQ_CMD, EX_FPGA_CALIBRATE, ch, &fftsize, r_args->m_freq,0);
         index ++;
         if(poal_config->channel[ch].enable.psd_en){
             io_set_enable_command(PSD_MODE_ENABLE, ch, -1, r_args->fft_size);
@@ -287,7 +287,7 @@ static int8_t  executor_points_scan(uint8_t ch, work_mode_type mode, void *args)
 #endif
         gettimeofday(&beginTime, NULL);
         do{
-            executor_set_command(EX_MID_FREQ_CMD, EX_FPGA_CALIBRATE, ch, &point->points[0].fft_size, 0);
+            executor_set_command(EX_MID_FREQ_CMD, EX_FPGA_CALIBRATE, ch, &point->points[0].fft_size, r_args->m_freq);
             if(poal_config->channel[ch].enable.psd_en){
                 io_set_enable_command(PSD_MODE_ENABLE, ch, -1, point->points[i].fft_size);
             }

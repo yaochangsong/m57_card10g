@@ -103,10 +103,10 @@
                 "value":0
             },
             {
-                "fftsize":32768,
-                "start_freq":0,
-                "end_freq":200000,
-                "value":0
+                "fftsize":0,
+                "start_freq":18000000,
+                "end_freq":18088500,
+                "value":-100
             }
         ],
         "analysis_power_global":-195,
@@ -290,19 +290,19 @@
 				"rf_mode_param" :[
 					{
 						"mode" : "low_distortion",
-						"magification" : 15,
+						"magification" : -10,
 						"rf_attenuation_range" : "0~20",
 						"mgc_attenuation_range" : "0~30",
 						"detection_range" : "10~-115"
 					},{
 						"mode" : "normal",
-						"magification" : 30,
+						"magification" : 5,
 						"rf_attenuation_range" : "0~30",
 						"mgc_attenuation_range" : "0~30",
 						"detection_range" : "10~-115"
 					},{
 						"mode" : "low_noise",
-						"magification" : 45,
+						"magification" : 25,
 						"rf_attenuation_range" : "null",
 						"mgc_attenuation_range" : "0~30",
 						"detection_range" : "10~-115"

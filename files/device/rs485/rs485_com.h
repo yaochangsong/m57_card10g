@@ -19,10 +19,6 @@
 #define  rs485_send_data_by_serial(buf, len)    uart0_send_data(buf, len)
 #define  rs485_read_block_timeout(buf, t)       uart0_read_block_timeout(buf, t)
 
-#define  comp1_send_data_by_serial(buf, len)    rs4850_send_data(buf, len)
-#define  comp2_send_data_by_serial(buf, len)    rs4851_send_data(buf, len)
-#define  comp1_read_block_timeout(buf, t)       rs4850_read_block_timeout(buf, t)
-#define  comp2_read_block_timeout(buf, t)       rs4851_read_block_timeout(buf, t)
 #else    
 #define  rs485_send_data_by_serial(buf, len)
 #define  rs485_read_block_timeout(buf, t)

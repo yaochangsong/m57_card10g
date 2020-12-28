@@ -18,6 +18,15 @@
 #include "spm_chip.h"
 #include "../../protocol/resetful/data_frame.h"
 
+#ifdef SUPPORT_PROJECT_SSA_MONITOR
+static int64_t division_point_array[] = {GHZ(7.5)};
+
+int64_t *get_division_point_array(int ch, int *array_len)
+{
+    *array_len = ARRAY_SIZE(division_point_array);
+    return division_point_array;
+}
+#endif
 static struct _vec_fft{
     fft_t *data;
     size_t len;
@@ -431,7 +440,7 @@ static int spm_chip_send_fft_data(void *data, size_t fft_len, void *arg)
     iov[1].iov_base = data;
     iov[1].iov_len = data_byte_size;
 
-    udp_send_vec_data(iov, 2);
+    udp_send_vec_data(iov, 2, TAG_FFT);
     safe_free(ptr_header);
     return (header_len + data_byte_size);
 }
@@ -512,7 +521,7 @@ static int spm_chip_send_iq_data(void *data, size_t len, void *arg)
     for(i = 0; i<index; i++){
         iov[1].iov_base = pdata;
         iov[1].iov_len = _send_byte;
-        udp_send_vec_data(iov, 2);
+        udp_send_vec_data(iov, 2, TAG_IQ);
         pdata += _send_byte;
     }
    
@@ -626,9 +635,6 @@ static const struct spm_backend_ops spm_ops = {
     .data_order = spm_chip_data_order,
     .send_fft_data = spm_chip_send_fft_data,
     .send_iq_data = spm_chip_send_iq_data,
-    .convet_iq_to_fft = spm_chip_convet_iq_to_fft,
-    .set_psd_analysis_enable = spm_chip_set_psd_analysis_enable,
-    .get_psd_analysis_result = spm_chip_get_psd_analysis_result,
     .set_calibration_value = spm_set_calibration_value,
     .set_smooth_time = spm_chip_set_smooth_time,
     .sample_ctrl = spm_sample_ctrl,

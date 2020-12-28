@@ -27,32 +27,39 @@ enum stream_type {
     STREAM_ADC_READ,
 };
 
+#define DMA_IQ_TYPE_BUFFER_SIZE (DMA_IQ_BUFFER_SIZE*2)
+enum stream_iq_type {
+    STREAM_IQ_TYPE_AUDIO,
+    STREAM_IQ_TYPE_RAW,
+    STREAM_IQ_TYPE_MAX,
+};
+#define for_each_iq_type(type, run) \
+    for (int i = 0; \
+            type = i, run.dis_iq.send_ptr = run.dis_iq.ptr[i],run.dis_iq.send_len = run.dis_iq.offset[i]*sizeof(iq_t), i < STREAM_IQ_TYPE_MAX; \
+            i++)
 
 struct spm_backend_ops {
     int (*create)(void);
     ssize_t (*read_iq_data)(void **);
     ssize_t (*read_fft_data)(void **, void*);
-    ssize_t (*read_adc_data)(void **);
-    int (*read_adc_over_deal)(void *);
+    ssize_t (*read_adc_data)(int,void **);
+    int (*read_adc_over_deal)(int,void *);
     int (*read_iq_over_deal)(void *);
     fft_t *(*data_order)(fft_t *, size_t,  size_t *, void *);
     int (*send_fft_data)(void *, size_t, void *);
     int (*send_iq_data)(void *, size_t, void *);
     int (*send_cmd)(void *, void *, size_t, void *);
+    int (*send_iq_type)(int, char *, size_t, void *);
+    int (*iq_dispatcher)(iq_t *, size_t, void *);
     /* AGC自动增益控制*/
     int (*agc_ctrl)(int, void *);
     /* 获取驻留时间是否到达：根据通道驻留策略和是否有信号 */
     bool (*residency_time_arrived)(uint8_t, int, bool);
     /* 获取某通道是否有信号；并返回信号强度 */
     int32_t (*signal_strength)(uint8_t ch,uint8_t subch, uint32_t, bool *is_singal, uint16_t *strength);
-    int (*convet_iq_to_fft)(void *, void *, size_t);
-    int (*set_psd_analysis_enable)(bool);
-    int (*get_psd_analysis_result)(void *);
-    int (*save_data)(void *, size_t);
-    int (*backtrace_data)(void *, size_t);
-    int (*back_running_file)(uint8_t, char *);
-    int (*stream_start)(uint32_t ,uint8_t , int);
-    int (*stream_stop)(uint8_t);
+    int (*back_running_file)(int, uint8_t, char *);
+    int (*stream_start)(int, int, uint32_t ,uint8_t , int);
+    int (*stream_stop)(int, int, uint8_t);
     int (*sample_ctrl)(void *);
     int (*spm_scan)(uint64_t *, uint64_t* , uint32_t* , uint32_t *, uint64_t *);
     int (*set_calibration_value)(int);
@@ -63,7 +70,7 @@ struct spm_backend_ops {
 };
 
 
-#include "config.h"
+#include "platform.h"
 struct spm_context {
     struct poal_config *pdata;
     const struct spm_backend_ops *ops;
@@ -71,15 +78,25 @@ struct spm_context {
 };
 
 extern pthread_mutex_t send_fft_mutex;
+extern pthread_mutex_t send_fft2_mutex;
 extern pthread_mutex_t send_iq_mutex;
 
-#define __lock_fft_send__() do { \
-    pthread_mutex_lock(&send_fft_mutex); \
+#define __lock_fft_send__() do {           \
+        pthread_mutex_lock(&send_fft_mutex); \
 } while (0)
 
 #define __unlock_fft_send__() do { \
     pthread_mutex_unlock(&send_fft_mutex); \
 } while (0)
+
+#define __lock_fft2_send__() do { \
+    pthread_mutex_lock(&send_fft2_mutex); \
+} while (0)
+
+#define __unlock_fft2_send__() do { \
+    pthread_mutex_unlock(&send_fft2_mutex); \
+} while (0)
+
 
 #define __lock_iq_send__() do { \
     pthread_mutex_lock(&send_iq_mutex); \
@@ -91,11 +108,13 @@ extern pthread_mutex_t send_iq_mutex;
 
 #define __lock_send__() do { \
     __lock_fft_send__(); \
+    __lock_fft2_send__(); \
     __lock_iq_send__(); \
 } while (0)
 
 #define __unlock_send__() do { \
     __unlock_fft_send__(); \
+    __unlock_fft2_send__(); \
     __unlock_iq_send__(); \
 } while (0)
 extern void *spm_init(void);

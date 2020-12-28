@@ -22,6 +22,7 @@
 #include "parse_cmd.h"
 #include "parse_json.h"
 #include "../../dao/json/cJSON.h"
+#include "../../bsp/io.h"
 
 
 static inline bool str_to_int(char *str, int *ivalue, bool(*_check)(int))
@@ -140,7 +141,9 @@ int parse_json_client_net(int ch, const char * const body)
                 sclient.sin_port = ntohs(value->valueint);
                 printf_note("port: %d, 0x%x\n", value->valueint, value->valueint);
             }
-            udp_add_client_to_list(&sclient, ch);
+            udp_add_client_to_list(&sclient, ch, TAG_FFT);
+            udp_add_client_to_list(&sclient, ch, TAG_IQ);
+            udp_add_client_to_list(&sclient, ch, TAG_AUDIO);
         }
     }
     
@@ -568,9 +571,9 @@ int parse_json_file_backtrace(const char * const body, uint8_t ch,  uint8_t enab
         return RESP_CODE_DISK_DETECTED_ERR;
     }
     if(enable)
-        ret = fs_ctx->ops->fs_start_read_raw_file(filename);
+        ret = fs_ctx->ops->fs_start_read_raw_file(ch, filename);
     else
-        ret = fs_ctx->ops->fs_stop_read_raw_file(filename);
+        ret = fs_ctx->ops->fs_stop_read_raw_file(ch, filename);
 #endif
     if(ret != 0)
         return RESP_CODE_EXECMD_ERR;
@@ -611,9 +614,9 @@ int parse_json_file_store(const char * const body, uint8_t ch,  uint8_t enable, 
             return RESP_CODE_EXECMD_ERR;
         }
         if(enable)
-            fs_ctx->ops->fs_start_save_file(filename);
+            fs_ctx->ops->fs_start_save_file(ch, filename, &bandwidth);
         else
-            fs_ctx->ops->fs_stop_save_file(filename);
+            fs_ctx->ops->fs_stop_save_file(ch, filename);
 #endif
     if(ret != 0)
         return RESP_CODE_EXECMD_ERR;
@@ -805,7 +808,7 @@ char *assemble_json_clock_info(void)
     lock_ok =  io_get_inout_clock_status(&external_clk);
     cJSON_AddStringToObject(root, "inout", (external_clk == 1 ? "out" : "in"));
     cJSON_AddStringToObject(root, "status", (lock_ok == false ? "no":"ok"));
-    cJSON_AddNumberToObject(root, "frequency", 512000000);
+    cJSON_AddNumberToObject(root, "frequency", io_get_raw_sample_rate(0,0));
     json_print(root, 1);
     str_json = cJSON_PrintUnformatted(root);
     return str_json;
@@ -864,19 +867,20 @@ char *assemble_json_net_info(void)
 char *assemble_json_rf_info(void)
 {
     char *str_json = NULL;
-    int i;
+    int i = 0, j = 0;
     cJSON *array = cJSON_CreateArray();
     cJSON* item = NULL;
     int16_t  rf_temp = 0;
-    for(i = 0; i < MAX_RADIO_CHANNEL_NUM; i++){
+    for(i = 0; i <MAX_RF_NUM; i++){
         cJSON_AddItemToArray(array, item = cJSON_CreateObject());
         cJSON_AddNumberToObject(item, "index", i);
         executor_get_command(EX_RF_FREQ_CMD, EX_RF_STATUS_TEMPERAT, i,  &rf_temp);
-        if(rf_temp > 200 || rf_temp < -100 || rf_temp == 0)
+        if(rf_temp < 0)
             cJSON_AddStringToObject(item, "status", "no");
-        else
+        else{
             cJSON_AddStringToObject(item, "status", "ok");
-        cJSON_AddNumberToObject(item, "temperature", rf_temp);
+            cJSON_AddNumberToObject(item, "temperature", rf_temp);
+        }
     }
    str_json = cJSON_PrintUnformatted(array);
    return str_json;
@@ -932,7 +936,8 @@ char *assemble_json_temp_info(void)
     executor_get_command(EX_RF_FREQ_CMD, EX_RF_STATUS_TEMPERAT, 0,  &rf_temp);
     cJSON *root = cJSON_CreateObject();
     cJSON_AddNumberToObject(root, "dbTemp", ps_temp);
-    cJSON_AddNumberToObject(root, "rfTemp", rf_temp);
+    if(rf_temp > 0)
+        cJSON_AddNumberToObject(root, "rfTemp", rf_temp);
     json_print(root, 1);
     str_json = cJSON_PrintUnformatted(root);
     return str_json;

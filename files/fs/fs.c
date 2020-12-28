@@ -49,17 +49,18 @@ static bool disk_is_valid = false;
 static void  *disk_buffer_ptr  = NULL;
 volatile bool disk_is_format = false;
 volatile int disk_error_num = DISK_CODE_OK;
+volatile bool disk_is_full_alert = false;
+
+
+static inline void _fs_init_(void);
+static int _fs_notifier_exit(void *args);
+
+
 
 #define THREAD_FS_BACK_NAME "FS_BACK_FILE"
-#define THREAD_NAME         "FS_SAVE_FILE"
+#define THREAD_FS_SAVE_NAME "FS_SAVE_FILE"
 
-struct push_arg{
-    struct timeval ct;
-    uint64_t nbyte;
-    uint64_t count;
-    int  fd;
-    char *name;
-};
+
 static double difftime_us_val(const struct timeval *start, const struct timeval *end)
 {
     double d;
@@ -100,9 +101,22 @@ static inline  int _write_disk_run(int fd, size_t size, void *pdata)
     rc = write(fd, pdata, size);
     if (rc < 0){
         perror("write file");
+        return -1;
     }
     sync();
     return 0;
+}
+
+void fs_file_list(char *filename, struct stat *stats, void *arg_array)
+{
+    cJSON *item = NULL;
+    cJSON *array = (cJSON *)arg_array;
+    if(stats == NULL || filename == NULL || array == NULL)
+        return;
+    cJSON_AddItemToArray(array, item = cJSON_CreateObject());
+    cJSON_AddStringToObject(item, "filename", filename);
+    cJSON_AddNumberToObject(item, "size", (off_t)stats->st_size);
+    cJSON_AddNumberToObject(item, "createTime", stats->st_mtime);
 }
 
 
@@ -114,9 +128,9 @@ char *fs_get_root_dir(void)
 
 bool _fs_disk_valid(void)
 {
-    if(access(MOUNT_DIR, F_OK)){
+    if(access(DEV_NAME, F_OK)){
         disk_error_num = DISK_CODE_NOT_FOUND;
-        printf_note("Disk node[%s] is not valid\n", MOUNT_DIR);
+        printf_note("SSD Disk [%s] check failed\n", DEV_NAME);
         return false;
     }
     return true;
@@ -125,20 +139,38 @@ bool _fs_disk_valid(void)
 bool _fs_disk_info(struct statfs *diskInfo)
 {
     
-    if(access(MOUNT_DIR, F_OK)){
+    if(access(DEV_NAME, F_OK)){
         disk_error_num = DISK_CODE_NOT_FOUND;
-        printf_note("Disk node[%s] is not valid\n", MOUNT_DIR);
+        printf_note("SSD Disk [%s] check failed\n", DEV_NAME);
         return false;
     }
 
-	if(statfs(MOUNT_DIR, diskInfo))
-	{
+    if(statfs(MOUNT_DIR, diskInfo) != 0)
+    {
         disk_error_num = DISK_CODE_NOT_FORAMT;
-		printf_note("Disk node[%s] is unknown filesystem\n", MOUNT_DIR);
+    	printf_note("Disk node[%s] is unknown filesystem\n", MOUNT_DIR);
         return false;
-	}
-    
+    }
+
     return true;
+}
+
+uint64_t _fs_get_file_size(char *filename)
+{
+    struct statfs sfs;
+    char cmd[256];
+    
+    if(filename == NULL || strlen(filename) == 0)
+        return 0;
+    
+    snprintf(cmd, sizeof(cmd)-1, "%s/%s", fs_get_root_dir(), filename);
+    printf_note("cmd:%s\n", cmd);
+    if(statfs(cmd, &sfs) != 0){
+        printf_err("file not found: %s\n", cmd);
+        return 0;
+    }
+    printf_note("fs size: %llu\n", sfs.f_bsize * sfs.f_blocks);
+    return (sfs.f_bsize * sfs.f_blocks);
 }
 
 static disk_err_code _fs_get_err_code(void)
@@ -216,7 +248,7 @@ static inline int _fs_find(char *filename,  int (*callback) (char *,void *, void
     struct dirent *dirp;
     struct stat stats;
     char *dirname;
-    
+    uint8_t find = 0;
     if(disk_is_valid == false || disk_is_format == true)
         return -1;
 
@@ -243,10 +275,15 @@ static inline int _fs_find(char *filename,  int (*callback) (char *,void *, void
         if(callback)
             callback(dirp->d_name, &stats, args);
         //printf_note("PATH_MAX:%d, (%s)st_size:%llu, st_blocks:%u, st_mode:%x, st_mtime=0x%x\n", PATH_MAX, dirp->d_name, (off_t)stats.st_size, stats.st_blocks, stats.st_mode, stats.st_mtime);
+        find = 1;
         break;
     }
     closedir(dp);
         
+    if (find)
+        ret = 0;
+    else
+        ret = -1;
     return ret;
 }
 
@@ -283,16 +320,18 @@ static ssize_t _fs_dir(char *dirname, int (*callback) (char *,void *, void *), v
 
 static void _thread_exit_callback(void *arg){  
     struct timeval beginTime, endTime;
-    uint64_t nbyte;
+    uint64_t nbyte, filesize = 0;
     float speed = 0;
     double  diff_time_us = 0;
     float diff_time_s = 0;
-    int fd = -1;
+    int fd = -1, ch;
+    char command[256];
     struct push_arg *pargs;
     pargs = (struct push_arg *)arg;
     memcpy(&beginTime, &pargs->ct, sizeof(struct timeval));
     nbyte = pargs->nbyte;
     fd = pargs->fd;
+    ch = pargs->ch;
     fprintf(stderr, ">>start time %ld.%.9ld., nbyte=%llu, fd=%d\n",beginTime.tv_sec, beginTime.tv_usec, nbyte, fd);
     gettimeofday(&endTime, NULL);
     fprintf(stderr, ">>end time %ld.%.9ld.\n",endTime.tv_sec, endTime.tv_usec);
@@ -303,31 +342,127 @@ static void _thread_exit_callback(void *arg){
      fprintf(stdout,"speed: %.2f MBps, count=%llu\n", speed, pargs->count);
     if(pargs->name && !strcmp(pargs->name, THREAD_FS_BACK_NAME)){
         printf_note("Stop Backtrace, Stop Psd!!!\n");
-        io_stop_backtrace_file(NULL);
+        io_stop_backtrace_file(&ch);
         executor_set_command(EX_ENABLE_CMD, PSD_MODE_DISABLE, 0, NULL);
     }
+#if defined(SUPPORT_WAV)
+    else if(pargs->name && !strcmp(pargs->name, THREAD_FS_SAVE_NAME)) {
+        struct spm_context *ctx = get_spm_ctx();
+        struct spm_run_parm *run_para = ctx->run_args[pargs->ch];
+        uint64_t middle_freq = run_para->m_freq;
+        uint32_t sample_rate = io_get_raw_sample_rate(pargs->ch, middle_freq);
+        wav_write_header(fd, sample_rate, pargs->split_nbyte);
+    }
+#endif
     if(fd > 0)
         close(fd);
+    _fs_notifier_exit(pargs);
+    safe_free(pargs->filename);
     if(arg)
         safe_free(arg);
-
 }  
+
+
+static inline char *_fs_split_file_rename(void *args)
+{
+    
+    #define FILE_NAME_LEN (256)
+    #define _SPLIT_FILE_TAG_STR "_N"
+    struct push_arg *p_args;
+    char *ptr_tag, *filename;
+    char part[8][64];
+    char *path;
+    int num;
+    
+    p_args = (struct push_arg *)args;
+    path = calloc(1, FILE_NAME_LEN);
+    if(path == NULL)
+        goto exit;
+
+    filename = p_args->filename;
+    ptr_tag = strstr(filename, _SPLIT_FILE_TAG_STR);
+    if(ptr_tag == NULL){
+        sscanf(filename, "%[^_]_%[^_]_%[^_]_%[^_]_%[^_]_%[^_]", 
+            part[0],part[1],part[2],part[3],part[4],part[5]);
+        snprintf(path, FILE_NAME_LEN, "%s_%s_%s_%s_%s_TIQ.wav.%d", part[0],part[1],part[2],part[3],part[4], p_args->split_num);
+        printf_debug("filename=%s\n",path);
+        goto exit;
+    }
+    sscanf(filename, "%[^_]_%[^_]_%[^_]_%[^_]_%[^_]_%[^_]_%[^_]", 
+            part[0],part[1],part[2],part[3],part[4],part[5],part[6]);
+    //CH0_D20201218180001034_F70.000M_B80.000M_R409.600M_N0001_TIQ.wav
+    snprintf(path, FILE_NAME_LEN, "%s_%s_%s_%s_%s"_SPLIT_FILE_TAG_STR"%04d_%s", part[0],part[1],part[2],part[3],part[4],p_args->split_num+1, part[6]);
+    printf_debug("filename=%s\n", path);
+    
+exit:
+    safe_free(p_args->filename);
+    return path;
+}
+
+static inline int _fs_split_file(void *args)
+{
+    struct push_arg *p_args;
+
+    p_args = (struct push_arg *)args;
+    if((config_get_split_file_threshold() > 0) && (p_args->split_nbyte >= config_get_split_file_threshold())){
+        int fd = 0;
+        char *ptr = NULL, path[512];
+        int offset = 0;
+        if(p_args->fd > 0) {
+            #if defined(SUPPORT_WAV)
+            struct spm_context *ctx = get_spm_ctx();
+            struct spm_run_parm *run_para = ctx->run_args[p_args->ch];
+            uint64_t middle_freq = run_para->m_freq;
+            uint32_t sample_rate = io_get_raw_sample_rate(p_args->ch, middle_freq);
+            wav_write_header(fd, sample_rate, p_args->split_nbyte);
+            #endif
+            close(p_args->fd);
+        }
+        p_args->split_num++;
+        p_args->split_nbyte = 0;
+        p_args->filename = _fs_split_file_rename(p_args);
+        snprintf(path, sizeof(path), "%s/%s", fs_get_root_dir(), p_args->filename);
+        printf_debug("path:%s\n", path);
+        fd = open(path, O_RDWR | O_CREAT | O_TRUNC | O_DIRECT | O_SYNC, 0666);
+        if (fd < 0) {
+            printf_err("open %s fail\n", path);
+            return -1;
+        }
+        p_args->fd = fd;
+    }
+    return 0;
+}
 static int _fs_start_save_file_thread(void *arg)
 {
     typedef int16_t adc_t;
     adc_t *ptr = NULL;
     ssize_t nread = 0; 
-    int ret;
+    int ret = 0, ch;
     struct push_arg *p_args;
     struct spm_context *_ctx;
     p_args = (struct push_arg *)arg;
     _ctx = get_spm_ctx();
-    nread = _ctx->ops->read_adc_data(&ptr);
+    ch = p_args->ch;
+    nread = _ctx->ops->read_adc_data(ch, &ptr);
+    /* disk is full */
+    if(disk_is_full_alert == true || ret == -1){
+        if(disk_is_full_alert)
+            printf_warn("disk is full, save thread exit\n");
+        if(ret == -1)
+            printf_warn("write file error, save thread exit\n");
+        _ctx->ops->read_adc_over_deal(ch, &nread);
+        io_set_enable_command(ADC_MODE_DISABLE, ch, -1, 0);
+        pthread_exit_by_name(THREAD_FS_SAVE_NAME);
+        return -1;
+    }
     if(nread > 0){
         p_args->nbyte += nread;
         p_args->count ++;
-        ret = _write_disk_run(p_args->fd, nread, ptr);
-        _ctx->ops->read_adc_over_deal(&nread);
+        if((ret = _fs_split_file(p_args)) == 0){
+            ret = _write_disk_run(p_args->fd, nread, ptr);
+            _ctx->ops->read_adc_over_deal(ch, &nread);
+        } 
+        p_args->split_nbyte += nread;
     }else{
         usleep(1000);
         printf("read_adc_data err:%d\n", nread);
@@ -336,7 +471,62 @@ static int _fs_start_save_file_thread(void *arg)
 
 }
 
-static ssize_t _fs_start_save_file(char *filename)
+void _fs_save_file_status_timer_notify(struct uloop_timeout *timeout)
+{
+    double  diff_time_us = 0;
+    struct timeval *beginTime, endTime;
+    struct fs_notify_status *fsns = container_of(timeout, struct fs_notify_status, timeout);
+    struct push_arg *p_args =  fsns->args;
+    
+    fsns->filesize = p_args->nbyte;
+    beginTime = &fsns->start_time;
+    gettimeofday(&endTime, NULL);
+    diff_time_us = difftime_us_val(beginTime, &endTime);
+    fsns->duration_time = diff_time_us/1000000;
+    fsns->filename = p_args->filename;
+    
+    printf_debug("name=%s, size=%u,duration time us=%fus, %us\n",
+        fsns->filename, fsns->filesize,  diff_time_us, fsns->duration_time);
+#if (defined SUPPORT_PROTOCAL_AKT) 
+    akt_send_file_status(fsns, sizeof(struct fs_notify_status));
+#endif
+    uloop_timeout_set(timeout, fsns->timeout_ms); /* 5000 ms */
+}
+
+
+static int _fs_notifier_init(void *args)
+{
+    struct push_arg *p_args = args;
+    static  struct uloop_timeout task1_timeout;
+    static struct fs_notify_status *fs_status;
+    fs_status = calloc(1, sizeof(struct fs_notify_status));
+    
+    printf_note("fs notifier init\n");
+    fs_status->filename = p_args->filename;
+    fs_status->ch = p_args->ch;
+    fs_status->filesize = 0;
+    fs_status->duration_time = 0;
+    fs_status->timeout_ms = config_get_disk_file_notifier_timeout();
+    memcpy(&fs_status->start_time, &p_args->ct, sizeof(struct timeval));
+    fs_status->args = args;
+    p_args->notifier = fs_status;
+    fs_status->timeout.cb = _fs_save_file_status_timer_notify;
+    uloop_timeout_set(&fs_status->timeout, fs_status->timeout_ms);
+    
+}
+
+static int _fs_notifier_exit(void *args)
+{
+    struct push_arg *p_args = args;
+    struct fs_notify_status  *fss = p_args->notifier;
+    if(fss == NULL)
+        return -1;
+    uloop_timeout_cancel(&fss->timeout);
+    safe_free(fss);
+    return 0;
+}
+
+static ssize_t _fs_start_save_file(int ch, char *filename, void *args)
 {
     #define     _START_SAVE     1
     #define     _STOP_SAVE      0
@@ -348,10 +538,9 @@ static ssize_t _fs_start_save_file(char *filename)
     
     if(disk_is_valid == false || disk_is_format == true)
         return -1;
-    if(filename == NULL)
+    if(filename == NULL || ch >= MAX_RADIO_CHANNEL_NUM)
         return -1;
-    
-    io_set_enable_command(ADC_MODE_ENABLE, -1, -1, 0);
+
     snprintf(path, sizeof(path), "%s/%s", fs_get_root_dir(), filename);
     printf("start save file: %s\n", path);
         
@@ -369,12 +558,22 @@ static ssize_t _fs_start_save_file(char *filename)
     memcpy(&p_args->ct, &beginTime, sizeof(struct timeval));
     p_args->nbyte = 0;
     p_args->count = 0;
+    p_args->split_num = 0;
+    p_args->split_nbyte = 0;
     p_args->fd = fd;
-    p_args->name=THREAD_NAME;
-    ret =  pthread_create_detach (NULL, _fs_start_save_file_thread, _thread_exit_callback,  
-                                THREAD_NAME, p_args, p_args);
+    p_args->ch = ch;
+    p_args->name=THREAD_FS_SAVE_NAME;
+    p_args->args = *(uint32_t *)args;
+    p_args->filename = safe_strdup(filename);
+#if defined(SUPPORT_WAV)
+    wav_write_header_before(fd);
+#endif
+    io_set_enable_command(ADC_MODE_ENABLE, ch, -1, 0);
+    ret =  pthread_create_detach (NULL,_fs_notifier_init, _fs_start_save_file_thread, _thread_exit_callback,  
+                                THREAD_FS_SAVE_NAME, p_args, p_args);
     if(ret != 0){
         perror("pthread save file thread!!");
+        safe_free(p_args->filename);
         safe_free(p_args);
         exit(1);
     }
@@ -382,20 +581,21 @@ static ssize_t _fs_start_save_file(char *filename)
     return ret;
 }
 
-static ssize_t _fs_stop_save_file(char *filename)
+static ssize_t _fs_stop_save_file(int ch, char *filename)
 {
-    io_set_enable_command(ADC_MODE_DISABLE, -1, -1, 0);
-    printf("stop save file : %s\n", THREAD_NAME);
-    pthread_cancel_by_name(THREAD_NAME);
+    io_set_enable_command(ADC_MODE_DISABLE, ch, -1, 0);
+    printf("stop save file : %s\n", THREAD_FS_SAVE_NAME);
+    pthread_cancel_by_name(THREAD_FS_SAVE_NAME);
 }
 
 static ssize_t _fs_start_read_raw_file_loop(void *arg)
 {
     ssize_t nread = 0; 
+    int ch;
     struct push_arg *p_args;
     p_args = arg;
-    
-    nread = get_spm_ctx()->ops->back_running_file(STREAM_ADC_WRITE, p_args->fd);
+    ch = p_args->ch;
+    nread = get_spm_ctx()->ops->back_running_file(ch, STREAM_ADC_WRITE, p_args->fd);
     p_args->count ++;
     if(nread > 0){
          p_args->nbyte += nread;
@@ -420,19 +620,18 @@ static void _fs_read_exit_callback(void *arg){
 }
 
 
-static ssize_t _fs_start_read_raw_file(char *filename)
+static ssize_t _fs_start_read_raw_file(int ch, char *filename)
 {
     int ret = -1;
     static int file_fd;
     char path[512];
     uint32_t band;
     uint64_t freq;
-    int ch = 0;
     struct timeval beginTime;
     if(disk_is_valid == false || disk_is_format == true)
         return -1;
 
-    if(filename == NULL)
+    if(filename == NULL || ch >= MAX_RADIO_CHANNEL_NUM)
         return -1;
     snprintf(path, sizeof(path), "%s/%s", fs_get_root_dir(), filename);
     file_fd = open(path, O_RDONLY | O_DIRECT | O_SYNC, 0666);
@@ -441,7 +640,7 @@ static ssize_t _fs_start_read_raw_file(char *filename)
         return -1;
     } 
     printf_note("start read file: %s, file_fd=%d\n", path, file_fd);
-    io_start_backtrace_file(NULL);
+    
     struct push_arg *p_args;
     p_args = safe_malloc(sizeof(struct push_arg));
     gettimeofday(&beginTime, NULL);
@@ -450,25 +649,28 @@ static ssize_t _fs_start_read_raw_file(char *filename)
     memcpy(&p_args->ct, &beginTime, sizeof(struct timeval));
     p_args->nbyte = 0;
     p_args->count = 0;
-    p_args->fd= file_fd;
+    p_args->fd = file_fd;
+    p_args->ch = ch;
     p_args->name=THREAD_FS_BACK_NAME;
-    ret =  pthread_create_detach (NULL, _fs_start_read_raw_file_loop, _thread_exit_callback,  
+    io_start_backtrace_file(&ch);
+    ret =  pthread_create_detach (NULL,NULL, _fs_start_read_raw_file_loop, _thread_exit_callback,  
                                 THREAD_FS_BACK_NAME, p_args, p_args);
     if(ret != 0){
         perror("pthread read file thread!!");
         safe_free(p_args);
-        io_stop_backtrace_file(NULL);
+        io_stop_backtrace_file(&ch);
     }
 
     return 0;
 }
 
-static ssize_t _fs_stop_read_raw_file(char *filename)
+static ssize_t _fs_stop_read_raw_file(int ch, char *filename)
 {
-    if(disk_is_valid == false)
+    if(disk_is_valid == false || ch >= MAX_RADIO_CHANNEL_NUM)
         return -1;
+    
     pthread_cancel_by_name(THREAD_FS_BACK_NAME);
-    io_stop_backtrace_file(NULL);
+    io_stop_backtrace_file(&ch);
     return 0;
 }
 
@@ -528,14 +730,87 @@ struct fs_context * fs_create_context(void)
     return ctx;
 }
 
-void fs_init(void)
+void fs_disk_check_thread(void *args)
 {
-    disk_is_valid = _fs_disk_valid();
-    if(disk_is_valid == false)
+    #define _SLOW_CHECK_TIME_INTERVAL_US  (5000000)
+    #define _FAST_CHECK_TIME_INTERVAL_US  (100000)
+    
+    struct statfs sfs;
+    bool disk_check = false;
+    int check_time = _SLOW_CHECK_TIME_INTERVAL_US;
+    uint64_t threshold_byte = 0, used_byte = 0;
+    pthread_detach(pthread_self());
+    sleep(1);
+    
+    while(1){
+        do{
+            disk_check = _fs_disk_info(&sfs);
+            if(disk_check == false){
+                if(disk_error_num == DISK_CODE_NOT_FOUND){
+                    tcp_send_alert_to_all_client(1);
+                    //send error
+                } else if(disk_error_num == DISK_CODE_NOT_FORAMT){
+                    tcp_send_alert_to_all_client(2);
+                    //send format
+                }
+                usleep(check_time);
+            }
+        }while(disk_check == false);
+            
+        _fs_init_();
+        /* now disk is ok */
+        if((threshold_byte = config_get_disk_alert_threshold()) > 0){
+            used_byte = sfs.f_bsize * (sfs.f_blocks - sfs.f_bfree);
+            if(threshold_byte <= used_byte){
+                printf_note("%llu >= threshold_byte[%llu], send alert to client\n", used_byte, threshold_byte);
+                disk_is_full_alert = true;
+                tcp_send_alert_to_all_client(0);
+            }else {
+                printf_debug("%llu < threshold_byte[%llu], disk not full\n", used_byte, threshold_byte);
+                disk_is_full_alert =  false;
+            }
+        }
+        if(pthread_check_alive_by_name(THREAD_FS_SAVE_NAME) == true){
+            check_time = _FAST_CHECK_TIME_INTERVAL_US;
+        }else{
+            check_time = _SLOW_CHECK_TIME_INTERVAL_US;
+        }
+        usleep(check_time);
+    }
+}
+
+int fs_disk_start_check(void)
+{
+    int ret;
+    pthread_t work_id;
+    ret=pthread_create(&work_id, NULL, fs_disk_check_thread, NULL);
+    if(ret!=0){
+        perror("pthread cread check");
+        return -1;
+    }
+    return 0;
+}
+
+static inline void _fs_init_(void) 
+{
+    static bool fs_has_inited = false;
+    
+    if(fs_has_inited == true)
         return;
     fs_ctx = fs_create_context();
     pthread_bmp_init();
     _fs_mkdir(fs_get_root_dir());
     _fs_dir(fs_get_root_dir(), NULL, NULL);
+    fs_has_inited = true;
+}
+
+
+void fs_init(void)
+{
+    fs_disk_start_check();
+    disk_is_valid = _fs_disk_valid();
+    if(disk_is_valid == false)
+        return;
+    _fs_init_();
 }
 

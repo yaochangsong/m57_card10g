@@ -17,6 +17,8 @@
 
 #include <stdbool.h>
 #include <sys/statfs.h>
+#include "../lib/libubox/uloop.h"
+
 
 typedef enum _disk_err_code {
 
@@ -35,16 +37,42 @@ struct fs_ops {
     int (*fs_delete)(char *);
     int (*fs_find)(char *,int (*callback) (char *,void *, void *), void *);
     ssize_t (*fs_dir)(char *,  int(*callback) (char *, void *, void *), void *);
-    ssize_t (*fs_start_save_file)(char *);
-    ssize_t (*fs_stop_save_file)(char *);
-    ssize_t (*fs_start_read_raw_file)(char *);
-    ssize_t (*fs_stop_read_raw_file)(char *);
+    ssize_t (*fs_start_save_file)(int, char *, void*);
+    ssize_t (*fs_stop_save_file)(int, char *);
+    ssize_t (*fs_start_read_raw_file)(int,char *);
+    ssize_t (*fs_stop_read_raw_file)(int,char *);
     disk_err_code (*fs_get_err_code)(void);
     int (*fs_close)(void);
 };
 
+struct push_arg{
+    struct timeval ct;
+    uint64_t nbyte;
+    uint64_t split_nbyte;
+    uint64_t count;
+    int  fd;
+    int split_num;
+    int ch;
+    char *name;
+    char *filename;
+    void *notifier;
+    uint32_t args;
+};
+
+
 struct fs_context {
     const struct fs_ops *ops;
+};
+
+struct fs_notify_status {
+    int ch;
+    char *filename;
+    size_t filesize;
+    time_t duration_time;
+    time_t timeout_ms;
+    struct timeval start_time;
+    struct uloop_timeout timeout;
+    void *args;
 };
 
 extern void fs_init(void);
@@ -52,5 +80,6 @@ extern char *fs_get_root_dir(void);
 extern struct fs_context *get_fs_ctx(void);
 extern struct fs_context *get_fs_ctx_ex(void);
 extern struct fs_context * fs_create_context(void);
+extern void fs_file_list(char *filename, struct stat *stats, void *arg_array);
 #endif
 

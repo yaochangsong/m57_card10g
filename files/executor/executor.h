@@ -133,6 +133,22 @@ struct sem_st{
     sem_t   kernel_sysn;        /* 频谱分析时，内核处理完数据后，异步消息通知应用层 */
 };
 
+struct spm_iq_parm{
+    uint64_t m_freq_hz;
+    uint32_t bandwidth_hz;
+    uint32_t sample_rate;
+    uint8_t d_method;
+    uint8_t resv1;
+    uint8_t resv2;
+    uint8_t resv3;
+};
+struct spm_dispatcher_iq{
+    uint32_t len[STREAM_IQ_TYPE_MAX];
+    uint32_t offset[STREAM_IQ_TYPE_MAX];
+    iq_t *ptr[STREAM_IQ_TYPE_MAX];
+    char *send_ptr;
+    size_t send_len;
+};
 /* 频谱运行中，可能变化的参数 */
 struct spm_run_parm{
     uint32_t scan_bw;
@@ -141,6 +157,8 @@ struct spm_run_parm{
     uint32_t fft_sn;
     uint32_t total_fft;
     uint32_t fregment_num;
+    uint32_t sample_rate;
+    uint32_t data_len;
     uint64_t s_freq;             /* 开始频率 */
     uint64_t s_freq_offset;      /* 开始频率偏移 */
     uint64_t e_freq;             /* 截止频率 */
@@ -150,13 +168,17 @@ struct spm_run_parm{
     uint8_t ch;
     uint8_t datum_type;          /* 0x00：字符型 0x01：短整型 0x02 浮点型 */
     uint8_t mode;
-    uint32_t data_len;
     uint8_t d_method;           /* 解调类型 */
     uint8_t type;               /* 数据类型： 频谱数据/IQ数据/音频数据 */
     uint8_t ex_type;            /* 扩展帧类型： 频谱帧/解调帧 */
     uint8_t gain_mode;
     int8_t gain_value;
+    int8_t rf_mode;
+    uint32_t sub_ch_index;      /* 子通道索引 */
+    uint32_t audio_points;
+    struct spm_iq_parm sub_ch_para; /* 子通道参数 */
     void *fft_ptr;              /* fft数据缓冲区 */
+    struct spm_dispatcher_iq dis_iq;
 };
 
 
@@ -180,9 +202,11 @@ extern struct sem_st work_sem;
 extern void executor_init(void);
 extern int executor_tcp_disconnect_notify(void *cl);
 //extern int8_t executor_set_command(exec_cmd cmd, uint8_t type, uint8_t ch,  void *data);
-extern int8_t executor_get_command(exec_cmd cmd, uint8_t type, uint8_t ch,  void *data);
+extern int8_t executor_get_command(exec_cmd cmd, uint8_t type, uint8_t ch,  void *data, ...);
 extern int8_t executor_set_enable_command(uint8_t ch);
 extern int8_t executor_set_command(exec_cmd cmd, uint8_t type, uint8_t ch,  void *data, ...);
+extern uint32_t executor_get_audio_point(uint8_t ch);
+extern uint64_t executor_get_mid_freq(uint8_t ch);
 extern void executor_close(void);
 
 #endif

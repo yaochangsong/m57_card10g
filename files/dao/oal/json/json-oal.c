@@ -403,6 +403,20 @@ static int json_write_config_param(cJSON* root, struct poal_config *config)
 }
 
 
+int8_t split_string_2_number(char *str, int32_t *n1, int32_t *n2, char split_c)
+{
+    int rc;
+    if(str == NULL || strlen(str) == 0)
+        return -1;
+    
+    rc = sscanf(str, "%d~%d", n1, n2);
+    if(rc <= 0)
+        return -1;
+    
+    return 0;
+}
+
+
 static int json_parse_config_param(const cJSON* root, struct poal_config *config)
 {
     cJSON *value = NULL;
@@ -608,12 +622,21 @@ static int json_parse_config_param(const cJSON* root, struct poal_config *config
         config->ctrl_para.iq_data_length=value->valueint;
         printf_debug("iq_data_length:%d, \n",config->ctrl_para.iq_data_length);
     }
-    /*
-    value = cJSON_GetObjectItem(control_parm, "agc_ref_val_0dbm");
+    value = cJSON_GetObjectItem(control_parm, "disk_full_alert_threshold_MB");
     if(value!= NULL && cJSON_IsNumber(value)){
-        config->ctrl_para.agc_ref_val_0dbm=value->valueint;
-        printf_debug("agc_ref_val_0dbm:%d, \n",config->ctrl_para.agc_ref_val_0dbm);
-    } */
+        config->status_para.diskInfo.alert.alert_threshold_byte = (uint64_t)value->valueint * 1024 * 1024;
+        printf_note("alert_threshold_byte: %dMbyte, %llu, \n",value->valueint, config->status_para.diskInfo.alert.alert_threshold_byte);
+    }
+    value = cJSON_GetObjectItem(control_parm, "disk_split_file_threshold_MB");
+    if(value!= NULL && cJSON_IsNumber(value)){
+        config->status_para.diskInfo.alert.split_file_threshold_byte = (uint64_t)value->valueint * 1024 * 1024;
+        printf_note("split_file_threshold_mb:%dMbyte, %llu, \n",value->valueint, config->status_para.diskInfo.alert.split_file_threshold_byte);
+    }
+    value = cJSON_GetObjectItem(control_parm, "disk_file_notifier_timeout_ms");
+    if(value!= NULL && cJSON_IsNumber(value)){
+        config->ctrl_para.disk_file_notifier_timeout_ms = value->valueint;
+        printf_note("disk_file_notifier_timeout_ms:%dms, %ums, \n",value->valueint, config->ctrl_para.disk_file_notifier_timeout_ms);
+    }
     
 /* calibration_parm */
     cJSON *calibration = NULL;
@@ -692,134 +715,6 @@ static int json_parse_config_param(const cJSON* root, struct poal_config *config
         }
     
    }
-    /* rf_mode_magification */
-    cJSON *rf_mode_magification = NULL;
-    cJSON *magification;
-    int i;
-    rf_mode_magification = cJSON_GetObjectItem(calibration, "rf_mode_magification");
-    if(rf_mode_magification != NULL){
-        for(i = 0; i < cJSON_GetArraySize(rf_mode_magification); i++){
-            if(i >= ARRAY_SIZE(config->cal_level.rf_mode.mag)){
-                printf_warn("rf_mode_magification json node is too big:%d, %d\n", i, ARRAY_SIZE(config->cal_level.rf_mode.mag));
-                break;
-            }
-            node = cJSON_GetArrayItem(rf_mode_magification, i);
-            value = cJSON_GetObjectItem(node, "rf_mode_code");
-            magification = cJSON_GetObjectItem(node, "magification");
-            if(!cJSON_IsNumber(magification)){
-                continue;
-            }
-            if(value!= NULL && cJSON_IsString(value)){
-                if(!strcmp(value->valuestring, "low_distortion")){
-                    config->cal_level.rf_mode.mag[i].mode = POAL_LOW_DISTORTION;
-                    config->cal_level.rf_mode.mag[i].magification = magification->valueint;
-                }else if(!strcmp(value->valuestring, "normal")){
-                    config->cal_level.rf_mode.mag[i].mode = POAL_NORMAL;
-                    config->cal_level.rf_mode.mag[i].magification = magification->valueint;
-                }else if(!strcmp(value->valuestring, "low_noise")){
-                    config->cal_level.rf_mode.mag[i].mode = POAL_LOW_NOISE;
-                    config->cal_level.rf_mode.mag[i].magification = magification->valueint;
-                }
-                printfd("[%d]rf_mode_magification: rf_mode:[%s]%d, magification=%d\n",i, 
-                    value->valuestring, config->cal_level.rf_mode.mag[i].mode, 
-                    config->cal_level.rf_mode.mag[i].magification);
-            }
-        }
-    }
-
-    /* distortion_range */
-    cJSON *attenuation_range = NULL;
-    cJSON *rf_range, *mgc_range;
-    cJSON *start_range = NULL, *end_range=NULL;
-    attenuation_range = cJSON_GetObjectItem(calibration, "attenuation_range");
-    if(attenuation_range != NULL){
-        rf_range = cJSON_GetObjectItem(attenuation_range, "rf_range");
-        if(rf_range != NULL){
-            for(i = 0; i < cJSON_GetArraySize(rf_range); i++){
-                if(i >= ARRAY_SIZE(config->cal_level.rf_mode.rf_distortion)){
-                    printf_warn("rf_range json node is too big:%d, %d\n", i, ARRAY_SIZE(config->cal_level.rf_mode.rf_distortion));
-                    break;
-                }
-                node = cJSON_GetArrayItem(rf_range, i);
-                value = cJSON_GetObjectItem(node, "rf_mode_code");
-                start_range = cJSON_GetObjectItem(node, "start_range");
-                end_range = cJSON_GetObjectItem(node, "end_range");
-                if(!cJSON_IsNumber(start_range) || !cJSON_IsNumber(end_range)){
-                    continue;
-                }
-                if(value!= NULL && cJSON_IsString(value)){
-                    if(!strcmp(value->valuestring, "low_distortion")){
-                        config->cal_level.rf_mode.rf_distortion[i].mode = POAL_LOW_DISTORTION;
-                        config->cal_level.rf_mode.rf_distortion[i].start_range = start_range->valueint;
-                        config->cal_level.rf_mode.rf_distortion[i].end_range = end_range->valueint;
-                    }else if(!strcmp(value->valuestring, "normal")){
-                        config->cal_level.rf_mode.rf_distortion[i].mode = POAL_NORMAL;
-                        config->cal_level.rf_mode.rf_distortion[i].start_range = start_range->valueint;
-                        config->cal_level.rf_mode.rf_distortion[i].end_range = end_range->valueint;
-                    }else if(!strcmp(value->valuestring, "low_noise")){
-                        config->cal_level.rf_mode.rf_distortion[i].mode = POAL_LOW_NOISE;
-                        config->cal_level.rf_mode.rf_distortion[i].start_range = start_range->valueint;
-                        config->cal_level.rf_mode.rf_distortion[i].end_range = end_range->valueint;
-                    }
-                    printfd("[%d]rf_range: rf_mode:[%s]%d, start_range=%d, end_range=%d\n",i, 
-                            value->valuestring, config->cal_level.rf_mode.rf_distortion[i].mode, 
-                            config->cal_level.rf_mode.rf_distortion[i].start_range ,
-                            config->cal_level.rf_mode.rf_distortion[i].end_range);
-                }
-            }
-        }
-        mgc_range = cJSON_GetObjectItem(attenuation_range, "mgc_range");
-        if(mgc_range != NULL){
-            start_range = cJSON_GetObjectItem(mgc_range, "start_range");
-            end_range = cJSON_GetObjectItem(mgc_range, "end_range");
-            if(cJSON_IsNumber(start_range) && cJSON_IsNumber(end_range)){
-                config->cal_level.rf_mode.mgc_distortion.start_range = start_range->valueint;
-                config->cal_level.rf_mode.mgc_distortion.end_range = end_range->valueint;
-                printfd("mgc_range: start_range=%d, end_range=%d\n", 
-                    config->cal_level.rf_mode.mgc_distortion.start_range,
-                    config->cal_level.rf_mode.mgc_distortion.end_range);
-            }
-        }
-    }
-    /* signal_detection_range */
-    cJSON *signal_detection_range = NULL;
-    cJSON *max, *min;
-    signal_detection_range = cJSON_GetObjectItem(calibration, "signal_detection_range");
-    if(signal_detection_range != NULL){
-        for(i = 0; i < cJSON_GetArraySize(signal_detection_range); i++){
-            if(i >= ARRAY_SIZE(config->cal_level.rf_mode.detection)){
-                printf_warn("detection json node is too big:%d, %d\n", i, ARRAY_SIZE(config->cal_level.rf_mode.detection));
-                break;
-            }
-            node = cJSON_GetArrayItem(signal_detection_range, i);
-            value = cJSON_GetObjectItem(node, "rf_mode_code");
-            max = cJSON_GetObjectItem(node, "max");
-            min = cJSON_GetObjectItem(node, "min");
-            if(!cJSON_IsNumber(max) || !cJSON_IsNumber(min )){
-                    continue;
-            }
-            if(value!= NULL && cJSON_IsString(value)){
-                if(!strcmp(value->valuestring, "low_distortion")){
-                    config->cal_level.rf_mode.detection[i].mode = POAL_LOW_DISTORTION;
-                    config->cal_level.rf_mode.detection[i].max = max->valueint;
-                    config->cal_level.rf_mode.detection[i].min = min->valueint;
-                }else if(!strcmp(value->valuestring, "normal")){
-                    config->cal_level.rf_mode.detection[i].mode = POAL_NORMAL;
-                    config->cal_level.rf_mode.detection[i].max = max->valueint;
-                    config->cal_level.rf_mode.detection[i].min = min->valueint;
-                }else if(!strcmp(value->valuestring, "low_noise")){
-                    config->cal_level.rf_mode.detection[i].mode = POAL_LOW_NOISE;
-                    config->cal_level.rf_mode.detection[i].max = max->valueint;
-                    config->cal_level.rf_mode.detection[i].min = min->valueint;
-                }
-                printfd("[%d]signal_detection_range: rf_mode:[%s]%d, max=%d, min=%d\n",i, 
-                            value->valuestring, config->cal_level.rf_mode.detection[i].mode, 
-                            config->cal_level.rf_mode.detection[i].max,
-                            config->cal_level.rf_mode.detection[i].min);
-            }
-        }
-    }
-    
     /* analysis_power_global */
     value = cJSON_GetObjectItem(calibration, "analysis_power_global");
     if(value!= NULL && cJSON_IsNumber(value)){
@@ -1073,124 +968,136 @@ static int json_parse_config_param(const cJSON* root, struct poal_config *config
             printfd("\n");
         }
     }
-    
-    /* rf_parm */
-    #if 0
     cJSON *rf_parm = NULL;
-    rf_parm = cJSON_GetObjectItemCaseSensitive(spectrum_parm, "rf_parm");
-    printf_debug("rf_parm:\n");
-    cJSON_ArrayForEach(node, rf_parm){
-        value = cJSON_GetObjectItemCaseSensitive(node, "channel");
-        if(cJSON_IsNumber(value)){
-           // printfd(" channel:%d, ", value->valueint);
-            config->rf_para[0].cid=value->valueint;
-            printfd(" channel:%d, ", config->rf_para[0].cid);
-        }
-        value = cJSON_GetObjectItemCaseSensitive(node, "attenuation");
-        if(cJSON_IsNumber(value)){
-           // printfd(" attenuation:%d,", value->valueint);
-            config->rf_para[0].attenuation=value->valueint;
-             printfd(" attenuation:%d,", config->rf_para[0].attenuation);
-        }
-        value = cJSON_GetObjectItemCaseSensitive(node, "mode_code");
-        if(cJSON_IsNumber(value)){
-            //printfd(" mode_code:%d,", value->valueint);
-            config->rf_para[0].rf_mode_code=value->valueint;
-             printfd(" mode_code:%d,", config->rf_para[0].rf_mode_code);
-        }
-        value = cJSON_GetObjectItemCaseSensitive(node, "gain_mode");
-        if(cJSON_IsNumber(value)){
-           // printfd(" gain_mode:%s,", value->valuestring);
-            config->rf_para[0].gain_ctrl_method=value->valueint;
-            printfd(" gain_mode:%d,", config->rf_para[0].gain_ctrl_method);
-        }
-        value = cJSON_GetObjectItemCaseSensitive(node, "agc_ctrl_time");
-        if(cJSON_IsNumber(value)){
-           // printfd(" agc_ctrl_time:%d,", value->valueint);
-            config->rf_para[0].agc_ctrl_time=value->valueint;
-             printfd(" agc_ctrl_time:%d,", config->rf_para[0].agc_ctrl_time);
-        }
-        value = cJSON_GetObjectItemCaseSensitive(node, "agc_output_amp_dbm");
-        if(cJSON_IsNumber(value)){
-          //  printfd(" agc_output_amp_dbm:%d", value->valueint);
-            config->rf_para[0].agc_mid_freq_out_level=value->valueint;
-            printfd(" agc_output_amp_dbm:%d", config->rf_para[0].agc_mid_freq_out_level);
-        }
-        printfd("\n");
-    }
-    #endif
-
-   
-    cJSON *rf_parm = NULL;
+    int ch;
     rf_parm = cJSON_GetObjectItem(spectrum_parm, "rf_parm");
     if(rf_parm != NULL){
         printf_debug("rf_parm:\n");
         for(int i = 0; i < cJSON_GetArraySize(rf_parm); i++){
-            printfd("index:%d ", i);
+            printfd("\n\n  index:%d ", i);
             node = cJSON_GetArrayItem(rf_parm, i);
             value = cJSON_GetObjectItem(node, "channel");
             if(cJSON_IsNumber(value)){
-                // printfd(" channel:%d, ", value->valueint);
-                 config->channel[i].rf_para.cid=value->valueint;
-                 printfd(" channel:%d, ", config->channel[i].rf_para.cid);
+                 ch = value->valueint;
+                 config->channel[ch].rf_para.cid=value->valueint;
+                 printfd("ch:%d ", ch);
+                 printfd(" channel:%d, ", config->channel[ch].rf_para.cid);
             }
             value = cJSON_GetObjectItem(node, "attenuation");
             if(cJSON_IsNumber(value)){
                 // printfd(" attenuation:%d,", value->valueint);
-                 config->channel[i].rf_para.attenuation=value->valueint;
-                 printfd(" attenuation:%d,", config->channel[i].rf_para.attenuation);                   
+                 config->channel[ch].rf_para.attenuation=value->valueint;
+                 printfd(" attenuation:%d,", config->channel[ch].rf_para.attenuation);                   
             }
             value = cJSON_GetObjectItem(node, "mode_code");
             if(cJSON_IsNumber(value)){
                  //printfd(" mode_code:%d,", value->valueint);
-                 config->channel[i].rf_para.rf_mode_code=value->valueint;
-                 printfd(" mode_code:%d,", config->channel[i].rf_para.rf_mode_code);                   
+                 config->channel[ch].rf_para.rf_mode_code=value->valueint;
+                 printfd(" mode_code:%d,", config->channel[ch].rf_para.rf_mode_code);                   
             }
             value = cJSON_GetObjectItem(node, "gain_mode");
             if(cJSON_IsNumber(value)){
                 // printfd(" gain_mode:%s,", value->valuestring);
-                 config->channel[i].rf_para.gain_ctrl_method=value->valueint;
-                 printfd(" gain_mode:%d,", config->channel[i].rf_para.gain_ctrl_method);                   
+                 config->channel[ch].rf_para.gain_ctrl_method=value->valueint;
+                 printfd(" gain_mode:%d,", config->channel[ch].rf_para.gain_ctrl_method);                   
             }
             value = cJSON_GetObjectItem(node, "agc_ctrl_time");
             if(cJSON_IsNumber(value)){
                 // printfd(" agc_ctrl_time:%d,", value->valueint);
-                 config->channel[i].rf_para.agc_ctrl_time=value->valueint;
-                 printfd(" agc_ctrl_time:%d,", config->channel[i].rf_para.agc_ctrl_time);                   
+                 config->channel[ch].rf_para.agc_ctrl_time=value->valueint;
+                 printfd(" agc_ctrl_time:%d,", config->channel[ch].rf_para.agc_ctrl_time);                   
             }
             value = cJSON_GetObjectItem(node, "agc_ref_val_0dbm");
             if(cJSON_IsNumber(value)){
-                config->ctrl_para.agc_ref_val_0dbm=value->valueint;
-                printf_debug("agc_ref_val_0dbm:%d, \n",config->ctrl_para.agc_ref_val_0dbm);
+                config->channel[ch].rf_para.agc_ref_val_0dbm = value->valueint;
+                printf_debug("agc_ref_val_0dbm:%d, \n",config->channel[ch].rf_para.agc_ref_val_0dbm);
             } 
             value = cJSON_GetObjectItem(node, "subch_ref_val_0dbm");
             if(cJSON_IsNumber(value)){
-                config->ctrl_para.subch_ref_val_0dbm=value->valueint;
-                printf_debug("subch_ref_val_0dbm:%d, \n",config->ctrl_para.subch_ref_val_0dbm);
+                config->channel[ch].rf_para.subch_ref_val_0dbm = value->valueint;
+                printf_debug("subch_ref_val_0dbm:%d, \n", config->channel[ch].rf_para.subch_ref_val_0dbm);
             } 
             value = cJSON_GetObjectItem(node, "agc_output_amp_dbm");
             if(cJSON_IsNumber(value)){
-                config->channel[i].rf_para.agc_mid_freq_out_level=value->valueint;
-                printfd(" agc_output_amp_dbm:%d", config->channel[i].rf_para.agc_mid_freq_out_level);
+                config->channel[ch].rf_para.agc_mid_freq_out_level=value->valueint;
+                printfd(" agc_output_amp_dbm:%d", config->channel[ch].rf_para.agc_mid_freq_out_level);
             }
             value = cJSON_GetObjectItem(node, "middle_freq");
             if(cJSON_IsNumber(value)){
-                config->channel[i].rf_para.mid_freq=value->valuedouble;
-                printfd(" middle_freq:%llu", config->channel[i].rf_para.mid_freq);
+                config->channel[ch].rf_para.mid_freq=value->valuedouble;
+                printfd(" middle_freq:%llu", config->channel[ch].rf_para.mid_freq);
             }
             value = cJSON_GetObjectItem(node, "mid_bw");
             if(cJSON_IsNumber(value)){
-                config->channel[i].rf_para.mid_bw=value->valueint;
-                printfd(" mid_bw:%u", config->channel[i].rf_para.mid_bw);
+                config->channel[ch].rf_para.mid_bw=value->valueint;
+                printfd(" mid_bw:%u", config->channel[ch].rf_para.mid_bw);
             }
             value = cJSON_GetObjectItem(node, "mgc_gain");
             if(cJSON_IsNumber(value)){
-                config->channel[i].rf_para.mgc_gain_value=value->valueint;
-                printfd(" mgc_gain:%d", config->channel[i].rf_para.mgc_gain_value);
+                config->channel[ch].rf_para.mgc_gain_value=value->valueint;
+                printfd(" mgc_gain:%d", config->channel[ch].rf_para.mgc_gain_value);
             }
             printfd("\n");
+ 
+            cJSON *rf_mode_parm = NULL;
+            cJSON *mode_node = NULL;
+            cJSON *mode_value = NULL;
+            int32_t start, end;
+            rf_mode_parm = cJSON_GetObjectItem(node, "rf_mode_param");
+            if(rf_mode_parm != NULL){
+                for(int j = 0; j < cJSON_GetArraySize(rf_mode_parm); j++){
+                    if(j >= RF_MODE_NUMBER){
+                        break;
+                    }
+                    mode_node = cJSON_GetArrayItem(rf_mode_parm, j);
+                    mode_value = cJSON_GetObjectItem(mode_node, "mode");
+                    printfd("\n ch = %d, j=%d, mode=%s\n", ch, j, mode_value->valuestring);
+                    if(mode_value!= NULL && cJSON_IsString(mode_value)){
+                         if(!strcmp(mode_value->valuestring, "low_distortion")){
+                            config->channel[ch].rf_para.rf_mode.mode[j] = POAL_LOW_DISTORTION;
+                            printfd("[%d] low_distortion: ", j);
+                         }else if(!strcmp(mode_value->valuestring, "normal")){
+                            config->channel[ch].rf_para.rf_mode.mode[j] = POAL_NORMAL;
+                            printfd("[%d] normal: ", j);
+                         }else if(!strcmp(mode_value->valuestring, "low_noise")){
+                            config->channel[ch].rf_para.rf_mode.mode[j] = POAL_LOW_NOISE;
+                            printfd("[%d] low_noise: ", j);
+                         }
+                    }
+                    
+                    value = cJSON_GetObjectItem(mode_node, "magification");
+                    if(value != NULL &&cJSON_IsNumber(value)){
+                        config->channel[ch].rf_para.rf_mode.mag[j] = value->valueint;
+                        printfd("magification: %d,", config->channel[ch].rf_para.rf_mode.mag[j]);
+                    }
+                    value = cJSON_GetObjectItem(mode_node, "rf_attenuation_range");
+                    if(value != NULL &&cJSON_IsString(value)){
+                        if(split_string_2_number(value->valuestring, &start, &end, '~') == 0){
+                            config->channel[ch].rf_para.rf_mode.rf_attenuation[j].start = start;
+                            config->channel[ch].rf_para.rf_mode.rf_attenuation[j].end = end;
+                            printfd("rf_attenuation_range: %d~%d,", start, end);
+                        }
+                    }
+                    value = cJSON_GetObjectItem(mode_node, "mgc_attenuation_range");
+                    if(value != NULL &&cJSON_IsString(value)){
+                        if(split_string_2_number(value->valuestring, &start, &end, '~') == 0){
+                            config->channel[ch].rf_para.rf_mode.mgc_attenuation[j].start = start;
+                            config->channel[ch].rf_para.rf_mode.mgc_attenuation[j].end = end;
+                            printfd("mgc_attenuation: %d~%d,", start, end);
+                        }
+                    }
+                    value = cJSON_GetObjectItem(mode_node, "detection_range");
+                    if(value != NULL &&cJSON_IsString(value)){
+                        if(split_string_2_number(value->valuestring, &start, &end, '~') == 0){
+                            config->channel[ch].rf_para.rf_mode.detection[j].start = start;
+                            config->channel[ch].rf_para.rf_mode.detection[j].end = end;
+                            printfd("detection: %d~%d,", start, end);
+                        }
+                    }
+                }
+            }
         }
-        
+        printfd("\n");
     }
     return 0;
 }

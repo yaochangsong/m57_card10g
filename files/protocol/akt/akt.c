@@ -83,7 +83,62 @@ uint32_t fftsize_check(uint32_t fft_size)
     return _DEFAULT_FFT_SIZE;
 }
 
+#ifdef SUPPORT_SPECTRUM_SCAN_SEGMENT
+static int scan_segment_param_convert(uint8_t ch)
+{
+    uint8_t finish = 0;
+    uint32_t i = 0, j = 0, k = 0;
+    struct poal_config *poal_config = &(config_get_config()->oal_config);
+    struct multi_freq_fregment_para_st *fregment;
+    struct freq_fregment_para_st  array_fregment[MAX_SIG_CHANNLE];
+    if (poal_config->channel[ch].work_mode != OAL_FAST_SCAN_MODE && poal_config->channel[ch].work_mode != OAL_MULTI_ZONE_SCAN_MODE) {
+        return 0;
+    }
+    int array_len = 0;
+    int64_t *division_point_array =  get_division_point_array(ch, &array_len);
+    if (!division_point_array || array_len == 0) {
+        printf("don't need to divise\n");
+        return 0;
+    }
+    fregment = &poal_config->channel[ch].multi_freq_fregment_para;
+    for (i = 0; i < fregment->freq_segment_cnt; i++) {
+        finish = 0;  //
+        for (k = 0; k < array_len; k++) {
+            if (fregment->fregment[i].end_freq <= division_point_array[k]) {
+                memcpy(&array_fregment[j], &fregment->fregment[i], sizeof(struct freq_fregment_para_st));
+                j++;
+                finish = 1;
+                break;
+            } else if (fregment->fregment[i].start_freq >= division_point_array[k]) {
+                continue;
+            } else { //if(fregment->fregment[i].start_freq < division_point_array[k] && fregment->fregment[i].end_freq > division_point_array[k]) {
+                 memcpy(&array_fregment[j], &fregment->fregment[i], sizeof(struct freq_fregment_para_st));
+                 array_fregment[j].end_freq = division_point_array[k];
+                 j++;
+                 fregment->fregment[i].start_freq = division_point_array[k];  //note
+                 continue;
+            }
+        }
+        if (!finish) {
+            memcpy(&array_fregment[j], &fregment->fregment[i], sizeof(struct freq_fregment_para_st));
+            j++;
+        }
+    }
+    if (j > fregment->freq_segment_cnt) {
+        fregment->freq_segment_cnt = j;
+        if(fregment->freq_segment_cnt > 1) {
+            poal_config->channel[ch].work_mode = OAL_MULTI_ZONE_SCAN_MODE;
+        }
+        memcpy(&fregment->fregment[0], &array_fregment[0], sizeof(struct freq_fregment_para_st)*MAX_SIG_CHANNLE);
+    }
 
+    printf_debug("--------------after division------------------\n");
+    for (i = 0; i < fregment->freq_segment_cnt; i++) {
+        printf_debug("i:%d, start:%llu, end:%llu\n", i, fregment->fregment[i].start_freq, fregment->fregment[i].end_freq);
+    }
+    return 0;
+}
+#endif
 /******************************************************************************
 * FUNCTION:
 *     akt_convert_oal_config
@@ -166,9 +221,9 @@ static int akt_convert_oal_config(uint8_t ch, int8_t subch,uint8_t cmd)
             poal_config->channel[ch].enable.iq_en = convert_enable_mode(pakt_config->enable.output_en, IQ_OUT_MASK);
            // poal_config->channel[ch].enable.bit_en = pakt_config->enable.output_en;
             INTERNEL_ENABLE_BIT_SET(poal_config->channel[ch].enable.bit_en,poal_config->channel[ch].enable);
-            printf_info("bit_en=%x,psd_en=%d, audio_en=%d,iq_en=%d\n", poal_config->channel[ch].enable.bit_en, 
+            printf_note("bit_en=%x,psd_en=%d, audio_en=%d,iq_en=%d\n", poal_config->channel[ch].enable.bit_en, 
                         poal_config->channel[ch].enable.psd_en,poal_config->channel[ch].enable.audio_en,poal_config->channel[ch].enable.iq_en);
-            printf_info("work_mode=%d\n", poal_config->channel[ch].work_mode);
+            printf_note("work_mode=%d\n", poal_config->channel[ch].work_mode);
             break;
         case SUB_SIGNAL_OUTPUT_ENABLE_CMD:
             poal_config->channel[ch].sub_channel_para.sub_ch_enable[subch].cid = pakt_config->sub_channel_enable[subch].cid;
@@ -178,7 +233,7 @@ static int akt_convert_oal_config(uint8_t ch, int8_t subch,uint8_t cmd)
             poal_config->channel[ch].sub_channel_para.sub_ch_enable[subch].iq_en = convert_enable_mode(pakt_config->sub_channel_enable[subch].en, IQ_OUT_MASK);
             INTERNEL_ENABLE_BIT_SET(poal_config->channel[ch].sub_channel_para.sub_ch_enable[subch].bit_en,poal_config->channel[ch].sub_channel_para.sub_ch_enable[subch]);
             printf_debug("pakt_config->sub_channel_enable[%d].en = %x\n",subch, pakt_config->sub_channel_enable[subch].en);
-            printf_note("enable subch=%d, sub_ch bit_en=%x, sub_ch psd_en=%d, sub_ch audio_en=%d,sub_ch iq_en=%d\n", ch, poal_config->channel[ch].sub_channel_para.sub_ch_enable[subch].bit_en, 
+            printf_debug("enable ch=%d,sub_ch=%d bit_en=%x, sub_ch psd_en=%d, sub_ch audio_en=%d,sub_ch iq_en=%d\n", ch, subch,poal_config->channel[ch].sub_channel_para.sub_ch_enable[subch].bit_en, 
             poal_config->channel[ch].sub_channel_para.sub_ch_enable[subch].psd_en,poal_config->channel[ch].sub_channel_para.sub_ch_enable[subch].audio_en,poal_config->channel[ch].sub_channel_para.sub_ch_enable[subch].iq_en);
             break;
         case SAMPLE_CONTROL_FFT_CMD:
@@ -526,6 +581,9 @@ static int akt_execute_set_command(void *cl)
                 err_code = RET_CODE_PARAMTER_NOT_SET;
                 goto set_exit;
             }
+            #ifdef SUPPORT_SPECTRUM_SCAN_SEGMENT
+            scan_segment_param_convert(ch);
+            #endif
             executor_set_enable_command(ch);
             break;
         }
@@ -561,6 +619,7 @@ static int akt_execute_set_command(void *cl)
                 err_code = RET_CODE_PARAMTER_NOT_SET;
                 goto set_exit;
             }
+            
             /*need to enable out, take effect*/
             break;
         }
@@ -659,7 +718,23 @@ static int akt_execute_set_command(void *cl)
             printf_note("[%s]udp client ipstr=%s, port=%d, type=%d\n",ifname, 
                 inet_ntoa(client.sin_addr),  client.sin_port, net_para.type);
             /* UDP链表以大端模式存储客户端地址信息；内部以小端模式处理；注意转换 */
-            udp_add_client_to_list(&client, ch);
+            udp_add_client_to_list(&client, ch, TAG_FFT);
+
+            /*分端口*/
+            if (payload_len == sizeof(SNIFFER_DATA_REPORT_ST) && net_para.iq_port != 0) {
+                client.sin_port = net_para.iq_port;
+            } else {
+                client.sin_port = net_para.port;
+            }
+            udp_add_client_to_list(&client, ch, TAG_IQ);
+
+            if (payload_len == sizeof(SNIFFER_DATA_REPORT_ST) && net_para.audio_port != 0) {
+                client.sin_port = net_para.audio_port;
+            } else {
+                client.sin_port = net_para.port;
+            }
+            udp_add_client_to_list(&client, ch, TAG_AUDIO);
+            
             //akt_add_udp_client(&net_para);
             break;
         }
@@ -786,13 +861,14 @@ static int akt_execute_set_command(void *cl)
             printf_note("ch:%d, sub_ch=%d, au_en:%d,iq_en:%d\n", ch,sub_ch, poal_config->channel[ch].sub_channel_para.sub_ch_enable[sub_ch].audio_en, poal_config->channel[ch].sub_channel_para.sub_ch_enable[sub_ch].iq_en);
             enable = (poal_config->channel[ch].sub_channel_para.sub_ch_enable[sub_ch].iq_en == 0 ? 0 : 1);
             printf_info("ch:%d, sub_ch=%d, au_en:%d,iq_en:%d, enable=%d\n", ch,sub_ch, poal_config->channel[ch].sub_channel_para.sub_ch_enable[sub_ch].audio_en, poal_config->channel[ch].sub_channel_para.sub_ch_enable[sub_ch].iq_en, enable);
+
             /* 通道IQ使能 */
             if(enable){
                 struct net_tcp_client *s_cl;
                 /* NOTE:The parameter must be a MAIN channel, not a subchannel */
-                io_set_enable_command(IQ_MODE_ENABLE, -1, sub_ch, 0);
+                io_set_enable_command(IQ_MODE_ENABLE, ch, sub_ch, 0);
             }else{
-                io_set_enable_command(IQ_MODE_DISABLE, -1,sub_ch, 0);
+                io_set_enable_command(IQ_MODE_DISABLE, ch,sub_ch, 0);
             }
             break;
         }
@@ -887,7 +963,7 @@ static int akt_execute_set_command(void *cl)
             check_valid_channel(payload[0]);
             memcpy(&sis, payload, sizeof(STORAGE_IQ_ST));
             if(sis.cmd == 1){/* start add iq file */
-                printf_note("Start add file:%s, bandwidth=%u\n", sis.filepath, sis.bandwidth);
+                printf_note("ch:%d, Start add file:%s, bandwidth=%u\n", ch, sis.filepath, sis.bandwidth);
                 executor_set_command(EX_MID_FREQ_CMD, EX_BANDWITH, ch, &sis.bandwidth);
 #if defined(SUPPORT_XWFS)
                 ret = xwfs_start_save_file(sis.filepath);
@@ -898,7 +974,7 @@ static int akt_execute_set_command(void *cl)
                     printf_warn("NOT FOUND DISK!!\n");
                     break;
                 }
-                fs_ctx->ops->fs_start_save_file(sis.filepath);
+                fs_ctx->ops->fs_start_save_file(ch, sis.filepath, &sis.bandwidth);
 #endif
             }else if(sis.cmd == 0){/* stop add iq file */
                 printf_note("Stop add file:%s\n", sis.filepath);
@@ -912,7 +988,7 @@ static int akt_execute_set_command(void *cl)
                     printf_warn("NOT FOUND DISK!!\n");
                     break;
                 }
-                fs_ctx->ops->fs_stop_save_file(sis.filepath);
+                fs_ctx->ops->fs_stop_save_file(ch, sis.filepath);
 #endif
             }else{
                 printf_err("error cmd\n");
@@ -943,7 +1019,7 @@ static int akt_execute_set_command(void *cl)
                     printf_warn("NOT FOUND DISK!!\n");
                     break;
                 }
-                fs_ctx->ops->fs_start_read_raw_file(bis.filepath);
+                fs_ctx->ops->fs_start_read_raw_file(ch, bis.filepath);
 #endif
             }else if(bis.cmd == 0){/* stop backtrace iq file */
                 printf_note("Stop backtrace file:%s\n", bis.filepath);
@@ -956,7 +1032,7 @@ static int akt_execute_set_command(void *cl)
                     printf_warn("NOT FOUND DISK!!\n");
                     break;
                 }
-                fs_ctx->ops->fs_stop_read_raw_file(bis.filepath);
+                fs_ctx->ops->fs_stop_read_raw_file(ch, bis.filepath);
 #endif
             }else{
                 printf_err("error cmd\n");
@@ -1013,6 +1089,26 @@ static int akt_execute_set_command(void *cl)
             //if(ret)
             //	printf_err("format failed.\n");
             #endif
+            break;
+        }
+        case DEVICE_REBOOT_CMD:
+        {
+            check_valid_channel(payload[0]);
+            printf_note("remote reboot!\n");
+            safe_system("reboot -f");
+            break;
+        }
+        case FILE_STROE_SIZE_CMD:
+        {
+            struct _file_store{
+                uint8_t ch;
+                uint64_t split_threshold;
+            }__attribute__ ((packed));
+            struct _file_store para;
+            memcpy(&para, payload, sizeof(para));
+            check_valid_channel(para.ch);
+            config_set_split_file_threshold(para.split_threshold);
+            printf_note("set split file threshold:%llu Bytes, %llu MB\n", para.split_threshold, (para.split_threshold / 1024 / 1024));
             break;
         }
         default:
@@ -1080,14 +1176,21 @@ static int akt_execute_get_command(void *cl)
                 strncpy(self_check.system_power_on_time, time_str, sizeof(self_check.system_power_on_time));
             }
             printf_note("power on time:%s\n", self_check.system_power_on_time);
-            self_check.ch_num = MAX_RADIO_CHANNEL_NUM;
-            executor_get_command(EX_RF_FREQ_CMD, EX_RF_STATUS_TEMPERAT, 0,  &self_check.t_s[0].rf_temperature);
-            self_check.t_s[0].ch_status = (self_check.t_s[0].rf_temperature > 200 || 
-                                           self_check.t_s[0].rf_temperature < -100||
-                                           self_check.t_s[0].rf_temperature == 0) ? 1 : 0;  //可以通过判断获取的温度值是否在有效范围内来确定
-            printf_note("ext_clk:%d, ad_status=%d,pfga_temperature=%d,ch_num=%d, rf_temperature=%d, ch_status=%d\n", 
-                self_check.ext_clk, self_check.ad_status, self_check.pfga_temperature, self_check.ch_num,
-                self_check.t_s[0].rf_temperature, self_check.t_s[0].ch_status);
+            self_check.ch_num = MAX_RF_NUM;
+            for(int i = 0; i< MAX_RF_NUM; i++){
+                executor_get_command(EX_RF_FREQ_CMD, EX_RF_STATUS_TEMPERAT, i,  &self_check.t_s[i].rf_temperature);
+                if(self_check.t_s[i].rf_temperature < 0){
+                    /* 通过判断获取的温度值是否在有效范围内来确定 */
+                    self_check.t_s[i].ch_status = 1; //0:正常 1：异常
+                }else{
+                    self_check.t_s[i].ch_status = 0;
+                }
+                printf_note("rf ch:%d, ext_clk:%d, ad_status=%d,pfga_temperature=%d,ch_num=%d, rf_temperature=%d, ch_status=%d\n", i,
+                    self_check.ext_clk, self_check.ad_status, self_check.pfga_temperature, self_check.ch_num,
+                    self_check.t_s[i].rf_temperature, self_check.t_s[i].ch_status);
+            }
+            self_check.irig_b_status = 0;  //0:正常 1：异常
+            self_check.gps_status = (gps_location_is_valid() == true ? 0 : 1);
             client->response.response_length = sizeof(DEVICE_SELF_CHECK_STATUS_RSP_ST);
             client->response.data = calloc(1, client->response.response_length);
             if(client->response.data == NULL){
@@ -1222,7 +1325,8 @@ static int akt_execute_get_command(void *cl)
             SEARCH_FILE_STATUS_RSP_ST fsp;
             char filename[FILE_PATH_MAX_LEN];
             
-            memcpy(filename, header->buf, FILE_PATH_MAX_LEN);
+            memcpy(filename, client->dispatch.body, FILE_PATH_MAX_LEN);
+            filename[sizeof(filename) - 1] = 0;
             memset(&fsp, 0 ,sizeof(SEARCH_FILE_STATUS_RSP_ST));
             strcpy(fsp.filepath, filename);
             #if defined(SUPPORT_XWFS)
@@ -1238,7 +1342,7 @@ static int akt_execute_get_command(void *cl)
             struct fs_context *fs_ctx;
             fs_ctx = get_fs_ctx();
             if(fs_ctx != NULL){
-                fs_ctx->ops->fs_find(filename, _find_file_list, &f_bg_size);
+                ret = fs_ctx->ops->fs_find(filename, _find_file_list, &f_bg_size);
             }
             if(ret != 0){
                 fsp.status = 0;
@@ -1264,8 +1368,10 @@ static int akt_execute_get_command(void *cl)
         case COMPASS_REQ_CMD:
         {
             float angle = -1.0f;
+        #if defined(SUPPORT_RS485)
         #if defined(SUPPORT_RS485_EC)
             elec_compass1_com_get_angle(&angle);
+            #endif
         #endif
             client->response.response_length = sizeof(float);
             client->response.data = calloc(1, client->response.response_length);
@@ -1294,6 +1400,84 @@ static int akt_execute_get_command(void *cl)
                 break;
             }
             memcpy(client->response.data, &model, client->response.response_length);
+            break;
+        }
+
+        case DEVICE_LOCATION_REQ_CMD:
+        {
+            #define UNSUPPORT_GPS_DATA (400000000)
+            struct gps_data {
+                int32_t longitude;
+                int32_t latitude;
+                int32_t altitude;
+            }__attribute__ ((packed));
+            
+            struct gps_data _gps_data;
+            
+            #if defined(SUPPORT_GPS)
+            _gps_data.longitude = gps_get_longitude();
+            _gps_data.latitude  = gps_get_latitude();
+            _gps_data.altitude  = gps_get_altitude();
+            #else
+            _gps_data.longitude = UNSUPPORT_GPS_DATA;
+            _gps_data.latitude  = UNSUPPORT_GPS_DATA;
+            _gps_data.altitude  = 0;
+            #endif
+
+            client->response.response_length = sizeof(_gps_data);
+            client->response.data = calloc(1, client->response.response_length);
+            if(client->response.data == NULL){
+                printf_err("calloc err!");
+                break;
+            }
+            memcpy(client->response.data, &_gps_data, sizeof(_gps_data));
+            break;
+        }
+        
+        case FILE_LIST_CMD:
+        {
+            FILE_LIST_INFO *file_list = NULL;
+            int32_t payload_len = 0;
+        #if defined(SUPPORT_FS)
+            cJSON *value = NULL;
+            cJSON *node = NULL;
+            cJSON *array = cJSON_CreateArray();
+            struct fs_context *fs_ctx;
+            fs_ctx = get_fs_ctx();
+            if(fs_ctx == NULL) {
+                printf_err("get fd ctx failed!");
+                break;
+            }
+            fs_ctx->ops->fs_dir(NULL, fs_file_list, array);
+            payload_len = sizeof(FILE_LIST_INFO) + sizeof(SINGLE_FILE_INFO) * cJSON_GetArraySize(array);
+            file_list = (FILE_LIST_INFO *)safe_malloc(payload_len);
+            file_list->file_num = cJSON_GetArraySize(array);
+            for (int i = 0; i < cJSON_GetArraySize(array); i++) {
+                node = cJSON_GetArrayItem(array, i);            
+                value = cJSON_GetObjectItem(node, "size");
+                if(cJSON_IsNumber(value)){
+                    file_list->files[i].file_size = value->valuedouble;
+                }
+                value = cJSON_GetObjectItem(node, "createTime");
+                if(cJSON_IsNumber(value)){
+                    file_list->files[i].file_mtime = value->valuedouble;
+                }
+                value = cJSON_GetObjectItem(node, "filename");
+                if(cJSON_IsString(value)){
+                    memcpy(file_list->files[i].file_path, value->valuestring, strlen(value->valuestring));
+                }
+            }
+
+            client->response.response_length = payload_len;
+            client->response.data = calloc(1, client->response.response_length);
+            if(client->response.data == NULL){
+                safe_free(file_list);
+                printf_err("calloc err!");
+                break;
+            }
+            memcpy(client->response.data, file_list, client->response.response_length);
+            safe_free(file_list);
+         #endif
             break;
         }
         default:
@@ -1701,11 +1885,92 @@ exit:
     safe_free(rsp_header);
 }
 
-
-void akt_send(void *cl, const void *data, int len)
+int  akt_assamble_send_data(uint8_t *send_buf, uint8_t *payload, uint32_t payload_len, int code)
 {
+    struct response_get_data *response_data;
+    int len = 0;
+    int header_len=0;
+
+    if(send_buf == NULL || payload_len == 0){
+        return -1;
+    }
+    header_len = sizeof(PDU_CFG_RSP_HEADER_ST);
+    printf_info("header_len:%d\n", header_len);
+    response_data = (struct response_get_data *)send_buf;
+    response_data->header.start_flag = AKT_START_FLAG; 
+    response_data->header.receiver_id = 0;
+    if(payload_len > sizeof(response_data->payload_data)){
+        payload_len = sizeof(response_data->payload_data);
+    }
+    if(payload != NULL)
+        memcpy(response_data->payload_data, payload, payload_len);
+    memset(response_data->header.usr_id, 0, sizeof(response_data->header.usr_id));
+    response_data->header.len = payload_len;
+    response_data->header.crc = crc16_caculate((uint8_t *)response_data->payload_data, payload_len);
+    response_data->header.operation = SET_CMD_RSP;
+    response_data->header.code = code;//NOTIFY_SIGNALl_STATUS;
+    response_data->end_flag = AKT_END_FLAG;
+    len = header_len + response_data->header.len;
+    memcpy(send_buf+len, (uint8_t *)&response_data->end_flag, sizeof(response_data->end_flag));
+    len +=  sizeof(response_data->end_flag);
+    return len;
+}
+
+void akt_send(const void *data, int len, int code)
+{
+    char *psend;
+    size_t send_len, offset = 0;
+    send_len = sizeof(struct response_get_data);
+    
+    psend = calloc(1, send_len);
+    if(psend == NULL){
+        printf_err("psend err!\n");
+        return;
+    }
+    if(akt_assamble_send_data(psend, data, len, code) == -1){
+        printf_err("assamble err!\n");
+        goto exit;
+    }
+    tcp_active_send_all_client(psend, send_len);
+
+exit:
+    safe_free(psend);
+}
 
 
+void akt_send_alert(void *client, int code)
+{
+}
+
+void akt_send_file_status(void *data, size_t data_len)
+{
+    struct fs_notify_status *fns = data;
+    struct push_arg *push_args;
+    struct fs_status {
+        uint8_t ch;
+        char path[256];
+        uint64_t filesize;
+        uint64_t duration_time;
+        uint64_t middle_freq;
+        uint64_t bindwidth;
+        uint64_t sample_rate;
+    }__attribute__ ((packed));
+    struct fs_status _fss;
+    if(fns == NULL || fns->filename == NULL)
+        return;
+
+    push_args = fns->args;
+    memset(&_fss, 0, sizeof(_fss));
+    strncpy(_fss.path, fns->filename, sizeof(_fss.path));
+    _fss.ch = fns->ch;
+    _fss.filesize = fns->filesize;
+    _fss.duration_time = fns->duration_time;
+    _fss.middle_freq = executor_get_mid_freq(fns->ch);
+    _fss.bindwidth = push_args->args;
+    _fss.sample_rate = io_get_raw_sample_rate(fns->ch, _fss.middle_freq);
+    printf_note("ch=%d, path=%s, filesize=%llu[0x%x], time=%llu, middle_freq=%llu, bindwidth=%llu, sample_rate=%llu\n", 
+        _fss.ch, _fss.path, _fss.filesize,_fss.filesize,  _fss.duration_time, _fss.middle_freq, _fss.bindwidth, _fss.sample_rate);
+    akt_send(&_fss, sizeof(_fss), FILE_STATUS_NOTIFY);
 }
 
 
@@ -1751,19 +2016,17 @@ uint8_t *akt_assamble_demodulation_header_data(uint32_t *len, void *config)
     ptr = (char *)ext_hdr;
     printf_debug("akt_assamble_data_extend_frame_header_data\n");
     ext_hdr->dev_id = akt_get_device_id();
-    
-    ext_hdr->work_mode =  poal_config->channel[ch].work_mode;
-    ext_hdr->gain_mode = poal_config->channel[ch].rf_para.gain_ctrl_method;
-    ext_hdr->gain = poal_config->channel[ch].rf_para.mgc_gain_value;
-
     ext_hdr->duration = 0;
     struct spm_run_parm *header_param;
     header_param = (struct spm_run_parm *)config;
     ext_hdr->cid = header_param->ch;
-    ext_hdr->center_freq = header_param->m_freq;
-    ext_hdr->bandwidth = header_param->bandwidth;
-    ext_hdr->demodulate_type = header_param->d_method;
-    ext_hdr->sample_rate = 0;
+    ext_hdr->work_mode =  header_param->mode;
+    ext_hdr->gain_mode = header_param->gain_mode;
+    ext_hdr->gain = header_param->gain_value;
+    ext_hdr->center_freq = header_param->sub_ch_para.m_freq_hz;
+    ext_hdr->bandwidth = header_param->sub_ch_para.bandwidth_hz;
+    ext_hdr->demodulate_type = header_param->sub_ch_para.d_method;
+    ext_hdr->sample_rate = header_param->sub_ch_para.sample_rate;
     ext_hdr->frag_total_num = 1;
     ext_hdr->frag_cur_num = 0;
     ext_hdr->frag_data_len = (int16_t)(header_param->data_len);
@@ -1811,22 +2074,23 @@ uint8_t *akt_assamble_data_extend_frame_header_data(uint32_t *len, void *config)
     ptr = (char *)ext_hdr;
     printf_debug("akt_assamble_data_extend_frame_header_data\n");
     ext_hdr->dev_id = akt_get_device_id();
-    ext_hdr->work_mode =  poal_config->channel[ch].work_mode;
-    ext_hdr->gain_mode = poal_config->channel[ch].rf_para.gain_ctrl_method;
-    ext_hdr->gain = poal_config->channel[ch].rf_para.mgc_gain_value;
+
     ext_hdr->duration = 0;
     ext_hdr->datum_type = 1;
 
     struct spm_run_parm *header_param;
     header_param = (struct spm_run_parm *)config;
     ext_hdr->cid = header_param->ch;
+    ext_hdr->work_mode =  header_param->mode;
+    ext_hdr->gain_mode = header_param->gain_mode;
+    ext_hdr->gain = header_param->gain_value;
     ext_hdr->center_freq = header_param->m_freq;
     ext_hdr->sn = header_param->fft_sn;
     ext_hdr->datum_total = header_param->total_fft;
     ext_hdr->bandwidth = header_param->bandwidth;
     ext_hdr->start_freq = header_param->s_freq;
     ext_hdr->cutoff_freq = header_param->e_freq;
-    ext_hdr->sample_rate = 0;
+    ext_hdr->sample_rate = header_param->sample_rate;;
     ext_hdr->fft_len = header_param->fft_size;
     ext_hdr->freq_resolution = header_param->freq_resolution;
     ext_hdr->frag_total_num = 1;

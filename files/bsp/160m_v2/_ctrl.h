@@ -1,5 +1,5 @@
 /******************************************************************************
-*  Copyright 2019, Showay Technology Dev Co.,Ltd.
+*  Copyright 2020, Showay Technology Dev Co.,Ltd.
 *  ---------------------------------------------------------------------------
 *  Statement:
 *  ----------
@@ -9,7 +9,14 @@
 *  permission of Showay Technology Dev Co.,Ltd. (C) 2019
 ******************************************************************************/
 /*****************************************************************************     
-*  Rev 1.0   06 July 2019   yaochangsong
+*  Rev 1.0   8 Dec 2020    yaochangsong
 *  Initial revision.
 ******************************************************************************/
+#ifndef _CTRL_H
+#define _CTRL_H
 
+static inline  void _ctrl_freq(void *args)
+{
+
+}
+#endif

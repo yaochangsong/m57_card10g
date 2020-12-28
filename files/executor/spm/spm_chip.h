@@ -33,6 +33,16 @@
 #define fft_spectrum_get_result       
 #endif
 
+#ifdef  SUPPORT_SPECTRUM_SCAN_SEGMENT
+#ifndef RF_DIVISION_FREQ_HZ
+    #ifdef SUPPORT_PROJECT_SSA_MONITOR
+    #define RF_DIVISION_FREQ_HZ   GHZ(7.5) 
+    #else
+    #define RF_DIVISION_FREQ_HZ   GHZ(0) 
+    #endif  
+#endif  /* RF_DIVISION_FREQ_HZ */
+#endif  /*SUPPORT_SPECTRUM_SCAN_SEGMENT */
+
 extern struct spm_context * spm_create_chip_context(void);
 
 #endif

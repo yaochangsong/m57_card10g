@@ -35,42 +35,43 @@ self_status_cheak()
 	#[ 7: 0] 
 	#[1= adc3 ok 0=error] [1= adc2 ok 0=error] [1= adc1 ok 0=error] [1= adc0 ok 0=error]
 	adc_stat=0
-	adc_ok=0
+	adc_ok="false"
 	inner_clk_stat=0
 	inner_clk=0
 	lock_stat=0
-	lock_ok=0
+	lock_ok="no_locked"
+	external_clk="inner_clock"
 	reg_val=`devmem $ADC_STATE_REG_ADDR 32`
 	let "adc_stat=$reg_val&0xff" 
 	if [ $adc_stat -eq $((0x03)) ]; then
 		log_out "adc status check ok!"
-		adc_ok=1
+		adc_ok="ok"
 	else
 		log_out "adc status check faild!"
-		adc_ok=0
+		adc_ok="false"
 	fi
 	echo -n $adc_ok > $adc_status_file
 	
 	let "inner_clk_stat=$reg_val&0x0200"
 	if [ $inner_clk_stat -eq $((0x0200)) ]; then
-		log_out “external clock”
-		external_clk=1
+		log_out "external clock"
+		external_clk="external_clock"
 	else
-		log_out “internal clock”
-		external_clk=0
+		log_out "internal clock"
+		external_clk="inner_clock"
 	fi
 
 	let "lock_stat=$reg_val&0x0100"
 	if [ $lock_stat -eq $((0x0100)) ]; then
-		log_out “locked”
-		lock_ok=1
+		log_out "locked"
+		lock_ok="locked"
 	else
-		log_out “no locked”
-		lock_ok=0
+		log_out "no locked"
+		lock_ok="no_locked"
 	fi
 	echo -n $external_clk $lock_ok > $clk_status_file
 	
-	if [ $lock_ok -eq 1 ] && [ $adc_ok -eq 1 ]; then
+	if [ "$lock_ok" == "locked" ] && [ "$adc_ok" == "ok" ]; then
 		log_out "ok status..."
 		/etc/led.sh check off
 	else

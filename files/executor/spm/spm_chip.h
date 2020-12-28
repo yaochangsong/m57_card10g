@@ -15,10 +15,8 @@
 #ifndef _SPM_CHIP_H
 
 
-#ifdef SUPPORT_RF_ADRV9009
-#define specturm_rx0_read_data adrv9009_iio_read_rx0_data
-#elif defined (SUPPORT_RF_ADRV9361)
-#define specturm_rx0_read_data adrv9361_iio_read_rx0_data
+#ifdef SUPPORT_RF_ADRV
+#define specturm_rx0_read_data adrv_read_rx_data
 #else
 #define specturm_rx0_read_data
 #endif
@@ -34,6 +32,16 @@
 #define fft_spectrum_fftdata_handle   
 #define fft_spectrum_get_result       
 #endif
+
+#ifdef  SUPPORT_SPECTRUM_SCAN_SEGMENT
+#ifndef RF_DIVISION_FREQ_HZ
+    #ifdef SUPPORT_PROJECT_SSA_MONITOR
+    #define RF_DIVISION_FREQ_HZ   GHZ(7.5) 
+    #else
+    #define RF_DIVISION_FREQ_HZ   GHZ(0) 
+    #endif  
+#endif  /* RF_DIVISION_FREQ_HZ */
+#endif  /*SUPPORT_SPECTRUM_SCAN_SEGMENT */
 
 extern struct spm_context * spm_create_chip_context(void);
 

@@ -1,4 +1,6 @@
 #include "config.h"
+#include "../../bsp/io.h"
+
 
 static SCREEN_BW_PARA_ST bw_data[] = {
     {SCREEN_BW_0, 600},

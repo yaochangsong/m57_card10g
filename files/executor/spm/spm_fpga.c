@@ -27,9 +27,11 @@
 #include "spm.h"
 #include "spm_fpga.h"
 #include "../../protocol/resetful/data_frame.h"
+#include "../../bsp/io.h"
+
 
 extern void *akt_assamble_data_frame_header_data(uint32_t *len, void *config);
-static int spm_stream_stop(enum stream_type type);
+static int spm_stream_stop(int ch, int subch, enum stream_type type);
 static int spm_stream_back_stop(enum stream_type type);
 
 
@@ -45,8 +47,8 @@ uint8_t cur_dbm[MAX_RADIO_CHANNEL_NUM] = {0};
 
 size_t pagesize = 0;
 size_t iq_send_unit_byte = DEFAULT_IQ_SEND_BYTE;    /* IQ发送长度 */
-int32_t agc_ref_val_0dbm = DEFAULT_AGC_REF_VAL;     /* 信号为0DBm时对应的FPGA幅度值 */
-int32_t subch_ref_val_0dbm  = DEFAULT_SUBCH_REF_VAL;
+int32_t agc_ref_val_0dbm[MAX_RF_NUM];     /* 信号为0DBm时对应的FPGA幅度值 */
+int32_t subch_ref_val_0dbm[MAX_RF_NUM];
 
 
 
@@ -157,10 +159,13 @@ static inline const char * get_str_by_code(const char *const *list, int max, int
 
 
 static struct _spm_stream spm_stream[] = {
-        {DMA_IQ_DEV,  -1, NULL, DMA_BUFFER_16M_SIZE, "IQ Stream", DMA_READ},
-        {DMA_FFT_DEV, -1, NULL, DMA_BUFFER_16M_SIZE, "FFT Stream", DMA_READ},
-        {DMA_ADC_TX_DEV, -1, NULL, DMA_BUFFER_128M_SIZE, "ADC Tx Stream", DMA_WRITE},
-        {DMA_ADC_RX_DEV, -1, NULL, DMA_BUFFER_128M_SIZE, "ADC Rx Stream", DMA_READ},
+        {DMA_IQ_DEV,        -1, 0, NULL, DMA_IQ_BUFFER_SIZE,  "IQ Stream",      DMA_READ, STREAM_IQ},
+        {DMA_FFT0_DEV,      -1, 0, NULL, DMA_BUFFER_16M_SIZE, "FFT0 Stream",    DMA_READ, STREAM_FFT},
+        {DMA_FFT1_DEV,      -1, 1, NULL, DMA_BUFFER_16M_SIZE, "FFT1 Stream",    DMA_READ, STREAM_FFT},
+        {DMA_ADC_TX0_DEV,   -1, 0, NULL, DMA_BUFFER_64M_SIZE, "ADC Tx0 Stream", DMA_WRITE, STREAM_ADC_WRITE},
+        {DMA_ADC_TX1_DEV,   -1, 1, NULL, DMA_BUFFER_64M_SIZE, "ADC Tx1 Stream", DMA_WRITE, STREAM_ADC_WRITE},
+        {DMA_ADC_RX0_DEV,   -1, 0, NULL, DMA_BUFFER_64M_SIZE, "ADC Rx0 Stream", DMA_READ, STREAM_ADC_READ},
+        {DMA_ADC_RX1_DEV,   -1, 1, NULL, DMA_BUFFER_64M_SIZE, "ADC Rx1 Stream", DMA_READ, STREAM_ADC_READ},
 };
 
 static const char *const dma_status_array[] = {
@@ -191,7 +196,7 @@ static int spm_create(void)
             continue;
         }
         /* first of all, stop stream */
-        spm_stream_stop(i);
+        spm_stream_stop(-1, -1, i);
         ioctl(pstream[i].id, IOCTL_DMA_INIT_BUFFER, &pstream[i].len);
         pstream[i].ptr = mmap(NULL, pstream[i].len, PROT_READ | PROT_WRITE,MAP_SHARED, pstream[i].id, 0);
         if (pstream[i].ptr == (void*) -1) {
@@ -211,7 +216,7 @@ static int spm_create(void)
     return 0;
 }
 
-static ssize_t spm_stream_read(enum stream_type type, volatile void **data)
+static ssize_t spm_stream_read(int type, volatile void **data)
 {
     struct _spm_stream *pstream;
     ioctl_dma_status status;
@@ -238,7 +243,10 @@ static ssize_t spm_stream_read(enum stream_type type, volatile void **data)
                 return -1;
             }
            // usleep(5);
-            printf_debug("[%s]no data, waitting\n", pstream[type].name);
+            if(pstream[type].type == STREAM_FFT){
+                usleep(5);
+                printf_debug("[%s]no data, waitting\n", pstream[type].name);
+            }
         }else if(info.status == READ_BUFFER_STATUS_OVERRUN){
             printf_warn("[%s]data is overrun\n", pstream[type].name);
         }
@@ -250,31 +258,75 @@ static ssize_t spm_stream_read(enum stream_type type, volatile void **data)
     return readn;
 }
 
+static inline int spm_find_index_by_type(int ch, int subch, enum stream_type type)
+{
+    struct _spm_stream *pstream = spm_stream;
+    int i, find = 0, index = -1;
+
+    subch = subch;
+    for(i = 0; i < ARRAY_SIZE(spm_stream); i++){
+        if(type == pstream[i].type){
+            if((ch != -1 && ch == pstream[i].ch) || ch == -1){
+                index = i;
+                find = 1;
+                break;
+            }
+        }
+    }
+    
+    if(find == 0)
+        return -1;
+    
+    return index;
+}
+
 static ssize_t spm_read_iq_data(void **data)
 {
-    return spm_stream_read(STREAM_IQ, data);
+    int index;
+    index = spm_find_index_by_type(-1, -1, STREAM_IQ);
+    if(index < 0)
+        return -1;
+    
+    return spm_stream_read(index, data);
 }
 
 static ssize_t spm_read_fft_data(void **data, void *args)
 {
-    args = args;
-    return spm_stream_read(STREAM_FFT, data);
+    struct spm_run_parm *run_args = args;
+    
+    int index, ch;
+    ch = run_args->ch;
+    index = spm_find_index_by_type(ch, -1, STREAM_FFT);
+    if(index < 0)
+        return -1;
+
+    return spm_stream_read(index, data);
 }
 
-static ssize_t spm_read_adc_data(void **data)
+static ssize_t spm_read_adc_data(int ch, void **data)
 {
-    return spm_stream_read(STREAM_ADC_READ, data);
+    int index;
+    index = spm_find_index_by_type(ch, -1, STREAM_ADC_READ);
+    if(index < 0)
+        return -1;
+    
+    return spm_stream_read(index, data);
 }
 
 
-static int spm_read_adc_over_deal(void *arg)
+static int spm_read_adc_over_deal(int ch, void *arg)
 {
     unsigned int nwrite_byte;
     nwrite_byte = *(unsigned int *)arg;
-    
     struct _spm_stream *pstream = spm_stream;
+    int index;
+    
+    index = spm_find_index_by_type(ch, -1, STREAM_ADC_READ);
+    if(index < 0)
+        return -1;
+    
     if(pstream){
-        ioctl(pstream[STREAM_ADC_READ].id, IOCTL_DMA_SET_ASYN_READ_INFO, &nwrite_byte);
+        ioctl(pstream[index].id, IOCTL_DMA_SET_ASYN_READ_INFO, &nwrite_byte);
     }
     return 0;
 }
@@ -284,8 +336,14 @@ static int spm_read_iq_over_deal(void *arg)
     unsigned int nwrite_byte;
     nwrite_byte = *(unsigned int *)arg;
     struct _spm_stream *pstream = spm_stream;
+    int index;
+    
+    index = spm_find_index_by_type(-1, -1, STREAM_IQ);
+    if(index < 0)
+        return -1;
+    
     if(pstream){
-        ioctl(pstream[STREAM_IQ].id, IOCTL_DMA_SET_ASYN_READ_INFO, &nwrite_byte);
+        ioctl(pstream[index].id, IOCTL_DMA_SET_ASYN_READ_INFO, &nwrite_byte);
     }
     return 0;
 }
@@ -394,6 +452,7 @@ static int spm_send_fft_data(void *data, size_t fft_len, void *arg)
     struct spm_run_parm *hparam;
     hparam = (struct spm_run_parm *)arg;
     hparam->data_len = data_byte_size; 
+    hparam->sample_rate = get_side_band_rate(hparam->scan_bw)*hparam->scan_bw;
     hparam->type = SPECTRUM_DATUM_FLOAT;
     hparam->ex_type = SPECTRUM_DATUM;
     if((ptr_header = akt_assamble_data_frame_header_data(&header_len, arg)) == NULL){
@@ -415,8 +474,16 @@ static int spm_send_fft_data(void *data, size_t fft_len, void *arg)
     iov[0].iov_len = header_len;
     iov[1].iov_base = data;
     iov[1].iov_len = data_byte_size;
-
-    udp_send_vec_data(iov, 2);
+    
+    if(hparam->ch == 0)
+        __lock_fft_send__();
+    else
+        __lock_fft2_send__();
+    udp_send_vec_data(iov, 2, TAG_FFT);
+    if(hparam->ch == 0)
+        __unlock_fft_send__();
+    else
+        __unlock_fft2_send__();
     safe_free(ptr_header);
     return (header_len + data_byte_size);
 }
@@ -436,18 +503,36 @@ static int spm_send_fft_data(void *data, size_t fft_len, void *arg)
 static void *_assamble_iq_header(size_t subch, size_t *hlen, size_t data_len, void *arg)
 {
     uint8_t *ptr = NULL, *ptr_header = NULL;
-    uint32_t header_len = 0;
-    
+    uint32_t header_len = 0, ch;
+
     if(data_len == 0 || arg == NULL)
         return NULL;
-    
+
 #ifdef SUPPORT_DATA_PROTOCAL_AKT
     struct spm_run_parm *hparam;
+    struct poal_config *poal_config = &(config_get_config()->oal_config);
+    struct sub_channel_freq_para_st *sub_channel_array;
+
     hparam = (struct spm_run_parm *)arg;
     hparam->data_len = data_len;
     hparam->type = BASEBAND_DATUM_IQ;
     hparam->ex_type = DEMODULATE_DATUM;
-    //hparam->sub_ch = subch;
+    ch = hparam->ch;
+    sub_channel_array = &poal_config->channel[ch].sub_channel_para;
+    hparam->sub_ch_para.bandwidth_hz = sub_channel_array->sub_ch[subch].d_bandwith;
+    hparam->sub_ch_para.m_freq_hz = sub_channel_array->sub_ch[subch].center_freq;
+    hparam->sub_ch_para.d_method = sub_channel_array->sub_ch[subch].raw_d_method;
+    hparam->sub_ch_para.sample_rate = io_get_narrowband_iq_factor(hparam->bandwidth) * hparam->sub_ch_para.bandwidth_hz; 
+    
+    printf_debug("ch=%d, subch = %d, factor:%f,m_freq_hz=%llu, bandwidth:%uhz, sample_rate=%u, d_method=%d\n", 
+        ch,
+        subch,
+        io_get_narrowband_iq_factor(hparam->bandwidth), 
+        hparam->sub_ch_para.m_freq_hz,
+        hparam->sub_ch_para.bandwidth_hz, 
+        hparam->sub_ch_para.sample_rate,  
+        hparam->sub_ch_para.d_method );
+    
     if((ptr_header = akt_assamble_data_frame_header_data(&header_len, arg))== NULL){
         return NULL;
     }
@@ -469,6 +554,58 @@ static void *_assamble_iq_header(size_t subch, size_t *hlen, size_t data_len, vo
 
 }
 
+static void *_assamble_audio_header(size_t subch, size_t *hlen, size_t data_len, void *arg)
+{
+    uint8_t *ptr = NULL, *ptr_header = NULL;
+    uint32_t header_len = 0;
+    struct spm_run_parm *hparam;
+    uint32_t i, ch;
+    uint64_t d_m_freq_hz;
+    uint32_t d_method;
+    struct poal_config *poal_config = &(config_get_config()->oal_config);
+    hparam = (struct spm_run_parm *)arg;
+    struct multi_freq_point_para_st  *points = &poal_config->channel[hparam->ch].multi_freq_point_param;
+    
+    if(data_len == 0 || arg == NULL)
+        return NULL;
+
+    ch = hparam->ch;
+    i = executor_get_audio_point(ch);
+    hparam->sub_ch_para.bandwidth_hz = points->points[i].d_bandwith;
+    hparam->sub_ch_para.m_freq_hz =  points->points[i].center_freq;
+    hparam->sub_ch_para.d_method = points->points[i].raw_d_method;
+    hparam->sub_ch_para.sample_rate = 32000;    /* audio 32Khz */
+
+    printf_debug("ch=%d, subch = %d, i=%d,m_freq_hz=%llu, bandwidth:%uhz, sample_rate=%u, d_method=%d\n", 
+        ch,
+        subch, i,
+        hparam->sub_ch_para.m_freq_hz,
+        hparam->sub_ch_para.bandwidth_hz, 
+        hparam->sub_ch_para.sample_rate,  
+        hparam->sub_ch_para.d_method );
+
+#ifdef SUPPORT_DATA_PROTOCAL_AKT
+    hparam->data_len = data_len;
+    hparam->type = DIGITAL_AUTDIO;
+    hparam->ex_type = DEMODULATE_DATUM;
+    if((ptr_header = akt_assamble_data_frame_header_data(&header_len, arg))== NULL){
+        return NULL;
+    }
+    
+#elif defined(SUPPORT_DATA_PROTOCAL_XW)
+    hparam->data_len = data_len; 
+    hparam->type = DEFH_DTYPE_AUDIO;
+    hparam->ex_type = DFH_EX_TYPE_DEMO;
+   // hparam->sub_ch = subch;
+    ptr_header = xw_assamble_frame_data(&header_len, arg);
+    if(ptr_header == NULL)
+        return NULL;
+#endif
+    *hlen = header_len;
+
+    return ptr_header;
+
+}
 static int spm_send_iq_data(void *data, size_t len, void *arg)
 {
     uint32_t header_len = 0;
@@ -494,60 +631,156 @@ static int spm_send_iq_data(void *data, size_t len, void *arg)
     index = len / _send_byte;
     sbyte = index * _send_byte;
     pdata = (uint8_t *)data;
+    __lock_iq_send__();
     for(i = 0; i<index; i++){
         iov[1].iov_base = pdata;
         iov[1].iov_len = _send_byte;
-        udp_send_vec_data(iov, 2);
+        udp_send_vec_data(iov, 2, TAG_IQ);
         pdata += _send_byte;
     }
+    __unlock_iq_send__();
     
-    ioctl(pstream[STREAM_IQ].id, IOCTL_DMA_SET_ASYN_READ_INFO, &sbyte);
+    spm_read_iq_over_deal(&sbyte);
+    //ioctl(pstream[STREAM_IQ].id, IOCTL_DMA_SET_ASYN_READ_INFO, &sbyte);
     safe_free(hptr);
     
     return (header_len + len);
 }
 
-
-static int spm_send_cmd(void *cmd, void *data, size_t data_len)
+static void spm_send_dispatcher_iq(enum stream_iq_type type, iq_t *data, size_t len, void *arg)
 {
-#ifdef SUPPORT_PROTOCAL_AKT
-   // poal_send_active_to_all_client((uint8_t *)data, data_len);
-#endif
-}
+    
+    uint32_t header_len = 0, subch = 0;
+    struct _spm_stream *pstream = spm_stream;
+    size_t _send_byte = (iq_send_unit_byte > 0 ? iq_send_unit_byte : DEFAULT_IQ_SEND_BYTE);
+    uint8_t *hptr = NULL;
+    struct spm_run_parm *hparam;
+    hparam = (struct spm_run_parm *)arg;
 
-static int spm_convet_iq_to_fft(void *iq, void *fft, size_t fft_len)
-{
-    if(iq == NULL || fft == NULL || fft_len == 0)
+    if(data == NULL || len == 0 || arg == NULL)
         return -1;
-    //fft_spectrum_iq_to_fft_handle((short *)iq, fft_len, fft_len*2, (float *)fft);
-    return 0;
+
+    if(len < _send_byte)
+        return -1;
+
+    if(type == STREAM_IQ_TYPE_AUDIO){
+        if((hptr = _assamble_audio_header(CONFIG_AUDIO_CHANNEL, &header_len, _send_byte, arg)) == NULL){
+            printf_err("assamble head error\n");
+            return -1;
+        }
+    } else if(type == STREAM_IQ_TYPE_RAW){
+        if((hptr = _assamble_iq_header(hparam->sub_ch_index, &header_len, _send_byte, arg)) == NULL){
+            printf_err("assamble head error\n");
+            return -1;
+        }
+
+    } else{
+        printf_err("unknow type: %d\n", type);
+        return -1;
+    }
+    
+    int i, index,sbyte;
+    uint8_t *pdata;
+    struct iovec iov[2];
+    iov[0].iov_base = hptr;
+    iov[0].iov_len = header_len;
+    index = len / _send_byte;
+    sbyte = index * _send_byte;
+    pdata = (uint8_t *)data;
+    __lock_iq_send__();
+	if(type == STREAM_IQ_TYPE_AUDIO){
+		for(i = 0; i<index; i++){
+	        iov[1].iov_base = pdata;
+	        iov[1].iov_len = _send_byte;
+	        udp_send_vec_data(iov, 2, TAG_AUDIO);
+	        pdata += _send_byte;
+	    }
+	} else if(type == STREAM_IQ_TYPE_RAW){
+		for(i = 0; i<index; i++){
+	        iov[1].iov_base = pdata;
+	        iov[1].iov_len = _send_byte;
+	        udp_send_vec_data(iov, 2, TAG_IQ);
+	        pdata += _send_byte;
+	    }
+	}
+    __unlock_iq_send__();
+
+    safe_free(hptr);
+    if(hparam->dis_iq.offset[type] >= (sbyte/sizeof(iq_t))){
+        hparam->dis_iq.offset[type] = hparam->dis_iq.offset[type] - (sbyte/sizeof(iq_t));
+    }
+    else{
+        printf_err("iq offset err %u < %d\n", hparam->dis_iq.offset[type], sbyte/sizeof(iq_t));
+        hparam->dis_iq.offset[type] = 0;
+    }
+    
+    printf_debug("%s, offset = %u, send=%u, len=%u\n", 
+            type == STREAM_IQ_TYPE_AUDIO ? "audio" : "iq" , hparam->dis_iq.offset[type], sbyte, len);
+
+    return sbyte;
 }
 
-static int spm_save_data(void *data, size_t len)
-{
-    return 0;
-}
 
-static int spm_backtrace_data(void *data, size_t len)
+/* 将窄带iq不同类型进行分发 */
+static int spm_iq_dispatcher(iq_t *ptr_iq, size_t len, void *arg)
 {
-    return 0;
-}
+#define IQ_DATA_PACKAGE_BYTE 512
+#define IQ_DATA_TYPE_PACKAGE_NUM 262144
+#define AUDIO_CHANNEL CONFIG_AUDIO_CHANNEL
 
-static int spm_set_psd_analysis_enable(bool enable)
-{
-    return 0;
-}
+    #define IQ_HEADER_1 0x55aa
+    #define IQ_HEADER_2 0xe700
+    
+    size_t offset = 0, i, index = 0;
+    int subch, type;
+    iq_t *ptr_offset = ptr_iq, *type_offset[STREAM_IQ_TYPE_MAX], *iq_raw_offset;
+    struct spm_run_parm *hparam;
+    hparam = (struct spm_run_parm *)arg;
 
-#include <math.h>
-
-static int spm_get_psd_analysis_result(void *data, size_t len)
-{
-    return 0;
+    offset = IQ_DATA_PACKAGE_BYTE/sizeof(iq_t);
+    
+    for(i = 0; i< STREAM_IQ_TYPE_MAX; i++){
+        type_offset[i] = hparam->dis_iq.ptr[i] + hparam->dis_iq.offset[i];
+        hparam->dis_iq.len[i] = 0;
+    }
+    
+    for(i = 0, index = 0; i< len; i += IQ_DATA_PACKAGE_BYTE, index++){
+        if(((*ptr_offset & 0x0ff00) == IQ_HEADER_2) && (*(ptr_offset+1) == IQ_HEADER_1)){
+            subch = *ptr_offset & 0x00ff;
+            if(AUDIO_CHANNEL == subch){
+                type = STREAM_IQ_TYPE_AUDIO;
+            }else {
+                type = STREAM_IQ_TYPE_RAW;
+                hparam->sub_ch_index = subch;
+            }
+            memcpy(type_offset[type], ptr_offset, IQ_DATA_PACKAGE_BYTE);
+            type_offset[type] += offset;
+            hparam->dis_iq.len[type] += IQ_DATA_PACKAGE_BYTE;
+            if(hparam->dis_iq.len[type] >= DMA_IQ_TYPE_BUFFER_SIZE) {
+                printf_warn("type: %s, is overrun len[%u], %u\n",
+                    type == STREAM_IQ_TYPE_AUDIO ? "audio" : "iq" , hparam->dis_iq.len[type], DMA_IQ_TYPE_BUFFER_SIZE);
+                hparam->dis_iq.len[type] = DMA_IQ_TYPE_BUFFER_SIZE;
+                break;
+            }
+        }
+        ptr_offset += offset;
+    }
+   
+    for(i = 0; i< STREAM_IQ_TYPE_MAX; i++){
+        if(hparam->dis_iq.len[i] > 0){
+            hparam->dis_iq.offset[i] +=  hparam->dis_iq.len[i]/sizeof(iq_t);
+            if(hparam->dis_iq.offset[i] > DMA_IQ_TYPE_BUFFER_SIZE/sizeof(iq_t)){
+                hparam->dis_iq.offset[i] = DMA_IQ_TYPE_BUFFER_SIZE/sizeof(iq_t);
+                printf_warn("offset type: %s, is overrun[%u]\n",
+                    i == STREAM_IQ_TYPE_AUDIO ? "audio" : "iq" , hparam->dis_iq.offset[i]);
+            }
+        }
+    }
 }
 
 static int spm_scan(uint64_t *s_freq_offset, uint64_t *e_freq, uint32_t *scan_bw, uint32_t *bw, uint64_t *m_freq)
 {
-    #define MAX_SCAN_FREQ_HZ (6000000000)
+   // #define MAX_SCAN_FREQ_HZ (6000000000)
     uint64_t _m_freq;
     uint64_t _s_freq, _e_freq;
     uint32_t _scan_bw, _bw;
@@ -604,9 +837,9 @@ static inline int _get_range_max(int ch, uint8_t rf_mode, int dst_val, int *max_
     int mode = 0, i, mag_val = 0, dec_val = 0, found = 0, rang_max = 0;
     mode = rf_mode;
     /* 获取射频模式增益最大值 */
-    for(i = 0; i< ARRAY_SIZE(ctx->pdata->cal_level.rf_mode.mag); i++){
-        if(ctx->pdata->cal_level.rf_mode.mag[i].mode == mode){
-            mag_val = ctx->pdata->cal_level.rf_mode.mag[i].magification;
+    for(i = 0; i< ARRAY_SIZE(ctx->pdata->channel[ch].rf_para.rf_mode.mag); i++){
+        if(ctx->pdata->channel[ch].rf_para.rf_mode.mode[i] == mode){
+            mag_val = ctx->pdata->channel[ch].rf_para.rf_mode.mag[i];
             found = 1;
             break;
         }
@@ -620,9 +853,9 @@ static inline int _get_range_max(int ch, uint8_t rf_mode, int dst_val, int *max_
 
     /* 获取模式信号检测最大值 */
     found = 0;
-    for(i = 0; i< ARRAY_SIZE(ctx->pdata->cal_level.rf_mode.detection); i++){
-        if(ctx->pdata->cal_level.rf_mode.detection[i].mode == mode){
-            dec_val = ctx->pdata->cal_level.rf_mode.detection[i].max;
+    for(i = 0; i< ARRAY_SIZE(ctx->pdata->channel[ch].rf_para.rf_mode.detection); i++){
+        if(ctx->pdata->channel[ch].rf_para.rf_mode.mode[i] == mode){
+            dec_val = ctx->pdata->channel[ch].rf_para.rf_mode.detection[i].start;
             found = 1;
             break;
         }
@@ -646,9 +879,9 @@ static inline int _get_range_min(int ch, uint8_t rf_mode, int dst_val, int *min_
     int max_attenuation_value = 0, rang_min = 0;
     mode = rf_mode;
     /* 获取射频模式增益最大值 */
-    for(i = 0; i< ARRAY_SIZE(ctx->pdata->cal_level.rf_mode.mag); i++){
-        if(ctx->pdata->cal_level.rf_mode.mag[i].mode == mode){
-            mag_val = ctx->pdata->cal_level.rf_mode.mag[i].magification;
+    for(i = 0; i< ARRAY_SIZE(ctx->pdata->channel[ch].rf_para.rf_mode.mag); i++){
+        if(ctx->pdata->channel[ch].rf_para.rf_mode.mode[i] == mode){
+            mag_val = ctx->pdata->channel[ch].rf_para.rf_mode.mag[i];
             found = 1;
             break;
         }
@@ -660,14 +893,15 @@ static inline int _get_range_min(int ch, uint8_t rf_mode, int dst_val, int *min_
 
     /* 获取最大衰减 */
     found = 0;
-    for(i = 0; i< ARRAY_SIZE(ctx->pdata->cal_level.rf_mode.rf_distortion); i++){
-        if(ctx->pdata->cal_level.rf_mode.rf_distortion[i].mode == mode){
-            max_attenuation_value = ctx->pdata->cal_level.rf_mode.rf_distortion[i].end_range;
+    for(i = 0; i< ARRAY_SIZE(ctx->pdata->channel[ch].rf_para.rf_mode.rf_attenuation); i++){
+        if(ctx->pdata->channel[ch].rf_para.rf_mode.mode[i] == mode){
+            max_attenuation_value = ctx->pdata->channel[ch].rf_para.rf_mode.rf_attenuation[i].end;
             found = 1;
             break;
         }
     }
-    max_attenuation_value += ctx->pdata->cal_level.rf_mode.mgc_distortion.end_range;
+    //max_attenuation_value += ctx->pdata->cal_level.rf_mode.mgc_distortion.end_range;
+    max_attenuation_value += ctx->pdata->channel[ch].rf_para.rf_mode.mgc_attenuation[i].end;
     
     /* 获取衰减最小值后信号值 */
     rang_min = mag_val -max_attenuation_value + dst_val;
@@ -677,9 +911,10 @@ static inline int _get_range_min(int ch, uint8_t rf_mode, int dst_val, int *min_
 
     /* 获取检测范围最小值 */
     found = 0;
-    for(i = 0; i< ARRAY_SIZE(ctx->pdata->cal_level.rf_mode.detection); i++){
-        if(ctx->pdata->cal_level.rf_mode.detection[i].mode == mode){
-            dec_val = ctx->pdata->cal_level.rf_mode.detection[i].min;
+    for(i = 0; i< ARRAY_SIZE(ctx->pdata->channel[ch].rf_para.rf_mode.detection); i++){
+        //if(ctx->pdata->cal_level.rf_mode.detection[i].mode == mode){
+        if(ctx->pdata->channel[ch].rf_para.rf_mode.mode[i] == mode){
+            dec_val = ctx->pdata->channel[ch].rf_para.rf_mode.detection[i].end;
             found = 1;
             break;
         }
@@ -700,14 +935,19 @@ static inline int _set_half_attenuation_value(int ch, struct spm_context *ctx)
     int8_t  rf_attenuation = 0, mgc_attenuation = 0;
     uint8_t rf_mode = ctx->pdata->channel[ch].rf_para.rf_mode_code; /* 射频模式 */
     int i, half_attenuation_value = 0, found = 0;
-    for(i = 0; i< ARRAY_SIZE(ctx->pdata->cal_level.rf_mode.rf_distortion); i++){
-        if(ctx->pdata->cal_level.rf_mode.rf_distortion[i].mode == rf_mode){
-            rf_attenuation = ctx->pdata->cal_level.rf_mode.rf_distortion[i].end_range;
+    for(i = 0; i< ARRAY_SIZE(ctx->pdata->channel[ch].rf_para.rf_mode.rf_attenuation); i++){
+        if(ctx->pdata->channel[ch].rf_para.rf_mode.mode[i] == rf_mode){
+            //rf_attenuation = ctx->pdata->cal_level.rf_mode.rf_distortion[i].end_range;
+            rf_attenuation = ctx->pdata->channel[ch].rf_para.rf_mode.rf_attenuation[i].end;
+            mgc_attenuation= ctx->pdata->channel[ch].rf_para.rf_mode.mgc_attenuation[i].end;
             found = 1;
             break;
         }
     }
-    mgc_attenuation= ctx->pdata->cal_level.rf_mode.mgc_distortion.end_range;
+    //mgc_attenuation= ctx->pdata->cal_level.rf_mode.mgc_distortion.end_range;
+    if(found == 0)
+        return -1;
+    
     half_attenuation_value = (rf_attenuation + mgc_attenuation)/2;
     if(half_attenuation_value > rf_attenuation){
         mgc_attenuation = half_attenuation_value - rf_attenuation; 
@@ -730,9 +970,10 @@ static inline int _get_max_rf_attenuation_value(int ch, struct spm_context *ctx)
     uint8_t rf_mode_code = ctx->pdata->channel[ch].rf_para.rf_mode_code;
     int max_attenuation_value = 0;
     int i, found = 0;
-    for(i = 0; i< ARRAY_SIZE(ctx->pdata->cal_level.rf_mode.rf_distortion); i++){
-        if(ctx->pdata->cal_level.rf_mode.rf_distortion[i].mode == rf_mode_code){
-            max_attenuation_value = ctx->pdata->cal_level.rf_mode.rf_distortion[i].end_range;
+    for(i = 0; i< ARRAY_SIZE(ctx->pdata->channel[ch].rf_para.rf_mode.rf_attenuation); i++){
+        if(ctx->pdata->channel[ch].rf_para.rf_mode.mode[i] == rf_mode_code){
+            //max_attenuation_value = ctx->pdata->cal_level.rf_mode.rf_distortion[i].end_range;
+            max_attenuation_value = ctx->pdata->channel[ch].rf_para.rf_mode.rf_attenuation[i].end;
             found = 1;
             break;
         }
@@ -748,9 +989,9 @@ static inline int  _get_min_rf_attenuation_value(int ch, struct spm_context *ctx
     uint8_t rf_mode_code = ctx->pdata->channel[ch].rf_para.rf_mode_code;
     int min_attenuation_value = 0;
     int i, found = 0;
-    for(i = 0; i< ARRAY_SIZE(ctx->pdata->cal_level.rf_mode.rf_distortion); i++){
-        if(ctx->pdata->cal_level.rf_mode.rf_distortion[i].mode == rf_mode_code){
-            min_attenuation_value = ctx->pdata->cal_level.rf_mode.rf_distortion[i].start_range;
+    for(i = 0; i< ARRAY_SIZE(ctx->pdata->channel[ch].rf_para.rf_mode.rf_attenuation); i++){
+        if(ctx->pdata->channel[ch].rf_para.rf_mode.mode[i] == rf_mode_code){
+            min_attenuation_value = ctx->pdata->channel[ch].rf_para.rf_mode.rf_attenuation[i].start;
             found = 1;
             break;
         }
@@ -765,22 +1006,37 @@ static inline int  _get_min_rf_attenuation_value(int ch, struct spm_context *ctx
 static inline int   _get_min_mgc_attenuation_value(int ch, struct spm_context *ctx)
 {
     uint8_t rf_mode_code = ctx->pdata->channel[ch].rf_para.rf_mode_code;
-    uint8_t min_attenuation_value = 0;
+    int min_attenuation_value = 0;
     int i, found = 0;
-    min_attenuation_value = ctx->pdata->cal_level.rf_mode.mgc_distortion.start_range;
-    printf_debug("min_attenuation_value: %d\n", min_attenuation_value);
+    for(i = 0; i< ARRAY_SIZE(ctx->pdata->channel[ch].rf_para.rf_mode.mgc_attenuation); i++){
+        if(ctx->pdata->channel[ch].rf_para.rf_mode.mode[i] == rf_mode_code){
+            min_attenuation_value = ctx->pdata->channel[ch].rf_para.rf_mode.mgc_attenuation[i].start;
+            found = 1;
+            break;
+        }
+    }
+    if(found == 0)
+        printf_err("not find min mgc attenuation value\n");
+    printf_debug("mgc min_attenuation_value: %d\n", min_attenuation_value);
     return min_attenuation_value;
-
 }
 
 
 static inline int _get_max_mgc_attenuation_value(int ch, struct spm_context *ctx)
 {
     uint8_t rf_mode_code = ctx->pdata->channel[ch].rf_para.rf_mode_code;
-    uint8_t max_attenuation_value = 0;
+    int max_attenuation_value = 0;
     int i, found = 0;
-    max_attenuation_value = ctx->pdata->cal_level.rf_mode.mgc_distortion.end_range;
-    printf_debug("max_attenuation_value: %d\n", max_attenuation_value);
+    for(i = 0; i< ARRAY_SIZE(ctx->pdata->channel[ch].rf_para.rf_mode.mgc_attenuation); i++){
+        if(ctx->pdata->channel[ch].rf_para.rf_mode.mode[i] == rf_mode_code){
+            max_attenuation_value = ctx->pdata->channel[ch].rf_para.rf_mode.mgc_attenuation[i].end;
+            found = 1;
+            break;
+        }
+    }
+    if(found == 0)
+        printf_err("not find max mgc attenuation value\n");
+    printf_debug("mgc max_attenuation_value: %d\n", max_attenuation_value);
     return max_attenuation_value;
 }
 
@@ -831,14 +1087,15 @@ static inline _spm_read_signal_value(int ch)
     }
     
     /* 信号强度转换为db值 */
-    agc_dbm_val = (int32_t)(20 * log10((double)agc_reg_val / ((double)agc_ref_val_0dbm)));
+    agc_dbm_val = (int32_t)(20 * log10((double)agc_reg_val / ((double)agc_ref_val_0dbm[ch])));
     printf_debug("agc_reg_val=0x%x[%d], agc_dbm_val=%d\n", agc_reg_val, agc_reg_val, agc_dbm_val);
     return agc_dbm_val;
 }
 
+
 static int spm_agc_ctrl_v3(int ch, struct spm_context *ctx)
 {
-    #define AGC_CTRL_PRECISION      0       /* 控制精度+-2dbm */
+    #define AGC_CTRL_PRECISION      1       /* 控制精度+-2dbm */
     uint8_t gain_ctrl_method = ctx->pdata->channel[ch].rf_para.gain_ctrl_method; /* 自动增益or手动增益 */
     uint16_t agc_ctrl_time= ctx->pdata->channel[ch].rf_para.agc_ctrl_time;       /* 自动增益步进控制时间 */
     int8_t agc_ctrl_dbm = ctx->pdata->channel[ch].rf_para.agc_mid_freq_out_level;/* 自动增益目标控制功率db值 */
@@ -872,15 +1129,15 @@ static int spm_agc_ctrl_v3(int ch, struct spm_context *ctx)
             dst_val[ch] = agc_ctrl_dbm;//_spm_read_signal_value(ch);
             _get_range_max(ch, rf_mode, dst_val[ch], &max_val[ch], ctx);
             _get_range_min(ch, rf_mode, dst_val[ch], &min_val[ch], ctx);
-            down_val[ch]= max_val[ch] - dst_val[ch];
-            up_val[ch]   = dst_val[ch] - min_val[ch];
+            down_val[ch]= 100; //max_val[ch] - dst_val[ch];
+            up_val[ch]   = 100; //dst_val[ch] - min_val[ch];
             if(up_val[ch] < 0)
                 up_val[ch] = -up_val[ch];
-            printf_info("up_val=%d, down_val=%d, dst_val=%d, max_val=%d, min_val=%d\n", 
+            printf_debug("up_val=%d, down_val=%d, dst_val=%d, max_val=%d, min_val=%d\n", 
                         up_val[ch], down_val[ch], dst_val[ch], max_val[ch], min_val[ch]);
             config_read_by_cmd(EX_RF_FREQ_CMD, EX_RF_ATTENUATION, ch, &rf_attenuation[ch]);
             config_read_by_cmd(EX_RF_FREQ_CMD, EX_RF_MGC_GAIN, ch, &mgc_attenuation[ch]);
-            printf_info("rf_attenuation[ch]=%d,mgc_attenuation[ch]=%d\n", rf_attenuation[ch],mgc_attenuation[ch]);
+            printf_note("rf_attenuation[ch]=%d,mgc_attenuation[ch]=%d\n", rf_attenuation[ch],mgc_attenuation[ch]);
         }
     }
 
@@ -899,7 +1156,7 @@ static int spm_agc_ctrl_v3(int ch, struct spm_context *ctx)
     agc_dbm_val =  _spm_read_signal_value(ch);
     usleep(1000);
 
-    printf_info("[%d]dst_val=%d, read signal value: %d, up_val=%d, down_val=%d, rf_attenuation=%d, mgc_attenuation=%d\n", agc_ctrl_dbm,dst_val[ch], agc_dbm_val, up_val[ch], down_val[ch], rf_attenuation[ch], mgc_attenuation[ch]);
+    printf_debug("[%d]dst_val=%d, read signal value: %d, up_val=%d, down_val=%d, rf_attenuation=%d, mgc_attenuation=%d\n", agc_ctrl_dbm,dst_val[ch], agc_dbm_val, up_val[ch], down_val[ch], rf_attenuation[ch], mgc_attenuation[ch]);
 
     if(agc_dbm_val < (dst_val[ch] - AGC_CTRL_PRECISION)){
         if(up_val[ch] <= 0){
@@ -997,8 +1254,8 @@ static int spm_agc_ctrl(int ch, struct spm_context *ctx)
     if((agc_val = io_get_agc_thresh_val(ch)) < 0){
         return -1;
     }
-    printf_note("read agc ch=%d value=%d agc_ref_val_0dbm=%d \n",ch, agc_val,agc_ref_val_0dbm);
-    dbm_val = (int32_t)(20 * log10((double)agc_val / ((double)agc_ref_val_0dbm)));
+    printf_note("read agc ch=%d value=%d agc_ref_val_0dbm=%d \n",ch, agc_val,agc_ref_val_0dbm[ch]);
+    dbm_val = (int32_t)(20 * log10((double)agc_val / ((double)agc_ref_val_0dbm[ch])));
     
     /* 判断读取的幅度值是否>设置的输出幅度+控制精度 */
     /*
@@ -1063,27 +1320,7 @@ exit_mode:
 
 static int spm_sample_ctrl(void *args)
 {
-    struct spm_run_parm *r_args;
-    r_args = (struct spm_run_parm *)args;
-#if defined(SUPPORT_DIRECT_SAMPLE)
-    uint64_t freq_hz = r_args->m_freq_s;
-    uint8_t val = 0;
-    static int8_t val_dup = -1;
-    #define _200MHZ 200000000
-    if(freq_hz < _200MHZ){
-        val = 1;    /* 直采开启 */
-    }else{
-        val = 0;    /* 直采关闭 */
-    }
-    if(val_dup == val){
-        return 0;
-    }else{
-        val_dup = val;
-    }
-    printf_note("samle ctrl:freq_hz =%lluHz, direct %d\n", freq_hz, val);
-    executor_set_command(EX_MID_FREQ_CMD, EX_SAMPLE_CTRL,    0, &val);
-    executor_set_command(EX_RF_FREQ_CMD,  EX_RF_SAMPLE_CTRL, 0, &val);
-#endif
+    _ctrl_freq(args);
     return 0;
 }
 
@@ -1192,7 +1429,6 @@ static int32_t  spm_get_signal_strength(uint8_t ch,uint8_t subch, uint32_t index
             sig_max = sig_amp;
         }
         usleep(20000);
-        printf_debug("----------sig:%d\n", sig_amp);
     }
     if(strength != NULL)
         *strength = sig_max;
@@ -1216,7 +1452,7 @@ static int32_t  spm_get_signal_strength(uint8_t ch,uint8_t subch, uint32_t index
         return -1;
     }
     
-    mute_thre_val = subch_ref_val_0dbm * pow(10.0f, (double)mute_thre_db / 20);
+    mute_thre_val = subch_ref_val_0dbm[ch] * pow(10.0f, (double)mute_thre_db / 20);
     printf_note("sig_amp:%d, mute_thre_val:%d\n", sig_amp, mute_thre_val);
     if (sig_amp >= mute_thre_val){
         *is_singal = true;
@@ -1240,7 +1476,7 @@ static int32_t  spm_get_signal_strength(uint8_t ch,uint8_t subch, uint32_t index
     return 0;
 }
 
-static int spm_stream_back_running_file(enum stream_type type, int fd)
+static int spm_stream_back_running_file(int ch, enum stream_type type, int fd)
 {
     void *w_addr = NULL;
     int i, rc, ret = 0;
@@ -1249,14 +1485,19 @@ static int spm_stream_back_running_file(enum stream_type type, int fd)
     write_info info;
     int try_count = 0;
     int file_fd;
+    int index;
 
     struct _spm_stream *pstream = spm_stream;
 
     if(fd <= 0)
         return -1;
     file_fd = fd;
+
+    index = spm_find_index_by_type(ch, -1, type);
+    if(index < 0)
+        return -1;
 try_gain:
-    ioctl(pstream[type].id, IOCTL_DMA_GET_ASYN_WRITE_INFO, &info);
+    ioctl(pstream[index].id, IOCTL_DMA_GET_ASYN_WRITE_INFO, &info);
     if(info.status != 0){   /* NOT OK */
         printf_debug("write status:%d, block_num:%d\n", info.status, info.block_num);
         if(info.status == WRITE_BUFFER_STATUS_FAIL){
@@ -1274,7 +1515,7 @@ try_gain:
 
     for(i = 0; i < info.block_num; i++){
         size = info.blocks[i].length;
-        w_addr = pstream[type].ptr + info.blocks[i].offset;
+        w_addr = pstream[index].ptr + info.blocks[i].offset;
        // printf_debug("file_fd=%d,ptr=%p, w_addr=%p, info.blocks[%d].offset=%x, size=%u\n",file_fd,pstream[type].ptr,  w_addr, i, info.blocks[i].offset,  size);
         rc = read(file_fd, w_addr, size);
         if (rc < 0){
@@ -1293,19 +1534,18 @@ try_gain:
             }
             
         }       
-        ioctl(pstream[type].id, IOCTL_DMA_SET_ASYN_WRITE_INFO, &rc);
+        ioctl(pstream[index].id, IOCTL_DMA_SET_ASYN_WRITE_INFO, &rc);
         total_Byte += rc;
         ret = total_Byte;
     }
     return ret;
 }
 
-static int spm_stream_start(uint32_t len,uint8_t continuous, enum stream_type type)
+static int spm_stream_start(int ch, int subch, uint32_t len,uint8_t continuous, enum stream_type type)
 {
     struct _spm_stream *pstream = spm_stream;
     IOCTL_DMA_START_PARA para;
-    
-    printf_debug("stream type:%d, start, continuous[%d], len=%u\n", type, continuous, len);
+    int index;
 
     if(continuous)
         para.mode = DMA_MODE_CONTINUOUS;
@@ -1313,21 +1553,35 @@ static int spm_stream_start(uint32_t len,uint8_t continuous, enum stream_type ty
         para.mode = DMA_MODE_ONCE;
         para.trans_len = len;
     }
-    if(pstream[type].rd_wr == DMA_READ)
-        ioctl(pstream[type].id, IOCTL_DMA_ASYN_READ_START, &para);
+        
+    index = spm_find_index_by_type(ch, subch, type);
+    if(index < 0)
+        return -1;
+
+    printf_debug("%d stream start, pstream[%d].name = %s, continuous[%d], len=%u\n",
+                type,  index, pstream[index].name, continuous, len);
+    
+    if(pstream[index].rd_wr == DMA_READ)
+        ioctl(pstream[index].id, IOCTL_DMA_ASYN_READ_START, &para);
     else
-        ioctl(pstream[type].id, IOCTL_DMA_ASYN_WRITE_START, &para);
+        ioctl(pstream[index].id, IOCTL_DMA_ASYN_WRITE_START, &para);
     return 0;
 }
 
-static int spm_stream_stop(enum stream_type type)
+static int spm_stream_stop(int ch, int subch, enum stream_type type)
 {
     struct _spm_stream *pstream = spm_stream;
-    if(pstream[type].rd_wr == DMA_READ)
-        ioctl(pstream[type].id, IOCTL_DMA_ASYN_READ_STOP, NULL);
+    int index;
+    
+    index = spm_find_index_by_type(ch, subch, type);
+    if(index < 0)
+        return -1;
+
+    if(pstream[index].rd_wr == DMA_READ)
+        ioctl(pstream[index].id, IOCTL_DMA_ASYN_READ_STOP, NULL);
     else
-        ioctl(pstream[type].id, IOCTL_DMA_ASYN_WRITE_STOP, NULL);
-    printf_debug("stream_stop: %d\n", type);
+        ioctl(pstream[index].id, IOCTL_DMA_ASYN_WRITE_STOP, NULL);
+    printf_debug("stream_stop: %d, %s\n", index, pstream[index].name);
     return 0;
 }
 
@@ -1337,7 +1591,7 @@ static int _spm_close(struct spm_context *ctx)
     int i, ch;
 
     for(i = 0; i< ARRAY_SIZE(spm_stream) ; i++){
-        spm_stream_stop(i);
+        spm_stream_stop(-1, -1, i);
         close(pstream[i].id);
     }
     for(ch = 0; ch< MAX_RADIO_CHANNEL_NUM; ch++){
@@ -1359,12 +1613,8 @@ static const struct spm_backend_ops spm_ops = {
     .data_order = spm_data_order,
     .send_fft_data = spm_send_fft_data,
     .send_iq_data = spm_send_iq_data,
-    .send_cmd = spm_send_cmd,
-    .convet_iq_to_fft = spm_convet_iq_to_fft,
-    .set_psd_analysis_enable = spm_set_psd_analysis_enable,
-    .get_psd_analysis_result = spm_get_psd_analysis_result,
-    .save_data = spm_save_data,
-    .backtrace_data = spm_backtrace_data,
+    .iq_dispatcher = spm_iq_dispatcher,
+    .send_iq_type = spm_send_dispatcher_iq,
     .agc_ctrl = spm_agc_ctrl_v3,//spm_agc_ctrl,
     .residency_time_arrived = is_sigal_residency_time_arrived,
     .signal_strength = spm_get_signal_strength,
@@ -1378,7 +1628,7 @@ static const struct spm_backend_ops spm_ops = {
 
 struct spm_context * spm_create_fpga_context(void)
 {
-    int ret = -ENOMEM;
+    int ret = -ENOMEM, ch;
     unsigned int len;
     struct spm_context *ctx = zalloc(sizeof(*ctx));
     if (!ctx)
@@ -1393,13 +1643,20 @@ struct spm_context * spm_create_fpga_context(void)
     printf_note("iq send unit byte:%u\n", iq_send_unit_byte);
     ctx->ops = &spm_ops;
     ctx->pdata = &config_get_config()->oal_config;
-    
-    if( config_get_config()->oal_config.ctrl_para.agc_ref_val_0dbm != 0)
-        agc_ref_val_0dbm = config_get_config()->oal_config.ctrl_para.agc_ref_val_0dbm;
 
-    if( config_get_config()->oal_config.ctrl_para.subch_ref_val_0dbm != 0)
-        subch_ref_val_0dbm = config_get_config()->oal_config.ctrl_para.subch_ref_val_0dbm;
+    for(ch = 0; ch<MAX_RF_NUM; ch++){
+        if( config_get_config()->oal_config.channel[ch].rf_para.agc_ref_val_0dbm != 0)
+            agc_ref_val_0dbm[ch] = config_get_config()->oal_config.channel[ch].rf_para.agc_ref_val_0dbm;
+        else
+            agc_ref_val_0dbm[ch]  = DEFAULT_AGC_REF_VAL;
+
+        if( config_get_config()->oal_config.channel[ch].rf_para.subch_ref_val_0dbm != 0)
+            subch_ref_val_0dbm[ch] = config_get_config()->oal_config.channel[ch].rf_para.subch_ref_val_0dbm;
+        else
+            subch_ref_val_0dbm[ch] = DEFAULT_SUBCH_REF_VAL;
         
+    }
+
     _init_run_timer(MAX_RADIO_CHANNEL_NUM);
 err_set_errno:
     errno = -ret;

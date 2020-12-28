@@ -18,8 +18,20 @@ enum gpio_func_code{
     GPIO_FUNC_COMPASS1      = 0x03,   //电子罗盘
     GPIO_FUNC_COMPASS2      = 0x04,
     GPIO_FUNC_LOW_NOISER    = 0x05,   //低噪放
+    GPIO_RF_CH1             = 0x06,
+    GPIO_RF_CH2             = 0x07,
+    GPIO_RF_CH3             = 0x08,
+    GPIO_RF_CH4             = 0x09,
+    GPIO_RF_CH5             = 0x0a,
+    GPIO_RF_CH6             = 0x0b,
 };
-    
+
+#define SET_GPIO_ARRAY(v1, v2, v3) do{      \
+        gpio_raw_write_value(GPIO_RF_CH1, v1);           \
+        gpio_raw_write_value(GPIO_RF_CH2, v2);           \
+        gpio_raw_write_value(GPIO_RF_CH3, v3);           \
+    }while(0);
+
 
 struct gpio_node_info{
     int pin_num;

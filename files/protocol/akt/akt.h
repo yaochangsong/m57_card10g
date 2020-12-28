@@ -187,6 +187,10 @@ typedef enum _BUSINESS_CODE{
     SET_NET_WZ_NETWORK_CMD=0x26,
 #endif
     AUDIO_VOLUME_CMD=0x28,
+    DEVICE_REBOOT_CMD=0x29,
+    FILE_LIST_CMD=0x2a,
+    FILE_STROE_SIZE_CMD=0x2b,
+    FILE_STATUS_NOTIFY=0x2c,
 
 }BUSINESS_CODE;
 
@@ -343,6 +347,8 @@ typedef struct _SNIFFER_DATA_REPORT{
     uint32_t wz_ipaddr; /* 添加上位机万兆IP和端口*/
     uint16_t wz_port;
 #endif
+    uint16_t iq_port;
+    uint16_t audio_port; 
 }__attribute__ ((packed)) SNIFFER_DATA_REPORT_ST;
 
 //table 12 page 26
@@ -580,6 +586,8 @@ typedef struct  _DEVICE_SELF_CHECK_STATUS_RSP_ST{
     int8_t system_power_on_time[20];
     uint8_t ch_num;
     DEVICE_SELF_CHECK_TEMPERATUE_ST t_s[MAX_RADIO_CHANNEL_NUM];
+    uint8_t irig_b_status;
+    uint8_t gps_status;
 }__attribute__ ((packed)) DEVICE_SELF_CHECK_STATUS_RSP_ST; 
 
 
@@ -705,6 +713,18 @@ struct udp_client_info{
 }__attribute__ ((packed));
 
 
+typedef struct _SINGLE_FILE_INFO{
+    uint8_t file_path[128];
+    uint64_t file_size;
+    uint64_t file_mtime;
+}__attribute__ ((packed)) SINGLE_FILE_INFO;
+
+typedef struct _FILE_LIST_INFO{
+    int32_t file_num;
+    SINGLE_FILE_INFO files[0];
+}__attribute__ ((packed)) FILE_LIST_INFO;
+
+
 /*************************************************************************/
 #define check_radio_channel(ch)   (ch >= MAX_RADIO_CHANNEL_NUM ? 1 : 0) 
 #define check_sub_channel(sub_ch) (sub_ch >= MAX_SIGNAL_CHANNEL_NUM ? 1 : 0) 
@@ -801,11 +821,12 @@ extern bool akt_parse_header_v2(void *client, const char *buf, int len, int *hea
 extern bool akt_execute_method(void *cl, int *code);
 extern uint8_t *akt_assamble_data_extend_frame_header_data(uint32_t *len, void *config);
 extern void *akt_assamble_data_frame_header_data(uint32_t *len, void *config);
-extern void akt_send(void *cl, const void *data, int len);
+extern void akt_send(const void *data, int len, int code);
 extern void akt_send_resp(void *client, int code, void *args);
 extern int  akt_parse_end(void *cl, char *buf, int len);
 extern bool akt_parse_discovery(void *client, const char *buf, int len);
-
+extern void akt_send_alert(void *client, int code);
+extern void akt_send_file_status(void *data, size_t data_len);
 
 #endif
 

@@ -153,13 +153,16 @@ ifneq ($(findstring y,$(SUPPORT_CLOCK_ADC_FPGA)),)
 	C_VAR += -DSUPPORT_CLOCK_ADC_FPGA
 endif
 
-
+ifneq ($(findstring y,$(SUPPORT_RF_ADRV)),)
+	SOURCE_DIR += device/rf/adrv
+	C_VAR += -DSUPPORT_RF_ADRV
+endif
 ifneq ($(findstring y,$(SUPPORT_RF_ADRV9009)),)
-	SOURCE_DIR += device/rf/adrv9009
+	SOURCE_DIR += device/rf/adrv/adrv9009
 	C_VAR += -DSUPPORT_RF_ADRV9009
 endif
 ifneq ($(findstring y,$(SUPPORT_RF_ADRV9361)),)
-	SOURCE_DIR += device/rf/adrv9361
+	SOURCE_DIR += device/rf/adrv/adrv9361
 	C_VAR += -DSUPPORT_RF_ADRV9361
 endif
 
@@ -186,6 +189,11 @@ ifneq ($(findstring y,$(SUPPORT_SPECTRUM_ANALYSIS)),)
 	SOURCE_DIR += executor/analysis
 	C_VAR += -DSUPPORT_SPECTRUM_ANALYSIS
 endif
+
+ifneq ($(findstring y,$(SUPPORT_SPECTRUM_SCAN_SEGMENT)),)
+	C_VAR += -DSUPPORT_SPECTRUM_SCAN_SEGMENT
+endif
+
 
 #specturm kernel
 ifneq ($(findstring y,$(SUPPORT_SPECTRUM_KERNEL)),)
@@ -215,6 +223,9 @@ ifneq ($(findstring y,$(SUPPORT_PROJECT_WD_XCR)),)
 else ifneq ($(findstring y,$(SUPPORT_PROJECT_160M_V2)),)
 	C_VAR += -DSUPPORT_PROJECT_160M_V2
 	SOURCE_DIR += bsp/160m_v2
+else ifneq ($(findstring y,$(SUPPORT_PROJECT_WD_XCR_40G)),)
+	C_VAR += -DSUPPORT_PROJECT_WD_XCR_40G
+	SOURCE_DIR += bsp/40g
 endif
 ifneq ($(findstring y,$(SUPPORT_PROJECT_SSA)),)
 	C_VAR += -DSUPPORT_PROJECT_SSA
@@ -224,6 +235,9 @@ ifneq ($(findstring y,$(SUPPORT_PROJECT_SSA_MONITOR)),)
 endif
 ifneq ($(findstring y,$(SUPPORT_PROJECT_SSA_9361)),)
 	C_VAR += -DSUPPORT_PROJECT_SSA_9361
+endif
+ifneq ($(findstring y,$(SUPPORT_WAV)),)
+	C_VAR += -DSUPPORT_WAV
 endif
 #export CC=arm-linux-gnueabihf-gcc
 

@@ -59,6 +59,11 @@ extern int32_t config_get_gain_calibration_value(uint8_t ch, uint32_t fft_size, 
 extern int32_t config_get_fft_calibration_value(uint8_t ch, uint32_t fft_size, uint64_t m_freq);
 extern int32_t config_get_analysis_calibration_value(uint64_t m_freq_hz);
 extern int32_t config_get_dc_offset_nshift_calibration_value(uint8_t ch, uint32_t fft_size, uint64_t m_freq);
+extern uint64_t config_get_disk_alert_threshold(void);
+extern void config_set_disk_alert_threshold(uint64_t val);
+extern uint64_t config_get_split_file_threshold(void);
+extern void config_set_split_file_threshold(uint64_t val);
+extern uint32_t config_get_disk_file_notifier_timeout(void);
 #endif
 
 

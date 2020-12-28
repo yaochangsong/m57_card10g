@@ -8,6 +8,7 @@
 
 #define MAX_SEND_DATA_LEN  1024
 #define TCP_CONNECTION_TIMEOUT 60
+#define TCP_MAX_KEEPALIVE_PROBES 3
 
 enum net_tcp_state {
     NET_TCP_CLIENT_STATE_HEADER,
@@ -42,6 +43,7 @@ struct net_tcp_client {
     struct dispatch dispatch;
     bool connection_close;
     int response_length;
+    int tcp_keepalive_probes;
     void (*parse_header)(struct net_tcp_client *cl, const void *data, int len);
     void (*parse_data)(struct net_tcp_client *cl, const void *data, int len);
     void (*free)(struct net_tcp_client *cl);
@@ -71,19 +73,22 @@ struct net_tcp_server {
     struct uloop_fd fd;
     struct list_head clients;
     int nclients;
+    pthread_mutex_t tcp_client_lock;
     void (*free)(struct net_tcp_server *srv);
     void (*on_accept)(struct net_tcp_client *cl);
     int (*on_request)(struct net_tcp_client *cl);
     int (*on_header)(struct net_tcp_client *cl,const char *buf, int len, int *head_len, int *code);
     int (*on_execute)(struct net_tcp_client *cl, int *code);
     int (*on_end)(struct net_tcp_client *cl, char *buf, int len);
-    void (*send)(struct net_tcp_client *cl, const void *data, int len);
+    void (*send)(struct net_tcp_client *cl, const void *data, int len, int code);
     void (*send_error)(struct net_tcp_client *cl, int code, const char *fmt, ...);
+    void (*send_alert)(struct net_tcp_client *cl, int code);
     size_t (*read_raw_data)(void **data);
 };
 
 struct net_tcp_server *tcp_server_new(const char *host, int port);
 extern int get_ifa_name_by_ip(char *ipaddr, char *ifa_name);
+extern void tcp_send_alert_to_all_client(int code);
 
 #endif
 

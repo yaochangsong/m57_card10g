@@ -47,6 +47,24 @@ sgn(a - b) == 0         sgn(a - b) != 0       sgn(a - b) <  0         sgn(a - b)
                                     while(_n>0){                       \
                                 *_data = *_data*offset; _n--; _data++; \
                }}while(0)
+#define FDATA_MUL_OFFSET(data, offset, n)  do{                            \
+                float *_data = data; int _n = n;              \
+                    while(_n>0){                       \
+                *_data = *_data*offset; _n--; _data++; \
+}}while(0)
+
+
+#ifdef SUPPORT_PLATFORM_ARCH_ARM
+#ifdef SUPPORT_NET_WZ
+#define NETWORK_10G_EHTHERNET_POINT       "eth0"
+#define NETWORK_EHTHERNET_POINT           "eth1"
+#else
+#define NETWORK_EHTHERNET_POINT       "eth0"
+#endif
+#else
+#define NETWORK_10G_EHTHERNET_POINT   "eno2"
+#define NETWORK_EHTHERNET_POINT       "eno1"
+#endif
 
 #define SPEED_10        10
 #define SPEED_100       100
@@ -68,5 +86,7 @@ extern int32_t get_netlink_status(const char *if_name);
 extern char *get_build_time(void);
 extern long get_sys_boot_time(void);
 extern char *get_proc_boot_time(void);
+extern char *get_kernel_version(void);
+extern void *get_compile_info(void);
 #endif
 

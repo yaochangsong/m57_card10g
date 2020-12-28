@@ -1,6 +1,9 @@
 #include "config.h"
+#include "../../bsp/io.h"
+
 //#include "../../executor/spm/io_fpga.h"
-#include "rf.h"
+
+
 
 uint8_t rf_set_interface(uint8_t cmd,uint8_t ch,void *data){
     uint8_t ret = -1;
@@ -15,13 +18,13 @@ uint8_t rf_set_interface(uint8_t cmd,uint8_t ch,void *data){
                 break;
             }
             printf_debug("[**RF**]ch=%d, middle_freq=%llu\n",ch, *(uint64_t*)data);
-#ifdef SUPPORT_RF_ADRV9009
+#ifdef SUPPORT_RF_ADRV
             uint64_t mid_freq = *(uint64_t*)data;
        #ifdef SUPPORT_PROJECT_SSA_MONITOR
             mid_freq = lvttv_freq_convert(mid_freq);
        #endif
             gpio_select_rf_channel(mid_freq);
-            adrv9009_iio_set_freq(mid_freq);
+            adrv_set_rx_freq(mid_freq);
 #elif defined(SUPPORT_RF_SPI)
             uint64_t freq_khz = old_freq/1000;/* NOTE: Hz => KHz */
             uint64_t host_freq=htobe64(freq_khz) >> 24; //小端转大端（文档中心频率为大端字节序列，5个字节,单位为Hz,实际为Khz）
@@ -39,17 +42,13 @@ uint8_t rf_set_interface(uint8_t cmd,uint8_t ch,void *data){
                 }
             }
 #elif defined(SUPPORT_RF_FPGA)
-            uint32_t freq_khz = old_freq/1000;/* NOTE: Hz => KHz */
     #if defined(SUPPORT_DIRECT_SAMPLE)
             #define DIRECT_FREQ_THR (200000000)
             if(old_freq < DIRECT_FREQ_THR ){
                 break;
             }
     #endif
-            printf_note("freq_khz=%ukhz\n", freq_khz);
-            SET_RF_MID_FREQ(get_fpga_reg(),freq_khz);
-            //get_fpga_reg()->rfReg->freq_khz = freq_khz;
-            usleep(300);
+            _reg_set_rf_frequency(ch, 0, old_freq, get_fpga_reg());
 #endif
             break; 
         }
@@ -65,43 +64,15 @@ uint8_t rf_set_interface(uint8_t cmd,uint8_t ch,void *data){
             }
             printf_note("[**RF**]ch=%d, middle bw=%uHz\n", ch, mbw);
             
-#ifdef SUPPORT_RF_ADRV9009
-            adrv9009_iio_set_bw(mbw);
+#ifdef SUPPORT_RF_ADRV
+            adrv_set_rx_bw(mbw);
 #elif  SUPPORT_RF_SPI
             //uint32_t filter=htobe32(*(uint32_t *)data) >> 24;
             ret = spi_rf_set_command(SPI_RF_MIDFREQ_BW_FILTER_SET, &mbw);
             usleep(300);
             ret = spi_rf_get_command(SPI_RF_MIDFREQ_BW_FILTER_GET, &mbw);
 #elif defined(SUPPORT_RF_FPGA)
-            int i, found = 0;
-            uint8_t set_val = 0;
-            /* 400KH(0) 4MHz(0x01) 40MHz(0x02) 200MHz(0x03)  */
-            struct rf_bw_reg{
-                uint32_t bw_hz;
-                uint8_t reg_val;
-            };
-            struct rf_bw_reg reg[] = {
-                    {400000,    0x00},
-                    {4000000,   0x01},
-                    {40000000,  0x02},
-                    {200000000, 0x03},
-            };
-            
-            for(i = 0; i < ARRAY_SIZE(reg); i++){
-                if(mbw == reg[i].bw_hz){
-                    set_val = reg[i].reg_val;
-                    found ++;
-                }
-            }
-            if(found == 0){
-                printf_note("NOT found bandwidth %uHz in tables,use default[200Mhz]\n", mbw);
-                set_val = 0x03; /* default 200MHz */
-            }
-            SET_RF_BAND(get_fpga_reg(),set_val);
-            //get_fpga_reg()->rfReg->mid_band = set_val;
-            usleep(100);
-            SET_RF_BAND(get_fpga_reg(),set_val);
-            //get_fpga_reg()->rfReg->mid_band = set_val;
+           _reg_set_rf_bandwidth(ch, 0, mbw, get_fpga_reg());
 #endif
             break; 
         }
@@ -110,44 +81,14 @@ uint8_t rf_set_interface(uint8_t cmd,uint8_t ch,void *data){
             uint8_t noise_mode;
             /* noise_mode: 低失真模式(0x00)     常规模式(0x01) 低噪声模式(0x02) */
             noise_mode = *((uint8_t *)data);
-            printf_note("[**RF**]ch=%d, noise_mode=%d\n", ch, noise_mode);
-#ifdef defined(SUPPORT_RF_ADRV9009)
+            printf_debug("[**RF**]ch=%d, noise_mode=%d\n", ch, noise_mode);
+#ifdef defined(SUPPORT_RF_ADRV)
 #elif  defined(SUPPORT_RF_SPI)
             ret = spi_rf_set_command(SPI_RF_NOISE_MODE_SET, &noise_mode);
             usleep(300);
             ret = spi_rf_get_command(SPI_RF_NOISE_MODE_GET, &noise_mode);
 #elif defined(SUPPORT_RF_FPGA)
-            int i, found = 0;
-            uint8_t set_val = 0;
-            /*这里需要转换 =>常规模式(0) 低噪声模式(0x01) 低失真模式(0x02)    */
-            struct _reg{
-                uint8_t mode;
-                uint8_t reg_val;
-            };
-            
-            struct _reg reg[] = {
-                    {0,     0x02},
-                    {1,     0x00},
-                    {2,     0x01},
-            };
-
-            
-            for(i = 0; i < ARRAY_SIZE(reg); i++){
-                if(noise_mode == reg[i].mode){
-                    set_val = reg[i].reg_val;
-                    found ++;
-                }
-            }
-            if(found == 0){
-                printf_note("NOT found noise mode %uHz in tables,use default normal mode[0]\n", noise_mode);
-                set_val = 0x00; /* default normal mode */
-            }
-            printf_note("[**RF**]ch=%d, set rel noise mode=%d\n", ch, noise_mode);
-           //get_fpga_reg()->rfReg->rf_mode = set_val;
-            SET_RF_MODE(get_fpga_reg(),set_val);
-            usleep(100);
-            //get_fpga_reg()->rfReg->rf_mode = set_val;
-            SET_RF_MODE(get_fpga_reg(),set_val);
+            _reg_set_rf_mode_code(ch, 0, noise_mode, get_fpga_reg());
 #endif
             break; 
         }
@@ -166,22 +107,14 @@ uint8_t rf_set_interface(uint8_t cmd,uint8_t ch,void *data){
                 break;
             }
             printf_note("[**RF**]ch=%d, mgc_gain_value=%d\n",ch, mgc_gain_value);
-#ifdef SUPPORT_RF_ADRV9009
-            adrv9009_iio_set_gain(mgc_gain_value);
+#ifdef SUPPORT_RF_ADRV
+            adrv_set_rx_gain(mgc_gain_value);
 #elif defined(SUPPORT_RF_SPI)
             ret = spi_rf_set_command(SPI_RF_MIDFREQ_GAIN_SET, &mgc_gain_value);
             usleep(300);
             ret = spi_rf_get_command(SPI_RF_MIDFREQ_GAIN_GET, &mgc_gain_value);
 #elif defined(SUPPORT_RF_FPGA)
-            if(mgc_gain_value > 30)
-                mgc_gain_value = 30;
-            else if(mgc_gain_value < 0)
-                mgc_gain_value = 0;
-            SET_RF_IF_ATTENUATION(get_fpga_reg(),mgc_gain_value);
-            //get_fpga_reg()->rfReg->midband_minus = mgc_gain_value;
-            usleep(100);
-            //get_fpga_reg()->rfReg->midband_minus = mgc_gain_value;
-            SET_RF_IF_ATTENUATION(get_fpga_reg(),mgc_gain_value);
+            _reg_set_rf_mgc_gain(ch, 0, mgc_gain_value, get_fpga_reg());
 #endif
             break; 
         }
@@ -198,22 +131,14 @@ uint8_t rf_set_interface(uint8_t cmd,uint8_t ch,void *data){
             int8_t rf_gain_value = 0;
             rf_gain_value = *((int8_t *)data);
             printf_note("[**RF**]ch=%d, rf_gain_value=%d\n",ch, rf_gain_value);
-#ifdef SUPPORT_RF_ADRV9009
+#ifdef SUPPORT_RF_ADRV
             gpio_select_rf_attenuation(rf_gain_value);
 #elif defined(SUPPORT_RF_SPI)
             ret = spi_rf_set_command(SPI_RF_GAIN_SET, &rf_gain_value);
             usleep(300);
             ret = spi_rf_get_command(SPI_RF_GAIN_GET, &rf_gain_value);
 #elif defined(SUPPORT_RF_FPGA)
-            if(rf_gain_value > 30)
-                rf_gain_value = 30;
-            else if(rf_gain_value < 0)
-                rf_gain_value = 0;
-            SET_RF_ATTENUATION(get_fpga_reg(),rf_gain_value);
-            //get_fpga_reg()->rfReg->rf_minus = rf_gain_value;
-            usleep(100);
-            //get_fpga_reg()->rfReg->rf_minus = rf_gain_value;
-            SET_RF_ATTENUATION(get_fpga_reg(),rf_gain_value);
+            _reg_set_rf_attenuation(ch, 0, rf_gain_value, get_fpga_reg());
 #endif
             break; 
         }
@@ -239,14 +164,10 @@ uint8_t rf_set_interface(uint8_t cmd,uint8_t ch,void *data){
         case EX_RF_SAMPLE_CTRL:
         {
 #if defined(SUPPORT_RF_FPGA)
+           
             uint8_t val = 0, _data;
             _data = *(uint8_t *)data;
-            val = (_data == 0 ? 0 : 0x01);
-            /* 0关闭直采，1开启直采 */
-            printf_note("[**RF**] direct control=%d, %d\n", val, _data);
-            SET_RF_DIRECT_SAMPLE_CTRL(get_fpga_reg(),val);
-            //get_fpga_reg()->rfReg->direct_control = val;
-            usleep(100);
+             _reg_set_rf_direct_sample_ctrl(0, 0, _data, get_fpga_reg());
 #endif
             break;
         }
@@ -292,7 +213,9 @@ uint8_t rf_set_interface(uint8_t cmd,uint8_t ch,void *data){
                 break;
             }else{
                 vdata_dup = vdata;
+                #if defined(SUPPORT_RS485)
                 rs485_com_set_v2(RS_485_LOW_NOISE_SET_CMD, &vdata);
+                #endif
                 usleep(20000);
             }
            // rs485_com_set(RS_485_LOW_NOISE_SET_CMD, &vdata, sizeof(vdata));
@@ -309,7 +232,7 @@ uint8_t rf_set_interface(uint8_t cmd,uint8_t ch,void *data){
     return ret;
 }
 
-uint8_t rf_read_interface(uint8_t cmd,uint8_t ch,void *data){
+uint8_t rf_read_interface(uint8_t cmd,uint8_t ch,void *data, va_list ap){
     uint8_t ret = -1;
 
     switch(cmd){
@@ -343,19 +266,13 @@ uint8_t rf_read_interface(uint8_t cmd,uint8_t ch,void *data){
         }
         case EX_RF_STATUS_TEMPERAT :{
             int16_t  rf_temperature = 0;
+            int i;
 #if defined(SUPPORT_PLATFORM_ARCH_ARM)
 #if defined(SUPPORT_RF_SPI)
-            
             ret = spi_rf_get_command(SPI_RF_TEMPRATURE_GET, &rf_temperature);
 #elif defined(SUPPORT_RF_FPGA)
-#define RF_TEMPERATURE_FACTOR 0.0625
-           // rf_temperature = get_fpga_reg()->rfReg->temperature;
-            rf_temperature = GET_RF_TEMPERATURE(get_fpga_reg());
-            usleep(100);
-            //rf_temperature = get_fpga_reg()->rfReg->temperature;
-            rf_temperature = GET_RF_TEMPERATURE(get_fpga_reg());
-            printf_debug("rf temprature 0x%x\n", rf_temperature);
-            rf_temperature = rf_temperature * RF_TEMPERATURE_FACTOR;
+            rf_temperature = _reg_get_rf_temperature(ch, 0, get_fpga_reg());
+            printf_note("[ch=%d]get rf temperature = %d\n", ch, rf_temperature);
 #endif
 #endif
             *(int16_t *)data = rf_temperature;
@@ -376,8 +293,8 @@ int8_t rf_init(void)
     int ret = -1;
     uint8_t status = 0;
     printf_note("RF init...!\n");
-#ifdef SUPPORT_RF_ADRV9009
-    adrv9009_iio_init();
+#ifdef SUPPORT_RF_ADRV
+    adrv_init();
 #endif
 #if defined(SUPPORT_RF_SPI)
     ret = spi_rf_init();

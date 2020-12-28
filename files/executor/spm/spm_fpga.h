@@ -15,17 +15,22 @@
 #ifndef _SPM_FPGA_H
 #define _SPM_FPGA_H
 
-#define DMA_FFT_DEV "/dev/dma_fft"
+#define DMA_FFT0_DEV "/dev/dma_fft"
+#define DMA_FFT1_DEV "/dev/dma_fft2"
 #define DMA_IQ_DEV  "/dev/dma_iq"
-#define DMA_ADC_TX_DEV "/dev/dma_adc_tx"
-#define DMA_ADC_RX_DEV "/dev/dma_adc_rx"
+#define DMA_ADC_TX0_DEV "/dev/dma_adc_tx"
+#define DMA_ADC_RX0_DEV "/dev/dma_adc_rx"
+#define DMA_ADC_TX1_DEV "/dev/dma_adc_tx2"
+#define DMA_ADC_RX1_DEV "/dev/dma_adc_rx2"
 
 
 
 #define DMA_MAX_BLOCK (3)
 #define DMA_BUFFER_16M_SIZE (16 * 1024 * 1024)
+#define DMA_BUFFER_64M_SIZE (64 * 1024 * 1024)
 #define DMA_BUFFER_128M_SIZE (128 * 1024 * 1024)
 
+#define DMA_IQ_BUFFER_SIZE DMA_BUFFER_16M_SIZE
 typedef enum _read_status_
 {
     READ_BUFFER_STATUS_OK = 0x0,//读数据成功
@@ -103,10 +108,12 @@ typedef enum _dma_tx_rx_
 struct _spm_stream {
     char *devname;      /* 流设备节点名称 */
     int id;             /* 频谱流类型描述符 */
+    int ch;
     uint8_t *ptr;       /* 频谱流数据buffer指针 */
     uint32_t len;       /* 频谱流数据buffer长度 */
     char *name;         /* 频谱流名称 */
     int rd_wr;
+    enum stream_type type;
 };
 
 typedef enum _IOCTL_CMD_ 

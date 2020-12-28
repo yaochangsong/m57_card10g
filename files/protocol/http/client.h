@@ -144,6 +144,10 @@ struct uh_client {
     bool connection_close;
     int response_length;
 
+    struct {
+        uint64_t offset;
+        uint64_t length;
+    }range;
     void (*free)(struct uh_client *cl);
     void (*send_error)(struct uh_client *cl, int code, const char *summary, const char *fmt, ...);
     void (*send_error_json)(struct uh_client *cl, int err_code, const char *summary);

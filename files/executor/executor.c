@@ -14,6 +14,8 @@
 ******************************************************************************/
 #include "config.h"
 #include "spm/spm.h"
+#include "../bsp/io.h"
+
 
 /**
  * Mutex for the set command, used by command setting related functions. 
@@ -40,7 +42,9 @@ int executor_tcp_disconnect_notify(void *cl)
         printf_info("udp client list %s:%d\n", inet_ntoa(cl_list->peer_addr.sin_addr), cl_list->peer_addr.sin_port);
         if(memcmp(&cl_list->peer_addr.sin_addr, &tcp_cl->peer_addr.sin_addr, sizeof(tcp_cl->peer_addr.sin_addr)) == 0){
            printf_info("del udp client %s:%d\n", inet_ntoa(cl_list->peer_addr.sin_addr), cl_list->peer_addr.sin_port);
+           __lock_send__();
            udp_free(cl_list);
+           __unlock_send__();
         }
     }
     /* client is 0 */
@@ -55,7 +59,7 @@ int executor_tcp_disconnect_notify(void *cl)
         int i = 0, ch;
         for(ch = 0; ch< MAX_RADIO_CHANNEL_NUM; ch++){
             for(i = 0; i< MAX_SIGNAL_CHANNEL_NUM; i++){
-                executor_set_command(EX_MID_FREQ_CMD, EX_SUB_CH_ONOFF, i, &enable);
+                executor_set_command(EX_MID_FREQ_CMD, EX_SUB_CH_ONOFF, ch, &enable, i);
                 executor_set_command(EX_MID_FREQ_CMD, EX_SUB_CH_DEC_METHOD, i, &default_method);
                 memset(&poal_config->channel[ch].sub_channel_para.sub_ch_enable[i], 0, sizeof(struct output_en_st));
             }
@@ -63,6 +67,11 @@ int executor_tcp_disconnect_notify(void *cl)
             /* 所有客户端离线，关闭相关使能，线程复位到等待状�?*/
             memset(&poal_config->channel[ch].enable, 0, sizeof(poal_config->channel[ch].enable));
             poal_config->channel[ch].enable.bit_reset = true; /* reset(stop) all working task */
+            struct fs_context *fs_ctx;
+            fs_ctx = get_fs_ctx();
+            if(fs_ctx != NULL){
+                fs_ctx->ops->fs_stop_save_file(ch, NULL);
+            }
         }
     }
     
@@ -105,6 +114,9 @@ static  int8_t  executor_fragment_scan(uint32_t fregment_num,uint8_t ch, work_mo
         r_args->ch = ch;
         r_args->fft_size = fftsize;
         r_args->mode = mode;
+        r_args->gain_mode = poal_config->channel[ch].rf_para.gain_ctrl_method;
+        r_args->gain_value = poal_config->channel[ch].rf_para.mgc_gain_value;
+        r_args->rf_mode = poal_config->channel[ch].rf_para.rf_mode_code;
     do{
         r_args->s_freq_offset = _s_freq_hz_offset;
         r_args->s_freq = s_freq;
@@ -118,15 +130,17 @@ static  int8_t  executor_fragment_scan(uint32_t fregment_num,uint8_t ch, work_mo
         r_args->m_freq_s = _m_freq_hz;
         r_args->fft_sn = index;
         r_args->total_fft = t_fft;
+        r_args->fregment_num = fregment_num;
         r_args->freq_resolution = poal_config->channel[ch].multi_freq_fregment_para.fregment[fregment_num].freq_resolution;
         printf_debug("[%d]s_freq=%llu, e_freq=%llu, scan_bw=%u, bandwidth=%u,m_freq=%llu, m_freq_s=%llu\n", 
             index, r_args->s_freq, r_args->e_freq, r_args->scan_bw, r_args->bandwidth, r_args->m_freq, r_args->m_freq_s);
         if(spmctx->ops->sample_ctrl)
             spmctx->ops->sample_ctrl(r_args);
         executor_set_command(EX_RF_FREQ_CMD, EX_RF_MID_FREQ, ch, &_m_freq_hz);
-        executor_set_command(EX_RF_FREQ_CMD, EX_RF_LOW_NOISE, ch, &_m_freq_hz);
+        executor_set_command(EX_RF_FREQ_CMD, EX_RF_MODE_CODE, ch, &r_args->rf_mode);
+        //executor_set_command(EX_RF_FREQ_CMD, EX_RF_LOW_NOISE, ch, &_m_freq_hz);
         executor_set_command(EX_MID_FREQ_CMD, EX_MID_FREQ,    ch, &_m_freq_hz);
-        executor_set_command(EX_MID_FREQ_CMD, EX_FPGA_CALIBRATE, ch, &fftsize, _m_freq_hz,0);
+        executor_set_command(EX_MID_FREQ_CMD, EX_FPGA_CALIBRATE, ch, &fftsize, r_args->m_freq,0);
         index ++;
         if(poal_config->channel[ch].enable.psd_en){
             io_set_enable_command(PSD_MODE_ENABLE, ch, -1, r_args->fft_size);
@@ -160,6 +174,20 @@ static double difftime_us_val(const struct timeval *start, const struct timeval 
     return d;
 }
 
+uint32_t executor_get_audio_point(uint8_t ch)
+{
+    struct spm_context *_ctx;
+    _ctx = get_spm_ctx();
+    return _ctx->run_args[ch]->audio_points;
+}
+
+uint64_t executor_get_mid_freq(uint8_t ch)
+{
+    struct spm_context *_ctx;
+    _ctx = get_spm_ctx();
+    return _ctx->run_args[ch]->m_freq;
+}
+
 static int8_t  executor_points_scan(uint8_t ch, work_mode_type mode, void *args)
 {
     struct poal_config *poal_config = &(config_get_config()->oal_config);
@@ -187,6 +215,7 @@ static int8_t  executor_points_scan(uint8_t ch, work_mode_type mode, void *args)
         e_freq = point->points[i].center_freq + point->points[i].bandwidth/2;
         r_args->ch = ch;
         r_args->fft_sn = i;
+        r_args->audio_points = i;
         r_args->s_freq = s_freq;
         r_args->e_freq = e_freq;
         r_args->total_fft = points_count;
@@ -218,7 +247,7 @@ static int8_t  executor_points_scan(uint8_t ch, work_mode_type mode, void *args)
         executor_set_command(EX_RF_FREQ_CMD,  EX_RF_MID_FREQ, ch, &point->points[i].center_freq);
         executor_set_command(EX_MID_FREQ_CMD, EX_BANDWITH, ch, &point->points[i].bandwidth);
         executor_set_command(EX_MID_FREQ_CMD, EX_MID_FREQ,    ch, &point->points[i].center_freq);
-        executor_set_command(EX_RF_FREQ_CMD,  EX_RF_LOW_NOISE, ch, &point->points[i].center_freq);
+        //executor_set_command(EX_RF_FREQ_CMD,  EX_RF_LOW_NOISE, ch, &point->points[i].center_freq);
         //executor_set_command(EX_RF_FREQ_CMD,  EX_RF_MID_BW,   ch, &r_args->.scan_bw);
         //executor_set_command(EX_MID_FREQ_CMD, EX_MID_FREQ,    ch, &point->points[i].center_freq);
         executor_set_command(EX_MID_FREQ_CMD, EX_FFT_SIZE, ch, &point->points[i].fft_size);
@@ -258,12 +287,12 @@ static int8_t  executor_points_scan(uint8_t ch, work_mode_type mode, void *args)
 #endif
         gettimeofday(&beginTime, NULL);
         do{
-            executor_set_command(EX_MID_FREQ_CMD, EX_FPGA_CALIBRATE, ch, &point->points[0].fft_size, 0);
+            executor_set_command(EX_MID_FREQ_CMD, EX_FPGA_CALIBRATE, ch, &point->points[0].fft_size, r_args->m_freq);
             if(poal_config->channel[ch].enable.psd_en){
                 io_set_enable_command(PSD_MODE_ENABLE, ch, -1, point->points[i].fft_size);
             }
             if(spmctx->ops->agc_ctrl)
-            spmctx->ops->agc_ctrl(ch, spmctx);
+                spmctx->ops->agc_ctrl(ch, spmctx);
             if(args != NULL)
                 spm_deal(args, r_args);
             if(poal_config->channel[ch].enable.psd_en){
@@ -313,7 +342,7 @@ void executor_spm_thread(void *arg)
         
 loop:   printf_note("######channel[%d] wait to deal work######\n", ch);
         sem_wait(&work_sem.notify_deal[ch]);
-#if defined(SUPPORT_PROJECT_WD_XCR)
+#if defined(SUPPORT_PROJECT_WD_XCR) || defined(SUPPORT_PROJECT_WD_XCR_40G)
         if(poal_config->channel[ch].enable.bit_en == 0)
             safe_system("/etc/led.sh transfer off &");
         else
@@ -484,7 +513,7 @@ static int8_t executor_set_kernel_command(uint8_t type, uint8_t ch, void *data, 
         }
         case EX_SMOOTH_TIME:
         {
-            io_set_smooth_time(*(uint16_t *)data);
+            io_set_smooth_time(ch, *(uint16_t *)data);
             break;
         }
         case EX_RESIDENCE_TIME:
@@ -547,7 +576,9 @@ static int8_t executor_set_kernel_command(uint8_t type, uint8_t ch, void *data, 
 
         case EX_SUB_CH_ONOFF:
         {
-            io_set_subch_onoff(ch, *(uint8_t *)data);
+            uint32_t subch;
+            subch = va_arg(ap, uint32_t);
+            io_set_subch_onoff(ch, subch, *(uint8_t *)data);
             break;
         }
         case EX_SUB_CH_DEC_BW:
@@ -754,8 +785,10 @@ int8_t executor_set_command(exec_cmd cmd, uint8_t type, uint8_t ch,  void *data,
      return 0;
 }
 
-int8_t executor_get_command(exec_cmd cmd, uint8_t type, uint8_t ch,  void *data)
-{
+int8_t executor_get_command(exec_cmd cmd, uint8_t type, uint8_t ch,  void *data, ...)
+{    
+    va_list argp;
+    va_start (argp, data);
     switch(cmd)
     {
         case EX_MID_FREQ_CMD:
@@ -766,7 +799,7 @@ int8_t executor_get_command(exec_cmd cmd, uint8_t type, uint8_t ch,  void *data)
         case EX_RF_FREQ_CMD:
         {
 #ifdef SUPPORT_RF
-            rf_read_interface(type, ch, data);
+            rf_read_interface(type, ch, data, argp);
 #endif
             break;
         }
@@ -777,6 +810,7 @@ int8_t executor_get_command(exec_cmd cmd, uint8_t type, uint8_t ch,  void *data)
         default:
             printf_err("invalid get command[%d]\n", cmd);
     }
+    va_end(argp);
     return 0;
 
 }
@@ -883,7 +917,7 @@ void executor_timer_task_init(void)
 
 void executor_init(void)
 {
-    int ret, i;
+    int ret, i, j;
     static int ch[MAX_RADIO_CHANNEL_NUM];
     pthread_t work_id;
     void *spmctx;
@@ -905,6 +939,7 @@ void executor_init(void)
         executor_set_command(EX_RF_FREQ_CMD, EX_RF_MID_BW, i, NULL);
         io_set_enable_command(PSD_MODE_DISABLE, i, -1, 0);
         io_set_enable_command(AUDIO_MODE_DISABLE, i, -1, 0);
+        io_stop_backtrace_file(&i);
         //io_set_enable_command(FREQUENCY_BAND_ENABLE_DISABLE, i, 0);
         //executor_set_command(EX_RF_FREQ_CMD, EX_RF_ATTENUATION, 0, &poal_config->rf_para[i].attenuation);
     }
@@ -912,18 +947,17 @@ void executor_init(void)
 #ifdef SUPPORT_NET_WZ
     io_set_10ge_net_onoff(0); /* 关闭万兆传输 */
 #endif
-    io_stop_backtrace_file(NULL);
     printf_note("clear all sub ch\n");
     uint8_t enable =0;
     uint8_t default_method = IO_DQ_MODE_IQ;
-    for(i = 0; i< MAX_SIGNAL_CHANNEL_NUM; i++){
-        printf_debug("clear all sub ch: %d\n", i);
-        executor_set_command(EX_MID_FREQ_CMD, EX_SUB_CH_ONOFF, i, &enable);
-        executor_set_command(EX_MID_FREQ_CMD, EX_SUB_CH_DEC_METHOD, i, &default_method);
-    }
-    
+
     sem_init(&(work_sem.kernel_sysn), 0, 0);
     for(i = 0; i <MAX_RADIO_CHANNEL_NUM; i++){
+        for(j = 0; j< MAX_SIGNAL_CHANNEL_NUM; j++){
+            printf_debug("clear all ch: %d, subch: %d\n", i, j);
+            executor_set_command(EX_MID_FREQ_CMD, EX_SUB_CH_ONOFF, i, &enable, j);
+            executor_set_command(EX_MID_FREQ_CMD, EX_SUB_CH_DEC_METHOD, j, &default_method);
+        }
         sem_init(&(work_sem.notify_deal[i]), 0, 0);
         ch[i] = i;
         ret=pthread_create(&work_id, NULL, (void *)executor_spm_thread, &ch[i]);

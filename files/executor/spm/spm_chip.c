@@ -18,6 +18,15 @@
 #include "spm_chip.h"
 #include "../../protocol/resetful/data_frame.h"
 
+#ifdef SUPPORT_PROJECT_SSA_MONITOR
+static int64_t division_point_array[] = {GHZ(7.5)};
+
+int64_t *get_division_point_array(int ch, int *array_len)
+{
+    *array_len = ARRAY_SIZE(division_point_array);
+    return division_point_array;
+}
+#endif
 static struct _vec_fft{
     fft_t *data;
     size_t len;
@@ -86,7 +95,6 @@ static void spm_fft_calibration(fft_t *data, size_t fft_len)
     int32_t cal_value = 0;
     cal_value = spm_get_calibration_value();
     SSDATA_CUT_OFFSET(data, cal_value, fft_len);
-    SSDATA_MUL_OFFSET(data, 10, fft_len);
 }
 
 iq_t *_iqdata_once  = NULL;
@@ -136,6 +144,7 @@ static ssize_t spm_chip_read_fft_data(void **data, void *args)
         }
     }
     memset(fftdata, 0, fft_size_dup*4);
+    FDATA_MUL_OFFSET(floatdata, 10, fft_size);
     FLOAT_TO_SHORT(floatdata, fftdata, fft_size);
     free(floatdata);
     floatdata = NULL;
@@ -270,17 +279,19 @@ static ssize_t spm_chip_read_fft_data_smooth(void **data, void *args)
 {
     #define _MAX_SMOOTH_NUM (256)
     #define _MAX_BW_NUM (256)
+    #define _MAX_FREGMENT_NUM (10)
     ssize_t smooth = spm_chip_get_smooth_time();
-    int i, j;
+    int i, j, f;
     ssize_t r = -1, fft_byte_size = 0;
     fft_t *data_dup;
-    static struct _vec_fft vfft[_MAX_BW_NUM][_MAX_SMOOTH_NUM] = {NULL};
+    static struct _vec_fft vfft[_MAX_FREGMENT_NUM][_MAX_BW_NUM][_MAX_SMOOTH_NUM] = {NULL};
 
     static int is_initialized = 0;
     struct _vec_fft *vfft_dup, new_data;
     struct spm_run_parm *r_args;
     r_args = (struct spm_run_parm *)args;
     uint32_t index = r_args->fft_sn;
+    uint32_t freg_num = r_args->fregment_num;
 
     if(smooth <= 1){
         r = spm_chip_read_fft_data(&data_dup, args);
@@ -290,31 +301,38 @@ static ssize_t spm_chip_read_fft_data_smooth(void **data, void *args)
     if(is_initialized == 0 || spm_chip_get_flush_trigger()){
         is_initialized = 1;
         spm_chip_set_flush_trigger(false);
-        for(i = 0; i < _MAX_BW_NUM; i++){
-            for(j = 0; j < _MAX_SMOOTH_NUM; j++){
-                memset(&vfft[i][j], 0, sizeof(struct _vec_fft));
+        for(f = 0; f < _MAX_FREGMENT_NUM; f++){
+            for(i = 0; i < _MAX_BW_NUM; i++){
+                for(j = 0; j < _MAX_SMOOTH_NUM; j++){
+                    memset(&vfft[f][i][j], 0, sizeof(struct _vec_fft));
+                }
             }
         }
+
         printf_info("smooth buffer flush\n");
     }
 
-    if(index > _MAX_BW_NUM){
+    if(index >= _MAX_BW_NUM){
         printf_err("fft sn[%u] is too large!\n", index);
         goto exit;
     }
-    if(smooth > _MAX_SMOOTH_NUM){
+    if(smooth >= _MAX_SMOOTH_NUM){
         printf_err("[NOT SUPPORT]smooth[%d] time is bigger than max:%d!\n", smooth, _MAX_SMOOTH_NUM);
         goto exit;
+    }
+    if(freg_num >= _MAX_FREGMENT_NUM){
+        printf_err("[NOT SUPPORT]fregment[%d] is bigger than max:%d!\n", freg_num, _MAX_FREGMENT_NUM);
+        freg_num = _MAX_FREGMENT_NUM -1;
     }
 
     memset(&new_data, 0, sizeof(struct _vec_fft));
     r = _read_arrary_fft_data(&new_data, args, 1);
     if(r < 0)
         goto exit;
-    _shift_add_tail(vfft[index], smooth, &new_data);
+    _shift_add_tail(vfft[freg_num][index], smooth, &new_data);
     #if 0
-    struct _vec_fft * vfft_tmp = vfft[index];
-    printf_note("after add:\n");
+    struct _vec_fft * vfft_tmp = vfft[freg_num][index];
+    printf_note("[%u]after add:\n", index);
     for(i = 0; i< smooth; i++){
         if(vfft_tmp->data)
             print_fft(vfft_tmp->data, 16);
@@ -322,7 +340,7 @@ static ssize_t spm_chip_read_fft_data_smooth(void **data, void *args)
     }
     #endif
 
-    r = _vector_avg(vfft[index], smooth, data);
+    r = _vector_avg(vfft[freg_num][index], smooth, data);
     if(r < 0)
         goto exit;
 
@@ -422,7 +440,7 @@ static int spm_chip_send_fft_data(void *data, size_t fft_len, void *arg)
     iov[1].iov_base = data;
     iov[1].iov_len = data_byte_size;
 
-    udp_send_vec_data(iov, 2);
+    udp_send_vec_data(iov, 2, TAG_FFT);
     safe_free(ptr_header);
     return (header_len + data_byte_size);
 }
@@ -503,7 +521,7 @@ static int spm_chip_send_iq_data(void *data, size_t len, void *arg)
     for(i = 0; i<index; i++){
         iov[1].iov_base = pdata;
         iov[1].iov_len = _send_byte;
-        udp_send_vec_data(iov, 2);
+        udp_send_vec_data(iov, 2, TAG_IQ);
         pdata += _send_byte;
     }
    
@@ -586,21 +604,21 @@ static int spm_sample_ctrl(void *args)
         tmp_switch = 1;
         if (old_switch != tmp_switch) {
             old_switch = tmp_switch;
-            printf("switch to 2-4G\n");
+            printf_info("switch to 2-4G\n");
             SW_TO_2_4_G();
         }
     } else if (freq_hz >= LVTTL_FREQ_START2 && freq_hz < LVTTL_FREQ_end2) {
         tmp_switch = 2;
         if (old_switch != tmp_switch) {
             old_switch = tmp_switch;
-            printf("switch to 7-7.5G\n");
+            printf_info("switch to 7-7.5G\n");
             SW_TO_7_75_G();
         }
     } else if (freq_hz >= LVTTL_FREQ_START3 && freq_hz <= LVTTL_FREQ_end3) {
         tmp_switch = 3;
         if (old_switch != tmp_switch) {
             old_switch = tmp_switch;
-            printf("switch to 7.5-9G\n");
+            printf_info("switch to 7.5-9G\n");
             SW_TO_75_9_G();
         }
     } else {
@@ -617,9 +635,6 @@ static const struct spm_backend_ops spm_ops = {
     .data_order = spm_chip_data_order,
     .send_fft_data = spm_chip_send_fft_data,
     .send_iq_data = spm_chip_send_iq_data,
-    .convet_iq_to_fft = spm_chip_convet_iq_to_fft,
-    .set_psd_analysis_enable = spm_chip_set_psd_analysis_enable,
-    .get_psd_analysis_result = spm_chip_get_psd_analysis_result,
     .set_calibration_value = spm_set_calibration_value,
     .set_smooth_time = spm_chip_set_smooth_time,
     .sample_ctrl = spm_sample_ctrl,

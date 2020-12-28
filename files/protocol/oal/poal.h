@@ -1,7 +1,7 @@
 #ifndef _PROTOCOL_OAL_H_
 #define _PROTOCOL_OAL_H_
 
-#include "config.h"
+//#include "config.h"
 #define FILE_PATH_MAX_LEN 256
 
 /* 工作模式参数参数 */
@@ -110,6 +110,21 @@ struct multi_freq_fregment_para_st{
     struct freq_fregment_para_st  fregment[MAX_SIG_CHANNLE];
 };//__attribute__ ((packed));
 
+
+struct db_rang_st{
+    int32_t start;
+    int32_t end;
+};
+
+#define RF_MODE_NUMBER 3
+struct  rf_mode_param_st{
+    int32_t mode[RF_MODE_NUMBER];
+    int32_t mag[RF_MODE_NUMBER];
+    struct db_rang_st rf_attenuation[RF_MODE_NUMBER];
+    struct db_rang_st mgc_attenuation[RF_MODE_NUMBER];
+    struct db_rang_st detection[RF_MODE_NUMBER];
+};
+
 /* 射频参数 */
 struct rf_para_st{
     uint8_t cid;
@@ -123,6 +138,9 @@ struct rf_para_st{
     uint32_t agc_ctrl_time;         /* AGC 控制时间; 单位：10 微秒 快速：100 微秒  中速：1000 微秒 慢速：10000 微秒*/
     uint32_t mid_bw;                /* 射频中频带宽; 0~2^32 */
     uint64_t mid_freq;              /* 中心频率 */
+    int32_t agc_ref_val_0dbm;       /* AGC: 0DB 主通道读取值 */
+    int32_t subch_ref_val_0dbm;       /* 多频点模式下: 0DB 主通道读取值  */
+    struct  rf_mode_param_st rf_mode;  /* 射频模式参数 */
 };//__attribute__ ((packed));
 
 typedef enum rf_ctrl_method_val{
@@ -190,8 +208,7 @@ struct control_st{
     struct residency_policy residency;                            /* 驻留时间策略 */
     struct calibration_singal_threshold_st signal;
 	uint32_t iq_data_length;                                      /* iq数据包发送长度*/
-    int32_t agc_ref_val_0dbm;                                     /*  AGC 模式下，0DB 对应校准值*/
-    int32_t subch_ref_val_0dbm;                                   /*  多频点模式下 0DBm 对应校准值*/
+    uint32_t disk_file_notifier_timeout_ms;
 };//__attribute__ ((packed));
 
 /*状态参数*/
@@ -212,9 +229,15 @@ struct poal_disk_Node{
     uint8_t status;
 }__attribute__ ((packed));
 
+struct poal_disk_alert{
+    uint64_t alert_threshold_byte;
+    uint64_t split_file_threshold_byte;
+};
+
 struct poal_disk_Info{
     uint16_t diskNum; //?
     struct poal_disk_Node diskNode;
+    struct poal_disk_alert alert;
 }__attribute__ ((packed));     
 
 struct poal_clk_Info{
@@ -243,6 +266,16 @@ struct poal_fpga_Info{
     uint16_t temprature;
 }__attribute__ ((packed));
 
+struct poal_compile_Info{
+    char *build_name;
+    char *build_time;
+    char *build_version;
+    char *build_jenkins_id;
+    char *code_url;
+    char *code_branch;
+    char *code_hash;
+    char *release_debug;
+}__attribute__ ((packed));
 
 
 struct poal_status_info{
@@ -252,6 +285,7 @@ struct poal_status_info{
     struct poal_ad_Info   adInfo;  
     struct poal_rf_Info   rfInfo;
     struct poal_fpga_Info  fpgaInfo;
+    struct poal_compile_Info compileInfo;
     char *device_sn;
 }__attribute__ ((packed));
 
@@ -287,7 +321,7 @@ struct calibration_mgc_attenuation_node_st{
 
 
 struct calibration_specturm_v2_st{
-    struct calibration_specturm_node_st cal_node[32];
+    struct calibration_specturm_node_st cal_node[128];
     struct calibration_attenuation_node_st att_node[3];
     struct calibration_mgc_attenuation_node_st mgc_attr_node;
     int global_roughly_power_lever;
@@ -334,38 +368,6 @@ struct calibration_fft_st{
     int32_t   cali_value[16];
 };
 
-/*射频各模式放大倍数*/
-struct rf_mode_magification{
-    int32_t mode;
-    int32_t magification;
-};
-
-/*distortion range: rf_range*/
-struct rf_distortion_range{
-    int32_t mode;
-    int32_t start_range;
-    int32_t end_range;
-};
-
-/*distortion range: mgc_range*/
-struct mgc_distortion_range{
-    int32_t start_range;
-    int32_t end_range;
-};
-
-/*signal_detection_range*/
-struct signal_detection_range{
-    int32_t mode;
-    int32_t max;
-    int32_t min;
-};
-
-struct cal_rf_mode_param{
-    struct rf_mode_magification mag[3];
-    struct rf_distortion_range rf_distortion[3];
-    struct mgc_distortion_range mgc_distortion;
-    struct signal_detection_range detection[3];
-};
 struct calibration_info_st{
     struct calibration_specturm_info_st specturm;
     struct calibration_specturm_v2_st   spm_level;
@@ -374,30 +376,9 @@ struct calibration_info_st{
     struct calibration_lo_leakage_info_st lo_leakage;
     struct calibration_mgc_info_st mgc;
     struct calibration_fft_st cali_fft;
-    struct cal_rf_mode_param rf_mode;
     struct calibration_dc_offset_info_st dc_offset;
 };//__attribute__ ((packed));
 
-#if 0
-struct poal_config{
-    uint8_t cid;
-    volatile work_mode_type work_mode;
-    struct output_en_st enable;
-    struct multi_freq_point_para_st  multi_freq_point_param[MAX_RADIO_CHANNEL_NUM];
-    struct sub_channel_freq_para_st sub_channel_para[MAX_RADIO_CHANNEL_NUM];
-    struct output_en_st sub_ch_enable[MAX_SIGNAL_CHANNEL_NUM];
-    struct multi_freq_fregment_para_st  multi_freq_fregment_para[MAX_RADIO_CHANNEL_NUM];
-    struct rf_para_st rf_para[MAX_RADIO_CHANNEL_NUM];
-    struct network_st network;
-    #ifdef SUPPORT_NET_WZ
-    struct network_st network_10g;
-    #endif
-    struct control_st ctrl_para;
-    struct poal_status_info status_para; 
-    struct calibration_info_st cal_level;
-    uint8_t (*assamble_response_data)(uint32_t *, void *);
-};
-#endif
 
 struct channel_para{
     volatile work_mode_type work_mode;                              /* 通道工作模式 */
@@ -411,7 +392,7 @@ struct channel_para{
 
 struct poal_config{
     uint8_t cid;                                                    /* 设置通道*/
-    struct channel_para channel[MAX_RADIO_CHANNEL_NUM];                     /* 通道参数 */
+    struct channel_para channel[MAX_RF_NUM];                     /* 通道参数 */
     struct network_st network;                                      /* 网络参数 */
     #ifdef SUPPORT_NET_WZ
     struct network_st network_10g;                                  /* 万兆网络参数 */

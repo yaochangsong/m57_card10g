@@ -31,12 +31,17 @@ struct net_udp_server {
     bool (*on_discovery)(struct net_udp_client *cl, const char *buf, int len);
 };
 
+typedef enum {
+    TAG_FFT     = 0x00,
+    TAG_IQ      = 0x01,
+    TAG_AUDIO   = 0x02,
+}x_tag_code;
 extern struct net_udp_server *udp_server_new(const char *host, int port);
 extern int udp_send_data(uint8_t  *data, uint32_t data_len);
 extern void udp_send_data_to_client(struct net_udp_client *client, uint8_t *data, uint32_t data_len);
-extern void udp_add_client_to_list(struct sockaddr_in *addr, int ch);
+extern void udp_add_client_to_list(struct sockaddr_in *addr, int ch, int tag);
 extern struct net_udp_server *get_udp_server(void);
-extern int udp_send_vec_data(struct iovec *iov, int iov_len);
+extern int udp_send_vec_data(struct iovec *iov, int iov_len, int tag);
 extern int udp_send_vec_data_to_taget_addr(struct iovec *iov, int iov_len);
 
 

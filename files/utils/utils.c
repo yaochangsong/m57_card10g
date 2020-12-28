@@ -619,6 +619,165 @@ char *get_build_time(void)
     return data;
 }
 
+char *_get_build_time(void)
+{
+    static char btime[256]={0};
+
+     snprintf(btime, sizeof(btime), "%s-%s", get_build_time(), __TIME__);
+
+     return btime;
+
+}
+
+
+char *get_kernel_version(void)
+{
+    FILE * fp = NULL;
+    static char version[256]={0};
+
+    if(strlen(version) == 0){
+        fp = fopen ("/proc/version", "r");
+        if(!fp){
+            printf_err("Open file error!\n");
+            goto exit;
+        }
+        rewind(fp);
+        fgets(version, sizeof(version) - 1, fp);
+        /* in case of too long */
+        version[sizeof(version) - 1] = 0;
+        /* remove '\n' */
+        version[strlen(version) - 1] = 0;
+        fclose(fp);
+    }
+
+exit:
+    return version;
+}
+
+typedef enum {
+    OBadOption,
+    OBuildName,
+    OBuildId,
+    OGitUrl,
+    OGitBranch,
+    ORelease,
+}OpCodes;
+
+static const struct {
+    const char *name;
+    OpCodes opcode;
+} compile_name[] = {
+    {"BUILD_NAME", OBuildName},
+    {"BUILD_ID", OBuildId},
+    {"GIT_URL", OGitUrl},
+    {"GIT_BRANCH", OGitBranch},
+    {"RELEASE", ORelease},
+    {NULL, OBadOption},
+};
+
+static OpCodes parse_token(const char *cp, char *filename, int linenum)
+{
+    int i;
+
+    for(i = 0; compile_name[i].name; i++)
+        if(strcasecmp(cp, compile_name[i].name) == 0)
+            return compile_name[i].opcode;
+
+    printf_err("%s： line %d: Bad Option: %s\n", filename, linenum, cp);
+
+    return OBadOption;
+}
+
+struct poal_compile_Info *open_compile_info(const char *filename)
+{
+    #define MAX_BUF 4096
+    FILE * fp = NULL;
+    int linenum = 0, i, opcode;
+    char line[MAX_BUF] = {0}, *s, *p1, *p2;
+    static struct poal_compile_Info c_info;
+
+    fp = fopen (filename, "r");
+    if(!fp){
+        printf_err("Open file error!\n");
+        goto next;
+    }
+    rewind(fp);
+    while(!feof(fp) && fgets(line, MAX_BUF, fp)){
+        linenum ++;
+        s = line;
+        if(s[strlen(s) -1] == '\n')
+            s[strlen(s) -1] = '\0';
+
+        if((p1 = strchr(s, ' '))) {
+            p1[0] = '\0';
+        } else if((p1 = strchr(s, '\t'))) {
+            p1[0] = '\0';
+        }
+
+        if(p1){
+            p1 ++;
+            if((p2 = strchr(p1, ' '))){
+                p2[0] = '\0';
+            } else if((p2 = strstr(p1, "\r\n"))){
+                p2[0] = '\0';
+            } else if((p2 = strchr(p1, '\n'))){
+                p2[0] = '\0';
+            }
+        }
+
+        if(p1 && p1[0] != '\0'){
+            if((strncmp(s, "#", 1)) != 0){
+                printf_note("Parsing token: %s, value: %s\n", s, p1);
+                opcode = parse_token(s, filename, linenum);
+
+                switch(opcode){
+                    case OBuildName:
+                        c_info.build_name = safe_strdup(p1);
+                        break;
+                    case OBuildId:
+                        c_info.build_jenkins_id = safe_strdup(p1);
+                        break;
+                    case OGitUrl:
+                        c_info.code_url= safe_strdup(p1);
+                        break;
+                    case OGitBranch:
+                        c_info.code_branch= safe_strdup(p1);
+                        break;
+                    case ORelease:
+                        c_info.release_debug= safe_strdup(p1);
+                        break;
+                }
+            }
+        }
+    }
+
+    fclose(fp);
+
+next:
+    c_info.build_time = _get_build_time();
+    c_info.build_version = PLATFORM_VERSION;
+#ifdef VERSION_TAG
+    c_info.code_hash = VERSION_TAG;
+#endif
+exit:
+    return &c_info;
+}
+
+
+void *get_compile_info(void)
+{
+#ifdef SUPPORT_PLATFORM_ARCH_ARM
+    #define C_FILE_NAME "/etc/compile.info"
+#else
+    #define C_FILE_NAME "conf/compile.info"
+#endif
+
+    static struct poal_compile_Info *pinfo = NULL;
+    if(pinfo == NULL)
+        pinfo  = open_compile_info(C_FILE_NAME);
+    return (void *)pinfo;
+}
+
 char *get_jenkins_version(void)
 {
 #ifdef SUPPORT_PLATFORM_ARCH_ARM

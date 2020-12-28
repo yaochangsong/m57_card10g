@@ -28,6 +28,11 @@
 
 static pthread_cond_t spm_iq_cond = PTHREAD_COND_INITIALIZER;
 static pthread_mutex_t spm_iq_cond_mutex = PTHREAD_MUTEX_INITIALIZER;
+/* send mutex */
+pthread_mutex_t send_fft_mutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t send_fft2_mutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t send_iq_mutex = PTHREAD_MUTEX_INITIALIZER;
+
 
 static void show_thread_priority(pthread_attr_t *attr,int policy)
 {
@@ -49,6 +54,20 @@ static int get_thread_priority(pthread_attr_t *attr)
 }
 
 
+static void spm_iq_dispatcher_buffer_clear(void)
+{
+    int type, ch;
+    struct spm_context *ctx = NULL;
+    
+    ctx = get_spm_ctx();
+    for(ch = 0; ch< MAX_RADIO_CHANNEL_NUM; ch++){
+        for(type = 0; type < STREAM_IQ_TYPE_MAX; type++){
+            memset(ctx->run_args[ch]->dis_iq.ptr[type], 0, DMA_IQ_TYPE_BUFFER_SIZE);
+            ctx->run_args[ch]->dis_iq.len[type] = 0;
+            ctx->run_args[ch]->dis_iq.offset[type] = 0;
+        }
+    }
+}
 
 static inline void spm_iq_deal_notify(void *arg)
 {
@@ -76,7 +95,7 @@ void spm_iq_handle_thread(void *arg)
     iq_t *ptr_iq = NULL;
     ssize_t  len = 0, i;
     struct poal_config *poal_config = &(config_get_config()->oal_config);
-    int ch = poal_config->cid;
+    int ch, type;
    // thread_bind_cpu(1);
     ctx = (struct spm_context *)arg;
 
@@ -88,20 +107,26 @@ loop:
     while(subch_bitmap_weight() == 0)
         pthread_cond_wait(&spm_iq_cond, &spm_iq_cond_mutex);
     pthread_mutex_unlock(&spm_iq_cond_mutex);
-    
+
+    ch = poal_config->cid;
     printf_note(">>>>>[ch=%d]IQ start\n", ch);
     memset(&run, 0, sizeof(run));
     memcpy(&run, ctx->run_args[ch], sizeof(run));
+    spm_iq_dispatcher_buffer_clear();
     do{
         len = ctx->ops->read_iq_data(&ptr_iq);
-        
-       // printf_debug("reve handle: len=%d, ptr=%p, %d\n", len, ptr_iq, ctx->pdata->sub_ch_enable.iq_en);
         if(len > 0){
-           // for(i = 0; i < 16; i++){
-           //    printfd("%x ", ptr_iq[i]);
-           // }
-           // printfd("\n----------[%d]---------\n", len);
-            ctx->ops->send_iq_data(ptr_iq, len, &run);
+            if(ctx->ops->iq_dispatcher && test_audio_on()){
+                ctx->ops->iq_dispatcher(ptr_iq, len, &run);
+                for_each_iq_type(type, run){
+                    if(ctx->ops->send_iq_type){
+                        ctx->ops->send_iq_type(type, run.dis_iq.send_ptr, run.dis_iq.send_len, &run);
+                    }
+                }
+                ctx->ops->read_iq_over_deal(&len);
+            }else{
+                ctx->ops->send_iq_data(ptr_iq, len, &run);
+            }
         }
         if(subch_bitmap_weight() == 0){
             printf_note("iq disabled\n");
@@ -178,7 +203,7 @@ void thread_attr_set(pthread_attr_t *attr, int policy, int prio)
 void *spm_init(void)
 {
     static pthread_t send_thread_id, recv_thread_id;
-    int ret, ch;
+    int ret, ch, type;
     pthread_attr_t attr;
 #if defined(SUPPORT_PLATFORM_ARCH_ARM)
 #if defined(SUPPORT_SPECTRUM_CHIP)
@@ -201,6 +226,15 @@ void *spm_init(void)
         if(spmctx->run_args[ch]->fft_ptr == NULL){
         printf("malloc failed\n");
         exit(1);
+        }
+        for(type = 0; type < STREAM_IQ_TYPE_MAX; type++){
+            spmctx->run_args[ch]->dis_iq.ptr[type] = calloc(1, DMA_IQ_TYPE_BUFFER_SIZE);
+            if(spmctx->run_args[ch]->dis_iq.ptr[type] == NULL){
+                printf("malloc failed\n");
+                exit(1);
+            }
+            printf_note("type=%d, ptr=%p\n", type, spmctx->run_args[ch]->dis_iq.ptr[type]);
+            spmctx->run_args[ch]->dis_iq.len[type] = 0;
         }
     }
 

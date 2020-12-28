@@ -38,15 +38,6 @@
 #define CONFG_REG_LEN 0x100
 #define CONFG_AUDIO_OFFSET       0x800
 
-#ifndef RF_DIVISION_FREQ_COUNT
-#define RF_DIVISION_FREQ_COUNT  2    /* 射频频段数 */
-#endif
-#ifndef RF_DIVISION_FREQ_HZ
-#define RF_DIVISION_FREQ_HZ  GHZ(18)    /* 射频频段划分 */
-#endif
-#ifndef RF_DIVISION_FREQ2_HZ
-#define RF_DIVISION_FREQ2_HZ  GHZ(18)    /* 射频频段2划分 */
-#endif
 
 #ifndef MAX_SCAN_FREQ_HZ
 #define MAX_SCAN_FREQ_HZ (40000000000)

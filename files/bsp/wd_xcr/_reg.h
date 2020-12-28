@@ -35,6 +35,10 @@
 #define CONFG_REG_LEN 0x100
 #define CONFG_AUDIO_OFFSET       0x800
 
+#ifndef MAX_SCAN_FREQ_HZ
+#define MAX_SCAN_FREQ_HZ (6000000000)
+#endif
+
 
 #include "platform.h"
 

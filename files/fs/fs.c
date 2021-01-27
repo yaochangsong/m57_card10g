@@ -38,6 +38,9 @@
 #include "../utils/utils.h"
 #include "../executor/spm/spm.h"
 #include "config.h"
+#include "wav.h"
+#include "../bsp/io.h"
+
 
 
 #define DEV_NAME    "/dev/nvme0n1"
@@ -174,7 +177,7 @@ uint64_t _fs_get_file_size(char *filename)
         printf_err("file not found: %s\n", cmd);
         return 0;
     }
-    printf_note("fs size: %llu\n", sfs.f_bsize * sfs.f_blocks);
+    printf_note("fs size: %"PRIu64"\n", sfs.f_bsize * sfs.f_blocks);
     return (sfs.f_bsize * sfs.f_blocks);
 }
 
@@ -245,7 +248,7 @@ static inline int _fs_delete(char *filename)
     return ret;
 }
 
-static inline int _fs_find(char *filename,  int (*callback) (char *,void *, void *), void *args)
+static inline int _fs_find(char *filename,  int (*callback) (char *, struct stat *, void *), void *args)
 {
     char path[PATH_MAX];
     int ret = 0;
@@ -292,7 +295,7 @@ static inline int _fs_find(char *filename,  int (*callback) (char *,void *, void
     return ret;
 }
 
-static ssize_t _fs_dir(char *dirname, int (*callback) (char *,void *, void *), void *args)
+static ssize_t _fs_dir(char *dirname, void (*callback) (char *,void *, void *), void *args)
 {
     DIR *dp;
     struct dirent *dirp;
@@ -309,7 +312,7 @@ static ssize_t _fs_dir(char *dirname, int (*callback) (char *,void *, void *), v
     while((dirp = readdir(dp))!=NULL){
         if((strcmp(dirp->d_name,".")==0)||(strcmp(dirp->d_name,"..")==0))
             continue;
-        printf_debug("%6d:%-19s %5s\n",dirp->d_ino,dirp->d_name,(dirp->d_type==DT_DIR)?("(DIR)"):(""));
+        printf_debug("%6ld:%-19s %5s\n",dirp->d_ino,dirp->d_name,(dirp->d_type==DT_DIR)?("(DIR)"):(""));
         snprintf(path,PATH_MAX, "%s/%s", dirname, dirp->d_name);
         path[PATH_MAX-1] = 0;
         printf_debug("path:%s, dirp->d_name = %s, PATH_MAX=%d\n", path, dirp->d_name, PATH_MAX);
@@ -317,7 +320,7 @@ static ssize_t _fs_dir(char *dirname, int (*callback) (char *,void *, void *), v
             continue;
         if(callback)
             callback(dirp->d_name, &stats, args);
-        printf_debug("PATH_MAX:%d, (%s)st_size:%llu, st_blocks:%u, st_mode:%x, st_mtime=0x%x\n", PATH_MAX, dirp->d_name, (off_t)stats.st_size, stats.st_blocks, stats.st_mode, stats.st_mtime);
+        printf_debug("PATH_MAX:%d, (%s)st_size:%"PRIu64", st_blocks:%lu, st_mode:%x, st_mtime=0x%lx\n", PATH_MAX, dirp->d_name, (off_t)stats.st_size, stats.st_blocks, stats.st_mode, stats.st_mtime);
     }
     closedir(dp);
     return 0;
@@ -342,7 +345,7 @@ static char *_fs_get_backtrace_thread_name(int ch)
     snprintf(name[ch], MAX_THREAD_NAME_LEN, "%s_ch%d", THREAD_FS_BACK_NAME, ch);
     return name[ch];
 }
-static void _thread_exit_callback(void *arg){  
+static int _thread_exit_callback(void *arg){  
     struct timeval beginTime, endTime;
     uint64_t nbyte, filesize = 0;
     float speed = 0;
@@ -356,14 +359,14 @@ static void _thread_exit_callback(void *arg){
     nbyte = pargs->nbyte;
     fd = pargs->fd;
     ch = pargs->ch;
-    fprintf(stderr, ">>start time %ld.%.9ld., nbyte=%llu, fd=%d\n",beginTime.tv_sec, beginTime.tv_usec, nbyte, fd);
+    fprintf(stderr, ">>start time %ld.%.9ld., nbyte=%"PRIu64", fd=%d\n",beginTime.tv_sec, beginTime.tv_usec, nbyte, fd);
     gettimeofday(&endTime, NULL);
     fprintf(stderr, ">>end time %ld.%.9ld.\n",endTime.tv_sec, endTime.tv_usec);
     diff_time_us = difftime_us_val(&beginTime, &endTime);
     diff_time_s = diff_time_us/1000000.0;
     printf(">>diff us=%fus, %fs\n", diff_time_us, diff_time_s);
      speed = (float)((nbyte / (1024 * 1024)) / diff_time_s);
-     fprintf(stdout,"speed: %.2f MBps, count=%llu\n", speed, pargs->count);
+     fprintf(stdout,"speed: %.2f MBps, count=%"PRIu64"\n", speed, pargs->count);
     if(pargs->thread_name && !strcmp(pargs->thread_name, _fs_get_backtrace_thread_name(ch))){
         printf_note("Stop Backtrace, Stop Psd!!!\n");
         io_stop_backtrace_file(&ch);
@@ -386,6 +389,7 @@ static void _thread_exit_callback(void *arg){
     if(arg) {
         safe_free(arg);
     }
+    return 0;
 }  
 
 
@@ -477,16 +481,15 @@ static bool _fs_sample_size_full(struct push_arg *args)
 {
     if(args->sampler.sample_policy == FSP_SIZE){
         if(args->nbyte >= args->sampler.args.sample_size){
-            printf_note("filename: %s size %llu is full,sample_size: %llu\n",args->filename, args->nbyte, args->sampler.args.sample_size);
+            printf_note("filename: %s size %"PRIu64" is full,sample_size: %"PRIu64"\n",args->filename, args->nbyte, args->sampler.args.sample_size);
             return true;
         }
     }
     return false;
 }
-static int _fs_start_save_file_thread(void *arg)
+static ssize_t _fs_start_save_file_thread(void *arg)
 {
-    typedef int16_t adc_t;
-    adc_t *ptr = NULL;
+    void *ptr = NULL;
     ssize_t nread = 0; 
     int ret = 0, ch;
     struct push_arg *p_args;
@@ -523,21 +526,20 @@ static int _fs_start_save_file_thread(void *arg)
         }
     }else{
         usleep(1000);
-        printf("read_adc_data err:%d\n", nread);
+        printf("read_adc_data err:%ld\n", nread);
     }
     return nread;
 
 }
 
-static int _fs_sample_time_out(struct uloop_timeout *t)
+static void _fs_sample_time_out(struct uloop_timeout *t)
 {
     struct push_arg *p_args = container_of(t, struct push_arg, sampler.timeout);
     if(p_args == NULL)
-        return -1;
+        return;
     
     _fs_stop_save_file(p_args->ch, NULL);
     printf_note("Save File Stop!\n", p_args->sampler.args.sample_time);
-    return 0;
 }
 
 /* 
@@ -675,7 +677,7 @@ static ssize_t _fs_start_save_file(int ch, char *filename, void *args)
     p_args->filename = safe_strdup(filename);
     if(args != NULL){
         memcpy(&p_args->sampler.args, args, sizeof(struct fs_save_sample_args));
-        printf_note("bindwidth=%u,sample_size=%llu sample_time=%u\n", 
+        printf_note("bindwidth=%u,sample_size=%"PRIu64" sample_time=%u\n", 
                 p_args->sampler.args.bindwidth, p_args->sampler.args.sample_size, p_args->sampler.args.sample_time);
     }
     p_args->sampler.sample_policy = _fs_get_sample_policy(p_args);
@@ -749,7 +751,7 @@ static ssize_t _fs_start_read_raw_file(int ch, char *filename)
     snprintf(path, sizeof(path), "%s/%s", fs_get_root_dir(), filename);
     file_fd = open(path, O_RDONLY | O_DIRECT | O_SYNC, 0666);
     if (file_fd < 0) {
-        printf_err("open % fail\n", path);
+        printf_err("open %s fail\n", path);
         return -1;
     } 
     printf_note("start read file: %s, file_fd=%d\n", path, file_fd);
@@ -846,7 +848,7 @@ struct fs_context * fs_create_context(void)
     return ctx;
 }
 
-void fs_disk_check_thread(void *args)
+void *fs_disk_check_thread(void *args)
 {
     #define _SLOW_CHECK_TIME_INTERVAL_US  (5000000)
     #define _FAST_CHECK_TIME_INTERVAL_US  (100000)
@@ -878,11 +880,11 @@ void fs_disk_check_thread(void *args)
         if((threshold_byte = config_get_disk_alert_threshold()) > 0){
             free_byte = sfs.f_bsize * sfs.f_bfree;
             if(threshold_byte >= free_byte){
-                printf_note("%llu >= threshold_byte[%llu], send alert to client\n", free_byte, threshold_byte);
+                printf_note("%"PRIu64" >= threshold_byte[%"PRIu64"], send alert to client\n", free_byte, threshold_byte);
                 disk_is_full_alert = true;
                 akt_send_alert(0);
             }else {
-                printf_debug("%llu < threshold_byte[%llu], disk not full\n", free_byte, threshold_byte);
+                printf_debug("%"PRIu64" < threshold_byte[%"PRIu64"], disk not full\n", free_byte, threshold_byte);
                 disk_is_full_alert =  false;
             }
         }

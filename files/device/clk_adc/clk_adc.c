@@ -19,8 +19,8 @@
 
 static struct clock_adc_ctx *_ca_ctx = NULL;
 
-extern struct clock_adc_ops * clock_adc_fpga_cxt(void);
-extern struct clock_adc_ops * clock_adc_spi_cxt(void);
+extern struct clock_adc_ctx * clock_adc_fpga_cxt(void);
+extern struct clock_adc_ctx * clock_adc_spi_cxt(void);
 
 int clock_adc_init(void)
 {

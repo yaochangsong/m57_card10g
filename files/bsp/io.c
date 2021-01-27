@@ -150,18 +150,6 @@ static void  io_get_bandwidth_factor(uint32_t anays_band,               /* è¾“å…
     }
 }
 
-
-int io_set_udp_client_info(void *arg)
-{
-    int32_t ret = 0;
-#if defined(SUPPORT_PLATFORM_ARCH_ARM)
-#if defined(SUPPORT_SPECTRUM_KERNEL) 
-    ret = ioctl(io_ctrl_fd,IOCTL_UDP_CLIENT_INFO_NOTIFY,arg);
-#endif
-#endif /* SUPPORT_PLATFORM_ARCH_ARM */
-    return ret;
-}
-
 int set_1g_network_ipaddress(char *ipaddr, char *mask,char *gateway)
 {
     return set_ipaddress(NETWORK_EHTHERNET_POINT, ipaddr, mask,gateway);
@@ -469,7 +457,7 @@ static uint32_t io_set_dec_middle_freq_reg(uint64_t dec_middle_freq, uint64_t mi
                 val = dec_middle_freq - MID_FREQ_MAGIC1;
                 reg = (val+FREQ_MAGIC1)*FREQ_MAGIC2/FREQ_MAGIC1;
             }
-            printf_debug("feq:%llu, reg=0x%x\n", dec_middle_freq, reg);
+            printf_debug("feq:%"PRIu64", reg=0x%x\n", dec_middle_freq, reg);
             return reg;
         }
 #endif
@@ -508,7 +496,7 @@ int32_t io_set_dec_middle_freq(uint32_t ch, uint64_t dec_middle_freq, uint64_t m
     #endif
 #endif
 #endif
-    printf_warn("[**REGISTER**]ch:%d, MiddleFreq =%llu, Decode MiddleFreq:%llu, reg=0x%x\n", ch, middle_freq, dec_middle_freq, reg);
+    printf_warn("[**REGISTER**]ch:%d, MiddleFreq =%"PRIu64",Decode MiddleFreq:%"PRIu64",reg=0x%x\n", ch, middle_freq, dec_middle_freq, reg);
     return ret;
 }
 
@@ -540,7 +528,7 @@ int32_t io_set_middle_freq(uint32_t ch, uint64_t middle_freq)
     #if defined(SUPPORT_SPECTRUM_FPGA)
     SET_BROAD_SIGNAL_CARRIER(get_fpga_reg(),reg, ch);
     #endif
-    printf_debug(">>>>>>feq:%llu, reg=0x%x\n", middle_freq, reg);
+    printf_debug(">>>>>>feq:%"PRIu64", reg=0x%x\n", middle_freq, reg);
 #endif
     return 0;
 }
@@ -565,7 +553,7 @@ int32_t io_set_subch_dec_middle_freq(uint32_t subch, uint64_t dec_middle_freq, u
         #endif
 #endif
 #endif
-        printf_note("[**REGISTER**]ch:%d, SubChannel Set MiddleFreq =%llu, Decode MiddleFreq:%llu, reg=0x%x, ret=%d\n", subch, middle_freq, dec_middle_freq, reg, ret);
+        printf_note("[**REGISTER**]ch:%d, SubChannel Set MiddleFreq =%"PRIu64", Decode MiddleFreq:%"PRIu64", reg=0x%x, ret=%d\n", subch, middle_freq, dec_middle_freq, reg, ret);
         return ret;
 }
 

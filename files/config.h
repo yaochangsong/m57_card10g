@@ -21,6 +21,7 @@
 #include <errno.h>
 #include <linux/spi/spidev.h>
 #include <time.h>
+#include <inttypes.h>
 #include "platform.h"
 #ifdef SUPPORT_SPECTRUM_FFT
 #include <fftw3.h>

@@ -73,9 +73,9 @@ uint8_t * xw_assamble_frame_data(uint32_t *len, void *args)
         pexh->data_len = pargs->data_len;
         header_len += sizeof(struct data_ex_frame_psd_head);
         printfd("-----------------------------assamble psd head----------------------------------------\n");
-        printfd("ch=[%d], mode[%d], gain_mode[%d],gain_value[%d],start_freq_hz[%llu]\n" , 
+        printfd("ch=[%d], mode[%d], gain_mode[%d],gain_value[%d],start_freq_hz[%"PRIu64"]\n" , 
                     pexh->ch,pexh->mode, pexh->gain_mode, pexh->gain_value, pexh->start_freq_hz);
-        printfd("end_freq_hz[%llu], mid_freq_hz[%llu], freq_resolution[%f],sn[%u],fft[%u]\n" , 
+        printfd("end_freq_hz[%"PRIu64"], mid_freq_hz[%"PRIu64"], freq_resolution[%f],sn[%u],fft[%u]\n" , 
                     pexh->end_freq_hz, pexh->mid_freq_hz, pexh->freq_resolution,pexh->sn,pexh->fft_len);
         printfd("data_type[%d], data_len[%u]\n", pexh->data_type, pexh->data_len);
         printfd("----------------------------------------------------------------------------------------\n");
@@ -96,7 +96,7 @@ uint8_t * xw_assamble_frame_data(uint32_t *len, void *args)
         pdh->data_len = pargs->data_len;
         header_len += sizeof(struct data_ex_frame_demodulation_head);
         printfd("-----------------------------assamble demodulation head----------------------------------------\n");
-        printfd("ch=[%d], mode[%d], gain_mode[%d],gain_value[%d],mid_freq_hz[%llu]\n" , pdh->ch,pdh->mode, pdh->gain_mode, pdh->gain_value, pdh->mid_freq_hz);
+        printfd("ch=[%d], mode[%d], gain_mode[%d],gain_value[%d],mid_freq_hz[%"PRIu64"]\n" , pdh->ch,pdh->mode, pdh->gain_mode, pdh->gain_value, pdh->mid_freq_hz);
         printfd("bandwidth[%u], sn[%u],demodulate_type[%d]\n" , pdh->bandwidth, pdh->sn,pdh->demodulate_type);
         printfd("data_type[%d], data_len[%d]\n", pdh->data_type, pdh->data_len);
         printfd("----------------------------------------------------------------------------------------\n");

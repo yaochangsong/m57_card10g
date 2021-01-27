@@ -343,8 +343,9 @@ static inline void tcp_keepalive_cb(struct uloop_timeout *timeout)
 }
 
 /* 网络连接时，保活定时器更新；此操作为TCP客户端连接 */
-void update_tcp_keepalive(struct net_tcp_client *cl)
+void update_tcp_keepalive(void *client)
 {
+    struct net_tcp_client *cl = (struct net_tcp_client *)client;
     if(&cl->timeout && (sizeof(struct uloop_timeout) == sizeof(cl->timeout))){
         uloop_timeout_set(&cl->timeout, TCP_CONNECTION_TIMEOUT * 1000);
         cl->tcp_keepalive_probes = 0;

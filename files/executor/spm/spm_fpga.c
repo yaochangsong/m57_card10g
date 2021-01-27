@@ -154,7 +154,7 @@ static inline const char * get_str_by_code(const char *const *list, int max, int
             return list[i];
     }
 
-    return -1;
+    return "null";
 }
 
 
@@ -186,8 +186,7 @@ static int spm_create(void)
     pstream = spm_stream;
     status.dir = DMA_S2MM;
     int i = 0;
-    printf_note("SPM init.%d\n", ARRAY_SIZE(spm_stream));
-    
+
     /* create stream */
     for(i = 0; i< ARRAY_SIZE(spm_stream) ; i++){
         pstream[i].id = open(pstream[i].devname, O_RDWR);
@@ -216,7 +215,7 @@ static int spm_create(void)
     return 0;
 }
 
-static ssize_t spm_stream_read(int type, volatile void **data)
+static ssize_t spm_stream_read(int type, void **data)
 {
     struct _spm_stream *pstream;
     ioctl_dma_status status;
@@ -253,7 +252,7 @@ static ssize_t spm_stream_read(int type, volatile void **data)
     }while(info.status == READ_BUFFER_STATUS_PENDING);
     readn = info.blocks[0].length;
     *data = pstream[type].ptr + info.blocks[0].offset;
-    printf_debug("[%p, %p, offset=0x%x]%s, readn:%u\n", *data, pstream[type].ptr, info.blocks[0].offset,  pstream[type].name, readn);
+    printf_debug("[%p, %p, offset=0x%x]%s, readn:%lu\n", *data, pstream[type].ptr, info.blocks[0].offset,  pstream[type].name, readn);
 
     return readn;
 }
@@ -386,7 +385,7 @@ static fft_t *spm_data_order(volatile fft_t *fft_data,
     order_len = (size_t)((float)(fft_len) / side_rate);
     /*双字节对齐*/
     order_len = order_len&0x0fffffffe; 
-    printf_debug("side_rate = %f[fft_len:%u, order_len=%u], scan_bw=%u\n", side_rate, fft_len, order_len, run_args->scan_bw);
+    printf_debug("side_rate = %f[fft_len:%lu, order_len=%lu], scan_bw=%u\n", side_rate, fft_len, order_len, run_args->scan_bw);
     // printf_warn("run_args->fft_ptr=%p, fft_data=%p, order_len=%u, fft_len=%u, side_rate=%f\n", run_args->fft_ptr, fft_data, order_len,fft_len, side_rate);
     /* 信号倒谱 */
     /*
@@ -410,7 +409,7 @@ static fft_t *spm_data_order(volatile fft_t *fft_data,
         if((run_args->m_freq_s < DIRECT_FREQ_THR) && (run_args->m_freq_s > 0)){
             order_len = (fft_len * run_args->bandwidth)/DIRECT_BANDWIDTH;//run_args->scan_bw;
             offset = (run_args->s_freq_offset-28000000)*fft_len/DIRECT_BANDWIDTH;
-            printf_warn("s_freq_offset=%llu,fft_len=%u,order_len=%u, offset=%u, bandwidth=%u\n",run_args->s_freq_offset,fft_len, order_len, offset, run_args->bandwidth);
+            printf_warn("s_freq_offset=%"PRIu64",fft_len=%u,order_len=%u, offset=%u, bandwidth=%u\n",run_args->s_freq_offset,fft_len, order_len, offset, run_args->bandwidth);
         }else
 #endif
          if(run_args->scan_bw > run_args->bandwidth){
@@ -420,7 +419,7 @@ static fft_t *spm_data_order(volatile fft_t *fft_data,
          }
      }
     *order_fft_len = order_len;
-    printf_debug("order_len=%u, offset = %u, start_freq_hz=%llu, s_freq_offset=%llu, m_freq=%llu, scan_bw=%u\n", 
+    printf_debug("order_len=%lu, offset = %u, start_freq_hz=%"PRIu64", s_freq_offset=%"PRIu64", m_freq=%"PRIu64", scan_bw=%u\n", 
         order_len, offset, start_freq_hz, run_args->s_freq_offset, run_args->m_freq_s, run_args->scan_bw);
     return (fft_t *)run_args->fft_ptr + offset;
 }
@@ -434,7 +433,7 @@ static fft_t *spm_data_order(volatile fft_t *fft_data,
     输出参数:
         -1: 失败
         >0: 发送字节总长度
-/*********************************************************/
+*********************************************************/
 static int spm_send_fft_data(void *data, size_t fft_len, void *arg)
 {
     #define HEAD_BUFFER_LEN  512 
@@ -521,7 +520,7 @@ static void *_assamble_iq_header(size_t subch, size_t *hlen, size_t data_len, vo
     hparam->sub_ch_para.d_method = sub_channel_array->sub_ch[subch].raw_d_method;
     hparam->sub_ch_para.sample_rate = io_get_narrowband_iq_factor(hparam->bandwidth) * hparam->sub_ch_para.bandwidth_hz; 
     
-    printf_debug("ch=%d, subch = %d, factor:%f,m_freq_hz=%llu, bandwidth:%uhz, sample_rate=%u, d_method=%d\n", 
+    printf_debug("ch=%d, subch = %ld, factor:%f,m_freq_hz=%"PRIu64", bandwidth:%uhz, sample_rate=%u, d_method=%d\n", 
         ch,
         subch,
         io_get_narrowband_iq_factor(hparam->bandwidth), 
@@ -551,7 +550,7 @@ static void *_assamble_iq_header(size_t subch, size_t *hlen, size_t data_len, vo
 
 }
 
-static void *_assamble_audio_header(size_t subch, size_t *hlen, size_t data_len, void *arg)
+static void *_assamble_audio_header(int subch, size_t *hlen, size_t data_len, void *arg)
 {
     uint8_t *ptr = NULL, *ptr_header = NULL;
     uint32_t header_len = 0;
@@ -573,7 +572,7 @@ static void *_assamble_audio_header(size_t subch, size_t *hlen, size_t data_len,
     hparam->sub_ch_para.d_method = points->points[i].raw_d_method;
     hparam->sub_ch_para.sample_rate = 32000;    /* audio 32Khz */
 
-    printf_debug("ch=%d, subch = %d, i=%d,m_freq_hz=%llu, bandwidth:%uhz, sample_rate=%u, d_method=%d\n", 
+    printf_debug("ch=%d, subch = %d, i=%d,m_freq_hz=%"PRIu64", bandwidth:%uhz, sample_rate=%u, d_method=%d\n", 
         ch,
         subch, i,
         hparam->sub_ch_para.m_freq_hz,
@@ -605,7 +604,7 @@ static void *_assamble_audio_header(size_t subch, size_t *hlen, size_t data_len,
 }
 static int spm_send_iq_data(void *data, size_t len, void *arg)
 {
-    uint32_t header_len = 0;
+    size_t header_len = 0;
     struct _spm_stream *pstream = spm_stream;
     size_t _send_byte = (iq_send_unit_byte > 0 ? iq_send_unit_byte : DEFAULT_IQ_SEND_BYTE);
     uint8_t *hptr = NULL;
@@ -641,16 +640,16 @@ static int spm_send_iq_data(void *data, size_t len, void *arg)
     //ioctl(pstream[STREAM_IQ].id, IOCTL_DMA_SET_ASYN_READ_INFO, &sbyte);
     safe_free(hptr);
     
-    return (header_len + len);
+    return (int)(header_len + len);
 }
 
-static void spm_send_dispatcher_iq(enum stream_iq_type type, iq_t *data, size_t len, void *arg)
+static int spm_send_dispatcher_iq(enum stream_iq_type type, iq_t *data, size_t len, void *arg)
 {
     
-    uint32_t header_len = 0, subch = 0;
+    size_t header_len = 0, subch = 0;
     struct _spm_stream *pstream = spm_stream;
     size_t _send_byte = (iq_send_unit_byte > 0 ? iq_send_unit_byte : DEFAULT_IQ_SEND_BYTE);
-    uint8_t *hptr = NULL;
+    void *hptr = NULL;
     struct spm_run_parm *hparam;
     hparam = (struct spm_run_parm *)arg;
 
@@ -707,14 +706,14 @@ static void spm_send_dispatcher_iq(enum stream_iq_type type, iq_t *data, size_t 
         hparam->dis_iq.offset[type] = hparam->dis_iq.offset[type] - (sbyte/sizeof(iq_t));
     }
     else{
-        printf_err("iq offset err %u < %d\n", hparam->dis_iq.offset[type], sbyte/sizeof(iq_t));
+        printf_err("iq offset err %u < %ld\n", hparam->dis_iq.offset[type], sbyte/sizeof(iq_t));
         hparam->dis_iq.offset[type] = 0;
     }
     
-    printf_debug("%s, offset = %u, send=%u, len=%u\n", 
+    printf_debug("%s, offset = %u, send=%u, len=%lu\n", 
             type == STREAM_IQ_TYPE_AUDIO ? "audio" : "iq" , hparam->dis_iq.offset[type], sbyte, len);
 
-    return sbyte;
+    return 0;
 }
 
 
@@ -773,6 +772,7 @@ static int spm_iq_dispatcher(iq_t *ptr_iq, size_t len, void *arg)
             }
         }
     }
+    return 0;
 }
 
 static int spm_scan(uint64_t *s_freq_offset, uint64_t *e_freq, uint32_t *scan_bw, uint32_t *bw, uint64_t *m_freq)
@@ -1075,7 +1075,7 @@ static inline int _set_down_step_attenuation_value(int ch, struct spm_context *c
 }
 
 
-static inline _spm_read_signal_value(int ch)
+static inline int8_t _spm_read_signal_value(int ch)
 {
     int8_t agc_dbm_val = 0;     /* 读取信号db值 */
     uint16_t agc_reg_val = 0;   /* 读取信号寄存器值,sigal power level read from fpga register */
@@ -1092,23 +1092,23 @@ static inline _spm_read_signal_value(int ch)
 
 static int spm_agc_ctrl_v3(int ch, struct spm_context *ctx)
 {
-    #define AGC_CTRL_PRECISION      1       /* 控制精度+-2dbm */
+    #define _AGC_CTRL_PRECISION_      1       /* 控制精度+-2dbm */
     volatile uint8_t gain_ctrl_method = ctx->pdata->channel[ch].rf_para.gain_ctrl_method; /* 自动增益or手动增益 */
     volatile uint16_t agc_ctrl_time= ctx->pdata->channel[ch].rf_para.agc_ctrl_time;       /* 自动增益步进控制时间 */
     volatile int8_t agc_ctrl_dbm = ctx->pdata->channel[ch].rf_para.agc_mid_freq_out_level;/* 自动增益目标控制功率db值 */
     volatile uint8_t rf_mode = ctx->pdata->channel[ch].rf_para.rf_mode_code; /* 射频模式 */
     int8_t agc_dbm_val = 0;     /* 读取信号db值 */
     int ret = -1;
-    static int8_t ctrl_method_dup[MAX_RADIO_CHANNEL_NUM]={-1, -1};
-    static int8_t rf_mode_dup[MAX_RADIO_CHANNEL_NUM]={-1, -1};
-    static int32_t dst_val[MAX_RADIO_CHANNEL_NUM] = {-1, -1};
-    static int32_t max_val[MAX_RADIO_CHANNEL_NUM] = {-1, -1};
-    static int32_t min_val[MAX_RADIO_CHANNEL_NUM] = {-1, -1};
-    static int32_t up_val[MAX_RADIO_CHANNEL_NUM] = {-1, -1};
-    static int32_t down_val[MAX_RADIO_CHANNEL_NUM] = {-1, -1};
-    static int8_t rf_attenuation[MAX_RADIO_CHANNEL_NUM] = {-1, -1};
-    static int8_t mgc_attenuation[MAX_RADIO_CHANNEL_NUM] = {-1, -1};
-    static int8_t agc_ctrl_dbm_dup[MAX_RADIO_CHANNEL_NUM] = {-1, -1};
+    static int8_t ctrl_method_dup[MAX_RADIO_CHANNEL_NUM]={-1};
+    static int8_t rf_mode_dup[MAX_RADIO_CHANNEL_NUM]={-1};
+    static int32_t dst_val[MAX_RADIO_CHANNEL_NUM] = {-1};
+    static int32_t max_val[MAX_RADIO_CHANNEL_NUM] = {-1};
+    static int32_t min_val[MAX_RADIO_CHANNEL_NUM] = {-1};
+    static int32_t up_val[MAX_RADIO_CHANNEL_NUM] = {-1};
+    static int32_t down_val[MAX_RADIO_CHANNEL_NUM] = {-1};
+    static int8_t rf_attenuation[MAX_RADIO_CHANNEL_NUM] = {-1};
+    static int8_t mgc_attenuation[MAX_RADIO_CHANNEL_NUM] = {-1};
+    static int8_t agc_ctrl_dbm_dup[MAX_RADIO_CHANNEL_NUM] = {-1};
 
     /* 当增益模式变化时 */
     if(ctrl_method_dup[ch] != gain_ctrl_method || rf_mode_dup[ch] != rf_mode || agc_ctrl_dbm_dup[ch] != agc_ctrl_dbm){
@@ -1157,7 +1157,7 @@ static int spm_agc_ctrl_v3(int ch, struct spm_context *ctx)
 
     printf_debug("[%d]dst_val=%d, read signal value: %d, up_val=%d, down_val=%d, rf_attenuation=%d, mgc_attenuation=%d\n", agc_ctrl_dbm,dst_val[ch], agc_dbm_val, up_val[ch], down_val[ch], rf_attenuation[ch], mgc_attenuation[ch]);
 
-    if(agc_dbm_val < (dst_val[ch] - AGC_CTRL_PRECISION)){
+    if(agc_dbm_val < (dst_val[ch] - _AGC_CTRL_PRECISION_)){
         if(up_val[ch] <= 0){
             printf_note(">>>Arrived TOP<<<\n");
             return -1;
@@ -1165,7 +1165,7 @@ static int spm_agc_ctrl_v3(int ch, struct spm_context *ctx)
         up_val[ch]--;
         down_val[ch]++;
         _set_down_step_attenuation_value(ch, ctx, &rf_attenuation[ch], &mgc_attenuation[ch]);
-    }else if(agc_dbm_val > (dst_val[ch] + AGC_CTRL_PRECISION)){
+    }else if(agc_dbm_val > (dst_val[ch] + _AGC_CTRL_PRECISION_)){
         if(down_val[ch] <= 0){
             printf_note(">>>Arrived DOWN<<<\n");
             return -1;
@@ -1314,7 +1314,7 @@ static int spm_agc_ctrl(int ch, struct spm_context *ctx)
     }
     printf_note("rf_gain:%d  mid_gain:%d cur_dbm[ch]:%d\n", rf_gain,mid_gain,cur_dbm[ch]);
 exit_mode:
-    return 0;
+    return ret;
 }
 
 static int spm_sample_ctrl(void *args)
@@ -1639,7 +1639,7 @@ struct spm_context * spm_create_fpga_context(void)
     if(iq_send_unit_byte == 0){
         iq_send_unit_byte = DEFAULT_IQ_SEND_BYTE;
     }
-    printf_note("iq send unit byte:%u\n", iq_send_unit_byte);
+    printf_note("iq send unit byte:%lu\n", iq_send_unit_byte);
     ctx->ops = &spm_ops;
     ctx->pdata = &config_get_config()->oal_config;
 

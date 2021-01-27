@@ -80,7 +80,7 @@ s_config *config_get_config(void)
 
 
 /*本控 or 远控 查看接口*/
-ctrl_mode_param config_get_control_mode(void)
+int config_get_control_mode(void)
 {
 #ifdef  SUPPORT_REMOTE_LOCAL_CTRL_EN
     if(config.oal_config.ctrl_para.remote_local == CTRL_MODE_LOCAL){
@@ -92,7 +92,7 @@ ctrl_mode_param config_get_control_mode(void)
     return CTRL_MODE_REMOTE;
 }
 
-void config_save_cache(exec_cmd cmd, uint8_t type, int8_t ch, void *data)
+void config_save_cache(int cmd, uint8_t type, int8_t ch, void *data)
 {
     uint8_t status;
     struct poal_config *poal_config = &(config_get_config()->oal_config);
@@ -163,7 +163,7 @@ uint32_t config_get_disk_file_notifier_timeout(void)
     if(config.oal_config.ctrl_para.disk_file_notifier_timeout_ms == 0)
         return NOTIFIER_TIMEOUT;
     else 
-        config.oal_config.ctrl_para.disk_file_notifier_timeout_ms;
+        return config.oal_config.ctrl_para.disk_file_notifier_timeout_ms;
 }
 
 
@@ -199,7 +199,7 @@ int32_t config_get_analysis_calibration_value(uint64_t m_freq_hz)
         }
     }
     if(found){
-        printf_debug("find the calibration level: %llu, %d\n", m_freq_hz, cal_value);
+        printf_debug("find the calibration level: %"PRIu64", %d\n", m_freq_hz, cal_value);
     }else{
         printf_note("Not find the calibration level, use default value: %d\n", cal_value);
     }
@@ -229,7 +229,7 @@ int32_t config_get_dc_offset_nshift_calibration_value(uint8_t ch, uint32_t fft_s
             if(_start_freq_khz ==0 && _end_freq_khz == 0){
                 break;
             }
-            printf_debug("[%d],m_freq=%u, _start_freq_khz=%u, _end_freq_khz=%u\n", i, m_freq,  _start_freq_khz, _end_freq_khz);
+            printf_debug("[%d],m_freq=%"PRIu64", _start_freq_khz=%u, _end_freq_khz=%u\n", i, m_freq,  _start_freq_khz, _end_freq_khz);
             if((m_freq >= (uint64_t)_start_freq_khz*1000) &&  (m_freq < (uint64_t)_end_freq_khz *1000)){
                 freq_cal_value = poal_config->cal_level.dc_offset.mshift[i];
                 cal_value += freq_cal_value;
@@ -260,7 +260,7 @@ int32_t config_get_gain_calibration_value(uint8_t ch, uint32_t fft_size, uint64_
             if(_start_freq_khz ==0 && _end_freq_khz == 0){
                 break;
             }
-            printf_debug("[%d],m_freq=%u, _start_freq_khz=%u, _end_freq_khz=%u\n", i, m_freq,  _start_freq_khz, _end_freq_khz);
+            printf_debug("[%d],m_freq=%"PRIu64", _start_freq_khz=%u, _end_freq_khz=%u\n", i, m_freq,  _start_freq_khz, _end_freq_khz);
             if((m_freq >= (uint64_t)_start_freq_khz*1000) &&  (m_freq < (uint64_t)_end_freq_khz *1000)){
                 freq_cal_value = poal_config->cal_level.mgc.gain_val[i];
                 cal_value += freq_cal_value;
@@ -301,7 +301,7 @@ int32_t  config_get_fft_calibration_value(uint8_t ch, uint32_t fft_size, uint64_
             if(_fft == 0 && _start_freq_khz ==0 && _end_freq_khz == 0){
                 break;
             }
-            printf_debug("[%d], _fft=%u[%u],m_freq=%u, _start_freq_khz=%u, _end_freq_khz=%u\n", i, _fft,fft_size, m_freq,  _start_freq_khz, _end_freq_khz);
+            printf_debug("[%d], _fft=%u[%u],m_freq=%"PRIu64", _start_freq_khz=%u, _end_freq_khz=%u\n", i, _fft,fft_size, m_freq,  _start_freq_khz, _end_freq_khz);
             if(_fft == fft_size || _fft == 0){
                 if((m_freq >= (uint64_t)_start_freq_khz*1000) &&  (m_freq < (uint64_t)_end_freq_khz *1000)){
                     freq_cal_value = poal_config->cal_level.spm_level.cal_node[i].power_level;
@@ -314,7 +314,7 @@ int32_t  config_get_fft_calibration_value(uint8_t ch, uint32_t fft_size, uint64_
     }
     
     if(freq_found){
-        printf_debug("find the calibration level: %llu, %d\n", m_freq, cal_value);
+        printf_debug("find the calibration level: %"PRIu64", %d\n", m_freq, cal_value);
     }
 
     cal_value += poal_config->cal_level.specturm.global_roughly_power_lever;
@@ -342,7 +342,7 @@ int32_t  config_get_fft_calibration_value(uint8_t ch, uint32_t fft_size, uint64_
         for(i = 0; i< ARRAY_SIZE(poal_config->channel[ch].rf_para.rf_mode.mag); i++){
             if(poal_config->channel[ch].rf_para.rf_mode.mode[i] == mode){
                 cal_value += _get_rf_magnification(ch, mode, poal_config, m_freq)*10;
-                printf_debug("after rf mode magification,mode:%d magification:%d, cal_value=%d, m_freq=%llu\n", mode, 
+                printf_debug("after rf mode magification,mode:%d magification:%d, cal_value=%d, m_freq=%"PRIu64"\n", mode, 
                         _get_rf_magnification(ch, mode, poal_config, m_freq), cal_value, m_freq);
                 found = 1;
                 break;
@@ -427,6 +427,7 @@ int8_t config_save_all(void)
 #ifdef SUPPORT_DAO_JSON
     json_write_config_file(&config);
 #endif
+    return 0;
 }
 
 
@@ -445,7 +446,7 @@ int8_t config_save_all(void)
 *        0：成功
 ******************************************************************************/
 
-int8_t config_write_data(exec_cmd cmd, uint8_t type, uint8_t ch, void *data)
+int8_t config_write_data(int cmd, uint8_t type, uint8_t ch, void *data)
 {
     printf_info(" config_load_from_data\n");
 
@@ -587,6 +588,7 @@ int8_t config_write_save_data(exec_cmd cmd, uint8_t type, uint8_t ch, void *data
 {
     config_write_data(cmd, type, ch, data);
     config_save_batch(cmd, type, config_get_config());
+    return 0;
 }
 
 int8_t config_read_by_cmd(exec_cmd cmd, uint8_t type, uint8_t ch, void *data, ...)

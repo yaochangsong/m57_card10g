@@ -30,6 +30,7 @@ typedef enum _spi_func_code{
     SPI_FUNC_RF = 0x01,
     SPI_FUNC_CLOCK,
     SPI_FUNC_AD,
+    SPI_FUNC_NULL,
 }spi_func_code;
 
 

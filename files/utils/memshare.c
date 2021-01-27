@@ -23,7 +23,7 @@ void *map_base = NULL;
 int memshare_init(void)
 {
     if (mem_share_fd > 0) 
-        return;
+        return -1;
 
     mem_share_fd= open("/dev/mem", O_RDWR|O_SYNC);
     if (mem_share_fd == -1){

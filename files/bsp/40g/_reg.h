@@ -330,7 +330,7 @@ static inline bool _reg_get_rf_ext_clk(int ch, int index, FPGA_CONFIG_REG *reg)
     /*  1: out clock 0: in clock */
     is_ext = (((inout & 0x01) == 0) ? false : true);
     
-    return inout;
+    return is_ext;
 }
 
 static inline bool _reg_get_rf_lock_clk(int ch, int index, FPGA_CONFIG_REG *reg)
@@ -397,7 +397,7 @@ CH1:
         if(freq_hz >= GHZ(18)){
             set_rf_safe(ch, &reg->rfReg[2]->freq_khz, freq_10khz);
             set_rf_safe(ch, &reg->rfReg[2]->freq_khz, freq_10khz);
-            printf_info("rf2 ch=%d, freq=%llu 10khz\n", ch, freq_10khz);
+            printf_info("rf2 ch=%d, freq=%"PRIu64" 10khz\n", ch, freq_10khz);
             for(i = 0; i < ARRAY_SIZE(_freqtable); i++){
                 if((freq_hz > MHZ(_freqtable[i].start_rf_freq_mhz)) && (freq_hz <= MHZ(_freqtable[i].end_rf_freq_mhz))){
                     freq_set_val_mhz = _freqtable[i].mid_freq_mhz;
@@ -413,7 +413,7 @@ CH1:
         if(freq_10khz != freq_10khz_dup){
             set_rf_safe(ch, &reg->rfReg[1]->freq_khz, freq_10khz);
             set_rf_safe(ch, &reg->rfReg[1]->freq_khz, freq_10khz);
-            printf_info("rf1 ch=%d, freq=%llu 10khz\n", ch, freq_10khz);
+            printf_info("rf1 ch=%d, freq=%"PRIu64" 10khz\n", ch, freq_10khz);
         }
         freq_10khz_dup = freq_10khz;
     }
@@ -423,7 +423,7 @@ CH1:
         //set_rf_safe(ch, &reg->rfReg[0]->freq_khz, freq_10khz);
         set_rf_safe(ch, &reg->rfReg[0]->freq_khz, freq_10khz);
         set_rf_safe(ch, &reg->rfReg[0]->freq_khz, freq_10khz);
-        printf_info("rf0 ch=%d, freq=%llu 10khz\n", ch, freq_10khz);
+        printf_info("rf0 ch=%d, freq=%"PRIu64" 10khz\n", ch, freq_10khz);
     }
     
     if((freq_hz >= GHZ(13)) && (freq_hz <= GHZ(32))){

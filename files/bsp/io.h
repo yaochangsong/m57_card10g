@@ -83,4 +83,16 @@ extern int32_t io_set_subch_onoff(uint32_t ch, uint32_t subch, uint8_t onoff);
 extern int32_t io_set_subch_bandwidth(uint32_t subch, uint32_t bandwidth, uint8_t dec_method);
 extern int32_t io_set_subch_dec_method(uint32_t subch, uint8_t dec_method);
 extern uint64_t io_get_raw_sample_rate(uint32_t ch, uint64_t middle_freq);
+extern int32_t io_set_audio_volume(uint32_t ch,uint8_t volume);
+extern void io_set_fpga_sample_ctrl(uint8_t val);
+extern void io_set_calibrate_val(uint32_t ch, int32_t  cal_value);
+extern void io_reset_fpga_data_link(void);
+extern int32_t io_set_bandwidth(uint32_t ch, uint32_t bandwidth);
+extern int32_t io_set_dec_parameter(uint32_t ch, uint64_t dec_middle_freq, uint8_t dec_method, uint32_t dec_bandwidth);
+extern int32_t io_set_dec_middle_freq(uint32_t ch, uint64_t dec_middle_freq, uint64_t middle_freq);
+extern int32_t io_set_dec_bandwidth(uint32_t ch, uint32_t dec_bandwidth);
+extern int32_t io_set_dec_method(uint32_t ch, uint8_t dec_method);
+extern int16_t io_get_signal_strength(uint8_t ch);
+extern uint8_t  io_restart_app(void);
+
 #endif

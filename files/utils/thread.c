@@ -31,13 +31,13 @@
 
 static DECLARE_BITMAP(thread_bmp, MAX_TEST_BITS);
 
-static struct thread_table_t{
+struct thread_table_t{
     pthread_t tid;
     char *name;
     unsigned long index;
 };
 
-static struct thread_bitmaps_t{
+struct thread_bitmaps_t{
     struct thread_table_t thread_t[MAX_TEST_BITS];
     const unsigned long *bitmap;
 };
@@ -46,9 +46,9 @@ struct thread_args{
     char *name;
     void *arg_exit;
     void *arg_cb;
-    void *(*init_callback)(void *);
-    void *(*callback)(void *);
-    void *(*exit_callback)(void *);
+    int (*init_callback)(void *);
+    ssize_t (*callback)(void *);
+    int (*exit_callback)(void *);
 };
 
 
@@ -93,7 +93,7 @@ void *thread_loop_cb (void *s)
 }
 
 int pthread_create_detach (const pthread_attr_t *attr, int (*init_callback) (void *),
-                                        int (*start_routine) (void *), int (*exit_callback) (void *), 
+                                        ssize_t (*start_routine) (void *), int (*exit_callback) (void *), 
                                         char *name, void *arg_cb,void *arg_exit)
 {
 
@@ -107,7 +107,7 @@ int pthread_create_detach (const pthread_attr_t *attr, int (*init_callback) (voi
     int err, i;
     unsigned long   tid_index = 0;
     if(bitmap_weight(thread_bmp, MAX_TEST_BITS) >= MAX_TEST_BITS){
-        printf("thread number %d = max number %d\n", bitmap_weight(thread_bmp, MAX_TEST_BITS), MAX_TEST_BITS);
+        printf("thread number %ld = max number %d\n", bitmap_weight(thread_bmp, MAX_TEST_BITS), MAX_TEST_BITS);
         return -1;
     }
     for(i = 0; i< ARRAY_SIZE(tbmp.thread_t); i++){
@@ -147,7 +147,7 @@ int pthread_cancel_by_name(char *name)
             }else{
                 printf("######cancel[%s] thread ok\n", name);
                 if(tbmp.thread_t[i].name){
-                    free(tbmp.thread_t[i].name);
+                    safe_free((void *)tbmp.thread_t[i].name);
                     tbmp.thread_t[i].name = NULL;
                 }
                 clear_bit(i, thread_bmp);
@@ -165,7 +165,7 @@ int pthread_exit_by_name(char *name)
         if(tbmp.thread_t[i].name &&  !strcmp(tbmp.thread_t[i].name, name)){
                 printf("######[%s] thread exit\n", name);
                 if(tbmp.thread_t[i].name){
-                    free(tbmp.thread_t[i].name);
+                    safe_free((void *)tbmp.thread_t[i].name);
                     tbmp.thread_t[i].name = NULL;
                 }
                 clear_bit(i, thread_bmp);
@@ -198,12 +198,13 @@ bool pthread_check_alive_by_name(char *name)
 }
 
 
-int thread_test (void *s)
+ssize_t thread_test (void *s)
 {
     int i;
     i = *(int *)s;
     printf("my is test thread[%d]\n", i);
     sleep(1);
+    return 0;
 }
 
 int main_thread_test(void)
@@ -237,4 +238,5 @@ int main_thread_test(void)
     pthread_cancel_by_name("thead name test6");
     pthread_cancel_by_name("thead name test7");
     printf("main exit1\n");
+    return 0;
 }

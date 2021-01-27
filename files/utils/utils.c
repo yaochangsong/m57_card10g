@@ -50,7 +50,7 @@ int get_ipaddress(char *ifname, struct in_addr *addr)
     int sock;
     struct sockaddr_in sin;
     struct ifreq ifr;
-	char *temp_ip = NULL;
+	//char *temp_ip = NULL;
     if(ifname == NULL)
         return -1;
     sock = socket(AF_INET, SOCK_DGRAM, 0);
@@ -69,7 +69,7 @@ int get_ipaddress(char *ifname, struct in_addr *addr)
         return -1;
     }
     memcpy(&sin, &ifr.ifr_addr, sizeof(sin));
-    temp_ip = inet_ntoa(sin.sin_addr);
+    //temp_ip = inet_ntoa(sin.sin_addr);
     *addr = sin.sin_addr;
     //strcpy(ip,temp_ip);
     //fprintf(stdout, "eth0: ip %s\n", temp_ip);
@@ -82,7 +82,7 @@ int get_netmask(char *ifname, struct in_addr *netmask)
     int sock;
     struct sockaddr_in sin;
     struct ifreq ifr;
-    char *temp_netmask = NULL;
+    //char *temp_netmask = NULL;
     if(ifname == NULL)
         return -1;
     sock = socket(AF_INET, SOCK_DGRAM, 0);
@@ -101,7 +101,7 @@ int get_netmask(char *ifname, struct in_addr *netmask)
         return -1;
     }
     memcpy(&sin, &ifr.ifr_netmask, sizeof(sin));
-    temp_netmask = inet_ntoa(sin.sin_addr);
+    //temp_netmask = inet_ntoa(sin.sin_addr);
     *netmask = sin.sin_addr;
     //strcpy(ip,temp_ip);
    // fprintf(stdout, "netmask: %s\n", temp_netmask);
@@ -116,7 +116,7 @@ int get_gateway(char *ifname, struct in_addr * gw)
     char buf[256];
     FILE * file;
     struct sockaddr_in sin;
-    char *temp_gw = NULL;
+    //char *temp_gw = NULL;
     
     if(ifname == NULL)
         return -1;
@@ -132,7 +132,7 @@ int get_gateway(char *ifname, struct in_addr * gw)
             if (destination == 0) { /* default */
                 if(!strcmp(ifname, iface)){
                     sin.sin_addr.s_addr = gateway;
-                    temp_gw = inet_ntoa(sin.sin_addr);
+                    //temp_gw = inet_ntoa(sin.sin_addr);
                     *gw = sin.sin_addr;
                     //fprintf(stdout, "gateway: %s\n", temp_gw);
                 }
@@ -303,7 +303,7 @@ int set_ipaddress(char *ifname, char *ipaddr, char *mask,char *gateway)
 }  
 
 
-int get_mac(char *ifname, char * mac, int len_limit)    
+int get_mac(char *ifname, uint8_t * mac, int len_limit)    
 {
     struct ifreq ifreq;
     int sock;
@@ -759,7 +759,7 @@ next:
 #ifdef VERSION_TAG
     c_info.code_hash = VERSION_TAG;
 #endif
-exit:
+
     return &c_info;
 }
 
@@ -820,10 +820,10 @@ int thread_bind_cpu(int cpuindex)
     cpu_set_t get;
     int j;
     /* 获取系统CPU的个数 */
-    int cpunum = sysconf(_SC_NPROCESSORS_CONF);
-    printf_note("system has %d processor(s)\n", cpunum);
+    long cpunum = sysconf(_SC_NPROCESSORS_CONF);
+    printf_note("system has %lu processor(s)\n", cpunum);
     if(cpuindex > cpunum){
-        printf_err("system processor(s) number %d is less than bind index[%d]\n", cpunum, cpuindex);
+        printf_err("system processor(s) number %lu is less than bind index[%d]\n", cpunum, cpuindex);
         return -1;
     }
     CPU_ZERO(&mask);
@@ -839,7 +839,7 @@ int thread_bind_cpu(int cpuindex)
     }
     for (j = 0; j < cpunum; j++) {
         if (CPU_ISSET(j, &get)) {
-            printf_note("thread %u is running in processor %d\n", pthread_self(), j);
+            printf_note("thread %lu is running in processor %d\n", pthread_self(), j);
         }
     }
     return 0;

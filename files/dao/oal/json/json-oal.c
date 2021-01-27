@@ -78,7 +78,6 @@ static int json_write_file(char *filename, cJSON *root)
 static cJSON* json_read_file(const char *filename, cJSON* root)
 {
     long len = 0;
-    size_t  temp;
     char *JSON_content;
 
     FILE* fp = fopen(filename, "rb+");
@@ -98,7 +97,7 @@ static cJSON* json_read_file(const char *filename, cJSON* root)
 
     fseek(fp, 0, SEEK_SET);
     JSON_content = (char*) malloc(sizeof(char) * len);
-    temp = fread(JSON_content, 1, len, fp);
+    fread(JSON_content, 1, len, fp);
 
     fclose(fp);
     root = cJSON_Parse(JSON_content);
@@ -172,7 +171,7 @@ static inline  int json_write_int_param(const char * const grandfather, const ch
 
 
 
-
+#if 0
 static inline  int json_write_array_string_param(const char * const parents, const char * const array, int index, const char * const name,  char *data)
 {
     cJSON* root = root_json;
@@ -191,6 +190,7 @@ static inline  int json_write_array_string_param(const char * const parents, con
     
     return 0;
 }
+#endif
 
 
 static inline  int json_write_array_int_param(const      char *const parents,const    char *const array,int index,const char * const name,  int data)
@@ -267,7 +267,7 @@ static int json_write_config_param(cJSON* root, struct poal_config *config)
     char temp[30]={0};
     sprintf(temp,"%02x:%02x:%02x:%02x:%02x:%02x", config->network.mac[0],config->network.mac[1],
     config->network.mac[2],config->network.mac[3],config->network.mac[4],config->network.mac[5]);
-    json_write_int_param(NULL, "network", "mac", temp);
+    json_write_string_param(NULL, "network", "mac", temp);
     node = cJSON_GetObjectItem(network, "mac");
     printf_debug("mac is:%s\n",node->valuestring);
 
@@ -625,12 +625,12 @@ static int json_parse_config_param(const cJSON* root, struct poal_config *config
     value = cJSON_GetObjectItem(control_parm, "disk_full_alert_threshold_MB");
     if(value!= NULL && cJSON_IsNumber(value)){
         config->status_para.diskInfo.alert.alert_threshold_byte = (uint64_t)value->valueint * 1024 * 1024;
-        printf_note("alert_threshold_byte: %dMbyte, %llu, \n",value->valueint, config->status_para.diskInfo.alert.alert_threshold_byte);
+        printf_note("alert_threshold_byte: %dMbyte, %" PRIu64"\n",value->valueint, config->status_para.diskInfo.alert.alert_threshold_byte);
     }
     value = cJSON_GetObjectItem(control_parm, "disk_split_file_threshold_MB");
     if(value!= NULL && cJSON_IsNumber(value)){
         config->status_para.diskInfo.alert.split_file_threshold_byte = (uint64_t)value->valueint * 1024 * 1024;
-        printf_note("split_file_threshold_mb:%dMbyte, %llu, \n",value->valueint, config->status_para.diskInfo.alert.split_file_threshold_byte);
+        printf_note("split_file_threshold_mb:%dMbyte, %" PRIu64"\n",value->valueint, config->status_para.diskInfo.alert.split_file_threshold_byte);
     }
     value = cJSON_GetObjectItem(control_parm, "disk_file_notifier_timeout_ms");
     if(value!= NULL && cJSON_IsNumber(value)){
@@ -934,7 +934,7 @@ static int json_parse_config_param(const cJSON* root, struct poal_config *config
             if(cJSON_IsNumber(value)){
                // printfd("middle_freq:%d, ", value->valueint);
                 config->channel[i].multi_freq_point_param.points[0].center_freq=value->valuedouble;
-                printfd("middle_freq:%d, ",config->channel[i].multi_freq_point_param.points[0].center_freq);
+                printfd("middle_freq:%"PRIu64 ", ",config->channel[i].multi_freq_point_param.points[0].center_freq);
             } 
             value = cJSON_GetObjectItem(node, "bandwith");
             if(cJSON_IsNumber(value)){
@@ -1025,7 +1025,7 @@ static int json_parse_config_param(const cJSON* root, struct poal_config *config
             value = cJSON_GetObjectItem(node, "middle_freq");
             if(cJSON_IsNumber(value)){
                 config->channel[ch].rf_para.mid_freq=value->valuedouble;
-                printfd(" middle_freq:%llu", config->channel[ch].rf_para.mid_freq);
+               printfd(" middle_freq:%" PRIu64" ", config->channel[ch].rf_para.mid_freq);
             }
             value = cJSON_GetObjectItem(node, "mid_bw");
             if(cJSON_IsNumber(value)){
@@ -1105,7 +1105,7 @@ static int json_parse_config_param(const cJSON* root, struct poal_config *config
 int json_read_config_file(const void *config)
 {
     char *file;
-    s_config *conf = (struct poal_config *)config;
+    s_config *conf = (s_config*)config;
     
     file = conf->configfile;
     if(file == NULL || config == NULL)
@@ -1113,7 +1113,7 @@ int json_read_config_file(const void *config)
     
     root_json = json_read_file(file, root_json);
     if(root_json == NULL){
-        printf_err("json read error\n", file);
+        printf_err("json read error:%s\n", file);
         exit(1);
     }
     //json_print(root_json, 1);
@@ -1126,7 +1126,7 @@ int json_write_config_file(void *config)
 {
     int ret = -1;
     char *file;
-    s_config *conf = (struct s_config *)config;
+    s_config *conf = (s_config *)config;
     file = conf->configfile;
     if(file == NULL || config == NULL || root_json == NULL)
         return -1;

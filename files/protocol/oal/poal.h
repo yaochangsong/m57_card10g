@@ -143,16 +143,16 @@ struct rf_para_st{
     struct  rf_mode_param_st rf_mode;  /* 射频模式参数 */
 };//__attribute__ ((packed));
 
-typedef enum rf_ctrl_method_val{
+typedef enum _rf_ctrl_method_val{
     POAL_LOW_DISTORTION = 0,   //低失真
     POAL_NORMAL,               //常规
     POAL_LOW_NOISE,            //低噪声
-};
+}rf_ctrl_method_val;
 
-typedef enum rf_gain_mode_val{
+typedef enum _rf_gain_mode_val{
     POAL_MGC_MODE = 0,          //手动增益
     POAL_AGC_MODE,              //自动增益
-};
+}rf_gain_mode_val;
 
 
 /* 控制参数 */

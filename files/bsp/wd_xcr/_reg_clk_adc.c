@@ -525,7 +525,7 @@ void set_dc_offset(intptr_t base,uint32_t dat)
 
 
 
-static void *_memmap(int fd_dev, void *phr_addr, int length)
+static void *_memmap(int fd_dev, off_t phr_addr, int length)
 {
     void *base_addr = NULL;
 
@@ -584,6 +584,7 @@ static int clock_adc_fpga_close(void)
     }
     close(ca_ctx.fd_mem_dev);
     printf_note("clock adc fpga close...\n");
+    return 0;
 }
 
 static const struct clock_adc_ops ca_ctx_ops = {
@@ -591,7 +592,7 @@ static const struct clock_adc_ops ca_ctx_ops = {
     .close = clock_adc_fpga_close,
 };
 
-struct clock_adc_ops * clock_adc_fpga_cxt(void)
+struct clock_adc_ctx * clock_adc_fpga_cxt(void)
 {
     int ret = -ENOMEM;
     struct clock_adc_ctx *ctx = calloc(1, sizeof(*ctx));

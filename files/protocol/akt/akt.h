@@ -15,9 +15,6 @@
 #define SMOOTH_FACTOR (128)
 #define SAMPLE_RATE (102400000)
 
-#define DMA_ADDR_START 0x20000000
-#define DMA_DDR_SIZE   0x20000000
-
 #define DEFAULT_FFT_SIZE (4096)
 #define SZ_36M 0x02400000
 #define SZ_32M 0x02000000
@@ -42,7 +39,6 @@
 #define BAND_WITH_2M  (2000000ULL)
 #define BAND_WITH_1M  (1000000ULL)
 
-#define DMA_ADDR_GPIO_START (DMA_ADDR_START + DMA_CH_SIZE * 16)
 
 #define DEFAULT_IQ_SIZE (SZ_4M)
 #define DEFAULT_DQ_SIZE (40960)
@@ -666,7 +662,7 @@ typedef struct  _STORAGE_IQ_ST{
     uint64_t freq;
     uint32_t bandwidth;
     uint16_t caputure_time_len;
-    uint8_t filepath[FILE_PATH_MAX_LEN];
+    char filepath[FILE_PATH_MAX_LEN];
     uint8_t type;           /* 0x00：原始 AD 数据   0x01：DDC 处理后 IQ 数据 */
     uint64_t filesize;      /* 采集文件大小 */
 }__attribute__ ((packed)) STORAGE_IQ_ST; 
@@ -677,11 +673,11 @@ typedef struct  _BACKTRACE_IQ_ST{
     uint16_t signal_ch;
     uint64_t freq;
     uint32_t bandwidth;
-    uint8_t filepath[FILE_PATH_MAX_LEN];
+    char filepath[FILE_PATH_MAX_LEN];
 }__attribute__ ((packed)) BACKTRACE_IQ_ST; 
 
 typedef struct  _SEARCH_FILE_STATUS_RSP_ST{
-    uint8_t filepath[FILE_PATH_MAX_LEN];
+    char filepath[FILE_PATH_MAX_LEN];
     uint8_t status;                        /*0x00：不存在  0x01：正常  0x02:损坏*/
     uint64_t file_size;
 }__attribute__ ((packed)) SEARCH_FILE_STATUS_RSP_ST; 

@@ -219,7 +219,7 @@ static ssize_t file_read(const char *filename, uint8_t *ptr, int n)
     printf_debug("n=%d, nleft=%llx, st_size:0x%llx, offset_size:0x%llx\n", 
         n, nleft, fr->st_size, fr->offset_size);
     if(nleft <= 0){
-        printf_note("[%s]read file over,total read file size:%llu (0x%llx)Byte\n", filename, fr->offset_size, fr->offset_size);
+        printf_note("[%s]read file over,total read file size:%"PRIu64" (0x%llx)Byte\n", filename, fr->offset_size, fr->offset_size);
         return 0;   /* read file over */
     }
     if(n > nleft){
@@ -229,7 +229,7 @@ loop:
     if((nread = readmem(ptr, n)) <= 0){
         fr->is_buffer_has_data = false;
         if(nread  == 0 && ret == 0){
-                printf_note("[%s]read file over,total read file size:%llu Byte\n", filename, fr->offset_size);
+                printf_note("[%s]read file over,total read file size:%"PRIu64" Byte\n", filename, fr->offset_size);
                 return 0;
         }
         ret = file_reload_buffer(filename);
@@ -247,7 +247,7 @@ loop:
     }
     fr->offset_size +=  nread;
     if(fr->offset_size > fr->st_size){
-        printf_note("[%s]read file over,total read file size:%llu (0x%llx)Byte\n", filename, fr->offset_size, fr->offset_size);
+        printf_note("[%s]read file over,total read file size:%"PRIu64" (0x%llx)Byte\n", filename, fr->offset_size, fr->offset_size);
         return 0; /* read file over */
     }
     if(ret >= 0)

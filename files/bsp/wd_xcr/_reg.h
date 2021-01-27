@@ -314,7 +314,7 @@ static inline bool _reg_get_rf_ext_clk(int ch, int index, FPGA_CONFIG_REG *reg)
     /*  1: out clock 0: in clock */
     is_ext = (((inout & 0x01) == 0) ? false : true);
     
-    return inout;
+    return is_ext;
 }
 
 static inline bool _reg_get_rf_lock_clk(int ch, int index, FPGA_CONFIG_REG *reg)

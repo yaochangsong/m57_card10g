@@ -41,8 +41,8 @@ struct fs_ops {
     int (*fs_format)(void);
     int (*fs_mkdir)(char *);
     int (*fs_delete)(char *);
-    int (*fs_find)(char *,int (*callback) (char *,void *, void *), void *);
-    ssize_t (*fs_dir)(char *,  int(*callback) (char *, void *, void *), void *);
+    int (*fs_find)(char *,int (*callback) (char *, struct stat *, size_t *), void *);
+    ssize_t (*fs_dir)(char *,  void(*callback) (char *, struct stat *, void *), void *);
     ssize_t (*fs_start_save_file)(int, char *, void*);
     ssize_t (*fs_stop_save_file)(int, char *);
     ssize_t (*fs_start_read_raw_file)(int,char *);

@@ -17,7 +17,7 @@ uint8_t rf_set_interface(uint8_t cmd,uint8_t ch,void *data){
             }else{
                 break;
             }
-            printf_debug("[**RF**]ch=%d, middle_freq=%llu\n",ch, *(uint64_t*)data);
+            printf_debug("[**RF**]ch=%d, middle_freq=%"PRIu64"\n",ch, *(uint64_t*)data);
 #ifdef SUPPORT_RF_ADRV
             uint64_t mid_freq = *(uint64_t*)data;
        #ifdef SUPPORT_PROJECT_SSA_MONITOR
@@ -36,7 +36,7 @@ uint8_t rf_set_interface(uint8_t cmd,uint8_t ch,void *data){
                 recv_freq = 0;
                 ret = spi_rf_get_command(SPI_RF_FREQ_GET, &recv_freq);
                 recv_freq_htob =  (htobe64(recv_freq) >> 24) ;  /* khz */
-                printf_debug("host_freq=%llu, 0x%llx, recv_freq = %llu, 0x%llx, htobe64=0x%llx\n",freq_khz, freq_khz,recv_freq ,recv_freq,recv_freq_htob);
+                printf_debug("host_freq=%"PRIu64", 0x%llx, recv_freq = %"PRIu64", 0x%llx, htobe64=0x%llx\n",freq_khz, freq_khz,recv_freq ,recv_freq,recv_freq_htob);
                 if(recv_freq_htob == freq_khz){
                         break;
                 }
@@ -82,7 +82,8 @@ uint8_t rf_set_interface(uint8_t cmd,uint8_t ch,void *data){
             /* noise_mode: 低失真模式(0x00)     常规模式(0x01) 低噪声模式(0x02) */
             noise_mode = *((uint8_t *)data);
             printf_debug("[**RF**]ch=%d, noise_mode=%d\n", ch, noise_mode);
-#ifdef defined(SUPPORT_RF_ADRV)
+#if defined(SUPPORT_RF_ADRV)
+        
 #elif  defined(SUPPORT_RF_SPI)
             ret = spi_rf_set_command(SPI_RF_NOISE_MODE_SET, &noise_mode);
             usleep(300);
@@ -155,7 +156,7 @@ uint8_t rf_set_interface(uint8_t cmd,uint8_t ch,void *data){
             }else if(cs.power < -60){
                 cs.power = -60;
             }
-            printf_note("source=%d, middle_freq_khz=%uKhz, power=%f\n", cs.source, cs.middle_freq_khz, cs.power);
+            printf_note("source=%d, middle_freq_khz=%uKhz, power=%d\n", cs.source, cs.middle_freq_khz, cs.power);
 #if defined(SUPPORT_RF_SPI)
             ret = spi_rf_set_command(SPI_RF_CALIBRATE_SOURCE_SET, &cs);
 #endif

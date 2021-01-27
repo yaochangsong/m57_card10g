@@ -42,6 +42,8 @@
 #include <sys/types.h>
 #include <sys/mman.h>
 #include <math.h>
+#include <inttypes.h>
+
 
 void usage(char *prog)
 {
@@ -177,7 +179,7 @@ int test_read_disk(char *filename, int size)
 
 	count = input_stat.st_size / size;
     total_MB = input_stat.st_size / (1024 * 1024);
-	printf("test read: block size=%d, count=%d, total=%llu MB\n", size, count, total_MB);
+	printf("test read: block size=%d, count=%d, total=%"PRIu64" MB\n", size, count, total_MB);
 
 	rc = clock_gettime(CLOCK_MONOTONIC, &ts_start);
 	while (count--)

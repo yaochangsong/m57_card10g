@@ -155,7 +155,7 @@ static int8_t inline spectrum_get_analysis_paramter(struct spm_run_parm *param,
     analysis_signal_middle_freq =  spectrum_get_signal_middle_freq(param);
     
     if(analysis_signal_middle_freq < s_freq || analysis_signal_middle_freq > e_freq){
-        printf_err("analysis frequency[%llu] is not  NOT within the bandwidth range[%llu, %llu]\n", analysis_signal_middle_freq, s_freq, e_freq);
+        printf_err("analysis frequency[%"PRIu64"] is not  NOT within the bandwidth range[%llu, %llu]\n", analysis_signal_middle_freq, s_freq, e_freq);
         return -1;
     }
     if(analysis_signal_bw > wk_bandwidth*SPECTRUM_MAX_SCAN_COUNT || analysis_signal_bw == 0){
@@ -170,7 +170,7 @@ static int8_t inline spectrum_get_analysis_paramter(struct spm_run_parm *param,
         if(s_freq >= delta_bw){
             *midd_freq_offset = wk_bandwidth/2+delta_bw - analysis_signal_middle_freq;
         }else{
-            printf_err("start frequency[%llu] is too small\n", s_freq);
+            printf_err("start frequency[%"PRIu64"] is too small\n", s_freq);
             return -1;
         }
         
@@ -295,7 +295,7 @@ static int spm_analysis_deal(uint64_t s_freq_hz, float freq_resolution, uint32_t
     /* Determine if the analysis point is within the signal range */
     if((poal_config->ctrl_para.specturm_analysis_param.frequency_hz < _signal_start_freq) || 
     (poal_config->ctrl_para.specturm_analysis_param.frequency_hz > _signal_end_freq)){
-        printf_warn("The analysis point[%llu] is NOT within the signal range[%llu, %llu]\n", 
+        printf_warn("The analysis point[%"PRIu64"] is NOT within the signal range[%"PRIu64", %"PRIu64"]\n", 
             poal_config->ctrl_para.specturm_analysis_param.frequency_hz, _signal_start_freq, _signal_end_freq);
     }
 
@@ -305,9 +305,9 @@ static int spm_analysis_deal(uint64_t s_freq_hz, float freq_resolution, uint32_t
         ptr->result[i].bw_hz = r->bandwidth[i] * freq_resolution;
         analysis_middle_freq =  spectrum_get_signal_middle_freq(param);
         ptr->result[i].level = r->arvcentfreq[i]+config_get_analysis_calibration_value(analysis_middle_freq);
-        printf_warn("m_freq=%llu,s_freq_hz=%llu, freq_resolution=%f, fft_size=%u\n", analysis_middle_freq, s_freq_hz, freq_resolution, fft_size);
+        printf_warn("m_freq=%llu,s_freq_hz=%"PRIu64", freq_resolution=%f, fft_size=%u\n", analysis_middle_freq, s_freq_hz, freq_resolution, fft_size);
         printf_warn("mid_freq_hz=%d, bw_hz=%d, level=%f\n", r->centfeqpoint[i], r->bandwidth[i], r->arvcentfreq[i]);
-        printf_warn("mid_freq_hz=%llu, peak_value=%u, bw_hz=%u,level=%f\n", 
+        printf_warn("mid_freq_hz=%"PRIu64", peak_value=%u, bw_hz=%u,level=%f\n", 
             ptr->result[i].mid_freq_hz, ptr->result[i].peak_value, ptr->result[i].bw_hz,ptr->result[i].level);
     }
     
@@ -354,7 +354,7 @@ loop:
         memory_pool_write_attr_value(fft_small_mpool, memory_pool_get_attr(iq_mpool), memory_pool_get_attr_len(iq_mpool));
         
         param = (struct spm_run_parm *)memory_pool_get_attr(fft_small_mpool);
-        printf_note("scan bandwidth=%uHz, s_freq=%llu, e_freq=%llu\n", param->scan_bw, param->s_freq, param->e_freq);
+        printf_note("scan bandwidth=%uHz, s_freq=%llu, e_freq=%"PRIu64"\n", param->scan_bw, param->s_freq, param->e_freq);
         
         /* --1step IQ convert 4K(small) fft, and store fft data to small memory pool  */
         printf_note("###STEP2: IQ Convert to Small FFT###\n");
@@ -392,7 +392,7 @@ loop:
         small_fft_rsb_size = memory_pool_step(fft_small_rsb_mpool)*memory_pool_get_use_count(fft_small_rsb_mpool)/4;
         big_fft_rsb_size = memory_pool_step(fft_big_rsb_mpool)*memory_pool_get_use_count(fft_big_rsb_mpool)/4;
         
-        printf_note("analysis_bw=%u, analysis_midd_freq_offset=%llu\n", analysis_bw, analysis_midd_freq_offset);
+        printf_note("analysis_bw=%u, analysis_midd_freq_offset=%"PRIu64"\n", analysis_bw, analysis_midd_freq_offset);
         printf_note("small fft data len=%d, use_count=%d\n", small_fft_size, memory_pool_get_use_count(fft_small_mpool));
         printf_note("big fft data len=%d, use_count=%d\n", big_fft_size, memory_pool_get_use_count(fft_big_mpool));
         printf_note("fft small mpool step =%u, big fft size step=%u\n", memory_pool_step(fft_small_mpool), memory_pool_step(fft_big_mpool));
@@ -418,7 +418,7 @@ loop:
         resolution = calc_resolution(total_bw, big_fft_size);
         bw_fft_size = ((float)analysis_bw/(float)total_bw) *big_fft_size ;
         analysis_signal_start_freq =  spectrum_get_signal_middle_freq(param) - analysis_bw/2;
-        printf_note("analysis_signal_start_freq = %llu,s_freq=%llu, resolution=%f, bw_fft_size=%llu\n", analysis_signal_start_freq, param->s_freq, resolution, bw_fft_size);
+        printf_note("analysis_signal_start_freq = %"PRIu64",s_freq=%"PRIu64", resolution=%f, bw_fft_size=%"PRIu64"\n", analysis_signal_start_freq, param->s_freq, resolution, bw_fft_size);
         //spectrum_rw_fft_result(fft_spectrum_get_result(), analysis_signal_start_freq, resolution, bw_fft_size,param);
         spm_analysis_deal(analysis_signal_start_freq, resolution, bw_fft_size,param);
 exit:

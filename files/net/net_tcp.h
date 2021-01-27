@@ -89,6 +89,9 @@ struct net_tcp_server {
 struct net_tcp_server *tcp_server_new(const char *host, int port);
 extern int get_ifa_name_by_ip(char *ipaddr, char *ifa_name);
 extern void tcp_send_alert_to_all_client(int code);
+extern bool tcp_find_client(struct sockaddr_in *addr);
+extern void tcp_active_send_all_client(uint8_t *data, int len);
+extern void update_tcp_keepalive(void *client);
 
 #endif
 

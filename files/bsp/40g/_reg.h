@@ -38,6 +38,15 @@
 #define CONFG_REG_LEN 0x100
 #define CONFG_AUDIO_OFFSET       0x800
 
+#ifndef RF_DIVISION_FREQ_COUNT
+#define RF_DIVISION_FREQ_COUNT  2    /* 射频频段数 */
+#endif
+#ifndef RF_DIVISION_FREQ_HZ
+#define RF_DIVISION_FREQ_HZ  GHZ(18)    /* 射频频段划分 */
+#endif
+#ifndef RF_DIVISION_FREQ2_HZ
+#define RF_DIVISION_FREQ2_HZ  GHZ(18)    /* 射频频段2划分 */
+#endif
 
 #ifndef MAX_SCAN_FREQ_HZ
 #define MAX_SCAN_FREQ_HZ (40000000000)
@@ -260,7 +269,7 @@ static inline int32_t _reg_get_rf_temperature(int ch, int index, FPGA_CONFIG_REG
         /* if temperature <30 or > 100, we think read false; try again 
           NOTE: reg*0.0625
         */
-        if(rf_temp_reg > 1600 || rf_temp_reg < 480 || rf_temp_reg == 0){
+        if(rf_temp_reg > 1280 || rf_temp_reg < 480 || rf_temp_reg == 0){
             read_ok = false;
         }else{
             read_ok = true;
@@ -390,7 +399,7 @@ CH1:
             set_rf_safe(ch, &reg->rfReg[2]->freq_khz, freq_10khz);
             printf_info("rf2 ch=%d, freq=%llu 10khz\n", ch, freq_10khz);
             for(i = 0; i < ARRAY_SIZE(_freqtable); i++){
-                if((freq_mhz > _freqtable[i].start_rf_freq_mhz) && (freq_mhz <= _freqtable[i].end_rf_freq_mhz)){
+                if((freq_hz > MHZ(_freqtable[i].start_rf_freq_mhz)) && (freq_hz <= MHZ(_freqtable[i].end_rf_freq_mhz))){
                     freq_set_val_mhz = _freqtable[i].mid_freq_mhz;
                     found ++;
                 }
@@ -544,6 +553,7 @@ static inline void _reg_set_rf_mode_code(int ch, int index, uint8_t code, FPGA_C
 
 static inline void _reg_set_rf_mgc_gain(int ch, int index, uint8_t gain, FPGA_CONFIG_REG *reg)
 {
+    uint64_t mid_freq;
     if(ch >= MAX_RADIO_CHANNEL_NUM)
         return;
     
@@ -557,15 +567,22 @@ static inline void _reg_set_rf_mgc_gain(int ch, int index, uint8_t gain, FPGA_CO
 
     //set_rf_safe(ch, &reg->rfReg[ch]->midband_minus, gain);
     if(ch == 1){
+        mid_freq = executor_get_mid_freq(ch);
+        if (mid_freq >= GHZ(18)) {
+           set_rf_safe(ch, &reg->rfReg[ch]->midband_minus, 0);
+           set_rf_safe(ch, &reg->rfReg[ch+1]->midband_minus, gain);
+        } else {
+            set_rf_safe(ch, &reg->rfReg[ch]->midband_minus, gain);
+        }
+    } else {
         set_rf_safe(ch, &reg->rfReg[ch]->midband_minus, gain);
-       // set_rf_safe(ch, &reg->rfReg[ch+1]->midband_minus, 0);
     }
-    set_rf_safe(ch, &reg->rfReg[ch]->midband_minus, gain);
 }
 
 
 static inline void _reg_set_rf_attenuation(int ch, int index, uint8_t atten, FPGA_CONFIG_REG *reg)
 {
+    uint64_t mid_freq;
     if(ch >= MAX_RADIO_CHANNEL_NUM)
         return;
     if(atten > 30)
@@ -577,12 +594,16 @@ static inline void _reg_set_rf_attenuation(int ch, int index, uint8_t atten, FPG
         return;
 
     if(ch == 1){
-        set_rf_safe(ch, &reg->rfReg[ch]->rf_minus, 0);
-        set_rf_safe(ch, &reg->rfReg[ch+1]->midband_minus, atten);
-        //set_rf_safe(ch, &reg->rfReg[ch+1]->rf_minus, atten);
+        mid_freq = executor_get_mid_freq(ch);
+        if (mid_freq >= GHZ(18)) {
+            set_rf_safe(ch, &reg->rfReg[ch]->rf_minus, atten);
+            set_rf_safe(ch, &reg->rfReg[ch+1]->rf_minus, 0);
+        } else {
+            set_rf_safe(ch, &reg->rfReg[ch]->rf_minus, atten);
+        }
+    } else {
+        set_rf_safe(ch, &reg->rfReg[ch]->rf_minus, atten);
     }
-    //set_rf_safe(ch, &reg->rfReg[ch]->rf_minus, atten);
-    set_rf_safe(ch, &reg->rfReg[ch]->rf_minus, atten);
 }
 
 static inline void _reg_set_rf_cali_source_attenuation(int ch, int index, uint8_t level, FPGA_CONFIG_REG *reg)

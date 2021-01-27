@@ -119,7 +119,7 @@ extern pthread_mutex_t send_iq_mutex;
 } while (0)
 extern void *spm_init(void);
 extern struct spm_context *get_spm_ctx(void);
-extern void spm_deal(struct spm_context *ctx, void *args);
+extern void spm_deal(struct spm_context *ctx, void *args, int ch);
 extern int spm_close(void);
 
 #endif

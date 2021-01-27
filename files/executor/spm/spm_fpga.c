@@ -813,7 +813,7 @@ static int spm_scan(uint64_t *s_freq_offset, uint64_t *e_freq, uint32_t *scan_bw
             *s_freq_offset = _e_freq;
         }
         *scan_bw = _scan_bw;
-        _m_freq = _s_freq + _scan_bw/2;
+        _m_freq = _s_freq + _bw/2;
         //fix bug:中频超6G无信号 wzq
         if (_m_freq > MAX_SCAN_FREQ_HZ){
             _m_freq = MAX_SCAN_FREQ_HZ;
@@ -1096,27 +1096,29 @@ static inline _spm_read_signal_value(int ch)
 static int spm_agc_ctrl_v3(int ch, struct spm_context *ctx)
 {
     #define AGC_CTRL_PRECISION      1       /* 控制精度+-2dbm */
-    uint8_t gain_ctrl_method = ctx->pdata->channel[ch].rf_para.gain_ctrl_method; /* 自动增益or手动增益 */
-    uint16_t agc_ctrl_time= ctx->pdata->channel[ch].rf_para.agc_ctrl_time;       /* 自动增益步进控制时间 */
-    int8_t agc_ctrl_dbm = ctx->pdata->channel[ch].rf_para.agc_mid_freq_out_level;/* 自动增益目标控制功率db值 */
-    uint8_t rf_mode = ctx->pdata->channel[ch].rf_para.rf_mode_code; /* 射频模式 */
+    volatile uint8_t gain_ctrl_method = ctx->pdata->channel[ch].rf_para.gain_ctrl_method; /* 自动增益or手动增益 */
+    volatile uint16_t agc_ctrl_time= ctx->pdata->channel[ch].rf_para.agc_ctrl_time;       /* 自动增益步进控制时间 */
+    volatile int8_t agc_ctrl_dbm = ctx->pdata->channel[ch].rf_para.agc_mid_freq_out_level;/* 自动增益目标控制功率db值 */
+    volatile uint8_t rf_mode = ctx->pdata->channel[ch].rf_para.rf_mode_code; /* 射频模式 */
     int8_t agc_dbm_val = 0;     /* 读取信号db值 */
     int ret = -1;
-    static int8_t ctrl_method_dup[MAX_RADIO_CHANNEL_NUM]={-1};
-    static int8_t rf_mode_dup[MAX_RADIO_CHANNEL_NUM]={-1};
-    static int32_t dst_val[MAX_RADIO_CHANNEL_NUM] = {-1};
-    static int32_t max_val[MAX_RADIO_CHANNEL_NUM] = {-1};
-    static int32_t min_val[MAX_RADIO_CHANNEL_NUM] = {-1};
-    static int32_t up_val[MAX_RADIO_CHANNEL_NUM] = {-1};
-    static int32_t down_val[MAX_RADIO_CHANNEL_NUM] = {-1};
-    static int8_t rf_attenuation[MAX_RADIO_CHANNEL_NUM] = {-1};
-    static int8_t mgc_attenuation[MAX_RADIO_CHANNEL_NUM] = {-1};
+    static int8_t ctrl_method_dup[MAX_RADIO_CHANNEL_NUM]={-1, -1};
+    static int8_t rf_mode_dup[MAX_RADIO_CHANNEL_NUM]={-1, -1};
+    static int32_t dst_val[MAX_RADIO_CHANNEL_NUM] = {-1, -1};
+    static int32_t max_val[MAX_RADIO_CHANNEL_NUM] = {-1, -1};
+    static int32_t min_val[MAX_RADIO_CHANNEL_NUM] = {-1, -1};
+    static int32_t up_val[MAX_RADIO_CHANNEL_NUM] = {-1, -1};
+    static int32_t down_val[MAX_RADIO_CHANNEL_NUM] = {-1, -1};
+    static int8_t rf_attenuation[MAX_RADIO_CHANNEL_NUM] = {-1, -1};
+    static int8_t mgc_attenuation[MAX_RADIO_CHANNEL_NUM] = {-1, -1};
+    static int8_t agc_ctrl_dbm_dup[MAX_RADIO_CHANNEL_NUM] = {-1, -1};
 
     /* 当增益模式变化时 */
-    if(ctrl_method_dup[ch] != gain_ctrl_method || rf_mode_dup[ch] != rf_mode){
+    if(ctrl_method_dup[ch] != gain_ctrl_method || rf_mode_dup[ch] != rf_mode || agc_ctrl_dbm_dup[ch] != agc_ctrl_dbm){
         ctrl_method_dup[ch] = gain_ctrl_method;
+        agc_ctrl_dbm_dup[ch] = agc_ctrl_dbm;
         rf_mode_dup[ch] = rf_mode;
-        printf_debug("ch:%d ctrl_method:%d rf_mode:%d\n",ch,ctrl_method_dup[ch],rf_mode);
+        printf_debug("ch:%d ctrl_method:%d rf_mode:%d, agc_ctrl_dbm_dup=%d\n",ch,ctrl_method_dup[ch],rf_mode, agc_ctrl_dbm_dup[ch]);
         if(gain_ctrl_method == POAL_MGC_MODE){
             /* 手动模式直接退出 */
             return -1;

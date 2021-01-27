@@ -53,7 +53,12 @@ volatile bool disk_is_full_alert = false;
 
 
 static inline void _fs_init_(void);
-static int _fs_notifier_exit(void *args);
+static int _fs_save_exit(void *args);
+static ssize_t _fs_stop_save_file(int ch, char *filename);
+
+#define SUPPORT_FS_NOTIFY 1
+#define FS_OPS_CHANNEL  MAX_RADIO_CHANNEL_NUM
+#define MAX_THREAD_NAME_LEN 64
 
 
 
@@ -318,6 +323,25 @@ static ssize_t _fs_dir(char *dirname, int (*callback) (char *,void *, void *), v
     return 0;
 }
 
+static char *_fs_get_save_thread_name(int ch)
+{
+    static char name[FS_OPS_CHANNEL][MAX_THREAD_NAME_LEN];
+    if(ch >= FS_OPS_CHANNEL)
+        return NULL;
+
+    snprintf(name[ch], MAX_THREAD_NAME_LEN, "%s_ch%d", THREAD_FS_SAVE_NAME, ch);
+    return name[ch];
+}
+
+static char *_fs_get_backtrace_thread_name(int ch)
+{
+    static char name[FS_OPS_CHANNEL][MAX_THREAD_NAME_LEN];
+    if(ch >= FS_OPS_CHANNEL)
+        return NULL;
+
+    snprintf(name[ch], MAX_THREAD_NAME_LEN, "%s_ch%d", THREAD_FS_BACK_NAME, ch);
+    return name[ch];
+}
 static void _thread_exit_callback(void *arg){  
     struct timeval beginTime, endTime;
     uint64_t nbyte, filesize = 0;
@@ -340,26 +364,28 @@ static void _thread_exit_callback(void *arg){
     printf(">>diff us=%fus, %fs\n", diff_time_us, diff_time_s);
      speed = (float)((nbyte / (1024 * 1024)) / diff_time_s);
      fprintf(stdout,"speed: %.2f MBps, count=%llu\n", speed, pargs->count);
-    if(pargs->name && !strcmp(pargs->name, THREAD_FS_BACK_NAME)){
+    if(pargs->thread_name && !strcmp(pargs->thread_name, _fs_get_backtrace_thread_name(ch))){
         printf_note("Stop Backtrace, Stop Psd!!!\n");
         io_stop_backtrace_file(&ch);
-        executor_set_command(EX_ENABLE_CMD, PSD_MODE_DISABLE, 0, NULL);
+        executor_set_command(EX_ENABLE_CMD, PSD_MODE_DISABLE, ch, NULL);
     }
-#if defined(SUPPORT_WAV)
-    else if(pargs->name && !strcmp(pargs->name, THREAD_FS_SAVE_NAME)) {
+    else if(pargs->thread_name && !strcmp(pargs->thread_name,  _fs_get_save_thread_name(ch))) {
+    #if defined(SUPPORT_WAV)
         struct spm_context *ctx = get_spm_ctx();
         struct spm_run_parm *run_para = ctx->run_args[pargs->ch];
         uint64_t middle_freq = run_para->m_freq;
         uint32_t sample_rate = io_get_raw_sample_rate(pargs->ch, middle_freq);
         wav_write_header(fd, sample_rate, pargs->split_nbyte);
+    #endif
+        _fs_save_exit(pargs);
     }
-#endif
+
     if(fd > 0)
         close(fd);
-    _fs_notifier_exit(pargs);
     safe_free(pargs->filename);
-    if(arg)
+    if(arg) {
         safe_free(arg);
+    }
 }  
 
 
@@ -414,13 +440,20 @@ static inline int _fs_split_file(void *args)
             struct spm_run_parm *run_para = ctx->run_args[p_args->ch];
             uint64_t middle_freq = run_para->m_freq;
             uint32_t sample_rate = io_get_raw_sample_rate(p_args->ch, middle_freq);
-            wav_write_header(fd, sample_rate, p_args->split_nbyte);
+            wav_write_header(p_args->fd, sample_rate, p_args->split_nbyte);
             #endif
             close(p_args->fd);
         }
+#if defined(SUPPORT_FS_NOTIFY)
+        fs_notifier_add_node_to_list(p_args->ch, p_args->filename, &p_args->notifier);
+#endif
+        
         p_args->split_num++;
         p_args->split_nbyte = 0;
         p_args->filename = _fs_split_file_rename(p_args);
+#if defined(SUPPORT_FS_NOTIFY)
+        fs_notifier_create_node(p_args->ch, p_args->filename, &p_args->notifier);
+#endif
         snprintf(path, sizeof(path), "%s/%s", fs_get_root_dir(), p_args->filename);
         printf_debug("path:%s\n", path);
         fd = open(path, O_RDWR | O_CREAT | O_TRUNC | O_DIRECT | O_SYNC, 0666);
@@ -429,8 +462,26 @@ static inline int _fs_split_file(void *args)
             return -1;
         }
         p_args->fd = fd;
+#if defined(SUPPORT_WAV)
+        wav_write_header_before(fd);
+    #if defined(SUPPORT_FS_NOTIFY)
+        fs_notifier_update_file_size(&p_args->notifier, 512);
+    #endif
+        p_args->split_nbyte += 512;
+#endif
     }
     return 0;
+}
+
+static bool _fs_sample_size_full(struct push_arg *args)
+{
+    if(args->sampler.sample_policy == FSP_SIZE){
+        if(args->nbyte >= args->sampler.args.sample_size){
+            printf_note("filename: %s size %llu is full,sample_size: %llu\n",args->filename, args->nbyte, args->sampler.args.sample_size);
+            return true;
+        }
+    }
+    return false;
 }
 static int _fs_start_save_file_thread(void *arg)
 {
@@ -451,8 +502,7 @@ static int _fs_start_save_file_thread(void *arg)
         if(ret == -1)
             printf_warn("write file error, save thread exit\n");
         _ctx->ops->read_adc_over_deal(ch, &nread);
-        io_set_enable_command(ADC_MODE_DISABLE, ch, -1, 0);
-        pthread_exit_by_name(THREAD_FS_SAVE_NAME);
+        _fs_stop_save_file(ch, NULL);
         return -1;
     }
     if(nread > 0){
@@ -462,7 +512,15 @@ static int _fs_start_save_file_thread(void *arg)
             ret = _write_disk_run(p_args->fd, nread, ptr);
             _ctx->ops->read_adc_over_deal(ch, &nread);
         } 
+#if defined(SUPPORT_FS_NOTIFY)
+        fs_notifier_update_file_size(&p_args->notifier, nread);
+#endif
         p_args->split_nbyte += nread;
+        if(_fs_sample_size_full(p_args)){
+            _ctx->ops->read_adc_over_deal(ch, &nread);
+            _fs_stop_save_file(ch, NULL);
+            return -1;
+        }
     }else{
         usleep(1000);
         printf("read_adc_data err:%d\n", nread);
@@ -471,72 +529,122 @@ static int _fs_start_save_file_thread(void *arg)
 
 }
 
-void _fs_save_file_status_timer_notify(struct uloop_timeout *timeout)
+static int _fs_sample_time_out(struct uloop_timeout *t)
 {
-    double  diff_time_us = 0;
-    struct timeval *beginTime, endTime;
-    struct fs_notify_status *fsns = container_of(timeout, struct fs_notify_status, timeout);
-    struct push_arg *p_args =  fsns->args;
+    struct push_arg *p_args = container_of(t, struct push_arg, sampler.timeout);
+    if(p_args == NULL)
+        return -1;
     
-    fsns->filesize = p_args->nbyte;
-    beginTime = &fsns->start_time;
-    gettimeofday(&endTime, NULL);
-    diff_time_us = difftime_us_val(beginTime, &endTime);
-    fsns->duration_time = diff_time_us/1000000;
-    fsns->filename = p_args->filename;
-    
-    printf_debug("name=%s, size=%u,duration time us=%fus, %us\n",
-        fsns->filename, fsns->filesize,  diff_time_us, fsns->duration_time);
-#if (defined SUPPORT_PROTOCAL_AKT) 
-    akt_send_file_status(fsns, sizeof(struct fs_notify_status));
-#endif
-    uloop_timeout_set(timeout, fsns->timeout_ms); /* 5000 ms */
+    _fs_stop_save_file(p_args->ch, NULL);
+    printf_note("Save File Stop!\n", p_args->sampler.args.sample_time);
+    return 0;
 }
 
-
-static int _fs_notifier_init(void *args)
+/* 
+存储定时器初始化
+    若存储策略为定时存储，开始存储定时器 
+*/
+static int _fs_sample_timer_init(struct push_arg *p_args)
 {
-    struct push_arg *p_args = args;
-    static  struct uloop_timeout task1_timeout;
-    static struct fs_notify_status *fs_status;
-    fs_status = calloc(1, sizeof(struct fs_notify_status));
+    int timer_ms = 0;
+    if(p_args == NULL)
+        return -1;
     
-    printf_note("fs notifier init\n");
-    fs_status->filename = p_args->filename;
-    fs_status->ch = p_args->ch;
-    fs_status->filesize = 0;
-    fs_status->duration_time = 0;
-    fs_status->timeout_ms = config_get_disk_file_notifier_timeout();
-    memcpy(&fs_status->start_time, &p_args->ct, sizeof(struct timeval));
-    fs_status->args = args;
-    p_args->notifier = fs_status;
-    fs_status->timeout.cb = _fs_save_file_status_timer_notify;
-    uloop_timeout_set(&fs_status->timeout, fs_status->timeout_ms);
-    
+    struct fs_sampler  *fss = &p_args->sampler;
+    fss->timeout.cb = _fs_sample_time_out;
+    timer_ms = p_args->sampler.args.sample_time * 1000;
+    uloop_timeout_set(&fss->timeout, timer_ms);
+    printf_note("Save File: start Timer %d.Sec\n", p_args->sampler.args.sample_time);
+    return 0;
 }
 
-static int _fs_notifier_exit(void *args)
+/* 存储定时器退出 */
+static int _fs_sample_timer_exit(void *args)
 {
     struct push_arg *p_args = args;
-    struct fs_notify_status  *fss = p_args->notifier;
+    
+    if(p_args == NULL)
+        return -1;
+    
+    struct fs_sampler  *fss = &p_args->sampler;
     if(fss == NULL)
         return -1;
+    
     uloop_timeout_cancel(&fss->timeout);
-    safe_free(fss);
     return 0;
+}
+
+static int _fs_save_init(void *args)
+{
+    struct push_arg *p_args = args;
+    
+    if(p_args == NULL)
+        return -1;
+    
+#if defined(SUPPORT_FS_NOTIFY)
+    p_args->notifier.args = &p_args->sampler;
+    fs_notifier_init(p_args->ch, p_args->filename, &p_args->notifier);
+#endif
+    if(p_args->sampler.sample_policy == FSP_TIMER){
+        _fs_sample_timer_init(args);
+    }
+    
+#if defined(SUPPORT_WAV)
+    wav_write_header_before(p_args->fd);
+    #if defined(SUPPORT_FS_NOTIFY)
+    fs_notifier_update_file_size(&p_args->notifier, 512);
+    #endif
+#endif
+    return 0;
+}
+
+static int _fs_save_exit(void *args)
+{   
+     struct push_arg *p_args = args;
+     if(p_args == NULL)
+        return -1;
+     
+#if defined(SUPPORT_FS_NOTIFY)
+    bool exit_ok;
+    if(disk_is_full_alert)
+        exit_ok = false;    /* 异常退出 */
+    else
+        exit_ok = true;
+    fs_notifier_exit(p_args->ch,p_args->filename, &p_args->notifier, exit_ok);
+#endif
+    if(p_args->sampler.sample_policy == FSP_TIMER){
+        _fs_sample_timer_exit(args);
+    }
+    
+    return 0;
+}
+
+static sample_policy_code _fs_get_sample_policy(struct push_arg *p_args)
+{
+    if(p_args == NULL)
+        return FSP_FREE;
+
+    if(p_args->sampler.args.sample_time > 0)
+        return FSP_TIMER;
+
+    if(p_args->sampler.args.sample_size > 0)
+        return FSP_SIZE;
+
+    return FSP_FREE;
 }
 
 static ssize_t _fs_start_save_file(int ch, char *filename, void *args)
 {
     #define     _START_SAVE     1
     #define     _STOP_SAVE      0
+    
     int ret = -1;
     static int fd = 0;
     char path[512];
     struct timeval beginTime;
     struct push_arg *p_args;
-    
-    if(disk_is_valid == false || disk_is_format == true)
+
+    if(disk_is_valid == false || disk_is_format == true || disk_is_full_alert == true)
         return -1;
     if(filename == NULL || ch >= MAX_RADIO_CHANNEL_NUM)
         return -1;
@@ -562,15 +670,19 @@ static ssize_t _fs_start_save_file(int ch, char *filename, void *args)
     p_args->split_nbyte = 0;
     p_args->fd = fd;
     p_args->ch = ch;
-    p_args->name=THREAD_FS_SAVE_NAME;
-    p_args->args = *(uint32_t *)args;
+    p_args->thread_name = _fs_get_save_thread_name(ch);
+    printf_note("thread name=%s\n", p_args->thread_name);
     p_args->filename = safe_strdup(filename);
-#if defined(SUPPORT_WAV)
-    wav_write_header_before(fd);
-#endif
+    if(args != NULL){
+        memcpy(&p_args->sampler.args, args, sizeof(struct fs_save_sample_args));
+        printf_note("bindwidth=%u,sample_size=%llu sample_time=%u\n", 
+                p_args->sampler.args.bindwidth, p_args->sampler.args.sample_size, p_args->sampler.args.sample_time);
+    }
+    p_args->sampler.sample_policy = _fs_get_sample_policy(p_args);
+
     io_set_enable_command(ADC_MODE_ENABLE, ch, -1, 0);
-    ret =  pthread_create_detach (NULL,_fs_notifier_init, _fs_start_save_file_thread, _thread_exit_callback,  
-                                THREAD_FS_SAVE_NAME, p_args, p_args);
+    ret =  pthread_create_detach (NULL,_fs_save_init, _fs_start_save_file_thread, _thread_exit_callback,  
+                                p_args->thread_name, p_args, p_args);
     if(ret != 0){
         perror("pthread save file thread!!");
         safe_free(p_args->filename);
@@ -584,8 +696,9 @@ static ssize_t _fs_start_save_file(int ch, char *filename, void *args)
 static ssize_t _fs_stop_save_file(int ch, char *filename)
 {
     io_set_enable_command(ADC_MODE_DISABLE, ch, -1, 0);
-    printf("stop save file : %s\n", THREAD_FS_SAVE_NAME);
-    pthread_cancel_by_name(THREAD_FS_SAVE_NAME);
+    printf_note("stop save file : %s\n",  _fs_get_save_thread_name(ch));
+    pthread_cancel_by_name(_fs_get_save_thread_name(ch));
+    return 0;
 }
 
 static ssize_t _fs_start_read_raw_file_loop(void *arg)
@@ -603,7 +716,7 @@ static ssize_t _fs_start_read_raw_file_loop(void *arg)
 
     if(nread == 0){
         printf_note(">>>>>>>read over!!\n");
-        pthread_exit_by_name(THREAD_FS_BACK_NAME);
+        pthread_exit_by_name(_fs_get_backtrace_thread_name(ch));
     }
     return nread;
 }
@@ -651,10 +764,13 @@ static ssize_t _fs_start_read_raw_file(int ch, char *filename)
     p_args->count = 0;
     p_args->fd = file_fd;
     p_args->ch = ch;
-    p_args->name=THREAD_FS_BACK_NAME;
+    p_args->thread_name = _fs_get_backtrace_thread_name(ch);
+#if defined(SUPPORT_WAV)
+    wav_backtrace_before(file_fd);
+#endif
     io_start_backtrace_file(&ch);
     ret =  pthread_create_detach (NULL,NULL, _fs_start_read_raw_file_loop, _thread_exit_callback,  
-                                THREAD_FS_BACK_NAME, p_args, p_args);
+                                p_args->thread_name , p_args, p_args);
     if(ret != 0){
         perror("pthread read file thread!!");
         safe_free(p_args);
@@ -669,7 +785,7 @@ static ssize_t _fs_stop_read_raw_file(int ch, char *filename)
     if(disk_is_valid == false || ch >= MAX_RADIO_CHANNEL_NUM)
         return -1;
     
-    pthread_cancel_by_name(THREAD_FS_BACK_NAME);
+    pthread_cancel_by_name(_fs_get_backtrace_thread_name(ch));
     io_stop_backtrace_file(&ch);
     return 0;
 }
@@ -738,7 +854,7 @@ void fs_disk_check_thread(void *args)
     struct statfs sfs;
     bool disk_check = false;
     int check_time = _SLOW_CHECK_TIME_INTERVAL_US;
-    uint64_t threshold_byte = 0, used_byte = 0;
+    uint64_t threshold_byte = 0, free_byte = 0;
     pthread_detach(pthread_self());
     sleep(1);
     
@@ -747,10 +863,10 @@ void fs_disk_check_thread(void *args)
             disk_check = _fs_disk_info(&sfs);
             if(disk_check == false){
                 if(disk_error_num == DISK_CODE_NOT_FOUND){
-                    tcp_send_alert_to_all_client(1);
+                    akt_send_alert(1);
                     //send error
                 } else if(disk_error_num == DISK_CODE_NOT_FORAMT){
-                    tcp_send_alert_to_all_client(2);
+                    akt_send_alert(2);
                     //send format
                 }
                 usleep(check_time);
@@ -760,20 +876,21 @@ void fs_disk_check_thread(void *args)
         _fs_init_();
         /* now disk is ok */
         if((threshold_byte = config_get_disk_alert_threshold()) > 0){
-            used_byte = sfs.f_bsize * (sfs.f_blocks - sfs.f_bfree);
-            if(threshold_byte <= used_byte){
-                printf_note("%llu >= threshold_byte[%llu], send alert to client\n", used_byte, threshold_byte);
+            free_byte = sfs.f_bsize * sfs.f_bfree;
+            if(threshold_byte >= free_byte){
+                printf_note("%llu >= threshold_byte[%llu], send alert to client\n", free_byte, threshold_byte);
                 disk_is_full_alert = true;
-                tcp_send_alert_to_all_client(0);
+                akt_send_alert(0);
             }else {
-                printf_debug("%llu < threshold_byte[%llu], disk not full\n", used_byte, threshold_byte);
+                printf_debug("%llu < threshold_byte[%llu], disk not full\n", free_byte, threshold_byte);
                 disk_is_full_alert =  false;
             }
         }
-        if(pthread_check_alive_by_name(THREAD_FS_SAVE_NAME) == true){
-            check_time = _FAST_CHECK_TIME_INTERVAL_US;
-        }else{
-            check_time = _SLOW_CHECK_TIME_INTERVAL_US;
+        check_time = _SLOW_CHECK_TIME_INTERVAL_US;
+        for(int i = 0; i <FS_OPS_CHANNEL ; i++){
+            if(pthread_check_alive_by_name(_fs_get_save_thread_name(i)) == true){
+                check_time = _FAST_CHECK_TIME_INTERVAL_US;
+            }
         }
         usleep(check_time);
     }

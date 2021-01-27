@@ -67,6 +67,10 @@ void wav_write_header_before(int fd)
 {
     lseek(fd, 512, SEEK_SET);
 }
+void wav_backtrace_before(int fd)
+{
+    lseek(fd, 512, SEEK_SET);
+}
 int wav_write_header(int fd,uint32_t sample_rate, uint64_t datalen)
 {
     int write_len = -1;

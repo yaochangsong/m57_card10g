@@ -97,7 +97,12 @@ static  int8_t  executor_fragment_scan(uint32_t fregment_num,uint8_t ch, work_mo
     */
     s_freq = poal_config->channel[ch].multi_freq_fregment_para.fregment[fregment_num].start_freq;
     e_freq = poal_config->channel[ch].multi_freq_fregment_para.fregment[fregment_num].end_freq;
-
+#if defined(SUPPORT_PROJECT_WD_XCR_40G)
+    uint64_t s_freq_origin, e_freq_origin;
+    get_origin_start_end_freq(ch, s_freq, e_freq, &s_freq_origin, &e_freq_origin);
+    printf_debug("s_freq:%llu, s_freq_origin:%llu\n", s_freq, s_freq_origin);
+    printf_debug("e_freq:%llu, e_freq_origin:%llu\n", e_freq, e_freq_origin);
+#endif
     if(config_read_by_cmd(EX_RF_FREQ_CMD, EX_RF_MID_BW, ch, &scan_bw) == -1){
             printf_err("Error read scan bandwidth=%u\n", scan_bw);
             return -1;
@@ -119,11 +124,16 @@ static  int8_t  executor_fragment_scan(uint32_t fregment_num,uint8_t ch, work_mo
         r_args->rf_mode = poal_config->channel[ch].rf_para.rf_mode_code;
     do{
         r_args->s_freq_offset = _s_freq_hz_offset;
+        #if defined(SUPPORT_PROJECT_WD_XCR_40G)
+        r_args->s_freq = s_freq_origin;
+        r_args->e_freq = e_freq_origin;
+        #else
         r_args->s_freq = s_freq;
+        r_args->e_freq = e_freq;
+        #endif
         if(spmctx->ops->spm_scan)
         spmctx->ops->spm_scan(&_s_freq_hz_offset, &_e_freq_hz, &scan_bw, &_bw_hz, &_m_freq_hz);
         printf_debug("[%d] s_freq_offset=%lluHz,scan_bw=%uHz _bw_hz=%u, _m_freq_hz=%lluHz\n", index, r_args->s_freq_offset, scan_bw, _bw_hz, _m_freq_hz);
-        r_args->e_freq = e_freq;
         r_args->scan_bw = scan_bw;
         r_args->bandwidth = _bw_hz;
         r_args->m_freq = r_args->s_freq_offset + _bw_hz/2;
@@ -145,7 +155,7 @@ static  int8_t  executor_fragment_scan(uint32_t fregment_num,uint8_t ch, work_mo
         if(poal_config->channel[ch].enable.psd_en){
             io_set_enable_command(PSD_MODE_ENABLE, ch, -1, r_args->fft_size);
         }
-        spm_deal(args, r_args);
+        spm_deal(args, r_args, ch);
         if(poal_config->channel[ch].enable.psd_en){
             io_set_enable_command(PSD_MODE_DISABLE, ch, -1, r_args->fft_size);
         }
@@ -294,7 +304,7 @@ static int8_t  executor_points_scan(uint8_t ch, work_mode_type mode, void *args)
             if(spmctx->ops->agc_ctrl)
                 spmctx->ops->agc_ctrl(ch, spmctx);
             if(args != NULL)
-                spm_deal(args, r_args);
+                spm_deal(args, r_args, ch);
             if(poal_config->channel[ch].enable.psd_en){
                 io_set_enable_command(PSD_MODE_DISABLE, ch, -1, point->points[i].fft_size);
             }

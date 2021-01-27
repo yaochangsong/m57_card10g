@@ -186,12 +186,13 @@ typedef enum _BUSINESS_CODE{
     SET_NET_WZ_THRESHOLD_CMD=0x16,
     SET_NET_WZ_NETWORK_CMD=0x26,
 #endif
+    LOW_NOISE_CMD=0x25,
     AUDIO_VOLUME_CMD=0x28,
     DEVICE_REBOOT_CMD=0x29,
     FILE_LIST_CMD=0x2a,
     FILE_STROE_SIZE_CMD=0x2b,
     FILE_STATUS_NOTIFY=0x2c,
-
+    REPORT_DISK_ALARM=0x2d,
 }BUSINESS_CODE;
 
 
@@ -666,6 +667,8 @@ typedef struct  _STORAGE_IQ_ST{
     uint32_t bandwidth;
     uint16_t caputure_time_len;
     uint8_t filepath[FILE_PATH_MAX_LEN];
+    uint8_t type;           /* 0x00：原始 AD 数据   0x01：DDC 处理后 IQ 数据 */
+    uint64_t filesize;      /* 采集文件大小 */
 }__attribute__ ((packed)) STORAGE_IQ_ST; 
 
 typedef struct  _BACKTRACE_IQ_ST{
@@ -724,6 +727,21 @@ typedef struct _FILE_LIST_INFO{
     SINGLE_FILE_INFO files[0];
 }__attribute__ ((packed)) FILE_LIST_INFO;
 
+struct fs_status {
+    uint8_t ch;
+    char path[256];
+    uint64_t filesize;
+    uint64_t duration_time;
+    uint64_t middle_freq;
+    uint64_t bindwidth;
+    uint64_t sample_rate;
+    uint64_t file_threshold;
+    uint8_t state;
+}__attribute__ ((packed));
+struct disk_alarm_report {
+    uint8_t ch;
+    uint8_t code;
+}__attribute__ ((packed));
 
 /*************************************************************************/
 #define check_radio_channel(ch)   (ch >= MAX_RADIO_CHANNEL_NUM ? 1 : 0) 
@@ -825,8 +843,9 @@ extern void akt_send(const void *data, int len, int code);
 extern void akt_send_resp(void *client, int code, void *args);
 extern int  akt_parse_end(void *cl, char *buf, int len);
 extern bool akt_parse_discovery(void *client, const char *buf, int len);
-extern void akt_send_alert(void *client, int code);
-extern void akt_send_file_status(void *data, size_t data_len);
+extern void akt_send_file_status(void *data, size_t data_len, void *args);
+extern void akt_send_alert(int code);
+extern int get_origin_start_end_freq(uint8_t ch, uint64_t start_in, uint64_t end_in, uint64_t *start_out, uint64_t *end_out);
 
 #endif
 

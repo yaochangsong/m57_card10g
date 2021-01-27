@@ -492,6 +492,7 @@ uint32_t tcp_get_addr(void)
 
 struct net_tcp_server *tcp_server_new(const char *host, int port)
 {
+    #define TCP_SEND_BUF 2*1024*1024
     struct net_tcp_server *srv;
     int sock, _err;
     
@@ -506,6 +507,26 @@ struct net_tcp_server *tcp_server_new(const char *host, int port)
     if(_err){
         printf_err("setsockopt SO_PRIORITY failure \n");
     }
+    int defrcvbufsize = -1;
+    int nSnd_buffer = TCP_SEND_BUF;
+    socklen_t optlen = sizeof(defrcvbufsize);
+    if(getsockopt(sock, SOL_SOCKET, SO_SNDBUF, &defrcvbufsize, &optlen) < 0)
+    {
+        printf("getsockopt error\n");
+        return NULL;
+    }
+    printf_info("Current tcp default send buffer size is:%d\n", defrcvbufsize);
+    if(setsockopt(sock, SOL_SOCKET, SO_SNDBUF, &nSnd_buffer, optlen) < 0)
+    {
+        printf("set tcp recive buffer size failed.\n");
+        return NULL;
+    }
+    if(getsockopt(sock, SOL_SOCKET, SO_SNDBUF, &defrcvbufsize, &optlen) < 0)
+    {
+        printf("getsockopt error\n");
+        return NULL;
+    }
+    printf_info("Now set tcp send buffer size to:%dByte\n",defrcvbufsize);
     srv = calloc(1, sizeof(struct net_tcp_server));
     if (!srv) {
         uh_log_err("calloc");

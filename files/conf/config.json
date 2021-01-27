@@ -30,10 +30,10 @@
 			"fpga":	"202012",
 			"kernel":""
 		},
-		"device_sn":	"ACTI-0204"
+		"device_sn":	"ACTI-0205"
 	},
     "calibration_parm":{
-		"psd_power_global":1540,
+		"psd_power_global":1635,
 		"gain_calibration":"true",
         "psd_fftsize":[
             {
@@ -106,7 +106,7 @@
                 "fftsize":0,
                 "start_freq":18000000,
                 "end_freq":18088500,
-                "value":-100
+                "value":0
             }
         ],
         "analysis_power_global":-195,
@@ -219,7 +219,7 @@
                 "mgc_gain":0,
                 "agc_ctrl_time":1000,
                 "agc_output_amp_dbm":-20,
-                "agc_ref_val_0dbm":1682,
+                "agc_ref_val_0dbm":4676,
                 "subch_ref_val_0dbm":13040,
 				"rf_mode_param" :[
 					{
@@ -252,7 +252,7 @@
                 "mgc_gain":0,
                 "agc_ctrl_time":1000,
                 "agc_output_amp_dbm":-20,
-                "agc_ref_val_0dbm":1682,
+                "agc_ref_val_0dbm":4676,
                 "subch_ref_val_0dbm":13040,
 				"rf_mode_param" :[
 					{

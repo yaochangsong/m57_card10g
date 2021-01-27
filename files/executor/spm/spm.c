@@ -139,11 +139,11 @@ loop:
 }
 
 
-void spm_deal(struct spm_context *ctx, void *args)
+void spm_deal(struct spm_context *ctx, void *args, int ch)
 {   
     struct spm_context *pctx = ctx;
     struct poal_config *poal_config = &(config_get_config()->oal_config);
-    int ch = poal_config->cid;
+
     if(pctx == NULL){
         printf_err("spm is not init!!\n");
         return;

@@ -126,9 +126,11 @@ static int scan_segment_param_convert(uint8_t ch)
     }
     if (j > fregment->freq_segment_cnt) {
         fregment->freq_segment_cnt = j;
+        #if 0
         if(fregment->freq_segment_cnt > 1) {
             poal_config->channel[ch].work_mode = OAL_MULTI_ZONE_SCAN_MODE;
         }
+        #endif
         memcpy(&fregment->fregment[0], &array_fregment[0], sizeof(struct freq_fregment_para_st)*MAX_SIG_CHANNLE);
     }
 
@@ -139,6 +141,30 @@ static int scan_segment_param_convert(uint8_t ch)
     return 0;
 }
 #endif
+int get_origin_start_end_freq(uint8_t ch, uint64_t start_in, uint64_t end_in, uint64_t *start_out, uint64_t *end_out)
+{
+    int i = 0;
+    uint8_t found = 0;
+    uint64_t start_freq, end_freq;
+    struct akt_protocal_param *pakt_config = &akt_config;
+    DIRECTION_MULTI_FREQ_ZONE_PARAM *muti_zone = &pakt_config->multi_freq_zone[ch];
+    for (i = 0; i < muti_zone->freq_band_cnt; i++) {
+        start_freq = muti_zone->sig_ch[i].center_freq - muti_zone->sig_ch[i].bandwidth/2;
+        end_freq = muti_zone->sig_ch[i].center_freq + muti_zone->sig_ch[i].bandwidth/2;
+        if (start_in >= start_freq && end_in <= end_freq) {
+            *start_out = start_freq;
+            *end_out = end_freq;
+            found = 1;
+            break;
+        }
+    }
+    if (found) {
+        return 0;
+    } else {
+        printf_err("get origin freq fail, it shouldn't be here\n");
+        return -1;
+    }
+}
 /******************************************************************************
 * FUNCTION:
 *     akt_convert_oal_config
@@ -969,12 +995,16 @@ static int akt_execute_set_command(void *cl)
                 ret = xwfs_start_save_file(sis.filepath);
  #elif defined(SUPPORT_FS)
                 struct fs_context *fs_ctx;
+                struct fs_save_sample_args sample_args;
                 fs_ctx = get_fs_ctx();
                 if(fs_ctx == NULL){
                     printf_warn("NOT FOUND DISK!!\n");
                     break;
                 }
-                fs_ctx->ops->fs_start_save_file(ch, sis.filepath, &sis.bandwidth);
+                sample_args.bindwidth = sis.bandwidth;
+                sample_args.sample_size = sis.filesize;
+                sample_args.sample_time = sis.caputure_time_len;
+                fs_ctx->ops->fs_start_save_file(ch, sis.filepath, &sample_args);
 #endif
             }else if(sis.cmd == 0){/* stop add iq file */
                 printf_note("Stop add file:%s\n", sis.filepath);
@@ -1046,7 +1076,10 @@ static int akt_execute_set_command(void *cl)
         }
         case STORAGE_DELETE_POLICY_CMD:
         {
-
+            uint8_t free_threshold_G = payload[0];
+            uint64_t free_threshold_byte = free_threshold_G * 1024 * 1024 * 1024;
+            printf_note("set free threshold %d G\n", free_threshold_G);
+            config_set_disk_alert_threshold(free_threshold_byte);
             break;
         }
         case STORAGE_DELETE_FILE_CMD:
@@ -1109,6 +1142,18 @@ static int akt_execute_set_command(void *cl)
             check_valid_channel(para.ch);
             config_set_split_file_threshold(para.split_threshold);
             printf_note("set split file threshold:%llu Bytes, %llu MB\n", para.split_threshold, (para.split_threshold / 1024 / 1024));
+            break;
+        }
+        case LOW_NOISE_CMD:
+        {
+            struct _low_noise_st{
+                uint64_t s_freq_hz;
+                uint64_t e_freq_hz;
+            }__attribute__ ((packed));
+            struct _low_noise_st noise;
+            memcpy(&noise, payload, sizeof(noise));
+            printf_info("low noise para: start freq:%lu hz, end freq:%lu hz\n", noise.s_freq_hz, noise.e_freq_hz);
+            executor_set_command(EX_RF_FREQ_CMD,  EX_RF_LOW_NOISE, ch, &noise.e_freq_hz);
             break;
         }
         default:
@@ -1190,7 +1235,11 @@ static int akt_execute_get_command(void *cl)
                     self_check.t_s[i].rf_temperature, self_check.t_s[i].ch_status);
             }
             self_check.irig_b_status = 0;  //0:正常 1：异常
+            #if defined(SUPPORT_GPS)
             self_check.gps_status = (gps_location_is_valid() == true ? 0 : 1);
+            #else
+            self_check.gps_status = 0;
+            #endif
             client->response.response_length = sizeof(DEVICE_SELF_CHECK_STATUS_RSP_ST);
             client->response.data = calloc(1, client->response.response_length);
             if(client->response.data == NULL){
@@ -1281,27 +1330,35 @@ static int akt_execute_get_command(void *cl)
         {
             #define SSD_DISK_NUM 1
             STORAGE_STATUS_RSP_ST *psi;
-            int i, ret = 0, st_size = 0;
+            int i, st_size = 0;
+            bool ret = false;
             st_size = sizeof(STORAGE_STATUS_RSP_ST)+sizeof(STORAGE_DISK_INFO_ST)*SSD_DISK_NUM;
             psi = (STORAGE_STATUS_RSP_ST *)safe_malloc(st_size);
             if(psi == NULL){
                 printf_err("malloc error!\n");
-                ret = -ENOMEM;
+                err_code = RET_CODE_INTERNAL_ERR;
                 break;
             }
             #if defined(SUPPORT_XWFS)
-            ret = xwfs_get_disk_info(psi);
+            xwfs_get_disk_info(psi);
             #elif defined(SUPPORT_FS)
             struct fs_context *fs_ctx;
             struct statfs diskInfo;
             fs_ctx = get_fs_ctx_ex();
             ret = fs_ctx->ops->fs_disk_info(&diskInfo);
-            printf_debug("Get disk info: %d\n", ret);
+            if(ret){
             psi->disk_num = 1;
             psi->read_write_speed_kbytesps = 0;  //按照写速度换算约等于1.8G
             psi->disk_capacity[0].disk_state = fs_ctx->ops->fs_get_err_code();
             psi->disk_capacity[0].disk_capacity_byte = diskInfo.f_bsize * diskInfo.f_blocks;
             psi->disk_capacity[0].disk_used_byte = diskInfo.f_bsize * (diskInfo.f_blocks - diskInfo.f_bfree);
+            } else{
+                psi->disk_num = 0;
+                psi->read_write_speed_kbytesps = 0;
+                psi->disk_capacity[0].disk_state = fs_ctx->ops->fs_get_err_code();
+                psi->disk_capacity[0].disk_capacity_byte = 0;
+                psi->disk_capacity[0].disk_used_byte = 0;
+            }
 		    #endif
             printf_note("ret=%d, num=%d, speed=%uKB/s, capacity_bytes=%llu, used_bytes=%llu\n",
                 ret, psi->disk_num, psi->read_write_speed_kbytesps, 
@@ -1310,6 +1367,7 @@ static int akt_execute_get_command(void *cl)
             client->response.data = calloc(1, client->response.response_length);
             if(client->response.data == NULL){
                 printf_err("calloc err!");
+                safe_free(psi);
                 break;
             }
             memcpy(client->response.data, psi, client->response.response_length);
@@ -1927,7 +1985,7 @@ void akt_send(const void *data, int len, int code)
         printf_err("psend err!\n");
         return;
     }
-    if(akt_assamble_send_data(psend, data, len, code) == -1){
+    if ((send_len = akt_assamble_send_data(psend, data, len, code)) == -1){
         printf_err("assamble err!\n");
         goto exit;
     }
@@ -1938,38 +1996,36 @@ exit:
 }
 
 
-void akt_send_alert(void *client, int code)
+void akt_send_alert(int code)
 {
+    struct disk_alarm_report alarm;
+    alarm.ch = 0;
+    alarm.code = (uint8_t)code;
+    printf_note("send alarm: code[%d]\n", code);
+    akt_send(&alarm, sizeof(alarm), REPORT_DISK_ALARM);
 }
 
-void akt_send_file_status(void *data, size_t data_len)
+void akt_send_file_status(void *data, size_t data_len, void *args)
 {
-    struct fs_notify_status *fns = data;
-    struct push_arg *push_args;
-    struct fs_status {
-        uint8_t ch;
-        char path[256];
-        uint64_t filesize;
-        uint64_t duration_time;
-        uint64_t middle_freq;
-        uint64_t bindwidth;
-        uint64_t sample_rate;
-    }__attribute__ ((packed));
+    struct fs_node *fns = data;
+    struct fs_notifier *fner = args;
+    struct fs_sampler *fsa = fner->args;
     struct fs_status _fss;
     if(fns == NULL || fns->filename == NULL)
         return;
 
-    push_args = fns->args;
     memset(&_fss, 0, sizeof(_fss));
     strncpy(_fss.path, fns->filename, sizeof(_fss.path));
     _fss.ch = fns->ch;
-    _fss.filesize = fns->filesize;
+    _fss.filesize = fns->nbyte;
     _fss.duration_time = fns->duration_time;
     _fss.middle_freq = executor_get_mid_freq(fns->ch);
-    _fss.bindwidth = push_args->args;
+    _fss.bindwidth = fsa->args.bindwidth;
     _fss.sample_rate = io_get_raw_sample_rate(fns->ch, _fss.middle_freq);
-    printf_note("ch=%d, path=%s, filesize=%llu[0x%x], time=%llu, middle_freq=%llu, bindwidth=%llu, sample_rate=%llu\n", 
-        _fss.ch, _fss.path, _fss.filesize,_fss.filesize,  _fss.duration_time, _fss.middle_freq, _fss.bindwidth, _fss.sample_rate);
+    _fss.file_threshold = config_get_split_file_threshold();
+    _fss.state = fns->status;
+    printf_note("ch=%d, path=%s, filesize=%llu[0x%x], time=%llu, middle_freq=%llu, bindwidth=%llu, sample_rate=%llu, state:%d\n", 
+        _fss.ch, _fss.path, _fss.filesize,_fss.filesize,  _fss.duration_time, _fss.middle_freq, _fss.bindwidth, _fss.sample_rate, _fss.state);
     akt_send(&_fss, sizeof(_fss), FILE_STATUS_NOTIFY);
 }
 

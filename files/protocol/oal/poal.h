@@ -128,14 +128,14 @@ struct  rf_mode_param_st{
 /* 射频参数 */
 struct rf_para_st{
     uint8_t cid;
-    uint8_t rf_mode_code;           /* 射频模式码; 0：低失真 1：常规 2：低噪声 */
-    uint8_t gain_ctrl_method;       /* 增益方法; 0：手动控制（MGC） 1：自动控制（AGC）*/
-    int8_t mgc_gain_value;          /* MGC 增益值; 单位 dB，精度 1dB*/
-    int8_t agc_mid_freq_out_level;  /* AGC 中频 输出幅度;单位，dBm 默认值：-10dBm*/
+    volatile uint8_t rf_mode_code;           /* 射频模式码; 0：低失真 1：常规 2：低噪声 */
+    volatile uint8_t gain_ctrl_method;       /* 增益方法; 0：手动控制（MGC） 1：自动控制（AGC）*/
+    volatile int8_t mgc_gain_value;          /* MGC 增益值; 单位 dB，精度 1dB*/
+    volatile int8_t agc_mid_freq_out_level;  /* AGC 中频 输出幅度;单位，dBm 默认值：-10dBm*/
     uint8_t antennas_elect;         /* 天线选择 */
     int8_t  attenuation;            /* 射频衰减 ;  -100 至 120 单位 dB，精度 1dB*/
     int16_t temperature;            /* 射频温度 */
-    uint32_t agc_ctrl_time;         /* AGC 控制时间; 单位：10 微秒 快速：100 微秒  中速：1000 微秒 慢速：10000 微秒*/
+    volatile uint32_t agc_ctrl_time;         /* AGC 控制时间; 单位：10 微秒 快速：100 微秒  中速：1000 微秒 慢速：10000 微秒*/
     uint32_t mid_bw;                /* 射频中频带宽; 0~2^32 */
     uint64_t mid_freq;              /* 中心频率 */
     int32_t agc_ref_val_0dbm;       /* AGC: 0DB 主通道读取值 */
@@ -208,6 +208,8 @@ struct control_st{
     struct residency_policy residency;                            /* 驻留时间策略 */
     struct calibration_singal_threshold_st signal;
 	uint32_t iq_data_length;                                      /* iq数据包发送长度*/
+    int32_t agc_ref_val_0dbm;                                     /*  AGC 模式下，0DB 对应校准值*/
+    int32_t subch_ref_val_0dbm;                                   /*  多频点模式下 0DBm 对应校准值*/
     uint32_t disk_file_notifier_timeout_ms;
 };//__attribute__ ((packed));
 

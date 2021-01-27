@@ -18,6 +18,8 @@
 #include "conf/conf.h"
 #include "parse_cmd.h"
 #include "parse_json.h"
+#include "../../bsp/io.h"
+
 
 static struct response_err_code {
     int code;
@@ -334,7 +336,6 @@ int cmd_if_single_value_set(struct uh_client *cl, void **arg, void **content)
 
 error:
     *arg = get_resp_message(code);
-    printf_note("...%s\n", arg);
     return code;
 
 }
@@ -344,16 +345,21 @@ error:
 */
 int cmd_if_multi_value_set(struct uh_client *cl, void **arg, void **content)
 {
-    char *ch, *subch;
-    int itype;
+    char *s_ch, *subch;
+    int itype, ch;
     int code = RESP_CODE_OK;
     
-    ch = cl->get_restful_var(cl, "ch");
+    s_ch = cl->get_restful_var(cl, "ch");
     subch = cl->get_restful_var(cl, "subch");
-    printf_note("rf ch = %s, subch=%s\n", ch, subch);
+    printf_note("rf ch = %s, subch=%s\n", s_ch, subch);
     printf_note("%s\n", cl->dispatch.body);
+    if(str_to_int(s_ch, &ch, check_valid_ch) == false){
+        code = RESP_CODE_CHANNEL_ERR;
+        goto error;
+    }
     code = parse_json_if_multi_value(cl->dispatch.body, ch);
     
+error:
     *arg = get_resp_message(code);
     return code;
 }
@@ -612,12 +618,10 @@ error:
 */
 int cmd_file_download(struct uh_client *cl, void **arg, void **content)
 {
-    char  *filename;
     int code = RESP_CODE_OK;
-    
-    filename = cl->get_restful_var(cl, "filename");
-    
 #if defined(SUPPORT_XWFS)
+    char *filename;
+    filename = cl->get_restful_var(cl, "filename");
     file_download(cl, filename);
 #endif
 

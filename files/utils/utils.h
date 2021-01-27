@@ -94,6 +94,7 @@ extern int get_gateway(char *ifname, struct in_addr * gw);
 extern int get_netmask(char *ifname, struct in_addr *netmask);
 extern int get_ipaddress(char *ifname, struct in_addr *addr);
 extern int set_ipaddress(char *ifname, char *ipaddr, char *mask,char *gateway);
+extern int read_file(void *pdata, unsigned int data_len, char *filename);
 
 #endif
 

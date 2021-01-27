@@ -391,7 +391,7 @@ static int uh_prase_range(struct uh_client *cl, char *bytes, struct stat *s)
     res = true;
 exit:
     if (bytes_cpy)
-        free(bytes_cpy);
+        free((void *)bytes_cpy);
     return res;
 }
 

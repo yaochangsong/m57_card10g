@@ -1179,9 +1179,10 @@ set_exit:
 
 }
 
-static int _find_file_list(char *filename, struct stat *stats, size_t *size)
+static int _find_file_list(char *filename, struct stat *stats, void *_size)
 {
     cJSON* item = NULL;
+    size_t *size = (size_t *)_size;
     if(stats == NULL || size == NULL)
         return -1;
     *size = stats->st_size;

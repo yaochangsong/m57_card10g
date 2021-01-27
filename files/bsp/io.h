@@ -94,5 +94,6 @@ extern int32_t io_set_dec_bandwidth(uint32_t ch, uint32_t dec_bandwidth);
 extern int32_t io_set_dec_method(uint32_t ch, uint8_t dec_method);
 extern int16_t io_get_signal_strength(uint8_t ch);
 extern uint8_t  io_restart_app(void);
+extern uint32_t get_fpga_version(void);
 
 #endif

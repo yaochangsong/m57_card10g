@@ -19,4 +19,8 @@
 
 #define PLATFORM_VERSION  "1.0.0" /* application version */
 
+extern bool is_disk_format(void);
+extern uint32_t get_power_level_threshold(void);
+extern bool is_spectrum_aditool_debug(void);
+
 #endif

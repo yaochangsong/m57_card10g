@@ -222,10 +222,15 @@ void *spm_init(void)
 
     for(ch = 0; ch< MAX_RADIO_CHANNEL_NUM; ch++){
         spmctx->run_args[ch] = calloc(1, sizeof(struct spm_run_parm));
-        spmctx->run_args[ch]->fft_ptr = malloc(MAX_FFT_SIZE*sizeof(fft_t));///calloc(1, MAX_FFT_SIZE*sizeof(fft_t));
+        spmctx->run_args[ch]->fft_ptr = calloc(1, MAX_FFT_SIZE*sizeof(fft_t));
         if(spmctx->run_args[ch]->fft_ptr == NULL){
-        printf("malloc failed\n");
-        exit(1);
+            printf("malloc failed\n");
+            exit(1);
+        }
+        spmctx->run_args[ch]->fft_ptr_swap = calloc(1, MAX_FFT_SIZE*sizeof(fft_t));
+        if(spmctx->run_args[ch]->fft_ptr_swap == NULL){
+            printf("malloc failed\n");
+            exit(1);
         }
         for(type = 0; type < STREAM_IQ_TYPE_MAX; type++){
             spmctx->run_args[ch]->dis_iq.ptr[type] = calloc(1, DMA_IQ_TYPE_BUFFER_SIZE);

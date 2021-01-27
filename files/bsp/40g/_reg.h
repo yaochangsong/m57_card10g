@@ -467,13 +467,13 @@ static inline void _reg_set_rf_bandwidth(int ch, int index, uint32_t bw_hz, FPGA
     };
 
     for(i = 0; i < ARRAY_SIZE(_reg); i++){
-        if(mbw == _reg[i].bw_hz){
+        if(bw_hz == _reg[i].bw_hz){
             set_val = _reg[i].reg_val;
             found ++;
         }
     }
     if(found == 0){
-        printf("NOT found bandwidth %uHz in tables,use default[200Mhz]\n", mbw);
+        printf("NOT found bandwidth %uHz in tables,use default[200Mhz]\n", bw_hz);
         set_val = 0x03; /* default 200MHz */
     }
     

@@ -397,13 +397,10 @@ static fft_t *spm_data_order(volatile fft_t *fft_data,
                   \/                                                      
                  |边带  |
     */
-   // void *psrc = (void *)(fft_data+fft_len -(order_len/2));
-   #if 1
-    fft_t *pdst = calloc(1, 32*1024*2);
-    memcpy((uint8_t *)pdst,                 (uint8_t *)(fft_data) , fft_len*2);
-    memcpy((uint8_t *)run_args->fft_ptr,    (uint8_t *)(pdst+ fft_len -order_len/2 ), order_len);
-    memcpy((uint8_t *)(run_args->fft_ptr+order_len),    (uint8_t *)pdst , order_len);
-    free(pdst);
+    #if 1
+    memcpy((uint8_t *)run_args->fft_ptr_swap,         (uint8_t *)(fft_data) , fft_len*2);
+    memcpy((uint8_t *)run_args->fft_ptr,              (uint8_t *)(run_args->fft_ptr_swap + fft_len*2 -order_len), order_len);
+    memcpy((uint8_t *)(run_args->fft_ptr+order_len),  (uint8_t *)run_args->fft_ptr_swap , order_len);
     #else
     memcpy((uint8_t *)run_args->fft_ptr,                (uint8_t *)(fft_data+fft_len -order_len/2) , order_len);
     memcpy((uint8_t *)(run_args->fft_ptr+order_len),    (uint8_t *)fft_data , order_len);

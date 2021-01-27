@@ -338,14 +338,12 @@ static inline bool _reg_get_rf_lock_clk(int ch, int index, FPGA_CONFIG_REG *reg)
 static inline void _reg_set_rf_frequency(int ch, int index, uint64_t freq_hz, FPGA_CONFIG_REG *reg)
 {
     uint32_t freq_khz = freq_hz/1000;
-    reg->rfReg[0]->freq_khz = freq_khz;
-    usleep(300);
-    reg->rfReg[0]->freq_khz = freq_khz;
+    set_rf_safe(ch, &reg->rfReg[ch]->freq_khz, freq_khz);
+    set_rf_safe(ch, &reg->rfReg[ch]->freq_khz, freq_khz);
 }
 
 static inline void _reg_set_rf_bandwidth(int ch, int index, uint32_t bw_hz, FPGA_CONFIG_REG *reg)
 {
-    uint32_t mbw;
     int i, found = 0;
     uint8_t set_val = 0;
     if(ch >= MAX_RADIO_CHANNEL_NUM)
@@ -363,13 +361,13 @@ static inline void _reg_set_rf_bandwidth(int ch, int index, uint32_t bw_hz, FPGA
     };
 
     for(i = 0; i < ARRAY_SIZE(_reg); i++){
-        if(mbw == _reg[i].bw_hz){
+        if(bw_hz == _reg[i].bw_hz){
             set_val = _reg[i].reg_val;
             found ++;
         }
     }
     if(found == 0){
-        printf("NOT found bandwidth %uHz in tables,use default[200Mhz]\n", mbw);
+        printf("NOT found bandwidth %uHz in tables,use default[200Mhz]\n", bw_hz);
         set_val = 0x03; /* default 200MHz */
     }
     

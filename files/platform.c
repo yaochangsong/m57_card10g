@@ -130,22 +130,23 @@ int main(int argc, char **argv)
     temp_humidity_init();
 #endif 
 #ifdef  SUPPORT_CLOCK_ADC
-    clock_adc_init();   /* 时钟/AD初始化 */
+    clock_adc_init();
 #endif
 #if defined(SUPPORT_SPECTRUM_FPGA)
     fpga_io_init();
 #endif
 #ifdef SUPPORT_UART
-    uart_init();   /* PL UART依赖时钟 */
+    /*NOTE: PL uart depends on clock */
+    uart_init();
 #endif
  if(spectrum_aditool_debug == false){
 #ifdef SUPPORT_RF
-    rf_init();  /* RF初始化， */
+    rf_init(); 
 #endif
     }
     executor_init();
 #ifdef SUPPORT_LCD
-    init_lcd(); /* 串口屏依赖串口 */
+    init_lcd();
 #endif
 #if defined(SUPPORT_XWFS)
     xwfs_init();

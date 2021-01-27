@@ -188,6 +188,8 @@ uint32_t executor_get_audio_point(uint8_t ch)
 {
     struct spm_context *_ctx;
     _ctx = get_spm_ctx();
+    if(_ctx == NULL)
+        return 0;
     return _ctx->run_args[ch]->audio_points;
 }
 
@@ -195,6 +197,8 @@ uint64_t executor_get_mid_freq(uint8_t ch)
 {
     struct spm_context *_ctx;
     _ctx = get_spm_ctx();
+    if(_ctx == NULL)
+        return 0;
     return _ctx->run_args[ch]->m_freq;
 }
 
@@ -759,7 +763,7 @@ int8_t executor_set_command(exec_cmd cmd, uint8_t type, uint8_t ch,  void *data,
             /* notify thread to deal data */
             printf_note("notify thread to deal data\n");
             poal_config->channel[ch].enable.bit_reset = true; /* reset(stop) all working task */
-            if(get_spm_ctx()->ops->set_flush_trigger)
+            if((get_spm_ctx()!= NULL) && get_spm_ctx()->ops->set_flush_trigger)
                 get_spm_ctx()->ops->set_flush_trigger(true);
             if(ch < MAX_RADIO_CHANNEL_NUM)
                 sem_post(&work_sem.notify_deal[ch]);

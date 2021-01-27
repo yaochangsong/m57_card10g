@@ -732,7 +732,7 @@ void io_set_smooth_time(uint32_t ch, uint16_t stime)
     SET_FFT_SMOOTH_TYPE(get_fpga_reg(),0, ch);
     SET_FFT_MEAN_TIME(get_fpga_reg(),stime, ch);
     #elif defined(SUPPORT_SPECTRUM_CHIP) 
-    if(get_spm_ctx()->ops->set_smooth_time)
+    if((get_spm_ctx() != NULL) && get_spm_ctx()->ops->set_smooth_time)
         get_spm_ctx()->ops->set_smooth_time(stime);
     #endif
 #endif
@@ -759,7 +759,7 @@ void io_set_calibrate_val(uint32_t ch, int32_t  cal_value)
     #if defined(SUPPORT_SPECTRUM_FPGA)
     SET_FFT_CALIB(get_fpga_reg(),(uint32_t)cal_value, ch);
     #elif defined(SUPPORT_SPECTRUM_CHIP) 
-    if(get_spm_ctx()->ops->set_calibration_value)
+    if((get_spm_ctx()!=NULL) && get_spm_ctx()->ops->set_calibration_value)
         get_spm_ctx()->ops->set_calibration_value(cal_value);
     #endif
 #endif
@@ -1002,7 +1002,7 @@ static void io_set_dma_SPECTRUM_out_en(int ch, int subch, uint32_t trans_len,uin
     io_dma_dev_enable(ch,IO_SPECTRUM_TYPE,continuous);
     io_dma_dev_trans_len(ch,IO_SPECTRUM_TYPE, trans_len*2);
 #elif defined(SUPPORT_SPECTRUM_V2)
-    if(get_spm_ctx()->ops->stream_start)
+    if((get_spm_ctx()!=NULL) && get_spm_ctx()->ops->stream_start)
     get_spm_ctx()->ops->stream_start(ch, subch, trans_len*sizeof(fft_t), continuous, STREAM_FFT);
 #endif
 #endif
@@ -1016,7 +1016,7 @@ static void io_set_dma_adc_out_en(int ch, int subch, uint32_t trans_len,uint8_t 
 #if defined(SUPPORT_SPECTRUM_KERNEL)
 
 #elif defined(SUPPORT_SPECTRUM_V2)
-    if(get_spm_ctx()->ops->stream_start)
+    if((get_spm_ctx()!= NULL) && get_spm_ctx()->ops->stream_start)
     get_spm_ctx()->ops->stream_start(ch, subch, trans_len, continuous, STREAM_ADC_READ);
 #endif
 #endif
@@ -1029,7 +1029,7 @@ static void io_set_dma_adc_out_disable(int ch, int subch)
 #if defined(SUPPORT_SPECTRUM_KERNEL)
 
 #elif defined(SUPPORT_SPECTRUM_V2)
-    if(get_spm_ctx()->ops->stream_stop)
+    if((get_spm_ctx()!=NULL) && get_spm_ctx()->ops->stream_stop)
     get_spm_ctx()->ops->stream_stop(ch, subch, STREAM_ADC_READ);
 #endif
 #endif
@@ -1042,7 +1042,7 @@ static void io_set_dma_SPECTRUM_out_disable(int ch, int subch)
 #if defined(SUPPORT_SPECTRUM_KERNEL)
     io_dma_dev_disable(ch, IO_SPECTRUM_TYPE);
 #elif defined(SUPPORT_SPECTRUM_V2)
-    if(get_spm_ctx()->ops->stream_stop)
+    if((get_spm_ctx()!= NULL) && get_spm_ctx()->ops->stream_stop)
     get_spm_ctx()->ops->stream_stop(ch, subch, STREAM_FFT);
 #endif
 #endif
@@ -1059,7 +1059,7 @@ static void io_set_IQ_out_disable(int ch, int subch)
 #if defined(SUPPORT_SPECTRUM_KERNEL)
     io_dma_dev_disable(ch, IO_IQ_TYPE);
 #elif defined(SUPPORT_SPECTRUM_V2) 
-    if(subch_bitmap_weight() == 0 && get_spm_ctx()->ops->stream_stop){
+    if(subch_bitmap_weight() == 0 && (get_spm_ctx()!=NULL) && get_spm_ctx()->ops->stream_stop){
         get_spm_ctx()->ops->stream_stop(-1, subch, STREAM_IQ);
     }
 #endif 
@@ -1077,7 +1077,7 @@ static void io_set_IQ_out_en(int ch, int subch, uint32_t trans_len,uint8_t conti
     io_dma_dev_enable(0,IO_IQ_TYPE,continuous);
     io_dma_dev_trans_len(0,IO_IQ_TYPE, trans_len);
 #elif defined(SUPPORT_SPECTRUM_V2) 
-    if(get_spm_ctx()->ops->stream_start)
+    if((get_spm_ctx()!=NULL) && get_spm_ctx()->ops->stream_start)
     get_spm_ctx()->ops->stream_start(-1, subch, trans_len, continuous, STREAM_IQ);
 #endif
 #endif
@@ -1598,7 +1598,7 @@ int32_t io_start_backtrace_file(void *arg){
     int ch;
     ch = *(int*)arg;
     io_set_backtrace_mode(ch, true);
-    if(get_spm_ctx()->ops->stream_start)
+    if((get_spm_ctx()!= NULL) && get_spm_ctx()->ops->stream_start)
         get_spm_ctx()->ops->stream_start(ch, 0, 0x1000, 1, STREAM_ADC_WRITE);
 #endif
 #endif
@@ -1615,7 +1615,7 @@ int32_t io_stop_backtrace_file(void *arg){
     int ch;
     ch = *(int*)arg;
     io_set_backtrace_mode(ch, false);
-    if(get_spm_ctx()->ops->stream_stop)
+    if((get_spm_ctx()!=NULL) &&  get_spm_ctx()->ops->stream_stop)
         get_spm_ctx()->ops->stream_stop(ch, 0, STREAM_ADC_WRITE);
 #endif
 #endif

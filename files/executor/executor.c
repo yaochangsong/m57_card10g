@@ -476,8 +476,6 @@ static int8_t executor_set_kernel_command(uint8_t type, uint8_t ch, void *data, 
      {
         case EX_CHANNEL_SELECT:
         {
-            printf_debug("channel select: %d\n", *(uint8_t *)data);
-            io_set_para_command(type, ch, data);
             break;
         }
         case EX_MUTE_SW:
@@ -540,7 +538,6 @@ static int8_t executor_set_kernel_command(uint8_t type, uint8_t ch, void *data, 
         }
         case EX_AUDIO_SAMPLE_RATE:
         {
-            io_set_para_command(type, ch, data);
             break;
         }
         case EX_FFT_SIZE:
@@ -776,7 +773,6 @@ int8_t executor_set_command(exec_cmd cmd, uint8_t type, uint8_t ch,  void *data,
             printf_debug("set work mode[%d]\n", type);
             #if (defined SUPPORT_PROTOCAL_AKT) || (defined SUPPORT_PROTOCAL_XNRP) 
             //pbuf = poal_config->assamble_response_data(&len, data);
-            io_set_work_mode_command((void *)pbuf);
             #endif
             break;
         }

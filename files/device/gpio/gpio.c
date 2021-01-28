@@ -134,11 +134,11 @@ void gpio_select_rf_channel(uint64_t mid_freq)  //射频通道选择
     }
     else{
         for(i=0;i<ARRAY_SIZE(rf_bw_data);i++){
-            //printf_note("freq=%llu, s_freq=%llu, end_freq=%llu\n", mid_freq_val, rf_bw_data[i].s_freq_rf, rf_bw_data[i].e_freq_rf);
+            //printf_note("freq=%llu, s_freq=%"PRIu64", end_freq=%"PRIu64"\n", mid_freq_val, rf_bw_data[i].s_freq_rf, rf_bw_data[i].e_freq_rf);
             if((mid_freq_val >= rf_bw_data[i].s_freq_rf) && (mid_freq_val <= rf_bw_data[i].e_freq_rf)){
                 if(rf_channel_value != rf_bw_data[i].index_rf){   //扫频范围有变化
                     rf_channel_value = rf_bw_data[i].index_rf;    //选择新的通道
-                    printf_debug("find mid_freq_val=%lluhz, rf_channel_value=%d\n", mid_freq_val, rf_channel_value);
+                    printf_debug("find mid_freq_val=%"PRIu64"hz, rf_channel_value=%d\n", mid_freq_val, rf_channel_value);
                     gpio_control_rf(rf_channel_value);
                 }
                 found++;
@@ -147,7 +147,7 @@ void gpio_select_rf_channel(uint64_t mid_freq)  //射频通道选择
     }
    // printf_debug("rf channel found=%d\n", found);
     if(found == 0){
-        printf_warn("[%lluhz]not find, set defaut gpio ctrl pin:2\n", mid_freq_val);
+        printf_warn("[%"PRIu64"hz]not find, set defaut gpio ctrl pin:2\n", mid_freq_val);
     #ifdef SUPPORT_PROJECT_SSA_MONITOR
         gpio_control_rf(HPF7);
     #else

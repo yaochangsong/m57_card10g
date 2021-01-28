@@ -150,18 +150,6 @@ static void  io_get_bandwidth_factor(uint32_t anays_band,               /* è¾“å…
     }
 }
 
-
-int io_set_udp_client_info(void *arg)
-{
-    int32_t ret = 0;
-#if defined(SUPPORT_PLATFORM_ARCH_ARM)
-#if defined(SUPPORT_SPECTRUM_KERNEL) 
-    ret = ioctl(io_ctrl_fd,IOCTL_UDP_CLIENT_INFO_NOTIFY,arg);
-#endif
-#endif /* SUPPORT_PLATFORM_ARCH_ARM */
-    return ret;
-}
-
 int set_1g_network_ipaddress(char *ipaddr, char *mask,char *gateway)
 {
     return set_ipaddress(NETWORK_EHTHERNET_POINT, ipaddr, mask,gateway);
@@ -469,7 +457,7 @@ static uint32_t io_set_dec_middle_freq_reg(uint64_t dec_middle_freq, uint64_t mi
                 val = dec_middle_freq - MID_FREQ_MAGIC1;
                 reg = (val+FREQ_MAGIC1)*FREQ_MAGIC2/FREQ_MAGIC1;
             }
-            printf_debug("feq:%llu, reg=0x%x\n", dec_middle_freq, reg);
+            printf_debug("feq:%"PRIu64", reg=0x%x\n", dec_middle_freq, reg);
             return reg;
         }
 #endif
@@ -508,7 +496,7 @@ int32_t io_set_dec_middle_freq(uint32_t ch, uint64_t dec_middle_freq, uint64_t m
     #endif
 #endif
 #endif
-    printf_warn("[**REGISTER**]ch:%d, MiddleFreq =%llu, Decode MiddleFreq:%llu, reg=0x%x\n", ch, middle_freq, dec_middle_freq, reg);
+    printf_warn("[**REGISTER**]ch:%d, MiddleFreq =%"PRIu64",Decode MiddleFreq:%"PRIu64",reg=0x%x\n", ch, middle_freq, dec_middle_freq, reg);
     return ret;
 }
 
@@ -540,7 +528,7 @@ int32_t io_set_middle_freq(uint32_t ch, uint64_t middle_freq)
     #if defined(SUPPORT_SPECTRUM_FPGA)
     SET_BROAD_SIGNAL_CARRIER(get_fpga_reg(),reg, ch);
     #endif
-    printf_debug(">>>>>>feq:%llu, reg=0x%x\n", middle_freq, reg);
+    printf_debug(">>>>>>feq:%"PRIu64", reg=0x%x\n", middle_freq, reg);
 #endif
     return 0;
 }
@@ -565,7 +553,7 @@ int32_t io_set_subch_dec_middle_freq(uint32_t subch, uint64_t dec_middle_freq, u
         #endif
 #endif
 #endif
-        printf_note("[**REGISTER**]ch:%d, SubChannel Set MiddleFreq =%llu, Decode MiddleFreq:%llu, reg=0x%x, ret=%d\n", subch, middle_freq, dec_middle_freq, reg, ret);
+        printf_note("[**REGISTER**]ch:%d, SubChannel Set MiddleFreq =%"PRIu64", Decode MiddleFreq:%"PRIu64", reg=0x%x, ret=%d\n", subch, middle_freq, dec_middle_freq, reg, ret);
         return ret;
 }
 
@@ -732,7 +720,7 @@ void io_set_smooth_time(uint32_t ch, uint16_t stime)
     SET_FFT_SMOOTH_TYPE(get_fpga_reg(),0, ch);
     SET_FFT_MEAN_TIME(get_fpga_reg(),stime, ch);
     #elif defined(SUPPORT_SPECTRUM_CHIP) 
-    if(get_spm_ctx()->ops->set_smooth_time)
+    if((get_spm_ctx() != NULL) && get_spm_ctx()->ops->set_smooth_time)
         get_spm_ctx()->ops->set_smooth_time(stime);
     #endif
 #endif
@@ -759,7 +747,7 @@ void io_set_calibrate_val(uint32_t ch, int32_t  cal_value)
     #if defined(SUPPORT_SPECTRUM_FPGA)
     SET_FFT_CALIB(get_fpga_reg(),(uint32_t)cal_value, ch);
     #elif defined(SUPPORT_SPECTRUM_CHIP) 
-    if(get_spm_ctx()->ops->set_calibration_value)
+    if((get_spm_ctx()!=NULL) && get_spm_ctx()->ops->set_calibration_value)
         get_spm_ctx()->ops->set_calibration_value(cal_value);
     #endif
 #endif
@@ -1002,7 +990,7 @@ static void io_set_dma_SPECTRUM_out_en(int ch, int subch, uint32_t trans_len,uin
     io_dma_dev_enable(ch,IO_SPECTRUM_TYPE,continuous);
     io_dma_dev_trans_len(ch,IO_SPECTRUM_TYPE, trans_len*2);
 #elif defined(SUPPORT_SPECTRUM_V2)
-    if(get_spm_ctx()->ops->stream_start)
+    if((get_spm_ctx()!=NULL) && get_spm_ctx()->ops->stream_start)
     get_spm_ctx()->ops->stream_start(ch, subch, trans_len*sizeof(fft_t), continuous, STREAM_FFT);
 #endif
 #endif
@@ -1016,7 +1004,7 @@ static void io_set_dma_adc_out_en(int ch, int subch, uint32_t trans_len,uint8_t 
 #if defined(SUPPORT_SPECTRUM_KERNEL)
 
 #elif defined(SUPPORT_SPECTRUM_V2)
-    if(get_spm_ctx()->ops->stream_start)
+    if((get_spm_ctx()!= NULL) && get_spm_ctx()->ops->stream_start)
     get_spm_ctx()->ops->stream_start(ch, subch, trans_len, continuous, STREAM_ADC_READ);
 #endif
 #endif
@@ -1029,7 +1017,7 @@ static void io_set_dma_adc_out_disable(int ch, int subch)
 #if defined(SUPPORT_SPECTRUM_KERNEL)
 
 #elif defined(SUPPORT_SPECTRUM_V2)
-    if(get_spm_ctx()->ops->stream_stop)
+    if((get_spm_ctx()!=NULL) && get_spm_ctx()->ops->stream_stop)
     get_spm_ctx()->ops->stream_stop(ch, subch, STREAM_ADC_READ);
 #endif
 #endif
@@ -1042,7 +1030,7 @@ static void io_set_dma_SPECTRUM_out_disable(int ch, int subch)
 #if defined(SUPPORT_SPECTRUM_KERNEL)
     io_dma_dev_disable(ch, IO_SPECTRUM_TYPE);
 #elif defined(SUPPORT_SPECTRUM_V2)
-    if(get_spm_ctx()->ops->stream_stop)
+    if((get_spm_ctx()!= NULL) && get_spm_ctx()->ops->stream_stop)
     get_spm_ctx()->ops->stream_stop(ch, subch, STREAM_FFT);
 #endif
 #endif
@@ -1059,7 +1047,7 @@ static void io_set_IQ_out_disable(int ch, int subch)
 #if defined(SUPPORT_SPECTRUM_KERNEL)
     io_dma_dev_disable(ch, IO_IQ_TYPE);
 #elif defined(SUPPORT_SPECTRUM_V2) 
-    if(subch_bitmap_weight() == 0 && get_spm_ctx()->ops->stream_stop){
+    if(subch_bitmap_weight() == 0 && (get_spm_ctx()!=NULL) && get_spm_ctx()->ops->stream_stop){
         get_spm_ctx()->ops->stream_stop(-1, subch, STREAM_IQ);
     }
 #endif 
@@ -1077,7 +1065,7 @@ static void io_set_IQ_out_en(int ch, int subch, uint32_t trans_len,uint8_t conti
     io_dma_dev_enable(0,IO_IQ_TYPE,continuous);
     io_dma_dev_trans_len(0,IO_IQ_TYPE, trans_len);
 #elif defined(SUPPORT_SPECTRUM_V2) 
-    if(get_spm_ctx()->ops->stream_start)
+    if((get_spm_ctx()!=NULL) && get_spm_ctx()->ops->stream_start)
     get_spm_ctx()->ops->stream_start(-1, subch, trans_len, continuous, STREAM_IQ);
 #endif
 #endif
@@ -1598,7 +1586,7 @@ int32_t io_start_backtrace_file(void *arg){
     int ch;
     ch = *(int*)arg;
     io_set_backtrace_mode(ch, true);
-    if(get_spm_ctx()->ops->stream_start)
+    if((get_spm_ctx()!= NULL) && get_spm_ctx()->ops->stream_start)
         get_spm_ctx()->ops->stream_start(ch, 0, 0x1000, 1, STREAM_ADC_WRITE);
 #endif
 #endif
@@ -1615,7 +1603,7 @@ int32_t io_stop_backtrace_file(void *arg){
     int ch;
     ch = *(int*)arg;
     io_set_backtrace_mode(ch, false);
-    if(get_spm_ctx()->ops->stream_stop)
+    if((get_spm_ctx()!=NULL) &&  get_spm_ctx()->ops->stream_stop)
         get_spm_ctx()->ops->stream_stop(ch, 0, STREAM_ADC_WRITE);
 #endif
 #endif

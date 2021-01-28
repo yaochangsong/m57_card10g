@@ -30,6 +30,11 @@
 #define NARROW_BAND_REG_LENGTH 	0x100
 #define NARROW_BAND_CHANNEL_MAX_NUM 0x10
 
+#ifndef MAX_SCAN_FREQ_HZ
+#define MAX_SCAN_FREQ_HZ (6000000000)
+#endif
+
+
 typedef struct _SYSTEM_CONFG_REG_
 {
 	uint32_t version;

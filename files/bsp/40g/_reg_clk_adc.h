@@ -8,7 +8,7 @@ static struct clock_adc_t{
         int adc_status;
 };
 
-extern struct clock_adc_ops * clock_adc_fpga_cxt(void);
+extern struct clock_adc_ctx * clock_adc_fpga_cxt(void);
 extern void volume_set(intptr_t base,uint8_t dat);
 extern void reg_set_cepstrum(int ch, int args);
 #endif

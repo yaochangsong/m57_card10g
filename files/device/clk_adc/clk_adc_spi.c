@@ -40,7 +40,7 @@ static struct rf_spi_node_info spi_node[] ={
     {"/dev/spidev32766.0",     SPI_FUNC_CLOCK,  8,   -1,      -1,  "spi clock 7044 chip"},
     {"/dev/spidev32766.1",     SPI_FUNC_AD,     8,   -1,      -1,  "spi ad 9690 chip"},
 #endif
-    {NULL,                     -1              -1,   -1,      -1,  NULL},
+    {NULL,                     SPI_FUNC_NULL              -1,   -1,      -1,  NULL},
 };
 
 
@@ -299,7 +299,7 @@ static const struct clock_adc_ops ca_ctx_ops = {
 };
 
 
-struct clock_adc_ops * clock_adc_spi_cxt(void)
+struct clock_adc_ctx * clock_adc_spi_cxt(void)
 {
     int ret = -ENOMEM;
     

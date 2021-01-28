@@ -456,7 +456,7 @@ static int spm_chip_send_fft_data(void *data, size_t fft_len, void *arg)
         NULL: 失败
         非空: 协议头指针; 使用后需要释放
 *********************************************************/
-static void *_assamble_iq_header(size_t subch, size_t *hlen, size_t data_len, void *arg)
+static void *_assamble_iq_header(int subch, size_t *hlen, size_t data_len, void *arg)
 {
     uint8_t *ptr = NULL, *ptr_header = NULL;
     uint32_t header_len = 0;
@@ -622,7 +622,7 @@ static int spm_sample_ctrl(void *args)
             SW_TO_75_9_G();
         }
     } else {
-        printf_info("rf unsupported freq:%llu hz\n", freq_hz);
+        printf_info("rf unsupported freq:%"PRIu64" hz\n", freq_hz);
     }
 #endif
     return 0;

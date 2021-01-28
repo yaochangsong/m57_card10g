@@ -43,7 +43,7 @@ void memory_pool_destroy(memory_pool_t *mp)
 
 void memory_pool_dump(memory_pool_t *mp, void (* print_func) (void *value))
 {
-  printf("start: %p, count: %d, used_count: %d\n", mp->pool,mp->count, mp->used_count);
+  printf("start: %p, count: %u, used_count: %d\n", mp->pool,mp->count, mp->used_count);
 
   void *block;
   size_t i;

@@ -149,7 +149,7 @@ int8_t init_lcd(void)
         lcd_printf(EX_MID_FREQ_CMD, EX_DEC_METHOD,   &poal_config->channel[i].multi_freq_point_param.points[0].d_method, &ch);
         printf_info("###rf_mode_code=%d\n", poal_config->channel[i].rf_para.rf_mode_code);
         lcd_printf(EX_RF_FREQ_CMD,  EX_RF_MODE_CODE,   &poal_config->channel[i].rf_para.rf_mode_code, &ch);
-        printf_info("###mid_freq=%llu\n", poal_config->channel[i].rf_para.mid_freq);
+        printf_info("###mid_freq=%"PRIu64"\n", poal_config->channel[i].rf_para.mid_freq);
         lcd_printf(EX_RF_FREQ_CMD,  EX_RF_MID_FREQ,   &poal_config->channel[i].rf_para.mid_freq, &ch); 
         printf_info("###mgc_gain_value=%d\n", poal_config->channel[i].rf_para.mgc_gain_value);
         lcd_printf(EX_RF_FREQ_CMD,  EX_RF_MGC_GAIN,   &poal_config->channel[i].rf_para.mgc_gain_value, &ch);

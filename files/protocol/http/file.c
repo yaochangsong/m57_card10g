@@ -391,7 +391,7 @@ static int uh_prase_range(struct uh_client *cl, char *bytes, struct stat *s)
     res = true;
 exit:
     if (bytes_cpy)
-        free(bytes_cpy);
+        free((void *)bytes_cpy);
     return res;
 }
 
@@ -405,12 +405,19 @@ static int uh_file_if_range(struct uh_client *cl, struct stat *s)
     if (!range) {
         goto exit;
     }
-
+    printf_note("http range:%s\n", range);
+    printf_note("file etag:%s\n", file_Etag(s, buf, sizeof(buf)));
     const char *if_range = kvlist_get(&cl->request.header, "if-range");
-
-    if (!if_range || !strcmp(if_range, file_Etag(s, buf, sizeof(buf))) || 
-            !strcmp(if_range, file_unix2date(s->st_mtime, buf, sizeof(buf)))) {  //If-Range = Etag or Last-Modified
-        printf_note("range: %s\n", range);
+    const char *if_match = kvlist_get(&cl->request.header, "if-match");   //测试火狐浏览器使用
+    if (!if_range && !if_match) {
+        goto exit;
+    }
+    if (if_range)
+        printf_note("http if-range:%s\n", if_range);
+    if (if_match)
+        printf_note("http if-match:%s\n", if_match);
+    if ((if_range && !strcmp(if_range, file_Etag(s, buf, sizeof(buf)))) || 
+            (if_match && !strcmp(if_match, file_Etag(s, buf, sizeof(buf))))) {
         pbytes = strchr(range, '=');  //bytes=
         if (pbytes)
             pbytes++;
@@ -427,10 +434,10 @@ exit:
 }
 static void file_write_cb(struct uh_client *cl)
 {
-    static char buf[4096];
+    static char buf[8192];
     int fd = cl->dispatch.file.fd;
     int r;
-    uint64_t write_left = cl->range.length;
+   // uint64_t write_left = cl->range.length;
     lseek(fd, cl->range.offset, SEEK_SET);
     while (cl->us->w.data_bytes < 256) {
         r = read(fd, buf, sizeof(buf));
@@ -440,17 +447,19 @@ static void file_write_cb(struct uh_client *cl)
             uh_log_err("read");
         }
 
-        if (r <= 0 || write_left <= 0) {
+        if (r <= 0 || cl->range.length <= 0) {
             cl->request_done(cl);
             return;
         }
         
-        if (r <= write_left) {
+        if (r <= cl->range.length) {
             cl->send(cl, buf, r);
-            write_left -= r;
+            cl->range.length -= r;
+            cl->range.offset += r;
         } else {
-            cl->send(cl, buf, write_left);
-            write_left = 0;
+            cl->send(cl, buf, cl->range.length);
+            cl->range.length = 0;
+            cl->range.offset += cl->range.length;
         }
     }
 }

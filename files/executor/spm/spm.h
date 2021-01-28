@@ -57,7 +57,7 @@ struct spm_backend_ops {
     bool (*residency_time_arrived)(uint8_t, int, bool);
     /* 获取某通道是否有信号；并返回信号强度 */
     int32_t (*signal_strength)(uint8_t ch,uint8_t subch, uint32_t, bool *is_singal, uint16_t *strength);
-    int (*back_running_file)(int, uint8_t, char *);
+    int (*back_running_file)(int, uint8_t, int);
     int (*stream_start)(int, int, uint32_t ,uint8_t , int);
     int (*stream_stop)(int, int, uint8_t);
     int (*sample_ctrl)(void *);
@@ -119,7 +119,7 @@ extern pthread_mutex_t send_iq_mutex;
 } while (0)
 extern void *spm_init(void);
 extern struct spm_context *get_spm_ctx(void);
-extern void spm_deal(struct spm_context *ctx, void *args);
+extern void spm_deal(struct spm_context *ctx, void *args, int ch);
 extern int spm_close(void);
 
 #endif

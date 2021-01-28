@@ -26,7 +26,7 @@
 
 pthread_mutex_t rf_param_mutex[MAX_RF_NUM] = {PTHREAD_MUTEX_INITIALIZER};
 
-void *memmap(int fd_dev, void *phr_addr, int length)
+void *memmap(int fd_dev, off_t phr_addr, int length)
 {
     void *base_addr = NULL;
 
@@ -54,7 +54,7 @@ static int fpga_memmap(int fd_dev, FPGA_CONFIG_REG *fpga_reg)
         printf("mmap failed, NULL pointer!\n");
         return -1;
     }
-    printf_debug("virtual address:%p, physical address:0x%x\n", fpga_reg->system, FPGA_SYSETM_BASE);
+    printf_note("virtual address:%p, physical address:0x%x\n", fpga_reg->system, FPGA_SYSETM_BASE);
 
     for(i = 0; i < MAX_RADIO_CHANNEL_NUM; i++){
         fpga_reg->rfReg[i] = (uint8_t *)fpga_reg->system +CONFG_REG_LEN;

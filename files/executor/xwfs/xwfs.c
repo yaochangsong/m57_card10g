@@ -147,7 +147,7 @@ void xwfs_init(void)
         printf_note("Disk Check Faild!!\n");
         status = 1;
     }else{
-        printf_note("Disk check OK!! num=%d, speed=%uKB/s, capacity_bytes=%llu, used_bytes=%llu\n",
+        printf_note("Disk check OK!! num=%d, speed=%uKB/s, capacity_bytes=%"PRIu64", used_bytes=%"PRIu64"\n",
                     psi->disk_num, psi->read_write_speed_kbytesps, 
                     psi->disk_capacity[0].disk_capacity_byte, psi->disk_capacity[0].disk_used_byte);
 

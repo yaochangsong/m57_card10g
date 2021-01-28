@@ -17,7 +17,7 @@
 #include "../../executor/spm/spm.h"
 
 struct akt_protocal_param akt_config;
-bool akt_send_resp_discovery(void *client, const char *pdata, int len);
+bool akt_send_resp_discovery(void *client, const void *pdata, int len);
 
 int akt_get_device_id(void)
 {
@@ -126,19 +126,45 @@ static int scan_segment_param_convert(uint8_t ch)
     }
     if (j > fregment->freq_segment_cnt) {
         fregment->freq_segment_cnt = j;
+        #if 0
         if(fregment->freq_segment_cnt > 1) {
             poal_config->channel[ch].work_mode = OAL_MULTI_ZONE_SCAN_MODE;
         }
+        #endif
         memcpy(&fregment->fregment[0], &array_fregment[0], sizeof(struct freq_fregment_para_st)*MAX_SIG_CHANNLE);
     }
 
     printf_debug("--------------after division------------------\n");
     for (i = 0; i < fregment->freq_segment_cnt; i++) {
-        printf_debug("i:%d, start:%llu, end:%llu\n", i, fregment->fregment[i].start_freq, fregment->fregment[i].end_freq);
+        printf_debug("i:%d, start:%"PRIu64", end:%"PRIu64"\n", i, fregment->fregment[i].start_freq, fregment->fregment[i].end_freq);
     }
     return 0;
 }
 #endif
+int get_origin_start_end_freq(uint8_t ch, uint64_t start_in, uint64_t end_in, uint64_t *start_out, uint64_t *end_out)
+{
+    int i = 0;
+    uint8_t found = 0;
+    uint64_t start_freq, end_freq;
+    struct akt_protocal_param *pakt_config = &akt_config;
+    DIRECTION_MULTI_FREQ_ZONE_PARAM *muti_zone = &pakt_config->multi_freq_zone[ch];
+    for (i = 0; i < muti_zone->freq_band_cnt; i++) {
+        start_freq = muti_zone->sig_ch[i].center_freq - muti_zone->sig_ch[i].bandwidth/2;
+        end_freq = muti_zone->sig_ch[i].center_freq + muti_zone->sig_ch[i].bandwidth/2;
+        if (start_in >= start_freq && end_in <= end_freq) {
+            *start_out = start_freq;
+            *end_out = end_freq;
+            found = 1;
+            break;
+        }
+    }
+    if (found) {
+        return 0;
+    } else {
+        printf_err("get origin freq fail, it shouldn't be here\n");
+        return -1;
+    }
+}
 /******************************************************************************
 * FUNCTION:
 *     akt_convert_oal_config
@@ -189,7 +215,7 @@ static int akt_convert_oal_config(uint8_t ch, int8_t subch,uint8_t cmd)
                 /* 不在需要解调中心频率，除非窄带解调 */
                 printf_info("ch:%d,subch:%d, d_bw:%u\n", ch, i,poal_config->channel[ch].multi_freq_point_param.points[i].d_bandwith);
                 printf_info("ch:%d,d_method:%u\n", ch, poal_config->channel[ch].multi_freq_point_param.points[i].d_method);
-                printf_info("ch:%d,center_freq:%llu\n", ch, poal_config->channel[ch].multi_freq_point_param.points[i].center_freq);
+                printf_info("ch:%d,center_freq:%"PRIu64"\n", ch, poal_config->channel[ch].multi_freq_point_param.points[i].center_freq);
                 printf_info("ch:%d,noise_thrh:%d\n", ch, poal_config->channel[ch].multi_freq_point_param.points[i].noise_thrh);
             }
             break;
@@ -208,8 +234,8 @@ static int akt_convert_oal_config(uint8_t ch, int8_t subch,uint8_t cmd)
             sub_channel_array->sub_ch[subch].d_method = akt_decode_method_convert(pakt_config->sub_channel[subch].decode_method_id);
             sub_channel_array->sub_ch[subch].d_bandwith = pakt_config->sub_channel[subch].bandwidth;
             printf_info("cid:%d, subch:%d\n", subch,ch);
-            printf_info("subch:%d,d_method:%u, raw dmethod:%d\n", ch, sub_channel_array->sub_ch[subch].raw_d_method, sub_channel_array->sub_ch[subch].d_method, sub_channel_array->sub_ch[subch].raw_d_method);
-            printf_info("center_freq:%llu, d_bandwith=%u\n", sub_channel_array->sub_ch[subch].center_freq, sub_channel_array->sub_ch[subch].d_bandwith);
+            printf_info("subch:%d,d_method:%d,%d raw dmethod:%d\n", ch, sub_channel_array->sub_ch[subch].raw_d_method, sub_channel_array->sub_ch[subch].d_method, sub_channel_array->sub_ch[subch].raw_d_method);
+            printf_info("center_freq:%"PRIu64", d_bandwith=%u\n", sub_channel_array->sub_ch[subch].center_freq, sub_channel_array->sub_ch[subch].d_bandwith);
        }
             break;
        case OUTPUT_ENABLE_PARAM:
@@ -281,8 +307,8 @@ static int akt_convert_oal_config(uint8_t ch, int8_t subch,uint8_t cmd)
                     printf_note("raw_d_method:%d, d_method:%u\n",point->points[sig_cnt].raw_d_method, point->points[sig_cnt].d_method);
                     printf_note("residence_time:%ums\n",point->residence_time);
                     printf_note("freq_point_cnt:%u\n",point->freq_point_cnt);
-                    printf_note("ch:%d, sig_cnt:%d,center_freq:%u\n", ch,sig_cnt,point->points[sig_cnt].center_freq);
-                    printf_note("bandwidth:%u\n",point->points[sig_cnt].bandwidth);
+                    printf_note("ch:%d, sig_cnt:%d,center_freq:%"PRIu64"\n", ch,sig_cnt,point->points[sig_cnt].center_freq);
+                    printf_note("bandwidth:%"PRIu64"\n",point->points[sig_cnt].bandwidth);
                     printf_note("fft_size:%u\n",point->points[sig_cnt].fft_size);
                     printf_note("smooth_time:%u\n",point->smooth_time);
                     break;
@@ -317,8 +343,8 @@ static int akt_convert_oal_config(uint8_t ch, int8_t subch,uint8_t cmd)
                         printf_info("freq_resolution:%f\n",fregment->fregment[sig_cnt].freq_resolution);
                     }
                     printf_info("ch:%d, bw=%u\n", ch, bw);
-                    printf_info("start_freq:%llu\n", fregment->fregment[sig_cnt].start_freq);
-                    printf_info("end_freq:%llu\n", fregment->fregment[sig_cnt].end_freq);
+                    printf_info("start_freq:%"PRIu64"\n", fregment->fregment[sig_cnt].start_freq);
+                    printf_info("end_freq:%"PRIu64"\n", fregment->fregment[sig_cnt].end_freq);
                     printf_info("step:%d\n", fregment->fregment[sig_cnt].step);
                     printf_info("fft_size:%d\n", fregment->fregment[sig_cnt].fft_size);
                     printf_info("freq_resolution:%f\n", fregment->fregment[sig_cnt].freq_resolution);
@@ -329,7 +355,7 @@ static int akt_convert_oal_config(uint8_t ch, int8_t subch,uint8_t cmd)
                 {
                     struct multi_freq_fregment_para_st *fregment;
                     uint32_t bw;
-                    bw = &poal_config->channel[ch].rf_para.mid_bw;
+                    bw = poal_config->channel[ch].rf_para.mid_bw;
                     if(poal_config->channel[ch].rf_para.mid_bw == 0){
                         poal_config->channel[ch].rf_para.mid_bw = BAND_WITH_20M;
                     }
@@ -351,8 +377,8 @@ static int akt_convert_oal_config(uint8_t ch, int8_t subch,uint8_t cmd)
                             fregment->fregment[i].freq_resolution = ((float)bw/(float)fregment->fregment[i].fft_size)*BAND_FACTOR;
                             printf_info("[%d]resolution:%f\n",i, fregment->fregment[i].freq_resolution);
                         }
-                        printf_info("[%d]start_freq:%u\n",i, fregment->fregment[i].start_freq);
-                        printf_info("[%d]end_freq:%u\n",i, fregment->fregment[i].end_freq);
+                        printf_info("[%d]start_freq:%"PRIu64"\n",i, fregment->fregment[i].start_freq);
+                        printf_info("[%d]end_freq:%"PRIu64"\n",i, fregment->fregment[i].end_freq);
                         printf_info("[%d]fft_size:%u\n",i, fregment->fregment[i].fft_size);
                         printf_info("[%d]step:%u\n",i, fregment->fregment[i].step);
                     }
@@ -383,8 +409,8 @@ static int akt_convert_oal_config(uint8_t ch, int8_t subch,uint8_t cmd)
                             point->points[i].freq_resolution = BAND_FACTOR*(float)point->points[i].d_bandwith/(float)point->points[i].fft_size;
                             printf_info("[%d]resolution:%f\n",i, point->points[i].freq_resolution);
                         }
-                        printf_info("[%d]center_freq:%u\n",i, point->points[i].center_freq);
-                        printf_info("[%d]bandwidth:%u\n",i, point->points[i].bandwidth);
+                        printf_info("[%d]center_freq:%"PRIu64"\n",i, point->points[i].center_freq);
+                        printf_info("[%d]bandwidth:%"PRIu64"\n",i, point->points[i].bandwidth);
                         printf_info("[%d]fft_size:%u\n",i, point->points[i].fft_size);
                         printf_info("[%d]raw_d_method:%d,d_method:%u\n",i,point->points[i].raw_d_method, point->points[i].d_method);
                         printf_info("[%d]d_bandwith:%u\n",i, point->points[i].d_bandwith);
@@ -413,7 +439,7 @@ static int akt_cali_source_param_convert(void *args)
     int i, count = 0;
     cal_source = args;
     if(cal_source->e_freq < cal_source->s_freq){
-        printf_err("s_freq[%llu] is big than e_freq[%llu]\n", cal_source->e_freq, cal_source->s_freq);
+        printf_err("s_freq[%"PRIu64"] is big than e_freq[%"PRIu64"]\n", cal_source->e_freq, cal_source->s_freq);
         return -1;
     }
         
@@ -441,7 +467,7 @@ static int akt_cali_source_param_convert(void *args)
             printf_note("FFT size is 0, set default 2048\n");
             point->points[i].fft_size =fftsize_check(2048);
         }
-        printf_note("[%d]center_freq:%llu, bandwidth:%llu,fft_size:%u\n",i, point->points[i].center_freq, point->points[i].bandwidth, point->points[i].fft_size);
+        printf_note("[%d]center_freq:%"PRIu64", bandwidth:%"PRIu64",fft_size:%u\n",i, point->points[i].center_freq, point->points[i].bandwidth, point->points[i].fft_size);
     }
      if ((cal_source->e_freq - cal_source->s_freq) % cal_source->step != 0){
         uint64_t left_freq = cal_source->e_freq - cal_source->s_freq - cal_source->step * i;
@@ -538,7 +564,7 @@ int akt_add_udp_client(void *cl_info)
             break;
         }
     }
-    io_set_udp_client_info(ucli);
+
     return 0;
 }
 
@@ -823,7 +849,7 @@ static int akt_execute_set_command(void *cl)
                 err_code = RET_CODE_PARAMTER_ERR;
                 goto set_exit;
             }
-            printf_note("oal ch=%d,%d,sub_ch=%d,%d, freq=%llu, method_id=%d, bandwidth=%u\n", ch,
+            printf_note("oal ch=%d,%d,sub_ch=%d,%d, freq=%"PRIu64", method_id=%d, bandwidth=%u\n", ch,
                         sub_channel_array->cid, sub_ch,sub_channel_array->sub_ch[sub_ch].index,
                         sub_channel_array->sub_ch[sub_ch].center_freq, sub_channel_array->sub_ch[sub_ch].d_method, 
                         sub_channel_array->sub_ch[sub_ch].d_bandwith);
@@ -901,7 +927,7 @@ static int akt_execute_set_command(void *cl)
             uint64_t freq_hz;
             int i; 
             freq_hz = *(uint64_t *)(payload);
-            printf_debug("spctrum freq hz=%lluHz\n", freq_hz);
+            printf_debug("spctrum freq hz=%"PRIu64"Hz\n", freq_hz);
             poal_config->ctrl_para.specturm_analysis_param.frequency_hz = freq_hz;
             break;
         }
@@ -924,7 +950,7 @@ static int akt_execute_set_command(void *cl)
             CALIBRATION_SOURCE_ST_V2 cal_source;
             check_valid_channel(payload[0]);
             memcpy(&cal_source, payload, sizeof(CALIBRATION_SOURCE_ST_V2));
-            printf_note("RF calibrate: cid=%d, enable=%d, middle_freq_hz=%uhz, power=%d, s_freq=%llu, e_freq=%llu, r_time_ms=%u,step=%llu\n", 
+            printf_note("RF calibrate: cid=%d, enable=%d, middle_freq_hz=%"PRIu64"hz, power=%d, s_freq=%"PRIu64", e_freq=%"PRIu64", r_time_ms=%u,step=%"PRIu64"\n", 
                 cal_source.cid, cal_source.enable, cal_source.middle_freq_hz, cal_source.power, cal_source.s_freq, cal_source.e_freq, cal_source.r_time_ms, cal_source.step);
             //executor_set_command(EX_RF_FREQ_CMD, EX_RF_CALIBRATE, ch, &cal_source);
             if(cal_source.enable){
@@ -969,12 +995,16 @@ static int akt_execute_set_command(void *cl)
                 ret = xwfs_start_save_file(sis.filepath);
  #elif defined(SUPPORT_FS)
                 struct fs_context *fs_ctx;
+                struct fs_save_sample_args sample_args;
                 fs_ctx = get_fs_ctx();
                 if(fs_ctx == NULL){
                     printf_warn("NOT FOUND DISK!!\n");
                     break;
                 }
-                fs_ctx->ops->fs_start_save_file(ch, sis.filepath, &sis.bandwidth);
+                sample_args.bindwidth = sis.bandwidth;
+                sample_args.sample_size = sis.filesize;
+                sample_args.sample_time = sis.caputure_time_len;
+                fs_ctx->ops->fs_start_save_file(ch, sis.filepath, &sample_args);
 #endif
             }else if(sis.cmd == 0){/* stop add iq file */
                 printf_note("Stop add file:%s\n", sis.filepath);
@@ -1046,7 +1076,10 @@ static int akt_execute_set_command(void *cl)
         }
         case STORAGE_DELETE_POLICY_CMD:
         {
-
+            uint8_t free_threshold_G = payload[0];
+            uint64_t free_threshold_byte = free_threshold_G * 1024 * 1024 * 1024;
+            printf_note("set free threshold %d G\n", free_threshold_G);
+            config_set_disk_alert_threshold(free_threshold_byte);
             break;
         }
         case STORAGE_DELETE_FILE_CMD:
@@ -1108,7 +1141,19 @@ static int akt_execute_set_command(void *cl)
             memcpy(&para, payload, sizeof(para));
             check_valid_channel(para.ch);
             config_set_split_file_threshold(para.split_threshold);
-            printf_note("set split file threshold:%llu Bytes, %llu MB\n", para.split_threshold, (para.split_threshold / 1024 / 1024));
+            printf_note("set split file threshold:%"PRIu64" Bytes, %"PRIu64" MB\n", para.split_threshold, (para.split_threshold / 1024 / 1024));
+            break;
+        }
+        case LOW_NOISE_CMD:
+        {
+            struct _low_noise_st{
+                uint64_t s_freq_hz;
+                uint64_t e_freq_hz;
+            }__attribute__ ((packed));
+            struct _low_noise_st noise;
+            memcpy(&noise, payload, sizeof(noise));
+            printf_info("low noise para: start freq:%lu hz, end freq:%lu hz\n", noise.s_freq_hz, noise.e_freq_hz);
+            executor_set_command(EX_RF_FREQ_CMD,  EX_RF_LOW_NOISE, ch, &noise.e_freq_hz);
             break;
         }
         default:
@@ -1134,12 +1179,14 @@ set_exit:
 
 }
 
-static void _find_file_list(char *filename, struct stat *stats, size_t *size)
+static int _find_file_list(char *filename, struct stat *stats, void *_size)
 {
     cJSON* item = NULL;
+    size_t *size = (size_t *)_size;
     if(stats == NULL || size == NULL)
-        return;
+        return -1;
     *size = stats->st_size;
+    return 0;
 }
 
 static int akt_execute_get_command(void *cl)
@@ -1173,7 +1220,7 @@ static int akt_execute_get_command(void *cl)
             self_check.pfga_temperature = fpga_status.temp;
             bzero(self_check.system_power_on_time, sizeof(self_check.system_power_on_time));
             if((time_str = get_proc_boot_time()) != NULL){
-                strncpy(self_check.system_power_on_time, time_str, sizeof(self_check.system_power_on_time));
+                strncpy((char *)self_check.system_power_on_time, time_str, sizeof(self_check.system_power_on_time));
             }
             printf_note("power on time:%s\n", self_check.system_power_on_time);
             self_check.ch_num = MAX_RF_NUM;
@@ -1190,7 +1237,11 @@ static int akt_execute_get_command(void *cl)
                     self_check.t_s[i].rf_temperature, self_check.t_s[i].ch_status);
             }
             self_check.irig_b_status = 0;  //0:正常 1：异常
+            #if defined(SUPPORT_GPS)
             self_check.gps_status = (gps_location_is_valid() == true ? 0 : 1);
+            #else
+            self_check.gps_status = 0;
+            #endif
             client->response.response_length = sizeof(DEVICE_SELF_CHECK_STATUS_RSP_ST);
             client->response.data = calloc(1, client->response.response_length);
             if(client->response.data == NULL){
@@ -1256,11 +1307,11 @@ static int akt_execute_get_command(void *cl)
             }__attribute__ ((packed));
             
             struct _soft_info info;
-             memset(&info, 0, sizeof(info));
+            memset(&info, 0, sizeof(info));
             info.num = 1;
             printf_note("device sn=%s\n", poal_config->status_para.device_sn);
             memcpy(info.name, poal_config->status_para.device_sn, sizeof(info.name));
-            sprintf(info.btime,"%s-%s",get_build_time(), __TIME__);
+            sprintf((char *)info.btime,"%s-%s",get_build_time(), __TIME__);
             printf_note("compile time:%s\n", info.btime);
             info.ver = 0x10;
             
@@ -1281,35 +1332,44 @@ static int akt_execute_get_command(void *cl)
         {
             #define SSD_DISK_NUM 1
             STORAGE_STATUS_RSP_ST *psi;
-            int i, ret = 0, st_size = 0;
+            int i, st_size = 0;
+            bool ret = false;
             st_size = sizeof(STORAGE_STATUS_RSP_ST)+sizeof(STORAGE_DISK_INFO_ST)*SSD_DISK_NUM;
             psi = (STORAGE_STATUS_RSP_ST *)safe_malloc(st_size);
             if(psi == NULL){
                 printf_err("malloc error!\n");
-                ret = -ENOMEM;
+                err_code = RET_CODE_INTERNAL_ERR;
                 break;
             }
             #if defined(SUPPORT_XWFS)
-            ret = xwfs_get_disk_info(psi);
+            xwfs_get_disk_info(psi);
             #elif defined(SUPPORT_FS)
             struct fs_context *fs_ctx;
             struct statfs diskInfo;
             fs_ctx = get_fs_ctx_ex();
             ret = fs_ctx->ops->fs_disk_info(&diskInfo);
-            printf_debug("Get disk info: %d\n", ret);
+            if(ret){
             psi->disk_num = 1;
             psi->read_write_speed_kbytesps = 0;  //按照写速度换算约等于1.8G
             psi->disk_capacity[0].disk_state = fs_ctx->ops->fs_get_err_code();
             psi->disk_capacity[0].disk_capacity_byte = diskInfo.f_bsize * diskInfo.f_blocks;
             psi->disk_capacity[0].disk_used_byte = diskInfo.f_bsize * (diskInfo.f_blocks - diskInfo.f_bfree);
+            } else{
+                psi->disk_num = 0;
+                psi->read_write_speed_kbytesps = 0;
+                psi->disk_capacity[0].disk_state = fs_ctx->ops->fs_get_err_code();
+                psi->disk_capacity[0].disk_capacity_byte = 0;
+                psi->disk_capacity[0].disk_used_byte = 0;
+            }
 		    #endif
-            printf_note("ret=%d, num=%d, speed=%uKB/s, capacity_bytes=%llu, used_bytes=%llu\n",
+            printf_note("ret=%d, num=%d, speed=%uKB/s, capacity_bytes=%"PRIu64", used_bytes=%"PRIu64"\n",
                 ret, psi->disk_num, psi->read_write_speed_kbytesps, 
                 psi->disk_capacity[0].disk_capacity_byte, psi->disk_capacity[0].disk_used_byte);
             client->response.response_length = st_size;
             client->response.data = calloc(1, client->response.response_length);
             if(client->response.data == NULL){
                 printf_err("calloc err!");
+                safe_free(psi);
                 break;
             }
             memcpy(client->response.data, psi, client->response.response_length);
@@ -1328,7 +1388,7 @@ static int akt_execute_get_command(void *cl)
             memcpy(filename, client->dispatch.body, FILE_PATH_MAX_LEN);
             filename[sizeof(filename) - 1] = 0;
             memset(&fsp, 0 ,sizeof(SEARCH_FILE_STATUS_RSP_ST));
-            strcpy(fsp.filepath, filename);
+            strcpy((char *)fsp.filepath, filename);
             #if defined(SUPPORT_XWFS)
             ret = xwfs_get_file_size_by_name(filename, &f_bg_size, sizeof(ssize_t));//io_read_more_info_by_name(filename, &fsp, io_find_file_info);
             if(ret != 0){
@@ -1352,9 +1412,9 @@ static int akt_execute_get_command(void *cl)
                 fsp.file_size = (uint64_t)f_bg_size;
             }
             #endif
-            printf_note("Find file:%s, fsize=%u ret =%d\n", fsp.filepath, f_bg_size, ret);
+            printf_note("Find file:%s, fsize=%lu ret =%d\n", fsp.filepath, f_bg_size, ret);
             
-            printf_note("ret=%d, filepath=%s, file_size=[%u bg]%llu, status=%d\n",ret, fsp.filepath, f_bg_size, fsp.file_size, fsp.status);
+            printf_note("ret=%d, filepath=%s, file_size=[%lu bg]%"PRIu64", status=%d\n",ret, fsp.filepath, f_bg_size, fsp.file_size, fsp.status);
             client->response.response_length = sizeof(SEARCH_FILE_STATUS_RSP_ST);
             client->response.data = calloc(1, client->response.response_length);
             if(client->response.data == NULL){
@@ -1483,7 +1543,7 @@ static int akt_execute_get_command(void *cl)
         default:
             printf_debug("not support get commmand\n");
     }
-exit:
+
     return err_code;
 }
 
@@ -1531,7 +1591,7 @@ static int akt_execute_discovery_command(void *client, const char *buf, int len)
     printf_note("ifname:%s,mac:%x%x%x%x%x%x, ipaddr=%x[%s], gateway=%x\n", cl->ifname, netinfo.mac[0],netinfo.mac[1],netinfo.mac[2],netinfo.mac[3],netinfo.mac[4],netinfo.mac[5],
                                                         netinfo.ipaddr, inet_ntoa(ipdata), netinfo.gateway);
     memcpy(&cl->discover_peer_addr, &addr, sizeof(addr));
-    akt_send_resp_discovery(client, &netinfo, sizeof(DEVICE_NET_INFO_ST));
+    akt_send_resp_discovery(client, (void *)&netinfo, sizeof(DEVICE_NET_INFO_ST));
 
     return 0;
 }
@@ -1662,7 +1722,7 @@ bool akt_parse_discovery(void *client, const char *buf, int len)
     return true;
 }
 
-bool akt_send_resp_discovery(void *client, const char *pdata, int len)
+bool akt_send_resp_discovery(void *client, const void *pdata, int len)
 {
     #define _DISCOVERY_CODE 0xaa
     #define _DISCOVERY_BUSINESS_CODE 0xff
@@ -1794,7 +1854,7 @@ void akt_send_resp(void *client, int code, void *args)
         printf_err("calloc err!\n");
         return;
     }
-    rsp_header = ptr_rsp;
+    rsp_header = (PDU_CFG_RSP_HEADER_ST *)ptr_rsp;
     req_header = cl->request.header;
     printf_debug("req_header->operation=%d\n", req_header->operation);
     if(req_header->operation == SET_CMD_REQ){
@@ -1918,8 +1978,8 @@ int  akt_assamble_send_data(uint8_t *send_buf, uint8_t *payload, uint32_t payloa
 
 void akt_send(const void *data, int len, int code)
 {
-    char *psend;
-    size_t send_len, offset = 0;
+    uint8_t *psend;
+    int send_len, offset = 0;
     send_len = sizeof(struct response_get_data);
     
     psend = calloc(1, send_len);
@@ -1927,7 +1987,7 @@ void akt_send(const void *data, int len, int code)
         printf_err("psend err!\n");
         return;
     }
-    if(akt_assamble_send_data(psend, data, len, code) == -1){
+    if ((send_len = akt_assamble_send_data(psend, data, len, code)) == -1){
         printf_err("assamble err!\n");
         goto exit;
     }
@@ -1938,38 +1998,36 @@ exit:
 }
 
 
-void akt_send_alert(void *client, int code)
+void akt_send_alert(int code)
 {
+    struct disk_alarm_report alarm;
+    alarm.ch = 0;
+    alarm.code = (uint8_t)code;
+    printf_note("send alarm: code[%d]\n", code);
+    akt_send(&alarm, sizeof(alarm), REPORT_DISK_ALARM);
 }
 
-void akt_send_file_status(void *data, size_t data_len)
+void akt_send_file_status(void *data, size_t data_len, void *args)
 {
-    struct fs_notify_status *fns = data;
-    struct push_arg *push_args;
-    struct fs_status {
-        uint8_t ch;
-        char path[256];
-        uint64_t filesize;
-        uint64_t duration_time;
-        uint64_t middle_freq;
-        uint64_t bindwidth;
-        uint64_t sample_rate;
-    }__attribute__ ((packed));
+    struct fs_node *fns = data;
+    struct fs_notifier *fner = args;
+    struct fs_sampler *fsa = fner->args;
     struct fs_status _fss;
     if(fns == NULL || fns->filename == NULL)
         return;
 
-    push_args = fns->args;
     memset(&_fss, 0, sizeof(_fss));
     strncpy(_fss.path, fns->filename, sizeof(_fss.path));
     _fss.ch = fns->ch;
-    _fss.filesize = fns->filesize;
+    _fss.filesize = fns->nbyte;
     _fss.duration_time = fns->duration_time;
     _fss.middle_freq = executor_get_mid_freq(fns->ch);
-    _fss.bindwidth = push_args->args;
+    _fss.bindwidth = fsa->args.bindwidth;
     _fss.sample_rate = io_get_raw_sample_rate(fns->ch, _fss.middle_freq);
-    printf_note("ch=%d, path=%s, filesize=%llu[0x%x], time=%llu, middle_freq=%llu, bindwidth=%llu, sample_rate=%llu\n", 
-        _fss.ch, _fss.path, _fss.filesize,_fss.filesize,  _fss.duration_time, _fss.middle_freq, _fss.bindwidth, _fss.sample_rate);
+    _fss.file_threshold = config_get_split_file_threshold();
+    _fss.state = fns->status;
+    printf_note("ch=%d, path=%s, filesize=%"PRIu64"[0x%lx], time=%"PRIu64", middle_freq=%"PRIu64", bindwidth=%"PRIu64", sample_rate=%"PRIu64", state:%d\n", 
+        _fss.ch, _fss.path, _fss.filesize,_fss.filesize,  _fss.duration_time, _fss.middle_freq, _fss.bindwidth, _fss.sample_rate, _fss.state);
     akt_send(&_fss, sizeof(_fss), FILE_STATUS_NOTIFY);
 }
 
@@ -2006,14 +2064,14 @@ uint8_t *akt_assamble_demodulation_header_data(uint32_t *len, void *config)
 {
     struct poal_config *poal_config = &(config_get_config()->oal_config);
     DATUM_DEMODULATE_HEADER_ST *ext_hdr = NULL;
-    char *ptr;
+    uint8_t *ptr;
     int ch = poal_config->cid;
 
     ext_hdr = calloc(1, sizeof(DATUM_SPECTRUM_HEADER_ST));
     if(ext_hdr == NULL){
         return NULL;
     }
-    ptr = (char *)ext_hdr;
+    ptr = (uint8_t *)ext_hdr;
     printf_debug("akt_assamble_data_extend_frame_header_data\n");
     ext_hdr->dev_id = akt_get_device_id();
     ext_hdr->duration = 0;
@@ -2034,7 +2092,7 @@ uint8_t *akt_assamble_demodulation_header_data(uint32_t *len, void *config)
     printfd("-----------------------------assamble_spectrum_header-----------------------------------\n");
     printfd("dev_id[%d], cid[%d], work_mode[%d], gain_mode[%d]\n", 
         ext_hdr->dev_id, ext_hdr->cid, ext_hdr->work_mode, ext_hdr->gain_mode);
-    printfd("d_method[%d], m_freq[%llu], bandwidth[%u]\n", 
+    printfd("d_method[%d], m_freq[%"PRIu64"], bandwidth[%u]\n", 
         ext_hdr->demodulate_type, header_param->m_freq, header_param->bandwidth);
     printfd("----------------------------------------------------------------------------------------\n");
 #endif
@@ -2064,14 +2122,14 @@ uint8_t *akt_assamble_data_extend_frame_header_data(uint32_t *len, void *config)
     struct poal_config *poal_config = &(config_get_config()->oal_config);
     //static uint8_t param_buf[sizeof(DATUM_SPECTRUM_HEADER_ST)];
     DATUM_SPECTRUM_HEADER_ST *ext_hdr = NULL;
-    char *ptr;
+    uint8_t *ptr;
     int ch = poal_config->cid;
 
     ext_hdr = calloc(1, sizeof(DATUM_SPECTRUM_HEADER_ST));
     if(ext_hdr == NULL){
         return NULL;
     }
-    ptr = (char *)ext_hdr;
+    ptr = (uint8_t *)ext_hdr;
     printf_debug("akt_assamble_data_extend_frame_header_data\n");
     ext_hdr->dev_id = akt_get_device_id();
 
@@ -2102,7 +2160,7 @@ uint8_t *akt_assamble_data_extend_frame_header_data(uint32_t *len, void *config)
     printfd("-----------------------------assamble_spectrum_header-----------------------------------\n");
     printfd("dev_id[%d], cid[%d], work_mode[%d], gain_mode[%d]\n", 
         ext_hdr->dev_id, ext_hdr->cid, ext_hdr->work_mode, ext_hdr->gain_mode);
-    printfd("gain[%d], duration[%llu], start_freq[%llu], cutoff_freq[%llu], center_freq[%llu]\n",
+    printfd("gain[%d], duration[%"PRIu64"], start_freq[%"PRIu64"], cutoff_freq[%"PRIu64"], center_freq[%"PRIu64"]\n",
          ext_hdr->gain, ext_hdr->duration, ext_hdr->start_freq, ext_hdr->cutoff_freq, ext_hdr->center_freq);
     printfd("bandwidth[%u], sample_rate[%u], freq_resolution[%f], fft_len[%u], datum_total=%d\n",
         ext_hdr->bandwidth,ext_hdr->sample_rate,ext_hdr->freq_resolution,ext_hdr->fft_len,ext_hdr->datum_total);
@@ -2172,10 +2230,10 @@ void *akt_assamble_data_frame_header_data(uint32_t *len, void *config)
     package_header->data_len = header_param->data_len;
     package_header->crc = 0;
     printfd("-----------------------------assamble_pdu_header----------------------------------------\n");
-    printfd("toa=[%llu], seqnum[%d], ex_len[%d],data_len[%d]\n",  package_header->toa, package_header->seqnum, package_header->ex_len, package_header->data_len);
+    printfd("toa=[%"PRIu64"], seqnum[%d], ex_len[%d],data_len[%d]\n",  package_header->toa, package_header->seqnum, package_header->ex_len, package_header->data_len);
     printfd("----------------------------------------------------------------------------------------\n");
     *len = sizeof(DATUM_PDU_HEADER_ST) + extend_data_header_len;
-    printfd("Header len[%d]: \n", sizeof(DATUM_PDU_HEADER_ST));
+    printfd("Header len[%ld]: \n", sizeof(DATUM_PDU_HEADER_ST));
     for(int i = 0; i< sizeof(DATUM_PDU_HEADER_ST); i++){
         printfd("%x ", *(ptr + i));
     }

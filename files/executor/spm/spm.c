@@ -21,6 +21,8 @@
 #include <assert.h>
 #include "spm_fpga.h"
 #include "spm_chip.h"
+#include "../../bsp/io.h"
+
 
 
 //struct mq_ctx *mqctx;
@@ -139,11 +141,11 @@ loop:
 }
 
 
-void spm_deal(struct spm_context *ctx, void *args)
+void spm_deal(struct spm_context *ctx, void *args, int ch)
 {   
     struct spm_context *pctx = ctx;
     struct poal_config *poal_config = &(config_get_config()->oal_config);
-    int ch = poal_config->cid;
+
     if(pctx == NULL){
         printf_err("spm is not init!!\n");
         return;
@@ -151,7 +153,7 @@ void spm_deal(struct spm_context *ctx, void *args)
     if(subch_bitmap_weight() != 0){
         struct spm_run_parm *ptr_run;
         ptr_run = (struct spm_run_parm *)args;
-        printf_debug("send:ch:%d, s_freq:%llu, e_freq:%llu, bandwidth=%u\n", 
+        printf_debug("send:ch:%d, s_freq:%"PRIu64", e_freq:%"PRIu64", bandwidth=%u\n", 
                 ptr_run->ch, ptr_run->s_freq, ptr_run->e_freq, ptr_run->bandwidth);
         spm_iq_deal_notify(&args);
         
@@ -162,13 +164,13 @@ void spm_deal(struct spm_context *ctx, void *args)
         size_t fft_len = 0, fft_ord_len = 0;
         struct spm_run_parm *ptr_run;
         ptr_run = (struct spm_run_parm *)args;
-        byte_len = pctx->ops->read_fft_data(&ptr, ptr_run);
+        byte_len = pctx->ops->read_fft_data((void **)&ptr, ptr_run);
         if(byte_len < 0){
             return;
         }
         if(byte_len > 0){
             fft_len = byte_len/sizeof(fft_t);
-             printf_debug("size_len=%u, fft_len=%u, ptr=%p,%p, %p\n", byte_len, fft_len, ptr,ptr_run, ptr_run->fft_ptr);
+             printf_debug("size_len=%lu, fft_len=%lu, ptr=%p,%p, %p\n", byte_len, fft_len, ptr,ptr_run, ptr_run->fft_ptr);
             ord_ptr = pctx->ops->data_order(ptr, fft_len, &fft_ord_len, args);
             if(ord_ptr)
                 pctx->ops->send_fft_data(ord_ptr, fft_ord_len, args);
@@ -222,10 +224,15 @@ void *spm_init(void)
 
     for(ch = 0; ch< MAX_RADIO_CHANNEL_NUM; ch++){
         spmctx->run_args[ch] = calloc(1, sizeof(struct spm_run_parm));
-        spmctx->run_args[ch]->fft_ptr = malloc(MAX_FFT_SIZE*sizeof(fft_t));///calloc(1, MAX_FFT_SIZE*sizeof(fft_t));
+        spmctx->run_args[ch]->fft_ptr = calloc(1, MAX_FFT_SIZE*sizeof(fft_t));
         if(spmctx->run_args[ch]->fft_ptr == NULL){
-        printf("malloc failed\n");
-        exit(1);
+            printf("malloc failed\n");
+            exit(1);
+        }
+        spmctx->run_args[ch]->fft_ptr_swap = calloc(1, MAX_FFT_SIZE*sizeof(fft_t));
+        if(spmctx->run_args[ch]->fft_ptr_swap == NULL){
+            printf("malloc failed\n");
+            exit(1);
         }
         for(type = 0; type < STREAM_IQ_TYPE_MAX; type++){
             spmctx->run_args[ch]->dis_iq.ptr[type] = calloc(1, DMA_IQ_TYPE_BUFFER_SIZE);
@@ -252,6 +259,7 @@ int spm_close(void)
     if(spmctx){
         spmctx->ops->close(spmctx);
     }
+    return 0;
 }
 
 

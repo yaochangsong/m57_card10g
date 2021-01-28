@@ -613,7 +613,7 @@ static const struct clock_adc_ops ca_ctx_ops = {
     .close = clock_adc_fpga_close,
 };
 
-struct clock_adc_ops * clock_adc_fpga_cxt(void)
+struct clock_adc_ctx * clock_adc_fpga_cxt(void)
 {
     int ret = -ENOMEM;
     struct clock_adc_ctx *ctx = calloc(1, sizeof(*ctx));

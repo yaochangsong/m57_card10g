@@ -176,7 +176,7 @@ size_t refill_buffer_file(void)
     char path_phys[] = "/spectrum.xml";
     
     if (!stat(path_phys, &stats)){
-        printf_note("(%s)st_size:%u, st_blocks:%u, st_mode:%x\n", path_phys, stats.st_size, stats.st_blocks, stats.st_mode);
+        printf_note("(%s)st_size:%lu, st_blocks:%lu, st_mode:%x\n", path_phys, stats.st_size, stats.st_blocks, stats.st_mode);
         read_file(memshare_get_dma_rx_base(), stats.st_size, path_phys);
     }
     return stats.st_size;
@@ -200,7 +200,7 @@ ssize_t http_request_fill_path_info(struct uh_client *cl, const char *filename, 
     if((ret = http_err_code_check(ret)) != 0){
         return ret;
     }  
-    printf_note("ret =%d,file_path=%s, st_ctime=%s, st_blocks=%x,st_blksize=%x,st_size=%llx\n", 
+    printf_note("ret =%d,file_path=%s, st_ctime=%s, st_blocks=%x,st_blksize=%x,st_size=%lx\n", 
         ret, fi.file_path, asctime(gmtime(&fi.ctime)), fi.st_blocks,fi.st_blksize,fi.st_size);
 
     p = pi;
@@ -238,7 +238,7 @@ int http_on_request(struct uh_client *cl)
         if(parse_format_url(cl, path, http_req_cmd[i].path) == 0){
             if(http_req_cmd[i].dispatch_cmd == -1){
                  if(http_req_cmd[i].action){
-                    ret = http_req_cmd[i].action(cl, &err_msg, &content);
+                    ret = http_req_cmd[i].action(cl, (void **)&err_msg, (void **)&content);
                     printf_note("action result: %d, %s\n", ret, err_msg);
                     if(err_msg){
                         cl->send_json(cl, ret, err_msg, content);
@@ -256,14 +256,14 @@ int http_on_request(struct uh_client *cl)
 }
 
 
-int http_request_action(struct uh_client *cl)
+void http_request_action(struct uh_client *cl)
 {
     int found = 0;
     char *err_msg= NULL;
     int ret = -1;
     for(int i = 0; i<ARRAY_SIZE(http_req_cmd); i++){
         if(cl->dispatch.cmd == http_req_cmd[i].dispatch_cmd){
-            ret = http_req_cmd[i].action(cl, &err_msg, NULL);
+            ret = http_req_cmd[i].action(cl, (void **)&err_msg, (void **)NULL);
             printf_note("action result: %d, %s\n", ret, err_msg);
             found = 1;
             break;
@@ -271,9 +271,7 @@ int http_request_action(struct uh_client *cl)
     }
     if(found == 0){
         printf_warn("request action not found [cmd=%d]\n",cl->dispatch.cmd);
-        return -1;
     }
-    return 0;
 }
 
 bool http_dispatch_requset_handle(struct uh_client *cl, const char *path)

@@ -118,7 +118,7 @@ static int gpio_set_direction(int pin_number,char *direction)
 int gpio_raw_init(void)
 {
     int ret = 0;
-    struct gpio_node_info *ptr = &gpio_node;
+    struct gpio_node_info *ptr = gpio_node;
     for(int i = 0; i< ARRAY_SIZE(gpio_node); i++){
         if(ptr[i].pin_num >= 0){
             gpio_export(ptr[i].pin_num);
@@ -148,7 +148,7 @@ int gpio_raw_init(void)
 int gpio_raw_write_value(enum gpio_func_code func_code, int value)
 {
     int found = 0;
-    struct gpio_node_info *ptr = &gpio_node;
+    struct gpio_node_info *ptr = gpio_node;
     for(int i = 0; i< ARRAY_SIZE(gpio_node); i++){
         if(ptr[i].func_code == func_code){
             if(gpio_set_direction(ptr[i].pin_num, "out") == -1){
@@ -177,7 +177,7 @@ int gpio_raw_write_value(enum gpio_func_code func_code, int value)
 int gpio_raw_read_value(enum gpio_func_code func_code, int *value)
 {
     int found = 0;
-    struct gpio_node_info *ptr = &gpio_node;
+    struct gpio_node_info *ptr = gpio_node;
     for(int i = 0; i< ARRAY_SIZE(gpio_node); i++){
         if(ptr[i].func_code == func_code){
             if(gpio_set_direction(ptr[i].pin_num, "in") == -1){

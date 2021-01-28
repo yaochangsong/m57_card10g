@@ -21,6 +21,7 @@
 #include <errno.h>
 #include <linux/spi/spidev.h>
 #include <time.h>
+#include <inttypes.h>
 #include "platform.h"
 #ifdef SUPPORT_SPECTRUM_FFT
 #include <fftw3.h>
@@ -69,6 +70,7 @@
 
 #include "device/uart/uart.h"
 #include "device/rf/rf.h"
+#include "device/clk_adc/clk_adc.h"
 #if defined (SUPPORT_RF_SPI)
 #include "device/rf/spi/rf_spi.h"
 #endif
@@ -101,5 +103,6 @@
 #ifdef SUPPORT_DAO_XML
 #include "dao/oal/xml/dao_conf.h"
 #endif
+
 #include "version.h"
 

@@ -49,7 +49,7 @@ int http_err_code_check(int ret)
 }
 
 
-static char *file_get_read_buffer_pointer()
+static void *file_get_read_buffer_pointer()
 {
    return  memshare_get_dma_rx_base();
 }
@@ -61,6 +61,7 @@ static int file_reload_buffer(char *filename)
     return xwfs_refresh_disk_file_buffer((void*)filename);
 #endif
    // return io_set_refresh_disk_file_buffer((void*)filename);
+   return -1;
 }
 
 
@@ -162,7 +163,7 @@ ssize_t readmem(void *ptr, size_t n)
     memcpy(ptr, fr->read_buffer_pointer + fr->read_buffer_offset, n);
     fr->read_buffer_offset += n;
     
-    printf_debug("buffer_len=0x%x, buffer_offset=0x%x, nleft=0x%x, n=0x%x\n", 
+    printf_debug("buffer_len=0x%lx, buffer_offset=0x%lx, nleft=0x%lx, n=0x%lx\n", 
                      fr->read_buffer_len, fr->read_buffer_offset, nleft, n);
 
     return n;
@@ -191,10 +192,10 @@ int file_read_attr(const char *filename)
     if(http_err_code_check(ret)== -1){
         return -1;
     }
-    printf_note("file_path:%s,buffer_len:0x%x,st_size=0x%llx, st_blocks=0x%x, st_blksize=0x%x\n", 
+    printf_note("file_path:%s,buffer_len:0x%x,st_size=0x%lx, st_blocks=0x%x, st_blksize=0x%x\n", 
                 fi.file_path,fi.buffer_rx_len,fi.st_size, fi.st_blocks, fi.st_blksize);
     strcpy(fr->file_path,fi.file_path);
-    fr->read_buffer_pointer = file_get_read_buffer_pointer();
+    fr->read_buffer_pointer = (uint8_t *)file_get_read_buffer_pointer();
     fr->read_buffer_len =  fi.buffer_rx_len;
     fr->read_buffer_offset = 0;
     fr->offset_size = 0;
@@ -207,7 +208,7 @@ int file_read_attr(const char *filename)
 
 
 /* before call file_read, we must read file attr */
-static ssize_t file_read(const char *filename, uint8_t *ptr, int n)
+static ssize_t file_read(const char *filename, char *ptr, int n)
 {
     struct file_request_read *fr=&req_readx;
     int ret = -1; /* NOTE: reload buffer return value; initialize value must not 0[ reload over]  */
@@ -219,17 +220,17 @@ static ssize_t file_read(const char *filename, uint8_t *ptr, int n)
     printf_debug("n=%d, nleft=%llx, st_size:0x%llx, offset_size:0x%llx\n", 
         n, nleft, fr->st_size, fr->offset_size);
     if(nleft <= 0){
-        printf_note("[%s]read file over,total read file size:%llu (0x%llx)Byte\n", filename, fr->offset_size, fr->offset_size);
+        printf_note("[%s]read file over,total read file size:%"PRIu64" (0x%llx)Byte\n", filename, fr->offset_size, fr->offset_size);
         return 0;   /* read file over */
     }
     if(n > nleft){
         n = nleft;
     }
 loop:
-    if((nread = readmem(ptr, n)) <= 0){
+    if((nread = readmem((void*)ptr, n)) <= 0){
         fr->is_buffer_has_data = false;
         if(nread  == 0 && ret == 0){
-                printf_note("[%s]read file over,total read file size:%llu Byte\n", filename, fr->offset_size);
+                printf_note("[%s]read file over,total read file size:%"PRIu64" Byte\n", filename, fr->offset_size);
                 return 0;
         }
         ret = file_reload_buffer(filename);
@@ -247,7 +248,7 @@ loop:
     }
     fr->offset_size +=  nread;
     if(fr->offset_size > fr->st_size){
-        printf_note("[%s]read file over,total read file size:%llu (0x%llx)Byte\n", filename, fr->offset_size, fr->offset_size);
+        printf_note("[%s]read file over,total read file size:%"PRIu64" (0x%llx)Byte\n", filename, fr->offset_size, fr->offset_size);
         return 0; /* read file over */
     }
     if(ret >= 0)

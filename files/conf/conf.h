@@ -50,11 +50,12 @@ void config_init(void);
 } while (0)
 
 extern s_config *config_get_config(void);
-
+extern int8_t config_save_all(void);
 extern int8_t config_save_batch(exec_cmd cmd, uint8_t type,s_config *config);
 extern int8_t config_read_by_cmd(exec_cmd cmd, uint8_t type, uint8_t ch, void *data, ...);
-extern int8_t config_write_data(exec_cmd cmd, uint8_t type, uint8_t ch, void *data);
+extern int8_t config_write_data(int cmd, uint8_t type, uint8_t ch, void *data);
 extern int8_t config_write_save_data(exec_cmd cmd, uint8_t type, uint8_t ch, void *data);
+extern void config_save_cache(int cmd, uint8_t type, int8_t ch, void *data);
 extern int32_t config_get_gain_calibration_value(uint8_t ch, uint32_t fft_size, uint64_t m_freq);
 extern int32_t config_get_fft_calibration_value(uint8_t ch, uint32_t fft_size, uint64_t m_freq);
 extern int32_t config_get_analysis_calibration_value(uint64_t m_freq_hz);
@@ -64,6 +65,8 @@ extern void config_set_disk_alert_threshold(uint64_t val);
 extern uint64_t config_get_split_file_threshold(void);
 extern void config_set_split_file_threshold(uint64_t val);
 extern uint32_t config_get_disk_file_notifier_timeout(void);
+extern int config_get_control_mode(void);
+
 #endif
 
 

@@ -30,10 +30,9 @@ int executor_tcp_disconnect_notify(void *cl)
     struct net_udp_client *cl_list, *list_tmp;
     struct net_udp_server *srv = get_udp_server();
     struct net_tcp_client *tcp_cl = (struct net_tcp_client *)cl;
-    int index = 0, find = 0;
+    int index = 0;
     struct poal_config *poal_config = &(config_get_config()->oal_config);
     if(tcp_find_client(&tcp_cl->peer_addr)){
-        find = 1;
         return 0;
     }
    /* release udp client */
@@ -74,7 +73,7 @@ int executor_tcp_disconnect_notify(void *cl)
             }
         }
     }
-    
+    return 0;
 }
 
 static  int8_t  executor_fragment_scan(uint32_t fregment_num,uint8_t ch, work_mode_type mode, void *args)
@@ -97,7 +96,12 @@ static  int8_t  executor_fragment_scan(uint32_t fregment_num,uint8_t ch, work_mo
     */
     s_freq = poal_config->channel[ch].multi_freq_fregment_para.fregment[fregment_num].start_freq;
     e_freq = poal_config->channel[ch].multi_freq_fregment_para.fregment[fregment_num].end_freq;
-
+#if defined(SUPPORT_PROJECT_WD_XCR_40G)
+    uint64_t s_freq_origin, e_freq_origin;
+    get_origin_start_end_freq(ch, s_freq, e_freq, &s_freq_origin, &e_freq_origin);
+    printf_debug("s_freq:%"PRIu64", s_freq_origin:%llu\n", s_freq, s_freq_origin);
+    printf_debug("e_freq:%"PRIu64", e_freq_origin:%llu\n", e_freq, e_freq_origin);
+#endif
     if(config_read_by_cmd(EX_RF_FREQ_CMD, EX_RF_MID_BW, ch, &scan_bw) == -1){
             printf_err("Error read scan bandwidth=%u\n", scan_bw);
             return -1;
@@ -119,11 +123,16 @@ static  int8_t  executor_fragment_scan(uint32_t fregment_num,uint8_t ch, work_mo
         r_args->rf_mode = poal_config->channel[ch].rf_para.rf_mode_code;
     do{
         r_args->s_freq_offset = _s_freq_hz_offset;
+        #if defined(SUPPORT_PROJECT_WD_XCR_40G)
+        r_args->s_freq = s_freq_origin;
+        r_args->e_freq = e_freq_origin;
+        #else
         r_args->s_freq = s_freq;
+        r_args->e_freq = e_freq;
+        #endif
         if(spmctx->ops->spm_scan)
         spmctx->ops->spm_scan(&_s_freq_hz_offset, &_e_freq_hz, &scan_bw, &_bw_hz, &_m_freq_hz);
-        printf_debug("[%d] s_freq_offset=%lluHz,scan_bw=%uHz _bw_hz=%u, _m_freq_hz=%lluHz\n", index, r_args->s_freq_offset, scan_bw, _bw_hz, _m_freq_hz);
-        r_args->e_freq = e_freq;
+        printf_debug("[%d] s_freq_offset=%"PRIu64"Hz,scan_bw=%uHz _bw_hz=%u, _m_freq_hz=%"PRIu64"Hz\n", index, r_args->s_freq_offset, scan_bw, _bw_hz, _m_freq_hz);
         r_args->scan_bw = scan_bw;
         r_args->bandwidth = _bw_hz;
         r_args->m_freq = r_args->s_freq_offset + _bw_hz/2;
@@ -132,7 +141,7 @@ static  int8_t  executor_fragment_scan(uint32_t fregment_num,uint8_t ch, work_mo
         r_args->total_fft = t_fft;
         r_args->fregment_num = fregment_num;
         r_args->freq_resolution = poal_config->channel[ch].multi_freq_fregment_para.fregment[fregment_num].freq_resolution;
-        printf_debug("[%d]s_freq=%llu, e_freq=%llu, scan_bw=%u, bandwidth=%u,m_freq=%llu, m_freq_s=%llu\n", 
+        printf_debug("[%d]s_freq=%"PRIu64", e_freq=%"PRIu64", scan_bw=%u, bandwidth=%u,m_freq=%"PRIu64", m_freq_s=%"PRIu64"\n", 
             index, r_args->s_freq, r_args->e_freq, r_args->scan_bw, r_args->bandwidth, r_args->m_freq, r_args->m_freq_s);
         if(spmctx->ops->sample_ctrl)
             spmctx->ops->sample_ctrl(r_args);
@@ -145,7 +154,7 @@ static  int8_t  executor_fragment_scan(uint32_t fregment_num,uint8_t ch, work_mo
         if(poal_config->channel[ch].enable.psd_en){
             io_set_enable_command(PSD_MODE_ENABLE, ch, -1, r_args->fft_size);
         }
-        spm_deal(args, r_args);
+        spm_deal(args, r_args, ch);
         if(poal_config->channel[ch].enable.psd_en){
             io_set_enable_command(PSD_MODE_DISABLE, ch, -1, r_args->fft_size);
         }
@@ -178,6 +187,8 @@ uint32_t executor_get_audio_point(uint8_t ch)
 {
     struct spm_context *_ctx;
     _ctx = get_spm_ctx();
+    if(_ctx == NULL)
+        return 0;
     return _ctx->run_args[ch]->audio_points;
 }
 
@@ -185,6 +196,8 @@ uint64_t executor_get_mid_freq(uint8_t ch)
 {
     struct spm_context *_ctx;
     _ctx = get_spm_ctx();
+    if(_ctx == NULL)
+        return 0;
     return _ctx->run_args[ch]->m_freq;
 }
 
@@ -240,8 +253,8 @@ static int8_t  executor_points_scan(uint8_t ch, work_mode_type mode, void *args)
         r_args->gain_mode = poal_config->channel[ch].rf_para.gain_ctrl_method;
         r_args->gain_value = poal_config->channel[ch].rf_para.mgc_gain_value;
         r_args->freq_resolution = (float)point->points[i].bandwidth * BAND_FACTOR / (float)point->points[i].fft_size;
-        printf_info("ch=%d, s_freq=%llu, e_freq=%llu, fft_size=%u, d_method=%d\n", ch, s_freq, e_freq, r_args->fft_size,r_args->d_method);
-        printf_info("rf scan bandwidth=%u, middlebw=%u, m_freq=%llu, freq_resolution=%f\n",r_args->scan_bw,r_args->bandwidth , r_args->m_freq, r_args->freq_resolution);
+        printf_info("ch=%d, s_freq=%"PRIu64", e_freq=%"PRIu64" fft_size=%u, d_method=%d\n", ch, s_freq, e_freq, r_args->fft_size,r_args->d_method);
+        printf_info("rf scan bandwidth=%u, middlebw=%u, m_freq=%"PRIu64", freq_resolution=%f\n",r_args->scan_bw,r_args->bandwidth , r_args->m_freq, r_args->freq_resolution);
         if(spmctx->ops->sample_ctrl)
             spmctx->ops->sample_ctrl(r_args);
         executor_set_command(EX_RF_FREQ_CMD,  EX_RF_MID_FREQ, ch, &point->points[i].center_freq);
@@ -253,7 +266,7 @@ static int8_t  executor_points_scan(uint8_t ch, work_mode_type mode, void *args)
         executor_set_command(EX_MID_FREQ_CMD, EX_FFT_SIZE, ch, &point->points[i].fft_size);
         /* 根据带宽设置边带�?*/
         executor_set_command(EX_CTRL_CMD, EX_CTRL_SIDEBAND, ch, &r_args->scan_bw);
-        printf_note("d_center_freq=%llu, d_method=%d, d_bandwith=%u noise=%d noise_en=%d volume=%d\n",poal_config->channel[ch].multi_freq_point_param.points[i].center_freq,
+        printf_note("d_center_freq=%"PRIu64", d_method=%d, d_bandwith=%u noise=%d noise_en=%d volume=%d\n",poal_config->channel[ch].multi_freq_point_param.points[i].center_freq,
                     poal_config->channel[ch].multi_freq_point_param.points[i].d_method,poal_config->channel[ch].multi_freq_point_param.points[i].d_bandwith,
                     poal_config->channel[ch].multi_freq_point_param.points[i].noise_thrh,poal_config->channel[ch].multi_freq_point_param.points[i].noise_en,
                     poal_config->channel[ch].multi_freq_point_param.points[i].audio_volume);
@@ -294,7 +307,7 @@ static int8_t  executor_points_scan(uint8_t ch, work_mode_type mode, void *args)
             if(spmctx->ops->agc_ctrl)
                 spmctx->ops->agc_ctrl(ch, spmctx);
             if(args != NULL)
-                spm_deal(args, r_args);
+                spm_deal(args, r_args, ch);
             if(poal_config->channel[ch].enable.psd_en){
                 io_set_enable_command(PSD_MODE_DISABLE, ch, -1, point->points[i].fft_size);
             }
@@ -451,6 +464,8 @@ static int8_t executor_get_kernel_command(uint8_t type, uint8_t ch, void *data)
         default:
             printf_err("not support type[%d]\n", type);
     }
+    
+    return 0;
 }
 
 
@@ -495,7 +510,7 @@ static int8_t executor_set_kernel_command(uint8_t type, uint8_t ch, void *data, 
             if(middle_freq == 0){
                 middle_freq = *(uint64_t *)data;
             }
-            printf_note("ch=%d, dec_middle=%llu, middle_freq=%llu\n", ch, *(uint64_t *)data, middle_freq);
+            printf_note("ch=%d, dec_middle=%"PRIu64", middle_freq=%"PRIu64"\n", ch, *(uint64_t *)data, middle_freq);
             io_set_dec_middle_freq(ch, *(uint64_t *)data, middle_freq);
             break;
         }
@@ -507,7 +522,6 @@ static int8_t executor_set_kernel_command(uint8_t type, uint8_t ch, void *data, 
             middle_freq = *(uint64_t *)data;
             bandwidth = va_arg(ap, uint32_t);
             d_method = (uint8_t)va_arg(ap, uint32_t);
-            //printf_warn("EX_DEC_RAW_DATA: ch=%d, middle_freq=%llu, bandwidth=%u, d_method=%d\n", ch, middle_freq, bandwidth, d_method);
             io_set_dec_parameter(ch, middle_freq, d_method, bandwidth);
             break;
         }
@@ -749,7 +763,7 @@ int8_t executor_set_command(exec_cmd cmd, uint8_t type, uint8_t ch,  void *data,
             /* notify thread to deal data */
             printf_note("notify thread to deal data\n");
             poal_config->channel[ch].enable.bit_reset = true; /* reset(stop) all working task */
-            if(get_spm_ctx()->ops->set_flush_trigger)
+            if((get_spm_ctx()!= NULL) && get_spm_ctx()->ops->set_flush_trigger)
                 get_spm_ctx()->ops->set_flush_trigger(true);
             if(ch < MAX_RADIO_CHANNEL_NUM)
                 sem_post(&work_sem.notify_deal[ch]);

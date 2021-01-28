@@ -178,6 +178,7 @@ struct spm_run_parm{
     uint32_t audio_points;
     struct spm_iq_parm sub_ch_para; /* 子通道参数 */
     void *fft_ptr;              /* fft数据缓冲区 */
+    void *fft_ptr_swap;         /* fft数据交换缓冲区,dma存储区存在拷贝数据对齐问题,需要将dma数据拷贝到交换区后再处理 */
     struct spm_dispatcher_iq dis_iq;
 };
 
@@ -208,5 +209,6 @@ extern int8_t executor_set_command(exec_cmd cmd, uint8_t type, uint8_t ch,  void
 extern uint32_t executor_get_audio_point(uint8_t ch);
 extern uint64_t executor_get_mid_freq(uint8_t ch);
 extern void executor_close(void);
+extern void udp_free(struct net_udp_client *cl);
 
 #endif

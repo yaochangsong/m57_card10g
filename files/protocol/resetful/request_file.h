@@ -31,7 +31,7 @@ struct disk_file_info{
     uint64_t st_size;               /* total size, in bytes -文件大小，字节为单位*/
     time_t     ctime;               /* create time 创建时间   */
     uint32_t buffer_rx_len;         /*接收缓存区大小 */
-    uint8_t  file_path[FILE_PATH_MAX_LEN];
+    char  file_path[FILE_PATH_MAX_LEN];
 }__attribute__ ((packed));
 
 struct file_request_read{
@@ -42,7 +42,7 @@ struct file_request_read{
     uint64_t st_size;                   /* 请求文件大小 */
     uint64_t offset_size;               /* 文件读取偏移 */
     bool is_buffer_has_data;            /* 缓冲区是否有数据 */
-    uint8_t  file_path[FILE_PATH_MAX_LEN];
+    char  file_path[FILE_PATH_MAX_LEN];
 };
 
 

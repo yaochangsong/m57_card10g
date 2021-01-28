@@ -72,9 +72,11 @@ sgn(a - b) == 0         sgn(a - b) != 0       sgn(a - b) <  0         sgn(a - b)
 #define SPEED_2500      2500
 #define SPEED_10000     10000
 
+#include <arpa/inet.h>  
+
 extern char *safe_strdup(const char *s);
 extern uint16_t crc16_caculate(const uint8_t *pchMsg, uint16_t wDataLen);
-extern int get_mac(char *ifname, char * mac, int len_limit);
+extern int get_mac(char *ifname, uint8_t * mac, int len_limit);
 extern int write_file_in_int16(void *pdata, unsigned int data_len, char *filename);
 extern int32_t  diff_time(void);
 extern char *get_version_string(void);
@@ -88,5 +90,11 @@ extern long get_sys_boot_time(void);
 extern char *get_proc_boot_time(void);
 extern char *get_kernel_version(void);
 extern void *get_compile_info(void);
+extern int get_gateway(char *ifname, struct in_addr * gw);
+extern int get_netmask(char *ifname, struct in_addr *netmask);
+extern int get_ipaddress(char *ifname, struct in_addr *addr);
+extern int set_ipaddress(char *ifname, char *ipaddr, char *mask,char *gateway);
+extern int read_file(void *pdata, unsigned int data_len, char *filename);
+
 #endif
 

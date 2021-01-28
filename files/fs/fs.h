@@ -18,6 +18,7 @@
 #include <stdbool.h>
 #include <sys/statfs.h>
 #include "../lib/libubox/uloop.h"
+#include "fs_notifier.h"
 
 
 typedef enum _disk_err_code {
@@ -29,14 +30,19 @@ typedef enum _disk_err_code {
     DISK_CODE_NOT_FORAMT = 4,
 }disk_err_code;
 
+typedef enum _file_sample_policy {
+    FSP_TIMER = 0,  /* ?¡§¨º¡À¡ä?¡ä¡é */
+    FSP_SIZE = 1,   /* ???¡§¡ä¨®D?¡ä?¡ä¡é */
+    FSP_FREE = 2,   /* ¡Á?¨®¨¦¡ä?¡ä¡é */
+}sample_policy_code;
 struct fs_ops {
 	bool (*fs_disk_info)(struct statfs *diskInfo);
     bool (*fs_disk_valid)(void);
     int (*fs_format)(void);
     int (*fs_mkdir)(char *);
     int (*fs_delete)(char *);
-    int (*fs_find)(char *,int (*callback) (char *,void *, void *), void *);
-    ssize_t (*fs_dir)(char *,  int(*callback) (char *, void *, void *), void *);
+    int (*fs_find)(char *,int (*callback) (char *, struct stat *, void *), void *);
+    ssize_t (*fs_dir)(char *,  void(*callback) (char *, struct stat *, void *), void *);
     ssize_t (*fs_start_save_file)(int, char *, void*);
     ssize_t (*fs_stop_save_file)(int, char *);
     ssize_t (*fs_start_read_raw_file)(int,char *);
@@ -45,6 +51,17 @@ struct fs_ops {
     int (*fs_close)(void);
 };
 
+struct fs_save_sample_args{
+    uint32_t bindwidth;
+    uint16_t sample_time;
+    uint64_t sample_size;
+}__attribute__ ((packed));
+
+struct fs_sampler{
+    struct fs_save_sample_args args;
+    sample_policy_code sample_policy;
+    struct uloop_timeout timeout;
+};
 struct push_arg{
     struct timeval ct;
     uint64_t nbyte;
@@ -53,10 +70,12 @@ struct push_arg{
     int  fd;
     int split_num;
     int ch;
-    char *name;
+    char *thread_name;
     char *filename;
-    void *notifier;
     uint32_t args;
+    struct list_head file_list;
+    struct fs_notifier notifier;
+    struct fs_sampler sampler;
 };
 
 
@@ -64,16 +83,7 @@ struct fs_context {
     const struct fs_ops *ops;
 };
 
-struct fs_notify_status {
-    int ch;
-    char *filename;
-    size_t filesize;
-    time_t duration_time;
-    time_t timeout_ms;
-    struct timeval start_time;
-    struct uloop_timeout timeout;
-    void *args;
-};
+
 
 extern void fs_init(void);
 extern char *fs_get_root_dir(void);

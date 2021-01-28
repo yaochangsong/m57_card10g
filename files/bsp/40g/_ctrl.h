@@ -51,34 +51,34 @@ static inline  void _ctrl_freq(void *args)
         (mid_freq[1] == 0 || (mid_freq[1] >= GHZ(1) && mid_freq[1] <= GHZ(18)))){
         changed_value[ch] = 1;
         if(changed_value[ch] !=changed_value_dup[ch]){
-            printf_info("[ch1:%llu, ch2:%llu]EMIO: 0 ,0, 0\n", mid_freq[0], mid_freq[1]);
+            printf_info("[ch1:%"PRIu64", ch2:%"PRIu64"]EMIO: 0 ,0, 0\n", mid_freq[0], mid_freq[1]);
             SET_GPIO_ARRAY(0,0,0);
         }
     } else if((mid_freq[0] <= MHZ(1350) || mid_freq[0] == 0)  &&
                mid_freq[1] >= GHZ(18)){
         changed_value[ch] = 2;
         if(changed_value[ch] !=changed_value_dup[ch]){
-            printf_info("[ch1:%llu, ch2:%llu]EMIO: 0 ,0, 1\n", mid_freq[0], mid_freq[1]);
+            printf_info("[ch1:%"PRIu64", ch2:%"PRIu64"]EMIO: 0 ,0, 1\n", mid_freq[0], mid_freq[1]);
             SET_GPIO_ARRAY(1,0,0);
         }
     } else if(((mid_freq[0] >= GHZ(1) && mid_freq[0] <= GHZ(18)) ||  mid_freq[0] == 0) && 
               (mid_freq[1] <= MHZ(1350) || mid_freq[1] == 0)){
         changed_value[ch] = 3;
         if(changed_value[ch] !=changed_value_dup[ch]){
-            printf_info("[ch1:%llu, ch2:%llu]EMIO: 0 ,1, 0\n", mid_freq[0], mid_freq[1]);
+            printf_info("[ch1:%"PRIu64", ch2:%"PRIu64"]EMIO: 0 ,1, 0\n", mid_freq[0], mid_freq[1]);
             SET_GPIO_ARRAY(0,1,0);
         }
     } else if((mid_freq[0] >= GHZ(1) && mid_freq[0] <= GHZ(18)) &&  
                 mid_freq[1] >= GHZ(18)){
         changed_value[ch] = 4;
         if(changed_value[ch] !=changed_value_dup[ch]){
-            printf_info("[ch1:%llu, ch2:%llu]EMIO: 0 ,1, 1\n", mid_freq[0], mid_freq[1]);
+            printf_info("[ch1:%"PRIu64", ch2:%"PRIu64"]EMIO: 0 ,1, 1\n", mid_freq[0], mid_freq[1]);
             SET_GPIO_ARRAY(1,1,0);
         }
     }  else{
         changed_value[ch] = 5;
         if(changed_value[ch] !=changed_value_dup[ch]){
-            printf_info("Not support freq: ch0:%llu, ch1:%llu\n", mid_freq[0], mid_freq[1]);
+            printf_info("Not support freq: ch0:%"PRIu64", ch1:%"PRIu64"\n", mid_freq[0], mid_freq[1]);
         }
     }
     changed_value_dup[ch] = changed_value[ch];

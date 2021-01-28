@@ -300,12 +300,12 @@ int parse_json_multi_band(const char * const body,uint8_t cid)
             value = cJSON_GetObjectItem(node, "startFrequency");
             if(cJSON_IsNumber(value)){
                 config->channel[cid].multi_freq_fregment_para.fregment[subcid].start_freq = value->valuedouble;
-                printfd("startFrequency:%llu, ",config->channel[cid].multi_freq_fregment_para.fregment[subcid].start_freq);
+                printfd("startFrequency:%"PRIu64", ",config->channel[cid].multi_freq_fregment_para.fregment[subcid].start_freq);
             } 
             value = cJSON_GetObjectItem(node, "endFrequency");
             if(cJSON_IsNumber(value)){
                 config->channel[cid].multi_freq_fregment_para.fregment[subcid].end_freq = value->valuedouble;
-                printfd("endFrequency:%llu, ",config->channel[cid].multi_freq_fregment_para.fregment[subcid].end_freq);
+                printfd("endFrequency:%"PRIu64", ",config->channel[cid].multi_freq_fregment_para.fregment[subcid].end_freq);
             }
             value = cJSON_GetObjectItem(node, "step");
             if(cJSON_IsNumber(value)){
@@ -315,7 +315,7 @@ int parse_json_multi_band(const char * const body,uint8_t cid)
             value = cJSON_GetObjectItem(node, "freqResolution");
             if(cJSON_IsNumber(value)){
                 config->channel[cid].multi_freq_fregment_para.fregment[subcid].freq_resolution = value->valuedouble;
-                printfd("endFrequency:%llu, ",config->channel[cid].multi_freq_fregment_para.fregment[subcid].freq_resolution);
+                printfd("endFrequency:%f, ",config->channel[cid].multi_freq_fregment_para.fregment[subcid].freq_resolution);
             }
             value = cJSON_GetObjectItem(node, "fftSize");
             if(cJSON_IsNumber(value)){
@@ -408,12 +408,12 @@ int parse_json_muti_point(const char * const body,uint8_t cid)
             value = cJSON_GetObjectItem(node, "centerFreq");
             if(cJSON_IsNumber(value)){
                 config->channel[cid].multi_freq_point_param.points[subcid].center_freq=value->valuedouble;
-                printfn("middle_freq:%llu ",config->channel[cid].multi_freq_point_param.points[subcid].center_freq);
+                printfn("middle_freq:%"PRIu64" ",config->channel[cid].multi_freq_point_param.points[subcid].center_freq);
             }
             value = cJSON_GetObjectItem(node, "bandwidth");
             if(cJSON_IsNumber(value)){
                 config->channel[cid].multi_freq_point_param.points[subcid].bandwidth=value->valuedouble;
-                printfn("bandwidth:%llu ",config->channel[cid].multi_freq_point_param.points[subcid].bandwidth);
+                printfn("bandwidth:%"PRIu64" ",config->channel[cid].multi_freq_point_param.points[subcid].bandwidth);
             } 
             value = cJSON_GetObjectItem(node, "freqResolution");
             if(cJSON_IsNumber(value)){
@@ -488,12 +488,12 @@ int parse_json_demodulation(const char * const body,uint8_t cid,uint8_t subid )
     value = cJSON_GetObjectItem(root, "centerFreq");
     if(value!=NULL&&cJSON_IsNumber(value)){
          config->channel[ch].sub_channel_para.sub_ch[subid].center_freq=value->valuedouble;
-         printfd("center_freq:%llu,\n", config->channel[ch].sub_channel_para.sub_ch[subid].center_freq);
+         printfd("center_freq:%"PRIu64",\n", config->channel[ch].sub_channel_para.sub_ch[subid].center_freq);
     }
     value = cJSON_GetObjectItem(root, "decBandwidth");
     if(value!=NULL&&cJSON_IsNumber(value)){
          config->channel[ch].sub_channel_para.sub_ch[subid].d_bandwith=value->valueint;
-         printfd("center_freq:%llu,\n", config->channel[ch].sub_channel_para.sub_ch[subid].d_bandwith);
+         printfd("center_freq:%u\n", config->channel[ch].sub_channel_para.sub_ch[subid].d_bandwith);
     }
     value = cJSON_GetObjectItem(root, "fftSize");
     if(value!=NULL&&cJSON_IsNumber(value)){
@@ -624,9 +624,10 @@ int parse_json_file_store(const char * const body, uint8_t ch,  uint8_t enable, 
         return RESP_CODE_OK;
 }
 
-static void creat_file_list(char *filename, struct stat *stats, cJSON *array)
+static void creat_file_list(char *filename, struct stat *stats, void *_array)
 {
     cJSON* item = NULL;
+    cJSON *array = (cJSON *)_array;
     if(stats == NULL || filename == NULL || array == NULL)
         return;
     cJSON_AddItemToArray(array, item = cJSON_CreateObject());
@@ -641,7 +642,7 @@ char *assemble_json_file_list(void)
     int i;
     struct file_list{
         char *filename;
-        size_t size;
+        char *size;
         time_t ctime;
     };
     struct file_list fl[] = {
@@ -656,7 +657,7 @@ char *assemble_json_file_list(void)
     fs_ctx = get_fs_ctx();
     if(fs_ctx == NULL)
         return NULL;
-    fs_ctx->ops->fs_dir(NULL, creat_file_list, array);
+    fs_ctx->ops->fs_dir(NULL, creat_file_list, (void *)array);
 #else
     cJSON_AddNumberToObject(root, "number", ARRAY_SIZE(fl));
     for(i = 0; i < ARRAY_SIZE(fl); i++){
@@ -673,14 +674,16 @@ char *assemble_json_file_list(void)
     return str_json;
 }
 
-static void find_file_list(char *filename, struct stat *stats, cJSON *root)
+static int find_file_list(char *filename, struct stat *stats, void *node)
 {
     cJSON* item = NULL;
+    cJSON *root = (cJSON *)node;
     if(stats == NULL || filename == NULL || root == NULL)
-        return;
+        return -1;
     cJSON_AddStringToObject(root, "filename", filename);
     cJSON_AddNumberToObject(root, "size", stats->st_size);
     cJSON_AddNumberToObject(root, "createTime", stats->st_mtime);
+    return 0;
 }
 char *assemble_json_find_file(char *filename)
 {
@@ -693,7 +696,7 @@ char *assemble_json_find_file(char *filename)
     fs_ctx = get_fs_ctx();
     if(fs_ctx == NULL)
         return NULL;
-    fs_ctx->ops->fs_find(filename, find_file_list, root);
+    fs_ctx->ops->fs_find(filename, find_file_list, (void *)root);
 #else
     struct file_list{
         char *filename;

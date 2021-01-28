@@ -17,6 +17,7 @@
 
 extern int json_write_config_file(void *config);
 extern int json_read_config_file(const void *config);
+extern int json_print(cJSON *root, int do_format);
 
 #endif
 

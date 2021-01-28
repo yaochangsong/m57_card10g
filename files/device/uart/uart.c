@@ -48,7 +48,7 @@ long uart0_send_data(uint8_t *buf, uint32_t len)
 
 long uart0_send_string(uint8_t *buf)
 {
-    return write(uartinfo[1].sfd,buf,strlen(buf));
+    return write(uartinfo[1].sfd,buf,strlen((char*)buf));
 }
 
 
@@ -258,7 +258,7 @@ int uart_compass1_read_block_timeout(uint8_t *buf, int time_sec_ms)
                 break;
             }
         } else if (ret < 0) {
-            printf_err("read error\n", ret);
+            printf_err("read error:%d\n", ret);
             break;
         } else {
             printf_debug("uart recv[%d]:\n", ret);
@@ -294,7 +294,7 @@ int uart_compass2_read_block_timeout(uint8_t *buf, int time_sec_ms)
                 break;
             }
         } else if(ret < 0) {
-            printf_err("read error\n", ret);
+            printf_err("read error:%d\n", ret);
             break;
         } else {
             printf_debug("uart recv[%d]:\n", ret);
@@ -327,7 +327,7 @@ int uart0_read_block_timeout(uint8_t *buf, int time_sec_ms)
                 break;
             }
         }else if(ret < 0){
-            printf_err("read error\n", ret);
+            printf_err("read error:%d\n", ret);
             break;
         }else{  /* read ok */
             printfd("uart recv[%d]:\n", ret);

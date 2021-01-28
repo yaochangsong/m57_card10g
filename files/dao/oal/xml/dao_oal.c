@@ -1231,13 +1231,13 @@ void read_config(void *root_config)
 
     if(dao_read_array_data(root, "freqPoint", "index", "0", 
                                 "centerFreq",&fre_config->oal_config.multi_freq_point_param[0].points[0].center_freq, DDATA_U64)!=-1){
-        printf_debug("读取............................centerFreq = %llu\n",fre_config->oal_config.multi_freq_point_param[0].points[0].center_freq);
+        printf_debug("读取............................centerFreq = %"PRIu64"\n",fre_config->oal_config.multi_freq_point_param[0].points[0].center_freq);
        };
 
 
     if(dao_read_array_data(root, "freqPoint", "index", "0", 
                                 "bandwith",&fre_config->oal_config.multi_freq_point_param[0].points[0].bandwidth,DDATA_U64) !=-1){
-        printf_debug("读取............................bandwith = %llu\n",fre_config->oal_config.multi_freq_point_param[0].points[0].bandwidth);
+        printf_debug("读取............................bandwith = %"PRIu64"\n",fre_config->oal_config.multi_freq_point_param[0].points[0].bandwidth);
        };
 
     if(dao_read_array_data(root, "freqPoint", "index", "0", 

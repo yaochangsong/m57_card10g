@@ -55,7 +55,7 @@
 
 
 
-
+void log_init(int threshold);
 void  __uh_log(const char *filename, int line, int priority, const char *fmt, ...);
 
 #endif

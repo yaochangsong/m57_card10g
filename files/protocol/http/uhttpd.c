@@ -25,6 +25,8 @@
 #include "uhttpd.h"
 //#include "uh_ssl.h"
 #include "log/log.h"
+extern void *net_get_uhttp_srv_ctx(void);
+
 
 static void uh_set_docroot(struct uh_server *srv, const char *docroot)
 {
@@ -64,6 +66,7 @@ int uh_dump_all_client(void)
             //cl_list->printf(cl_list, "Find http ipaddree on list:%s, port=%d\r\n\r\n",  cl_list->get_peer_addr(cl_list), cl_list->get_peer_port(cl_list));
             printf_warn("Find http ipaddree on list:%s, port=%d\n",  cl_list->get_peer_addr(cl_list), cl_list->get_peer_port(cl_list));
     }
+	return 0;
 }
 
 

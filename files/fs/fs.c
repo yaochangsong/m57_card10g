@@ -271,7 +271,7 @@ static inline int _fs_find(char *filename,  int (*callback) (char *, struct stat
     while((dirp = readdir(dp))!=NULL){
         if((strcmp(dirp->d_name,".")==0)||(strcmp(dirp->d_name,"..")==0))
             continue;
-        printf_debug("%6d:%-19s %5s\n",dirp->d_ino,dirp->d_name,(dirp->d_type==DT_DIR)?("(DIR)"):(""));
+        printf_debug("%6ld:%-19s %5s\n",dirp->d_ino,dirp->d_name,(dirp->d_type==DT_DIR)?("(DIR)"):(""));
         if(strncmp(filename, dirp->d_name, strlen(dirp->d_name))){
             continue;
         }
@@ -295,7 +295,7 @@ static inline int _fs_find(char *filename,  int (*callback) (char *, struct stat
     return ret;
 }
 
-static ssize_t _fs_dir(char *dirname, void (*callback) (char *,void *, void *), void *args)
+static ssize_t _fs_dir(char *dirname, void (*callback) (char *,struct stat *, void *), void *args)
 {
     DIR *dp;
     struct dirent *dirp;
@@ -539,7 +539,7 @@ static void _fs_sample_time_out(struct uloop_timeout *t)
         return;
     
     _fs_stop_save_file(p_args->ch, NULL);
-    printf_note("Save File Stop!\n", p_args->sampler.args.sample_time);
+    printf_note("Save File Stop!sample_time:%d\n", p_args->sampler.args.sample_time);
 }
 
 /* 

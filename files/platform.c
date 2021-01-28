@@ -16,6 +16,7 @@
 #include <stdio.h>
 
 extern char *get_version_string(void);
+extern void fpga_io_init(void);
 
 
 static void usage(const char *prog)
@@ -71,6 +72,16 @@ bool is_spectrum_continuous_mode(void)
     return spectrum_continuous_mode;
 }
 
+static void pl_handle_sig(int sig)
+{
+    printf("ctrl+c or killed; ready to exit!!\n");
+    usleep(1000);
+    executor_close();
+    uloop_done();
+    exit(0);
+}
+
+
 int main(int argc, char **argv)
 {
     int debug_level = -1;
@@ -116,6 +127,10 @@ int main(int argc, char **argv)
     printf("XW Protocal\n");
 #endif
     printf("VERSION:%s\n",get_version_string());
+    // Listen to ctrl+c and ASSERT
+    signal(SIGINT, pl_handle_sig);
+    signal(SIGKILL, pl_handle_sig);
+
     config_init();
     uloop_init();
 #if defined(SUPPORT_PROJECT_SSA) || defined(SUPPORT_PROJECT_SSA_MONITOR)

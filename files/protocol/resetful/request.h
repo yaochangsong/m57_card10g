@@ -35,6 +35,8 @@ struct request_info {
 extern void http_requset_init(void);
 extern void http_request_action(struct uh_client *cl);
 extern int http_err_code_check(int ret);
+extern bool http_dispatch_requset_handle(struct uh_client *cl, const char *path);
+
 
 #endif
 

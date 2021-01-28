@@ -19,5 +19,7 @@ extern void *net_get_uhttp_srv_ctx(void);
 extern void *net_get_data_srv_ctx(void);
 extern int server_init(void);
 extern int server_data_init(void);
+extern void *net_get_uhttp_srv_ctx(void);
+
 #endif
 

@@ -135,21 +135,20 @@ static int fpga_unmemmap(FPGA_CONFIG_REG *fpga_reg)
         return -1;
     }
     
-
-    ret = munmap(fpga_reg->broad_band, SYSTEM_CONFG_REG_LENGTH); 
+    ret = munmap(fpga_reg->broad_band[0], SYSTEM_CONFG_4K_LENGTH); 
     if (ret)
     {
     	perror("munmap");
         return -1;
     }
 
-    ret = munmap(fpga_reg->narrow_band[0], SYSTEM_CONFG_REG_LENGTH); 
+    ret = munmap(fpga_reg->narrow_band[0], SYSTEM_CONFG_REG_LENGTH * NARROW_BAND_CHANNEL_MAX_NUM); 
     if (ret)
     {
     	perror("munmap");
         return -1;
     }
-
+    printf_note("munmap OK\n");
     return 0;
 }
 

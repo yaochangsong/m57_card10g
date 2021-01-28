@@ -104,17 +104,17 @@ int test_write_disk(char *filename, int size, int count)
 	
 	total_MB = (size / (1024 * 1024) * count);
 
-	printf("test write: block size=%d, count=%d, total=%lluMB\n", size, count, total_MB);
+	printf("test write: block size=%d, count=%d, total=%ldMB\n", size, count, total_MB);
 	pagesize=getpagesize();
 	posix_memalign((void **)&user_mem, pagesize /*alignment */ , size + pagesize);
 	if (!user_mem) {
-		fprintf(stderr, "OOM %lu.\n", pagesize);
+		fprintf(stderr, "OOM %u.\n", pagesize);
 		return -1;
 	}
 
 	int out_fd = open(filename, O_RDWR | O_CREAT | O_TRUNC | O_DIRECT | O_SYNC, 0666);
 	if (out_fd < 0) {
-		printf("open % fail\n", filename);
+		printf("open %s fail\n", filename);
 		exit(1);
 	}
 
@@ -132,7 +132,7 @@ int test_write_disk(char *filename, int size, int count)
 		}
 		else if(rc != size)
 		{
-			printf("%s, Write 0x%lx != 0x%lx.\n", filename, rc, size);
+			printf("%s, Write 0x%x != 0x%x.\n", filename, rc, size);
 		}
 	}
 	sync();
@@ -145,6 +145,7 @@ int test_write_disk(char *filename, int size, int count)
 done:	
 	free(user_mem);
 	close(out_fd);
+	return 0;
 }
 
 int test_read_disk(char *filename, int size)
@@ -161,13 +162,13 @@ int test_read_disk(char *filename, int size)
 	pagesize=getpagesize();
 	posix_memalign((void **)&user_mem, pagesize /*alignment */ , size + pagesize);
 	if (!user_mem) {
-		fprintf(stderr, "OOM %lu.\n", pagesize);
+		fprintf(stderr, "OOM %u.\n", pagesize);
 		return -1;
 	}
 
 	int in_fd = open(filename, O_RDONLY | O_DIRECT | O_SYNC, 0666);
 	if (in_fd < 0) {
-		printf("open % fail\n", filename);
+		printf("open %s fail\n", filename);
 		exit(1);
 	}
 
@@ -194,7 +195,7 @@ int test_read_disk(char *filename, int size)
 		}
 		else if(rc != size)
 		{
-			printf("%s, Write 0x%lx != 0x%lx.\n", filename, rc, size);
+			printf("%s, Write 0x%x != 0x%x.\n", filename, rc, size);
 		}
 	}
 	clock_gettime(CLOCK_MONOTONIC, &ts_end);
@@ -207,6 +208,7 @@ int test_read_disk(char *filename, int size)
 done:	
 	free(user_mem);
 	close(in_fd);
+	return 0;
 }
 
 int test_write_mem(int size, int count)
@@ -220,13 +222,13 @@ int test_write_mem(int size, int count)
 	pagesize=getpagesize();
 	posix_memalign((void **)&user_mem_src, pagesize /*alignment */ , size + pagesize);
 	if (!user_mem_src) {
-		fprintf(stderr, "OOM %lu.\n", pagesize);
+		fprintf(stderr, "OOM %u.\n", pagesize);
 		return -1;
 	}
 
 	posix_memalign((void **)&user_mem_dst, pagesize /*alignment */ , size + pagesize);
 	if (!user_mem_dst) {
-		fprintf(stderr, "OOM %lu.\n", pagesize);
+		fprintf(stderr, "OOM %u.\n", pagesize);
 		return -1;
 	}
 	
@@ -239,7 +241,8 @@ int test_write_mem(int size, int count)
 	
 	clock_gettime(CLOCK_MONOTONIC, &ts_end);
 	timespec_sub(&ts_end, &ts_start);
-	fprintf(stdout,"CLOCK_MONOTONIC %ld.%09ld sec. write %ld bytes\n", ts_end.tv_sec, ts_end.tv_nsec, size * count);
+	fprintf(stdout,"CLOCK_MONOTONIC %ld.%09ld sec. write %d bytes\n", ts_end.tv_sec, ts_end.tv_nsec, size * count);
+	return 0;
 }
 
 int main(int argc, char **argv)
@@ -248,8 +251,8 @@ int main(int argc, char **argv)
 	uint32_t block_size = 8388608;  //default 8M
 	uint32_t count = 1;
 	char *filename = NULL;
-	int ret  = 0;
-	int memtest = 0;
+	//int ret  = 0;
+	//int memtest = 0;
 	int rw = 0;
 	
 	while ((cmd_opt = getopt_long(argc, argv, "rwc:s:f:", NULL, NULL)) != -1)

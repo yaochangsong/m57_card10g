@@ -22,6 +22,10 @@
 #include "../log/log.h"
 #include "../utils/utils.h"
 #include "../executor/spm/spm.h"
+void akt_send_file_status(void *data, size_t data_len, void *args);
+extern uint32_t config_get_disk_file_notifier_timeout(void);
+
+
 
 static double difftime_us_val(const struct timeval *start, const struct timeval *end)
 {
@@ -39,7 +43,7 @@ static double difftime_us_val(const struct timeval *start, const struct timeval 
 static struct str_status {
     file_notify_status code;
     char *str;
-};
+}str_status_st;
 
 static struct str_status status_s[] ={
     {FNS_NEW,                           "*NEW*"},
@@ -80,7 +84,7 @@ static void _fs_notifier_time_out(struct uloop_timeout *timeout)
         /* send finish file */
         node.status = flist->status;
         akt_send_file_status(&node, sizeof(struct fs_node), fsn);
-        printf_note("list file[ch=%d, file=%s, status=%s, time=%d]\n", 
+        printf_note("list file[ch=%d, file=%s, status=%s, time=%ld]\n", 
                     node.ch,node.filename, get_str_status(node.status), node.duration_time);
         
         list_del(&flist->list);
@@ -109,7 +113,7 @@ static void _fs_notifier_time_out(struct uloop_timeout *timeout)
     pthread_mutex_unlock(&fsn->lock);
     
     akt_send_file_status(&node, sizeof(struct fs_node), fsn);
-    printf_note("file [ch=%d, file=%s, status=%s, time=%d]\n", 
+    printf_note("file [ch=%d, file=%s, status=%s, time=%ld]\n", 
         node.ch,node.filename, get_str_status(node.status), node.duration_time);
     
 exit:
@@ -132,6 +136,7 @@ int fs_notifier_add_node_to_list(int ch, char *filename, struct fs_notifier *arg
     list_add(&args->fnode->list, &args->flist);
     args->flist_num ++;
     pthread_mutex_unlock(&args->lock);
+	return 0;
     
 }
 

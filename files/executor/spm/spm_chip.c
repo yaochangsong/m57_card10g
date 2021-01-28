@@ -48,6 +48,7 @@ static int spm_chip_create(void)
 #ifdef SUPPORT_SPECTRUM_ANALYSIS
     spm_analysis_init();
 #endif
+	return 0;
 }
 
 volatile int32_t _smooth_time = 0;
@@ -317,7 +318,7 @@ static ssize_t spm_chip_read_fft_data_smooth(void **data, void *args)
         goto exit;
     }
     if(smooth >= _MAX_SMOOTH_NUM){
-        printf_err("[NOT SUPPORT]smooth[%d] time is bigger than max:%d!\n", smooth, _MAX_SMOOTH_NUM);
+        printf_err("[NOT SUPPORT]smooth[%ld] time is bigger than max:%d!\n", smooth, _MAX_SMOOTH_NUM);
         goto exit;
     }
     if(freg_num >= _MAX_FREGMENT_NUM){

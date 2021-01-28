@@ -66,6 +66,8 @@ extern uint64_t config_get_split_file_threshold(void);
 extern void config_set_split_file_threshold(uint64_t val);
 extern uint32_t config_get_disk_file_notifier_timeout(void);
 extern int config_get_control_mode(void);
+extern bool config_get_is_internal_clock(void);
+
 
 #endif
 

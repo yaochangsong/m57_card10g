@@ -35,6 +35,7 @@ int clock_adc_init(void)
 #endif
     _ca_ctx->ops->init();
 #endif
+	return 0;
 }
 
 int clock_adc_close(void)
@@ -43,4 +44,6 @@ int clock_adc_close(void)
     if(_ca_ctx)
          _ca_ctx->ops->close();
 #endif
+	return 0;
+
 }

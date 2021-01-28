@@ -26,6 +26,9 @@
 #include "clk_adc_spi.h"
 #include "../rf/spi/rf_spi.h"
 #include "clk_adc_conf.h"
+extern bool config_get_is_internal_clock(void);
+
+
 
 static struct rf_spi_node_info spi_node[] ={
     /* name path               function code    pin  spifd      pinfd  info */
@@ -154,7 +157,8 @@ static int ca_spi_clock_init_after(void)
 {
     uint8_t send_buf[8];
     int spi_fd, ret =0;
-    int found = 0, index = 0;
+    int found = 0,index = 0;
+	//int	__attribute__((unused))index = 0;
     uint32_t array_len = 3;
     
     for(int i = 0; i< ARRAY_SIZE(spi_node); i++){
@@ -256,6 +260,7 @@ static int ca_spi_init(void)
     status = ((ret == 0) ? 0 : 1);
     printf_note("Clock status:%s\n", status == 0 ? "OK" : "Faild");
     config_save_cache(EX_STATUS_CMD, EX_CLK_STATUS, -1, &status);
+	return 0;
 }
 
 static bool spi_has_inited = false;

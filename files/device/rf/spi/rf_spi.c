@@ -15,7 +15,7 @@
 #include "config.h"
 #include "rf_spi.h"
 
-static rf_spi_node_info_st spi_node[] ={
+static struct rf_spi_node_info spi_node[] ={
     /* name path               function code    pin  spifd      pinfd  info */
     /* petalinux2019.1 */
 #ifdef PETALINUX_VER_2019.1

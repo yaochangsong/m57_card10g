@@ -2,6 +2,8 @@
 #include <unistd.h>
 #include <sys/stat.h>
 #include "wav.h"
+#include <string.h>
+
 
 
 #define WAV_FORMAT_PCM  (0x0001)

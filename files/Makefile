@@ -305,7 +305,9 @@ source = $(wildcard *.c $(ALL_C_FILES))
 objs = $(source:%.c=%.o)
 
 target = platform 
+ifneq ($(findstring y,$(SUPPORT_TOOLS)),)
 tools_m = tools
+endif
 
 commit_tag=$(shell git rev-list --max-count=1 HEAD) 
 

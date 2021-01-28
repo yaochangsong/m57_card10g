@@ -982,10 +982,11 @@ void executor_init(void)
 void executor_close(void)
 {
 #ifdef SUPPORT_SPECTRUM_V2
-    #if defined(SUPPORT_SPECTRUM_FPGA)
-    fpga_io_close();
-    #endif
     spm_close();
+#if defined(SUPPORT_SPECTRUM_FPGA)
+    fpga_io_close();
+#endif
+
 #endif
 #ifdef  SUPPORT_CLOCK_ADC
     clock_adc_close();

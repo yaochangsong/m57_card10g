@@ -583,7 +583,7 @@ static int clock_adc_fpga_close(void)
         return -1;
     }
     close(ca_ctx.fd_mem_dev);
-    printf_note("clock adc fpga close...\n");
+    printf_note("close fpga clock & adc\n");
     return 0;
 }
 

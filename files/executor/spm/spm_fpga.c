@@ -1597,7 +1597,7 @@ static int _spm_close(struct spm_context *ctx)
         safe_free(ctx->run_args[ch]->fft_ptr);
         safe_free(ctx->run_args[ch]);
     }
-    printf_note("close..\n");
+    printf_note("close stream\n");
     return 0;
 }
 

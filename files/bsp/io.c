@@ -12,10 +12,12 @@
 *  Rev 1.0   09 July 2019   yaochangsong
 *  Initial revision.
 ******************************************************************************/
+#include <math.h>
 #include "config.h"
 #include "../executor/spm/spm.h"
 #include "../utils/bitops.h"
 #include "io.h"
+
 
 static int io_ctrl_fd = -1;
 
@@ -252,7 +254,7 @@ void io_reset_fpga_data_link(void){
 /*设置带宽因子*/
 int32_t io_set_bandwidth(uint32_t ch, uint32_t bandwidth){
     int32_t ret = 0;
-    uint32_t set_factor,band_factor, filter_factor;
+    uint32_t set_factor = 0,band_factor = 0, filter_factor = 0;
     static int32_t old_ch=-1;
     static uint32_t old_val=0;
     struct  band_table_t *table;
@@ -285,25 +287,26 @@ int32_t io_set_bandwidth(uint32_t ch, uint32_t bandwidth){
 }
 
 int32_t io_set_noise(uint32_t ch, uint32_t noise_en,int8_t noise_level_tmp){
-        uint32_t  noise_level;
-        if(noise_en == 1)
+    uint32_t  noise_level;
+    if(noise_en == 1)
+    {
+        if(noise_level_tmp > 0)
         {
-            if(noise_level_tmp > 0)
-            {
-                noise_level_tmp = 0;
-            }
-            noise_level =  (uint32_t)(16000.0 * pow(10.0, (double)(noise_level_tmp / 20.0)));
+            noise_level_tmp = 0;
         }
-        else 
-        {
-            noise_level = 0;
-        }
-        printf_note("[**REGISTER**]ch:%d, Set noise_level:%ld noise_en:%d noise_level_tmp:%d\n", ch,noise_level,noise_en,noise_level_tmp);
+        noise_level =  (uint32_t)(16000.0 * pow((double)10.0, (double)(noise_level_tmp / 20.0)));
+    }
+    else 
+    {
+        noise_level = 0;
+    }
+    printf_note("[**REGISTER**]ch:%d, Set noise_level:%u noise_en:%d noise_level_tmp:%d\n", ch,noise_level,noise_en,noise_level_tmp);
 #if defined(SUPPORT_PLATFORM_ARCH_ARM)
-        #if defined(SUPPORT_SPECTRUM_FPGA)
-       SET_NARROW_NOISE_LEVEL(get_fpga_reg(),ch,noise_level);
-        #endif
+#if defined(SUPPORT_SPECTRUM_FPGA)
+    SET_NARROW_NOISE_LEVEL(get_fpga_reg(),ch,noise_level);
 #endif
+#endif
+    return 0;
 }
 /*根据边带率,设置数据长度 
     @rate: 边带率>0;实际下发边带率为整数；放大100倍（内核不处理浮点数）
@@ -370,8 +373,8 @@ int32_t io_set_dec_bandwidth(uint32_t ch, uint32_t dec_bandwidth){
 int32_t io_set_dec_method(uint32_t ch, uint8_t dec_method){
     int32_t ret = 0;
     uint32_t d_method = 0;
-    static int32_t old_ch=-1;
-    static uint32_t old_val=0;
+   // static int32_t old_ch=-1;
+   // static uint32_t old_val=0;
    
 
     if(dec_method == IO_DQ_MODE_AM){
@@ -395,7 +398,7 @@ int32_t io_set_dec_method(uint32_t ch, uint8_t dec_method){
    //     return ret;
   //  }
   //  old_val = d_method;
-    old_ch = ch;
+   // old_ch = ch;
     printf_note("[**REGISTER**]ch:%d, Set Decode method:%u, d_method=0x%x\n", ch, dec_method, d_method);
 #if defined(SUPPORT_PLATFORM_ARCH_ARM)
 #if defined(SUPPORT_SPECTRUM_KERNEL) 
@@ -588,7 +591,7 @@ int32_t io_set_subch_onoff(uint32_t ch, uint32_t subch, uint8_t onoff)
     #endif
 #endif
 #endif
-    printf_debug("[**REGISTER**]ch:%d, SubChannle Set OnOff=%d,subch_bitmap_weight=0x%x\n",subch, onoff, subch_bitmap_weight());
+    printf_debug("[**REGISTER**]ch:%d, SubChannle Set OnOff=%d,subch_bitmap_weight=0x%lx\n",subch, onoff, subch_bitmap_weight());
     return ret;
 }
 
@@ -611,11 +614,11 @@ int32_t io_set_subch_bandwidth(uint32_t subch, uint32_t bandwidth, uint8_t dec_m
     old_ch = subch;
     dec_method = IO_DQ_MODE_IQ; /* TEST */
     if(dec_method == IO_DQ_MODE_IQ){
-        table= &iq_nbandtable;
+        table= iq_nbandtable;
         table_len = sizeof(iq_nbandtable)/sizeof(struct  band_table_t);
         
     }else{
-        table= &nbandtable;
+        table= nbandtable;
         table_len = sizeof(nbandtable)/sizeof(struct  band_table_t);
     }
     io_get_bandwidth_factor(bandwidth, &band_factor,&filter_factor, table, table_len);
@@ -842,7 +845,6 @@ bool is_rf_calibration_source_enable(void)
 void io_dma_dev_enable(uint32_t ch, uint8_t type, uint8_t continuous)
 {
     uint32_t ctrl_val = 0;
-    uint32_t con ;
     /*data map: 
      +------------------------------------------------------------------+
      |                            data(ctrl_val) map                            |
@@ -854,9 +856,11 @@ void io_dma_dev_enable(uint32_t ch, uint8_t type, uint8_t continuous)
     */
     uint8_t data_offset = (ch<<2)|type;
     printf_debug("[**REGISTER**]ch=%d, type=%s, data_offset=%x, Enable\n", ch, type==0?"IQ":"FFT", data_offset);
-    con = continuous;
+    
 #if defined(SUPPORT_PLATFORM_ARCH_ARM)
 #if defined(SUPPORT_SPECTRUM_KERNEL)
+    uint32_t con ;
+    con = continuous;
     if (io_ctrl_fd > 0) {
         ctrl_val = ((con&0xff)<<16) | ((data_offset & 0xFF) << 8) | 1;
         ioctl(io_ctrl_fd,IOCTL_ENABLE_DISABLE,ctrl_val);
@@ -884,9 +888,8 @@ static void io_dma_dev_trans_len(uint32_t ch, uint8_t type, uint32_t len)
 
 void io_set_fft_size(uint32_t ch, uint32_t fft_size)
 {
-    printf_debug("set fft size:%d\n",ch, fft_size);
     uint32_t factor;
-    static uint32_t old_value[MAX_RADIO_CHANNEL_NUM] = {0, 0};
+    static uint32_t old_value[MAX_RADIO_CHANNEL_NUM] = {0};
 
     if(old_value[ch] == fft_size || ch >= MAX_RADIO_CHANNEL_NUM){
         return;
@@ -960,6 +963,7 @@ int32_t io_set_audio_volume(uint32_t ch,uint8_t volume)
      volume_set(AUDIO_REG(get_fpga_reg()), volume);
      //volume_set(get_fpga_reg()->audioReg,volume);
 #endif
+    return 0;
 }
 
 
@@ -1099,41 +1103,6 @@ static void  io_set_dma_DQ_out_dis(int ch, int subch)
 #endif
 #endif
 
-}
-
-
-int8_t io_set_para_command(uint8_t type, int ch, void *data)
-{
-    int ret = 0;
-    struct poal_config *poal_config = &(config_get_config()->oal_config);
-
-    switch(type)
-    {
-        case EX_CHANNEL_SELECT:
-            printf_debug("[**REGISTER**]Set Channel Select, ch=%d\n", *(uint8_t *)data);
-            io_set_common_param(7, data,sizeof(uint8_t));
-            break;
-        case EX_AUDIO_SAMPLE_RATE:
-        {
-            SUB_AUDIO_PARAM paudio;
-            paudio.cid= ch;
-            paudio.sample_rate = *(uint32_t *)data;
-            printf_debug("[**REGISTER**]Set Audio Sample Rate, ch=%d, rate:%u[0x%x]\n", paudio.cid, paudio.sample_rate, paudio.sample_rate);
-            io_set_common_param(9, &paudio,sizeof(SUB_AUDIO_PARAM));
-            break;
-        }
-        default:
-            printf_err("invalid type[%d]", type);
-            ret =  -1;
-     break;
-    }
-    return ret;
-}
-
-int8_t io_set_work_mode_command(void *data)
-{
-    io_set_assamble_kernel_header_response_data(data);
-    return 0;
 }
 
 
@@ -1553,7 +1522,7 @@ int32_t io_stop_save_file(void *arg){
     return ret;
 }
 
-int32_t io_set_backtrace_mode(int ch, bool args)
+void io_set_backtrace_mode(int ch, bool args)
 {
 #if defined(SUPPORT_PLATFORM_ARCH_ARM)
 #if defined(SUPPORT_SPECTRUM_KERNEL) 
@@ -1618,21 +1587,6 @@ int32_t io_dma_data_read(void *arg){
 }
 
 
-int32_t io_set_assamble_kernel_header_response_data(void *data){
-
-    int32_t ret = 0;
-    DATUM_SPECTRUM_HEADER_ST *pdata;
-    pdata = (DATUM_SPECTRUM_HEADER_ST *)data;
-#if defined(SUPPORT_PLATFORM_ARCH_ARM)
-#if defined(SUPPORT_SPECTRUM_KERNEL)
-    if(io_ctrl_fd <= 0){
-        return 0;
-    }
-    ret = ioctl(io_ctrl_fd, IOCTL_FFT_HDR_PARAM,data);
-#endif
-#endif
-    return ret;
-}
 
 #ifdef SUPPORT_PLATFORM_ARCH_ARM
 #define do_system(cmd)   safe_system(cmd)
@@ -1646,6 +1600,7 @@ uint8_t  io_restart_app(void)
     sleep(1);
     do_system("/etc/init.d/platform.sh restart &");
     sleep(1);
+    return 0;
 }
 
 

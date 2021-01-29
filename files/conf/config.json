@@ -284,8 +284,8 @@
                 "gain_mode":1,
                 "mgc_gain":0,
                 "agc_ctrl_time":1000,
-                "agc_output_amp_dbm":-20,
-                "agc_ref_val_0dbm":1682,
+                "agc_output_amp_dbm":-10,
+                "agc_ref_val_0dbm":12180,
                 "subch_ref_val_0dbm":13040,
 				"rf_mode_param" :[
 					{

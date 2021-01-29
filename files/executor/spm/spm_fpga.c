@@ -28,6 +28,7 @@
 #include "spm_fpga.h"
 #include "../../protocol/resetful/data_frame.h"
 #include "../../bsp/io.h"
+#include "agc.h"
 
 
 extern void *akt_assamble_data_frame_header_data(uint32_t *len, void *config);
@@ -38,9 +39,6 @@ static int spm_stream_back_stop(enum stream_type type);
 #define DIRECT_FREQ_THR (200000000) /* 直采截止频率 */
 #define DIRECT_BANDWIDTH (256000000)
 #define DEFAULT_IQ_SEND_BYTE 512
-//#define DEFAULT_AGC_REF_VAL  0x5e8
-//#define DEFAULT_AGC_REF_VAL  0xBE4
-#define DEFAULT_AGC_REF_VAL  0x3000
 #define DEFAULT_SUBCH_REF_VAL 0x3000
 
 uint8_t cur_dbm[MAX_RADIO_CHANNEL_NUM] = {0};
@@ -84,7 +82,7 @@ static inline void *zalloc(size_t size)
 	return calloc(1, size);
 }
 
-#define RUN_MAX_TIMER 2
+#define RUN_MAX_TIMER 1
 static struct timeval *runtimer[RUN_MAX_TIMER];
 static int32_t _init_run_timer(uint8_t ch)
 {
@@ -822,504 +820,16 @@ static int spm_scan(uint64_t *s_freq_offset, uint64_t *e_freq, uint32_t *scan_bw
     return 0;
 }
 
-/* 获取信号变化上限：
-    @rf_mode: 射频模式
-    @dst_val： 控制目标信号强度
-    @max_val： 返回信号变化上限值
-    
-    return: 0 OK  -1: false
-*/
-static inline int _get_range_max(int ch, uint8_t rf_mode, int dst_val, int *max_val, struct spm_context *ctx)
-{
-    int mode = 0, i, mag_val = 0, dec_val = 0, found = 0, rang_max = 0;
-    mode = rf_mode;
-    /* 获取射频模式增益最大值 */
-    for(i = 0; i< ARRAY_SIZE(ctx->pdata->channel[ch].rf_para.rf_mode.mag); i++){
-        if(ctx->pdata->channel[ch].rf_para.rf_mode.mode[i] == mode){
-            mag_val = ctx->pdata->channel[ch].rf_para.rf_mode.mag[i];
-            found = 1;
-            break;
-        }
-    }
-    if(found == 0){
-        printf_err("Rf mode error:%d !!!\n", mode);
-        return -1;
-    }
-    /* 获取信号增益最大值 */
-    rang_max = mag_val + dst_val;
-
-    /* 获取模式信号检测最大值 */
-    found = 0;
-    for(i = 0; i< ARRAY_SIZE(ctx->pdata->channel[ch].rf_para.rf_mode.detection); i++){
-        if(ctx->pdata->channel[ch].rf_para.rf_mode.mode[i] == mode){
-            dec_val = ctx->pdata->channel[ch].rf_para.rf_mode.detection[i].start;
-            found = 1;
-            break;
-        }
-    }
-    if(found == 0){
-        printf_err("NOT find Rf detection MAX value!!!\n");
-        return -1;
-    }
-    /* 获取信号变化上限 */
-    *max_val = (rang_max < dec_val ? rang_max : dec_val);
-    printf_debug("max_val=%d, rang_max=%d, magification =%d, dst_val=%d,detection_max=%d\n", *max_val,
-                rang_max, mag_val, dst_val, dec_val);
-    
-    return 0;
-}
-
-/* 获取信号变化下限 */
-static inline int _get_range_min(int ch, uint8_t rf_mode, int dst_val, int *min_val, struct spm_context *ctx)
-{
-    int mode = 0, i, mag_val = 0, dec_val = 0, found = 0;
-    int max_attenuation_value = 0, rang_min = 0;
-    mode = rf_mode;
-    /* 获取射频模式增益最大值 */
-    for(i = 0; i< ARRAY_SIZE(ctx->pdata->channel[ch].rf_para.rf_mode.mag); i++){
-        if(ctx->pdata->channel[ch].rf_para.rf_mode.mode[i] == mode){
-            mag_val = ctx->pdata->channel[ch].rf_para.rf_mode.mag[i];
-            found = 1;
-            break;
-        }
-    }
-    if(found == 0){
-        printf_err("Rf mode error:%d !!!\n", mode);
-        return -1;
-    }
-
-    /* 获取最大衰减 */
-    found = 0;
-    for(i = 0; i< ARRAY_SIZE(ctx->pdata->channel[ch].rf_para.rf_mode.rf_attenuation); i++){
-        if(ctx->pdata->channel[ch].rf_para.rf_mode.mode[i] == mode){
-            max_attenuation_value = ctx->pdata->channel[ch].rf_para.rf_mode.rf_attenuation[i].end;
-            found = 1;
-            break;
-        }
-    }
-    //max_attenuation_value += ctx->pdata->cal_level.rf_mode.mgc_distortion.end_range;
-    max_attenuation_value += ctx->pdata->channel[ch].rf_para.rf_mode.mgc_attenuation[i].end;
-    
-    /* 获取衰减最小值后信号值 */
-    rang_min = mag_val -max_attenuation_value + dst_val;
-    
-    printf_debug("Rang min:%d, max_attenuation_value=%d, magification=%d, dst_val=%d\n", 
-                rang_min, max_attenuation_value, mag_val, dst_val);
-
-    /* 获取检测范围最小值 */
-    found = 0;
-    for(i = 0; i< ARRAY_SIZE(ctx->pdata->channel[ch].rf_para.rf_mode.detection); i++){
-        //if(ctx->pdata->cal_level.rf_mode.detection[i].mode == mode){
-        if(ctx->pdata->channel[ch].rf_para.rf_mode.mode[i] == mode){
-            dec_val = ctx->pdata->channel[ch].rf_para.rf_mode.detection[i].end;
-            found = 1;
-            break;
-        }
-    }
-    if(found == 0){
-        printf_err("NOT find Rf detection MAX value!!!\n");
-        return -1;
-    }
-    /* 获取信号变化下限 */
-    *min_val = (rang_min > dec_val ? rang_min : dec_val);
-    printf_debug("min_val=%d, rang_min=%d, detection min val=%d\n", *min_val, rang_min, dec_val);
-    
-    return 0;
-}
-
-static inline int _set_half_attenuation_value(int ch, struct spm_context *ctx)
-{
-    int8_t  rf_attenuation = 0, mgc_attenuation = 0;
-    uint8_t rf_mode = ctx->pdata->channel[ch].rf_para.rf_mode_code; /* 射频模式 */
-    int i, half_attenuation_value = 0, found = 0;
-    for(i = 0; i< ARRAY_SIZE(ctx->pdata->channel[ch].rf_para.rf_mode.rf_attenuation); i++){
-        if(ctx->pdata->channel[ch].rf_para.rf_mode.mode[i] == rf_mode){
-            //rf_attenuation = ctx->pdata->cal_level.rf_mode.rf_distortion[i].end_range;
-            rf_attenuation = ctx->pdata->channel[ch].rf_para.rf_mode.rf_attenuation[i].end;
-            mgc_attenuation= ctx->pdata->channel[ch].rf_para.rf_mode.mgc_attenuation[i].end;
-            found = 1;
-            break;
-        }
-    }
-    //mgc_attenuation= ctx->pdata->cal_level.rf_mode.mgc_distortion.end_range;
-    if(found == 0)
-        return -1;
-    
-    half_attenuation_value = (rf_attenuation + mgc_attenuation)/2;
-    if(half_attenuation_value > rf_attenuation){
-        mgc_attenuation = half_attenuation_value - rf_attenuation; 
-    }else{
-        mgc_attenuation = 0;
-    }
-    executor_set_command(EX_RF_FREQ_CMD, EX_RF_ATTENUATION, ch, &rf_attenuation);
-    executor_set_command(EX_RF_FREQ_CMD, EX_RF_MGC_GAIN, ch, &mgc_attenuation);
-    config_write_data(EX_RF_FREQ_CMD, EX_RF_ATTENUATION, ch, &rf_attenuation);
-    config_write_data(EX_RF_FREQ_CMD, EX_RF_MGC_GAIN, ch, &mgc_attenuation);
-    
-    printf_debug("half_attenuation_value=%d, rf_attenuation=%d, mgc_attenuation=%d\n",
-                half_attenuation_value, rf_attenuation, mgc_attenuation);
-
-    return half_attenuation_value;
-}
-
-static inline int _get_max_rf_attenuation_value(int ch, struct spm_context *ctx)
-{
-    uint8_t rf_mode_code = ctx->pdata->channel[ch].rf_para.rf_mode_code;
-    int max_attenuation_value = 0;
-    int i, found = 0;
-    for(i = 0; i< ARRAY_SIZE(ctx->pdata->channel[ch].rf_para.rf_mode.rf_attenuation); i++){
-        if(ctx->pdata->channel[ch].rf_para.rf_mode.mode[i] == rf_mode_code){
-            //max_attenuation_value = ctx->pdata->cal_level.rf_mode.rf_distortion[i].end_range;
-            max_attenuation_value = ctx->pdata->channel[ch].rf_para.rf_mode.rf_attenuation[i].end;
-            found = 1;
-            break;
-        }
-    }
-    if(found == 0)
-        printf_err("not find max rf attenuation value\n");
-    printf_debug("max_attenuation_value: %d\n", max_attenuation_value);
-    return max_attenuation_value;
-}
-
-static inline int  _get_min_rf_attenuation_value(int ch, struct spm_context *ctx)
-{
-    uint8_t rf_mode_code = ctx->pdata->channel[ch].rf_para.rf_mode_code;
-    int min_attenuation_value = 0;
-    int i, found = 0;
-    for(i = 0; i< ARRAY_SIZE(ctx->pdata->channel[ch].rf_para.rf_mode.rf_attenuation); i++){
-        if(ctx->pdata->channel[ch].rf_para.rf_mode.mode[i] == rf_mode_code){
-            min_attenuation_value = ctx->pdata->channel[ch].rf_para.rf_mode.rf_attenuation[i].start;
-            found = 1;
-            break;
-        }
-    }
-    if(found == 0)
-        printf_err("not find min rf attenuation value\n");
-    printf_debug("min_attenuation_value: %d\n", min_attenuation_value);
-    return min_attenuation_value;
-
-}
-
-static inline int   _get_min_mgc_attenuation_value(int ch, struct spm_context *ctx)
-{
-    uint8_t rf_mode_code = ctx->pdata->channel[ch].rf_para.rf_mode_code;
-    int min_attenuation_value = 0;
-    int i, found = 0;
-    for(i = 0; i< ARRAY_SIZE(ctx->pdata->channel[ch].rf_para.rf_mode.mgc_attenuation); i++){
-        if(ctx->pdata->channel[ch].rf_para.rf_mode.mode[i] == rf_mode_code){
-            min_attenuation_value = ctx->pdata->channel[ch].rf_para.rf_mode.mgc_attenuation[i].start;
-            found = 1;
-            break;
-        }
-    }
-    if(found == 0)
-        printf_err("not find min mgc attenuation value\n");
-    printf_debug("mgc min_attenuation_value: %d\n", min_attenuation_value);
-    return min_attenuation_value;
-}
-
-
-static inline int _get_max_mgc_attenuation_value(int ch, struct spm_context *ctx)
-{
-    uint8_t rf_mode_code = ctx->pdata->channel[ch].rf_para.rf_mode_code;
-    int max_attenuation_value = 0;
-    int i, found = 0;
-    for(i = 0; i< ARRAY_SIZE(ctx->pdata->channel[ch].rf_para.rf_mode.mgc_attenuation); i++){
-        if(ctx->pdata->channel[ch].rf_para.rf_mode.mode[i] == rf_mode_code){
-            max_attenuation_value = ctx->pdata->channel[ch].rf_para.rf_mode.mgc_attenuation[i].end;
-            found = 1;
-            break;
-        }
-    }
-    if(found == 0)
-        printf_err("not find max mgc attenuation value\n");
-    printf_debug("mgc max_attenuation_value: %d\n", max_attenuation_value);
-    return max_attenuation_value;
-}
-
-static inline int _set_up_step_attenuation_value(int ch, struct spm_context *ctx, int8_t  *rf_attenuation ,int8_t  *mgc_attenuation)
-{
-    int8_t  _rf_attenuation = 0, _mgc_attenuation = 0;
-    
-    _rf_attenuation = *rf_attenuation;
-    _mgc_attenuation = *mgc_attenuation;
-    if(_rf_attenuation < _get_max_rf_attenuation_value(ch, ctx)){
-        _rf_attenuation ++;
-        executor_set_command(EX_RF_FREQ_CMD, EX_RF_ATTENUATION, ch, &_rf_attenuation);
-    }else if(_mgc_attenuation < _get_max_mgc_attenuation_value(ch, ctx)){
-        _mgc_attenuation++;
-        executor_set_command(EX_RF_FREQ_CMD, EX_RF_MGC_GAIN, ch, &_mgc_attenuation);
-    }
-    *rf_attenuation = _rf_attenuation;
-    *mgc_attenuation = _mgc_attenuation;
-    printf_info("UP: rf_attenuation=%d, mgc_attenuation=%d\n", _rf_attenuation, _mgc_attenuation);
-    return 0;
-}
-
-static inline int _set_down_step_attenuation_value(int ch, struct spm_context *ctx, int8_t  *rf_attenuation ,int8_t  *mgc_attenuation)
-{
-    int8_t  _rf_attenuation = 0, _mgc_attenuation = 0;
-    _rf_attenuation = *rf_attenuation;
-    _mgc_attenuation = *mgc_attenuation;
-    if(_rf_attenuation > _get_min_rf_attenuation_value(ch, ctx)){
-        _rf_attenuation --;
-        executor_set_command(EX_RF_FREQ_CMD, EX_RF_ATTENUATION, ch, &_rf_attenuation);
-    }else if(_mgc_attenuation > _get_min_mgc_attenuation_value(ch, ctx)){
-        _mgc_attenuation--;
-        executor_set_command(EX_RF_FREQ_CMD, EX_RF_MGC_GAIN, ch, &_mgc_attenuation);
-    }
-    *rf_attenuation = _rf_attenuation;
-    *mgc_attenuation = _mgc_attenuation;
-    printf_info("DOWN: rf_attenuation=%d, mgc_attenuation=%d\n", _rf_attenuation, _mgc_attenuation);
-    return 0;
-}
-
-
-static inline int8_t _spm_read_signal_value(int ch)
-{
-    int8_t agc_dbm_val = 0;     /* 读取信号db值 */
-    uint16_t agc_reg_val = 0;   /* 读取信号寄存器值,sigal power level read from fpga register */
-    if((agc_reg_val = io_get_agc_thresh_val(ch)) < 0){
-        return -1;
-    }
-    
-    /* 信号强度转换为db值 */
-    agc_dbm_val = (int32_t)(20 * log10((double)agc_reg_val / ((double)agc_ref_val_0dbm[ch])));
-    printf_debug("agc_reg_val=0x%x[%d], agc_dbm_val=%d\n", agc_reg_val, agc_reg_val, agc_dbm_val);
-    return agc_dbm_val;
-}
-
-
-static int spm_agc_ctrl_v3(int ch, struct spm_context *ctx)
-{
-    #define _AGC_CTRL_PRECISION_      1       /* 控制精度+-2dbm */
-    volatile uint8_t gain_ctrl_method = ctx->pdata->channel[ch].rf_para.gain_ctrl_method; /* 自动增益or手动增益 */
-    volatile uint16_t agc_ctrl_time= ctx->pdata->channel[ch].rf_para.agc_ctrl_time;       /* 自动增益步进控制时间 */
-    volatile int8_t agc_ctrl_dbm = ctx->pdata->channel[ch].rf_para.agc_mid_freq_out_level;/* 自动增益目标控制功率db值 */
-    volatile uint8_t rf_mode = ctx->pdata->channel[ch].rf_para.rf_mode_code; /* 射频模式 */
-    int8_t agc_dbm_val = 0;     /* 读取信号db值 */
-    int ret = -1;
-    static int8_t ctrl_method_dup[MAX_RADIO_CHANNEL_NUM]={-1};
-    static int8_t rf_mode_dup[MAX_RADIO_CHANNEL_NUM]={-1};
-    static int32_t dst_val[MAX_RADIO_CHANNEL_NUM] = {-1};
-    static int32_t max_val[MAX_RADIO_CHANNEL_NUM] = {-1};
-    static int32_t min_val[MAX_RADIO_CHANNEL_NUM] = {-1};
-    static int32_t up_val[MAX_RADIO_CHANNEL_NUM] = {-1};
-    static int32_t down_val[MAX_RADIO_CHANNEL_NUM] = {-1};
-    static int8_t rf_attenuation[MAX_RADIO_CHANNEL_NUM] = {-1};
-    static int8_t mgc_attenuation[MAX_RADIO_CHANNEL_NUM] = {-1};
-    static int8_t agc_ctrl_dbm_dup[MAX_RADIO_CHANNEL_NUM] = {-1};
-
-    /* 当增益模式变化时 */
-    if(ctrl_method_dup[ch] != gain_ctrl_method || rf_mode_dup[ch] != rf_mode || agc_ctrl_dbm_dup[ch] != agc_ctrl_dbm){
-        ctrl_method_dup[ch] = gain_ctrl_method;
-        agc_ctrl_dbm_dup[ch] = agc_ctrl_dbm;
-        rf_mode_dup[ch] = rf_mode;
-        printf_debug("ch:%d ctrl_method:%d rf_mode:%d, agc_ctrl_dbm_dup=%d\n",ch,ctrl_method_dup[ch],rf_mode, agc_ctrl_dbm_dup[ch]);
-        if(gain_ctrl_method == POAL_MGC_MODE){
-            /* 手动模式直接退出 */
-            return -1;
-        }
-        else if(gain_ctrl_method == POAL_AGC_MODE){
-            /* 设置半增益 */
-            _set_half_attenuation_value(ch, ctx);
-            /* 读取衰减目标值 */
-            usleep(100000);
-            dst_val[ch] = agc_ctrl_dbm;//_spm_read_signal_value(ch);
-            _get_range_max(ch, rf_mode, dst_val[ch], &max_val[ch], ctx);
-            _get_range_min(ch, rf_mode, dst_val[ch], &min_val[ch], ctx);
-            down_val[ch]= 100; //max_val[ch] - dst_val[ch];
-            up_val[ch]   = 100; //dst_val[ch] - min_val[ch];
-            if(up_val[ch] < 0)
-                up_val[ch] = -up_val[ch];
-            printf_debug("up_val=%d, down_val=%d, dst_val=%d, max_val=%d, min_val=%d\n", 
-                        up_val[ch], down_val[ch], dst_val[ch], max_val[ch], min_val[ch]);
-            config_read_by_cmd(EX_RF_FREQ_CMD, EX_RF_ATTENUATION, ch, &rf_attenuation[ch]);
-            config_read_by_cmd(EX_RF_FREQ_CMD, EX_RF_MGC_GAIN, ch, &mgc_attenuation[ch]);
-            printf_note("rf_attenuation[ch]=%d,mgc_attenuation[ch]=%d\n", rf_attenuation[ch],mgc_attenuation[ch]);
-        }
-    }
-
-    /* 非自动模式退出控制 */
-    if(gain_ctrl_method != POAL_AGC_MODE){
-        return -1;
-    }
-
-    if(_get_run_timer(0, ch) < agc_ctrl_time){
-        /* 控制步进时间未到 */
-        return -1;
-    }
-    _reset_run_timer(0, ch);
-    usleep(1000);
-    /* 读取信号强度 */
-    agc_dbm_val =  _spm_read_signal_value(ch);
-    usleep(1000);
-
-    printf_debug("[%d]dst_val=%d, read signal value: %d, up_val=%d, down_val=%d, rf_attenuation=%d, mgc_attenuation=%d\n", agc_ctrl_dbm,dst_val[ch], agc_dbm_val, up_val[ch], down_val[ch], rf_attenuation[ch], mgc_attenuation[ch]);
-
-    if(agc_dbm_val < (dst_val[ch] - _AGC_CTRL_PRECISION_)){
-        if(up_val[ch] <= 0){
-            printf_note(">>>Arrived TOP<<<\n");
-            return -1;
-        }
-        up_val[ch]--;
-        down_val[ch]++;
-        _set_down_step_attenuation_value(ch, ctx, &rf_attenuation[ch], &mgc_attenuation[ch]);
-    }else if(agc_dbm_val > (dst_val[ch] + _AGC_CTRL_PRECISION_)){
-        if(down_val[ch] <= 0){
-            printf_note(">>>Arrived DOWN<<<\n");
-            return -1;
-        }
-        down_val[ch]--;
-        up_val[ch]++;
-        _set_up_step_attenuation_value(ch, ctx, &rf_attenuation[ch], &mgc_attenuation[ch]);
-    }
-    
-    return 0;
-}
-/* 自动增益控制  : 该函数在频谱处理线程中，循环调用。通过不断控制，逐渐逼近设置幅度值 */
-static int spm_agc_ctrl(int ch, struct spm_context *ctx)
-{
-    /* 
-    通过FPGA寄存器参数获取当前信号幅度值；再根据设定值，对信号幅度值做增减 。
-    幅度值数据公式：
-        db_val=20lg(agc/agcref) 
-        agc:为FPGA读取的当前信号幅度值；
-        agcref: 为信号为0DBm时对应的FPGA幅度值,需要标定；AGC_REF_VAL
-        db_val:为当前信号DBm值
-
-    */
-    
-    #define AGC_CTRL_PRECISION      0       /* 控制精度+-2dbm */
-    //#define AGC_REF_VAL             0x5e8 /* 信号为0DBm时对应的FPGA幅度值 */
-    //#define AGC_MODE                1       /* 自动增益模式 */
-    //#define MGC_MODE                0       /* 手动增益模式 */
-    #define RF_GAIN_THRE            30      /* 增益到达该阀值，开启射频增益/衰减 */
-    #define MID_GAIN_THRE           60      /* 增益到达该阀值，开启中频增益 */
-
-    uint8_t gain_ctrl_method = ctx->pdata->channel[ch].rf_para.gain_ctrl_method;
-    uint16_t agc_ctrl_time= ctx->pdata->channel[ch].rf_para.agc_ctrl_time;
-    int8_t agc_ctrl_dbm = ctx->pdata->channel[ch].rf_para.agc_mid_freq_out_level;
-    uint32_t fft_size_agc = ctx->pdata->channel[ch].multi_freq_point_param.points[0].fft_size;
-    uint16_t agc_val = 0;
-    int8_t dbm_val = 0;
-    int ret = -1,rf_mode;
-    int8_t rf_gain = 0, mid_gain = 0;
-    /* 各通道初始dbm为0 */
-    //static uint8_t cur_dbm[MAX_RADIO_CHANNEL_NUM] = {0};
-    static int8_t ctrl_method[MAX_RADIO_CHANNEL_NUM]={-1};
-    static int  rf_mode_s = -1;
-    uint8_t is_cur_dbm_change = false;
-    
-    printf_note("gain_ctrl_method:%d agc_ctrl_time:%d agc_ctrl_dbm:%d\n", gain_ctrl_method,agc_ctrl_time,agc_ctrl_dbm);
-    //rf_mode = io_get_rf_mode();
-    rf_mode = ctx->pdata->channel[ch].rf_para.rf_mode_code;
-
-    /* 当模式变化时， 需要通知内核更新模式信息 */
-    if(ctrl_method[ch] != gain_ctrl_method){
-        ctrl_method[ch] = gain_ctrl_method;
-        printf_note("ch:%d ctrl_method:%d rf_mode:%d fft_size_agc:%d\n",ch,ctrl_method[ch],rf_mode,fft_size_agc);
-        if(gain_ctrl_method == POAL_MGC_MODE){
-            //executor_set_command(EX_MID_FREQ_CMD, EX_FPGA_CALIBRATE, ch, &fft_size_agc,0, POAL_MGC_MODE);
-            goto exit_mode;
-        }
-        else if(gain_ctrl_method == POAL_AGC_MODE){
-            //executor_set_command(EX_MID_FREQ_CMD, EX_FPGA_CALIBRATE, ch, &fft_size_agc,0,POAL_AGC_MODE);
-        }
-    }
-
-
-
-    /* 非自动模式退出控制 */
-    if(agc_ctrl_time == 0 ||gain_ctrl_method != POAL_AGC_MODE){
-        return -1;
-    }
-
-    
-    if(rf_mode_s != rf_mode){
-        rf_mode_s = rf_mode;
-        printf_note("ctrl_method:%d rf_mode:%d\n",rf_mode_s,rf_mode);
-        if(gain_ctrl_method == POAL_AGC_MODE){
-            //executor_set_command(EX_MID_FREQ_CMD, EX_FPGA_CALIBRATE, ch, &fft_size_agc, 0,POAL_AGC_MODE);
-        }
-    }
-
-    //executor_set_command(EX_MID_FREQ_CMD, EX_FPGA_CALIBRATE, ch, 1024, 0);
-    
-    if(_get_run_timer(0, ch) < agc_ctrl_time){
-        return -1;
-    }
-    _reset_run_timer(0, ch);
-    if((agc_val = io_get_agc_thresh_val(ch)) < 0){
-        return -1;
-    }
-    printf_note("read agc ch=%d value=%d agc_ref_val_0dbm=%d \n",ch, agc_val,agc_ref_val_0dbm[ch]);
-    dbm_val = (int32_t)(20 * log10((double)agc_val / ((double)agc_ref_val_0dbm[ch])));
-    
-    /* 判断读取的幅度值是否>设置的输出幅度+控制精度 */
-    /*
-    if(dbm_val > (agc_ctrl_dbm+AGC_CTRL_PRECISION)){
-        is_cur_dbm_change = true;
-        if(cur_dbm[ch] > 0){
-            cur_dbm[ch] --;
-            //is_cur_dbm_change = true;
-        }
-            
-    // 判断读取的幅度值是否<设置的输出幅度-控制精度 
-    }else if(dbm_val < (agc_ctrl_dbm-AGC_CTRL_PRECISION)){
-        cur_dbm[ch] ++;
-        is_cur_dbm_change = true;
-    }*/
-
-
-    /* 判断读取的幅度值是否>设置的输出幅度+控制精度 */
-    if(dbm_val > (agc_ctrl_dbm+AGC_CTRL_PRECISION)){
-        cur_dbm[ch] ++;
-        is_cur_dbm_change = true;
-            
-    // 判断读取的幅度值是否<设置的输出幅度-控制精度 
-    }else if(dbm_val < (agc_ctrl_dbm-AGC_CTRL_PRECISION)){
-        is_cur_dbm_change = true;
-        if(cur_dbm[ch] > 0){
-            cur_dbm[ch] --;
-            is_cur_dbm_change = true;
-        }
-            
-    /* 判断读取的幅度值是否<设置的输出幅度-控制精度 */
-    }
-
-    
-    /* 若当前幅度值需要修改；则按档次开始设置 ：
-        
-    */
-    printf_note("==>dbm_val:%d  agc_ctrl_dbm:%d is_cur_dbm_change:%d\n",dbm_val,agc_ctrl_dbm,is_cur_dbm_change);
-    if(is_cur_dbm_change == true){
-        //int8_t rf_gain = 0, mid_gain = 0;
-        if(cur_dbm[ch] <= RF_GAIN_THRE){
-            rf_gain = cur_dbm[ch];
-            mid_gain = 0;
-        }else if((cur_dbm[ch] > RF_GAIN_THRE)&&(cur_dbm[ch] <= MID_GAIN_THRE)){
-            rf_gain = RF_GAIN_THRE;
-            mid_gain = cur_dbm[ch] - RF_GAIN_THRE;
-        }else{  /* cur_dbm[ch] > MID_GAIN_THRE */
-            cur_dbm[ch] = MID_GAIN_THRE;
-            rf_gain = RF_GAIN_THRE;
-            mid_gain = RF_GAIN_THRE;
-        }
-        usleep(500);
-        ret = executor_set_command(EX_RF_FREQ_CMD, EX_RF_ATTENUATION, ch, &rf_gain);
-        usleep(500);
-        ret = executor_set_command(EX_RF_FREQ_CMD, EX_RF_MGC_GAIN, ch, &mid_gain);
-        usleep(500);
-    }
-    printf_note("rf_gain:%d  mid_gain:%d cur_dbm[ch]:%d\n", rf_gain,mid_gain,cur_dbm[ch]);
-exit_mode:
-    return ret;
-}
 
 static int spm_sample_ctrl(void *args)
 {
     _ctrl_freq(args);
+    return 0;
+}
+
+static int spm_agc_ctrl(int ch, void *args)
+{
+    agc_ctrl(ch, args);
     return 0;
 }
 
@@ -1366,10 +876,10 @@ bool is_sigal_residency_time_arrived(uint8_t ch, int policy, bool is_signal)
     long residency_time = 0;
     //printf("is_signal:%d, policy:%d\n",is_signal,policy);
     residency_time = signal_residency_policy(ch, policy, is_signal);
-    if(_get_run_timer(1, ch) < residency_time*1000){
+    if(_get_run_timer(0, ch) < residency_time*1000){
         return false;
     }
-    _reset_run_timer(1, ch);
+    _reset_run_timer(0, ch);
     return true;
 }
 
@@ -1564,6 +1074,7 @@ static int spm_stream_start(int ch, int subch, uint32_t len,uint8_t continuous, 
         ioctl(pstream[index].id, IOCTL_DMA_ASYN_READ_START, &para);
     else
         ioctl(pstream[index].id, IOCTL_DMA_ASYN_WRITE_START, &para);
+
     return 0;
 }
 
@@ -1614,7 +1125,7 @@ static const struct spm_backend_ops spm_ops = {
     .send_iq_data = spm_send_iq_data,
     .iq_dispatcher = spm_iq_dispatcher,
     .send_iq_type = spm_send_dispatcher_iq,
-    .agc_ctrl = spm_agc_ctrl_v3,//spm_agc_ctrl,
+    .agc_ctrl = agc_ctrl,//spm_agc_ctrl,
     .residency_time_arrived = is_sigal_residency_time_arrived,
     .signal_strength = spm_get_signal_strength,
     .back_running_file = spm_stream_back_running_file,
@@ -1644,18 +1155,12 @@ struct spm_context * spm_create_fpga_context(void)
     ctx->pdata = &config_get_config()->oal_config;
 
     for(ch = 0; ch<MAX_RF_NUM; ch++){
-        if( config_get_config()->oal_config.channel[ch].rf_para.agc_ref_val_0dbm != 0)
-            agc_ref_val_0dbm[ch] = config_get_config()->oal_config.channel[ch].rf_para.agc_ref_val_0dbm;
-        else
-            agc_ref_val_0dbm[ch]  = DEFAULT_AGC_REF_VAL;
-
         if( config_get_config()->oal_config.channel[ch].rf_para.subch_ref_val_0dbm != 0)
             subch_ref_val_0dbm[ch] = config_get_config()->oal_config.channel[ch].rf_para.subch_ref_val_0dbm;
         else
             subch_ref_val_0dbm[ch] = DEFAULT_SUBCH_REF_VAL;
         
     }
-
     _init_run_timer(MAX_RADIO_CHANNEL_NUM);
 err_set_errno:
     errno = -ret;

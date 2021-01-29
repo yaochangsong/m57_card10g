@@ -49,17 +49,17 @@
 #include "file.h"
 
 //#define DEBUG
-#ifdef DEBUG
+#ifdef DEBUG 
 #define D(...) fprintf(stderr, __VA_ARGS__)
 #else
 #define D(...)
 #endif
 
-#define array_size(x) (sizeof(x) / sizeof(x[0]))
+#define array_size(x) (sizeof(x) / sizeof(x[0])) 
 
-#define fd_cloexec(fd) fcntl(fd, F_SETFD, fcntl(fd, F_GETFD) | FD_CLOEXEC)
+#define fd_cloexec(fd) fcntl(fd, F_SETFD, fcntl(fd, F_GETFD) | FD_CLOEXEC) 
 
-#define fd_nonblock(fd) fcntl(fd, F_SETFL, fcntl(fd, F_GETFL) | O_NONBLOCK)
+#define fd_nonblock(fd) fcntl(fd, F_SETFL, fcntl(fd, F_GETFL) | O_NONBLOCK) 
 
 static const char *const http_versions[] = {
     [UH_HTTP_VER_09] = "HTTP/0.9",

@@ -143,13 +143,13 @@ int init_net(struct net_info *net, int size)
 	 return rc;	
 }
 
-static void thread_start(void *arg)
+static void *thread_start(void *arg)
 {
 	struct net_info *trans = arg;
 	printf("thread_start\n");
     net_send(trans);
 	printf("thread_end\n");
-	return;
+	return NULL;
 }
 
 int create_thread_pool(struct thread_pool *thread_pool, int num, struct net_info *net)

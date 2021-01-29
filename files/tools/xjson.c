@@ -199,6 +199,7 @@ static inline  int json_write_string_param(cJSON* root_json, const char * const 
     return 0;
 }
 
+#if 0
 static int json_print(cJSON *root, int do_format)
 {
     if(root == NULL){
@@ -222,6 +223,7 @@ static int json_print(cJSON *root, int do_format)
     free(printed_json);
     return 0;
 }
+#endif
 
 static int json_write_file(char *filename, cJSON *root)
 {

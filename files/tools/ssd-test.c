@@ -216,7 +216,7 @@ int test_write_mem(int size, int count)
 	void *user_mem_src = NULL;
 	void *user_mem_dst = NULL;
 	int pagesize = 0;
-	int rc;
+
 	struct timespec ts_start, ts_end;
 	
 	pagesize=getpagesize();
@@ -232,7 +232,7 @@ int test_write_mem(int size, int count)
 		return -1;
 	}
 	
-	rc = clock_gettime(CLOCK_MONOTONIC, &ts_start);
+	clock_gettime(CLOCK_MONOTONIC, &ts_start);
 
 	while (count--)
 	{

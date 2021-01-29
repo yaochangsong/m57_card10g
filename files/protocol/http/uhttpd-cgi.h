@@ -16,7 +16,9 @@
  *  limitations under the License.
  */
 
-#ifndef _UHTTPD_CGI_
+#ifndef _UHTTPD_CGI_ 
+#define _UHTTPD_CGI_ 
+
 
 #include <errno.h>
 #include <unistd.h>
@@ -30,10 +32,10 @@
   do {                                                                         \
     if ((x) < 0)                                                               \
       goto out;                                                                \
-  } while (0)
+  } while (0) 
   
 #define foreach_header(i, h)                                                   \
-          for (i = 0; (i + 1) < (sizeof(h) / sizeof(h[0])) && h[i]; i += 2)
+          for (i = 0; (i + 1) < (sizeof(h) / sizeof(h[0])) && h[i]; i += 2) 
 
 
 struct uh_cgi_state {

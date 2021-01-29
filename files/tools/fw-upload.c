@@ -10,7 +10,7 @@
 void file_copy_omit(char *srcname, char *dstname, int offset, int length)
 {
     FILE *in, *out;
-    int i, rc;
+    int i;
     char buffer[64];
     if((in = fopen(srcname, "rb")) == NULL){
         exit(1);
@@ -21,7 +21,7 @@ void file_copy_omit(char *srcname, char *dstname, int offset, int length)
     rewind(in);
     fseek(in, offset, SEEK_SET);
     for(i = 0; i< length; i++){
-        rc = fread(buffer, 1, 1, in);
+        fread(buffer, 1, 1, in);
         fwrite(buffer, 1, 1, out);
     }
     fclose(out);

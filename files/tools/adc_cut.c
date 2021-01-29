@@ -53,7 +53,7 @@ static FILE *file_open(char *filename, char *attr)
     file = fopen(filename, attr);
     if(!file){
         printf("Open file error!\n");
-        return -1;
+        return NULL;
     }
     return file;
 }
@@ -117,8 +117,8 @@ int main(int argc, char **argv)
             o_filename = optarg;
             break;
         case 't':
-            printf("type=%dg\n", atoi(optarg));
             type = atoi(optarg);
+            printf("type=%d %d\n", atoi(optarg), type);
             break;
         default: /* '?' */
             usage(argv[0]);
@@ -154,7 +154,7 @@ int main(int argc, char **argv)
     for(;;){
         memset(buffer, 0,sizeof(buffer));
         nread = file_readdata(i_file, (uint8_t*)buffer, sizeof(buffer));
-        pbuffer = (uint32_t *)buffer;
+        pbuffer = buffer;
         if(nread == 0){
             break;
         }

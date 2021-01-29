@@ -119,8 +119,8 @@ static inline char  *getMTDPartDev(char *part)
 
 static inline int mtd_write_firmware(char *filename, int offset, int len)
 {
-    char cmd[512];
-    int status;
+  //  char cmd[512];
+   // int status;
     //mtd_debug erase /dev/mtd4 0 0x02f00000
 
     // snprintf(cmd, sizeof(cmd), "/bin/flash -f 0x400000 -l 0x40ffff");
@@ -131,7 +131,7 @@ static inline int mtd_write_firmware(char *filename, int offset, int len)
 static inline int mtd_write_jffs2(char *filename, int offset, int len)
 {
     char cmd[512], *devname = NULL;
-    int status;
+   // int status;
     unsigned int size;
     
     size = getMTDPartSize("\"jffs2\"");
@@ -173,7 +173,7 @@ static inline int mtd_write_part(char *filename, char*partname)
         return -1;
     
     D("====>size:%u, 0x%x,devname:%s\n", size,size, devname);
-    sscanf(devname, "%c%c%c%d", &tmp[0], &tmp[1],&tmp[2],&tmp[3]);
+    sscanf(devname, "%c%c%c%c", &tmp[0], &tmp[1],&tmp[2],&tmp[3]);
     D("num=%d\n", tmp[3]);
     //mtd_debug erase /dev/mtd3 0 0x02f00000
     //dd if=rootfs.jffs2 of=/dev/mtdblock3

@@ -18,7 +18,7 @@
 static struct rf_spi_node_info spi_node[] ={
     /* name path               function code    pin  spifd      pinfd  info */
     /* petalinux2019.1 */
-#ifdef PETALINUX_VER_2019.1
+#ifdef PETALINUX_VER_2019_1
     {"/dev/spidev2.0",     SPI_FUNC_RF,     8,   -1,      -1,  "spi rf"},
     /* petalinux2016.4 */
 #else

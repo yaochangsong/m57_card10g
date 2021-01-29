@@ -32,7 +32,7 @@ extern bool config_get_is_internal_clock(void);
 
 static struct rf_spi_node_info spi_node[] ={
     /* name path               function code    pin  spifd      pinfd  info */
-#ifdef PETALINUX_VER_2019.1
+#ifdef PETALINUX_VER_2019_1
     /* petalinux2019.1 */
     //{"/dev/spidev2.0",     SPI_FUNC_RF,     8,   -1,      -1,  "spi rf"},
     {"/dev/spidev1.0",     SPI_FUNC_CLOCK,  8,   -1,      -1,  "spi clock 7044 chip"},
@@ -266,7 +266,7 @@ static int ca_spi_init(void)
 static bool spi_has_inited = false;
 static int _spi_init(void)
 {
-    struct rf_spi_node_info *ptr = &spi_node;
+    struct rf_spi_node_info *ptr = spi_node;
     uint8_t mode = 0;
     uint32_t speed = 4000000;
 

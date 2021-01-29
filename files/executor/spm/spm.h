@@ -49,7 +49,7 @@ struct spm_backend_ops {
     int (*send_fft_data)(void *, size_t, void *);
     int (*send_iq_data)(void *, size_t, void *);
     int (*send_cmd)(void *, void *, size_t, void *);
-    int (*send_iq_type)(int, char *, size_t, void *);
+    int (*send_iq_type)(enum stream_iq_type, iq_t *, size_t, void *);
     int (*iq_dispatcher)(iq_t *, size_t, void *);
     /* AGC自动增益控制*/
     int (*agc_ctrl)(int, void *);
@@ -57,9 +57,9 @@ struct spm_backend_ops {
     bool (*residency_time_arrived)(uint8_t, int, bool);
     /* 获取某通道是否有信号；并返回信号强度 */
     int32_t (*signal_strength)(uint8_t ch,uint8_t subch, uint32_t, bool *is_singal, uint16_t *strength);
-    int (*back_running_file)(int, uint8_t, int);
-    int (*stream_start)(int, int, uint32_t ,uint8_t , int);
-    int (*stream_stop)(int, int, uint8_t);
+    int (*back_running_file)(int, enum stream_type, int);
+    int (*stream_start)(int, int, uint32_t ,uint8_t , enum stream_type);
+    int (*stream_stop)(int, int, enum stream_type);
     int (*sample_ctrl)(void *);
     int (*spm_scan)(uint64_t *, uint64_t* , uint32_t* , uint32_t *, uint64_t *);
     int (*set_calibration_value)(int);

@@ -95,5 +95,4 @@ extern uint8_t  io_restart_app(void);
 extern uint32_t get_fpga_version(void);
 extern void io_set_fpga_sys_time(uint32_t time);
 
-
 #endif

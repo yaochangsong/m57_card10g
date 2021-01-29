@@ -24,10 +24,7 @@
 static struct response_err_code {
     int code;
     char *message;
-};
-
-
-static struct response_err_code resp_code[] ={
+} resp_code[] ={
     {RESP_CODE_OK,                          "ok"},
     {RESP_CODE_UNKNOWN_OPS_MODE,            "unknown operating mode"},
     {RESP_CODE_PARSE_ERR,                   "parameter parsing failed"},

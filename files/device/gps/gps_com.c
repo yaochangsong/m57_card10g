@@ -97,8 +97,8 @@ static bool gps_status = false;         /*定位状态*/
 
 int gps_parse_recv_msg_rmc(char *str, size_t nbyte)
 {
-    #define GPS_HEADER1      "$GNRMC"
-    #define GPS_HEADER2      "$GPRMC"
+    #define _GPS_HEADER1      "$GNRMC"
+    #define _GPS_HEADER2      "$GPRMC"
     #define GPS_SEPARATOR    ","
 
     char *ptr1 = NULL, *ptr2 = NULL;
@@ -109,8 +109,8 @@ int gps_parse_recv_msg_rmc(char *str, size_t nbyte)
     if(str == NULL || nbyte == 0)
         return -1;
 
-    if ((ptr1 = strstr(str, GPS_HEADER1)) == NULL && 
-        (ptr1 = strstr(str, GPS_HEADER2)) == NULL ) {
+    if ((ptr1 = strstr(str, _GPS_HEADER1)) == NULL && 
+        (ptr1 = strstr(str, _GPS_HEADER2)) == NULL ) {
         return -1;
     }
 

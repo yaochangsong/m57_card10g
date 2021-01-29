@@ -204,29 +204,8 @@ int32_t io_set_local_10g_net(uint32_t ip, uint32_t nw,uint32_t gw,uint16_t port)
     return 0;
 }
 
-/* 万兆开关 */
-int32_t io_set_10ge_net_onoff(uint8_t onoff)
-{
-    int32_t ret = 0;
-    printf_note("[**NET**]10GE net %s\n", onoff == 0 ? "off":"on");
-#if defined(SUPPORT_SPECTRUM_KERNEL) 
-    ret = ioctl(io_ctrl_fd,IOCTL_NET_10G_ONOFF_SET,&onoff);
-#endif
-    return ret;
-}
 
 #endif /* end SUPPORT_NET_WZ */
-
-int32_t io_set_1ge_net_onoff(uint8_t onoff)
-{
-    int32_t ret = 0;
-    printf_note("[**NET**]1GE net %s\n", onoff == 0 ? "off":"on");
-#if defined(SUPPORT_SPECTRUM_KERNEL)
-    ret = ioctl(io_ctrl_fd,IOCTL_NET_1G_IQ_ONOFF_SET,&onoff);
-#endif
-    return ret;
-}
-
 
 
 void io_reset_fpga_data_link(void){
@@ -307,29 +286,6 @@ int32_t io_set_noise(uint32_t ch, uint32_t noise_en,int8_t noise_level_tmp){
 #endif
 #endif
     return 0;
-}
-/*根据边带率,设置数据长度 
-    @rate: 边带率>0;实际下发边带率为整数；放大100倍（内核不处理浮点数）
-*/
-int32_t io_set_side_rate(uint32_t ch, float *rate){
-    #define RATE_GAIN 1000
-    int32_t ret = 0;
-    static uint32_t old_val=0;
-    uint32_t irate = 0;
-#if defined(SUPPORT_PLATFORM_ARCH_ARM)
-#if defined(SUPPORT_SPECTRUM_KERNEL) 
-    irate = (uint32_t)(*(float *)rate * (float)RATE_GAIN);
-    if(irate == old_val){
-        /* 避免重复设置相同参数 */
-        return ret;
-    }
-    old_val = irate;
-    printf_note("[**REGISTER**]ch:%d, side rate%u\n", ch, irate);
-    ret = ioctl(io_ctrl_fd, IOCTL_BAND_SIDE_RATE, irate);
-#endif
-#endif
-    return ret;
-
 }
 
 

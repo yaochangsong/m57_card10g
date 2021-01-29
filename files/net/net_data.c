@@ -59,7 +59,7 @@ static inline int tcp_get_peer_port(struct net_tcp_client *cl)
     return ntohs(cl->peer_addr.sin_port);
 }
 
-static inline const char *get_serv_port(struct net_tcp_client *cl)
+static inline  int get_serv_port(struct net_tcp_client *cl)
 {
     return ntohs(cl->serv_addr.sin_port);
 }
@@ -110,7 +110,7 @@ static void tcp_dispatch_done(struct net_tcp_client *cl)
     if (cl->dispatch.free)
         cl->dispatch.free(cl);
 
-    memset(&cl->dispatch, 0, sizeof(struct dispatch));
+    memset(&cl->dispatch, 0, sizeof(struct tcp_dispatch));
 }
 
 static void tcp_data_client_request_done(struct net_tcp_client *cl)
@@ -181,7 +181,7 @@ static void tcp_raw_data_write_loop(struct net_tcp_client *cl)
         }
 
         if(cl->send_over)
-            cl->send_over(&r);
+            cl->send_over((size_t *)&r);
     }
 }
 
@@ -234,9 +234,10 @@ static int tcp_send(struct net_tcp_client *cl, const void *data, int len)
     return s;
 }
 
-static void tcp_ustream_read_data_cb(struct net_tcp_client *cl)
+static void tcp_ustream_read_data_cb(struct ustream *s , int bytes)
 {
-    struct dispatch *d = &cl->dispatch;
+    struct net_tcp_client *cl = container_of(s, struct net_tcp_client, sfd.stream);
+    struct tcp_dispatch *d = &cl->dispatch;
     struct net_tcp_request *r = &cl->request;
     char *buf;
     int len;

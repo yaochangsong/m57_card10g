@@ -28,6 +28,21 @@ struct net_tcp_response {
     int ch;
 };
 
+struct tcp_dispatch {
+    int (*post_data)(struct net_tcp_client *cl, const char *data, int len);
+    void (*post_done)(struct net_tcp_client *cl);
+    void (*write_cb)(struct net_tcp_client *cl);
+    void (*free)(struct net_tcp_client *cl);
+
+    struct {
+        int fd;
+    } file;
+    int cmd; /* add by ycs */
+    int post_len;
+    char *body;
+};
+
+
 
 struct net_tcp_client {
     struct list_head list;
@@ -40,7 +55,7 @@ struct net_tcp_client {
     struct net_tcp_response response;
     struct sockaddr_in peer_addr;
     struct sockaddr_in serv_addr;
-    struct dispatch dispatch;
+    struct tcp_dispatch dispatch;
     bool connection_close;
     int response_length;
     int tcp_keepalive_probes;
@@ -55,7 +70,7 @@ struct net_tcp_client {
     void (*request_done)(struct net_tcp_client *cl);
     
     int (*send)(struct net_tcp_client *cl, const void *data, int len);
-    void (*send_over)(struct net_tcp_client *cl);
+    int (*send_over)(size_t *size);
     void (*send_raw_data)(struct net_tcp_client *cl, const char *path, size_t (*callback) (void **), int (*callback_over) (size_t *));
     void (*printf)(struct net_tcp_client *cl, const char *format, ...);
     void (*vprintf)(struct net_tcp_client *cl, const char *format, va_list arg);
@@ -77,12 +92,12 @@ struct net_tcp_server {
     void (*free)(struct net_tcp_server *srv);
     void (*on_accept)(struct net_tcp_client *cl);
     int (*on_request)(struct net_tcp_client *cl);
-    int (*on_header)(struct net_tcp_client *cl,const char *buf, int len, int *head_len, int *code);
-    int (*on_execute)(struct net_tcp_client *cl, int *code);
-    int (*on_end)(struct net_tcp_client *cl, char *buf, int len);
+    bool (*on_header)(void *cl,const char *buf, int len, int *head_len, int *code);
+    bool (*on_execute)(void *cl, int *code);
+    int (*on_end)(void *cl, char *buf, int len);
     void (*send)(struct net_tcp_client *cl, const void *data, int len, int code);
-    void (*send_error)(struct net_tcp_client *cl, int code, const char *fmt, ...);
-    void (*send_alert)(struct net_tcp_client *cl, int code);
+    void (*send_error)(void *cl, int code, void *args);
+    void (*send_alert)(int code);
     size_t (*read_raw_data)(void **data);
 };
 

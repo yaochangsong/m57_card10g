@@ -43,7 +43,7 @@ static struct rf_spi_node_info spi_node[] ={
     {"/dev/spidev32766.0",     SPI_FUNC_CLOCK,  8,   -1,      -1,  "spi clock 7044 chip"},
     {"/dev/spidev32766.1",     SPI_FUNC_AD,     8,   -1,      -1,  "spi ad 9690 chip"},
 #endif
-    {NULL,                     SPI_FUNC_NULL              -1,   -1,      -1,  NULL},
+    {NULL,                     SPI_FUNC_NULL    -1,   -1,      -1,  NULL},
 };
 
 
@@ -157,14 +157,13 @@ static int ca_spi_clock_init_after(void)
 {
     uint8_t send_buf[8];
     int spi_fd, ret =0;
-    int found = 0,index = 0;
+    int found = 0;
 	//int	__attribute__((unused))index = 0;
     uint32_t array_len = 3;
     
     for(int i = 0; i< ARRAY_SIZE(spi_node); i++){
         if(spi_node[i].func_code == SPI_FUNC_CLOCK){
             spi_fd = spi_node[i].fd;
-            index = i;
             found = 1;
         }
     }

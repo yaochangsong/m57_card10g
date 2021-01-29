@@ -487,7 +487,7 @@ static bool _fs_sample_size_full(struct push_arg *args)
     }
     return false;
 }
-static ssize_t _fs_start_save_file_thread(void *arg)
+static int _fs_start_save_file_thread(void *arg)
 {
     void *ptr = NULL;
     ssize_t nread = 0; 
@@ -528,7 +528,7 @@ static ssize_t _fs_start_save_file_thread(void *arg)
         usleep(1000);
         printf("read_adc_data err:%ld\n", nread);
     }
-    return nread;
+    return (int)nread;
 
 }
 
@@ -703,7 +703,7 @@ static ssize_t _fs_stop_save_file(int ch, char *filename)
     return 0;
 }
 
-static ssize_t _fs_start_read_raw_file_loop(void *arg)
+static int _fs_start_read_raw_file_loop(void *arg)
 {
     ssize_t nread = 0; 
     int ch;
@@ -720,7 +720,7 @@ static ssize_t _fs_start_read_raw_file_loop(void *arg)
         printf_note(">>>>>>>read over!!\n");
         pthread_exit_by_name(_fs_get_backtrace_thread_name(ch));
     }
-    return nread;
+    return (int)nread;
 }
 
 static void _fs_read_exit_callback(void *arg){  

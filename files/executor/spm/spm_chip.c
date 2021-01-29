@@ -27,7 +27,8 @@ int64_t *get_division_point_array(int ch, int *array_len)
     return division_point_array;
 }
 #endif
-static struct _vec_fft{
+
+struct _vec_fft{
     fft_t *data;
     size_t len;
 };
@@ -105,7 +106,7 @@ static ssize_t spm_chip_read_iq_data(void **data)
     ssize_t r = 0;
     iq_t *iqdata = NULL;
     
-    iqdata = specturm_rx0_read_data(&r);
+    iqdata = (iq_t *)specturm_rx0_read_data(&r);
     *data = iqdata;
     return r;
 }
@@ -127,14 +128,14 @@ static ssize_t spm_chip_read_fft_data(void **data, void *args)
     fft_size = run_args->fft_size;
     if(fft_size == 0)
         goto err;
-    iqdata = specturm_rx0_read_data(&r);
+    iqdata = (iq_t *)specturm_rx0_read_data(&r);
 #ifdef SUPPORT_SPECTRUM_ANALYSIS
     spm_analysis_start(0, iqdata, r, args);
 #endif
     floatdata = zalloc(fft_size*4);
     if(floatdata == NULL)
         goto err;
-    fft_spectrum_iq_to_fft_handle(iqdata, fft_size, fft_size*2, floatdata);
+    fft_spectrum_iq_to_fft_handle((short *)iqdata, fft_size, fft_size*2, floatdata);
     if(fft_size_dup < fft_size){
         fft_size_dup = fft_size;
         fftdata = realloc(fftdata, fft_size_dup*4);
@@ -260,7 +261,7 @@ static inline ssize_t _read_arrary_fft_data(struct _vec_fft *vdata, void *args, 
     struct _vec_fft *_vfft = vdata;
 
     for(i = 0; i < array_len; i++){
-        r = spm_chip_read_fft_data(&rawdata, args);
+        r = spm_chip_read_fft_data((void **)&rawdata, args);
         if(r > 0){
             newdata = zalloc(r);
             if(newdata == NULL)
@@ -295,7 +296,7 @@ static ssize_t spm_chip_read_fft_data_smooth(void **data, void *args)
     uint32_t freg_num = r_args->fregment_num;
 
     if(smooth <= 1){
-        r = spm_chip_read_fft_data(&data_dup, args);
+        r = spm_chip_read_fft_data((void **)&data_dup, args);
         *data = data_dup;
         return r;
     }
@@ -506,18 +507,18 @@ static int spm_chip_send_iq_data(void *data, size_t len, void *arg)
 
     if(len < _send_byte)
         return -1;
-    if((hptr = _assamble_iq_header(1, &header_len, _send_byte, arg)) == NULL){
+    if((hptr = _assamble_iq_header(1, (size_t *)&header_len, _send_byte, arg)) == NULL){
         printf_err("assamble head error\n");
         return -1;
     }
    
-    int i, index,sbyte;
+    int i, index;
     uint8_t *pdata;
     struct iovec iov[2];
     iov[0].iov_base = hptr;
     iov[0].iov_len = header_len;
     index = len / _send_byte;
-    sbyte = index * _send_byte;
+    //sbyte = index * _send_byte;
     pdata = (uint8_t *)data;
     for(i = 0; i<index; i++){
         iov[1].iov_base = pdata;
@@ -588,18 +589,19 @@ static int spm_chip_get_psd_analysis_result(void *data, size_t len)
 }
 
 
-static int spm_chip_close(void)
+static int spm_chip_close(void *args)
 {
     return 0;
 }
 
 static int spm_sample_ctrl(void *args)
 {
+
+#if defined(SUPPORT_PROJECT_SSA_MONITOR)
     static int old_switch = -1;
     int tmp_switch = 0;
     struct spm_run_parm *r_args;
     r_args = (struct spm_run_parm *)args;
-#if defined(SUPPORT_PROJECT_SSA_MONITOR)
     uint64_t freq_hz = r_args->m_freq_s;
     if (freq_hz >= LVTTL_FREQ_START1 && freq_hz <= LVTTL_FREQ_end1) {
         tmp_switch = 1;

@@ -358,7 +358,7 @@ static  float get_side_band_rate(uint32_t bandwidth)
 }
 
 /* 频谱数据整理 */
-static fft_t *spm_data_order(volatile fft_t *fft_data, 
+static fft_t *spm_data_order(fft_t *fft_data, 
                                 size_t fft_len,  
                                 size_t *order_fft_len,
                                 void *arg)
@@ -1095,8 +1095,9 @@ static int spm_stream_stop(int ch, int subch, enum stream_type type)
     return 0;
 }
 
-static int _spm_close(struct spm_context *ctx)
+static int _spm_close(void *_ctx)
 {
+    struct spm_context *ctx = _ctx;
     struct _spm_stream *pstream = spm_stream;
     int i, ch;
 
@@ -1125,7 +1126,7 @@ static const struct spm_backend_ops spm_ops = {
     .send_iq_data = spm_send_iq_data,
     .iq_dispatcher = spm_iq_dispatcher,
     .send_iq_type = spm_send_dispatcher_iq,
-    .agc_ctrl = agc_ctrl,//spm_agc_ctrl,
+    .agc_ctrl = spm_agc_ctrl,
     .residency_time_arrived = is_sigal_residency_time_arrived,
     .signal_strength = spm_get_signal_strength,
     .back_running_file = spm_stream_back_running_file,

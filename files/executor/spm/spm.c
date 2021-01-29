@@ -116,7 +116,7 @@ loop:
     memcpy(&run, ctx->run_args[ch], sizeof(run));
     spm_iq_dispatcher_buffer_clear();
     do{
-        len = ctx->ops->read_iq_data(&ptr_iq);
+        len = ctx->ops->read_iq_data((void **)&ptr_iq);
         if(len > 0){
             if(ctx->ops->iq_dispatcher && test_audio_on()){
                 ctx->ops->iq_dispatcher(ptr_iq, len, &run);

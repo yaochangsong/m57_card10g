@@ -43,7 +43,7 @@ void memory_pool_destroy(memory_pool_t *mp)
 
 void memory_pool_dump(memory_pool_t *mp, void (* print_func) (void *value))
 {
-  printf("start: %p, count: %u, used_count: %d\n", mp->pool,mp->count, mp->used_count);
+  printf("start: %p, count: %lu, used_count: %d\n", mp->pool,mp->count, mp->used_count);
 
   void *block;
   size_t i;
@@ -52,7 +52,7 @@ void memory_pool_dump(memory_pool_t *mp, void (* print_func) (void *value))
   for (i = 0; i < mp->count; i++)
   {
     block = (void *) ((uint8_t *) mp->pool + (mp->block_size * i));
-    printf("block #%i(%p):", i, block);
+    printf("block #%ld(%p):", i, block);
 
     if(count-- > 0){
          printf(" allocated");

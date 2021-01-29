@@ -59,7 +59,7 @@ void udp_free(struct net_udp_client *cl)
     }
 }
 
-void udp_send_data_to_client(struct net_udp_client *client, uint8_t *data, uint32_t data_len)
+void udp_send_data_to_client(struct net_udp_client *client, const void *data, int data_len)
 {    
     if(client == NULL)
         return;
@@ -104,12 +104,12 @@ int udp_send_vec_data(struct iovec *iov, int iov_len, int tag)
 int udp_send_vec_data_to_taget_addr(struct iovec *iov, int iov_len)
 {
     #define SERVER "192.168.2.11"
-    #define PORT 1134 
+    #define U_PORT 1134 
     static struct net_udp_client client;
     static bool client_init_flag = false;
     if(client_init_flag == false){
         client.peer_addr.sin_family = AF_INET;
-        client.peer_addr.sin_port = htons(PORT);
+        client.peer_addr.sin_port = htons(U_PORT);
         client.srv =  get_udp_server();
 
         if(inet_aton(SERVER, &client.peer_addr.sin_addr) == 0){
@@ -241,7 +241,7 @@ static void udp_read_cb(struct uloop_fd *fd, unsigned int events)
     if(cl != NULL){
         //poal_udp_handle_request(cl, data, n);
         if(cl->srv->on_discovery)
-            cl->srv->on_discovery(cl, data, n);
+            cl->srv->on_discovery((void *)cl, (char *)data, n);
         printf_note("Deal Over Free UDP: %s:%d\n", cl->get_peer_addr(cl), cl->get_peer_port(cl));
         free(cl);
     }

@@ -265,7 +265,7 @@ static int8_t  executor_points_scan(uint8_t ch, work_mode_type mode, void *args)
         //executor_set_command(EX_MID_FREQ_CMD, EX_MID_FREQ,    ch, &point->points[i].center_freq);
         executor_set_command(EX_MID_FREQ_CMD, EX_FFT_SIZE, ch, &point->points[i].fft_size);
         /* 根据带宽设置边带�?*/
-        executor_set_command(EX_CTRL_CMD, EX_CTRL_SIDEBAND, ch, &r_args->scan_bw);
+        //executor_set_command(EX_CTRL_CMD, EX_CTRL_SIDEBAND, ch, &r_args->scan_bw);
         printf_note("d_center_freq=%"PRIu64", d_method=%d, d_bandwith=%u noise=%d noise_en=%d volume=%d\n",poal_config->channel[ch].multi_freq_point_param.points[i].center_freq,
                     poal_config->channel[ch].multi_freq_point_param.points[i].d_method,poal_config->channel[ch].multi_freq_point_param.points[i].d_bandwith,
                     poal_config->channel[ch].multi_freq_point_param.points[i].noise_thrh,poal_config->channel[ch].multi_freq_point_param.points[i].noise_en,
@@ -631,25 +631,6 @@ static int8_t executor_set_kernel_command(uint8_t type, uint8_t ch, void *data, 
     return 0;
 }
 
-static int8_t executor_set_ctrl_command(uint8_t type, uint8_t ch, void *data, va_list ap)
-{
-    switch(type){
-        case EX_CTRL_SIDEBAND:
-        {
-            uint32_t bandwidth;
-            float side_rate;
-            bandwidth = *(uint32_t *)data;
-            /* 根据带宽获取边带�?*/
-            if(config_read_by_cmd(EX_CTRL_CMD, EX_CTRL_SIDEBAND,ch, &side_rate, bandwidth) == -1){
-                printf_note("!!!SideRate Is Not Set In Config File[bandwidth=%u],user default siderate=%f!!!\n", bandwidth, side_rate);
-            }
-            /* 设置边带�?*/
-            io_set_side_rate(ch, &side_rate);
-            break;
-        }
-    }
-    return 0;
-}
 
 #ifdef SUPPORT_NET_WZ
 static int executor_set_10g_network(struct network_st *_network)
@@ -784,7 +765,6 @@ int8_t executor_set_command(exec_cmd cmd, uint8_t type, uint8_t ch,  void *data,
         }
         case EX_CTRL_CMD:
         {
-            executor_set_ctrl_command(type, ch, data, argp);
             break;
         }
         default:
@@ -954,9 +934,6 @@ void executor_init(void)
         //executor_set_command(EX_RF_FREQ_CMD, EX_RF_ATTENUATION, 0, &poal_config->rf_para[i].attenuation);
     }
     subch_bitmap_init();
-#ifdef SUPPORT_NET_WZ
-    io_set_10ge_net_onoff(0); /* 关闭万兆传输 */
-#endif
     printf_note("clear all sub ch\n");
     uint8_t enable =0;
     uint8_t default_method = IO_DQ_MODE_IQ;

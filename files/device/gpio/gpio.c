@@ -68,6 +68,7 @@ int rf_db_attenuation_init()        //生成衰减库
    }
    BubbleSort(db_array,64);
    rf_db_arrange();
+   return 0;
 }
 
 float  rf_db_select(float db_attenuation){     //找出衰减库里DB值值
@@ -107,6 +108,7 @@ int gpio_select_rf_attenuation(float attenuation_val)   //衰减DB值
        gpio_attenuation_rf(U10_0_5_DB,U2_31_5_DB); //默认衰减31.5DB
        printf_note("默认设置31.5DB\n"); //默认衰减31.5DB
      }
+     return 0;
 }
 
 

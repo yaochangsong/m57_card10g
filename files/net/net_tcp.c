@@ -101,12 +101,12 @@ static void tcp_dispatch_done(struct net_tcp_client *cl)
     if (cl->dispatch.free)
         cl->dispatch.free(cl);
 
-    memset(&cl->dispatch, 0, sizeof(struct dispatch));
+    memset(&cl->dispatch, 0, sizeof(struct tcp_dispatch));
 }
 
 static void tcp_data_free(struct net_tcp_client *cl)
 {
-    struct dispatch *d = &cl->dispatch;
+    struct tcp_dispatch *d = &cl->dispatch;
     if(d->body)
         free(d->body);
 }
@@ -127,7 +127,7 @@ static void tcp_post_done(struct net_tcp_client *cl)
 
 static int tcp_load_data(struct net_tcp_client *cl, const char *data, int len)
 {
-    struct dispatch *d = &cl->dispatch;
+    struct tcp_dispatch *d = &cl->dispatch;
     d->post_len += len;
 
     if (d->post_len > MAX_RECEIVE_DATA_LEN)
@@ -159,7 +159,7 @@ err:
 
 static void tcp_client_poll_data(struct net_tcp_client *cl)
 {
-    struct dispatch *d = &cl->dispatch;
+    struct tcp_dispatch *d = &cl->dispatch;
     struct net_tcp_request *r = &cl->request;
     char *buf;
     int len;
@@ -325,7 +325,7 @@ static inline int tcp_get_peer_port(struct net_tcp_client *cl)
     return ntohs(cl->peer_addr.sin_port);
 }
 
-static inline const char *get_serv_port(struct net_tcp_client *cl)
+static inline int get_serv_port(struct net_tcp_client *cl)
 {
     return ntohs(cl->serv_addr.sin_port);
 }
@@ -352,9 +352,11 @@ void update_tcp_keepalive(void *client)
     } 
 }
 
-void tcp_send(struct net_tcp_client *cl, const void *data, int len)
+static int  tcp_send(struct net_tcp_client *cl, const void *data, int len)
 {
-    ustream_write(cl->us, data, len, true);
+    int s;
+    s = ustream_write(cl->us, data, len, true);
+    return s;
 }
 
 static void tcp_accept_cb(struct uloop_fd *fd, unsigned int events)
@@ -442,21 +444,6 @@ void tcp_active_send_all_client(uint8_t *data, int len)
 
     pthread_mutex_unlock(&srv->tcp_client_lock);
 }
-
-void tcp_send_alert_to_all_client(int code)
-{
-    struct net_tcp_client *cl_list, *list_tmp;
-    struct net_tcp_server *srv = (struct net_tcp_server *)net_get_tcp_srv_ctx();
-    
-    if(srv == NULL)
-        return;
-    pthread_mutex_lock(&srv->tcp_client_lock);
-    list_for_each_entry_safe(cl_list, list_tmp, &srv->clients, list){
-            srv->send_alert(cl_list, code);
-    }
-    pthread_mutex_unlock(&srv->tcp_client_lock);
-}
-
 
 
 bool tcp_find_client(struct sockaddr_in *addr)

@@ -146,7 +146,7 @@ struct spm_dispatcher_iq{
     uint32_t len[STREAM_IQ_TYPE_MAX];
     uint32_t offset[STREAM_IQ_TYPE_MAX];
     iq_t *ptr[STREAM_IQ_TYPE_MAX];
-    char *send_ptr;
+    iq_t *send_ptr;
     size_t send_len;
 };
 /* 频谱运行中，可能变化的参数 */

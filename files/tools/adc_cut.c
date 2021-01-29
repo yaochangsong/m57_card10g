@@ -28,7 +28,7 @@ int read_file(void *pdata, unsigned int data_len, char *filename)
 {
         
     FILE *file;
-    unsigned int *pdata_offset;
+   // unsigned int *pdata_offset;
 
     if(pdata == NULL){
         return -1;
@@ -74,6 +74,7 @@ static inline size_t  file_readdata(FILE *file, uint8_t *pdata, unsigned int dat
 static int file_close(FILE *file)
 {
     fclose(file);
+	return 0;
 }
 
 static inline void swap(uint32_t *d1, uint32_t *d2)
@@ -127,20 +128,21 @@ int main(int argc, char **argv)
     memset(buffer, 0,sizeof(buffer));
     i_file = file_open(i_filename, "r+b");
     o_file = file_open(o_filename, "w+b");
-    int cnt = 0, start_header_offset = 0;
+  //  int cnt = 0, start_header_offset = 0;
+	int cnt = 0;
     fseek(i_file, 0, SEEK_SET);
     
 
-    start_header_offset = 0;
+   // start_header_offset = 0;
     for(;;){
            memset(buffer, 0,sizeof(buffer));
-           nread = file_readdata(i_file, buffer, sizeof(buffer));
+           nread = file_readdata(i_file, (uint8_t*)buffer, sizeof(buffer));
            if(nread == 0){
                break;
            }
            pbuffer = (uint64_t *)buffer;
            if((pbuffer[0]&0x7f00000000000000) != 0x7f00000000000000){
-                printf("--header err [%d]0x%x, 0x%x\n",cnt, pbuffer[0], pbuffer[1]);
+                printf("--header err [%d]0x%lx, 0x%lx\n",cnt, pbuffer[0], pbuffer[1]);
                 exit(1);
            }
            //printf("--header [%d]0x%llx, 0x%llx\n",cnt, pbuffer[0], pbuffer[1]);
@@ -151,12 +153,12 @@ int main(int argc, char **argv)
     #if 1
     for(;;){
         memset(buffer, 0,sizeof(buffer));
-        nread = file_readdata(i_file, buffer, sizeof(buffer));
+        nread = file_readdata(i_file, (uint8_t*)buffer, sizeof(buffer));
         pbuffer = (uint32_t *)buffer;
         if(nread == 0){
             break;
         }
-        file_savedata(o_file, buffer+1, sizeof(buffer)-8);
+        file_savedata(o_file, (uint8_t*)buffer+1, sizeof(buffer)-8);
         
     }
     #endif

@@ -29,6 +29,7 @@
 #include "../../bsp/io.h"
 #include "utils/memshare.h"
 #include "parse_cmd.h"
+extern int file_read_attr_info(const char *name, void *info);
 
 static struct request_info http_req_cmd[] = {
     /* 磁盘文件操作 */

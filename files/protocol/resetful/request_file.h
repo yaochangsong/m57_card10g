@@ -54,6 +54,8 @@ extern int file_start_backtrace(struct uh_client *cl, void *arg);
 extern int file_stop_backtrace(struct uh_client *cl, void *arg);
 extern int file_delete(struct uh_client *cl, void *arg);
 extern void file_handle_init(void);
+extern int file_read_attr_info(const char *name, void *info);
+
 
 
 #endif

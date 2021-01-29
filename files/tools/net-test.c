@@ -40,6 +40,8 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <pthread.h>
+#include <arpa/inet.h>
+
 
 
 #define SERVER_IP "192.168.3.11"
@@ -86,8 +88,8 @@ int init_net(struct net_info *net, int size)
 {
 	
 	int client_fd = -1;
-	int len_buf = 0;
-	struct sockaddr_in ser_addr;
+	//int len_buf = 0;
+	//struct sockaddr_in ser_addr;
 	
 	client_fd = socket(AF_INET, SOCK_DGRAM, 0);
 	if(client_fd < 0)
@@ -155,7 +157,7 @@ int create_thread_pool(struct thread_pool *thread_pool, int num, struct net_info
     pthread_t thread_id;
     pthread_attr_t thread_attr;
 	int i, ret;
-	struct sched_param param;
+	//struct sched_param param;
 	
 	for(i = 0; i < num; i++)
 	{

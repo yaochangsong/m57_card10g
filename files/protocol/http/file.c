@@ -24,6 +24,8 @@
 #include <unistd.h>
 #include <time.h>
 #include <limits.h>
+#include <stdlib.h>
+
 
 #include "file.h"
 #include "utils.h"
@@ -268,8 +270,8 @@ static char *file_unix2date(time_t ts, char *buf, int len)
 
 static char *file_Etag(struct stat *s, char *buf, int len)
 {
-    memset(buf, 0, len);
-    snprintf(buf, len, "%x-%llu", (uint64_t)s->st_mtime, (uint64_t)s->st_size);
+    memset(buf, 0, len); 
+    snprintf(buf, len, "%lx-%lu", (uint64_t)s->st_mtime, (uint64_t)s->st_size);
     return buf;
 }
 static const char * uh_file_mime_lookup(const char *path)
@@ -335,7 +337,7 @@ static int uh_file_if_modified_since(struct uh_client *cl, struct stat *s)
     if (!date)
         return true;
     
-    memset(&t, 0, sizeof(t));
+    memset(&t, 0, sizeof(t)); 
 
     if ((strptime(date, "%a, %d %b %Y %H:%M:%S %Z", &t) ? timegm(&t) : 0) >= s->st_mtime) {
         uh_file_response_304(cl, s);

@@ -57,6 +57,7 @@ static void *handle_cmd(void *dummy)
         }
         pthread_mutex_unlock(&lock);
     }
+	return NULL;
 }
 
 int main()
@@ -64,7 +65,7 @@ int main()
     pthread_t pth;
     struct input_event ev;
     int tmp;
-    int key_code;
+    //int key_code;
     int size = sizeof(ev);
     struct timeval press_time;
     int timediff_sec=0;

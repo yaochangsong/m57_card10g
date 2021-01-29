@@ -60,5 +60,7 @@ struct interpreter {
 
 
 //extern bool uh_cgi_request(struct uh_client *cl, struct path_info *pi, struct interpreter *ip);
+//extern bool uh_cgi_request(struct uh_client *cl, struct path_info *pi, struct interpreter *ip);
+
 
 #endif

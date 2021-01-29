@@ -16,6 +16,7 @@
 *    修改gps解析	
 ******************************************************************************/
 #include "config.h"
+#include <math.h>
 
 #define UART_HANDER_TIMROUT 1000   //ms
 #define FPGA_TIME_INTERVAL (1000 * 360)
@@ -40,6 +41,9 @@
     * 语句结束标志符
     xx 从$开始到之间的所有ASCII码的异或校验
 */
+extern void io_set_fpga_sys_time(uint32_t time);
+extern int uart_init_dev(char *name, uint32_t baudrate);
+
 
 enum GGA_PARA_INDEX{
     GGA_ID = 1,
@@ -357,7 +361,7 @@ uint16_t gps_format_days_to_fpga(uint32_t year, uint8_t month, uint8_t day)
 
     return days;
 }
-
+ 
 uint32_t gps_get_format_date(void)
 {
     uint32_t i_hms,i_ymd, date_to_fpga;
@@ -562,6 +566,7 @@ int gps_init(void)
     g_gps_info.longitude = 400000000;
     gps_task_init();
     time_fpga_task_init();
+	return 0;
 }
 
 

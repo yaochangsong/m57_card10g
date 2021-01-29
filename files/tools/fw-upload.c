@@ -10,7 +10,7 @@
 void file_copy_omit(char *srcname, char *dstname, int offset, int length)
 {
     FILE *in, *out;
-    int _len = length, i, rc;
+    int i, rc;
     char buffer[64];
     if((in = fopen(srcname, "rb")) == NULL){
         exit(1);
@@ -117,15 +117,15 @@ void *getMemInFile(char *filename, int offset, int len)
 
 /*
  *  taken from "mkimage -l" with few modified....
- */
+ */ 
 int check(char *imagefile, int offset, int len, char *err_msg, char *mtd_name)
 {
     struct stat sbuf;
     int ret = 0;
-    int  data_len;
-    char *data;
+   // int  data_len;
+   // char *data;
     unsigned char *ptr;
-    unsigned long checksum;
+   // unsigned long checksum;
     int ifd;
     
     ifd = open(imagefile, O_RDONLY);
@@ -236,7 +236,8 @@ int main (int argc, char *argv[])
 
     if(!access(lockfile, F_OK)){
         printf("fw upload deamon is busy\n");
-        return;
+       // return;
+	    return 0;;
     }
     
     fd1 = open(lockfile, O_CREAT, 0666);

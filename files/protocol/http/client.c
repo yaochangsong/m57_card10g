@@ -37,6 +37,14 @@
 
 #define CGI_BIN "/cgi-bin"
 
+
+
+extern void *net_get_uhttp_srv_ctx(void);
+extern bool http_dispatch_requset_handle(struct uh_client *cl, const char *path);
+extern bool uh_cgi_request(struct uh_client *cl, struct path_info *pi, struct interpreter *ip);
+
+
+
 static const char *const http_versions[] = {
     [UH_HTTP_VER_09] = "HTTP/0.9",
     [UH_HTTP_VER_10] = "HTTP/1.0",
@@ -312,7 +320,6 @@ err:
     cl->send_error(cl, 413, "Request Entity Too Large", NULL);
     return 0;
 }
-
 static void post_post_done(struct uh_client *cl)
 {
     char *path = kvlist_get(&cl->request.url, "path");
@@ -582,13 +589,13 @@ static int client_srv_parse_response(struct uh_client *cl, const char *data)
     if (h_version < 0) {
         return -1;
     }
-    p = strstr(code, '200');
+    p = strstr(code, "200");
     if(p){
         cl->srv_request.result_code = 1;
-        printf_note("client: %s:%d response ok: %s\n", status);
+        printf_note(" response ok: %s\n", status);
     }else{
         cl->srv_request.result_code = 0;
-        printf_note("client: %s:%d response false: %s\n", status);
+        printf_note("response false: %s\n", status);
     }
     
     if(data_copy_tmp)

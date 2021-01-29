@@ -16,6 +16,7 @@
 #include <stdio.h>
 
 extern char *get_version_string(void);
+extern void fpga_io_init(void);
 
 
 static void usage(const char *prog)

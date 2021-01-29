@@ -44,5 +44,7 @@ struct gpio_node_info{
 
 extern int gpio_raw_init(void);
 extern int gpio_raw_write_value(enum gpio_func_code func_code, int value);
+extern int gpio_raw_read_value(enum gpio_func_code func_code, int *value);
+
 
 #endif

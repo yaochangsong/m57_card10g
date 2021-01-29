@@ -16,6 +16,7 @@
 #include "config.h"
 #include "../bsp/io.h"
 
+extern uint32_t config_get_disk_file_notifier_timeout(void);
 
 static s_config config;
 

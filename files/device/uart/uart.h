@@ -36,6 +36,8 @@ extern long uart_compass2_send_data(uint8_t *buf, uint32_t len);
 extern int uart_compass2_read_block_timeout(uint8_t *buf, int time_sec_ms);
 
 extern struct uart_info *get_uart_info_by_index(int index);
+extern int uart_init_dev(char *name, uint32_t baudrate);
+
 
 #endif
 

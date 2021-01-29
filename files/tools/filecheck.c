@@ -12,8 +12,10 @@
 #include <sys/wait.h>
 #include <stdbool.h>
 #include <sys/statfs.h>
+#include <getopt.h>
 
 
+ 
 void usage(char *prog)
 {
     printf("usage: %s\n",prog);

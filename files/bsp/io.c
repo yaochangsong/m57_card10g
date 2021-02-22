@@ -958,7 +958,7 @@ void io_set_fpga_sample_ctrl(uint8_t val)
 int32_t io_set_audio_volume(uint32_t ch,uint8_t volume)
 {
 #if defined(SUPPORT_SPECTRUM_FPGA)
-     volume_set(AUDIO_REG(get_fpga_reg()), volume);
+     volume_set((intptr_t)AUDIO_REG(get_fpga_reg()), volume);
      //volume_set(get_fpga_reg()->audioReg,volume);
 #endif
     return 0;

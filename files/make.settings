@@ -4,9 +4,9 @@ SUPPORT_PLAT_FORM_ARCH=arm
 SUPPORT_GDB_DEBUG=n
 
 #(Command)Protocal Support: http akt resetful
-SUPPORT_PROTOCAL="http resetful akt"
+SUPPORT_PROTOCAL="http resetful"
 #(Data)Protocal: xw akt
-SUPPORT_DATA_PROTOCAL="akt"
+SUPPORT_DATA_PROTOCAL="xw"
 
 
 #data store format support: json xml

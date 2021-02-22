@@ -22,7 +22,10 @@
 #include "../log/log.h"
 #include "../utils/utils.h"
 #include "../executor/spm/spm.h"
+
+#ifdef SUPPORT_PROTOCAL_AKT
 void akt_send_file_status(void *data, size_t data_len, void *args);
+#endif
 extern uint32_t config_get_disk_file_notifier_timeout(void);
 
 
@@ -83,7 +86,9 @@ static void _fs_notifier_time_out(struct uloop_timeout *timeout)
         node.nbyte = flist->nbyte;
         /* send finish file */
         node.status = flist->status;
+#ifdef SUPPORT_PROTOCAL_AKT
         akt_send_file_status(&node, sizeof(struct fs_node), fsn);
+#endif
         printf_note("list file[ch=%d, file=%s, status=%s, time=%ld]\n", 
                     node.ch,node.filename, get_str_status(node.status), node.duration_time);
         
@@ -111,8 +116,9 @@ static void _fs_notifier_time_out(struct uloop_timeout *timeout)
     node.nbyte = fsn->fnode->nbyte;
     node.status = fsn->fnode->status;
     pthread_mutex_unlock(&fsn->lock);
-    
+#ifdef SUPPORT_PROTOCAL_AKT
     akt_send_file_status(&node, sizeof(struct fs_node), fsn);
+#endif
     printf_note("file [ch=%d, file=%s, status=%s, time=%ld]\n", 
         node.ch,node.filename, get_str_status(node.status), node.duration_time);
     
@@ -173,7 +179,9 @@ int fs_notifier_create_node(int ch, char *filename, struct fs_notifier  *args)
     args->fnode = node;
 
     /* 发送新文件状态通知： send new file */
+#ifdef SUPPORT_PROTOCAL_AKT
     akt_send_file_status(node, sizeof(struct fs_node), args);
+#endif
     printf_note("file %s: %s\n", node->filename, get_str_status(node->status));
     node->send_new = true;
     /* 文件状态进入存储状态 */
@@ -230,7 +238,9 @@ int fs_notifier_exit(int ch, char *filename, struct fs_notifier *args, bool exit
             args->fnode->status = FNS_OVER;
         else
             args->fnode->status = FNS_UN_OVER;
+#ifdef SUPPORT_PROTOCAL_AKT
         akt_send_file_status(args->fnode, sizeof(struct fs_node), args);
+#endif
         printf_note("file: %s, %s\n", args->fnode->filename, get_str_status(args->fnode->status));
         safe_free(args->fnode->filename);
         safe_free(args->fnode);
@@ -238,7 +248,9 @@ int fs_notifier_exit(int ch, char *filename, struct fs_notifier *args, bool exit
         fnode.ch = ch;
         fnode.filename = filename;
         fnode.status = FNS_OVER;
+#ifdef SUPPORT_PROTOCAL_AKT
         akt_send_file_status(&fnode, sizeof(struct fs_node), args);
+#endif
         printf_note("file: %s, %s", filename, get_str_status(args->fnode->status));
     }
     pthread_mutex_unlock(&args->lock);

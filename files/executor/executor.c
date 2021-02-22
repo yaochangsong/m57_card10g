@@ -381,16 +381,13 @@ int8_t  executor_serial_points_scan(uint8_t ch, work_mode_type mode, void *args)
     executor_set_command(EX_MID_FREQ_CMD, EX_MID_FREQ,    ch, &point->points[i].center_freq);
     executor_set_command(EX_MID_FREQ_CMD, EX_FFT_SIZE, ch, &point->points[i].fft_size);
     executor_set_command(EX_MID_FREQ_CMD, EX_FPGA_CALIBRATE, ch, &point->points[0].fft_size, r_args->m_freq);
-    if(poal_config->channel[ch].enable.psd_en){
-        io_set_enable_command(PSD_MODE_ENABLE, ch, -1, point->points[i].fft_size);
-    }
+    executor_set_command(EX_MID_FREQ_CMD, EX_SMOOTH_TIME, ch, &point->smooth_time);
+    io_set_enable_command(PSD_MODE_ENABLE, ch, -1, point->points[i].fft_size);
     if(spmctx->ops->agc_ctrl)
         spmctx->ops->agc_ctrl(ch, spmctx);
     if(args != NULL)
         spm_deal(args, r_args, ch);
-    if(poal_config->channel[ch].enable.psd_en){
-        io_set_enable_command(PSD_MODE_DISABLE, ch, -1, point->points[i].fft_size);
-    }
+    io_set_enable_command(PSD_MODE_DISABLE, ch, -1, point->points[i].fft_size);
     return 0;
 }
 
@@ -613,7 +610,6 @@ static int8_t executor_set_kernel_command(uint8_t type, uint8_t ch, void *data, 
         }
         case EX_BANDWITH:
         {
-            printf_debug("ch:%d, bw:%u\n", ch, *(uint32_t *)data);
             io_set_bandwidth(ch, *(uint32_t *)data);
             //io_set_side_rate(1.28);
             break;
@@ -811,6 +807,7 @@ int8_t executor_set_command(exec_cmd cmd, uint8_t type, uint8_t ch,  void *data,
         }
         case EX_FFT_SERIAL_ENABLE_CMD:
         {
+            printf_note("notify thread to deal fft data\n");
             spm_fft_deal_notify(NULL);
             break;
         }
@@ -985,7 +982,7 @@ void executor_timer_task_init(void)
 void executor_init(void)
 {
     int ret, i, j;
-    //static int ch[MAX_RADIO_CHANNEL_NUM];
+    static int ch[MAX_RADIO_CHANNEL_NUM];
     pthread_t work_id;
     void *spmctx;
     struct poal_config *poal_config = &(config_get_config()->oal_config);
@@ -1016,7 +1013,6 @@ void executor_init(void)
     uint8_t enable =0;
     uint8_t default_method = IO_DQ_MODE_IQ;
 
-    //sem_init(&(work_sem.notify_serial_deal), 0, 0);
     for(i = 0; i <MAX_RADIO_CHANNEL_NUM; i++){
         for(j = 0; j< MAX_SIGNAL_CHANNEL_NUM; j++){
             printf_debug("clear all ch: %d, subch: %d\n", i, j);

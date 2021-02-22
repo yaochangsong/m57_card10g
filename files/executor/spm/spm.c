@@ -275,33 +275,21 @@ void spm_deal(struct spm_context *ctx, void *args, int ch)
         printf_err("spm is not init!!\n");
         return;
     }
-    #if 0
-    if(subch_bitmap_weight() != 0){
-        struct spm_run_parm *ptr_run;
-        ptr_run = (struct spm_run_parm *)args;
-        printf_debug("send:ch:%d, s_freq:%"PRIu64", e_freq:%"PRIu64", bandwidth=%u\n", 
-                ptr_run->ch, ptr_run->s_freq, ptr_run->e_freq, ptr_run->bandwidth);
-        spm_iq_deal_notify(&args);
-        
+    volatile fft_t *ptr = NULL, *ord_ptr = NULL;
+    ssize_t  byte_len = 0; /* fft byte size len */
+    size_t fft_len = 0, fft_ord_len = 0;
+    struct spm_run_parm *ptr_run;
+    ptr_run = (struct spm_run_parm *)args;
+    byte_len = pctx->ops->read_fft_data((void **)&ptr, ptr_run);
+    if(byte_len < 0){
+        return;
     }
-    #endif
-    if(pctx->pdata->channel[ch].enable.psd_en){
-        volatile fft_t *ptr = NULL, *ord_ptr = NULL;
-        ssize_t  byte_len = 0; /* fft byte size len */
-        size_t fft_len = 0, fft_ord_len = 0;
-        struct spm_run_parm *ptr_run;
-        ptr_run = (struct spm_run_parm *)args;
-        byte_len = pctx->ops->read_fft_data((void **)&ptr, ptr_run);
-        if(byte_len < 0){
-            return;
-        }
-        if(byte_len > 0){
-            fft_len = byte_len/sizeof(fft_t);
-             printf_debug("size_len=%lu, fft_len=%lu, ptr=%p,%p, %p\n", byte_len, fft_len, ptr,ptr_run, ptr_run->fft_ptr);
-            ord_ptr = pctx->ops->data_order(ptr, fft_len, &fft_ord_len, args);
-            if(ord_ptr)
-                pctx->ops->send_fft_data(ord_ptr, fft_ord_len, args);
-        }
+    if(byte_len > 0){
+        fft_len = byte_len/sizeof(fft_t);
+         printf_debug("size_len=%lu, fft_len=%lu, ptr=%p,%p, %p\n", byte_len, fft_len, ptr,ptr_run, ptr_run->fft_ptr);
+        ord_ptr = pctx->ops->data_order(ptr, fft_len, &fft_ord_len, args);
+        if(ord_ptr)
+            pctx->ops->send_fft_data(ord_ptr, fft_ord_len, args);
     }
 }
 

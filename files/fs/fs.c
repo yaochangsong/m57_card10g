@@ -865,10 +865,14 @@ void *fs_disk_check_thread(void *args)
             disk_check = _fs_disk_info(&sfs);
             if(disk_check == false){
                 if(disk_error_num == DISK_CODE_NOT_FOUND){
+                    #ifdef SUPPORT_PROTOCAL_AKT
                     akt_send_alert(1);
+                    #endif
                     //send error
                 } else if(disk_error_num == DISK_CODE_NOT_FORAMT){
+                    #ifdef SUPPORT_PROTOCAL_AKT
                     akt_send_alert(2);
+                    #endif
                     //send format
                 }
                 usleep(check_time);
@@ -882,7 +886,9 @@ void *fs_disk_check_thread(void *args)
             if(threshold_byte >= free_byte){
                 printf_note("%"PRIu64" >= threshold_byte[%"PRIu64"], send alert to client\n", free_byte, threshold_byte);
                 disk_is_full_alert = true;
+                #ifdef SUPPORT_PROTOCAL_AKT
                 akt_send_alert(0);
+                #endif
             }else {
                 printf_debug("%"PRIu64" < threshold_byte[%"PRIu64"], disk not full\n", free_byte, threshold_byte);
                 disk_is_full_alert =  false;

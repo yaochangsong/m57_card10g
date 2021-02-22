@@ -117,16 +117,12 @@ void spm_biq_deal_notify(void *arg)
 
 void spm_niq_deal_notify(void *arg)
 {
-    if(arg == NULL)
-        return;
     
     pthread_cond_signal(&spm_niq_cond);
 }
 
 void spm_fft_deal_notify(void *arg)
 {
-    if(arg == NULL)
-        return;
     
     pthread_cond_signal(&spm_fft_cond);
 }
@@ -140,7 +136,8 @@ void executor_spm_fft_serial_thread(void *arg)
     pthread_detach(pthread_self());
     
 wait:
-    sleep(1);
+    printf_warn("######Wait FFT enable######\n");
+   // sleep(1);
     pthread_mutex_lock(&spm_fft_cond_mutex);
     pthread_cond_wait(&spm_fft_cond, &spm_fft_cond_mutex);
     pthread_mutex_unlock(&spm_fft_cond_mutex);
@@ -242,7 +239,7 @@ void spm_biq_handle_thread(void *arg)
     
     pthread_detach(pthread_self());
 loop:
-    printf_warn("######Wait BIQ enable######\n");
+    printf_warn("######Wait BIQ[ch:%d] enable######\n", ch);
     /* 通过条件变量阻塞方式等待数据使能 */
     pthread_mutex_lock(&spm_biq_cond_mutex[ch]);
     while(test_ch_iq_on(ch) == false)
@@ -394,7 +391,6 @@ void *spm_init(void)
     ret=pthread_create(&recv_thread_id,NULL,(void *)spm_niq_handle_thread, spmctx);
     if(ret!=0)
         perror("pthread cread spm");
-    
     
 #endif /* SUPPORT_PLATFORM_ARCH_ARM */
     return (void *)spmctx;

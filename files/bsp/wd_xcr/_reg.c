@@ -57,16 +57,16 @@ static int fpga_memmap(int fd_dev, FPGA_CONFIG_REG *fpga_reg)
     printf_note("virtual address:%p, physical address:0x%x\n", fpga_reg->system, FPGA_SYSETM_BASE);
 
     for(i = 0; i < MAX_RADIO_CHANNEL_NUM; i++){
-        fpga_reg->rfReg[i] = (RF_REG *)fpga_reg->system +CONFG_REG_LEN;
+        fpga_reg->rfReg[i] = (uint8_t *)fpga_reg->system +CONFG_REG_LEN;
         if (!fpga_reg->rfReg[i])
         {
             printf("mmap failed, NULL pointer!\n");
             return -1;
         }
-        printf_debug("virtual address:%p, physical address:0x%x\n", fpga_reg->rfReg[i], FPGA_RF_BASE);
+        printf_note("virtual address:%p, physical address:0x%x\n", fpga_reg->rfReg[i], FPGA_RF_BASE);
     }
 
-    fpga_reg->audioReg = (AUDIO_REG *)fpga_reg->system + CONFG_AUDIO_OFFSET;
+    fpga_reg->audioReg = (uint8_t *)fpga_reg->system + CONFG_AUDIO_OFFSET;
     if (!fpga_reg->audioReg)
     {
         printf("mmap failed, NULL pointer!\n");

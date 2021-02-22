@@ -85,6 +85,7 @@ static struct  band_table_t bandtable[] ={
 
 
 static DECLARE_BITMAP(subch_bmp, MAX_SIGNAL_CHANNEL_NUM);
+static DECLARE_BITMAP(ch_bmp[CH_TYPE_MAX], MAX_RADIO_CHANNEL_NUM);
 
 void subch_bitmap_init(void)
 {
@@ -109,6 +110,47 @@ size_t subch_bitmap_weight(void)
 {
     return bitmap_weight(subch_bmp, MAX_SIGNAL_CHANNEL_NUM);
 }
+
+const unsigned long *get_ch_bitmap(int index)
+{
+    return ch_bmp[index];
+}
+
+void ch_bitmap_init(void)
+{
+    for(int i = 0; i< CH_TYPE_MAX; i++)
+        bitmap_zero(ch_bmp[i], MAX_RADIO_CHANNEL_NUM);
+}
+void ch_bitmap_set(uint8_t ch, CH_TYPE type)
+{
+    set_bit(ch, ch_bmp[type]);
+}
+
+void ch_bitmap_clear(uint8_t ch, CH_TYPE type)
+{
+    clear_bit(ch, ch_bmp[type]);
+}
+
+size_t ch_bitmap_weight(CH_TYPE type)
+{
+    return bitmap_weight(ch_bmp[type], MAX_RADIO_CHANNEL_NUM);
+}
+
+bool test_ch_iq_on(uint8_t ch)
+{
+    return test_bit(ch, ch_bmp[CH_TYPE_IQ]);
+}
+
+bool test_ch_fft_on(uint8_t ch)
+{
+    return test_bit(ch, ch_bmp[CH_TYPE_FFT]);
+}
+
+bool test_ch_audio_on(uint8_t ch)
+{
+    return test_bit(ch, ch_bmp[CH_TYPE_AUDIO]);
+}
+
 
 float io_get_narrowband_iq_factor(uint32_t bindwidth)
 {
@@ -1035,6 +1077,36 @@ static void io_set_IQ_out_en(int ch, int subch, uint32_t trans_len,uint8_t conti
 
 }
 
+static void io_set_BIQ_out_en(int ch, int subch, uint32_t trans_len,uint8_t continuous)
+{
+#if defined(SUPPORT_PLATFORM_ARCH_ARM)
+#if defined(SUPPORT_SPECTRUM_V2) 
+    if((get_spm_ctx()!=NULL) && get_spm_ctx()->ops->stream_start)
+        get_spm_ctx()->ops->stream_start(ch, subch, trans_len, continuous, STREAM_IQ);
+#endif
+#endif
+    if(subch >= 0){
+        io_set_subch_onoff(ch, subch, 1);
+    }
+
+}
+
+static void io_set_BIQ_out_disable(int ch, int subch)
+{
+    if(subch >= 0){
+        io_set_subch_onoff(ch, subch, 0);
+    }
+#if defined(SUPPORT_PLATFORM_ARCH_ARM)
+#if defined(SUPPORT_SPECTRUM_V2) 
+    if(subch_bitmap_weight() == 0 && (get_spm_ctx()!=NULL) && get_spm_ctx()->ops->stream_stop){
+        get_spm_ctx()->ops->stream_stop(ch, subch, STREAM_IQ);
+    }
+#endif 
+#endif
+
+}
+
+
 
 static void io_set_dma_DQ_out_en(int ch, int subch, uint32_t trans_len,uint8_t continuous)
 {
@@ -1123,6 +1195,26 @@ int8_t io_set_enable_command(uint8_t type, int ch, int subc_ch, uint32_t fftsize
         case IQ_MODE_DISABLE:
         {
             io_set_IQ_out_disable(ch, subc_ch);
+            break;
+        }
+        case BIQ_MODE_ENABLE:
+        {
+            if(fftsize == 0)
+            {
+                if(poal_config->ctrl_para.iq_data_length == 0)
+                {
+                    printf_warn("iq_data_length not set, use 512\n");
+                    poal_config->ctrl_para.iq_data_length = 512;
+                }    
+                io_set_BIQ_out_en(ch, subc_ch, poal_config->ctrl_para.iq_data_length, 1);
+            }  
+            else
+                io_set_BIQ_out_en(ch, subc_ch, fftsize, 1);
+            break;
+        }
+        case BIQ_MODE_DISABLE:
+        {
+            io_set_BIQ_out_disable(ch, subc_ch);
             break;
         }
         case SPCTRUM_MODE_ANALYSIS_ENABLE:

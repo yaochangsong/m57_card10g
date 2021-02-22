@@ -41,6 +41,7 @@ enum stream_iq_type {
 struct spm_backend_ops {
     int (*create)(void);
     ssize_t (*read_iq_data)(void **);
+    ssize_t (*read_biq_data)(int ch, void **data);
     ssize_t (*read_fft_data)(void **, void*);
     ssize_t (*read_adc_data)(int,void **);
     int (*read_adc_over_deal)(int,void *);
@@ -121,5 +122,9 @@ extern void *spm_init(void);
 extern struct spm_context *get_spm_ctx(void);
 extern void spm_deal(struct spm_context *ctx, void *args, int ch);
 extern int spm_close(void);
+extern void spm_fft_deal_notify(void *arg);
+extern void spm_niq_deal_notify(void *arg);
+extern void spm_biq_deal_notify(void *arg);
+
 
 #endif

@@ -25,6 +25,13 @@ typedef enum _io_dq_method_code{
     IO_DQ_MODE_IQ = 0x07,
 }io_dq_method_code;
 
+typedef enum _CH_TYPE{
+    CH_TYPE_FFT = 0,
+    CH_TYPE_IQ,
+    CH_TYPE_AUDIO,
+    CH_TYPE_MAX,
+}CH_TYPE;
+
 struct  band_table_t{
     uint32_t extract_factor;
     uint32_t filter_factor;
@@ -50,6 +57,12 @@ extern void subch_bitmap_init(void);
 extern void subch_bitmap_set(uint8_t subch);
 extern void subch_bitmap_clear(uint8_t subch);
 extern size_t subch_bitmap_weight(void);
+extern void ch_bitmap_init(void);
+extern void ch_bitmap_set(uint8_t ch, CH_TYPE type);
+extern void ch_bitmap_clear(uint8_t ch, CH_TYPE type);
+extern size_t ch_bitmap_weight(CH_TYPE type);
+extern const unsigned long *get_ch_bitmap(int index);
+extern bool test_ch_iq_on(uint8_t ch);
 extern float io_get_narrowband_iq_factor(uint32_t bindwidth);
 extern bool test_audio_on(void);
 extern int8_t io_set_enable_command(uint8_t type, int ch, int subch, uint32_t fftsize);

@@ -19,6 +19,7 @@
 #include "parse_cmd.h"
 #include "parse_json.h"
 #include "../../bsp/io.h"
+#include "../../utils/bitops.h"
 
 
 static struct response_err_code {
@@ -502,21 +503,42 @@ int cmd_ch_enable_set(struct uh_client *cl, void **arg, void **content)
 
     printf_note("enable ch=%d, enable=%d\n", ch, enable);
     poal_config->channel[ch].enable.cid = ch;
+    #if 1
+    if(enable){
+        if(!strcmp(s_type, "psd")){
+            ch_bitmap_set(ch, CH_TYPE_FFT);
+            executor_set_command(EX_FFT_SERIAL_ENABLE_CMD, 0, ch, NULL);
+        }else if(!strcmp(s_type, "iq")){
+            ch_bitmap_set(ch, CH_TYPE_IQ);
+            executor_set_command(EX_BIQ_ENABLE_CMD, 0, ch, NULL);
+        }else if(!strcmp(s_type, "audio")){
+            ch_bitmap_set(ch, CH_TYPE_AUDIO);
+        }else{
+            code = RESP_CODE_PATH_PARAM_ERR;
+            goto error;
+        }
+    }else {
+        if(!strcmp(s_type, "psd")){
+            ch_bitmap_clear(ch, CH_TYPE_FFT);
+        }else if(!strcmp(s_type, "iq")){
+            ch_bitmap_clear(ch, CH_TYPE_IQ);
+        }else if(!strcmp(s_type, "audio")){
+            ch_bitmap_clear(ch, CH_TYPE_AUDIO);
+        }else{
+            code = RESP_CODE_PATH_PARAM_ERR;
+            goto error;
+        }
+    }
+    unsigned long pos = 0;
+    for(int i = CH_TYPE_FFT; i <= CH_TYPE_AUDIO ; i++){
+        printf_note("%d: weight=%ld\n", i, ch_bitmap_weight(i));
+        for_each_set_bit(pos, get_ch_bitmap(i), MAX_SIGNAL_CHANNEL_NUM){
+            printf_note("POS: %ld\n", pos);
+        }
+    }
     
-    if(!strcmp(s_type, "psd")){
-        poal_config->channel[ch].enable.psd_en = enable;
-    }else if(!strcmp(s_type, "iq")){
-        poal_config->channel[ch].enable.iq_en = enable;
-    }else if(!strcmp(s_type, "audio")){
-        poal_config->channel[ch].enable.audio_en = enable;
-    }else{
-        code = RESP_CODE_PATH_PARAM_ERR;
-        goto error;
-    }
-    INTERNEL_ENABLE_BIT_SET(poal_config->channel[ch].enable.bit_en,poal_config->channel[ch].enable);
-    if(executor_set_enable_command(ch) != 0){
-        code = RESP_CODE_UNKNOWN_OPS_MODE;
-    }
+    
+    #endif
 error:
     *arg = get_resp_message(code);
     return code;

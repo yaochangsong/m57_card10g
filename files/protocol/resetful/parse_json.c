@@ -688,7 +688,7 @@ static int find_file_list(char *filename, struct stat *stats, void *node)
 char *assemble_json_find_file(char *filename)
 {
     char *str_json = NULL;
-    int i;
+    int i = 0;
     
     cJSON *root = cJSON_CreateObject();
 #if defined(SUPPORT_FS)
@@ -707,7 +707,7 @@ char *assemble_json_find_file(char *filename)
         {"test1.wav", "1201MByte", 14684468},
     };
     cJSON_AddStringToObject(root, "filename", filename);
-    cJSON_AddStringToObject(root, "size", fl[i].size);
+    cJSON_AddNumberToObject(root, "size", fl[i].size);
     cJSON_AddNumberToObject(root, "createTime", fl[i].ctime);
 #endif
     json_print(root, 1);

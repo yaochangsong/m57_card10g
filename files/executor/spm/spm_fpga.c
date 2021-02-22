@@ -157,13 +157,12 @@ static inline const char * get_str_by_code(const char *const *list, int max, int
 
 
 static struct _spm_stream spm_stream[] = {
-        {DMA_IQ_DEV,        -1, 0, NULL, DMA_IQ_BUFFER_SIZE,  "IQ Stream",      DMA_READ, STREAM_IQ},
-        {DMA_FFT0_DEV,      -1, 0, NULL, DMA_BUFFER_16M_SIZE, "FFT0 Stream",    DMA_READ, STREAM_FFT},
-        {DMA_FFT1_DEV,      -1, 1, NULL, DMA_BUFFER_16M_SIZE, "FFT1 Stream",    DMA_READ, STREAM_FFT},
-        {DMA_ADC_TX0_DEV,   -1, 0, NULL, DMA_BUFFER_64M_SIZE, "ADC Tx0 Stream", DMA_WRITE, STREAM_ADC_WRITE},
-        {DMA_ADC_TX1_DEV,   -1, 1, NULL, DMA_BUFFER_64M_SIZE, "ADC Tx1 Stream", DMA_WRITE, STREAM_ADC_WRITE},
-        {DMA_ADC_RX0_DEV,   -1, 0, NULL, DMA_BUFFER_64M_SIZE, "ADC Rx0 Stream", DMA_READ, STREAM_ADC_READ},
-        {DMA_ADC_RX1_DEV,   -1, 1, NULL, DMA_BUFFER_64M_SIZE, "ADC Rx1 Stream", DMA_READ, STREAM_ADC_READ},
+        {DMA_BIQ0_DEV,        -1, 0, NULL, DMA_IQ_BUFFER_SIZE,  "BIQ0 Stream",      DMA_READ, STREAM_IQ},
+        {DMA_BIQ1_DEV,        -1, 1, NULL, DMA_IQ_BUFFER_SIZE,  "BIQ1 Stream",      DMA_READ, STREAM_IQ},
+        {DMA_BIQ2_DEV,        -1, 2, NULL, DMA_IQ_BUFFER_SIZE,  "BIQ2 Stream",      DMA_READ, STREAM_IQ},
+        {DMA_BIQ3_DEV,        -1, 3, NULL, DMA_IQ_BUFFER_SIZE,  "BIQ3 Stream",      DMA_READ, STREAM_IQ},
+        {DMA_NIQ_DEV,         -1, 0, NULL, DMA_IQ_BUFFER_SIZE,  "NIQ Stream",       DMA_READ, STREAM_IQ},
+        {DMA_FFT_DEV,         -1, 0, NULL, DMA_BUFFER_16M_SIZE, "FFT Stream",       DMA_READ, STREAM_FFT},
 };
 
 static const char *const dma_status_array[] = {
@@ -276,6 +275,17 @@ static inline int spm_find_index_by_type(int ch, int subch, enum stream_type typ
     
     return index;
 }
+
+static ssize_t spm_read_biq_data(int ch, void **data)
+{
+    int index;
+    index = spm_find_index_by_type(ch, -1, STREAM_IQ);
+    if(index < 0)
+        return -1;
+    
+    return spm_stream_read(index, data);
+}
+
 
 static ssize_t spm_read_iq_data(void **data)
 {
@@ -838,9 +848,9 @@ static long signal_residency_policy(int ch, int policy, bool is_signal)
 {
     long residence_time = -1; /* 驻留时间:秒， -1为永久驻留 */
     #define POLICY1_SWITCH      0       /* 策略1：有信号驻留；无信号等3S无信号切换下一个点 */
-    #define POLICY2_PENDING     -1      /* 策略2：有信号，永久驻留，无信号驻留1秒切换      */
+    #define POLICY2_PENDING     -1      /* 策略2：有信号，永久驻留，无信号驻留NO_SIGAL_WAIT_TIME毫秒切换         */
     #define POLICY3_WAIT_TIME   1       /* 策略3： policy>0 有信号按驻留时间驻留切换，无信号驻留NO_SIGAL_WAIT_TIME毫秒立即切换 */
-
+    #define POLICY4_NEXT        -2      /* 策略：处理一帧频谱后，马上切换到下一个频点 */
     #define NO_SIGAL_WAIT_TIME  1000 /* 无信号驻留时间 */
     
     switch(policy){
@@ -873,8 +883,12 @@ static long signal_residency_policy(int ch, int policy, bool is_signal)
 
 bool is_sigal_residency_time_arrived(uint8_t ch, int policy, bool is_signal)
 {
+    #define POLICY4_NEXT        -2      /* 策略：处理一帧频谱后，马上切换到下一个频点 */
     long residency_time = 0;
     //printf("is_signal:%d, policy:%d\n",is_signal,policy);
+    if(policy == POLICY4_NEXT)
+        return true;
+    
     residency_time = signal_residency_policy(ch, policy, is_signal);
     if(_get_run_timer(0, ch) < residency_time*1000){
         return false;
@@ -1117,6 +1131,7 @@ static int _spm_close(void *_ctx)
 static const struct spm_backend_ops spm_ops = {
     .create = spm_create,
     .read_iq_data = spm_read_iq_data,
+    .read_biq_data = spm_read_biq_data,
     .read_fft_data = spm_read_fft_data,
     .read_adc_data = spm_read_adc_data,
     .read_adc_over_deal = spm_read_adc_over_deal,

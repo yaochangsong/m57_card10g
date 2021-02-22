@@ -15,15 +15,12 @@
 #ifndef _SPM_FPGA_H
 #define _SPM_FPGA_H
 
-#define DMA_FFT0_DEV "/dev/dma_fft"
-#define DMA_FFT1_DEV "/dev/dma_fft2"
-#define DMA_IQ_DEV  "/dev/dma_iq"
-#define DMA_ADC_TX0_DEV "/dev/dma_adc_tx"
-#define DMA_ADC_RX0_DEV "/dev/dma_adc_rx"
-#define DMA_ADC_TX1_DEV "/dev/dma_adc_tx2"
-#define DMA_ADC_RX1_DEV "/dev/dma_adc_rx2"
-
-
+#define DMA_FFT_DEV   "/dev/dma_fft"
+#define DMA_BIQ0_DEV  "/dev/dma_biq0"
+#define DMA_BIQ1_DEV  "/dev/dma_biq1"
+#define DMA_BIQ2_DEV  "/dev/dma_biq2"
+#define DMA_BIQ3_DEV  "/dev/dma_biq3"
+#define DMA_NIQ_DEV   "/dev/dma_niq"
 
 #define DMA_MAX_BLOCK (3)
 #define DMA_BUFFER_16M_SIZE (16 * 1024 * 1024)

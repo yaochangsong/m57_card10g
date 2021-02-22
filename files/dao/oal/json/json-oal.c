@@ -979,6 +979,8 @@ static int json_parse_config_param(const cJSON* root, struct poal_config *config
             value = cJSON_GetObjectItem(node, "channel");
             if(cJSON_IsNumber(value)){
                  ch = value->valueint;
+                 if(ch >= MAX_RF_NUM)
+                    break;
                  config->channel[ch].rf_para.cid=value->valueint;
                  printfd("ch:%d ", ch);
                  printfd(" channel:%d, ", config->channel[ch].rf_para.cid);

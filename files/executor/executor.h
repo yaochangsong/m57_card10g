@@ -20,6 +20,9 @@ typedef enum {
     EX_MID_FREQ_CMD,           /*中频参数命令*/
     EX_RF_FREQ_CMD,            /*射频参数命令*/
     EX_ENABLE_CMD,             /*使能命令*/
+    EX_FFT_SERIAL_ENABLE_CMD,  /*FFT串行工作使能命令*/
+    EX_BIQ_ENABLE_CMD,         /*宽带IQ工作使能命令*/
+    EX_NIQ_ENABLE_CMD,         /*窄带IQ工作使能命令*/
     EX_STATUS_CMD,             /*状态参数命令*/
     EX_WORK_MODE_CMD,          /*工作模式命令*/
     EX_NETWORK_CMD,            /*网络参数命令*/
@@ -63,6 +66,8 @@ enum {
     AUDIO_MODE_DISABLE,
     IQ_MODE_ENABLE,              /*IQ 数据使能*/
     IQ_MODE_DISABLE,
+    BIQ_MODE_ENABLE,             /*宽带IQ 数据使能*/
+    BIQ_MODE_DISABLE,
     SPCTRUM_MODE_ANALYSIS_ENABLE,/*频谱分析使能*/
     SPCTRUM_MODE_ANALYSIS_DISABLE,
     DIRECTION_MODE_ENABLE,       /*测向使能位*/
@@ -210,5 +215,7 @@ extern uint32_t executor_get_audio_point(uint8_t ch);
 extern uint64_t executor_get_mid_freq(uint8_t ch);
 extern void executor_close(void);
 extern void udp_free(struct net_udp_client *cl);
+extern int8_t  executor_serial_points_scan(uint8_t ch, work_mode_type mode, void *args);
+
 
 #endif

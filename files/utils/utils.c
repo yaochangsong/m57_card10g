@@ -70,7 +70,8 @@ int get_ipaddress(char *ifname, struct in_addr *addr)
     }
     memcpy(&sin, &ifr.ifr_addr, sizeof(sin));
     //temp_ip = inet_ntoa(sin.sin_addr);
-    *addr = sin.sin_addr;
+    //*addr = sin.sin_addr;
+    memcpy(addr, &sin.sin_addr, sizeof(struct sockaddr_in));
     //strcpy(ip,temp_ip);
     //fprintf(stdout, "eth0: ip %s\n", temp_ip);
     close(sock);
@@ -102,7 +103,8 @@ int get_netmask(char *ifname, struct in_addr *netmask)
     }
     memcpy(&sin, &ifr.ifr_netmask, sizeof(sin));
     //temp_netmask = inet_ntoa(sin.sin_addr);
-    *netmask = sin.sin_addr;
+   // *netmask = sin.sin_addr;
+    memcpy(netmask, &sin.sin_addr, sizeof(struct sockaddr_in));
     //strcpy(ip,temp_ip);
    // fprintf(stdout, "netmask: %s\n", temp_netmask);
     close(sock);
@@ -116,9 +118,9 @@ int get_gateway(char *ifname, struct in_addr * gw)
     char buf[256];
     FILE * file;
     struct sockaddr_in sin;
-    //char *temp_gw = NULL;
+   // char *temp_gw = NULL;
     
-    if(ifname == NULL)
+    if(ifname == NULL || gw == NULL)
         return -1;
     memset(iface, 0, sizeof(iface));
     memset(buf, 0, sizeof(buf));
@@ -133,7 +135,8 @@ int get_gateway(char *ifname, struct in_addr * gw)
                 if(!strcmp(ifname, iface)){
                     sin.sin_addr.s_addr = gateway;
                     //temp_gw = inet_ntoa(sin.sin_addr);
-                    *gw = sin.sin_addr;
+                    //*gw = sin.sin_addr;
+                    memcpy(gw, &sin.sin_addr, sizeof(struct sockaddr_in));
                     //fprintf(stdout, "gateway: %s\n", temp_gw);
                 }
                 fclose(file);
@@ -227,12 +230,36 @@ struct ethtool_cmd {
    err = ioctl(fd, SIOCETHTOOL, &ifr);
    if (err != 0) {
        close(fd);
-       printf(" ioctl is erro .\n");
+       //printf(" ioctl is erro .\n");
        return -2;
    }
    close(fd);
-   printf_warn("%s Speed: %dMb\n", ifname , ep.speed);
+   printf_note("%s Speed: %dMb\n", ifname , ep.speed);
     return ep.speed;
+}
+
+int get_ifname_number(void)
+{
+    int num = 0;
+    struct if_nameindex *head, *ifni;
+    ifni = if_nameindex();
+    head = ifni;
+
+    if(head == NULL){
+        perror("if_nameindex()");
+        return num;
+    }
+
+    while(ifni->if_index != 0){
+        //printf("Interface %d, %s\n", ifni->if_index, ifni->if_name);
+        ifni++;
+        num ++;
+    }
+
+    if_freenameindex(head);
+    head = NULL;
+    ifni = NULL;
+    return num;
 }
 
 int set_ipaddress(char *ifname, char *ipaddr, char *mask,char *gateway)  

@@ -247,6 +247,7 @@ error:
 }
 
 /* "POST","/demodulation/@ch/@subch" */
+/* "POST","/nddc/@ch/@subch" */
 int cmd_demodulation(struct uh_client *cl, void **arg, void **content)
 {
     char *s_ch, *s_subch;

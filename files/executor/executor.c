@@ -741,6 +741,7 @@ set_netmask:
     }
     
 set_gateway:
+    memset(&gateway, 0, sizeof(struct in_addr));
     if(get_gateway(NETWORK_EHTHERNET_POINT, &gateway) != -1){
          if(gateway.s_addr == network->gateway){
             printf_note("gateway[%s] is not change!\n", inet_ntoa(gateway));

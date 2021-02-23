@@ -867,6 +867,63 @@ char *assemble_json_net_info(void)
     str_json = cJSON_PrintUnformatted(root);
     return str_json;
 }
+
+char *assemble_json_net_list_info(void)
+{
+    char *str_json = NULL, *s_speed = "", *s_link = "error";
+    int i;
+    struct speed_table{
+        int32_t i_speed;
+        char *s_speed;
+    };
+    char if_name[IF_NAMESIZE] = {0}, *name;
+    struct speed_table spt[] = {
+        {SPEED_10, "10Mbps"},
+        {SPEED_100, "100Mbps"},
+        {SPEED_1000, "1Gbps"},
+        {SPEED_2500, "2.5Gbps"},
+        {SPEED_10000, "10Gbps"},
+    };
+    int32_t link, speed;
+    struct in_addr ipaddr;
+    int num = get_ifname_number();
+    cJSON *array = cJSON_CreateArray();
+    cJSON* item = NULL;
+    for(int index = 1; index <= num; index++){
+        cJSON_AddItemToArray(array, item = cJSON_CreateObject());
+        name = if_indextoname(index, if_name);
+        if(name == NULL)
+            continue;
+        link = get_netlink_status(if_name);
+        if(link >= 0)
+            s_link = (link == 0 ? "down" : "up");
+        speed = get_ifname_speed(if_name);
+        for(i = 0; i < ARRAY_SIZE(spt); i++){
+            if(speed == spt[i].i_speed){
+                s_speed = spt[i].s_speed;
+                break;
+            }
+        }
+        cJSON_AddStringToObject(item, "ifname", if_name);
+        cJSON_AddStringToObject(item, "link", s_link);
+        cJSON_AddStringToObject(item, "speed", s_speed);
+        if(get_ipaddress(if_name, &ipaddr) != -1){
+            cJSON_AddStringToObject(item, "ipaddr", inet_ntoa(ipaddr));
+        }
+        memset(&ipaddr, 0, sizeof(struct in_addr));
+        if(get_netmask(if_name, &ipaddr) != -1){
+            cJSON_AddStringToObject(item, "netmask", inet_ntoa(ipaddr));
+        }
+        memset(&ipaddr, 0, sizeof(struct in_addr));
+        if(get_gateway(if_name, &ipaddr) != -1){
+            cJSON_AddStringToObject(item, "gateway", inet_ntoa(ipaddr));
+        }
+    }
+    
+    str_json = cJSON_PrintUnformatted(array);
+    return str_json;
+}
+
 char *assemble_json_rf_info(void)
 {
     char *str_json = NULL;
@@ -925,7 +982,7 @@ char *assemble_json_all_info(void)
     cJSON_AddItemToObject(root, "boardInfo", cJSON_Parse(assemble_json_board_info()));
     cJSON_AddItemToObject(root, "fpgaInfo", cJSON_Parse(assemble_json_fpag_info()));
     cJSON_AddItemToObject(root, "gpsInfo", cJSON_Parse(assemble_json_gps_info()));
-    cJSON_AddItemToObject(root, "netInfo", cJSON_Parse(assemble_json_net_info()));
+    cJSON_AddItemToObject(root, "netInfo", cJSON_Parse(assemble_json_net_list_info()));
     cJSON_AddItemToObject(root, "buildInfo", cJSON_Parse(assemble_json_build_info()));
     json_print(root, 1);
     str_json = cJSON_PrintUnformatted(root);

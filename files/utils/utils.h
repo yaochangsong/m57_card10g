@@ -84,6 +84,7 @@ extern void* safe_malloc(size_t size);
 extern int safe_system(const char *cmdstring);
 extern void safe_free(void *p);
 extern int32_t get_ifname_speed(const char *ifname);
+extern int get_ifname_number(void);
 extern int32_t get_netlink_status(const char *if_name);
 extern char *get_build_time(void);
 extern long get_sys_boot_time(void);

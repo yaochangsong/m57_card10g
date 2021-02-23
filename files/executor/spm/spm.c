@@ -30,8 +30,6 @@
 //struct mq_ctx *mqctx;
 //#define SPM_MQ_NAME "/spmmq"
 
-static pthread_cond_t spm_iq_cond = PTHREAD_COND_INITIALIZER;
-static pthread_mutex_t spm_iq_cond_mutex = PTHREAD_MUTEX_INITIALIZER;
 /* send mutex */
 pthread_mutex_t send_fft_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t send_fft2_mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -117,7 +115,6 @@ void spm_biq_deal_notify(void *arg)
 
 void spm_niq_deal_notify(void *arg)
 {
-    
     pthread_cond_signal(&spm_niq_cond);
 }
 
@@ -186,10 +183,10 @@ loop:
     printf_warn("######Wait NIQ enable######\n");
     //notify = 1;
     /* 通过条件变量阻塞方式等待数据使能 */
-    pthread_mutex_lock(&spm_iq_cond_mutex);
-    while(subch_bitmap_weight() == 0)
-        pthread_cond_wait(&spm_iq_cond, &spm_iq_cond_mutex);
-    pthread_mutex_unlock(&spm_iq_cond_mutex);
+    pthread_mutex_lock(&spm_niq_cond_mutex);
+    while(subch_bitmap_weight(CH_TYPE_IQ) == 0)
+        pthread_cond_wait(&spm_niq_cond, &spm_niq_cond_mutex);
+    pthread_mutex_unlock(&spm_niq_cond_mutex);
 
     ch = poal_config->cid;
     printf_note(">>>>>[ch=%d]NIQ start\n", ch);
@@ -211,7 +208,7 @@ loop:
                 ctx->ops->send_iq_data(ptr_iq, len, &run);
             }
         }
-        if(subch_bitmap_weight() == 0){
+        if(subch_bitmap_weight(CH_TYPE_IQ) == 0){
             printf_note("iq disabled\n");
             sleep(1);
             goto loop;

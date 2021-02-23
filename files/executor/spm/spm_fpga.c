@@ -159,11 +159,12 @@ static inline const char * get_str_by_code(const char *const *list, int max, int
 static struct _spm_stream spm_stream[] = {
 //        {DMA_BIQ0_DEV,     -1, 0, NULL, DMA_IQ_BUFFER_SIZE,  "BIQ0 Stream",      DMA_READ, STREAM_IQ},
         {DMA_FFT_DEV,      -1, 0, NULL, DMA_BUFFER_16M_SIZE, "FFT0 Stream",    DMA_READ, STREAM_FFT},
+        {DMA_NIQ_DEV,      -1,-1, NULL, DMA_IQ_BUFFER_SIZE,  "NIQ Stream",     DMA_READ, STREAM_IQ},
 #if 0
         {DMA_BIQ1_DEV,        -1, 1, NULL, DMA_IQ_BUFFER_SIZE,  "BIQ1 Stream",      DMA_READ, STREAM_IQ},
         {DMA_BIQ2_DEV,        -1, 2, NULL, DMA_IQ_BUFFER_SIZE,  "BIQ2 Stream",      DMA_READ, STREAM_IQ},
         {DMA_BIQ3_DEV,        -1, 3, NULL, DMA_IQ_BUFFER_SIZE,  "BIQ3 Stream",      DMA_READ, STREAM_IQ},
-        {DMA_NIQ_DEV,         -1, 0, NULL, DMA_IQ_BUFFER_SIZE,  "NIQ Stream",       DMA_READ, STREAM_IQ},
+        
         {DMA_FFT_DEV,         -1, 0, NULL, DMA_BUFFER_16M_SIZE, "FFT Stream",       DMA_READ, STREAM_FFT},
 #endif
 };
@@ -264,12 +265,10 @@ static inline int spm_find_index_by_type(int ch, int subch, enum stream_type typ
 
     subch = subch;
     for(i = 0; i < ARRAY_SIZE(spm_stream); i++){
-        if(type == pstream[i].type){
-            if((ch != -1 && ch == pstream[i].ch) || ch == -1){
+        if((type == pstream[i].type) && (ch == pstream[i].ch)){
                 index = i;
                 find = 1;
                 break;
-            }
         }
     }
     

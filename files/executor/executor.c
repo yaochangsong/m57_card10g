@@ -646,8 +646,10 @@ static int8_t executor_set_kernel_command(uint8_t type, uint8_t ch, void *data, 
         case EX_SUB_CH_ONOFF:
         {
             uint32_t subch;
+            uint8_t onoff;
             subch = va_arg(ap, uint32_t);
-            io_set_subch_onoff(ch, subch, *(uint8_t *)data);
+            onoff = *(uint8_t *)data;
+            io_set_subch_onoff(ch, subch, onoff);
             break;
         }
         case EX_SUB_CH_DEC_BW:
@@ -807,17 +809,36 @@ int8_t executor_set_command(exec_cmd cmd, uint8_t type, uint8_t ch,  void *data,
         }
         case EX_FFT_SERIAL_ENABLE_CMD:
         {
+            int32_t enable = *(int32_t *)data;
             printf_note("notify thread to deal fft data\n");
+            if(enable)
+                ch_bitmap_set(ch, CH_TYPE_FFT);
+            else
+                ch_bitmap_clear(ch, CH_TYPE_FFT);
             spm_fft_deal_notify(NULL);
             break;
         }
         case EX_BIQ_ENABLE_CMD:
         {
+            int32_t subch = va_arg(argp, int32_t);
+            int32_t enable = *(int32_t *)data;
+            printf_note("subch:%d, BIQ %s\n", subch, enable == 0 ? "disable" : "enable");
+            if(enable)
+                io_set_enable_command(BIQ_MODE_ENABLE, ch, subch, 0);
+            else
+                io_set_enable_command(BIQ_MODE_DISABLE, ch,subch, 0);
             spm_biq_deal_notify(&ch);
             break;
         }
         case EX_NIQ_ENABLE_CMD:
         {
+            int32_t subch = va_arg(argp, int32_t);
+            int32_t enable = *(int32_t *)data;
+            printf_note("subch:%d, NIQ %s\n", subch, enable == 0 ? "disable" : "enable");
+            if(enable)
+                io_set_enable_command(IQ_MODE_ENABLE, ch, subch, 0);
+            else
+                io_set_enable_command(IQ_MODE_DISABLE, ch,subch, 0);
             spm_niq_deal_notify(NULL);
             break;
         }
@@ -986,6 +1007,7 @@ void executor_init(void)
     pthread_t work_id;
     void *spmctx;
     struct poal_config *poal_config = &(config_get_config()->oal_config);
+    ch_bitmap_init();
     subch_bitmap_init();
 #if defined(SUPPORT_PLATFORM_ARCH_ARM)
 #if defined(SUPPORT_SPECTRUM_V2) 

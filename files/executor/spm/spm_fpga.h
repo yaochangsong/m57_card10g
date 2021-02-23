@@ -20,7 +20,9 @@
 #define DMA_BIQ1_DEV  "/dev/dma_biq1"
 #define DMA_BIQ2_DEV  "/dev/dma_biq2"
 #define DMA_BIQ3_DEV  "/dev/dma_biq3"
-#define DMA_NIQ_DEV   "/dev/dma_niq"
+//#define DMA_NIQ_DEV   "/dev/dma_niq"
+#define DMA_NIQ_DEV   "/dev/dma_iq"
+
 
 #define DMA_MAX_BLOCK (3)
 #define DMA_BUFFER_16M_SIZE (16 * 1024 * 1024)

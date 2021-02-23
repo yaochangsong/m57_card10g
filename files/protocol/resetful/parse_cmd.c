@@ -503,42 +503,15 @@ int cmd_ch_enable_set(struct uh_client *cl, void **arg, void **content)
 
     printf_note("enable ch=%d, enable=%d\n", ch, enable);
     poal_config->channel[ch].enable.cid = ch;
-    #if 1
-    if(enable){
-        if(!strcmp(s_type, "psd")){
-            ch_bitmap_set(ch, CH_TYPE_FFT);
-            executor_set_command(EX_FFT_SERIAL_ENABLE_CMD, 0, ch, NULL);
-        }else if(!strcmp(s_type, "iq")){
-            ch_bitmap_set(ch, CH_TYPE_IQ);
-            executor_set_command(EX_BIQ_ENABLE_CMD, 0, ch, NULL);
-        }else if(!strcmp(s_type, "audio")){
-            ch_bitmap_set(ch, CH_TYPE_AUDIO);
-        }else{
-            code = RESP_CODE_PATH_PARAM_ERR;
-            goto error;
-        }
-    }else {
-        if(!strcmp(s_type, "psd")){
-            ch_bitmap_clear(ch, CH_TYPE_FFT);
-        }else if(!strcmp(s_type, "iq")){
-            ch_bitmap_clear(ch, CH_TYPE_IQ);
-        }else if(!strcmp(s_type, "audio")){
-            ch_bitmap_clear(ch, CH_TYPE_AUDIO);
-        }else{
-            code = RESP_CODE_PATH_PARAM_ERR;
-            goto error;
-        }
+    if(!strcmp(s_type, "psd")){
+        executor_set_command(EX_FFT_SERIAL_ENABLE_CMD, -1, ch, &enable);
+    }else if(!strcmp(s_type, "iq")){
+        executor_set_command(EX_BIQ_ENABLE_CMD, -1, ch, &enable);
+    }else if(!strcmp(s_type, "audio")){
+    }else{
+        code = RESP_CODE_PATH_PARAM_ERR;
+        goto error;
     }
-    unsigned long pos = 0;
-    for(int i = CH_TYPE_FFT; i <= CH_TYPE_AUDIO ; i++){
-        printf_note("%d: weight=%ld\n", i, ch_bitmap_weight(i));
-        for_each_set_bit(pos, get_ch_bitmap(i), MAX_SIGNAL_CHANNEL_NUM){
-            printf_note("POS: %ld\n", pos);
-        }
-    }
-    
-    
-    #endif
 error:
     *arg = get_resp_message(code);
     return code;
@@ -575,27 +548,15 @@ int cmd_subch_enable_set(struct uh_client *cl, void **arg, void **content)
     }
     poal_config->channel[ch].sub_channel_para.sub_ch_enable[subch].cid = ch;
     poal_config->channel[ch].sub_channel_para.sub_ch_enable[subch].sub_id = subch;
-    
-    if(!strcmp(s_type, "psd")){
-        poal_config->channel[ch].sub_channel_para.sub_ch_enable[subch].psd_en = enable;
-    }else if(!strcmp(s_type, "iq")){
-        poal_config->channel[ch].sub_channel_para.sub_ch_enable[subch].iq_en = enable;
-        executor_set_command(EX_MID_FREQ_CMD, EX_SUB_CH_ONOFF, ch, &enable, subch);
+    if(!strcmp(s_type, "iq")){
+        executor_set_command(EX_NIQ_ENABLE_CMD, -1, ch, &enable, subch);
     }else if(!strcmp(s_type, "audio")){
-        poal_config->channel[ch].sub_channel_para.sub_ch_enable[subch].audio_en = enable;
+        executor_set_command(EX_NIQ_ENABLE_CMD, -1, ch, &enable, subch);
     }else{
         code = RESP_CODE_PATH_PARAM_ERR;
         goto error;
     }
-
-    printf_note("enable type=%s,ch = %d, subch=%d, enable=%d\n", s_type, ch, subch, enable);
-    /* 通道IQ使能 */
-    if(poal_config->channel[ch].sub_channel_para.sub_ch_enable[subch].iq_en){
-        /* NOTE:The parameter must be a MAIN channel, not a subchannel */
-        io_set_enable_command(IQ_MODE_ENABLE, ch, subch, 0);
-    }else{
-        io_set_enable_command(IQ_MODE_DISABLE, ch,subch, 0);
-    }
+    printf_debug("enable type=%s,ch = %d, subch=%d, enable=%d\n", s_type, ch, subch, enable);
 
 error:
     *arg = get_resp_message(code);

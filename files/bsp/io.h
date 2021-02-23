@@ -54,9 +54,9 @@ struct  band_table_t{
 #endif
 extern void io_init(void);
 extern void subch_bitmap_init(void);
-extern void subch_bitmap_set(uint8_t subch);
-extern void subch_bitmap_clear(uint8_t subch);
-extern size_t subch_bitmap_weight(void);
+extern void subch_bitmap_set(uint8_t subch, CH_TYPE type);
+extern void subch_bitmap_clear(uint8_t subch, CH_TYPE type);
+extern size_t subch_bitmap_weight(CH_TYPE type);
 extern void ch_bitmap_init(void);
 extern void ch_bitmap_set(uint8_t ch, CH_TYPE type);
 extern void ch_bitmap_clear(uint8_t ch, CH_TYPE type);

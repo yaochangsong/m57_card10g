@@ -84,32 +84,46 @@ static struct  band_table_t bandtable[] ={
 }; 
 
 
-static DECLARE_BITMAP(subch_bmp, MAX_SIGNAL_CHANNEL_NUM);
+static DECLARE_BITMAP(subch_bmp[CH_TYPE_MAX], MAX_SIGNAL_CHANNEL_NUM);
 static DECLARE_BITMAP(ch_bmp[CH_TYPE_MAX], MAX_RADIO_CHANNEL_NUM);
 
 void subch_bitmap_init(void)
 {
-    bitmap_zero(subch_bmp, MAX_SIGNAL_CHANNEL_NUM);
+    for(int i = 0; i< CH_TYPE_MAX; i++)
+        bitmap_zero(subch_bmp[i], MAX_SIGNAL_CHANNEL_NUM);
 }
-void subch_bitmap_set(uint8_t subch)
+
+void subch_bitmap_set(uint8_t subch, CH_TYPE type)
 {
-    set_bit(subch, subch_bmp);
+    set_bit(subch, subch_bmp[type]);
+}
+
+bool test_subch_iq_on(uint8_t subch)
+{
+    return test_bit(subch, subch_bmp[CH_TYPE_IQ]);
+}
+
+bool test_subch_audio_on(uint8_t subch)
+{
+    return test_bit(subch, subch_bmp[CH_TYPE_AUDIO]);
 }
 
 bool test_audio_on(void)
 {
-    return test_bit(CONFIG_AUDIO_CHANNEL, subch_bmp);
+    return test_subch_audio_on(CONFIG_AUDIO_CHANNEL);
 }
 
-void subch_bitmap_clear(uint8_t subch)
+
+void subch_bitmap_clear(uint8_t subch, CH_TYPE type)
 {
-    clear_bit(subch, subch_bmp);
+    clear_bit(subch, subch_bmp[type]);
 }
 
-size_t subch_bitmap_weight(void)
+size_t subch_bitmap_weight(CH_TYPE type)
 {
-    return bitmap_weight(subch_bmp, MAX_SIGNAL_CHANNEL_NUM);
+    return bitmap_weight(subch_bmp[type], MAX_SIGNAL_CHANNEL_NUM);
 }
+
 
 const unsigned long *get_ch_bitmap(int index)
 {
@@ -563,33 +577,20 @@ int32_t io_set_subch_onoff(uint32_t ch, uint32_t subch, uint8_t onoff)
 {
     int32_t ret = 0;
 #if defined(SUPPORT_PLATFORM_ARCH_ARM)
-#if defined(SUPPORT_SPECTRUM_KERNEL) 
-    struct  ioctl_data_t odata;
-    odata.ch = subch;
-    memcpy(odata.data,&onoff,sizeof(onoff));
-    ret = ioctl(io_ctrl_fd, IOCTL_SUB_CH_ONOFF, &odata);
-#elif defined(SUPPORT_SPECTRUM_V2) 
+#if defined(SUPPORT_SPECTRUM_V2) 
     #if defined(SUPPORT_SPECTRUM_FPGA)
-   // printf_debug("ch=%u, subch=%u, onoff=%d, ptr=%p\n", ch, subch, onoff, get_fpga_reg()->narrow_band[subch]);
     if(onoff){
-        subch_bitmap_set(subch);
         _set_narrow_channel(get_fpga_reg(),ch, subch,0x01);
     }
     else{
-        subch_bitmap_clear(subch);
         _set_narrow_channel(get_fpga_reg(),ch, subch,0x00);
     }
     #else
-    if(onoff){
-        subch_bitmap_set(subch);
-    }
-    else{
-        subch_bitmap_clear(subch);
-    }
+
     #endif
 #endif
 #endif
-    printf_debug("[**REGISTER**]ch:%d, SubChannle Set OnOff=%d,subch_bitmap_weight=0x%lx\n",subch, onoff, subch_bitmap_weight());
+    printf_debug("[**REGISTER**]ch:%d, SubChannle Set OnOff=%d\n",subch, onoff);
     return ret;
 }
 
@@ -1039,17 +1040,16 @@ static void io_set_dma_SPECTRUM_out_disable(int ch, int subch)
 
 }
 
-
-static void io_set_IQ_out_disable(int ch, int subch)
+/* 窄带iq禁止 */
+static void io_set_NIQ_out_disable(int ch, int subch)
 {
     if(subch >= 0){
         io_set_subch_onoff(ch, subch, 0);
+        subch_bitmap_clear(subch, CH_TYPE_IQ);
     }
 #if defined(SUPPORT_PLATFORM_ARCH_ARM)
-#if defined(SUPPORT_SPECTRUM_KERNEL)
-    io_dma_dev_disable(ch, IO_IQ_TYPE);
-#elif defined(SUPPORT_SPECTRUM_V2) 
-    if(subch_bitmap_weight() == 0 && (get_spm_ctx()!=NULL) && get_spm_ctx()->ops->stream_stop){
+#if defined(SUPPORT_SPECTRUM_V2) 
+    if(subch_bitmap_weight(CH_TYPE_IQ) == 0 && (get_spm_ctx()!=NULL) && get_spm_ctx()->ops->stream_stop){
         get_spm_ctx()->ops->stream_stop(-1, subch, STREAM_IQ);
     }
 #endif 
@@ -1057,26 +1057,22 @@ static void io_set_IQ_out_disable(int ch, int subch)
 
 }
 
-static void io_set_IQ_out_en(int ch, int subch, uint32_t trans_len,uint8_t continuous)
+/* 窄带iq使能 */
+static void io_set_NIQ_out_en(int ch, int subch, uint32_t trans_len,uint8_t continuous)
 {
-
 #if defined(SUPPORT_PLATFORM_ARCH_ARM)
-#if defined(SUPPORT_SPECTRUM_KERNEL)
-    printf_debug("SPECTRUM out enable: ch[%d]output en, trans_len=0x%u\n",ch, trans_len);
-    io_dma_dev_disable(0,IO_IQ_TYPE);
-    io_dma_dev_enable(0,IO_IQ_TYPE,continuous);
-    io_dma_dev_trans_len(0,IO_IQ_TYPE, trans_len);
-#elif defined(SUPPORT_SPECTRUM_V2) 
+#if defined(SUPPORT_SPECTRUM_V2) 
     if((get_spm_ctx()!=NULL) && get_spm_ctx()->ops->stream_start)
-    get_spm_ctx()->ops->stream_start(-1, subch, trans_len, continuous, STREAM_IQ);
+        get_spm_ctx()->ops->stream_start(-1, subch, trans_len, continuous, STREAM_IQ);
 #endif
 #endif
     if(subch >= 0){
         io_set_subch_onoff(ch, subch, 1);
+        subch_bitmap_set(subch, CH_TYPE_IQ);
     }
-
 }
 
+/* 宽带iq使能 */
 static void io_set_BIQ_out_en(int ch, int subch, uint32_t trans_len,uint8_t continuous)
 {
 #if defined(SUPPORT_PLATFORM_ARCH_ARM)
@@ -1086,27 +1082,27 @@ static void io_set_BIQ_out_en(int ch, int subch, uint32_t trans_len,uint8_t cont
 #endif
 #endif
     if(subch >= 0){
-        io_set_subch_onoff(ch, subch, 1);
+        //io_set_subch_onoff(ch, subch, 1);
+        ch_bitmap_set(ch, CH_TYPE_IQ);
     }
 
 }
 
+/* 宽带iq禁止 */
 static void io_set_BIQ_out_disable(int ch, int subch)
 {
     if(subch >= 0){
-        io_set_subch_onoff(ch, subch, 0);
+        //io_set_subch_onoff(ch, subch, 0);
+        ch_bitmap_clear(ch, CH_TYPE_IQ);
     }
 #if defined(SUPPORT_PLATFORM_ARCH_ARM)
 #if defined(SUPPORT_SPECTRUM_V2) 
-    if(subch_bitmap_weight() == 0 && (get_spm_ctx()!=NULL) && get_spm_ctx()->ops->stream_stop){
+    if((get_spm_ctx()!=NULL) && get_spm_ctx()->ops->stream_stop){
         get_spm_ctx()->ops->stream_stop(ch, subch, STREAM_IQ);
     }
 #endif 
 #endif
-
 }
-
-
 
 static void io_set_dma_DQ_out_en(int ch, int subch, uint32_t trans_len,uint8_t continuous)
 {
@@ -1164,17 +1160,17 @@ int8_t io_set_enable_command(uint8_t type, int ch, int subc_ch, uint32_t fftsize
             subc_ch = CONFIG_AUDIO_CHANNEL;
             if(fftsize == 0)
                 //io_set_dma_DQ_out_en(ch, subc_ch, 512, 1);
-                io_set_IQ_out_en(ch, subc_ch,512, 1);
+                io_set_NIQ_out_en(ch, subc_ch,512, 1);
             else
                 //io_set_dma_DQ_out_en(ch, subc_ch,fftsize, 1);
-                io_set_IQ_out_en(ch, subc_ch,fftsize, 1);
+                io_set_NIQ_out_en(ch, subc_ch,fftsize, 1);
             break;
         }
         case AUDIO_MODE_DISABLE:
         {
             subc_ch = CONFIG_AUDIO_CHANNEL;
             //io_set_dma_DQ_out_dis(ch, subc_ch);
-            io_set_IQ_out_disable(ch, subc_ch);
+            io_set_NIQ_out_disable(ch, subc_ch);
             break;
         }
         case IQ_MODE_ENABLE:
@@ -1186,15 +1182,15 @@ int8_t io_set_enable_command(uint8_t type, int ch, int subc_ch, uint32_t fftsize
                     printf_warn("iq_data_length not set, use 512\n");
                     poal_config->ctrl_para.iq_data_length = 512;
                 }    
-                io_set_IQ_out_en(ch, subc_ch, poal_config->ctrl_para.iq_data_length, 1);
+                io_set_NIQ_out_en(ch, subc_ch, poal_config->ctrl_para.iq_data_length, 1);
             }  
             else
-                io_set_IQ_out_en(ch, subc_ch, fftsize, 1);
+                io_set_NIQ_out_en(ch, subc_ch, fftsize, 1);
             break;
         }
         case IQ_MODE_DISABLE:
         {
-            io_set_IQ_out_disable(ch, subc_ch);
+            io_set_NIQ_out_disable(ch, subc_ch);
             break;
         }
         case BIQ_MODE_ENABLE:

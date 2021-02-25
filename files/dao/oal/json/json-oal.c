@@ -264,13 +264,14 @@ static int json_write_config_param(cJSON* root, struct poal_config *config)
     node = cJSON_GetObjectItem(network, "port");
     printf_debug("port is:%d\n",node->valueint);
 
+#if 0
     char temp[30]={0};
     sprintf(temp,"%02x:%02x:%02x:%02x:%02x:%02x", config->network.mac[0],config->network.mac[1],
     config->network.mac[2],config->network.mac[3],config->network.mac[4],config->network.mac[5]);
     json_write_string_param(NULL, "network", "mac", temp);
     node = cJSON_GetObjectItem(network, "mac");
     printf_debug("mac is:%s\n",node->valuestring);
-
+#endif
 #ifdef SUPPORT_NET_WZ
     /* 10g */
     saddr.sin_addr.s_addr = config->network_10g.gateway;
@@ -294,12 +295,13 @@ static int json_write_config_param(cJSON* root, struct poal_config *config)
     node = cJSON_GetObjectItem(network, "port");
     printf_debug("10g port is:%d\n",node->valueint);
 
-    
+#if 0    
     sprintf(temp,"%02x:%02x:%02x:%02x:%02x:%02x", config->network_10g.mac[0],config->network_10g.mac[1],
     config->network.mac[2],config->network_10g.mac[3],config->network_10g.mac[4],config->network_10g.mac[5]);
     json_write_string_param(NULL, "network_10g", "mac", temp);
     node = cJSON_GetObjectItem(network, "mac");
     printf_debug("10g mac is:%s\n",node->valuestring);
+#endif
 #endif
     /*control_parm*/
      json_write_int_param(NULL, "control_parm", "spectrum_time_interval", config->ctrl_para.spectrum_time_interval);
@@ -423,7 +425,7 @@ static int json_parse_config_param(const cJSON* root, struct poal_config *config
     cJSON *node = NULL;
     
 /* network */
-    struct sockaddr_in saddr;
+    //struct sockaddr_in saddr;
     cJSON *network = NULL;
 
     if(root == NULL || config == NULL){
@@ -477,12 +479,13 @@ static int json_parse_config_param(const cJSON* root, struct poal_config *config
     }else{
         config->status_para.device_sn = NULL;
     }
-    
+
     network = cJSON_GetObjectItem(root, "network");
     if(network == NULL){
         printf_warn("not found json node[%s]\n","network");
         return -1;
     }
+#if 0
     value = cJSON_GetObjectItem(network, "mac");
     if(value!= NULL && cJSON_IsString(value)){
         char mac_buf[128] = {0};
@@ -500,29 +503,35 @@ static int json_parse_config_param(const cJSON* root, struct poal_config *config
             }
         }
     }
+#endif
+#if 0
     value = cJSON_GetObjectItem(network, "gateway");
     if(value!= NULL && cJSON_IsString(value)){
         saddr.sin_addr.s_addr = inet_addr(value->valuestring);
-        printf_debug("gateway=>value is:%s, %s\n",value->valuestring, inet_ntoa(saddr.sin_addr));
-        config->network.gateway = saddr.sin_addr.s_addr;
+        //printf_debug("gateway=>value is:%s, %s\n",value->valuestring, inet_ntoa(saddr.sin_addr));
+        //config->network.gateway = saddr.sin_addr.s_addr;
     }
+#endif
     value = cJSON_GetObjectItem(network, "port");
     if(value!= NULL && cJSON_IsNumber(value)){
         config->network.port = value->valueint;
         printf_debug("port=>value is:%d\n",config->network.port);
     }
+#if 0
     value = cJSON_GetObjectItem(network, "ipaddress");
     if(value!= NULL && cJSON_IsString(value)){
         saddr.sin_addr.s_addr = inet_addr(value->valuestring);
-        printf_debug("ipaddress=>value is:%s, %s\n",value->valuestring, inet_ntoa(saddr.sin_addr));
-        config->network.ipaddress = saddr.sin_addr.s_addr;
+        //printf_debug("ipaddress=>value is:%s, %s\n",value->valuestring, inet_ntoa(saddr.sin_addr));
+        //config->network.ipaddress = saddr.sin_addr.s_addr;
     }
     value = cJSON_GetObjectItem(network, "netmask");
     if(value!= NULL && cJSON_IsString(value)){
         saddr.sin_addr.s_addr = inet_addr(value->valuestring);
         printf_debug("netmask=>value is:%s, %s\n",value->valuestring, inet_ntoa(saddr.sin_addr));
-        config->network.netmask = saddr.sin_addr.s_addr;
+        //config->network.netmask = saddr.sin_addr.s_addr;
     }
+#endif
+#if 0
     value = cJSON_GetObjectItem(network,"mac");
     if(value!=NULL&&cJSON_IsString(value)){
     char temp[30];
@@ -552,6 +561,7 @@ static int json_parse_config_param(const cJSON* root, struct poal_config *config
     printf_note("mac=%02x%02x%02x%02x%02x%02x\n",config->network.mac[0],config->network.mac[1],config->network.mac[2],
     config->network.mac[3],config->network.mac[4],config->network.mac[5]);
     }
+#endif
     #ifdef SUPPORT_NET_WZ
     /*10g net*/
     network = cJSON_GetObjectItem(root, "network_10g");
@@ -560,21 +570,21 @@ static int json_parse_config_param(const cJSON* root, struct poal_config *config
     }else{
         value = cJSON_GetObjectItem(network, "ipaddress");
         if(value!= NULL && cJSON_IsString(value)){
-            saddr.sin_addr.s_addr = inet_addr(value->valuestring);
-            printf_debug("10g ipaddr=>value is:%s, %s\n",value->valuestring, inet_ntoa(saddr.sin_addr));
-            config->network_10g.ipaddress = saddr.sin_addr.s_addr;
+            //saddr.sin_addr.s_addr = inet_addr(value->valuestring);
+           // printf_debug("10g ipaddr=>value is:%s, %s\n",value->valuestring, inet_ntoa(saddr.sin_addr));
+            //config->network_10g.ipaddress = saddr.sin_addr.s_addr;
         }
         value = cJSON_GetObjectItem(network, "netmask");
         if(value!= NULL && cJSON_IsString(value)){
-            saddr.sin_addr.s_addr = inet_addr(value->valuestring);
-            printf_debug("10g netmask=>value is:%s, %s\n",value->valuestring, inet_ntoa(saddr.sin_addr));
-            config->network_10g.netmask = saddr.sin_addr.s_addr;
+            //saddr.sin_addr.s_addr = inet_addr(value->valuestring);
+            //printf_debug("10g netmask=>value is:%s, %s\n",value->valuestring, inet_ntoa(saddr.sin_addr));
+            //config->network_10g.netmask = saddr.sin_addr.s_addr;
         }
         value = cJSON_GetObjectItem(network, "gateway");
         if(value!= NULL && cJSON_IsString(value)){
-            saddr.sin_addr.s_addr = inet_addr(value->valuestring);
-            printf_debug("10g gateway=>value is:%s, %s\n",value->valuestring, inet_ntoa(saddr.sin_addr));
-            config->network_10g.gateway = saddr.sin_addr.s_addr;
+            //saddr.sin_addr.s_addr = inet_addr(value->valuestring);
+            //printf_debug("10g gateway=>value is:%s, %s\n",value->valuestring, inet_ntoa(saddr.sin_addr));
+            //config->network_10g.gateway = saddr.sin_addr.s_addr;
         }
         value = cJSON_GetObjectItem(network, "port");
         if(value!= NULL && cJSON_IsNumber(value)){

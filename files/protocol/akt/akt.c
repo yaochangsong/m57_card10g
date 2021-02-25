@@ -681,37 +681,7 @@ static int akt_execute_set_command(void *cl)
                 err_code = RET_CODE_INTERNAL_ERR;
                 goto set_exit;
             }
-            #ifdef SUPPORT_NET_WZ
-            if(!strcmp(ifname, NETWORK_10G_EHTHERNET_POINT)){
-                poal_config->network_10g.ipaddress = netinfo.ipaddr;
-                poal_config->network_10g.netmask =netinfo.mask;
-                poal_config->network_10g.gateway = netinfo.gateway;
-                port_10g = poal_config->network_10g.port;
-                poal_config->network_10g.port = ntohs(netinfo.port);
-                if(port_10g != poal_config->network_10g.port){
-                    restart = true;
-                }
-                printf_note("set 10G net ipaddr=0x%x, mask=0x%x, gateway=0x%x, port=%d\n", 
-                    poal_config->network_10g.ipaddress, poal_config->network_10g.netmask, poal_config->network_10g.gateway, poal_config->network_10g.port);
-            } else
-            #endif
-            if(!strcmp(ifname, NETWORK_EHTHERNET_POINT)){
-                poal_config->network.ipaddress = netinfo.ipaddr;
-                poal_config->network.netmask =netinfo.mask;
-                poal_config->network.gateway = netinfo.gateway;
-                port_1g = poal_config->network.port ;
-                poal_config->network.port = ntohs(netinfo.port);
-                if(port_1g != poal_config->network.port){
-                    restart = true;
-                }
-                printf_note("set 1G net ipaddr=0x%x, mask=0x%x, gateway=0x%x, port=%d\n", 
-                    poal_config->network.ipaddress, poal_config->network.netmask, poal_config->network.gateway, poal_config->network.port);
-            }
-            
-            config_save_all();
-            executor_set_command(EX_NETWORK_CMD, EX_NETWORK, 0, NULL);
-            if(restart)
-                io_restart_app();
+            config_set_network(ifname, netinfo.ipaddr, netinfo.mask, netinfo.gateway);
           break;
         }
         case RCV_RF_PARAM:
@@ -910,15 +880,7 @@ static int akt_execute_set_command(void *cl)
         {   
             DEVICE_NET_INFO_ST netinfo;
             memcpy(&netinfo, payload, sizeof(DEVICE_NET_INFO_ST));
-            poal_config->network_10g.ipaddress = netinfo.ipaddr;
-            poal_config->network_10g.netmask =netinfo.mask;
-            poal_config->network_10g.gateway = netinfo.gateway;
-            poal_config->network_10g.port = ntohs(netinfo.port);
-            
-            printf_note("ipaddr=0x%x, mask=0x%x, gateway=0x%x, port=%d\n", 
-                poal_config->network_10g.ipaddress, poal_config->network_10g.netmask, poal_config->network_10g.gateway, poal_config->network_10g.port);
-            config_save_all();
-            executor_set_command(EX_NETWORK_CMD, EX_NETWORK_10G, 0, NULL);
+            config_set_network(NETWORK_10G_EHTHERNET_POINT, netinfo.ipaddr, netinfo.mask, netinfo.gateway);
             break;
         }
 #endif

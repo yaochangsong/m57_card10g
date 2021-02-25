@@ -153,9 +153,10 @@ int parse_json_client_net(int ch, const char * const body)
 
 int parse_json_net(const char * const body)
 {
-    struct poal_config *config = &(config_get_config()->oal_config);
     cJSON *root = cJSON_Parse(body);
     cJSON *node, *value;
+    char ifname[IFNAMSIZ];
+    uint32_t ipaddr, netmask, gw;
     if (root == NULL)
     {
         const char *error_ptr = cJSON_GetErrorPtr();
@@ -165,23 +166,29 @@ int parse_json_net(const char * const body)
         }
         return RESP_CODE_PARSE_ERR;
     }
+    value = cJSON_GetObjectItem(root, "ifname");
+    if(value!=NULL&&cJSON_IsString(value)){
+        strcpy(ifname, value->valuestring);
+        printf_note("ifname: %s\n", ifname);
+    }
     value = cJSON_GetObjectItem(root, "ipaddr");
     if(value!=NULL&&cJSON_IsString(value)){
-        config->network.ipaddress = inet_addr(value->valuestring);
-        printf_note("set ipaddr: %s, 0x%x\n", value->valuestring, config->network.ipaddress);
+        ipaddr = inet_addr(value->valuestring);
+        printf_note("set ipaddr: %s, 0x%x\n", value->valuestring, ipaddr);
     }
     value = cJSON_GetObjectItem(root, "netmask");
     if(value!=NULL&&cJSON_IsString(value)){
-        config->network.netmask = inet_addr(value->valuestring);
-        printf_note("set netmask: %s, 0x%x\n", value->valuestring, config->network.netmask);
+        netmask = inet_addr(value->valuestring);
+        printf_note("set netmask: %s, 0x%x\n", value->valuestring, netmask);
     }
     value = cJSON_GetObjectItem(root, "gateway");
     if(value!=NULL&&cJSON_IsString(value)){
-        config->network.gateway = inet_addr(value->valuestring);
-        printf_note("set gateway: %s, 0x%x\n", value->valuestring, config->network.gateway);
+        gw = inet_addr(value->valuestring);
+        printf_note("set gateway: %s, 0x%x\n", value->valuestring, gw);
     }
-    config_save_all();
-    executor_set_command(EX_NETWORK_CMD, 0, 0, NULL);
+    if(config_set_network(ifname, ipaddr, netmask, gw) == -1){
+        return RESP_CODE_EXECMD_ERR;
+    }
     
     return RESP_CODE_OK;
 }

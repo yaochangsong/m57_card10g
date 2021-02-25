@@ -450,10 +450,7 @@ int cmd_netset(struct uh_client *cl, void **arg, void **content)
 {
     int code = RESP_CODE_OK;
     printf_note("%s\n", cl->dispatch.body);
-    if(parse_json_net(cl->dispatch.body) != 0){
-        code = RESP_CODE_PARSE_ERR;
-    }
-
+    code = parse_json_net(cl->dispatch.body);
     *arg = get_resp_message(code);
     return code;
 }

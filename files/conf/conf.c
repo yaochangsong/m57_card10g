@@ -17,6 +17,7 @@
 #include "../bsp/io.h"
 
 extern uint32_t config_get_disk_file_notifier_timeout(void);
+int config_load_network(char *ifname);
 
 static s_config config;
 
@@ -44,21 +45,14 @@ void config_init(void)
     config.oal_config.network.port = 1325;
     #endif
     memset(&config, 0, sizeof(config));
-    if(get_mac(NETWORK_EHTHERNET_POINT, mac, sizeof(mac)) != -1){
-        memcpy(config.oal_config.network.mac, mac, sizeof(config.oal_config.network.mac));
-        printf_debug("1g mac:%x%x%x%x%x%x\n", mac[0],mac[1],mac[2],mac[3],mac[4],mac[5]);
-    }
-#ifdef SUPPORT_NET_WZ
-    if(get_mac(NETWORK_10G_EHTHERNET_POINT, mac, sizeof(mac)) != -1){
-        memcpy(config.oal_config.network_10g.mac, mac, sizeof(config.oal_config.network.mac));
-        printf_debug("10g mac:%x%x%x%x%x%x\n", mac[0],mac[1],mac[2],mac[3],mac[4],mac[5]);
-    }
-#endif
-    
     printf_debug("config init\n");
     config.configfile = safe_strdup(DEFAULT_CONFIGFILE);
     //config.calibrationfile = safe_strdup(CALIBRATION_FILE);
     config.daemon = -1;
+    config_load_network(NETWORK_EHTHERNET_POINT);
+#ifdef SUPPORT_NET_WZ
+    config_load_network(NETWORK_10G_EHTHERNET_POINT);
+#endif
     for(int i= 0; i< MAX_RADIO_CHANNEL_NUM; i++)
         config.oal_config.channel[i].work_mode = OAL_NULL_MODE;
     #ifdef SUPPORT_NET_WZ
@@ -69,15 +63,82 @@ void config_init(void)
     #elif defined(SUPPORT_DAO_JSON)
     json_read_config_file(&config);
     #endif
+    
 }
 
 /** Accessor for the current configuration
-@return:  A pointer to the current config.  The pointer isn't opaque, but should be treated as READ-ONLY
+@return:  A pointer to the current config.
  */
 s_config *config_get_config(void)
 {
     return &config;
 }
+
+int config_load_network(char *ifname)
+{
+    struct in_addr ipaddr, netmask, gateway;
+    struct network_st network;
+    uint8_t  mac[6];
+
+    if(strlen(ifname) == 0)
+        return -1;
+    
+    if(!strcmp(NETWORK_10G_EHTHERNET_POINT, ifname)){
+        printf_note("[%s]net 10g:\n", ifname);
+    }else{
+        printf_note("[%s]net 1g:\n", ifname);
+    }
+
+    if(get_ipaddress(ifname, &ipaddr) != -1){
+        network.ipaddress = ipaddr.s_addr;
+        printf_note("ipaddress: %s\n", inet_ntoa(ipaddr));
+    }
+    if(get_netmask(ifname, &netmask) != -1){
+        network.netmask = netmask.s_addr;
+        printf_note("netmask: %s\n", inet_ntoa(netmask));
+    }
+    if(get_gateway(ifname, &gateway) != -1){
+        network.gateway = gateway.s_addr;
+        printf_note("gateway: %s\n", inet_ntoa(gateway));
+    }
+    if(get_mac(ifname, mac, sizeof(mac)) != -1){
+        memcpy(network.mac, mac, sizeof(network.mac));
+        printf_note("mac=%02X:%02X:%02X:%02X:%02X:%02X\n", mac[0],mac[1],mac[2],mac[3],mac[4],mac[5]);
+    }
+    if(!strcmp(NETWORK_10G_EHTHERNET_POINT, ifname)){
+        memcpy(&config.oal_config.network_10g, &network, sizeof(struct network_st));
+    }else{
+        memcpy(&config.oal_config.network, &network, sizeof(struct network_st));
+    }
+    return 0;
+}
+
+int config_set_network(char *ifname, uint32_t ipaddr, uint32_t netmask, uint32_t gateway)
+{
+    // /etc/netset.sh set eth0 192.168.2.111 255.255.255.0 192.168.2.1
+    char buffer[128] = {0};
+    char *script = "/etc/netset.sh set";
+    struct in_addr in_ipaddr, in_netmask, in_gateway;
+    char s_ip[32], s_mask[32], s_gw[32];
+    
+    if(if_nametoindex(ifname) == 0){
+        printf_note("ifname: %s not found in device\n", ifname);
+        return -1;
+    }
+    in_ipaddr.s_addr = ipaddr;
+    strcpy(s_ip, inet_ntoa(in_ipaddr));
+    in_netmask.s_addr = netmask;
+    strcpy(s_mask, inet_ntoa(in_netmask));
+    in_gateway.s_addr = gateway;
+    strcpy(s_gw, inet_ntoa(in_gateway));
+    snprintf(buffer, sizeof(buffer)-1, "%s %s %s %s %s", script, ifname, s_ip, s_mask, s_gw);
+    printf_note("%s\n", buffer);
+    safe_system(buffer);
+    config_load_network(ifname);
+   
+    return 0;
+}
+
 
 
 /*本控 or 远控 查看接口*/

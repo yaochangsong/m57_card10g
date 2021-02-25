@@ -58,10 +58,10 @@ set_mac()
     new_mac=$2
     mac=$(grep -A 50  $ifname $interface|grep 'hwaddress'|sed -n '1p'|awk '{print $3}') 
     if [ "$mac" = "" ]; then
-        echo "set new mac: $new_mac"
+        #echo "set new mac: $new_mac"
         sed -i -e '/auto '$ifname'/{n;n;n;n;s|$|\n\thwaddress ether '$new_mac'|}' $interface
     else
-        echo "replace mac: $mac, $new_mac"
+        #echo "replace mac: $mac, $new_mac"
         sed -i '/iface '"$ifname"'/,/hwaddress ether/s/'$mac'/'$new_mac'/g' $interface
     fi
 }

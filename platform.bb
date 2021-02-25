@@ -27,8 +27,10 @@ do_install() {
          install -m 0755 platform ${D}${bindir}
          install -m 0755 shell/platform.sh ${D}/etc/init.d/
          install -m 0755 shell/led.sh ${D}/etc/
-		 install -m 0755 shell/network.sh ${D}/etc/
+         install -m 0755 shell/genmac.sh ${D}/etc/
+		 install -m 0755 shell/netset.sh ${D}/etc/
          install -m 0755 shell/check.sh ${D}/etc/
+         install -m 0755 shell/network.sh ${D}/etc/
          install -m 0755 shell/disk.sh ${D}/etc/
          install -m 0755 shell/checkproc.sh ${D}/etc/
          install -m 0755 shell/reset-event.sh ${D}/etc/

@@ -70,8 +70,8 @@ int get_ipaddress(char *ifname, struct in_addr *addr)
     }
     memcpy(&sin, &ifr.ifr_addr, sizeof(sin));
     //temp_ip = inet_ntoa(sin.sin_addr);
-    *addr = sin.sin_addr;
-    //memcpy(addr, &sin.sin_addr, sizeof(struct sockaddr_in));
+    //*addr = sin.sin_addr;
+    memcpy(addr, &sin.sin_addr, sizeof(struct in_addr));
     //strcpy(ip,temp_ip);
     //fprintf(stdout, "eth0: ip %s\n", temp_ip);
     close(sock);
@@ -103,8 +103,8 @@ int get_netmask(char *ifname, struct in_addr *netmask)
     }
     memcpy(&sin, &ifr.ifr_netmask, sizeof(sin));
     //temp_netmask = inet_ntoa(sin.sin_addr);
-    *netmask = sin.sin_addr;
-    //memcpy(netmask, &sin.sin_addr, sizeof(struct sockaddr_in));
+    //*netmask = sin.sin_addr;
+    memcpy(netmask, &sin.sin_addr, sizeof(struct in_addr));
     //strcpy(ip,temp_ip);
    // fprintf(stdout, "netmask: %s\n", temp_netmask);
     close(sock);
@@ -136,7 +136,7 @@ int get_gateway(char *ifname, struct in_addr * gw)
                     sin.sin_addr.s_addr = gateway;
                     //temp_gw = inet_ntoa(sin.sin_addr);
                     //*gw = sin.sin_addr;
-                    memcpy(gw, &sin.sin_addr, sizeof(struct sockaddr_in));
+                    memcpy(gw, &sin.sin_addr, sizeof(struct in_addr));
                     //fprintf(stdout, "gateway: %s\n", temp_gw);
                 }
                 fclose(file);

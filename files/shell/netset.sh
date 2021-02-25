@@ -52,6 +52,36 @@ set_all()
     ip route add default via $new_gw dev $ifname
 }
 
+set_ip()
+{
+    ifname=$1
+    new_ipaddr=$2
+    ipaddr=$(grep -A 50  $ifname $interface|grep 'address'|sed -n '1p'|awk '{print $2}')
+    isValidIp $ipaddr
+    sed -i '/iface '"$ifname"'/,/address/s/'$ipaddr'/'$new_ipaddr'/g' $interface
+    ifconfig $ifname $new_ipaddr
+}
+
+set_netmask()
+{
+     ifname=$1
+     new_netmask=$2
+     netmask=$(grep -A 50  $ifname $interface|grep 'netmask'|sed -n '1p'|awk '{print $2}')
+     isValidIp $netmask
+     sed -i '/iface '"$ifname"'/,/netmask/s/'$netmask'/'$new_netmask'/g' $interface
+     ifconfig $ifname netmask $new_netmask
+}
+
+set_gw()
+{
+    ifname=$1
+    new_gw=$2
+    gateway=$(grep -A 50  $ifname $interface|grep 'gateway'|sed -n '1p'|awk '{print $2}')
+    isValidIp $gateway
+    sed -i '/iface '"$ifname"'/,/gateway/s/'$gateway'/'$new_gw'/g' $interface
+    ip route add default via $new_gw dev $ifname
+}
+
 set_mac()
 {
     ifname=$1
@@ -94,6 +124,18 @@ case $1 in
 		isValidIp $5
 		set_all $2 $3 $4 $5
 		;;
+    set_ip)
+        isValidIp $3
+        set_ip $2 $3
+        ;;
+    set_netmask)
+        isValidIp $3
+        set_netmask $2 $3
+        ;;
+    set_gw)
+        isValidIp $3
+        set_gw $2 $3
+        ;;
 	set_mac)
 		isValidMac $3
 		set_mac $2 $3
@@ -110,6 +152,9 @@ case $1 in
 	*)
 		echo "Usage: $0 set|get_ip|get_netmask|get_gw|set_mac eth0|1..." 
 		echo "       $0 set eth0 192.168.2.111 255.255.255.0 192.168.2.1"
+        echo "       $0 set_ip eth0 192.168.2.111"
+        echo "       $0 set_netmask eth0 255.255.255.0"
+        echo "       $0 set_gw eth0 192.168.2.1"
         echo "       $0 set_mac eth0 02:0A:35:00:00:42"
 		echo "       $0 get_ip eth0"
 		echo "       $0 get_netmask eth0"

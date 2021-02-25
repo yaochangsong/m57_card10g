@@ -169,26 +169,37 @@ int parse_json_net(const char * const body)
     value = cJSON_GetObjectItem(root, "ifname");
     if(value!=NULL&&cJSON_IsString(value)){
         strcpy(ifname, value->valuestring);
-        printf_note("ifname: %s\n", ifname);
+        printf_info("ifname: %s\n", ifname);
     }
     value = cJSON_GetObjectItem(root, "ipaddr");
     if(value!=NULL&&cJSON_IsString(value)){
         ipaddr = inet_addr(value->valuestring);
-        printf_note("set ipaddr: %s, 0x%x\n", value->valuestring, ipaddr);
+        printf_info("set ipaddr: %s, 0x%x\n", value->valuestring, ipaddr);
+        if(config_set_ip(ifname, ipaddr) != 0){
+            return RESP_CODE_EXECMD_ERR;
+        }
     }
+
     value = cJSON_GetObjectItem(root, "netmask");
     if(value!=NULL&&cJSON_IsString(value)){
         netmask = inet_addr(value->valuestring);
-        printf_note("set netmask: %s, 0x%x\n", value->valuestring, netmask);
+        printf_info("set netmask: %s, 0x%x\n", value->valuestring, netmask);
+        if(config_set_netmask(ifname, netmask) != 0){
+            return RESP_CODE_EXECMD_ERR;
+        }
     }
+    
     value = cJSON_GetObjectItem(root, "gateway");
     if(value!=NULL&&cJSON_IsString(value)){
         gw = inet_addr(value->valuestring);
-        printf_note("set gateway: %s, 0x%x\n", value->valuestring, gw);
+        printf_info("set gateway: %s, 0x%x\n", value->valuestring, gw);
+        if(config_set_gateway(ifname, gw) != 0){
+            return RESP_CODE_EXECMD_ERR;
+        }
     }
-    if(config_set_network(ifname, ipaddr, netmask, gw) == -1){
-        return RESP_CODE_EXECMD_ERR;
-    }
+    //if(config_set_network(ifname, ipaddr, netmask, gw) == -1){
+    //    return RESP_CODE_EXECMD_ERR;
+    //}
     
     return RESP_CODE_OK;
 }

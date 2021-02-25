@@ -70,8 +70,8 @@ int get_ipaddress(char *ifname, struct in_addr *addr)
     }
     memcpy(&sin, &ifr.ifr_addr, sizeof(sin));
     //temp_ip = inet_ntoa(sin.sin_addr);
-    //*addr = sin.sin_addr;
-    memcpy(addr, &sin.sin_addr, sizeof(struct sockaddr_in));
+    *addr = sin.sin_addr;
+    //memcpy(addr, &sin.sin_addr, sizeof(struct sockaddr_in));
     //strcpy(ip,temp_ip);
     //fprintf(stdout, "eth0: ip %s\n", temp_ip);
     close(sock);
@@ -103,8 +103,8 @@ int get_netmask(char *ifname, struct in_addr *netmask)
     }
     memcpy(&sin, &ifr.ifr_netmask, sizeof(sin));
     //temp_netmask = inet_ntoa(sin.sin_addr);
-   // *netmask = sin.sin_addr;
-    memcpy(netmask, &sin.sin_addr, sizeof(struct sockaddr_in));
+    *netmask = sin.sin_addr;
+    //memcpy(netmask, &sin.sin_addr, sizeof(struct sockaddr_in));
     //strcpy(ip,temp_ip);
    // fprintf(stdout, "netmask: %s\n", temp_netmask);
     close(sock);
@@ -551,7 +551,7 @@ char *get_proc_boot_time(void)
 static int _system(const char * cmdstring)  
 {  
     pid_t pid;  
-    int status;  
+    int status = 0;  
   
     if(cmdstring == NULL)  
     {  

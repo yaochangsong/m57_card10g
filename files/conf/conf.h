@@ -68,6 +68,9 @@ extern uint32_t config_get_disk_file_notifier_timeout(void);
 extern int config_get_control_mode(void);
 extern bool config_get_is_internal_clock(void);
 extern int config_set_network(char *ifname, uint32_t ipaddr, uint32_t netmask, uint32_t gateway);
+extern int config_set_ip(char *ifname, uint32_t ipaddr);
+extern int config_set_netmask(char *ifname, uint32_t netmask);
+extern int config_set_gateway(char *ifname, uint32_t gateway);
 
 #endif
 

@@ -82,7 +82,6 @@ int config_load_network(char *ifname)
 
     if(strlen(ifname) == 0)
         return -1;
-    
     if(!strcmp(NETWORK_10G_EHTHERNET_POINT, ifname)){
         printf_note("[%s]net 10g:\n", ifname);
     }else{
@@ -105,6 +104,7 @@ int config_load_network(char *ifname)
         memcpy(network.mac, mac, sizeof(network.mac));
         printf_note("mac=%02X:%02X:%02X:%02X:%02X:%02X\n", mac[0],mac[1],mac[2],mac[3],mac[4],mac[5]);
     }
+
     if(!strcmp(NETWORK_10G_EHTHERNET_POINT, ifname)){
         memcpy(&config.oal_config.network_10g, &network, sizeof(struct network_st));
     }else{
@@ -120,6 +120,7 @@ int config_set_network(char *ifname, uint32_t ipaddr, uint32_t netmask, uint32_t
     char *script = "/etc/netset.sh set";
     struct in_addr in_ipaddr, in_netmask, in_gateway;
     char s_ip[32], s_mask[32], s_gw[32];
+    int ret = 0;
     
     if(if_nametoindex(ifname) == 0){
         printf_note("ifname: %s not found in device\n", ifname);
@@ -133,12 +134,58 @@ int config_set_network(char *ifname, uint32_t ipaddr, uint32_t netmask, uint32_t
     strcpy(s_gw, inet_ntoa(in_gateway));
     snprintf(buffer, sizeof(buffer)-1, "%s %s %s %s %s", script, ifname, s_ip, s_mask, s_gw);
     printf_note("%s\n", buffer);
-    safe_system(buffer);
+    ret = safe_system(buffer);
     config_load_network(ifname);
-   
-    return 0;
+
+    return ret;
 }
 
+static int config_set_netaddr(char *ifname, uint32_t netaddr, char *script)
+{
+    // /etc/netset.sh set_xxx eth0 192.168.2.111
+    static char buffer[128] = {0};
+    struct in_addr in_ipaddr;
+    char s_netaddr[32];
+    int ret = 0;
+    
+    if(if_nametoindex(ifname) == 0){
+        printf_note("ifname: %s not found in device\n", ifname);
+        return -1;
+    }
+    in_ipaddr.s_addr = netaddr;
+    strcpy(s_netaddr, inet_ntoa(in_ipaddr));
+    snprintf(buffer, sizeof(buffer)-1, "%s %s %s", script, ifname, s_netaddr);
+    printf_info("%s\n", buffer);
+    ret = safe_system(buffer);
+    config_load_network(ifname);
+    
+    return ret;
+}
+
+int config_set_ip(char *ifname, uint32_t ipaddr)
+{
+    int ret = 0;
+    char *script = "/etc/netset.sh set_ip";
+    ret=config_set_netaddr(ifname, ipaddr, script);
+    return ret;
+}
+
+
+int config_set_netmask(char *ifname, uint32_t netmask)
+{
+    int ret = 0;
+    char *script = "/etc/netset.sh set_netmask";
+    ret = config_set_netaddr(ifname, netmask, script);
+    return ret;
+}
+
+int config_set_gateway(char *ifname, uint32_t gateway)
+{
+    int ret = 0;
+    char *script = "/etc/netset.sh set_gw";
+    ret = config_set_netaddr(ifname, gateway, script);
+    return ret;
+}
 
 
 /*本控 or 远控 查看接口*/

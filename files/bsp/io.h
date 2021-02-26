@@ -71,7 +71,6 @@ extern int32_t io_get_agc_thresh_val(int ch);
 extern void io_set_dq_param(void *pdata);
 extern void io_set_smooth_time(uint32_t ch, uint16_t factor);
 extern void io_set_fft_size(uint32_t ch, uint32_t fft_size);
-extern uint8_t  io_set_network_to_interfaces(void *netinfo);
 extern int32_t io_set_extract_ch0(uint32_t ch, uint32_t bandwith);
 extern int io_read_more_info_by_name(const char *name, void *info, int32_t (*iofunc)(void *));
 extern int32_t io_find_file_info(void *arg);

@@ -198,8 +198,6 @@ static size_t k600_read_frame(uint8_t *rev_data, size_t rev_nread, uint8_t *fram
     return ret;
 }
 
-
-/* ????????? */
 int8_t k600_scanf(uint8_t *pdata, int32_t total_len)
 {
     #define FRAME_MAX_LEN 32
@@ -285,8 +283,9 @@ int8_t k600_scanf(uint8_t *pdata, int32_t total_len)
                 ip.s_addr = ipaddr;
                 ipstr= inet_ntoa(ip);
                 printf_note("ipstr=%s ipaddr=0x%x, 0x%x\n", ipstr,  ip.s_addr, ipaddr);
-                config_write_save_data(EX_NETWORK_CMD, EX_NETWORK_IP, 0, &ipaddr);
-                executor_set_command(EX_NETWORK_CMD, EX_NETWORK_1G, 0, NULL);
+                if(config_set_ip(NETWORK_EHTHERNET_POINT, ipaddr) != 0){
+                    return -1;
+                }
             }
             break;
             case SCREEN_NETMASK_ADDR1:
@@ -303,9 +302,9 @@ int8_t k600_scanf(uint8_t *pdata, int32_t total_len)
                 ip.s_addr = subnetmask;
                 ipstr= inet_ntoa(ip);
                 printf_note("subnetmaskstr=%s subnetmask=%x\n", ipstr,  ip.s_addr);
-                config_write_save_data(EX_NETWORK_CMD, EX_NETWORK_MASK, 0, &subnetmask);
-                executor_set_command(EX_NETWORK_CMD, EX_NETWORK_1G, 0, NULL);
-
+                if(config_set_netmask(NETWORK_EHTHERNET_POINT, subnetmask) != 0){
+                    return -1;
+                }
             }
             break;
             case SCREEN_GATEWAY_ADDR1:
@@ -322,9 +321,9 @@ int8_t k600_scanf(uint8_t *pdata, int32_t total_len)
                 ip.s_addr = gateway;
                 ipstr= inet_ntoa(ip);
                 printf_note("gatewaystr=%s gateway=%x\n", ipstr,  ip.s_addr);
-                config_write_save_data(EX_NETWORK_CMD,  EX_NETWORK_GW, 0, &gateway);
-                executor_set_command(EX_NETWORK_CMD,  EX_NETWORK_1G, 0, NULL);
-
+                if(config_set_gateway(NETWORK_EHTHERNET_POINT, gateway) != 0){
+                    return -1;
+                }
             }
             break;
             case SCREEN_PORT:
@@ -333,7 +332,6 @@ int8_t k600_scanf(uint8_t *pdata, int32_t total_len)
                 port = ptr->data[0];
                 printf_note("port=%d , 0x%x\n", port, ptr->data[0]);
                 config_write_save_data(EX_NETWORK_CMD,  EX_NETWORK_PORT, 0, &port);
-                //executor_set_command(EX_NETWORK_CMD,  EX_NETWORK_PORT, 0, NULL);
             }
         }
     }

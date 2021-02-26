@@ -128,14 +128,14 @@ int8_t init_lcd(void)
     printf_debug("check status:%d\n", check_status);
     lcd_printf(EX_STATUS_CMD, EX_CHECK_STATUS, &check_status, NULL);
 
-    host_addr = ntohl(poal_config->network.ipaddress);
+    host_addr = ntohl(poal_config->network.addr.ipaddress);
     printf_info("###ip[0x%x]\n", host_addr);
     lcd_printf(EX_NETWORK_CMD, EX_NETWORK_IP,   &host_addr, NULL);
     printf_info("###netmask\n");
-    host_addr = ntohl(poal_config->network.netmask);
+    host_addr = ntohl(poal_config->network.addr.netmask);
     lcd_printf(EX_NETWORK_CMD, EX_NETWORK_MASK, &host_addr, NULL);
     printf_info("###gw\n");
-    host_addr = ntohl(poal_config->network.gateway);
+    host_addr = ntohl(poal_config->network.addr.gateway);
     lcd_printf(EX_NETWORK_CMD, EX_NETWORK_GW,   &host_addr, NULL);
     printf_info("###port[%d]\n", poal_config->network.port);
     lcd_printf(EX_NETWORK_CMD, EX_NETWORK_PORT, &poal_config->network.port, NULL);

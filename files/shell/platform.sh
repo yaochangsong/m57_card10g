@@ -40,6 +40,21 @@ start()
 
 }
 
+
+factory_setting()
+{
+    factory_config=/etc/.config_default.json
+    if [ ! -f "$factory_config" ]; then
+        cp -f /etc/config.json $factory_config
+    fi
+    
+	factory_network=/etc/network/.interfaces_default
+	if [ ! -f "$factory_network" ]; then
+        cp -f /etc/network/interfaces $factory_network
+    fi
+
+}
+
 stop()
 {
     if start-stop-daemon -K -x $DAEMON >/dev/null 2>&1; then
@@ -50,6 +65,7 @@ stop()
 
 case $1 in
         start)
+                factory_setting
 	    	    start
                 ;;
         stop)

@@ -162,12 +162,17 @@ struct ctrl_st{
 
 
 /* 网络参数 */
-struct network_st{
+struct network_addr_st{
     uint8_t mac[6];
-    uint16_t port;
     uint32_t ipaddress;
     uint32_t netmask;
     uint32_t gateway;
+}__attribute__ ((packed));
+
+struct network_st{
+    uint16_t port;
+    uint16_t data_port;
+    struct network_addr_st addr;
 }__attribute__ ((packed));
 
 /* 频谱分析控制参数 */

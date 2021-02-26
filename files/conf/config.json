@@ -1,18 +1,20 @@
 {
-	"version":	"1.0",
-	"network":	{
-		"mac":	"00:0A:35:00:22:01",
-		"ipaddress":	"192.168.2.111",
-		"netmask":	"255.255.255.0",
-		"gateway":	"192.168.2.1",
-		"port":	1234
-	},
-	"network_10g":	{
-		"ipaddress":	"192.168.3.111",
-		"netmask":	"255.255.255.0",
-		"gateway":	"192.168.3.1",
-		"port":	1234
-	},
+	"version":	"1.1",
+	"network":	[
+		{
+			"ifname" : "eth0",
+			"port" : {
+				"command" : 1234,
+				"data" : 1234
+			}
+		},{
+			"ifname" : "eth1",
+			"port" : {
+				"command" : 1234,
+				"data" : 1234
+			}
+		}
+	],
 	"control_parm":	{
 		"spectrum_time_interval":	200,
 		"bandwidth_remote_ctrl":	1,

@@ -1162,16 +1162,16 @@ void read_config(void *root_config)
 
      struct sockaddr_in saddr;
      saddr.sin_addr.s_addr=inet_addr(read_config_file_single("network","gateway"));
-     fre_config->oal_config.network.gateway = saddr.sin_addr.s_addr;
+     fre_config->oal_config.network.addr.gateway = saddr.sin_addr.s_addr;
      printf_debug("读取............................gateway = %s\n",inet_ntoa(saddr.sin_addr));
      
      
      saddr.sin_addr.s_addr=inet_addr(read_config_file_single("network","netmask"));
-     fre_config->oal_config.network.netmask = saddr.sin_addr.s_addr;
+     fre_config->oal_config.network.addr.netmask = saddr.sin_addr.s_addr;
      printf_debug("读取............................netmask = %s\n",inet_ntoa(saddr.sin_addr));
      
      saddr.sin_addr.s_addr=inet_addr(read_config_file_single("network","ipaddress"));
-     fre_config->oal_config.network.ipaddress = saddr.sin_addr.s_addr;
+     fre_config->oal_config.network.addr.ipaddress = saddr.sin_addr.s_addr;
      printf_debug("读取............................ipaddress = %s\n",inet_ntoa(saddr.sin_addr));
 
         

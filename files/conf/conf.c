@@ -31,28 +31,11 @@ void config_init(void)
 {  
 
     printf_debug("config init\n");
-
-    /* to test*/
-    struct sockaddr_in saddr;
-    uint8_t  mac[6];
-    #if 0
-    saddr.sin_addr.s_addr=inet_addr("192.168.0.105");
-    config.oal_config.network.ipaddress = saddr.sin_addr.s_addr;
-    saddr.sin_addr.s_addr=inet_addr("192.168.0.1");
-    config.oal_config.network.gateway = saddr.sin_addr.s_addr;
-    saddr.sin_addr.s_addr=inet_addr("255.255.255.0");
-    config.oal_config.network.netmask = saddr.sin_addr.s_addr;
-    config.oal_config.network.port = 1325;
-    #endif
     memset(&config, 0, sizeof(config));
     printf_debug("config init\n");
     config.configfile = safe_strdup(DEFAULT_CONFIGFILE);
-    //config.calibrationfile = safe_strdup(CALIBRATION_FILE);
     config.daemon = -1;
-    config_load_network(NETWORK_EHTHERNET_POINT);
-#ifdef SUPPORT_NET_WZ
-    config_load_network(NETWORK_10G_EHTHERNET_POINT);
-#endif
+
     for(int i= 0; i< MAX_RADIO_CHANNEL_NUM; i++)
         config.oal_config.channel[i].work_mode = OAL_NULL_MODE;
     #ifdef SUPPORT_NET_WZ
@@ -63,7 +46,10 @@ void config_init(void)
     #elif defined(SUPPORT_DAO_JSON)
     json_read_config_file(&config);
     #endif
-    
+    config_load_network(NETWORK_EHTHERNET_POINT);
+#ifdef SUPPORT_NET_WZ
+    config_load_network(NETWORK_10G_EHTHERNET_POINT);
+#endif
 }
 
 /** Accessor for the current configuration
@@ -77,14 +63,17 @@ s_config *config_get_config(void)
 int config_load_network(char *ifname)
 {
     struct in_addr ipaddr, netmask, gateway;
-    struct network_st network;
+    struct network_addr_st network;
     uint8_t  mac[6];
 
     if(strlen(ifname) == 0)
         return -1;
+#ifdef SUPPORT_NET_WZ
     if(!strcmp(NETWORK_10G_EHTHERNET_POINT, ifname)){
         printf_note("[%s]net 10g:\n", ifname);
-    }else{
+    }else
+#endif
+    {
         printf_note("[%s]net 1g:\n", ifname);
     }
 
@@ -104,11 +93,13 @@ int config_load_network(char *ifname)
         memcpy(network.mac, mac, sizeof(network.mac));
         printf_note("mac=%02X:%02X:%02X:%02X:%02X:%02X\n", mac[0],mac[1],mac[2],mac[3],mac[4],mac[5]);
     }
-
+#ifdef SUPPORT_NET_WZ
     if(!strcmp(NETWORK_10G_EHTHERNET_POINT, ifname)){
-        memcpy(&config.oal_config.network_10g, &network, sizeof(struct network_st));
-    }else{
-        memcpy(&config.oal_config.network, &network, sizeof(struct network_st));
+        memcpy(&config.oal_config.network_10g.addr, &network, sizeof(struct network_addr_st));
+    }else
+#endif
+    {
+        memcpy(&config.oal_config.network.addr, &network, sizeof(struct network_addr_st));
     }
     return 0;
 }
@@ -655,13 +646,13 @@ int8_t config_write_data(int cmd, uint8_t type, uint8_t ch, void *data)
             switch(type)
             {
                 case EX_NETWORK_IP:
-                    poal_config->network.ipaddress = *(int32_t *)data;
+                    poal_config->network.addr.ipaddress = *(int32_t *)data;
                     break;
                 case EX_NETWORK_MASK:
-                    poal_config->network.netmask = *(int32_t *)data;
+                    poal_config->network.addr.netmask = *(int32_t *)data;
                     break;
                 case EX_NETWORK_GW:
-                    poal_config->network.gateway = *(int32_t *)data;
+                    poal_config->network.addr.gateway = *(int32_t *)data;
                     break;
                 case EX_NETWORK_PORT:
                     poal_config->network.port = *(int16_t *)data;
@@ -802,13 +793,13 @@ int8_t config_read_by_cmd(exec_cmd cmd, uint8_t type, uint8_t ch, void *data, ..
             switch(type)
             {
                 case EX_NETWORK_IP:
-                    *(uint32_t *)data = poal_config->network.ipaddress;
+                    *(uint32_t *)data = poal_config->network.addr.ipaddress;
                     break;
                 case EX_NETWORK_MASK:
-                    *(uint32_t *)data = poal_config->network.netmask;
+                    *(uint32_t *)data = poal_config->network.addr.netmask;
                     break;
                 case EX_NETWORK_GW:
-                    *(uint32_t *)data = poal_config->network.gateway;
+                    *(uint32_t *)data = poal_config->network.addr.gateway;
                     break;
                 case EX_NETWORK_PORT:
                     *(uint16_t *)data = poal_config->network.port;

@@ -150,6 +150,7 @@ static inline  int json_write_double_param(const char * const grandfather, const
     return 0;
 }
 
+
 static inline  int json_write_int_param(const char * const grandfather, const char * const parents, const char * const child, int data)
 {
     cJSON* root = root_json;
@@ -231,78 +232,100 @@ static inline  int json_write_array_double_param(const char * const parents, con
     return 0;
 }
 
-static int json_write_config_param(cJSON* root, struct poal_config *config)
+static int json_write_config_param(cJSON* root, s_config *sconfig)
 {
 
     cJSON* node;
     cJSON* group;
+    struct poal_config *config = &sconfig->oal_config;
 
     cJSON *network = NULL;
     struct sockaddr_in saddr;
 
-    
-    /*network*/
-    /* 1g */
-    saddr.sin_addr.s_addr = config->network.gateway;
-    json_write_string_param(NULL, "network", "gateway", inet_ntoa(saddr.sin_addr));
-    network = cJSON_GetObjectItem(root, "network");
-    node = cJSON_GetObjectItem(network, "gateway");
-    printf_debug("gatewayis:%s\n",node->valuestring);
-
-    saddr.sin_addr.s_addr = config->network.ipaddress;
-    json_write_string_param(NULL, "network", "ipaddress", inet_ntoa(saddr.sin_addr));
-    node = cJSON_GetObjectItem(network, "ipaddress");
-    printf_debug("ipaddress is:%s\n",node->valuestring);
-    
-    saddr.sin_addr.s_addr = config->network.netmask;
-    json_write_string_param(NULL, "network", "netmask", inet_ntoa(saddr.sin_addr));
-    node = cJSON_GetObjectItem(network, "netmask");
-    printf_debug("netmask:%s\n",node->valuestring);
-
-    
-    json_write_double_param(NULL, "network", "port", config->network.port);
-    node = cJSON_GetObjectItem(network, "port");
-    printf_debug("port is:%d\n",node->valueint);
-
-#if 0
-    char temp[30]={0};
-    sprintf(temp,"%02x:%02x:%02x:%02x:%02x:%02x", config->network.mac[0],config->network.mac[1],
-    config->network.mac[2],config->network.mac[3],config->network.mac[4],config->network.mac[5]);
-    json_write_string_param(NULL, "network", "mac", temp);
-    node = cJSON_GetObjectItem(network, "mac");
-    printf_debug("mac is:%s\n",node->valuestring);
-#endif
+    printf_note("sconfig->version=%s\n", sconfig->version);
+    if((sconfig->version != NULL) && !strcmp(sconfig->version, "1.0")){
+        json_write_double_param(NULL, "network", "port", config->network.port);
 #ifdef SUPPORT_NET_WZ
-    /* 10g */
-    saddr.sin_addr.s_addr = config->network_10g.gateway;
-    json_write_string_param(NULL, "network_10g", "gateway", inet_ntoa(saddr.sin_addr));
-    network = cJSON_GetObjectItem(root, "network");
-    node = cJSON_GetObjectItem(network, "gateway");
-    printf_debug("10g gatewayis:%s\n",node->valuestring);
-
-    saddr.sin_addr.s_addr = config->network_10g.ipaddress;
-    json_write_string_param(NULL, "network_10g", "ipaddress", inet_ntoa(saddr.sin_addr));
-    node = cJSON_GetObjectItem(network, "ipaddress");
-    printf_debug("10g ipaddress is:%s\n",node->valuestring);
-    
-    saddr.sin_addr.s_addr = config->network_10g.netmask;
-    json_write_string_param(NULL, "network_10g", "netmask", inet_ntoa(saddr.sin_addr));
-    node = cJSON_GetObjectItem(network, "netmask");
-    printf_debug("10g netmask:%s\n",node->valuestring);
-
-    
-    json_write_double_param(NULL, "network_10g", "port", config->network_10g.port);
-    node = cJSON_GetObjectItem(network, "port");
-    printf_debug("10g port is:%d\n",node->valueint);
-
-#if 0    
-    sprintf(temp,"%02x:%02x:%02x:%02x:%02x:%02x", config->network_10g.mac[0],config->network_10g.mac[1],
-    config->network.mac[2],config->network_10g.mac[3],config->network_10g.mac[4],config->network_10g.mac[5]);
-    json_write_string_param(NULL, "network_10g", "mac", temp);
-    node = cJSON_GetObjectItem(network, "mac");
-    printf_debug("10g mac is:%s\n",node->valuestring);
+        json_write_double_param(NULL, "network_10g", "port", config->network_10g.port);
 #endif
-#endif
+    } else{
+        cJSON* ifname, *port, *value;
+        bool is_net_10g = false;
+        network = cJSON_GetObjectItem(root, "network");
+
+        for(int i = 0; i < cJSON_GetArraySize(network); i++){
+            node = cJSON_GetArrayItem(network, i);
+            ifname = cJSON_GetObjectItem(node, "ifname");
+            is_net_10g = false;
+            if(cJSON_IsString(ifname)){
+#ifdef SUPPORT_NET_WZ
+               if(!strcmp(NETWORK_10G_EHTHERNET_POINT, ifname->valuestring)){
+                    is_net_10g = true;
+               }
+ #endif
+                value = cJSON_GetObjectItem(node, "port");
+                if(value != NULL){
+                    port = cJSON_GetObjectItem(value, "command");
+                    if(cJSON_IsNumber(port)){
+                        if(is_net_10g)
+                            port->valuedouble = config->network_10g.port;
+                        else
+                            port->valuedouble = config->network.port;
+                    }
+                    port = cJSON_GetObjectItem(value, "data");
+                    if(cJSON_IsNumber(port)){
+                        if(is_net_10g)
+                            port->valuedouble = config->network_10g.data_port;
+                        else
+                            port->valuedouble = config->network.data_port;
+                    }
+                }
+            }
+        }
+    }
+    
+     
+    cJSON* if_parm, *rf_parm, *cjch;
+    int ch;
+    /*if_parm*/
+    group = cJSON_GetObjectItem(root, "spectrum_parm");
+    if(group == NULL)
+        return -1;
+    
+    if_parm = cJSON_GetObjectItem(group, "if_parm");
+    for(int i = 0; i < cJSON_GetArraySize(if_parm); i++){
+        node = cJSON_GetArrayItem(if_parm, i);
+        cjch = cJSON_GetObjectItem(node, "channel");
+        ch = cjch->valueint;
+        if(ch >= MAX_RF_NUM)
+            break;
+        json_write_array_int_param("spectrum_parm", "if_parm", i, "middle_freq",config->channel[ch].multi_freq_point_param.points[0].center_freq);
+        json_write_array_int_param("spectrum_parm", "if_parm", i, "bandwith",config->channel[ch].multi_freq_point_param.points[0].bandwidth);
+        json_write_array_int_param("spectrum_parm", "if_parm", i, "dec_bandwith",config->channel[ch].multi_freq_point_param.points[0].d_bandwith);
+        json_write_array_int_param("spectrum_parm", "if_parm", i, "dec_method",config->channel[ch].multi_freq_point_param.points[0].d_method);
+        json_write_array_int_param("spectrum_parm", "if_parm", i, "mute_switch",config->channel[ch].multi_freq_point_param.points[0].noise_en);
+        json_write_array_int_param("spectrum_parm", "if_parm", i, "audio_volume",config->channel[ch].multi_freq_point_param.points[0].audio_volume);
+    }
+
+    /*rf_parm*/
+    rf_parm = cJSON_GetObjectItem(group, "rf_parm");
+    for(int i = 0; i < cJSON_GetArraySize(rf_parm); i++){
+        node = cJSON_GetArrayItem(rf_parm, i);
+        cjch = cJSON_GetObjectItem(node, "channel");
+        ch = cjch->valueint;
+        if(ch >= MAX_RF_NUM)
+            break;
+        json_write_array_int_param("spectrum_parm", "rf_parm", i, "attenuation",config->channel[ch].rf_para.attenuation);
+        json_write_array_int_param("spectrum_parm", "rf_parm", i,"mode_code",config->channel[ch].rf_para.rf_mode_code);
+        json_write_array_int_param("spectrum_parm", "rf_parm", i, "gain_mode",config->channel[ch].rf_para.gain_ctrl_method);
+        json_write_array_int_param("spectrum_parm", "rf_parm", i,"agc_ctrl_time",config->channel[ch].rf_para.agc_ctrl_time);
+        json_write_array_int_param("spectrum_parm", "rf_parm", i, "agc_output_amp_dbm",config->channel[ch].rf_para.agc_mid_freq_out_level);
+        json_write_array_int_param("spectrum_parm", "rf_parm", i, "mgc_gain",config->channel[ch].rf_para.mgc_gain_value);
+        json_write_array_double_param("spectrum_parm", "rf_parm", i, "middle_freq",config->channel[ch].rf_para.mid_freq);
+        json_write_array_int_param("spectrum_parm", "rf_parm", i, "mid_bw",config->channel[ch].rf_para.mid_bw);
+    }
+    
+#if 0
     /*control_parm*/
      json_write_int_param(NULL, "control_parm", "spectrum_time_interval", config->ctrl_para.spectrum_time_interval);
      json_write_int_param(NULL, "control_parm", "bandwidth_remote_ctrl", config->ctrl_para.remote_local);
@@ -373,33 +396,7 @@ static int json_write_config_param(cJSON* root, struct poal_config *config)
          json_write_array_double_param("spectrum_parm", "side_bandrate", i,"rate",config->ctrl_para.scan_bw.sideband_rate[i]);
          json_write_array_int_param("spectrum_parm", "side_bandrate", i, "bandwidth",config->ctrl_para.scan_bw.bindwidth_hz[i]);
      }
-
-       /*if_parm*/
-     for(i=0;i<1;i++)
-     {
-
-         json_write_array_int_param("spectrum_parm", "if_parm", i,"channel",config->channel[i].multi_freq_point_param.cid);
-         json_write_array_int_param("spectrum_parm", "if_parm", i, "middle_freq",config->channel[i].multi_freq_point_param.points[0].center_freq);
-         json_write_array_int_param("spectrum_parm", "if_parm", i, "bandwith",config->channel[i].multi_freq_point_param.points[0].bandwidth);
-         json_write_array_int_param("spectrum_parm", "if_parm", i, "dec_bandwith",config->channel[i].multi_freq_point_param.points[0].d_bandwith);
-         json_write_array_int_param("spectrum_parm", "if_parm", i, "dec_method",config->channel[i].multi_freq_point_param.points[0].d_method);
-         json_write_array_int_param("spectrum_parm", "if_parm", i, "mute_switch",config->channel[i].multi_freq_point_param.points[0].noise_en);
-         json_write_array_int_param("spectrum_parm", "if_parm", i, "audio_volume",config->channel[i].multi_freq_point_param.points[0].audio_volume);
-     }
-     /*rf_parm*/
-     for(i=0;i<1;i++)
-     {
-
-         json_write_array_int_param("spectrum_parm", "rf_parm", i,"channel",config->channel[i].rf_para.cid);
-         json_write_array_int_param("spectrum_parm", "rf_parm", i, "attenuation",config->channel[i].rf_para.attenuation);
-         json_write_array_int_param("spectrum_parm", "rf_parm", i,"mode_code",config->channel[i].rf_para.rf_mode_code);
-         json_write_array_int_param("spectrum_parm", "rf_parm", i, "gain_mode",config->channel[i].rf_para.gain_ctrl_method);
-         json_write_array_int_param("spectrum_parm", "rf_parm", i,"agc_ctrl_time",config->channel[i].rf_para.agc_ctrl_time);
-         json_write_array_int_param("spectrum_parm", "rf_parm", i, "agc_output_amp_dbm",config->channel[i].rf_para.agc_mid_freq_out_level);
-         json_write_array_int_param("spectrum_parm", "rf_parm", i, "mgc_gain",config->channel[i].rf_para.mgc_gain_value);
-         json_write_array_double_param("spectrum_parm", "rf_parm", i, "middle_freq",config->channel[i].rf_para.mid_freq);
-         json_write_array_int_param("spectrum_parm", "rf_parm", i, "mid_bw",config->channel[i].rf_para.mid_bw);
-     }
+#endif
 
     return 0;
 }
@@ -419,11 +416,11 @@ int8_t split_string_2_number(char *str, int32_t *n1, int32_t *n2, char split_c)
 }
 
 
-static int json_parse_config_param(const cJSON* root, struct poal_config *config)
+static int json_parse_config_param(const cJSON* root, s_config *sconfig)
 {
     cJSON *value = NULL;
     cJSON *node = NULL;
-    
+    struct poal_config *config = &sconfig->oal_config;
 /* network */
     //struct sockaddr_in saddr;
     cJSON *network = NULL;
@@ -454,23 +451,6 @@ static int json_parse_config_param(const cJSON* root, struct poal_config *config
             }
             printf_debug("app=>value is:%s, %s\n",value->valuestring, config->status_para.softVersion.app);
         }
-
-        #if 0
-        value = cJSON_GetObjectItem(node, "fpga");
-        if(value!= NULL && cJSON_IsString(value)){
-            char ver[33] = {0};
-            sprintf(ver, "%x", get_fpga_version());
-            char *version = strdup(ver);
-            config->status_para.softVersion.fpga = value->valuestring;
-            if(strcmp(version, config->status_para.softVersion.fpga)){
-                config->status_para.softVersion.fpga = version;
-                json_write_string_param("status_parm", "soft_version", "fpga", config->status_para.softVersion.fpga);
-                json_write_file(config_get_config()->configfile, root);
-                printf_note("renew fpga verson: %s\n", version);
-            }
-            printf_note("fpga version=>value is:%s, %s\n",value->valuestring, config->status_para.softVersion.fpga);
-        }
-        #endif
     }
     value = cJSON_GetObjectItem(status_parm, "device_sn");
     if(value!= NULL && cJSON_IsString(value)){
@@ -480,119 +460,67 @@ static int json_parse_config_param(const cJSON* root, struct poal_config *config
         config->status_para.device_sn = NULL;
     }
 
-    network = cJSON_GetObjectItem(root, "network");
-    if(network == NULL){
-        printf_warn("not found json node[%s]\n","network");
-        return -1;
-    }
-#if 0
-    value = cJSON_GetObjectItem(network, "mac");
-    if(value!= NULL && cJSON_IsString(value)){
-        char mac_buf[128] = {0};
-        if(config->network.mac){
-            sprintf(mac_buf, "%02X:%02X:%02X:%02X:%02X:%02X", config->network.mac[0], 
-                                                            config->network.mac[1],
-                                                            config->network.mac[2],
-                                                            config->network.mac[3],
-                                                            config->network.mac[4],
-                                                            config->network.mac[5]);
-            if(strcmp(value->valuestring, mac_buf)){
-                printf_note("renew mac: %s\n", mac_buf);
-                json_write_string_param(NULL, "network", "mac", mac_buf);
-                json_write_file(config_get_config()->configfile, root);
+    cJSON *version = cJSON_GetObjectItem(root, "version");
+    if(version!= NULL && cJSON_IsString(version)){
+        cJSON *port;
+        sconfig->version = strdup(version->valuestring);
+        printf_note("json config version: %s\n", sconfig->version);
+        network = cJSON_GetObjectItem(root, "network");
+        if(!strcmp("1.0", version->valuestring)){
+            if(network != NULL){
+                port = cJSON_GetObjectItem(network, "port");
+                if(port!= NULL && cJSON_IsNumber(port)){
+                    config->network.port = port->valueint;
+                    config->network.data_port = port->valueint+1;
+                    printf_note("port=>value is:%d\n",config->network.port);
+                }
+            }
+            #ifdef SUPPORT_NET_WZ
+            network = cJSON_GetObjectItem(root, "network_10g");
+            if(network != NULL){
+                port = cJSON_GetObjectItem(network, "port");
+                if(port!= NULL && cJSON_IsNumber(port)){
+                    config->network_10g.port = port->valueint;
+                    config->network_10g.data_port = port->valueint+1;
+                    printf_note("10g port=>value is:%d\n",config->network_10g.port);
+                }
+            }
+            #endif
+        }else{
+            if(network != NULL){
+                bool is_net_10g = false;
+                for(int i = 0; i < cJSON_GetArraySize(network); i++){
+                    node = cJSON_GetArrayItem(network, i);
+                    value = cJSON_GetObjectItem(node, "ifname");
+                    is_net_10g = false;
+                    if(cJSON_IsString(value)){
+                       if(!strcmp(NETWORK_10G_EHTHERNET_POINT, value->valuestring)){
+                            is_net_10g = true;
+                       }
+                    }
+                    value = cJSON_GetObjectItem(node, "port");
+                    if(value != NULL){
+                        port = cJSON_GetObjectItem(value, "command");
+                        if(cJSON_IsNumber(port)){
+                            if(is_net_10g)
+                                config->network_10g.port = port->valueint;
+                            else
+                                config->network.port = port->valueint;
+                            printf_note("%s cmd port:%d\n",is_net_10g == true ? "10g" : "1g", port->valueint);
+                        }
+                        port = cJSON_GetObjectItem(value, "data");
+                        if(cJSON_IsNumber(port)){
+                            if(is_net_10g)
+                                config->network_10g.data_port = port->valueint;
+                            else
+                                config->network.data_port = port->valueint;
+                            printf_note("%s data port:%d\n",is_net_10g == true ? "10g" : "1g", port->valueint);
+                        }
+                    }
+                }
             }
         }
     }
-#endif
-#if 0
-    value = cJSON_GetObjectItem(network, "gateway");
-    if(value!= NULL && cJSON_IsString(value)){
-        saddr.sin_addr.s_addr = inet_addr(value->valuestring);
-        //printf_debug("gateway=>value is:%s, %s\n",value->valuestring, inet_ntoa(saddr.sin_addr));
-        //config->network.gateway = saddr.sin_addr.s_addr;
-    }
-#endif
-    value = cJSON_GetObjectItem(network, "port");
-    if(value!= NULL && cJSON_IsNumber(value)){
-        config->network.port = value->valueint;
-        printf_debug("port=>value is:%d\n",config->network.port);
-    }
-#if 0
-    value = cJSON_GetObjectItem(network, "ipaddress");
-    if(value!= NULL && cJSON_IsString(value)){
-        saddr.sin_addr.s_addr = inet_addr(value->valuestring);
-        //printf_debug("ipaddress=>value is:%s, %s\n",value->valuestring, inet_ntoa(saddr.sin_addr));
-        //config->network.ipaddress = saddr.sin_addr.s_addr;
-    }
-    value = cJSON_GetObjectItem(network, "netmask");
-    if(value!= NULL && cJSON_IsString(value)){
-        saddr.sin_addr.s_addr = inet_addr(value->valuestring);
-        printf_debug("netmask=>value is:%s, %s\n",value->valuestring, inet_ntoa(saddr.sin_addr));
-        //config->network.netmask = saddr.sin_addr.s_addr;
-    }
-#endif
-#if 0
-    value = cJSON_GetObjectItem(network,"mac");
-    if(value!=NULL&&cJSON_IsString(value)){
-    char temp[30];
-    char mactemp[30]={0}; 
-    char *p=mactemp;
-    char buff[20]={0};
-    int j=0,k=0,i=0;
-    
-   //sprintf(temp,"%s",value->valuestring);
-     for(i=0;i<30;i++)
-    {
-        if(value->valuestring[i]!=':')
-        {
-           *p=value->valuestring[i];
-           p++;
-        }
-    }
-    // printf_debug("mactemp=%s\n",mactemp);
-    for(i=0;i<6;i++)
-    {
-       buff[0] = mactemp[k++];
-       buff[1] = mactemp[k++];
-       config->network.mac[i] = strtol(buff, NULL, 16);
-    }
-
-   // printf_debug("mactemp=%s\n",mactemp);
-    printf_note("mac=%02x%02x%02x%02x%02x%02x\n",config->network.mac[0],config->network.mac[1],config->network.mac[2],
-    config->network.mac[3],config->network.mac[4],config->network.mac[5]);
-    }
-#endif
-    #ifdef SUPPORT_NET_WZ
-    /*10g net*/
-    network = cJSON_GetObjectItem(root, "network_10g");
-    if(network == NULL){
-        printf_warn("not found json node[%s]\n","network_10g");
-    }else{
-        value = cJSON_GetObjectItem(network, "ipaddress");
-        if(value!= NULL && cJSON_IsString(value)){
-            //saddr.sin_addr.s_addr = inet_addr(value->valuestring);
-           // printf_debug("10g ipaddr=>value is:%s, %s\n",value->valuestring, inet_ntoa(saddr.sin_addr));
-            //config->network_10g.ipaddress = saddr.sin_addr.s_addr;
-        }
-        value = cJSON_GetObjectItem(network, "netmask");
-        if(value!= NULL && cJSON_IsString(value)){
-            //saddr.sin_addr.s_addr = inet_addr(value->valuestring);
-            //printf_debug("10g netmask=>value is:%s, %s\n",value->valuestring, inet_ntoa(saddr.sin_addr));
-            //config->network_10g.netmask = saddr.sin_addr.s_addr;
-        }
-        value = cJSON_GetObjectItem(network, "gateway");
-        if(value!= NULL && cJSON_IsString(value)){
-            //saddr.sin_addr.s_addr = inet_addr(value->valuestring);
-            //printf_debug("10g gateway=>value is:%s, %s\n",value->valuestring, inet_ntoa(saddr.sin_addr));
-            //config->network_10g.gateway = saddr.sin_addr.s_addr;
-        }
-        value = cJSON_GetObjectItem(network, "port");
-        if(value!= NULL && cJSON_IsNumber(value)){
-            config->network_10g.port = value->valueint;
-            printf_debug("10g port=>value is:%d\n",config->network_10g.port);
-        }
-    }
-    #endif
     /*control_parm*/
     cJSON *control_parm = NULL;
     control_parm = cJSON_GetObjectItem(root, "control_parm");
@@ -1129,7 +1057,7 @@ int json_read_config_file(const void *config)
         exit(1);
     }
     //json_print(root_json, 1);
-    if(json_parse_config_param(root_json, &conf->oal_config) == -1){
+    if(json_parse_config_param(root_json, conf) == -1){
         exit(1);
     }
     return 0;
@@ -1142,7 +1070,7 @@ int json_write_config_file(void *config)
     file = conf->configfile;
     if(file == NULL || config == NULL || root_json == NULL)
         return -1;
-     json_write_config_param(root_json, &conf->oal_config);
+     json_write_config_param(root_json, conf);
     //json_print(root_json, 1);
     ret = json_write_file(file, root_json);
 

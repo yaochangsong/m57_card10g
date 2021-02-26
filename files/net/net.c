@@ -21,6 +21,7 @@ static struct net_tcp_server *ptcp_data_srv = NULL;
 static struct net_tcp_server *ptcp_srv_1gnet = NULL;
 static struct net_tcp_server *ptcp_srv_10gnet = NULL;
 static struct uh_server *puhttp_srv = NULL;
+static struct uh_server *resetful_srv = NULL;
 static struct net_udp_server *pudp_srv = NULL;
 
 void *net_get_tcp_srv_ctx(void)
@@ -44,6 +45,11 @@ void *net_get_udp_srv_ctx(void)
 void *net_get_uhttp_srv_ctx(void)
 {
     return (void*)puhttp_srv;
+}
+
+void *net_get_resetful_srv_ctx(void)
+{
+    return (void*)resetful_srv;
 }
 
 
@@ -155,8 +161,16 @@ int server_init(void)
     pudp_srv = udpsrv;
     udpsrv->on_discovery = akt_parse_discovery;
 #elif defined(SUPPORT_DATA_PROTOCAL_XW)
-    printf_note("udp server init[port:%d]\n", 1234);
-    udpsrv = udp_server_new("0.0.0.0",  1234);
+    struct uh_server *xsrv = NULL;
+    printf_note("xw cmd server init[port:%d]\n", poal_config->network.port);
+    xsrv = uh_server_new("0.0.0.0", poal_config->network.port);
+    if (!xsrv)
+        return -1;
+    xsrv->on_accept = on_accept;
+    xsrv->on_request = on_request;
+    resetful_srv = xsrv;
+    printf_note("xw data udp server init[port:%d]\n", poal_config->network.data_port);
+    udpsrv = udp_server_new("0.0.0.0",  poal_config->network.data_port);
     if (!udpsrv)
         return -1;
     pudp_srv = udpsrv;

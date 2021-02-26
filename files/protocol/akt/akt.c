@@ -672,9 +672,7 @@ static int akt_execute_set_command(void *cl)
         {
             DEVICE_NET_INFO_ST netinfo;
             char ifname[32];
-            static uint16_t port_1g = 0, port_10g = 0;
             struct net_tcp_client * client = (struct net_tcp_client *)cl;
-            bool restart = false;
            
             memcpy(&netinfo, payload, sizeof(DEVICE_NET_INFO_ST));
             if(get_ifa_name_by_ip(client->get_serv_addr(client), ifname) != 0){
@@ -1532,23 +1530,23 @@ static int akt_execute_discovery_command(void *client, const char *buf, int len)
     cl = (struct net_udp_client *)client;
 #ifdef  SUPPORT_NET_WZ
     if(cl->ifname && !strcmp(cl->ifname, NETWORK_10G_EHTHERNET_POINT)){
-        memcpy(netinfo.mac, poal_config->network_10g.mac, sizeof(netinfo.mac));
-        netinfo.ipaddr = htonl(poal_config->network_10g.ipaddress);
-        netinfo.gateway = htonl(poal_config->network_10g.gateway);
-        netinfo.mask = htonl(poal_config->network_10g.netmask);
+        memcpy(netinfo.mac, poal_config->network_10g.addr.mac, sizeof(netinfo.mac));
+        netinfo.ipaddr = htonl(poal_config->network_10g.addr.ipaddress);
+        netinfo.gateway = htonl(poal_config->network_10g.addr.gateway);
+        netinfo.mask = htonl(poal_config->network_10g.addr.netmask);
         netinfo.port = htons(poal_config->network_10g.port);
         netinfo.status = 0;
-        ipdata.s_addr = poal_config->network_10g.ipaddress;
+        ipdata.s_addr = poal_config->network_10g.addr.ipaddress;
     }else
 #endif
     {
-        memcpy(netinfo.mac, poal_config->network.mac, sizeof(netinfo.mac));
-        netinfo.ipaddr = htonl(poal_config->network.ipaddress);
-        netinfo.gateway = htonl(poal_config->network.gateway);
-        netinfo.mask = htonl(poal_config->network.netmask);
+        memcpy(netinfo.mac, poal_config->network.addr.mac, sizeof(netinfo.mac));
+        netinfo.ipaddr = htonl(poal_config->network.addr.ipaddress);
+        netinfo.gateway = htonl(poal_config->network.addr.gateway);
+        netinfo.mask = htonl(poal_config->network.addr.netmask);
         netinfo.port = htons(poal_config->network.port);
         netinfo.status = 0;
-        ipdata.s_addr = poal_config->network.ipaddress;
+        ipdata.s_addr = poal_config->network.addr.ipaddress;
     }
     printf_note("ifname:%s,mac:%x%x%x%x%x%x, ipaddr=%x[%s], gateway=%x\n", cl->ifname, netinfo.mac[0],netinfo.mac[1],netinfo.mac[2],netinfo.mac[3],netinfo.mac[4],netinfo.mac[5],
                                                         netinfo.ipaddr, inet_ntoa(ipdata), netinfo.gateway);

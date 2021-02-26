@@ -187,41 +187,6 @@ void dao_conf_save_batch(exec_cmd cmd, uint8_t type, s_config *config)
 
                 printf_debug("Unsupported parameter modification");
                 break;
-        case EX_NETWORK_CMD:
-            {
-                char temp[30];
-
-                sprintf(temp,"%02x:%02x:%02x:%02x:%02x:%02x\n", config->oal_config.network.mac[0],config->oal_config.network.mac[1],
-                config->oal_config.network.mac[2],config->oal_config.network.mac[3],config->oal_config.network.mac[4],
-                config->oal_config.network.mac[5]);
-
-
-                printf_debug(" config->oal_config.network.mac -----------%s\n",temp);
-                write_config_file_single(XMLFILENAME,"network","mac",temp,0);
-                
-                struct in_addr netpara;
-                const char *ipstr=NULL;
-                netpara.s_addr=config->oal_config.network.gateway;
-                
-                ipstr= inet_ntoa(netpara);
-                printf_debug("----------gateway=%s\n", ipstr);
-                write_config_file_single(XMLFILENAME,"network","gateway",ipstr,0);
-
-                
-                ipstr=NULL;
-                netpara.s_addr=config->oal_config.network.netmask;
-                ipstr= inet_ntoa(netpara);
-                printf_debug("----------netmask=%s", ipstr);
-                write_config_file_single(XMLFILENAME,"network","netmask",ipstr,0);
-
-                ipstr=NULL;
-                netpara.s_addr=config->oal_config.network.ipaddress;
-                ipstr= inet_ntoa(netpara);
-                printf_debug("----------ipaddress=%s", ipstr);
-                write_config_file_single(XMLFILENAME,"network","ipaddress",ipstr,0);
-                write_config_file_single(XMLFILENAME,"network","port",NULL,(int)config->oal_config.network.port);
-                break;
-            }
      default:
 
             break;

@@ -20,7 +20,7 @@ typedef enum {
     EX_MID_FREQ_CMD,           /*中频参数命令*/
     EX_RF_FREQ_CMD,            /*射频参数命令*/
     EX_ENABLE_CMD,             /*使能命令*/
-    EX_FFT_SERIAL_ENABLE_CMD,  /*FFT串行工作使能命令*/
+    EX_FFT_ENABLE_CMD,         /*FFT工作使能命令*/
     EX_BIQ_ENABLE_CMD,         /*宽带IQ工作使能命令*/
     EX_NIQ_ENABLE_CMD,         /*窄带IQ工作使能命令*/
     EX_STATUS_CMD,             /*状态参数命令*/
@@ -204,7 +204,6 @@ struct spm_run_parm{
 
 #include "config.h"
 
-extern struct sem_st work_sem;
 extern void executor_init(void);
 extern int executor_tcp_disconnect_notify(void *cl);
 //extern int8_t executor_set_command(exec_cmd cmd, uint8_t type, uint8_t ch,  void *data);
@@ -216,6 +215,7 @@ extern uint64_t executor_get_mid_freq(uint8_t ch);
 extern void executor_close(void);
 extern void udp_free(struct net_udp_client *cl);
 extern int8_t  executor_serial_points_scan(uint8_t ch, work_mode_type mode, void *args);
-
+extern int8_t  executor_points_scan(uint8_t ch, work_mode_type mode, void *args);
+extern int8_t  executor_fragment_scan(uint32_t fregment_num,uint8_t ch, work_mode_type mode, void *args);
 
 #endif

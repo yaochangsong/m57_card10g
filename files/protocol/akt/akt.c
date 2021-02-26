@@ -610,7 +610,11 @@ static int akt_execute_set_command(void *cl)
             #ifdef SUPPORT_SPECTRUM_SCAN_SEGMENT
             scan_segment_param_convert(ch);
             #endif
-            executor_set_enable_command(ch);
+            int32_t enable = 0;
+            if(poal_config->channel[ch].enable.psd_en || poal_config->channel[ch].enable.audio_en){
+                enable = 1;
+            }
+            executor_set_command(EX_FFT_ENABLE_CMD, -1, ch, &enable);
             break;
         }
         case QUIET_NOISE_THRESHOLD_CMD:

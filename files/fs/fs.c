@@ -370,7 +370,7 @@ static int _thread_exit_callback(void *arg){
     if(pargs->thread_name && !strcmp(pargs->thread_name, _fs_get_backtrace_thread_name(ch))){
         printf_note("Stop Backtrace, Stop Psd!!!\n");
         io_stop_backtrace_file(&ch);
-        executor_set_command(EX_ENABLE_CMD, PSD_MODE_DISABLE, ch, NULL);
+        executor_set_command(EX_FFT_ENABLE_CMD, PSD_MODE_DISABLE, ch, NULL);
     }
     else if(pargs->thread_name && !strcmp(pargs->thread_name,  _fs_get_save_thread_name(ch))) {
     #if defined(SUPPORT_WAV)

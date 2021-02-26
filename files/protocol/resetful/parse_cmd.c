@@ -502,7 +502,7 @@ int cmd_ch_enable_set(struct uh_client *cl, void **arg, void **content)
     printf_note("enable ch=%d, enable=%d\n", ch, enable);
     poal_config->channel[ch].enable.cid = ch;
     if(!strcmp(s_type, "psd")){
-        executor_set_command(EX_FFT_SERIAL_ENABLE_CMD, -1, ch, &enable);
+        executor_set_command(EX_FFT_ENABLE_CMD, -1, ch, &enable);
     }else if(!strcmp(s_type, "iq")){
         executor_set_command(EX_BIQ_ENABLE_CMD, -1, ch, &enable);
     }else if(!strcmp(s_type, "audio")){

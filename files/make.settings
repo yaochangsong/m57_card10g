@@ -29,6 +29,9 @@ SUPPORT_SPECTRUM_V2=y
 SUPPORT_SPECTRUM_FPGA=y
 SUPPORT_SPECTRUM_CHIP=n
 
+#spectrum channel serial or parallel
+SUPPORT_SPECTRUM_SERIAL=n
+
 SUPPORT_SPECTRUM_FFT=n
 #analysis only support by chip mode
 SUPPORT_SPECTRUM_ANALYSIS=n

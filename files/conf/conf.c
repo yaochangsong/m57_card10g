@@ -637,10 +637,6 @@ int8_t config_write_data(int cmd, uint8_t type, uint8_t ch, void *data)
             }
             break;
         }
-        case EX_ENABLE_CMD:
-        {
-            break;
-        }
         case EX_NETWORK_CMD:
         {
             switch(type)
@@ -782,10 +778,6 @@ int8_t config_read_by_cmd(exec_cmd cmd, uint8_t type, uint8_t ch, void *data, ..
                     printf_err("not surpport type\n");
                     goto exit;
             }
-            break;
-        }
-        case EX_ENABLE_CMD:
-        {
             break;
         }
         case EX_NETWORK_CMD:

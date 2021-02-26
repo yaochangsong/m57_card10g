@@ -178,6 +178,9 @@ ifneq ($(findstring y,$(SUPPORT_SPECTRUM_V2)),)
 	endif
 endif
 
+ifneq ($(findstring y,$(SUPPORT_SPECTRUM_SERIAL)),)
+	C_VAR += -DSUPPORT_SPECTRUM_SERIAL
+endif
 #specturm user
 ifneq ($(findstring y,$(SUPPORT_SPECTRUM_FFT)),)
 	SOURCE_DIR += executor/fft

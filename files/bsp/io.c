@@ -1647,12 +1647,6 @@ uint8_t  io_restart_app(void)
     return 0;
 }
 
-static void io_asyn_signal_handler(int signum)
-{
-    printf_debug("receive a signal, signalnum:%d\n", signum);
-    sem_post(&work_sem.kernel_sysn);
-}
-
 int io_get_fd(void)
 {
     return io_ctrl_fd;
@@ -1662,25 +1656,6 @@ int io_get_fd(void)
 void io_init(void)
 {
     printf_info("io init!\n");
-#if defined(SUPPORT_PLATFORM_ARCH_ARM)
-#if defined(SUPPORT_SPECTRUM_KERNEL)
-    int Oflags;
-    
-    if (io_ctrl_fd > 0) {
-        return;
-    }
-    io_ctrl_fd = open(DMA_DEVICE, O_RDWR);
-    if(io_ctrl_fd < 0) {
-        perror("open");
-        return;
-    }
-    /* Asynchronous notification initial */
-    signal(SIGIO, io_asyn_signal_handler);
-    fcntl(io_ctrl_fd, F_SETOWN, getpid());
-    Oflags = fcntl(io_ctrl_fd, F_GETFL);
-    fcntl(io_ctrl_fd, F_SETFL, Oflags | FASYNC|FNONBLOCK);
-#endif
-#endif
 }
 
 

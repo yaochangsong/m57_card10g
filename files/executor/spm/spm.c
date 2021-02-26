@@ -46,6 +46,8 @@ static pthread_mutex_t spm_niq_cond_mutex;
 /* fft */
 static pthread_cond_t spm_fft_cond;
 static pthread_mutex_t spm_fft_cond_mutex;
+struct sem_st work_sem;
+
 
 static struct spm_context *spmctx = NULL;
 
@@ -105,7 +107,7 @@ void spm_biq_deal_notify(void *arg)
     if(arg == NULL)
         return;
     
-    ch = *(int *)arg;
+    ch = *(uint8_t *)arg;
     
     if(ch >= MAX_RADIO_CHANNEL_NUM)
         return;
@@ -120,11 +122,28 @@ void spm_niq_deal_notify(void *arg)
 
 void spm_fft_deal_notify(void *arg)
 {
-    
+#ifdef SUPPORT_SPECTRUM_SERIAL
     pthread_cond_signal(&spm_fft_cond);
+#else
+    int ch;
+    if(arg == NULL)
+        return;
+    
+    ch = *(uint8_t *)arg;
+    sem_post(&work_sem.notify_deal[ch]);
+#endif
 }
 
-void executor_spm_fft_serial_thread(void *arg)
+
+void spm_fft_deal_before(int ch)
+{
+    struct poal_config *poal_config = &(config_get_config()->oal_config);
+    executor_set_command(EX_MID_FREQ_CMD, EX_SMOOTH_TIME, ch, &poal_config->channel[ch].multi_freq_point_param.smooth_time);
+    executor_set_command(EX_RF_FREQ_CMD, EX_RF_ATTENUATION, ch, &poal_config->channel[ch].rf_para.attenuation);
+    executor_set_command(EX_RF_FREQ_CMD, EX_RF_MGC_GAIN, ch, &poal_config->channel[ch].rf_para.mgc_gain_value);
+}
+
+void spm_fft_serial_thread(void *arg)
 {
     struct poal_config *poal_config = &(config_get_config()->oal_config);
     unsigned long ch = 0;
@@ -157,6 +176,125 @@ wait:
         }
         if(find_work == 0)
             goto wait;
+    }
+}
+
+
+void spm_fft_parallel_thread(void *arg)
+{
+    struct poal_config *poal_config = &(config_get_config()->oal_config);
+    uint32_t fft_size;
+    uint32_t j, i;
+    int ch = *(int *)arg;
+    void *spm_arg = (void *)get_spm_ctx();
+    pthread_detach(pthread_self());
+    
+    if(ch >= MAX_RADIO_CHANNEL_NUM){
+        printf_err("channel[%d, %d] is too big\n", ch, *(int *)arg);
+        pthread_exit(0);
+    }
+    //thread_bind_cpu(1);
+    while(1)
+    {
+        
+loop:   printf_note("######channel[%d] wait to deal work######\n", ch);
+        sem_wait(&work_sem.notify_deal[ch]);
+        
+#if defined(SUPPORT_PROJECT_WD_XCR) || defined(SUPPORT_PROJECT_WD_XCR_40G)
+        if(poal_config->channel[ch].enable.bit_en == 0)
+            safe_system("/etc/led.sh transfer off &");
+        else
+            safe_system("/etc/led.sh transfer on &");
+#endif
+        if(OAL_NULL_MODE == poal_config->channel[ch].work_mode){
+            printf_warn("Work Mode not set\n");
+            sleep(1);
+            goto loop;
+        }
+        printf_note("receive notify, [Channel:%d]%s Work: [%s], [%s], [%s]\n", 
+                     ch,
+                     poal_config->channel[ch].enable.bit_en == 0 ? "Stop" : "Start",
+                     poal_config->channel[ch].enable.psd_en == 0 ? "Psd Stop" : "Psd Start",
+                     poal_config->channel[ch].enable.audio_en == 0 ? "Audio Stop" : "Audio Start",
+                     poal_config->channel[ch].enable.iq_en == 0 ? "IQ Stop" : "IQ Start");
+        
+        poal_config->channel[ch].enable.bit_reset = false;
+        printf_note("-------------------------------------\n");
+        if(poal_config->channel[ch].work_mode == OAL_FAST_SCAN_MODE){
+            printf_note("            FastScan             \n");
+        }else if(poal_config->channel[ch].work_mode == OAL_MULTI_ZONE_SCAN_MODE){
+            printf_note("             MultiZoneScan       \n");
+        }else if(poal_config->channel[ch].work_mode == OAL_FIXED_FREQ_ANYS_MODE){
+            printf_note("             Fixed Freq          \n");
+        }else if(poal_config->channel[ch].work_mode == OAL_MULTI_POINT_SCAN_MODE){
+            printf_note("             MultiPointScan       \n");
+        }else{
+            goto loop;
+        }
+        printf_note("-------------------------------------\n");
+        spm_fft_deal_before(ch);
+        for(;;){
+            switch(poal_config->channel[ch].work_mode)
+            {
+                case OAL_FAST_SCAN_MODE:
+                case OAL_MULTI_ZONE_SCAN_MODE:
+                {   
+                    if(poal_config->channel[ch].multi_freq_fregment_para.freq_segment_cnt == 0){
+                        sleep(1);
+                        goto loop;
+                    }
+                    if(poal_config->channel[ch].enable.psd_en || poal_config->channel[ch].enable.spec_analy_en){
+                        for(j = 0; j < poal_config->channel[ch].multi_freq_fregment_para.freq_segment_cnt; j++){
+                            if(executor_fragment_scan(j, ch, poal_config->channel[ch].work_mode, spm_arg) == -1){
+                                io_set_enable_command(PSD_MODE_DISABLE, ch, -1, 0);
+                                usleep(1000);
+                                goto loop;
+                            }
+                        }
+                    }else{
+                        io_set_enable_command(PSD_MODE_DISABLE, ch, -1, 0);
+                        sleep(1);
+                        goto loop;
+                    }
+                }
+                    break;
+                case OAL_FIXED_FREQ_ANYS_MODE:
+                case OAL_MULTI_POINT_SCAN_MODE:
+                {
+                    if(poal_config->channel[ch].multi_freq_point_param.freq_point_cnt == 0){
+                        sleep(1);
+                        goto loop;
+                    }
+
+                    if(poal_config->channel[ch].enable.bit_en){
+                        if(executor_points_scan(ch, poal_config->channel[ch].work_mode, spm_arg) == -1){
+                            io_set_enable_command(PSD_MODE_DISABLE, ch, -1,  0);
+                            #if 0
+                            io_set_enable_command(AUDIO_MODE_DISABLE, ch, -1, 0);
+                            for(i = 0; i< MAX_SIGNAL_CHANNEL_NUM; i++){
+                                io_set_enable_command(IQ_MODE_DISABLE, ch, i, 0);
+                            }
+                            #endif
+                            usleep(1000);
+                            goto loop;
+                        }
+                    }else{
+                        io_set_enable_command(PSD_MODE_DISABLE, ch, -1, 0);
+                        io_set_enable_command(AUDIO_MODE_DISABLE, ch, -1, 0);
+                        for(i = 0; i< MAX_SIGNAL_CHANNEL_NUM; i++){
+                            io_set_enable_command(IQ_MODE_DISABLE, ch, i, 0);
+                        }
+                        sleep(1);
+                        goto loop;
+                    }
+                }
+                    break;
+                default:
+                    printf_err("not support work thread\n");
+                    goto loop;
+                    break;
+            }
+        }
     }
 }
 
@@ -316,6 +454,7 @@ void *spm_init(void)
 {
     static pthread_t send_thread_id, recv_thread_id;
     int ret, ch, type;
+    static int s_ch[MAX_RADIO_CHANNEL_NUM];
     pthread_attr_t attr;
     pthread_t work_id;
 #if defined(SUPPORT_PLATFORM_ARCH_ARM)
@@ -358,24 +497,34 @@ void *spm_init(void)
 
     spm_cond_init();
 
-    /* 创建串行FFT线程 */
-    ret=pthread_create(&work_id, NULL, (void *)executor_spm_fft_serial_thread, NULL);
+#ifdef SUPPORT_SPECTRUM_SERIAL
+    /* 创建串行处理FFT线程 */
+    ret=pthread_create(&work_id, NULL, (void *)spm_fft_serial_thread, NULL);
     if(ret!=0)
         perror("pthread cread spm");
-
-    /* 创建多通道并行宽带IQ线程 */
-    static int _ch[MAX_RADIO_CHANNEL_NUM];
-    for(int i = 0; i < MAX_RADIO_CHANNEL_NUM; i++){
-        _ch[i] = i;
-        ret=pthread_create(&work_id, NULL, (void *)spm_biq_handle_thread, &_ch[i]);
+#else
+    /* 创建并行处理FFT线程 */
+    for(int i = 0; i <MAX_RADIO_CHANNEL_NUM; i++){
+        sem_init(&(work_sem.notify_deal[i]), 0, 0);
+        s_ch[i] = i;
+        ret=pthread_create(&work_id, NULL, (void *)spm_fft_parallel_thread, &s_ch[i]);
         if(ret!=0)
             perror("pthread cread spm");
+    }
+#endif
+
+    /* 创建多通道并行宽带IQ线程 */
+    for(int i = 0; i < MAX_RADIO_CHANNEL_NUM; i++){
+        s_ch[i] = i;
+        ret=pthread_create(&work_id, NULL, (void *)spm_biq_handle_thread, &s_ch[i]);
+        if(ret!=0)
+            perror("pthread cread biq");
     }
 
     /* 创建多通道窄带IQ线程 */
     ret=pthread_create(&recv_thread_id,NULL,(void *)spm_niq_handle_thread, spmctx);
     if(ret!=0)
-        perror("pthread cread spm");
+        perror("pthread cread niq");
     
 #endif /* SUPPORT_PLATFORM_ARCH_ARM */
     return (void *)spmctx;

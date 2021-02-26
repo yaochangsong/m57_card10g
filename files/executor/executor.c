@@ -23,7 +23,6 @@
  */
 pthread_mutex_t set_cmd_mutex = PTHREAD_MUTEX_INITIALIZER;
 
-struct sem_st work_sem;
 
 int executor_tcp_disconnect_notify(void *cl)
 {
@@ -79,7 +78,7 @@ int executor_tcp_disconnect_notify(void *cl)
     return 0;
 }
 
-static  int8_t  executor_fragment_scan(uint32_t fregment_num,uint8_t ch, work_mode_type mode, void *args)
+int8_t  executor_fragment_scan(uint32_t fregment_num,uint8_t ch, work_mode_type mode, void *args)
 {
     struct poal_config *poal_config = &(config_get_config()->oal_config);
 
@@ -206,7 +205,7 @@ uint64_t executor_get_mid_freq(uint8_t ch)
     
 }
 
-static int8_t  executor_points_scan(uint8_t ch, work_mode_type mode, void *args)
+int8_t  executor_points_scan(uint8_t ch, work_mode_type mode, void *args)
 {
     struct poal_config *poal_config = &(config_get_config()->oal_config);
     uint32_t points_count, i;
@@ -392,127 +391,6 @@ int8_t  executor_serial_points_scan(uint8_t ch, work_mode_type mode, void *args)
 }
 
 
-
-void executor_spm_thread(void *arg)
-{
-    struct poal_config *poal_config = &(config_get_config()->oal_config);
-    uint32_t fft_size;
-    uint32_t j, i;
-    int ch = *(int *)arg;
-    void *spm_arg = (void *)get_spm_ctx();
-    pthread_detach(pthread_self());
-    if(ch >= MAX_RADIO_CHANNEL_NUM){
-        printf_err("channel[%d, %d] is too big\n", ch, *(int *)arg);
-        pthread_exit(0);
-    }
-    //thread_bind_cpu(1);
-    while(1)
-    {
-        
-loop:   printf_note("######channel[%d] wait to deal work######\n", ch);
-        sem_wait(&work_sem.notify_deal[ch]);
-#if defined(SUPPORT_PROJECT_WD_XCR) || defined(SUPPORT_PROJECT_WD_XCR_40G)
-        if(poal_config->channel[ch].enable.bit_en == 0)
-            safe_system("/etc/led.sh transfer off &");
-        else
-            safe_system("/etc/led.sh transfer on &");
-#endif
-        if(OAL_NULL_MODE == poal_config->channel[ch].work_mode){
-            printf_warn("Work Mode not set\n");
-            sleep(1);
-            goto loop;
-        }
-        printf_note("receive notify, [Channel:%d]%s Work: [%s], [%s], [%s]\n", 
-                     ch,
-                     poal_config->channel[ch].enable.bit_en == 0 ? "Stop" : "Start",
-                     poal_config->channel[ch].enable.psd_en == 0 ? "Psd Stop" : "Psd Start",
-                     poal_config->channel[ch].enable.audio_en == 0 ? "Audio Stop" : "Audio Start",
-                     poal_config->channel[ch].enable.iq_en == 0 ? "IQ Stop" : "IQ Start");
-        
-        poal_config->channel[ch].enable.bit_reset = false;
-        printf_note("-------------------------------------\n");
-        if(poal_config->channel[ch].work_mode == OAL_FAST_SCAN_MODE){
-            printf_note("            FastScan             \n");
-        }else if(poal_config->channel[ch].work_mode == OAL_MULTI_ZONE_SCAN_MODE){
-            printf_note("             MultiZoneScan       \n");
-        }else if(poal_config->channel[ch].work_mode == OAL_FIXED_FREQ_ANYS_MODE){
-            printf_note("             Fixed Freq          \n");
-        }else if(poal_config->channel[ch].work_mode == OAL_MULTI_POINT_SCAN_MODE){
-            printf_note("             MultiPointScan       \n");
-        }else{
-            goto loop;
-        }
-        printf_note("-------------------------------------\n");
-        for(;;){
-            switch(poal_config->channel[ch].work_mode)
-            {
-                case OAL_FAST_SCAN_MODE:
-                case OAL_MULTI_ZONE_SCAN_MODE:
-                {   
-                   // printf_debug("scan segment count: %d\n", poal_config->channel[ch].multi_freq_fregment_para.freq_segment_cnt);
-                    if(poal_config->channel[ch].multi_freq_fregment_para.freq_segment_cnt == 0){
-                        sleep(1);
-                        goto loop;
-                    }
-                    if(poal_config->channel[ch].enable.psd_en || poal_config->channel[ch].enable.spec_analy_en){
-                        for(j = 0; j < poal_config->channel[ch].multi_freq_fregment_para.freq_segment_cnt; j++){
-                            if(executor_fragment_scan(j, ch, poal_config->channel[ch].work_mode, spm_arg) == -1){
-                                io_set_enable_command(PSD_MODE_DISABLE, ch, -1, 0);
-                                usleep(1000);
-                                goto loop;
-                            }
-                        }
-                    }else{
-                        io_set_enable_command(PSD_MODE_DISABLE, ch, -1, 0);
-                        sleep(1);
-                        goto loop;
-                    }
-                }
-                    break;
-                case OAL_FIXED_FREQ_ANYS_MODE:
-                case OAL_MULTI_POINT_SCAN_MODE:
-                {
-                    //printf_info("start point scan: points_count=%d\n", poal_config->channel[ch].multi_freq_point_param.freq_point_cnt);
-                    if(poal_config->channel[ch].multi_freq_point_param.freq_point_cnt == 0){
-                        sleep(1);
-                        goto loop;
-                    }
-
-                    if(poal_config->channel[ch].enable.bit_en){
-                        if(executor_points_scan(ch, poal_config->channel[ch].work_mode, spm_arg) == -1){
-                            io_set_enable_command(PSD_MODE_DISABLE, ch, -1,  0);
-                            #if 0
-                            io_set_enable_command(AUDIO_MODE_DISABLE, ch, -1, 0);
-                            for(i = 0; i< MAX_SIGNAL_CHANNEL_NUM; i++){
-                                io_set_enable_command(IQ_MODE_DISABLE, ch, i, 0);
-                            }
-                            #endif
-                            usleep(1000);
-                            goto loop;
-                        }
-                    }else{
-                        io_set_enable_command(PSD_MODE_DISABLE, ch, -1, 0);
-                        io_set_enable_command(AUDIO_MODE_DISABLE, ch, -1, 0);
-                        for(i = 0; i< MAX_SIGNAL_CHANNEL_NUM; i++){
-                            io_set_enable_command(IQ_MODE_DISABLE, ch, i, 0);
-                        }
-                        sleep(1);
-                        goto loop;
-                    }
-                }
-                    break;
-                default:
-                    printf_err("not support work thread\n");
-                    goto loop;
-                    break;
-            }
-        }
-    }
-}
-
-
-
-
 static int8_t executor_get_kernel_command(uint8_t type, uint8_t ch, void *data)
 {
     switch(type)
@@ -695,7 +573,7 @@ int8_t executor_set_command(exec_cmd cmd, uint8_t type, uint8_t ch,  void *data,
 {
      struct poal_config *poal_config = &(config_get_config()->oal_config);
      va_list argp;
-     uint8_t ch_dup = ch +1;
+
      LOCK_SET_COMMAND();
      va_start (argp, data);
      switch(cmd)
@@ -703,7 +581,7 @@ int8_t executor_set_command(exec_cmd cmd, uint8_t type, uint8_t ch,  void *data,
         case EX_MID_FREQ_CMD:
         {
 #ifdef SUPPORT_LCD
-            lcd_printf(cmd, type,data, &ch_dup);
+            lcd_printf(cmd, type,data, &ch);
 #endif
             executor_set_kernel_command(type, ch, data, argp);
             break;
@@ -711,38 +589,35 @@ int8_t executor_set_command(exec_cmd cmd, uint8_t type, uint8_t ch,  void *data,
         case EX_RF_FREQ_CMD:
         {
 #ifdef SUPPORT_LCD
-            lcd_printf(cmd, type,data, &ch_dup);
+            lcd_printf(cmd, type,data, &ch);
 #endif
 #ifdef SUPPORT_RF
             rf_set_interface(type, ch, data);
 #endif
-            //executor_set_rf_command(type,ch, data);
             break;
         }
-        case EX_ENABLE_CMD:
+        case EX_FFT_ENABLE_CMD:
         {
+#ifdef SUPPORT_SPECTRUM_SERIAL
+            int32_t enable = *(int32_t *)data;
+            if(enable)
+                ch_bitmap_set(ch, CH_TYPE_FFT);
+            else
+                ch_bitmap_clear(ch, CH_TYPE_FFT);
+#else
             if(type == PSD_MODE_DISABLE){
                 poal_config->channel[ch].enable.psd_en = 0;
                 INTERNEL_ENABLE_BIT_SET(poal_config->channel[ch].enable.bit_en,poal_config->channel[ch].enable);
             }
             /* notify thread to deal data */
-            printf_note("notify thread to deal data\n");
             poal_config->channel[ch].enable.bit_reset = true; /* reset(stop) all working task */
             if((get_spm_ctx()!= NULL) && get_spm_ctx()->ops->set_flush_trigger)
                 get_spm_ctx()->ops->set_flush_trigger(true);
-            if(ch < MAX_RADIO_CHANNEL_NUM)
-                sem_post(&work_sem.notify_deal[ch]);
-            break;
-        }
-        case EX_FFT_SERIAL_ENABLE_CMD:
-        {
-            int32_t enable = *(int32_t *)data;
-            printf_note("notify thread to deal fft data\n");
-            if(enable)
-                ch_bitmap_set(ch, CH_TYPE_FFT);
-            else
-                ch_bitmap_clear(ch, CH_TYPE_FFT);
-            spm_fft_deal_notify(NULL);
+#endif
+            if(ch < MAX_RADIO_CHANNEL_NUM){
+                printf_note("ch=%d, notify thread to deal fft data\n", ch);
+                spm_fft_deal_notify(&ch);
+            }
             break;
         }
         case EX_BIQ_ENABLE_CMD:
@@ -767,20 +642,6 @@ int8_t executor_set_command(exec_cmd cmd, uint8_t type, uint8_t ch,  void *data,
             else
                 io_set_enable_command(IQ_MODE_DISABLE, ch,subch, 0);
             spm_niq_deal_notify(NULL);
-            break;
-        }
-        case EX_WORK_MODE_CMD:
-        {
-            char *pbuf= NULL;
-            uint32_t len;
-            printf_debug("set work mode[%d]\n", type);
-            #if (defined SUPPORT_PROTOCAL_AKT) || (defined SUPPORT_PROTOCAL_XNRP) 
-            //pbuf = poal_config->assamble_response_data(&len, data);
-            #endif
-            break;
-        }
-        case EX_CTRL_CMD:
-        {
             break;
         }
         default:
@@ -957,15 +818,6 @@ void executor_init(void)
             executor_set_command(EX_MID_FREQ_CMD, EX_SUB_CH_ONOFF, i, &enable, j);
             executor_set_command(EX_MID_FREQ_CMD, EX_SUB_CH_DEC_METHOD, j, &default_method);
         }
-        #if 0
-        sem_init(&(work_sem.notify_deal[i]), 0, 0);
-        ch[i] = i;
-        ret=pthread_create(&work_id, NULL, (void *)executor_spm_thread, &ch[i]);
-        if(ret!=0)
-            perror("pthread cread spm");
-        usleep(50);
-        //pthread_detach(work_id);
-        #endif
     }
 }
 

@@ -94,7 +94,8 @@ int8_t lcd_printf(uint8_t cmd, uint8_t type, void *data, uint8_t *ch)
     if(data == NULL){
         return -1;
     }
-    pcode = lcd_code_convert(cmd, type, ch, &code);
+    uint8_t ch_dup = *ch +1;
+    pcode = lcd_code_convert(cmd, type, &ch_dup, &code);
     if(pcode == NULL){
         return -1;
     }

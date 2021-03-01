@@ -859,15 +859,7 @@ static int akt_execute_set_command(void *cl)
             printf_note("ch:%d, sub_ch=%d, au_en:%d,iq_en:%d\n", ch,sub_ch, poal_config->channel[ch].sub_channel_para.sub_ch_enable[sub_ch].audio_en, poal_config->channel[ch].sub_channel_para.sub_ch_enable[sub_ch].iq_en);
             enable = (poal_config->channel[ch].sub_channel_para.sub_ch_enable[sub_ch].iq_en == 0 ? 0 : 1);
             printf_info("ch:%d, sub_ch=%d, au_en:%d,iq_en:%d, enable=%d\n", ch,sub_ch, poal_config->channel[ch].sub_channel_para.sub_ch_enable[sub_ch].audio_en, poal_config->channel[ch].sub_channel_para.sub_ch_enable[sub_ch].iq_en, enable);
-
-            /* 通道IQ使能 */
-            if(enable){
-                struct net_tcp_client *s_cl;
-                /* NOTE:The parameter must be a MAIN channel, not a subchannel */
-                io_set_enable_command(IQ_MODE_ENABLE, ch, sub_ch, 0);
-            }else{
-                io_set_enable_command(IQ_MODE_DISABLE, ch,sub_ch, 0);
-            }
+            executor_set_command(EX_NIQ_ENABLE_CMD, -1, ch, &enable, sub_ch);
             break;
         }
 #ifdef SUPPORT_NET_WZ

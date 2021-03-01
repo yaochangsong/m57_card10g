@@ -1081,7 +1081,7 @@ static void io_set_BIQ_out_en(int ch, int subch, uint32_t trans_len,uint8_t cont
         get_spm_ctx()->ops->stream_start(ch, subch, trans_len, continuous, STREAM_IQ);
 #endif
 #endif
-    if(subch >= 0){
+    if(ch >= 0){
         //io_set_subch_onoff(ch, subch, 1);
         ch_bitmap_set(ch, CH_TYPE_IQ);
     }

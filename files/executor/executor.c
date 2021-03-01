@@ -622,7 +622,7 @@ int8_t executor_set_command(exec_cmd cmd, uint8_t type, uint8_t ch,  void *data,
         }
         case EX_BIQ_ENABLE_CMD:
         {
-            int32_t subch = va_arg(argp, int32_t);
+            int32_t subch = -1;//va_arg(argp, int32_t);
             int32_t enable = *(int32_t *)data;
             printf_note("subch:%d, BIQ %s\n", subch, enable == 0 ? "disable" : "enable");
             if(enable)

@@ -62,6 +62,7 @@ static struct request_info http_req_cmd[] = {
     /* 网络参数 */
     {"POST",    "/net",                                 -1,                cmd_netset},
     {"POST",    "/net/@ch/client",                      -1,                cmd_net_client},
+    {"POST",    "/net/@ch/client/@type",                -1,                cmd_net_client_type},
     /* 使能控制 */
     {"PUT",     "/enable/@ch/@subch/@type/@value",      -1,                cmd_subch_enable_set},
     {"PUT",     "/enable/@ch/@type/@value",             -1,                cmd_ch_enable_set},

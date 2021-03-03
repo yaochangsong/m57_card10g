@@ -112,7 +112,7 @@ static int8_t xw_decode_method_convert(uint8_t method)
 
 
 
-int parse_json_client_net(int ch, const char * const body)
+int parse_json_client_net(int ch, const char * const body, char *type)
 {
     struct poal_config *config = &(config_get_config()->oal_config);
     cJSON *node, *value;
@@ -141,9 +141,20 @@ int parse_json_client_net(int ch, const char * const body)
                 sclient.sin_port = ntohs(value->valueint);
                 printf_note("port: %d, 0x%x\n", value->valueint, value->valueint);
             }
-            udp_add_client_to_list(&sclient, ch, TAG_FFT);
-            udp_add_client_to_list(&sclient, ch, TAG_IQ);
-            udp_add_client_to_list(&sclient, ch, TAG_AUDIO);
+            if(type != NULL){
+                if(!strcmp(type, "biq")){
+                    udp_add_client_to_list(&sclient, ch, TAG_BIQ);
+                } else if(!strcmp(type, "niq")){
+                    udp_add_client_to_list(&sclient, ch, TAG_NIQ);
+                } else if(!strcmp(type, "fft")){
+                    udp_add_client_to_list(&sclient, ch, TAG_FFT);
+                }
+                
+            }else{
+                udp_add_client_to_list(&sclient, ch, TAG_FFT);
+                udp_add_client_to_list(&sclient, ch, TAG_NIQ);
+                udp_add_client_to_list(&sclient, ch, TAG_AUDIO);
+            }
         }
     }
     

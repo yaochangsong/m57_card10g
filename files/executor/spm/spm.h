@@ -28,15 +28,17 @@ enum stream_type {
 };
 
 #define DMA_IQ_TYPE_BUFFER_SIZE (DMA_IQ_BUFFER_SIZE*2)
-enum stream_iq_type {
-    STREAM_IQ_TYPE_AUDIO,
-    STREAM_IQ_TYPE_RAW,
-    STREAM_IQ_TYPE_MAX,
+
+enum stream_niq_type {
+    STREAM_NIQ_TYPE_AUDIO,
+    STREAM_NIQ_TYPE_RAW,
+    STREAM_NIQ_TYPE_MAX,
 };
-#define for_each_iq_type(type, run) \
+#define for_each_niq_type(type, run) \
     for (int i = 0; \
-            type = i, run.dis_iq.send_ptr = run.dis_iq.ptr[i],run.dis_iq.send_len = run.dis_iq.offset[i]*sizeof(iq_t), i < STREAM_IQ_TYPE_MAX; \
+            type = i, run.dis_iq.send_ptr = run.dis_iq.ptr[i],run.dis_iq.send_len = run.dis_iq.offset[i]*sizeof(iq_t), i < STREAM_NIQ_TYPE_MAX; \
             i++)
+
 
 struct spm_backend_ops {
     int (*create)(void);
@@ -45,18 +47,14 @@ struct spm_backend_ops {
     ssize_t (*read_fft_data)(void **, void*);
     ssize_t (*read_adc_data)(int,void **);
     int (*read_adc_over_deal)(int,void *);
-    int (*read_iq_over_deal)(void *);
+    int (*read_niq_over_deal)(void *);
     fft_t *(*data_order)(fft_t *, size_t,  size_t *, void *);
     int (*send_fft_data)(void *, size_t, void *);
     int (*send_iq_data)(void *, size_t, void *);
-    int (*send_cmd)(void *, void *, size_t, void *);
-    int (*send_iq_type)(enum stream_iq_type, iq_t *, size_t, void *);
-    int (*iq_dispatcher)(iq_t *, size_t, void *);
-    /* AGC自动增益控制*/
+    int (*send_niq_type)(enum stream_niq_type, iq_t *, size_t, void *);
+    int (*niq_dispatcher)(iq_t *, size_t, void *);
     int (*agc_ctrl)(int, void *);
-    /* 获取驻留时间是否到达：根据通道驻留策略和是否有信号 */
     bool (*residency_time_arrived)(uint8_t, int, bool);
-    /* 获取某通道是否有信号；并返回信号强度 */
     int32_t (*signal_strength)(uint8_t ch,uint8_t subch, uint32_t, bool *is_singal, uint16_t *strength);
     int (*back_running_file)(int, enum stream_type, int);
     int (*stream_start)(int, int, uint32_t ,uint8_t , enum stream_type);

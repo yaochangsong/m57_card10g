@@ -724,7 +724,7 @@ static int akt_execute_set_command(void *cl)
             } else {
                 client.sin_port = net_para.port;
             }
-            udp_add_client_to_list(&client, ch, TAG_IQ);
+            udp_add_client_to_list(&client, ch, TAG_NIQ);
 
             if (payload_len == sizeof(SNIFFER_DATA_REPORT_ST) && net_para.audio_port != 0) {
                 client.sin_port = net_para.audio_port;
@@ -840,7 +840,7 @@ static int akt_execute_set_command(void *cl)
         }
         case SUB_SIGNAL_OUTPUT_ENABLE_CMD:
         {
-            uint8_t sub_ch, enable = 0, i;
+            int32_t sub_ch, enable = 0;
             bool net_10g_threshold_on = false, net_1g_threshold_on = false;
             check_valid_channel(payload[0]);
             sub_ch = *(uint16_t *)(payload+1);
@@ -858,7 +858,7 @@ static int akt_execute_set_command(void *cl)
            // io_set_enable_command(IQ_MODE_DISABLE, ch, 0);
             printf_note("ch:%d, sub_ch=%d, au_en:%d,iq_en:%d\n", ch,sub_ch, poal_config->channel[ch].sub_channel_para.sub_ch_enable[sub_ch].audio_en, poal_config->channel[ch].sub_channel_para.sub_ch_enable[sub_ch].iq_en);
             enable = (poal_config->channel[ch].sub_channel_para.sub_ch_enable[sub_ch].iq_en == 0 ? 0 : 1);
-            printf_info("ch:%d, sub_ch=%d, au_en:%d,iq_en:%d, enable=%d\n", ch,sub_ch, poal_config->channel[ch].sub_channel_para.sub_ch_enable[sub_ch].audio_en, poal_config->channel[ch].sub_channel_para.sub_ch_enable[sub_ch].iq_en, enable);
+            printf_note("ch:%d, sub_ch=%d, au_en:%d,iq_en:%d, enable=%d\n", ch,sub_ch, poal_config->channel[ch].sub_channel_para.sub_ch_enable[sub_ch].audio_en, poal_config->channel[ch].sub_channel_para.sub_ch_enable[sub_ch].iq_en, enable);
             executor_set_command(EX_NIQ_ENABLE_CMD, -1, ch, &enable, sub_ch);
             break;
         }

@@ -340,7 +340,24 @@ static int spm_read_adc_over_deal(int ch, void *arg)
     return 0;
 }
         
-static int spm_read_iq_over_deal(void *arg)
+int spm_read_biq_over_deal(int ch, void *arg)
+{
+    unsigned int nwrite_byte;
+    nwrite_byte = *(unsigned int *)arg;
+    struct _spm_stream *pstream = spm_stream;
+    int index;
+    
+    index = spm_find_index_by_type(ch, -1, STREAM_IQ);
+    if(index < 0)
+        return -1;
+
+    if(pstream){
+        ioctl(pstream[index].id, IOCTL_DMA_SET_ASYN_READ_INFO, &nwrite_byte);
+    }
+    return 0;
+}
+
+int spm_read_niq_over_deal(void *arg)
 {
     unsigned int nwrite_byte;
     nwrite_byte = *(unsigned int *)arg;
@@ -350,12 +367,13 @@ static int spm_read_iq_over_deal(void *arg)
     index = spm_find_index_by_type(-1, -1, STREAM_IQ);
     if(index < 0)
         return -1;
-    
+
     if(pstream){
         ioctl(pstream[index].id, IOCTL_DMA_SET_ASYN_READ_INFO, &nwrite_byte);
     }
     return 0;
 }
+
 
 static  float get_side_band_rate(uint32_t bandwidth)
 {
@@ -494,7 +512,6 @@ static int spm_send_fft_data(void *data, size_t fft_len, void *arg)
     return (header_len + data_byte_size);
 }
 
-
 /*********************************************************
     功能:组装IQ数据协议头
     输入参数：
@@ -612,7 +629,141 @@ static void *_assamble_audio_header(int subch, size_t *hlen, size_t data_len, vo
     return ptr_header;
 
 }
-static int spm_send_iq_data(void *data, size_t len, void *arg)
+
+static int spm_send_dispatcher_niq(enum stream_niq_type type, iq_t *data, size_t len, void *arg)
+{
+    size_t header_len = 0, subch = 0;
+    struct _spm_stream *pstream = spm_stream;
+    size_t _send_byte = (iq_send_unit_byte > 0 ? iq_send_unit_byte : DEFAULT_IQ_SEND_BYTE);
+    void *hptr = NULL;
+    struct spm_run_parm *hparam;
+    hparam = (struct spm_run_parm *)arg;
+
+    if(data == NULL || len == 0 || arg == NULL)
+        return -1;
+
+    if(len < _send_byte)
+        return -1;
+
+    if(type == STREAM_NIQ_TYPE_AUDIO){
+        if((hptr = _assamble_audio_header(CONFIG_AUDIO_CHANNEL, &header_len, _send_byte, arg)) == NULL){
+            printf_err("assamble head error\n");
+            return -1;
+        }
+    } else if(type == STREAM_NIQ_TYPE_RAW){
+        if((hptr = _assamble_iq_header(hparam->sub_ch_index, &header_len, _send_byte, arg)) == NULL){
+            printf_err("assamble head error\n");
+            return -1;
+        }
+
+    } else{
+        printf_err("unknow type: %d\n", type);
+        return -1;
+    }
+    
+    int i, index,sbyte;
+    uint8_t *pdata;
+    struct iovec iov[2];
+    iov[0].iov_base = hptr;
+    iov[0].iov_len = header_len;
+    index = len / _send_byte;
+    sbyte = index * _send_byte;
+    pdata = (uint8_t *)data;
+    __lock_iq_send__();
+	if(type == STREAM_NIQ_TYPE_AUDIO){
+		for(i = 0; i<index; i++){
+	        iov[1].iov_base = pdata;
+	        iov[1].iov_len = _send_byte;
+	        udp_send_vec_data(iov, 2, TAG_AUDIO);
+	        pdata += _send_byte;
+	    }
+	} else if(type == STREAM_NIQ_TYPE_RAW){
+		for(i = 0; i<index; i++){
+	        iov[1].iov_base = pdata;
+	        iov[1].iov_len = _send_byte;
+	        udp_send_vec_data(iov, 2, TAG_NIQ);
+	        pdata += _send_byte;
+	    }
+	}
+    __unlock_iq_send__();
+
+    safe_free(hptr);
+    if(hparam->dis_iq.offset[type] >= (sbyte/sizeof(iq_t))){
+        hparam->dis_iq.offset[type] = hparam->dis_iq.offset[type] - (sbyte/sizeof(iq_t));
+    }
+    else{
+        printf_err("iq offset err %u < %ld\n", hparam->dis_iq.offset[type], sbyte/sizeof(iq_t));
+        hparam->dis_iq.offset[type] = 0;
+    }
+    
+    printf_debug("%s, offset = %u, send=%u, len=%lu\n", 
+            type == STREAM_NIQ_TYPE_AUDIO ? "audio" : "iq" , hparam->dis_iq.offset[type], sbyte, len);
+
+    return 0;
+}
+
+
+
+/* 将窄带iq不同类型进行分发 */
+static int spm_niq_dispatcher(iq_t *ptr_iq, size_t len, void *arg)
+{
+#define IQ_DATA_PACKAGE_BYTE 512
+#define IQ_DATA_TYPE_PACKAGE_NUM 262144
+#define AUDIO_CHANNEL CONFIG_AUDIO_CHANNEL
+
+    #define IQ_HEADER_1 0x55aa
+    #define IQ_HEADER_2 0xe700
+    
+    size_t offset = 0, i, index = 0;
+    int subch, type;
+    iq_t *ptr_offset = ptr_iq, *type_offset[STREAM_NIQ_TYPE_MAX], *iq_raw_offset;
+    struct spm_run_parm *hparam;
+    hparam = (struct spm_run_parm *)arg;
+
+    offset = IQ_DATA_PACKAGE_BYTE/sizeof(iq_t);
+    
+    for(i = 0; i< STREAM_NIQ_TYPE_MAX; i++){
+        type_offset[i] = hparam->dis_iq.ptr[i] + hparam->dis_iq.offset[i];
+        hparam->dis_iq.len[i] = 0;
+    }
+    
+    for(i = 0, index = 0; i< len; i += IQ_DATA_PACKAGE_BYTE, index++){
+        if(((*ptr_offset & 0x0ff00) == IQ_HEADER_2) && (*(ptr_offset+1) == IQ_HEADER_1)){
+            subch = *ptr_offset & 0x00ff;
+            if(AUDIO_CHANNEL == subch){
+                type = STREAM_NIQ_TYPE_AUDIO;
+            }else {
+                type = STREAM_NIQ_TYPE_RAW;
+                hparam->sub_ch_index = subch;
+            }
+            memcpy(type_offset[type], ptr_offset, IQ_DATA_PACKAGE_BYTE);
+            type_offset[type] += offset;
+            hparam->dis_iq.len[type] += IQ_DATA_PACKAGE_BYTE;
+            if(hparam->dis_iq.len[type] >= DMA_IQ_TYPE_BUFFER_SIZE) {
+                printf_warn("type: %s, is overrun len[%u], %u\n",
+                    type == STREAM_NIQ_TYPE_AUDIO ? "audio" : "iq" , hparam->dis_iq.len[type], DMA_IQ_TYPE_BUFFER_SIZE);
+                hparam->dis_iq.len[type] = DMA_IQ_TYPE_BUFFER_SIZE;
+                break;
+            }
+        }
+        ptr_offset += offset;
+    }
+   
+    for(i = 0; i< STREAM_NIQ_TYPE_MAX; i++){
+        if(hparam->dis_iq.len[i] > 0){
+            hparam->dis_iq.offset[i] +=  hparam->dis_iq.len[i]/sizeof(iq_t);
+            if(hparam->dis_iq.offset[i] > DMA_IQ_TYPE_BUFFER_SIZE/sizeof(iq_t)){
+                hparam->dis_iq.offset[i] = DMA_IQ_TYPE_BUFFER_SIZE/sizeof(iq_t);
+                printf_warn("offset type: %s, is overrun[%u]\n",
+                    i == STREAM_NIQ_TYPE_AUDIO ? "audio" : "iq" , hparam->dis_iq.offset[i]);
+            }
+        }
+    }
+    return 0;
+}
+
+
+int spm_send_iq_data(void *data, size_t len, void *arg)
 {
     size_t header_len = 0;
     struct _spm_stream *pstream = spm_stream;
@@ -641,148 +792,15 @@ static int spm_send_iq_data(void *data, size_t len, void *arg)
     for(i = 0; i<index; i++){
         iov[1].iov_base = pdata;
         iov[1].iov_len = _send_byte;
-        udp_send_vec_data(iov, 2, TAG_IQ);
+        udp_send_vec_data(iov, 2, TAG_NIQ);
         pdata += _send_byte;
     }
     __unlock_iq_send__();
     
-    spm_read_iq_over_deal(&sbyte);
-    //ioctl(pstream[STREAM_IQ].id, IOCTL_DMA_SET_ASYN_READ_INFO, &sbyte);
+    spm_read_niq_over_deal(&sbyte);
     safe_free(hptr);
     
     return (int)(header_len + len);
-}
-
-static int spm_send_dispatcher_iq(enum stream_iq_type type, iq_t *data, size_t len, void *arg)
-{
-    
-    size_t header_len = 0, subch = 0;
-    struct _spm_stream *pstream = spm_stream;
-    size_t _send_byte = (iq_send_unit_byte > 0 ? iq_send_unit_byte : DEFAULT_IQ_SEND_BYTE);
-    void *hptr = NULL;
-    struct spm_run_parm *hparam;
-    hparam = (struct spm_run_parm *)arg;
-
-    if(data == NULL || len == 0 || arg == NULL)
-        return -1;
-
-    if(len < _send_byte)
-        return -1;
-
-    if(type == STREAM_IQ_TYPE_AUDIO){
-        if((hptr = _assamble_audio_header(CONFIG_AUDIO_CHANNEL, &header_len, _send_byte, arg)) == NULL){
-            printf_err("assamble head error\n");
-            return -1;
-        }
-    } else if(type == STREAM_IQ_TYPE_RAW){
-        if((hptr = _assamble_iq_header(hparam->sub_ch_index, &header_len, _send_byte, arg)) == NULL){
-            printf_err("assamble head error\n");
-            return -1;
-        }
-
-    } else{
-        printf_err("unknow type: %d\n", type);
-        return -1;
-    }
-    
-    int i, index,sbyte;
-    uint8_t *pdata;
-    struct iovec iov[2];
-    iov[0].iov_base = hptr;
-    iov[0].iov_len = header_len;
-    index = len / _send_byte;
-    sbyte = index * _send_byte;
-    pdata = (uint8_t *)data;
-    __lock_iq_send__();
-	if(type == STREAM_IQ_TYPE_AUDIO){
-		for(i = 0; i<index; i++){
-	        iov[1].iov_base = pdata;
-	        iov[1].iov_len = _send_byte;
-	        udp_send_vec_data(iov, 2, TAG_AUDIO);
-	        pdata += _send_byte;
-	    }
-	} else if(type == STREAM_IQ_TYPE_RAW){
-		for(i = 0; i<index; i++){
-	        iov[1].iov_base = pdata;
-	        iov[1].iov_len = _send_byte;
-	        udp_send_vec_data(iov, 2, TAG_IQ);
-	        pdata += _send_byte;
-	    }
-	}
-    __unlock_iq_send__();
-
-    safe_free(hptr);
-    if(hparam->dis_iq.offset[type] >= (sbyte/sizeof(iq_t))){
-        hparam->dis_iq.offset[type] = hparam->dis_iq.offset[type] - (sbyte/sizeof(iq_t));
-    }
-    else{
-        printf_err("iq offset err %u < %ld\n", hparam->dis_iq.offset[type], sbyte/sizeof(iq_t));
-        hparam->dis_iq.offset[type] = 0;
-    }
-    
-    printf_debug("%s, offset = %u, send=%u, len=%lu\n", 
-            type == STREAM_IQ_TYPE_AUDIO ? "audio" : "iq" , hparam->dis_iq.offset[type], sbyte, len);
-
-    return 0;
-}
-
-
-/* 将窄带iq不同类型进行分发 */
-static int spm_iq_dispatcher(iq_t *ptr_iq, size_t len, void *arg)
-{
-#define IQ_DATA_PACKAGE_BYTE 512
-#define IQ_DATA_TYPE_PACKAGE_NUM 262144
-#define AUDIO_CHANNEL CONFIG_AUDIO_CHANNEL
-
-    #define IQ_HEADER_1 0x55aa
-    #define IQ_HEADER_2 0xe700
-    
-    size_t offset = 0, i, index = 0;
-    int subch, type;
-    iq_t *ptr_offset = ptr_iq, *type_offset[STREAM_IQ_TYPE_MAX], *iq_raw_offset;
-    struct spm_run_parm *hparam;
-    hparam = (struct spm_run_parm *)arg;
-
-    offset = IQ_DATA_PACKAGE_BYTE/sizeof(iq_t);
-    
-    for(i = 0; i< STREAM_IQ_TYPE_MAX; i++){
-        type_offset[i] = hparam->dis_iq.ptr[i] + hparam->dis_iq.offset[i];
-        hparam->dis_iq.len[i] = 0;
-    }
-    
-    for(i = 0, index = 0; i< len; i += IQ_DATA_PACKAGE_BYTE, index++){
-        if(((*ptr_offset & 0x0ff00) == IQ_HEADER_2) && (*(ptr_offset+1) == IQ_HEADER_1)){
-            subch = *ptr_offset & 0x00ff;
-            if(AUDIO_CHANNEL == subch){
-                type = STREAM_IQ_TYPE_AUDIO;
-            }else {
-                type = STREAM_IQ_TYPE_RAW;
-                hparam->sub_ch_index = subch;
-            }
-            memcpy(type_offset[type], ptr_offset, IQ_DATA_PACKAGE_BYTE);
-            type_offset[type] += offset;
-            hparam->dis_iq.len[type] += IQ_DATA_PACKAGE_BYTE;
-            if(hparam->dis_iq.len[type] >= DMA_IQ_TYPE_BUFFER_SIZE) {
-                printf_warn("type: %s, is overrun len[%u], %u\n",
-                    type == STREAM_IQ_TYPE_AUDIO ? "audio" : "iq" , hparam->dis_iq.len[type], DMA_IQ_TYPE_BUFFER_SIZE);
-                hparam->dis_iq.len[type] = DMA_IQ_TYPE_BUFFER_SIZE;
-                break;
-            }
-        }
-        ptr_offset += offset;
-    }
-   
-    for(i = 0; i< STREAM_IQ_TYPE_MAX; i++){
-        if(hparam->dis_iq.len[i] > 0){
-            hparam->dis_iq.offset[i] +=  hparam->dis_iq.len[i]/sizeof(iq_t);
-            if(hparam->dis_iq.offset[i] > DMA_IQ_TYPE_BUFFER_SIZE/sizeof(iq_t)){
-                hparam->dis_iq.offset[i] = DMA_IQ_TYPE_BUFFER_SIZE/sizeof(iq_t);
-                printf_warn("offset type: %s, is overrun[%u]\n",
-                    i == STREAM_IQ_TYPE_AUDIO ? "audio" : "iq" , hparam->dis_iq.offset[i]);
-            }
-        }
-    }
-    return 0;
 }
 
 static int spm_scan(uint64_t *s_freq_offset, uint64_t *e_freq, uint32_t *scan_bw, uint32_t *bw, uint64_t *m_freq)
@@ -1137,12 +1155,12 @@ static const struct spm_backend_ops spm_ops = {
     .read_fft_data = spm_read_fft_data,
     .read_adc_data = spm_read_adc_data,
     .read_adc_over_deal = spm_read_adc_over_deal,
-    .read_iq_over_deal = spm_read_iq_over_deal,
+    .read_niq_over_deal = spm_read_niq_over_deal,
     .data_order = spm_data_order,
     .send_fft_data = spm_send_fft_data,
     .send_iq_data = spm_send_iq_data,
-    .iq_dispatcher = spm_iq_dispatcher,
-    .send_iq_type = spm_send_dispatcher_iq,
+    .niq_dispatcher = spm_niq_dispatcher,
+    .send_niq_type = spm_send_dispatcher_niq,
     .agc_ctrl = spm_agc_ctrl,
     .residency_time_arrived = is_sigal_residency_time_arrived,
     .signal_strength = spm_get_signal_strength,
@@ -1153,6 +1171,9 @@ static const struct spm_backend_ops spm_ops = {
     .spm_scan = spm_scan,
     .close = _spm_close,
 };
+
+
+
 
 struct spm_context * spm_create_fpga_context(void)
 {

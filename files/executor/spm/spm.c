@@ -85,21 +85,6 @@ static int get_thread_priority(pthread_attr_t *attr)
 }
 
 
-static void spm_iq_dispatcher_buffer_clear(void)
-{
-    int type, ch;
-    struct spm_context *ctx = NULL;
-    
-    ctx = get_spm_ctx();
-    for(ch = 0; ch< MAX_RADIO_CHANNEL_NUM; ch++){
-        for(type = 0; type < STREAM_IQ_TYPE_MAX; type++){
-            memset(ctx->run_args[ch]->dis_iq.ptr[type], 0, DMA_IQ_TYPE_BUFFER_SIZE);
-            ctx->run_args[ch]->dis_iq.len[type] = 0;
-            ctx->run_args[ch]->dis_iq.offset[type] = 0;
-        }
-    }
-}
-
 void spm_biq_deal_notify(void *arg)
 {
     int ch;
@@ -253,7 +238,7 @@ loop:   printf_note("######channel[%d] wait to deal work######\n", ch);
                         }
                     }else{
                         io_set_enable_command(PSD_MODE_DISABLE, ch, -1, 0);
-                        sleep(1);
+                        usleep(1000);
                         goto loop;
                     }
                 }
@@ -284,7 +269,7 @@ loop:   printf_note("######channel[%d] wait to deal work######\n", ch);
                         for(i = 0; i< MAX_SIGNAL_CHANNEL_NUM; i++){
                             io_set_enable_command(IQ_MODE_DISABLE, ch, i, 0);
                         }
-                        sleep(1);
+                        usleep(1000);
                         goto loop;
                     }
                 }
@@ -298,7 +283,20 @@ loop:   printf_note("######channel[%d] wait to deal work######\n", ch);
     }
 }
 
-
+static void spm_niq_dispatcher_buffer_clear(void)
+{
+    int type, ch;
+    struct spm_context *ctx = NULL;
+    
+    ctx = get_spm_ctx();
+    for(ch = 0; ch< MAX_RADIO_CHANNEL_NUM; ch++){
+        for(type = 0; type < STREAM_NIQ_TYPE_MAX; type++){
+            memset(ctx->run_args[ch]->dis_iq.ptr[type], 0, DMA_IQ_TYPE_BUFFER_SIZE);
+            ctx->run_args[ch]->dis_iq.len[type] = 0;
+            ctx->run_args[ch]->dis_iq.offset[type] = 0;
+        }
+    }
+}
 
 /* 在DMA连续模式下；IQ读取线程 
    在该模式下，应以最快速度读取发送数据；
@@ -314,12 +312,12 @@ void spm_niq_handle_thread(void *arg)
     ssize_t  len = 0, i;
     struct poal_config *poal_config = &(config_get_config()->oal_config);
     int ch, type;
-   // thread_bind_cpu(1);
+    //thread_bind_cpu(1);
     ctx = (struct spm_context *)arg;
     pthread_detach(pthread_self());
+    
 loop:
-    printf_warn("######Wait NIQ enable######\n");
-    //notify = 1;
+    printf_note("######Wait NIQ or Radio enable######\n");
     /* 通过条件变量阻塞方式等待数据使能 */
     pthread_mutex_lock(&spm_niq_cond_mutex);
     while(subch_bitmap_weight(CH_TYPE_IQ) == 0)
@@ -327,31 +325,30 @@ loop:
     pthread_mutex_unlock(&spm_niq_cond_mutex);
 
     ch = poal_config->cid;
-    printf_note(">>>>>[ch=%d]NIQ start\n", ch);
+    printf_note(">>>>>[ch=%d]NIQ or Radio start\n", ch);
     memset(&run, 0, sizeof(run));
     memcpy(&run, ctx->run_args[ch], sizeof(run));
-    spm_iq_dispatcher_buffer_clear();
+    spm_niq_dispatcher_buffer_clear();
     do{
         len = ctx->ops->read_iq_data((void **)&ptr_iq);
         if(len > 0){
-            if(ctx->ops->iq_dispatcher && test_audio_on()){
-                ctx->ops->iq_dispatcher(ptr_iq, len, &run);
-                for_each_iq_type(type, run){
-                    if(ctx->ops->send_iq_type){
-                        ctx->ops->send_iq_type(type, run.dis_iq.send_ptr, run.dis_iq.send_len, &run);
+            if(ctx->ops->niq_dispatcher && test_audio_on()){
+                ctx->ops->niq_dispatcher(ptr_iq, len, &run);
+                for_each_niq_type(type, run){
+                    if(ctx->ops->send_niq_type){
+                        ctx->ops->send_niq_type(type, run.dis_iq.send_ptr, run.dis_iq.send_len, &run);
                     }
                 }
-                ctx->ops->read_iq_over_deal(&len);
+                ctx->ops->read_niq_over_deal(&len);
             }else{
                 ctx->ops->send_iq_data(ptr_iq, len, &run);
             }
         }
         if(subch_bitmap_weight(CH_TYPE_IQ) == 0){
-            printf_note("iq disabled\n");
-            sleep(1);
+            printf_debug("iq disabled\n");
+            usleep(1000);
             goto loop;
         }
-        //usleep(1);
     }while(1);
     
 }
@@ -374,7 +371,7 @@ void spm_biq_handle_thread(void *arg)
     
     pthread_detach(pthread_self());
 loop:
-    printf_warn("######Wait BIQ[ch:%d] enable######\n", ch);
+    printf_note("######Wait BIQ[ch:%d] enable######\n", ch);
     /* 通过条件变量阻塞方式等待数据使能 */
     pthread_mutex_lock(&spm_biq_cond_mutex[ch]);
     while(test_ch_iq_on(ch) == false)
@@ -392,10 +389,9 @@ loop:
         }
         if(test_ch_iq_on(ch) == false){
             printf_note("iq disabled\n");
-            sleep(1);
+            usleep(1000);
             goto loop;
         }
-        //usleep(1);
     }while(1);
     
 }
@@ -484,7 +480,7 @@ void *spm_init(void)
             printf("malloc failed\n");
             exit(1);
         }
-        for(type = 0; type < STREAM_IQ_TYPE_MAX; type++){
+        for(type = 0; type < STREAM_NIQ_TYPE_MAX; type++){
             spmctx->run_args[ch]->dis_iq.ptr[type] = calloc(1, DMA_IQ_TYPE_BUFFER_SIZE);
             if(spmctx->run_args[ch]->dis_iq.ptr[type] == NULL){
                 printf("malloc failed\n");
@@ -496,7 +492,7 @@ void *spm_init(void)
     }
 
     spm_cond_init();
-
+    
 #ifdef SUPPORT_SPECTRUM_SERIAL
     /* 创建串行处理FFT线程 */
     ret=pthread_create(&work_id, NULL, (void *)spm_fft_serial_thread, NULL);

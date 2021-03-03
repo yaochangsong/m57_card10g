@@ -107,13 +107,15 @@ typedef enum _dma_tx_rx_
 struct _spm_stream {
     char *devname;      /* 流设备节点名称 */
     int id;             /* 频谱流类型描述符 */
-    int ch;
+    int ch;             /* 主通道，如果没有写-1 */
     uint8_t *ptr;       /* 频谱流数据buffer指针 */
     uint32_t len;       /* 频谱流数据buffer长度 */
     char *name;         /* 频谱流名称 */
     int rd_wr;
     enum stream_type type;
 };
+
+
 
 typedef enum _IOCTL_CMD_ 
 {
@@ -148,5 +150,8 @@ typedef enum _IOCTL_CMD_
 
 
 extern struct spm_context * spm_create_fpga_context(void);
+extern int spm_send_audio_data(void *data, size_t len, void *arg);
+extern int spm_send_iq_data(void *data, size_t len, void *arg);
+extern int spm_read_niq_over_deal(void *arg);
 
 #endif

@@ -377,7 +377,7 @@ int32_t  config_get_fft_calibration_value(uint8_t ch, uint32_t fft_size, uint64_
 {
     struct poal_config *poal_config = &(config_get_config()->oal_config);
     int i;
-    int32_t cal_value=0,freq_cal_value=0, found = 0, freq_found = 0;
+    int32_t cal_value=0,freq_cal_value=0, freq_found = 0;
     uint32_t _fft = 0, _start_freq_khz = 0, _end_freq_khz = 0;
     int mode = 0;
 
@@ -387,7 +387,6 @@ int32_t  config_get_fft_calibration_value(uint8_t ch, uint32_t fft_size, uint64_
             if(fft_size==poal_config->cal_level.cali_fft.fftsize[i])
             {
                 cal_value=poal_config->cal_level.cali_fft.cali_value[i];
-                found=1;
                 break;
             }
         }
@@ -420,6 +419,7 @@ int32_t  config_get_fft_calibration_value(uint8_t ch, uint32_t fft_size, uint64_
     cal_value += poal_config->cal_level.specturm.global_roughly_power_lever;
 
 #ifdef SUPPORT_CALIBRATION_GAIN
+    int found = 0;
     /* ##NOTE: [重要]在常规模式下，0增益校准## */
     if(poal_config->channel[ch].rf_para.gain_ctrl_method != POAL_AGC_MODE && 
         poal_config->cal_level.specturm.gain_calibration_onoff == true){

@@ -273,11 +273,11 @@ int8_t  executor_points_scan(uint8_t ch, work_mode_type mode, void *args)
             
             executor_set_command(EX_MID_FREQ_CMD, EX_AUDIO_VOL_CTRL, subch,&point->points[i].audio_volume);
             io_set_enable_command(AUDIO_MODE_ENABLE, ch, -1, 0);  //音频通道开�?
-            
+            spm_niq_deal_notify(NULL);
         }else{
             io_set_enable_command(AUDIO_MODE_DISABLE, ch, -1, 0);  //音频通道开�?
-            
         }
+        
 #if defined (SUPPORT_RESIDENCY_STRATEGY) 
         uint16_t strength = 0;
         bool is_signal = false;
@@ -589,7 +589,7 @@ int8_t executor_set_command(exec_cmd cmd, uint8_t type, uint8_t ch,  void *data,
         case EX_RF_FREQ_CMD:
         {
 #ifdef SUPPORT_LCD
-            lcd_printf(cmd, type,data, &ch);
+            lcd_printf(cmd, type, data, &ch);
 #endif
 #ifdef SUPPORT_RF
             rf_set_interface(type, ch, data);
@@ -604,6 +604,7 @@ int8_t executor_set_command(exec_cmd cmd, uint8_t type, uint8_t ch,  void *data,
                 ch_bitmap_set(ch, CH_TYPE_FFT);
             else
                 ch_bitmap_clear(ch, CH_TYPE_FFT);
+            
 #else
             if(type == PSD_MODE_DISABLE){
                 poal_config->channel[ch].enable.psd_en = 0;
@@ -625,23 +626,27 @@ int8_t executor_set_command(exec_cmd cmd, uint8_t type, uint8_t ch,  void *data,
             int32_t subch = -1;//va_arg(argp, int32_t);
             int32_t enable = *(int32_t *)data;
             printf_note("subch:%d, BIQ %s\n", subch, enable == 0 ? "disable" : "enable");
-            if(enable)
+            if(enable){
                 io_set_enable_command(BIQ_MODE_ENABLE, ch, subch, 0);
+                spm_biq_deal_notify(&ch);
+            }
             else
                 io_set_enable_command(BIQ_MODE_DISABLE, ch,subch, 0);
-            spm_biq_deal_notify(&ch);
             break;
         }
         case EX_NIQ_ENABLE_CMD:
         {
             int32_t subch = va_arg(argp, int32_t);
             int32_t enable = *(int32_t *)data;
-            printf_note("subch:%d, NIQ %s\n", subch, enable == 0 ? "disable" : "enable");
-            if(enable)
+            printf_note("ch=%d, subch:%d,enable=%d NIQ %s\n",ch, subch, enable, enable == 0 ? "disable" : "enable");
+            if(enable){
                 io_set_enable_command(IQ_MODE_ENABLE, ch, subch, 0);
-            else
+                spm_niq_deal_notify(NULL);
+            }
+            else{
                 io_set_enable_command(IQ_MODE_DISABLE, ch,subch, 0);
-            spm_niq_deal_notify(NULL);
+            }
+            
             break;
         }
         default:

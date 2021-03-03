@@ -25,7 +25,7 @@ typedef enum _XW_DECODE_ID{
 }_DECODE_ID;
 
 
-extern int parse_json_client_net(int ch, const char * const body);
+extern int parse_json_client_net(int ch, const char * const body, char *type);
 extern int parse_json_net(const char * const body);
 extern int parse_json_multi_band(const char * const body,uint8_t cid);
 extern int parse_json_muti_point(const char * const body,uint8_t cid);

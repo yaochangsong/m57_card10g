@@ -33,8 +33,9 @@ struct net_udp_server {
 
 typedef enum {
     TAG_FFT     = 0x00,
-    TAG_IQ      = 0x01,
-    TAG_AUDIO   = 0x02,
+    TAG_NIQ     = 0x01,
+    TAG_BIQ     = 0x02,
+    TAG_AUDIO   = 0x03,
 }x_tag_code;
 extern struct net_udp_server *udp_server_new(const char *host, int port);
 extern int udp_send_data(uint8_t  *data, uint32_t data_len);

@@ -131,6 +131,8 @@ static ssize_t spm_chip_read_fft_data(void **data, void *args)
     iqdata = (iq_t *)specturm_rx0_read_data(&r);
 #ifdef SUPPORT_SPECTRUM_ANALYSIS
     spm_analysis_start(0, iqdata, r, args);
+#else
+    iqdata = iqdata; /* for warning */
 #endif
     floatdata = zalloc(fft_size*4);
     if(floatdata == NULL)
@@ -523,7 +525,7 @@ static int spm_chip_send_iq_data(void *data, size_t len, void *arg)
     for(i = 0; i<index; i++){
         iov[1].iov_base = pdata;
         iov[1].iov_len = _send_byte;
-        udp_send_vec_data(iov, 2, TAG_IQ);
+        udp_send_vec_data(iov, 2, TAG_NIQ);
         pdata += _send_byte;
     }
    

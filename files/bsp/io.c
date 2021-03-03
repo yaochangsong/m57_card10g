@@ -83,9 +83,9 @@ static struct  band_table_t bandtable[] ={
 #endif
 }; 
 
-
 static DECLARE_BITMAP(subch_bmp[CH_TYPE_MAX], MAX_SIGNAL_CHANNEL_NUM);
 static DECLARE_BITMAP(ch_bmp[CH_TYPE_MAX], MAX_RADIO_CHANNEL_NUM);
+
 
 void subch_bitmap_init(void)
 {
@@ -103,14 +103,9 @@ bool test_subch_iq_on(uint8_t subch)
     return test_bit(subch, subch_bmp[CH_TYPE_IQ]);
 }
 
-bool test_subch_audio_on(uint8_t subch)
-{
-    return test_bit(subch, subch_bmp[CH_TYPE_AUDIO]);
-}
-
 bool test_audio_on(void)
 {
-    return test_subch_audio_on(CONFIG_AUDIO_CHANNEL);
+    return test_subch_iq_on(CONFIG_AUDIO_CHANNEL);
 }
 
 
@@ -158,11 +153,6 @@ bool test_ch_iq_on(uint8_t ch)
 bool test_ch_fft_on(uint8_t ch)
 {
     return test_bit(ch, ch_bmp[CH_TYPE_FFT]);
-}
-
-bool test_ch_audio_on(uint8_t ch)
-{
-    return test_bit(ch, ch_bmp[CH_TYPE_AUDIO]);
 }
 
 
@@ -1062,8 +1052,9 @@ static void io_set_NIQ_out_en(int ch, int subch, uint32_t trans_len,uint8_t cont
 {
 #if defined(SUPPORT_PLATFORM_ARCH_ARM)
 #if defined(SUPPORT_SPECTRUM_V2) 
-    if((get_spm_ctx()!=NULL) && get_spm_ctx()->ops->stream_start)
+    if((get_spm_ctx()!=NULL) && get_spm_ctx()->ops->stream_start){
         get_spm_ctx()->ops->stream_start(-1, subch, trans_len, continuous, STREAM_IQ);
+    }
 #endif
 #endif
     if(subch >= 0){
@@ -1466,6 +1457,7 @@ int16_t io_get_signal_strength(uint8_t ch)
     return 0;
 #endif
 #endif
+    return 0;
 }
 
 

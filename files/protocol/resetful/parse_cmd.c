@@ -467,7 +467,31 @@ int cmd_net_client(struct uh_client *cl, void **arg, void **content)
         goto error;
     }
     printf_note("ch:%d, %s\n", ch, cl->dispatch.body);
-    code = parse_json_client_net(ch, cl->dispatch.body);
+    code = parse_json_client_net(ch, cl->dispatch.body, NULL);
+error:
+    *arg = get_resp_message(code);
+    return code;
+}
+
+/*
+    接收数据客户端网络参数设置
+    "/net/@ch/client/@type"
+    @type: fft,biq,niq
+*/
+int cmd_net_client_type(struct uh_client *cl, void **arg, void **content)
+{
+    char *s_ch, *type;
+    int  ch;
+    int code = RESP_CODE_OK;
+    
+    s_ch = cl->get_restful_var(cl, "ch");
+    type = cl->get_restful_var(cl, "type");
+    if(str_to_int(s_ch, &ch, check_valid_ch) == false){
+        code = RESP_CODE_CHANNEL_ERR;
+        goto error;
+    }
+    printf_note("ch:%d, %s\n", ch, cl->dispatch.body);
+    code = parse_json_client_net(ch, cl->dispatch.body, type);
 error:
     *arg = get_resp_message(code);
     return code;

@@ -27,8 +27,7 @@ typedef enum _io_dq_method_code{
 
 typedef enum _CH_TYPE{
     CH_TYPE_FFT = 0,
-    CH_TYPE_IQ,
-    CH_TYPE_AUDIO,
+    CH_TYPE_IQ, /* 窄带IQ包含音频数据 */
     CH_TYPE_MAX,
 }CH_TYPE;
 

@@ -193,7 +193,7 @@ static void tcp_raw_data_write_loop(struct net_tcp_client *cl)
     @callback_over: 发送完毕一帧后，函数操作指针
     .
     如：通过TCP发送IQ数据给客户端
-    client->send_raw_data(client, NULL,  get_spm_ctx()->ops->read_iq_data,  get_spm_ctx()->ops->read_iq_over_deal);
+    client->send_raw_data(client, NULL,  get_spm_ctx()->ops->read_niq_data,  get_spm_ctx()->ops->read_iq_over_deal);
     通过TCP发送文件给客户端
     client->send_raw_data(client, "/etc/file/CH0_D20200909192511390_F1000.000M_B175.000M_R409.600M_TIQ.wav", NULL, NULL);
 

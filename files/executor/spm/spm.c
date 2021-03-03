@@ -225,6 +225,7 @@ loop:   printf_note("######channel[%d] wait to deal work######\n", ch);
                 case OAL_MULTI_ZONE_SCAN_MODE:
                 {   
                     if(poal_config->channel[ch].multi_freq_fregment_para.freq_segment_cnt == 0){
+                        printf_warn("freqency segment count is 0\n");
                         sleep(1);
                         goto loop;
                     }
@@ -247,6 +248,7 @@ loop:   printf_note("######channel[%d] wait to deal work######\n", ch);
                 case OAL_MULTI_POINT_SCAN_MODE:
                 {
                     if(poal_config->channel[ch].multi_freq_point_param.freq_point_cnt == 0){
+                        printf_warn("freqency segment count is 0\n");
                         sleep(1);
                         goto loop;
                     }
@@ -330,7 +332,7 @@ loop:
     memcpy(&run, ctx->run_args[ch], sizeof(run));
     spm_niq_dispatcher_buffer_clear();
     do{
-        len = ctx->ops->read_iq_data((void **)&ptr_iq);
+        len = ctx->ops->read_niq_data((void **)&ptr_iq);
         if(len > 0){
             if(ctx->ops->niq_dispatcher && test_audio_on()){
                 ctx->ops->niq_dispatcher(ptr_iq, len, &run);
@@ -341,7 +343,7 @@ loop:
                 }
                 ctx->ops->read_niq_over_deal(&len);
             }else{
-                ctx->ops->send_iq_data(ptr_iq, len, &run);
+                ctx->ops->send_niq_data(ptr_iq, len, &run);
             }
         }
         if(subch_bitmap_weight(CH_TYPE_IQ) == 0){
@@ -383,9 +385,11 @@ loop:
     memset(&run, 0, sizeof(run));
     memcpy(&run, ctx->run_args[ch], sizeof(run));
     do{
-        len = ctx->ops->read_biq_data(ch, (void **)&ptr_iq);
+        if(ctx->ops->read_biq_data)
+            len = ctx->ops->read_biq_data(ch, (void **)&ptr_iq);
         if(len > 0){
-                ctx->ops->send_iq_data(ptr_iq, len, &run);
+                if(ctx->ops->send_biq_data)
+                    ctx->ops->send_biq_data(ch, ptr_iq, len, &run);
         }
         if(test_ch_iq_on(ch) == false){
             printf_note("iq disabled\n");

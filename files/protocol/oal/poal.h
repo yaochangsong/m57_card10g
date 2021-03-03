@@ -64,8 +64,12 @@ struct freq_points_st{
     int16_t audio_volume;   /* 音频音量 */
 };//__attribute__ ((packed));
 
+struct bddc_st{
+    uint64_t middle_freq; /* 宽带ddc中心频率 */
+    uint64_t bandwidth;   /* 宽带ddc带宽 */
+};
 
-/* 多频点扫描参数 */
+/* 多频点/定频扫描参数 */
 struct multi_freq_point_para_st{
     uint8_t cid;
     uint8_t window_type;
@@ -76,6 +80,7 @@ struct multi_freq_point_para_st{
     float audio_sample_rate;
     uint32_t freq_point_cnt;
     struct freq_points_st  points[MAX_SIG_CHANNLE];
+    struct bddc_st ddc;
 };//__attribute__ ((packed));
 
 
@@ -390,8 +395,8 @@ struct calibration_info_st{
 struct channel_para{
     volatile work_mode_type work_mode;                              /* 通道工作模式 */
     struct output_en_st enable;                                     /* 通道使能 */
-    struct multi_freq_point_para_st  multi_freq_point_param;        /* 通道多频点 */
-    struct multi_freq_fregment_para_st  multi_freq_fregment_para;   /* 通道多频段 */
+    struct multi_freq_point_para_st  multi_freq_point_param;        /* 通道多频点/定频 */
+    struct multi_freq_fregment_para_st  multi_freq_fregment_para;   /* 通道多频段/扫频 */
     struct sub_channel_freq_para_st sub_channel_para;               /* 通道子通道参数 */
     struct rf_para_st rf_para;                                      /* 通道射频参数 */
 };

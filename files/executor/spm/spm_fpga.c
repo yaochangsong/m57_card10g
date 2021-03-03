@@ -289,7 +289,7 @@ static ssize_t spm_read_biq_data(int ch, void **data)
 }
 
 
-static ssize_t spm_read_iq_data(void **data)
+static ssize_t spm_read_niq_data(void **data)
 {
     int index;
     index = spm_find_index_by_type(-1, -1, STREAM_IQ);
@@ -340,7 +340,7 @@ static int spm_read_adc_over_deal(int ch, void *arg)
     return 0;
 }
         
-int spm_read_biq_over_deal(int ch, void *arg)
+static int spm_read_biq_over_deal(int ch, void *arg)
 {
     unsigned int nwrite_byte;
     nwrite_byte = *(unsigned int *)arg;
@@ -357,7 +357,7 @@ int spm_read_biq_over_deal(int ch, void *arg)
     return 0;
 }
 
-int spm_read_niq_over_deal(void *arg)
+static int spm_read_niq_over_deal(void *arg)
 {
     unsigned int nwrite_byte;
     nwrite_byte = *(unsigned int *)arg;
@@ -763,7 +763,7 @@ static int spm_niq_dispatcher(iq_t *ptr_iq, size_t len, void *arg)
 }
 
 
-int spm_send_iq_data(void *data, size_t len, void *arg)
+int spm_send_niq_data(void *data, size_t len, void *arg)
 {
     size_t header_len = 0;
     struct _spm_stream *pstream = spm_stream;
@@ -802,6 +802,47 @@ int spm_send_iq_data(void *data, size_t len, void *arg)
     
     return (int)(header_len + len);
 }
+
+int spm_send_biq_data(int ch, void *data, size_t len, void *arg)
+{
+    size_t header_len = 0;
+    struct _spm_stream *pstream = spm_stream;
+    size_t _send_byte = (iq_send_unit_byte > 0 ? iq_send_unit_byte : DEFAULT_IQ_SEND_BYTE);
+    uint8_t *hptr = NULL;
+    
+    if(data == NULL || len == 0 || arg == NULL)
+        return -1;
+
+    if(len < _send_byte)
+        return -1;
+    if((hptr = _assamble_iq_header(1, &header_len, _send_byte, arg)) == NULL){
+        printf_err("assamble head error\n");
+        return -1;
+    }
+   
+    int i, index,sbyte;
+    uint8_t *pdata;
+    struct iovec iov[2];
+    iov[0].iov_base = hptr;
+    iov[0].iov_len = header_len;
+    index = len / _send_byte;
+    sbyte = index * _send_byte;
+    pdata = (uint8_t *)data;
+    __lock_iq_send__();
+    for(i = 0; i<index; i++){
+        iov[1].iov_base = pdata;
+        iov[1].iov_len = _send_byte;
+        udp_send_vec_data(iov, 2, TAG_BIQ);
+        pdata += _send_byte;
+    }
+    __unlock_iq_send__();
+    
+    spm_read_biq_over_deal(ch, &sbyte);
+    safe_free(hptr);
+    
+    return (int)(header_len + len);
+}
+
 
 static int spm_scan(uint64_t *s_freq_offset, uint64_t *e_freq, uint32_t *scan_bw, uint32_t *bw, uint64_t *m_freq)
 {
@@ -1150,7 +1191,7 @@ static int _spm_close(void *_ctx)
 
 static const struct spm_backend_ops spm_ops = {
     .create = spm_create,
-    .read_iq_data = spm_read_iq_data,
+    .read_niq_data = spm_read_niq_data,
     .read_biq_data = spm_read_biq_data,
     .read_fft_data = spm_read_fft_data,
     .read_adc_data = spm_read_adc_data,
@@ -1158,7 +1199,8 @@ static const struct spm_backend_ops spm_ops = {
     .read_niq_over_deal = spm_read_niq_over_deal,
     .data_order = spm_data_order,
     .send_fft_data = spm_send_fft_data,
-    .send_iq_data = spm_send_iq_data,
+    .send_niq_data = spm_send_niq_data,
+    .send_biq_data = spm_send_biq_data,
     .niq_dispatcher = spm_niq_dispatcher,
     .send_niq_type = spm_send_dispatcher_niq,
     .agc_ctrl = spm_agc_ctrl,

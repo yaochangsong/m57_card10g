@@ -635,11 +635,11 @@ static int spm_sample_ctrl(void *args)
 
 static const struct spm_backend_ops spm_ops = {
     .create = spm_chip_create,
-    .read_iq_data = spm_chip_read_iq_data,
+    .read_niq_data = spm_chip_read_iq_data,
     .read_fft_data = spm_chip_read_fft_data_smooth,//spm_chip_read_fft_data,
     .data_order = spm_chip_data_order,
     .send_fft_data = spm_chip_send_fft_data,
-    .send_iq_data = spm_chip_send_iq_data,
+    .send_niq_data = spm_chip_send_iq_data,
     .set_calibration_value = spm_set_calibration_value,
     .set_smooth_time = spm_chip_set_smooth_time,
     .sample_ctrl = spm_sample_ctrl,

@@ -150,8 +150,7 @@ typedef enum _IOCTL_CMD_
 
 
 extern struct spm_context * spm_create_fpga_context(void);
-extern int spm_send_audio_data(void *data, size_t len, void *arg);
-extern int spm_send_iq_data(void *data, size_t len, void *arg);
-extern int spm_read_niq_over_deal(void *arg);
+extern int spm_send_niq_data(void *data, size_t len, void *arg);
+extern int spm_send_biq_data(int ch, void *data, size_t len, void *arg);
 
 #endif

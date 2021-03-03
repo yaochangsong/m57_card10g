@@ -30,6 +30,7 @@ extern int parse_json_net(const char * const body);
 extern int parse_json_multi_band(const char * const body,uint8_t cid);
 extern int parse_json_muti_point(const char * const body,uint8_t cid);
 extern int parse_json_demodulation(const char * const body,uint8_t cid,uint8_t subid );
+extern int parse_json_bddc(const char * const body,uint8_t ch);
 extern int parse_json_file_backtrace(const char * const body, uint8_t ch,  uint8_t enable, char  *filename);
 extern int parse_json_file_store(const char * const body, uint8_t ch,  uint8_t enable, char  *filename);
 extern int parse_json_if_multi_value(const char * const body, uint8_t cid);

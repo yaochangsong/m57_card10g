@@ -146,6 +146,7 @@ int parse_json_client_net(int ch, const char * const body, char *type)
                     udp_add_client_to_list(&sclient, ch, TAG_BIQ);
                 } else if(!strcmp(type, "niq")){
                     udp_add_client_to_list(&sclient, ch, TAG_NIQ);
+                    udp_add_client_to_list(&sclient, ch, TAG_AUDIO);
                 } else if(!strcmp(type, "fft")){
                     udp_add_client_to_list(&sclient, ch, TAG_FFT);
                 }
@@ -153,6 +154,7 @@ int parse_json_client_net(int ch, const char * const body, char *type)
             }else{
                 udp_add_client_to_list(&sclient, ch, TAG_FFT);
                 udp_add_client_to_list(&sclient, ch, TAG_NIQ);
+                udp_add_client_to_list(&sclient, ch, TAG_BIQ);
                 udp_add_client_to_list(&sclient, ch, TAG_AUDIO);
             }
         }
@@ -489,6 +491,37 @@ int parse_json_muti_point(const char * const body,uint8_t cid)
     }
     return code;
 }
+
+/* 宽带ddc参数设置 */
+int parse_json_bddc(const char * const body,uint8_t ch)
+{
+    int code = RESP_CODE_OK;
+    struct poal_config *config = &(config_get_config()->oal_config);
+    cJSON *node, *value;
+    cJSON *root = cJSON_Parse(body);
+    
+    if (root == NULL)
+    {
+        const char *error_ptr = cJSON_GetErrorPtr();
+        if (error_ptr != NULL)
+        {
+            fprintf(stderr, "Error before: %s\n", error_ptr);
+        }
+        return RESP_CODE_PARSE_ERR;
+    }
+    value = cJSON_GetObjectItem(root, "centerFreq");
+    if(value!=NULL&&cJSON_IsNumber(value)){
+         config->channel[ch].multi_freq_point_param.ddc.middle_freq = value->valuedouble;
+         printfd("middle_freq:%"PRIu64",\n", config->channel[ch].multi_freq_point_param.ddc.middle_freq);
+    }
+    value = cJSON_GetObjectItem(root, "decBandwidth");
+    if(value!=NULL&&cJSON_IsNumber(value)){
+         config->channel[ch].multi_freq_point_param.ddc.bandwidth = value->valuedouble;
+         printfd("decBandwidth:%"PRIu64",\n", config->channel[ch].multi_freq_point_param.ddc.bandwidth);
+    }
+    return code;
+}
+
 int parse_json_demodulation(const char * const body,uint8_t cid,uint8_t subid )
 {
      printfd(" \n*************demodulation set*****************\n");

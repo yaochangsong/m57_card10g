@@ -278,6 +278,30 @@ error:
 
 }
 
+int cmd_bddc(struct uh_client *cl, void **arg, void **content)
+{
+    char *s_ch;
+    int ch;
+    int code = RESP_CODE_OK;
+    
+    s_ch = cl->get_restful_var(cl, "ch");
+
+    printf_note("bddc ch = %s\n", s_ch);
+    if(str_to_int(s_ch, &ch, check_valid_ch) == false){
+        code = RESP_CODE_CHANNEL_ERR;
+        goto error;
+    }
+    printf_note("%s\n", cl->dispatch.body);
+    code = parse_json_bddc(cl->dispatch.body,ch);
+error:
+    *arg = get_resp_message(code);
+    return code;
+
+}
+
+
+
+
 /*"PUT",     /if/@ch/@subch/@type/@value"
     中频单个参数设置
 */
@@ -526,10 +550,26 @@ int cmd_ch_enable_set(struct uh_client *cl, void **arg, void **content)
     printf_note("enable ch=%d, enable=%d\n", ch, enable);
     poal_config->channel[ch].enable.cid = ch;
     if(!strcmp(s_type, "psd")){
+        if(enable)
+            poal_config->channel[ch].enable.psd_en = 1;
+        else
+            poal_config->channel[ch].enable.psd_en = 0;
+        INTERNEL_ENABLE_BIT_SET(poal_config->channel[ch].enable.bit_en,poal_config->channel[ch].enable);
         executor_set_command(EX_FFT_ENABLE_CMD, -1, ch, &enable);
     }else if(!strcmp(s_type, "iq")){
+        if(enable)
+            poal_config->channel[ch].enable.iq_en = 1;
+        else
+            poal_config->channel[ch].enable.iq_en = 0;
+        INTERNEL_ENABLE_BIT_SET(poal_config->channel[ch].enable.bit_en,poal_config->channel[ch].enable);
         executor_set_command(EX_BIQ_ENABLE_CMD, -1, ch, &enable);
     }else if(!strcmp(s_type, "audio")){
+        if(enable)
+            poal_config->channel[ch].enable.audio_en = 1;
+        else
+            poal_config->channel[ch].enable.audio_en = 0;
+        INTERNEL_ENABLE_BIT_SET(poal_config->channel[ch].enable.bit_en,poal_config->channel[ch].enable);
+        executor_set_command(EX_FFT_ENABLE_CMD, -1, ch, &enable);
     }else{
         code = RESP_CODE_PATH_PARAM_ERR;
         goto error;

@@ -42,7 +42,7 @@ enum stream_niq_type {
 
 struct spm_backend_ops {
     int (*create)(void);
-    ssize_t (*read_iq_data)(void **);
+    ssize_t (*read_niq_data)(void **);
     ssize_t (*read_biq_data)(int ch, void **data);
     ssize_t (*read_fft_data)(void **, void*);
     ssize_t (*read_adc_data)(int,void **);
@@ -50,7 +50,8 @@ struct spm_backend_ops {
     int (*read_niq_over_deal)(void *);
     fft_t *(*data_order)(fft_t *, size_t,  size_t *, void *);
     int (*send_fft_data)(void *, size_t, void *);
-    int (*send_iq_data)(void *, size_t, void *);
+    int (*send_biq_data)(int, void *, size_t, void *);
+    int (*send_niq_data)(void *, size_t, void *);
     int (*send_niq_type)(enum stream_niq_type, iq_t *, size_t, void *);
     int (*niq_dispatcher)(iq_t *, size_t, void *);
     int (*agc_ctrl)(int, void *);

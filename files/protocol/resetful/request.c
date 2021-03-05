@@ -69,6 +69,7 @@ static struct request_info http_req_cmd[] = {
     {"PUT",     "/enable/@ch/@type/@value",             -1,                cmd_ch_enable_set},
     /* 心跳 */
     {"GET",     "/ping",                                -1,                cmd_ping},
+    /* 状态 */
     {"GET",     "/status/device/softversion",           -1,                cmd_get_softversion},
     {"GET",     "/status/device/fpgaInfo",              -1,                cmd_get_fpga_info},
     {"GET",     "/status/device/all",                   -1,                cmd_get_all_info}

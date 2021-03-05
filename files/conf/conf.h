@@ -1,6 +1,6 @@
 #ifndef _CONF_H_
 #define _CONF_H_
-#include "config.h"
+
 
 /** Defaults configuration values */
 #if defined (SUPPORT_DAO_XML)
@@ -25,6 +25,7 @@
 extern pthread_mutex_t config_mutex;
 
 
+#include "config.h"
 /**
  * Configuration structure
  */

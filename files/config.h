@@ -30,6 +30,34 @@
 #include "lib/libubox/uloop.h"
 #include "lib/libubox/usock.h"
 
+#if defined  SUPPORT_PROJECT_WD_XCR
+#include "bsp/wd_xcr/bsp.h"
+#include "bsp/wd_xcr/_reg.h"
+#include "bsp/wd_xcr/_reg_clk_adc.h"
+#include "bsp/wd_xcr/_ctrl.h"
+#elif defined(SUPPORT_PROJECT_160M_V2) 
+#include "bsp/160m_v2/bsp.h"
+#include "bsp/160m_v2/_reg.h"
+#include "bsp/160m_v2/_reg_clk_adc.h"
+#include "bsp/160m_v2/_ctrl.h"
+#elif defined(SUPPORT_PROJECT_WD_XCR_40G) 
+#include "bsp/tf713_4ch/bsp.h"
+#include "bsp/40g/_reg.h"
+#include "bsp/40g/_reg_clk_adc.h"
+#include "bsp/40g/_ctrl.h"
+#include "bsp/40g/bsp.h"
+#elif defined(SUPPORT_PROJECT_TF713_4CH) 
+#include "bsp/tf713_4ch/bsp.h"
+#include "bsp/tf713_4ch/_reg.h"
+#include "bsp/tf713_4ch/_reg_clk_adc.h"
+#include "bsp/tf713_4ch/_ctrl.h"
+#elif defined(SUPPORT_PROJECT_TF713_2CH) 
+#include "bsp/tf713_2ch/bsp.h"
+#include "bsp/tf713_2ch/_reg.h"
+#include "bsp/tf713_2ch/_reg_clk_adc.h"
+#include "bsp/tf713_2ch/_ctrl.h"
+#endif
+
 #include "conf/conf.h"
 #include "log/log.h"
 #include "protocol/http/utils.h"
@@ -56,7 +84,6 @@
 #include "utils/utils.h"
 #include "utils/thread.h"
 #include "utils/mempool.h"
-
 #include "executor/executor.h"
 
 

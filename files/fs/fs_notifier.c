@@ -250,6 +250,8 @@ int fs_notifier_exit(int ch, char *filename, struct fs_notifier *args, bool exit
         fnode.status = FNS_OVER;
 #ifdef SUPPORT_PROTOCAL_AKT
         akt_send_file_status(&fnode, sizeof(struct fs_node), args);
+#else
+        fnode = fnode;  /* for warm*/
 #endif
         printf_note("file: %s, %s", filename, get_str_status(args->fnode->status));
     }

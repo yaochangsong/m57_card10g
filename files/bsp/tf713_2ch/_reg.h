@@ -10,7 +10,6 @@
 #include "../../log/log.h"
 #include "../../protocol/oal/poal.h"
 
-
 #ifndef MHZ
 #define MHZ(x) ((long long)(x*1000000.0+0.5))
 #endif
@@ -42,8 +41,7 @@
 #endif
 
 
-#include "bsp.h"
-
+#include "platform.h"
 
 typedef struct _SYSTEM_CONFG_REG_
 {

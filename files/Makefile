@@ -166,7 +166,7 @@ ifneq ($(findstring y,$(SUPPORT_RF_ADRV9361)),)
 	C_VAR += -DSUPPORT_RF_ADRV9361
 endif
 
-#
+#specturm
 ifneq ($(findstring y,$(SUPPORT_SPECTRUM_V2)),)
 	SOURCE_DIR += executor/spm
 	C_VAR += -DSUPPORT_SPECTRUM_V2
@@ -219,26 +219,29 @@ ifneq ($(findstring y,$(SUPPORT_REMOTE_LOCAL_CTRL_EN)),)
 	C_VAR += -DSUPPORT_REMOTE_LOCAL_CTRL_EN
 endif
 
-#project
-ifneq ($(findstring y,$(SUPPORT_PROJECT_WD_XCR)),)
+#project name
+ifneq ($(findstring wd_xcr,$(SUPPORT_PROJECT_NAME)),)
 	C_VAR += -DSUPPORT_PROJECT_WD_XCR
 	SOURCE_DIR += bsp/wd_xcr
-else ifneq ($(findstring y,$(SUPPORT_PROJECT_160M_V2)),)
+else ifneq ($(findstring 160m_v2,$(SUPPORT_PROJECT_NAME)),)
 	C_VAR += -DSUPPORT_PROJECT_160M_V2
 	SOURCE_DIR += bsp/160m_v2
-else ifneq ($(findstring y,$(SUPPORT_PROJECT_WD_XCR_40G)),)
+else ifneq ($(findstring 40g,$(SUPPORT_PROJECT_NAME)),)
 	C_VAR += -DSUPPORT_PROJECT_WD_XCR_40G
-	SOURCE_DIR += bsp/40g
-endif
-ifneq ($(findstring y,$(SUPPORT_PROJECT_SSA)),)
+else ifneq ($(findstring ssa,$(SUPPORT_PROJECT_NAME)),)
 	C_VAR += -DSUPPORT_PROJECT_SSA
-endif
-ifneq ($(findstring y,$(SUPPORT_PROJECT_SSA_MONITOR)),)
+else ifneq ($(findstring ssa_monitor,$(SUPPORT_PROJECT_NAME)),)
 	C_VAR += -DSUPPORT_PROJECT_SSA_MONITOR
-endif
-ifneq ($(findstring y,$(SUPPORT_PROJECT_SSA_9361)),)
+else ifneq ($(findstring ssa_9361,$(SUPPORT_PROJECT_NAME)),)
 	C_VAR += -DSUPPORT_PROJECT_SSA_9361
+else ifneq ($(findstring tf713_2ch,$(SUPPORT_PROJECT_NAME)),)
+	SOURCE_DIR += bsp/tf713_2ch
+	C_VAR += -DSUPPORT_PROJECT_TF713_2CH
+else ifneq ($(findstring tf713_4ch,$(SUPPORT_PROJECT_NAME)),)
+	SOURCE_DIR += bsp/tf713_4ch
+	C_VAR += -DSUPPORT_PROJECT_TF713_4CH
 endif
+
 ifneq ($(findstring y,$(SUPPORT_WAV)),)
 	C_VAR += -DSUPPORT_WAV
 endif

@@ -3,43 +3,48 @@ SUPPORT_PLAT_FORM_ARCH=arm
 #debug
 SUPPORT_GDB_DEBUG=n
 
-#(Command)Protocal Support: http akt resetful
+#命令协议(Command)Protocal Support: http akt resetful
 SUPPORT_PROTOCAL="http resetful"
-#(Data)Protocal: xw akt
+#数据协议: xw akt
 SUPPORT_DATA_PROTOCAL="xw"
 
-
-#data store format support: json xml
+#配置文件存储方式: data store format support: json xml
 SUPPORT_DAO="json"
 
 #remote or local control
 SUPPORT_REMOTE_LOCAL_CTRL_EN=n
 
-#project (ssa)频谱传感器
-SUPPORT_PROJECT_SSA=n
-SUPPORT_PROJECT_SSA_MONITOR=n
+#project 
+#(wd_xcr) 200m宽带接收机
+#(ssa_monitor) 频谱监视模块
+#(ssa)频谱传感器
+#(ssa_9361) 9361
+#(40g) 40g宽带接收机
+#(tf713_2ch)：713双通道
+#(tf713_4ch)：713四通道
+SUPPORT_PROJECT_NAME="tf713_4ch"
 
-#SUPPORT_PROJECT_160M_V2=n
-#project (wbif160m)
-SUPPORT_PROJECT_WD_XCR=y
-SUPPORT_PROJECT_WD_XCR_40G=n
-
-#spectrum fft or kernel
+#频谱版本
 SUPPORT_SPECTRUM_V2=y
+#频谱处理；通过FPGA处理，还是通过AD芯片(ssa序列)
 SUPPORT_SPECTRUM_FPGA=y
 SUPPORT_SPECTRUM_CHIP=n
 
 #spectrum channel serial or parallel
 SUPPORT_SPECTRUM_SERIAL=n
 
+#FFT用户层转换功能
 SUPPORT_SPECTRUM_FFT=n
-#analysis only support by chip mode
+#FFT用户层频谱分析
 SUPPORT_SPECTRUM_ANALYSIS=n
+#FFT扫频分段
 SUPPORT_SPECTRUM_SCAN_SEGMENT=n
 
+#文件系统
 SUPPORT_FS=y
-#xwfs
+#xw私有协议文件系统
 SUPPORT_XWFS=n
+
 #xwfs ssd blk file
 SUPPORT_BLK_HTTP_FILE=n
 #wav

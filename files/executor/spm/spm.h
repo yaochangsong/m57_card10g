@@ -70,7 +70,7 @@ struct spm_backend_ops {
 };
 
 
-#include "platform.h"
+#include "config.h"
 struct spm_context {
     struct poal_config *pdata;
     const struct spm_backend_ops *ops;

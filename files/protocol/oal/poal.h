@@ -1,7 +1,6 @@
 #ifndef _PROTOCOL_OAL_H_
 #define _PROTOCOL_OAL_H_
 
-//#include "config.h"
 #define FILE_PATH_MAX_LEN 256
 
 /* 工作模式参数参数 */
@@ -48,6 +47,8 @@ struct output_en_st{
     volatile uint8_t  bit_en;
     volatile bool  bit_reset;
 };//__attribute__ ((packed));
+
+//#include "config.h"
 
 /* 频点参数 */
 struct freq_points_st{

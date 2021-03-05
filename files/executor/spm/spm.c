@@ -148,6 +148,7 @@ wait:
             printf_err("channel[%ld] is too big\n", ch);
         }
         printf_note("ch: %ld,Fixed mode FFT start\n", ch);
+        poal_config->channel[ch].enable.bit_reset = false;
     }
     while(1){
         find_work = 0;
@@ -158,6 +159,11 @@ wait:
             }
             find_work ++;
             executor_serial_points_scan(ch, poal_config->channel[ch].work_mode, spm_arg);
+            if(poal_config->channel[ch].enable.bit_reset == true){
+                poal_config->channel[ch].enable.bit_reset = false;
+                printf_note("[ch:%lu]receive reset task sigal......\n", ch);
+                goto wait;
+            }
         }
         if(find_work == 0)
             goto wait;
@@ -415,7 +421,7 @@ void spm_deal(struct spm_context *ctx, void *args, int ch)
     size_t fft_len = 0, fft_ord_len = 0;
     struct spm_run_parm *ptr_run;
     ptr_run = (struct spm_run_parm *)args;
-    byte_len = pctx->ops->read_fft_data((void **)&ptr, ptr_run);
+    byte_len = pctx->ops->read_fft_data(ch, (void **)&ptr, ptr_run);
     if(byte_len < 0){
         return;
     }

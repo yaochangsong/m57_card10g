@@ -279,7 +279,7 @@ static inline ssize_t _read_arrary_fft_data(struct _vec_fft *vdata, void *args, 
     return 0;
 }
 
-static ssize_t spm_chip_read_fft_data_smooth(void **data, void *args)
+static ssize_t spm_chip_read_fft_data_smooth(int ch, void **data, void *args)
 {
     #define _MAX_SMOOTH_NUM (256)
     #define _MAX_BW_NUM (256)
@@ -297,6 +297,7 @@ static ssize_t spm_chip_read_fft_data_smooth(void **data, void *args)
     uint32_t index = r_args->fft_sn;
     uint32_t freg_num = r_args->fregment_num;
 
+    ch = ch;
     if(smooth <= 1){
         r = spm_chip_read_fft_data((void **)&data_dup, args);
         *data = data_dup;

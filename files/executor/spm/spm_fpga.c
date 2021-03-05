@@ -158,7 +158,7 @@ static inline const char * get_str_by_code(const char *const *list, int max, int
 
 static struct _spm_stream spm_stream[] = {
 //        {DMA_BIQ0_DEV,     -1, 0, NULL, DMA_IQ_BUFFER_SIZE,  "BIQ0 Stream",      DMA_READ, STREAM_IQ},
-        {DMA_FFT_DEV,      -1, 0, NULL, DMA_BUFFER_16M_SIZE, "FFT0 Stream",    DMA_READ, STREAM_FFT},
+        {DMA_FFT_DEV,      -1,-1, NULL, DMA_BUFFER_16M_SIZE, "FFT0 Stream",    DMA_READ, STREAM_FFT},
         {DMA_NIQ_DEV,      -1,-1, NULL, DMA_IQ_BUFFER_SIZE,  "NIQ Stream",     DMA_READ, STREAM_IQ},
 #if 0
         {DMA_BIQ1_DEV,        -1, 1, NULL, DMA_IQ_BUFFER_SIZE,  "BIQ1 Stream",      DMA_READ, STREAM_IQ},
@@ -299,12 +299,12 @@ static ssize_t spm_read_niq_data(void **data)
     return spm_stream_read(index, data);
 }
 
-static ssize_t spm_read_fft_data(void **data, void *args)
+static ssize_t spm_read_fft_data(int ch, void **data, void *args)
 {
     struct spm_run_parm *run_args = args;
     
-    int index, ch;
-    ch = run_args->ch;
+    int index;
+
     index = spm_find_index_by_type(ch, -1, STREAM_FFT);
     if(index < 0)
         return -1;

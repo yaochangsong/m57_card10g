@@ -381,12 +381,12 @@ int8_t  executor_serial_points_scan(uint8_t ch, work_mode_type mode, void *args)
     executor_set_command(EX_MID_FREQ_CMD, EX_FFT_SIZE, ch, &point->points[i].fft_size);
     executor_set_command(EX_MID_FREQ_CMD, EX_FPGA_CALIBRATE, ch, &point->points[0].fft_size, r_args->m_freq);
     executor_set_command(EX_MID_FREQ_CMD, EX_SMOOTH_TIME, ch, &point->smooth_time);
-    io_set_enable_command(PSD_MODE_ENABLE, ch, -1, point->points[i].fft_size);
+    io_set_enable_command(PSD_MODE_ENABLE, -1, -1, point->points[i].fft_size);
     if(spmctx->ops->agc_ctrl)
         spmctx->ops->agc_ctrl(ch, spmctx);
     if(args != NULL)
-        spm_deal(args, r_args, ch);
-    io_set_enable_command(PSD_MODE_DISABLE, ch, -1, point->points[i].fft_size);
+        spm_deal(args, r_args, -1);
+    io_set_enable_command(PSD_MODE_DISABLE, -1, -1, point->points[i].fft_size);
     return 0;
 }
 
@@ -604,17 +604,16 @@ int8_t executor_set_command(exec_cmd cmd, uint8_t type, uint8_t ch,  void *data,
                 ch_bitmap_set(ch, CH_TYPE_FFT);
             else
                 ch_bitmap_clear(ch, CH_TYPE_FFT);
-            
 #else
             if(type == PSD_MODE_DISABLE){
                 poal_config->channel[ch].enable.psd_en = 0;
                 INTERNEL_ENABLE_BIT_SET(poal_config->channel[ch].enable.bit_en,poal_config->channel[ch].enable);
             }
-            /* notify thread to deal data */
-            poal_config->channel[ch].enable.bit_reset = true; /* reset(stop) all working task */
             if((get_spm_ctx()!= NULL) && get_spm_ctx()->ops->set_flush_trigger)
                 get_spm_ctx()->ops->set_flush_trigger(true);
 #endif
+            /* notify thread to deal data */
+            poal_config->channel[ch].enable.bit_reset = true; /* reset(stop) all working task */
             if(ch < MAX_RADIO_CHANNEL_NUM){
                 printf_note("ch=%d, notify thread to deal fft data\n", ch);
                 spm_fft_deal_notify(&ch);

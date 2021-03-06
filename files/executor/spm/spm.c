@@ -152,18 +152,18 @@ wait:
     }
     while(1){
         find_work = 0;
-        for_each_set_bit(ch, get_ch_bitmap(CH_TYPE_FFT), MAX_RADIO_CHANNEL_NUM){
+        if(poal_config->channel[0].enable.bit_reset == true){
+            poal_config->channel[0].enable.bit_reset = false;
+            printf_note("[ch:%lu]receive reset task sigal......\n", ch);
+            goto wait;
+        }
+         for_each_set_bit(ch, get_ch_bitmap(CH_TYPE_FFT), MAX_RADIO_CHANNEL_NUM){
             if(ch >= MAX_RADIO_CHANNEL_NUM){
                 printf_err("channel[%ld] is too big\n", ch);
                 continue;
             }
             find_work ++;
             executor_serial_points_scan(ch, poal_config->channel[ch].work_mode, spm_arg);
-            if(poal_config->channel[ch].enable.bit_reset == true){
-                poal_config->channel[ch].enable.bit_reset = false;
-                printf_note("[ch:%lu]receive reset task sigal......\n", ch);
-                goto wait;
-            }
         }
         if(find_work == 0)
             goto wait;

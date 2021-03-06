@@ -373,20 +373,22 @@ int8_t  executor_serial_points_scan(uint8_t ch, work_mode_type mode, void *args)
     r_args->freq_resolution = (float)point->points[i].bandwidth * BAND_FACTOR / (float)point->points[i].fft_size;
     printf_info("ch=%d, s_freq=%"PRIu64", e_freq=%"PRIu64" fft_size=%u, d_method=%d\n", ch, s_freq, e_freq, r_args->fft_size,r_args->d_method);
     printf_info("rf scan bandwidth=%u, middlebw=%u, m_freq=%"PRIu64", freq_resolution=%f\n",r_args->scan_bw,r_args->bandwidth , r_args->m_freq, r_args->freq_resolution);
+#if defined(SUPPORT_PLATFORM_ARCH_ARM)
     if(spmctx->ops->sample_ctrl)
         spmctx->ops->sample_ctrl(r_args);
-    executor_set_command(EX_RF_FREQ_CMD,  EX_RF_MID_FREQ, ch, &point->points[i].center_freq);
-    executor_set_command(EX_MID_FREQ_CMD, EX_BANDWITH, ch, &point->points[i].bandwidth);
-    executor_set_command(EX_MID_FREQ_CMD, EX_MID_FREQ,    ch, &point->points[i].center_freq);
-    executor_set_command(EX_MID_FREQ_CMD, EX_FFT_SIZE, ch, &point->points[i].fft_size);
-    executor_set_command(EX_MID_FREQ_CMD, EX_FPGA_CALIBRATE, ch, &point->points[0].fft_size, r_args->m_freq);
-    executor_set_command(EX_MID_FREQ_CMD, EX_SMOOTH_TIME, ch, &point->smooth_time);
+    executor_set_command(EX_RF_FREQ_CMD,  EX_RF_MID_FREQ, 0, &point->points[i].center_freq);
+    executor_set_command(EX_MID_FREQ_CMD, EX_BANDWITH, 0, &point->points[i].bandwidth);
+    executor_set_command(EX_MID_FREQ_CMD, EX_MID_FREQ,    0, &point->points[i].center_freq);
+    executor_set_command(EX_MID_FREQ_CMD, EX_FFT_SIZE, 0, &point->points[i].fft_size);
+    executor_set_command(EX_MID_FREQ_CMD, EX_FPGA_CALIBRATE, 0, &point->points[0].fft_size, r_args->m_freq);
+    executor_set_command(EX_MID_FREQ_CMD, EX_SMOOTH_TIME, 0, &point->smooth_time);
     io_set_enable_command(PSD_MODE_ENABLE, -1, -1, point->points[i].fft_size);
     if(spmctx->ops->agc_ctrl)
         spmctx->ops->agc_ctrl(ch, spmctx);
     if(args != NULL)
         spm_deal(args, r_args, -1);
     io_set_enable_command(PSD_MODE_DISABLE, -1, -1, point->points[i].fft_size);
+#endif
     return 0;
 }
 
@@ -611,9 +613,9 @@ int8_t executor_set_command(exec_cmd cmd, uint8_t type, uint8_t ch,  void *data,
             }
             if((get_spm_ctx()!= NULL) && get_spm_ctx()->ops->set_flush_trigger)
                 get_spm_ctx()->ops->set_flush_trigger(true);
-#endif
             /* notify thread to deal data */
             poal_config->channel[ch].enable.bit_reset = true; /* reset(stop) all working task */
+#endif
             if(ch < MAX_RADIO_CHANNEL_NUM){
                 printf_note("ch=%d, notify thread to deal fft data\n", ch);
                 spm_fft_deal_notify(&ch);

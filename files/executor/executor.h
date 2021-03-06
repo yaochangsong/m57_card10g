@@ -209,7 +209,7 @@ struct spm_run_parm{
 #include "config.h"
 
 extern void executor_init(void);
-extern int executor_tcp_disconnect_notify(void *cl);
+extern int executor_net_disconnect_notify(struct sockaddr_in *addr);
 //extern int8_t executor_set_command(exec_cmd cmd, uint8_t type, uint8_t ch,  void *data);
 extern int8_t executor_get_command(exec_cmd cmd, uint8_t type, uint8_t ch,  void *data, ...);
 extern int8_t executor_set_enable_command(uint8_t ch);

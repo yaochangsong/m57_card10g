@@ -24,28 +24,12 @@
 pthread_mutex_t set_cmd_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 
-int executor_tcp_disconnect_notify(void *cl)
+int executor_net_disconnect_notify(struct sockaddr_in *addr)
 {
-    #define UDP_CLIENT_NUM 8
-    struct net_udp_client *cl_list, *list_tmp;
     struct net_udp_server *srv = get_udp_server();
-    struct net_tcp_client *tcp_cl = (struct net_tcp_client *)cl;
-    int index = 0;
     struct poal_config *poal_config = &(config_get_config()->oal_config);
-    if(tcp_find_client(&tcp_cl->peer_addr)){
-        return 0;
-    }
-   /* release udp client */
-    printf_info("disconnet tcp client%s:%d\n", inet_ntoa(tcp_cl->peer_addr.sin_addr), tcp_cl->peer_addr.sin_port);
-    list_for_each_entry_safe(cl_list, list_tmp, &srv->clients, list){
-        printf_info("udp client list %s:%d\n", inet_ntoa(cl_list->peer_addr.sin_addr), cl_list->peer_addr.sin_port);
-        if(memcmp(&cl_list->peer_addr.sin_addr, &tcp_cl->peer_addr.sin_addr, sizeof(tcp_cl->peer_addr.sin_addr)) == 0){
-           printf_info("del udp client %s:%d\n", inet_ntoa(cl_list->peer_addr.sin_addr), cl_list->peer_addr.sin_port);
-           __lock_send__();
-           udp_free(cl_list);
-           __unlock_send__();
-        }
-    }
+    
+    udp_client_delete(addr);
     /* client is 0 */
     printf_info("udp client number: %d\n", srv->nclients);
     if(srv->nclients == 0){
@@ -371,8 +355,8 @@ int8_t  executor_serial_points_scan(uint8_t ch, work_mode_type mode, void *args)
     r_args->gain_mode = poal_config->channel[ch].rf_para.gain_ctrl_method;
     r_args->gain_value = poal_config->channel[ch].rf_para.mgc_gain_value;
     r_args->freq_resolution = (float)point->points[i].bandwidth * BAND_FACTOR / (float)point->points[i].fft_size;
-    printf_info("ch=%d, s_freq=%"PRIu64", e_freq=%"PRIu64" fft_size=%u, d_method=%d\n", ch, s_freq, e_freq, r_args->fft_size,r_args->d_method);
-    printf_info("rf scan bandwidth=%u, middlebw=%u, m_freq=%"PRIu64", freq_resolution=%f\n",r_args->scan_bw,r_args->bandwidth , r_args->m_freq, r_args->freq_resolution);
+    printf_debug("ch=%d, s_freq=%"PRIu64", e_freq=%"PRIu64" fft_size=%u, d_method=%d\n", ch, s_freq, e_freq, r_args->fft_size,r_args->d_method);
+    printf_debug("rf scan bandwidth=%u, middlebw=%u, m_freq=%"PRIu64", freq_resolution=%f\n",r_args->scan_bw,r_args->bandwidth , r_args->m_freq, r_args->freq_resolution);
 #if defined(SUPPORT_PLATFORM_ARCH_ARM)
     if(spmctx->ops->sample_ctrl)
         spmctx->ops->sample_ctrl(r_args);

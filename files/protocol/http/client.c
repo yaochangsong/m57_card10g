@@ -42,6 +42,7 @@
 extern void *net_get_uhttp_srv_ctx(void);
 extern bool http_dispatch_requset_handle(struct uh_client *cl, const char *path);
 extern bool uh_cgi_request(struct uh_client *cl, struct path_info *pi, struct interpreter *ip);
+extern int executor_net_disconnect_notify(struct sockaddr_in *addr);
 
 
 
@@ -469,14 +470,14 @@ static void client_request_done(struct uh_client *cl)
 
 static void client_free(struct uh_client *cl)
 {
-    printf_warn("free######\n");
+    printf_note("free: %s:%d\n", cl->get_peer_addr(cl), cl->get_peer_port(cl));
     if (cl) {
         dispatch_done(cl);
         uloop_timeout_cancel(&cl->timeout);
         if (cl->srv->ssl){
            // uh_ssl_client_detach(cl);
         }
-            
+        executor_net_disconnect_notify(&cl->peer_addr);
         ustream_free(&cl->sfd.stream);
         shutdown(cl->sfd.fd.fd, SHUT_RDWR);
         close(cl->sfd.fd.fd);

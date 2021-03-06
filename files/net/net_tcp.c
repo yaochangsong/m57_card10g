@@ -282,7 +282,7 @@ void tcp_free(struct net_tcp_client *cl)
         close(cl->sfd.fd.fd);
         list_del(&cl->list);
         cl->srv->nclients--;
-        executor_tcp_disconnect_notify(cl);
+        executor_net_disconnect_notify(&cl->peer_addr);
         free(cl);
     }
     pthread_mutex_unlock(&srv->tcp_client_lock);

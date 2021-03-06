@@ -133,6 +133,26 @@ void udp_client_dump(void)
        }
 }
 
+
+int udp_client_delete(struct sockaddr_in *udp_addr)
+{
+    struct net_udp_client *cl_list, *list_tmp;
+    struct net_udp_server *srv = get_udp_server();
+
+   /* release udp client */
+    list_for_each_entry_safe(cl_list, list_tmp, &srv->clients, list){
+        printf_info("udp client list %s:%d\n", inet_ntoa(cl_list->peer_addr.sin_addr), cl_list->peer_addr.sin_port);
+        if(memcmp(&cl_list->peer_addr.sin_addr, &udp_addr->sin_addr, sizeof(udp_addr->sin_addr)) == 0){
+           printf_info("del udp client %s:%d\n", inet_ntoa(cl_list->peer_addr.sin_addr), cl_list->peer_addr.sin_port);
+           __lock_send__();
+           udp_free(cl_list);
+           __unlock_send__();
+        }
+    }
+    return 0;
+}
+
+
 void udp_add_client_to_list(struct sockaddr_in *addr, int ch, int tag)
 {
     struct net_udp_client *cl = NULL;

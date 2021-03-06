@@ -44,7 +44,7 @@ extern void udp_add_client_to_list(struct sockaddr_in *addr, int ch, int tag);
 extern struct net_udp_server *get_udp_server(void);
 extern int udp_send_vec_data(struct iovec *iov, int iov_len, int tag);
 extern int udp_send_vec_data_to_taget_addr(struct iovec *iov, int iov_len);
-
+extern int udp_client_delete(struct sockaddr_in *udp_addr);
 
 #endif
 

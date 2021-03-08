@@ -56,6 +56,11 @@
 #include "bsp/tf713_2ch/_reg.h"
 #include "bsp/tf713_2ch/_reg_clk_adc.h"
 #include "bsp/tf713_2ch/_ctrl.h"
+#elif defined(SUPPORT_PROJECT_AKT_4CH) 
+#include "bsp/akt_4ch/bsp.h"
+#include "bsp/akt_4ch/_reg.h"
+#include "bsp/akt_4ch/_reg_clk_adc.h"
+#include "bsp/akt_4ch/_ctrl.h"
 #endif
 
 #include "conf/conf.h"

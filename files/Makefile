@@ -240,6 +240,9 @@ else ifneq ($(findstring tf713_2ch,$(SUPPORT_PROJECT_NAME)),)
 else ifneq ($(findstring tf713_4ch,$(SUPPORT_PROJECT_NAME)),)
 	SOURCE_DIR += bsp/tf713_4ch
 	C_VAR += -DSUPPORT_PROJECT_TF713_4CH
+else ifneq ($(findstring akt_4ch,$(SUPPORT_PROJECT_NAME)),)
+	SOURCE_DIR += bsp/akt_4ch
+	C_VAR += -DSUPPORT_PROJECT_AKT_4CH
 endif
 
 ifneq ($(findstring y,$(SUPPORT_WAV)),)

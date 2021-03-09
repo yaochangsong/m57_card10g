@@ -3,8 +3,8 @@ SUPPORT_PLAT_FORM_ARCH=arm
 #debug
 SUPPORT_GDB_DEBUG=n
 
-#命令协议(Command)Protocal Support: http akt resetful
-SUPPORT_PROTOCAL="http resetful"
+#命令协议(Command)Protocal Support: http akt resetful xw
+SUPPORT_PROTOCAL="http xw"
 #数据协议: xw akt
 SUPPORT_DATA_PROTOCAL="xw"
 

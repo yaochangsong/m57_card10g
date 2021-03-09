@@ -2,7 +2,9 @@
 
 struct net_udp_server *get_udp_server(void)
 {
-    return net_get_udp_srv_ctx();
+    union _data_srv *srv;
+    srv = (union _data_srv *)get_data_srv(SRV_1G_NET);
+    return srv->udpsrv;
 }
 
 static char  *udp_get_ifname(struct net_udp_client *cl)
@@ -94,6 +96,9 @@ int udp_send_vec_data(struct iovec *iov, int iov_len, int tag)
     struct net_udp_server *srv = get_udp_server();
     struct net_udp_client *cl_list, *list_tmp;
     int ret = 0;
+    
+    if(srv == NULL)
+        return -1;
     list_for_each_entry_safe(cl_list, list_tmp, &srv->clients, list){
         if (cl_list->tag == tag)
             udp_send_vec_data_to_client(cl_list, iov, iov_len);
@@ -196,30 +201,6 @@ void udp_add_client_to_list(struct sockaddr_in *addr, int ch, int tag)
 
     printf_note(">>>>>>>>>Add New UDP Client addr to list: %s:%d, total client: %d\n", cl->get_peer_addr(cl), cl->get_peer_port(cl), cl->srv->nclients);
 
-}
-
-int udp_send_data(uint8_t  *data, uint32_t data_len)
-{
-    struct net_udp_server *srv = get_udp_server();
-    struct net_udp_client *cl_list, *list_tmp;
-    int ret = 0;
-    list_for_each_entry_safe(cl_list, list_tmp, &srv->clients, list){
-        printf_debug("get list:%s，port=%d\n",  cl_list->get_peer_addr(cl_list), cl_list->get_peer_port(cl_list));
-#if (defined SUPPORT_PROTOCAL_AKT) || (defined SUPPORT_PROTOCAL_XNRP) 
-        if(tcp_find_client(&cl_list->peer_addr)){ /* client is connectting */
-            printf_debug("send data to %s:%d\n",  cl_list->get_peer_addr(cl_list), cl_list->get_peer_port(cl_list));
-            udp_send_data_to_client(cl_list, data, data_len);
-        }
-        else{/* client is unconnect */
-            printf_warn("**Tcp Client is Exit!! Stop Send Data to Clinet**\n");
-           // udp_free(cl_list);
-            ret = -1;
-        } 
-#else
-    udp_send_data_to_client(cl_list, data, data_len);
-#endif
-    }
-    return ret;
 }
 
 

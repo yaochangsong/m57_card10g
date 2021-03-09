@@ -1,7 +1,7 @@
 #ifndef NET_SOCKET_H
 #define NET_SOCKET_H
-#include "config.h"
 
+struct net_tcp_client;
 
 #define MAX_RECEIVE_DATA_LEN  1024
 #define NET_DATA_BUF_SIZE  512
@@ -42,8 +42,6 @@ struct tcp_dispatch {
     char *body;
 };
 
-
-
 struct net_tcp_client {
     struct list_head list;
     struct net_tcp_server *srv;
@@ -83,6 +81,7 @@ struct net_tcp_client {
     const char *(*get_header)(struct net_tcp_client *cl, const char *name);
     const char *(*get_body)(struct net_tcp_client *cl, int *len);
 };
+
 
 struct net_tcp_server {
     struct uloop_fd fd;

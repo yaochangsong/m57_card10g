@@ -157,7 +157,7 @@ struct uh_client {
     void (*header_end)(struct uh_client *cl);
     void (*redirect)(struct uh_client *cl, int code, const char *fmt, ...);
     void (*request_done)(struct uh_client *cl);
-    int  (*srv_send_post)(char *path, char *data);
+    int  (*srv_send_post)(struct uh_server *uh_srv, char *path, char *data, struct sockaddr_in *addr);
     void (*parse_resetful_var)(struct uh_client *cl, char *str);
     
     void (*send)(struct uh_client *cl, const void *data, int len);

@@ -168,7 +168,7 @@ static void client_send_json(struct uh_client *cl, int err_code, const char *mes
     free(buffer);
 }
 
-static int clinet_srv_send_request(struct uh_client *cl)
+static int client_srv_send_request(struct uh_client *cl)
 {
     #define HTTP_HEADER_LEN 256
     char *send_buffer;
@@ -218,25 +218,46 @@ exit:
     return ret;
 }
 
-int clinet_srv_send_post(char *path, char *data)
+
+int client_assemble_post(struct uh_client *cl, char *path, char *data)
+{
+    char host[64] = {0};
+    printf_note("send post on list:%s, port=%d\n",  cl->get_peer_addr(cl), cl->get_peer_port(cl));
+    snprintf(host, sizeof(host), "%s:%d", cl->get_peer_addr(cl), cl->get_peer_port(cl));
+    printf_note("host:%s\n", host);
+    cl->srv_request.method = UH_HTTP_METHOD_POST;
+    cl->srv_request.host = &host[0];
+    cl->srv_request.path = path;
+    cl->srv_request.data = data;
+    cl->srv_request.content_length = strlen(data);
+    printf_note("srv host:%s\n", cl->srv_request.host);
+    
+    return 0;
+}
+
+/* 向http客户端发送POST请求
+    @uh_srv: 服务端指针(可能在多个地址或不同端口监听)
+    @path: 请求路径
+    @data: 请求数据
+    @addr: 发送目的地址，若为NULL，表示向所有连接的http客户端发送请求
+*/
+int client_srv_send_post(struct uh_server *uh_srv, char *path, char *data, struct sockaddr_in *addr)
 {
     struct uh_client *cl_list, *list_tmp;
     char host[64] = {0};
-    struct uh_server *uh_srv = net_get_uhttp_srv_ctx();
+
     if(uh_srv == NULL)
         return -1;
     printf_note("path:%s\n", path);
     list_for_each_entry_safe(cl_list, list_tmp, &uh_srv->clients, list){
-        printf_note("send post on list:%s, port=%d\n",  cl_list->get_peer_addr(cl_list), cl_list->get_peer_port(cl_list));
-        snprintf(host, sizeof(host), "%s:%d", cl_list->get_peer_addr(cl_list), cl_list->get_peer_port(cl_list));
-        printf_note("host:%s\n", host);
-        cl_list->srv_request.method = UH_HTTP_METHOD_POST;
-        cl_list->srv_request.host = &host[0];
-        cl_list->srv_request.path = path;
-        cl_list->srv_request.data = data;
-        cl_list->srv_request.content_length = strlen(data);
-        printf_note("srv host:%s\n", cl_list->srv_request.host);
-        clinet_srv_send_request(cl_list);
+        if(addr == NULL){
+            client_assemble_post(cl_list, path, data);
+            client_srv_send_request(cl_list);
+        }else if(memcmp(&cl_list->peer_addr.sin_addr, &addr->sin_addr, sizeof(addr->sin_addr)) == 0){
+            client_assemble_post(cl_list, path, data);
+            client_srv_send_request(cl_list);
+            break;
+        }
     }
     return 0;
 }
@@ -875,7 +896,7 @@ void uh_accept_client(struct uh_server *srv, bool ssl)
     cl->header_end = client_header_end;
     cl->redirect = client_redirect;
     cl->request_done = client_request_done;
-    cl->srv_send_post = clinet_srv_send_post;
+    cl->srv_send_post = client_srv_send_post;
     cl->parse_resetful_var = parse_resetful_var;
 
     cl->send = client_send;

@@ -17,165 +17,115 @@
 #include "protocol/resetful/request.h"
 #include "protocol/akt/akt.h"
 
-static struct net_tcp_server *ptcp_data_srv = NULL;
-static struct net_tcp_server *ptcp_srv_1gnet = NULL;
-static struct net_tcp_server *ptcp_srv_10gnet = NULL;
-static struct uh_server *puhttp_srv = NULL;
-static struct uh_server *resetful_srv = NULL;
-static struct net_udp_server *pudp_srv = NULL;
-
-void *net_get_tcp_srv_ctx(void)
-{
-    return (void*)ptcp_srv_1gnet;
-}
-void *net_get_10g_tcp_srv_ctx(void)
-{
-    return (void*)ptcp_srv_10gnet;
-}
-void *net_get_data_srv_ctx(void)
-{
-    return (void*)ptcp_data_srv;
-}
-
-void *net_get_udp_srv_ctx(void)
-{
-    return (void*)pudp_srv;
-}
-
-void *net_get_uhttp_srv_ctx(void)
-{
-    return (void*)puhttp_srv;
-}
-
-void *net_get_resetful_srv_ctx(void)
-{
-    return (void*)resetful_srv;
-}
-
-
 static void on_accept(struct uh_client *cl)
 {
     printf_info("New connection from: %s:%d\n", cl->get_peer_addr(cl), cl->get_peer_port(cl));
 }
 
-#if 0
 static int on_request(struct uh_client *cl)
 {
-    const char *path = cl->get_path(cl);
-    int body_len = 0;
-
-    if (strcmp(path, "/hello"))
-        return UH_REQUEST_CONTINUE;
-
-    cl->send_header(cl, 200, "OK", -1);
-    cl->append_header(cl, "Myheader", "Hello");
-    cl->header_end(cl);
-
-    cl->chunk_printf(cl, "<h1>Hello Libuhttpd %s</h1>", UHTTPD_VERSION_STRING);
-    cl->chunk_printf(cl, "<h1>REMOTE_ADDR: %s</h1>", cl->get_peer_addr(cl));
-    cl->chunk_printf(cl, "<h1>URL: %s</h1>", cl->get_url(cl));
-    cl->chunk_printf(cl, "<h1>PATH: %s</h1>", cl->get_path(cl));
-    cl->chunk_printf(cl, "<h1>QUERY: %s</h1>", cl->get_query(cl));
-    cl->chunk_printf(cl, "<h1>VAR name: %s</h1>", cl->get_var(cl, "name"));
-    cl->chunk_printf(cl, "<h1>BODY:%s</h1>", cl->get_body(cl, &body_len));
-    cl->request_done(cl);
-
-    return UH_REQUEST_DONE;
-}
-#endif
-
-static int on_request(struct uh_client *cl)
-{
- #if defined(SUPPORT_PROTOCAL_RESETFUL)
     return http_on_request(cl);
- #endif
 }
 
-/* 功能：TCP数据服务初始化
-    在读取数据对应线程初始化调用
-*/
-int server_data_init(void)
+
+struct net_server nserver;
+struct net_ifname_t net_if[] = {
+    {SRV_1G_NET, NETWORK_EHTHERNET_POINT},
+#ifdef SUPPORT_NET_WZ
+    {SRV_10G_NET, NETWORK_10G_EHTHERNET_POINT},
+#endif
+};
+
+int get_use_ifname_num(void)
 {
-    struct net_tcp_server *tcpdatasrv = NULL;
-    printf_note("tcp data server init [port:%d]\n", 6080);
-    tcpdatasrv = tcp_data_server_new("0.0.0.0", 6080);
-    if (!tcpdatasrv)
-        return -1;
-    ptcp_data_srv = tcpdatasrv;
-    
-    return 0;
+    return ARRAY_SIZE(net_if);
+}
+void *get_cmd_srv(int index)
+{
+    return (void*)&nserver.cmd[index];
 }
 
-/******************************************************************************
-* FUNCTION:
-*     server_init
-*
-* DESCRIPTION:
-*     
-*     
-*
-* PARAMETERS
-*     not used
-*
-* RETURNS
-*     none
-******************************************************************************/
+void *get_data_srv(int index)
+{
+    return (void*)&nserver.data[index];
+}
+
+void *get_http_srv(int index)
+{
+    return (void*)nserver.http_server;
+}
 
 int server_init(void)
 {
     struct poal_config *poal_config = &(config_get_config()->oal_config);
-    struct net_udp_server *udpsrv = NULL;
-    struct net_tcp_server *tcpsrv = NULL;
+    int if_index = ARRAY_SIZE(net_if);
+    struct in_addr ipaddr[if_index+1];
+    char ipstr[if_index+1][32];
+    int svr_index = 0;
+    uint16_t port[if_index+1];
+    uint16_t data_port[if_index+1];    
 
+    for(int i = 0; i < if_index; i++){
+        if(get_ipaddress(net_if[i].ifname, &ipaddr[i]) == -1){
+            return -1;
+        }
+        strcpy(ipstr[net_if[i].index], inet_ntoa(ipaddr[i]));
+        svr_index ++;
+        printf_note("[%d]: ifname:%s, ip=%s\n", svr_index, net_if[i].ifname, ipstr[net_if[i].index]);
+        #ifdef SUPPORT_NET_WZ
+        if(i == SRV_10G_NET){
+            port[i] = poal_config->network_10g.port;
+            data_port[i] = poal_config->network_10g.data_port;
+            printf_note("10g cmd port = %d, data port=%d\n", port[i], data_port[i]);
+        }else
+        #endif
+        {
+            port[i] = poal_config->network.port;
+            data_port[i] = poal_config->network.data_port;
+            printf_note("cmd port = %d, data port=%d\n", port[i], data_port[i]);
+        }        
+    }    
 #if (defined SUPPORT_PROTOCAL_AKT) 
-    
-    printf_note("tcp server init [port:%d]\n", poal_config->network.port);
-    tcpsrv = tcp_server_new("0.0.0.0", poal_config->network.port);
-    if (!tcpsrv)
-        return -1;
-    ptcp_srv_1gnet = tcpsrv;
-    tcpsrv->on_header = akt_parse_header_v2;
-    tcpsrv->on_execute = akt_execute_method;
-    tcpsrv->send_error =  akt_send_resp;
-    tcpsrv->on_end = akt_parse_end;
-    tcpsrv->send_alert = akt_send_alert;
-    #ifdef SUPPORT_NET_WZ
-    if(poal_config->network.port != poal_config->network_10g.port){
-        struct net_tcp_server *tcpsrv_10g = NULL;
-        printf_note("10g tcp server init [port:%d]\n", poal_config->network_10g.port);
-        tcpsrv = tcp_server_new("0.0.0.0", poal_config->network_10g.port);
+    struct net_tcp_server *tcpsrv = NULL;
+    struct net_udp_server *udpsrv = NULL;
+    for(int i = 0; i < svr_index; i++){
+        printf_note("akt cmd server init [ipaddr: %s, port:%d]\n", ipstr[i], port[i]);
+        tcpsrv = tcp_server_new(ipstr[i], port[i]);
         if (!tcpsrv)
             return -1;
-        ptcp_srv_10gnet = tcpsrv;
+        tcpsrv->on_header = akt_parse_header_v2;
+        tcpsrv->on_execute = akt_execute_method;
+        tcpsrv->send_error =  akt_send_resp;
+        tcpsrv->on_end = akt_parse_end;
+        tcpsrv->send_alert = akt_send_alert;
+        nserver.cmd[i].tcpsvr = tcpsrv;
+        
+        printf_note("akt data udp server init [ipaddr: %s, port:%d]\n", ipstr[i], 1234);
+        udpsrv = udp_server_new(ipstr[i],  1234);
+        if (!udpsrv)
+            return -1;
+        nserver.data[i].udpsrv = udpsrv;
     }
-    tcpsrv->on_header = akt_parse_header_v2;
-    tcpsrv->on_execute = akt_execute_method;
-    tcpsrv->send_error =  akt_send_resp;
-    tcpsrv->on_end = akt_parse_end;
-    tcpsrv->send_alert = akt_send_alert;
-    #endif
-    printf_note("udp server init[port:%d]\n", 1234);
-    udpsrv = udp_server_new("0.0.0.0",  1234);
-    if (!udpsrv)
-        return -1;
-    pudp_srv = udpsrv;
     udpsrv->on_discovery = akt_parse_discovery;
-#elif defined(SUPPORT_DATA_PROTOCAL_XW)
+#elif defined(SUPPORT_PROTOCAL_XW)
     struct uh_server *xsrv = NULL;
-    printf_note("xw cmd server init[port:%d]\n", poal_config->network.port);
-    xsrv = uh_server_new("0.0.0.0", poal_config->network.port);
-    if (!xsrv)
-        return -1;
-    xsrv->on_accept = on_accept;
-    xsrv->on_request = on_request;
-    resetful_srv = xsrv;
-    printf_note("xw data udp server init[port:%d]\n", poal_config->network.data_port);
-    udpsrv = udp_server_new("0.0.0.0",  poal_config->network.data_port);
-    if (!udpsrv)
-        return -1;
-    pudp_srv = udpsrv;
-#endif
+    struct net_udp_server *udpsrv = NULL;
+    for(int i = 0; i < svr_index; i++){
+        printf_note("xw cmd server init [ipaddr: %s, port:%d]\n", ipstr[i], port[i]);
+        xsrv = uh_server_new(ipstr[i], port[i]);
+        if (!xsrv)
+            return -1;
+        xsrv->on_accept = on_accept;
+        xsrv->on_request = on_request;
+        nserver.cmd[i].uhsvr = xsrv;
 
+        printf_note("xw data udp server init [ipaddr: %s, port:%d]\n", ipstr[i], data_port[i]);
+        udpsrv = udp_server_new(ipstr[i], data_port[i]);
+        if (!udpsrv)
+           return -1;
+        nserver.data[i].udpsrv = udpsrv;
+    }
+#endif
 #ifdef  SUPPORT_PROTOCAL_HTTP
     struct uh_server *srv = NULL;
     printf_note("http server init[port:%d]\n", 80);
@@ -184,7 +134,7 @@ int server_init(void)
         return -1;
     srv->on_accept = on_accept;
     srv->on_request = on_request;
-    puhttp_srv = srv;
+    nserver.http_server = srv;
 #endif
     return 0;
 }

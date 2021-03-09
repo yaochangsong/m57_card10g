@@ -57,19 +57,6 @@ static void uh_server_free(struct uh_server *srv)
     }
 }
 
-int uh_dump_all_client(void)
-{
-    struct uh_client *cl_list, *list_tmp;
-    struct uh_server *uh_srv = net_get_uhttp_srv_ctx();
-    list_for_each_entry_safe(cl_list, list_tmp, &uh_srv->clients, list){
-            
-            //cl_list->printf(cl_list, "Find http ipaddree on list:%s, port=%d\r\n\r\n",  cl_list->get_peer_addr(cl_list), cl_list->get_peer_port(cl_list));
-            printf_warn("Find http ipaddree on list:%s, port=%d\n",  cl_list->get_peer_addr(cl_list), cl_list->get_peer_port(cl_list));
-    }
-	return 0;
-}
-
-
 static void uh_accept_cb(struct uloop_fd *fd, unsigned int events)
 {
     struct uh_server *srv = container_of(fd, struct uh_server, fd);

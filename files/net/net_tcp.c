@@ -271,10 +271,9 @@ static void tcp_ustream_write_cb(struct ustream *s, int bytes)
 
 void tcp_free(struct net_tcp_client *cl)
 {
-    struct net_tcp_server *srv = (struct net_tcp_server *)net_get_tcp_srv_ctx();
     printf_info("tcp_free:");
     printf_info(": %s:%d\n", cl->get_peer_addr(cl), cl->get_peer_port(cl));
-    pthread_mutex_lock(&srv->tcp_client_lock);
+    pthread_mutex_lock(&cl->srv->tcp_client_lock);
     if (cl) {
         uloop_timeout_cancel(&cl->timeout);
         ustream_free(&cl->sfd.stream);
@@ -285,7 +284,7 @@ void tcp_free(struct net_tcp_client *cl)
         executor_net_disconnect_notify(&cl->peer_addr);
         free(cl);
     }
-    pthread_mutex_unlock(&srv->tcp_client_lock);
+    pthread_mutex_unlock(&cl->srv->tcp_client_lock);
 }
 
 
@@ -419,11 +418,11 @@ err:
 
 }
 
-
-void tcp_active_send_all_client(uint8_t *data, int len)
+#if 0
+void tcp_active_send_all_client_(uint8_t *data, int len)
 {
     struct net_tcp_client *cl_list, *list_tmp;
-    struct net_tcp_server *srv = (struct net_tcp_server *)net_get_tcp_srv_ctx();
+    struct net_tcp_server *srv = (struct net_tcp_server *)get_cmd_srv(SRV_1G_NET);//(struct net_tcp_server *)net_get_tcp_srv_ctx();
     struct net_tcp_server *srv10g = (struct net_tcp_server *)net_get_10g_tcp_srv_ctx();
 
     if(srv == NULL && srv10g == NULL)
@@ -444,19 +443,30 @@ void tcp_active_send_all_client(uint8_t *data, int len)
 
     pthread_mutex_unlock(&srv->tcp_client_lock);
 }
+#endif
 
-
-bool tcp_find_client(struct sockaddr_in *addr)
+void tcp_active_send_all_client(uint8_t *data, int len)
 {
     struct net_tcp_client *cl_list, *list_tmp;
-     struct net_tcp_server *srv = (struct net_tcp_server *)net_get_tcp_srv_ctx();
-    list_for_each_entry_safe(cl_list, list_tmp, &srv->clients, list){
-        if(memcmp(&cl_list->peer_addr.sin_addr, &addr->sin_addr, sizeof(addr->sin_addr)) == 0){
-            return true;
+    union _cmd_srv *cmdsrv;
+    
+    for(int i = 0; i < get_use_ifname_num(); i++){
+        cmdsrv = (union _cmd_srv *)get_cmd_srv(i);
+        if(cmdsrv == NULL)
+            return;
+        struct net_tcp_server *srv = (struct net_tcp_server *)cmdsrv->tcpsvr;
+        if(srv == NULL)
+            return;
+
+        pthread_mutex_lock(&srv->tcp_client_lock);
+        list_for_each_entry_safe(cl_list, list_tmp, &srv->clients, list){
+            printf_debug("1g send status to %s:%d\n", cl_list->get_peer_addr(cl_list), cl_list->get_peer_port(cl_list));
+            cl_list->send(cl_list,data, len);
         }
+        pthread_mutex_unlock(&srv->tcp_client_lock);
     }
-    return false;
 }
+
 
 bool tcp_get_peer_addr_port(void *cl, struct sockaddr_in *_peer_addr)
 {
@@ -465,17 +475,6 @@ bool tcp_get_peer_addr_port(void *cl, struct sockaddr_in *_peer_addr)
     memcpy(_peer_addr, &client->peer_addr, sizeof(struct sockaddr_in));
     printf_note("_peer_addr  connection from: %s:%d\n", inet_ntoa(_peer_addr->sin_addr), ntohs(_peer_addr->sin_port));
     return true;
-}
-
-uint32_t tcp_get_addr(void)
-{
-    struct net_tcp_client *cl_list, *list_tmp;
-    struct net_tcp_server *srv = (struct net_tcp_server *)net_get_tcp_srv_ctx();
-    
-    list_for_each_entry_safe(cl_list, list_tmp, &srv->clients, list){
-       return  cl_list->peer_addr.sin_addr.s_addr;
-    }
-    return 0;
 }
 
 struct net_tcp_server *tcp_server_new(const char *host, int port)

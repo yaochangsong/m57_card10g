@@ -902,7 +902,7 @@ void io_set_fft_size(uint32_t ch, uint32_t fft_size)
     }else if(fft_size == FFT_SIZE_32768){
         factor = 0xf;
     }
-    printf_note("[**REGISTER**][ch:%d]Set FFT Size=%u, factor=%u[0x%x]\n", ch, fft_size,factor, factor);
+    printf_info("[**REGISTER**][ch:%d]Set FFT Size=%u, factor=%u[0x%x]\n", ch, fft_size,factor, factor);
 #if defined(SUPPORT_PLATFORM_ARCH_ARM)
 #if defined(SUPPORT_SPECTRUM_KERNEL)
     if(io_ctrl_fd<=0){

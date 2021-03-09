@@ -25,17 +25,6 @@
 #include "../protocol/http/file.h"
 #include "net_data.h"
 
-struct net_tcp_client *tcp_get_datasrv_client(char *ipaddr)
-{
-    struct net_tcp_client *cl_list, *list_tmp;
-    struct net_tcp_server *srv = (struct net_tcp_server *)net_get_data_srv_ctx();
-    list_for_each_entry_safe(cl_list, list_tmp, &srv->clients, list){
-            printf_debug("Find ipaddree on list:%s, port=%d\n",  cl_list->get_peer_addr(cl_list), cl_list->get_peer_port(cl_list));
-            return cl_list;
-    }
-    printf_note("client is null\n");
-    return NULL;
-}
 
 static void tcp_ustream_write_cb(struct ustream *s, int bytes)
 {

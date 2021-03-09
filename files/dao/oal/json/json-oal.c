@@ -497,11 +497,13 @@ static int json_parse_config_param(const cJSON* root, s_config *sconfig)
                     node = cJSON_GetArrayItem(network, i);
                     value = cJSON_GetObjectItem(node, "ifname");
                     is_net_10g = false;
+#ifdef SUPPORT_NET_WZ
                     if(cJSON_IsString(value)){
                        if(!strcmp(NETWORK_10G_EHTHERNET_POINT, value->valuestring)){
                             is_net_10g = true;
                        }
                     }
+#endif
                     value = cJSON_GetObjectItem(node, "port");
                     if(value != NULL){
                         port = cJSON_GetObjectItem(value, "command");

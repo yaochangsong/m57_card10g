@@ -176,6 +176,7 @@ struct network_addr_st{
 }__attribute__ ((packed));
 
 struct network_st{
+    char *ifname;
     uint16_t port;
     uint16_t data_port;
     struct network_addr_st addr;
@@ -405,11 +406,8 @@ struct channel_para{
 
 struct poal_config{
     uint8_t cid;                                                    /* 设置通道*/
-    struct channel_para channel[MAX_RF_NUM];                     /* 通道参数 */
-    struct network_st network;                                      /* 网络参数 */
-    #ifdef SUPPORT_NET_WZ
-    struct network_st network_10g;                                  /* 万兆网络参数 */
-    #endif
+    struct channel_para channel[MAX_RF_NUM];                        /* 通道参数 */
+    struct network_st network[2];                                   /* 网络参数 */
     struct control_st ctrl_para;                                    /* 控制配置参数 */
     struct poal_status_info status_para;                            /* 状态信息参数 */
     struct calibration_info_st cal_level;                           /* 校准参数 */

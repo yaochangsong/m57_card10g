@@ -274,7 +274,7 @@ int8_t k600_scanf(uint8_t *pdata, int32_t total_len)
             {
                 static uint32_t ipaddr = 0;
                 if(ipaddr == 0){
-                    if(config_read_by_cmd(EX_NETWORK_CMD, EX_NETWORK_IP, 0, &ipaddr) != 0){
+                    if(config_read_by_cmd(EX_NETWORK_CMD, EX_NETWORK_IP, 0, &ipaddr, NETWORK_EHTHERNET_POINT) != 0){
                         printf_note("ipaddr=%x\n", ipaddr);
                         return -1;
                     }
@@ -294,7 +294,7 @@ int8_t k600_scanf(uint8_t *pdata, int32_t total_len)
             case SCREEN_NETMASK_ADDR4:
             {
                 uint32_t subnetmask;
-                if(config_read_by_cmd(EX_NETWORK_CMD, EX_NETWORK_MASK, 0, &subnetmask) != 0){
+                if(config_read_by_cmd(EX_NETWORK_CMD, EX_NETWORK_MASK, 0, &subnetmask, NETWORK_EHTHERNET_POINT) != 0){
                     return -1;
                 }
                 printf_debug("data_cmd=%x, datanum=%d, pdata=%d[%x], pdata2=%d\n", data_cmd,ptr->datanum,  ptr->data[0],ptr->data[0], ptr->data[1]);
@@ -313,7 +313,7 @@ int8_t k600_scanf(uint8_t *pdata, int32_t total_len)
             case SCREEN_GATEWAY_ADDR4:
             {
                 uint32_t gateway;
-                if(config_read_by_cmd(EX_NETWORK_CMD,  EX_NETWORK_GW, 0, &gateway) != 0){
+                if(config_read_by_cmd(EX_NETWORK_CMD,  EX_NETWORK_GW, 0, &gateway, NETWORK_EHTHERNET_POINT) != 0){
                     return -1;
                 }
                 printf_debug("data_cmd=%x, datanum=%d, pdata=%d[%x], pdata2=%d\n", data_cmd,ptr->datanum,  ptr->data[0],ptr->data[0], ptr->data[1]);

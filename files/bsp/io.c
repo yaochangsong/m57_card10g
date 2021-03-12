@@ -198,62 +198,6 @@ static void  io_get_bandwidth_factor(uint32_t anays_band,               /* 输�
     }
 }
 
-int set_1g_network_ipaddress(char *ipaddr, char *mask,char *gateway)
-{
-    return set_ipaddress(NETWORK_EHTHERNET_POINT, ipaddr, mask,gateway);
-}
-
-#ifdef SUPPORT_NET_WZ
-int set_10g_network_ipaddress(char *ipaddr, char *mask,char *gateway)
-{
-    return set_ipaddress(NETWORK_10G_EHTHERNET_POINT, ipaddr, mask,gateway);
-}
-
-int32_t io_set_local_10g_net(uint32_t ip, uint32_t nw,uint32_t gw,uint16_t port)
-{
-    struct net_10g_local_param_t{
-        uint32_t local_ip_10g;
-        uint16_t local_port_10g;
-    };
-#if defined(SUPPORT_SPECTRUM_KERNEL) 
-    int32_t ret = 0;
-    if(io_ctrl_fd<=0){
-        return 0;
-    }
-    
-    struct net_10g_local_param_t nl;
-    /*万兆设备ip网段在千兆口网段基础上加1,端口和千兆口端口一样*/
-    nl.local_ip_10g = ip;
-    nl.local_port_10g = port;
-    printf_note("ipaddress[0x%x], port=%d\n", nl.local_ip_10g, nl.local_port_10g);
-    ret = ioctl(io_ctrl_fd,IOCTL_NET_10G_LOCAL_SET,&nl);
-#else
-    struct in_addr ipaddr, netmask, gateway;
-    char s_ipaddr[16], s_netmask[16], s_gateway[16];
-    ipaddr.s_addr = ip;
-
-    port = port;
-    
-    memcpy(&s_ipaddr, inet_ntoa(ipaddr), sizeof(s_ipaddr));
-    printf_note("set 10g ipaddress[%s], %s\n", inet_ntoa(ipaddr), s_ipaddr);
-
-    netmask.s_addr = nw;
-    memcpy(&s_netmask, inet_ntoa(netmask), sizeof(s_netmask));
-    printf_note("set 10g netmask[%s], %s\n", inet_ntoa(netmask), s_netmask);
-
-    gateway.s_addr = gw;
-    memcpy(&s_gateway, inet_ntoa(gateway), sizeof(s_gateway));
-    printf_note("set 10g gateway[%s], %s\n", inet_ntoa(gateway), s_gateway);
-
-    set_10g_network_ipaddress(s_ipaddr, s_netmask, s_gateway);
-#endif
-    return 0;
-}
-
-
-#endif /* end SUPPORT_NET_WZ */
-
-
 void io_reset_fpga_data_link(void){
     #define RESET_ADDR      0x04U
     int32_t ret = 0;

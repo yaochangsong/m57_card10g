@@ -244,44 +244,25 @@ static int json_write_config_param(cJSON* root, s_config *sconfig)
 
     printf_note("sconfig->version=%s\n", sconfig->version);
     if((sconfig->version != NULL) && !strcmp(sconfig->version, "1.0")){
-        json_write_double_param(NULL, "network", "port", config->network.port);
-#ifdef SUPPORT_NET_WZ
-        json_write_double_param(NULL, "network_10g", "port", config->network_10g.port);
-#endif
+        json_write_double_param(NULL, "network", "port", config->network[0].port);
+        json_write_double_param(NULL, "network_10g", "port", config->network[0].port);
     } else{
         cJSON* ifname, *port, *value;
-        bool is_net_10g = false;
         network = cJSON_GetObjectItem(root, "network");
-        is_net_10g = is_net_10g; /* for warning */
         for(int i = 0; i < cJSON_GetArraySize(network); i++){
             node = cJSON_GetArrayItem(network, i);
             ifname = cJSON_GetObjectItem(node, "ifname");
-            is_net_10g = false;
             if(cJSON_IsString(ifname)){
-#ifdef SUPPORT_NET_WZ
-               if(!strcmp(NETWORK_10G_EHTHERNET_POINT, ifname->valuestring)){
-                    is_net_10g = true;
-               }
- #endif
+               int index = config_get_if_nametoindex(ifname);
                 value = cJSON_GetObjectItem(node, "port");
                 if(value != NULL){
                     port = cJSON_GetObjectItem(value, "command");
                     if(cJSON_IsNumber(port)){
-#ifdef SUPPORT_NET_WZ
-                        if(is_net_10g)
-                            port->valuedouble = config->network_10g.port;
-                        else
-#endif
-                            port->valuedouble = config->network.port;
+                            port->valuedouble = config->network[index].port;
                     }
                     port = cJSON_GetObjectItem(value, "data");
                     if(cJSON_IsNumber(port)){
-#ifdef SUPPORT_NET_WZ
-                        if(is_net_10g)
-                            port->valuedouble = config->network_10g.data_port;
-                        else
-#endif
-                            port->valuedouble = config->network.data_port;
+                            port->valuedouble = config->network[index].data_port;
                     }
                 }
             }
@@ -471,60 +452,48 @@ static int json_parse_config_param(const cJSON* root, s_config *sconfig)
         printf_note("json config version: %s\n", sconfig->version);
         network = cJSON_GetObjectItem(root, "network");
         if(!strcmp("1.0", version->valuestring)){
+            int index = 0;
             if(network != NULL){
                 port = cJSON_GetObjectItem(network, "port");
+                index ++;
                 if(port!= NULL && cJSON_IsNumber(port)){
-                    config->network.port = port->valueint;
-                    config->network.data_port = port->valueint+1;
-                    printf_note("port=>value is:%d\n",config->network.port);
+                    config->network[index].port = port->valueint;
+                    config->network[index].data_port = port->valueint+1;
+                    printf_note("port=>value is:%d\n",config->network[index].port);
                 }
             }
-            #ifdef SUPPORT_NET_WZ
             network = cJSON_GetObjectItem(root, "network_10g");
+            index ++;
             if(network != NULL){
                 port = cJSON_GetObjectItem(network, "port");
                 if(port!= NULL && cJSON_IsNumber(port)){
-                    config->network_10g.port = port->valueint;
-                    config->network_10g.data_port = port->valueint+1;
-                    printf_note("10g port=>value is:%d\n",config->network_10g.port);
+                    config->network[index].port = port->valueint;
+                    config->network[index].data_port = port->valueint+1;
+                    printf_note("10g port=>value is:%d\n",config->network[index].port);
                 }
             }
-            #endif
         }else{
             if(network != NULL){
-                bool is_net_10g = false;
                 for(int i = 0; i < cJSON_GetArraySize(network); i++){
                     node = cJSON_GetArrayItem(network, i);
                     value = cJSON_GetObjectItem(node, "ifname");
-                    is_net_10g = false;
-#ifdef SUPPORT_NET_WZ
-                    if(cJSON_IsString(value)){
-                       if(!strcmp(NETWORK_10G_EHTHERNET_POINT, value->valuestring)){
-                            is_net_10g = true;
-                       }
+                    if(i >= ARRAY_SIZE(config->network)){
+                        break;
                     }
-#endif
+                    if(cJSON_IsString(value)){
+                        config->network[i].ifname = strdup(value->valuestring);
+                    }
                     value = cJSON_GetObjectItem(node, "port");
                     if(value != NULL){
                         port = cJSON_GetObjectItem(value, "command");
                         if(cJSON_IsNumber(port)){
-#ifdef SUPPORT_NET_WZ
-                            if(is_net_10g)
-                                config->network_10g.port = port->valueint;
-                            else
-#endif
-                                config->network.port = port->valueint;
-                            printf_note("%s cmd port:%d\n",is_net_10g == true ? "10g" : "1g", port->valueint);
+                            config->network[i].port = port->valueint;
+                            printf_note("%s cmd port:%d\n",config->network[i].ifname, config->network[i].port);
                         }
                         port = cJSON_GetObjectItem(value, "data");
                         if(cJSON_IsNumber(port)){
-#ifdef SUPPORT_NET_WZ
-                            if(is_net_10g)
-                                config->network_10g.data_port = port->valueint;
-                            else
-#endif
-                                config->network.data_port = port->valueint;
-                            printf_note("%s data port:%d\n",is_net_10g == true ? "10g" : "1g", port->valueint);
+                            config->network[i].data_port = port->valueint;
+                            printf_note("%s data port:%d\n",config->network[i].ifname, config->network[i].data_port);
                         }
                     }
                 }

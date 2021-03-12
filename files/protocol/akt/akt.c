@@ -535,40 +535,6 @@ static inline int akt_err_code_check(int ret)
 }
 
 
-int akt_add_udp_client(void *cl_info)
-{
-    #define UDP_CLIENT_NUM 8
-    struct net_udp_client *cl = NULL;
-    struct net_udp_client *cl_list, *list_tmp;
-    struct net_udp_server *srv = get_udp_server();
-    int index = 0;
-    struct udp_client_info ucli[UDP_CLIENT_NUM];
-    SNIFFER_DATA_REPORT_ST *ci = (SNIFFER_DATA_REPORT_ST *)cl_info;
-    memset(ucli, 0, sizeof(struct udp_client_info)*UDP_CLIENT_NUM);
-#ifdef SUPPORT_NET_WZ
-    printf_note("cid=%x, ipaddr=%x, port=%d, type=%d,wz_ipaddr=%x, wz_port=%d\n",
-        ci->cid, ci->ipaddr, ci->port,ci->type, ci->wz_ipaddr, ci->wz_port);
-#endif
-    list_for_each_entry_safe(cl_list, list_tmp, &srv->clients, list){
-        ucli[index].cid = cl_list->ch;
-        ucli[index].ipaddr = ntohl(cl_list->peer_addr.sin_addr.s_addr);
-        ucli[index].port = ntohs(cl_list->peer_addr.sin_port);
-#ifdef SUPPORT_NET_WZ
-        ucli[index].wz_ipaddr = ci->wz_ipaddr;
-        ucli[index].wz_port = ci->wz_port;
-        printf_note("akt kernel add client index=%d, cid=%d, [ip:%x][port:%d][10g_ipaddr=0x%x][10g_port=%d], online\n", 
-                        index, ucli[index].cid, ucli[index].ipaddr, ucli[index].port, ucli[index].wz_ipaddr, ucli[index].wz_port);
-#endif
-        index ++;
-        if(index >= UDP_CLIENT_NUM){
-            break;
-        }
-    }
-
-    return 0;
-}
-
-
 static int akt_execute_set_command(void *cl)
 {
     PDU_CFG_REQ_HEADER_ST_EX *header;
@@ -733,7 +699,6 @@ static int akt_execute_set_command(void *cl)
             }
             udp_add_client_to_list(&client, ch, TAG_AUDIO);
             
-            //akt_add_udp_client(&net_para);
             break;
         }
         case AUDIO_SAMPLE_RATE:
@@ -1524,26 +1489,18 @@ static int akt_execute_discovery_command(void *client, const char *buf, int len)
     addr.sin_family = AF_INET;   /* fixedb bug: Address family not supported by protocol */
     
     cl = (struct net_udp_client *)client;
-#ifdef  SUPPORT_NET_WZ
-    if(cl->ifname && !strcmp(cl->ifname, NETWORK_10G_EHTHERNET_POINT)){
-        memcpy(netinfo.mac, poal_config->network_10g.addr.mac, sizeof(netinfo.mac));
-        netinfo.ipaddr = htonl(poal_config->network_10g.addr.ipaddress);
-        netinfo.gateway = htonl(poal_config->network_10g.addr.gateway);
-        netinfo.mask = htonl(poal_config->network_10g.addr.netmask);
-        netinfo.port = htons(poal_config->network_10g.port);
-        netinfo.status = 0;
-        ipdata.s_addr = poal_config->network_10g.addr.ipaddress;
-    }else
-#endif
-    {
-        memcpy(netinfo.mac, poal_config->network.addr.mac, sizeof(netinfo.mac));
-        netinfo.ipaddr = htonl(poal_config->network.addr.ipaddress);
-        netinfo.gateway = htonl(poal_config->network.addr.gateway);
-        netinfo.mask = htonl(poal_config->network.addr.netmask);
-        netinfo.port = htons(poal_config->network.port);
-        netinfo.status = 0;
-        ipdata.s_addr = poal_config->network.addr.ipaddress;
+
+    int index = config_get_if_nametoindex(cl->ifname);
+    if(index == -1){
+        return -1;
     }
+    memcpy(netinfo.mac, poal_config->network[index].addr.mac, sizeof(netinfo.mac));
+    netinfo.ipaddr = htonl(poal_config->network[index].addr.ipaddress);
+    netinfo.gateway = htonl(poal_config->network[index].addr.gateway);
+    netinfo.mask = htonl(poal_config->network[index].addr.netmask);
+    netinfo.port = htons(poal_config->network[index].port);
+    netinfo.status = 0;
+    ipdata.s_addr = poal_config->network[index].addr.ipaddress;
     printf_note("ifname:%s,mac:%x%x%x%x%x%x, ipaddr=%x[%s], gateway=%x\n", cl->ifname, netinfo.mac[0],netinfo.mac[1],netinfo.mac[2],netinfo.mac[3],netinfo.mac[4],netinfo.mac[5],
                                                         netinfo.ipaddr, inet_ntoa(ipdata), netinfo.gateway);
     memcpy(&cl->discover_peer_addr, &addr, sizeof(addr));

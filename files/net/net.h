@@ -7,11 +7,6 @@ enum srv_net_index{
     SRV_MAX_NET = 2,
 };
 
-struct net_ifname_t{
-    enum srv_net_index index;
-    char *ifname;
-};
-
 union _cmd_srv{
     struct net_tcp_server *tcpsvr;
     struct uh_server *uhsvr;

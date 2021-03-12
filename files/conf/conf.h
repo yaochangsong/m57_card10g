@@ -55,7 +55,7 @@ extern s_config *config_get_config(void);
 extern int8_t config_save_all(void);
 extern int8_t config_save_batch(exec_cmd cmd, uint8_t type,s_config *config);
 extern int8_t config_read_by_cmd(exec_cmd cmd, uint8_t type, uint8_t ch, void *data, ...);
-extern int8_t config_write_data(int cmd, uint8_t type, uint8_t ch, void *data);
+extern int8_t config_write_data(int cmd, uint8_t type, uint8_t ch, void *data, ...);
 extern int8_t config_write_save_data(exec_cmd cmd, uint8_t type, uint8_t ch, void *data);
 extern void config_save_cache(int cmd, uint8_t type, int8_t ch, void *data);
 extern int32_t config_get_gain_calibration_value(uint8_t ch, uint32_t fft_size, uint64_t m_freq);

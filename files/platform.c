@@ -145,7 +145,7 @@ int main(int argc, char **argv)
     temp_humidity_init();
 #endif 
 #ifdef  SUPPORT_CLOCK_ADC
-    clock_adc_init();
+    //clock_adc_init();
 #endif
 #if defined(SUPPORT_SPECTRUM_FPGA)
     fpga_io_init();

@@ -19,6 +19,7 @@
 extern uint32_t config_get_disk_file_notifier_timeout(void);
 int config_load_network(char *ifname);
 
+
 static s_config config;
 
 /**
@@ -46,12 +47,27 @@ void config_init(void)
     #elif defined(SUPPORT_DAO_JSON)
     json_read_config_file(&config);
     #endif
-    config_load_network(NETWORK_EHTHERNET_POINT);
-#ifdef SUPPORT_NET_WZ
-    config_load_network(NETWORK_10G_EHTHERNET_POINT);
-#endif
+    for(int i = 0; i < ARRAY_SIZE(config.oal_config.network); i++){
+        if(config.oal_config.network[i].ifname){
+            config_load_network(config.oal_config.network[i].ifname);
+        }
+    }
 }
 
+int config_get_if_nametoindex(char *ifname)
+{
+    if(ifname == NULL || strlen(ifname) == 0)
+        return -1;
+    
+    for(int i = 0; i < ARRAY_SIZE(config.oal_config.network); i++){
+        if(config.oal_config.network[i].ifname){
+            if(!strcmp(config.oal_config.network[i].ifname, ifname))
+                return i;
+        }
+    }
+    
+    return -1;
+}
 /** Accessor for the current configuration
 @return:  A pointer to the current config.
  */
@@ -65,18 +81,15 @@ int config_load_network(char *ifname)
     struct in_addr ipaddr, netmask, gateway;
     struct network_addr_st network;
     uint8_t  mac[6];
+    int index;
 
     if(strlen(ifname) == 0)
         return -1;
-#ifdef SUPPORT_NET_WZ
-    if(!strcmp(NETWORK_10G_EHTHERNET_POINT, ifname)){
-        printf_note("[%s]net 10g:\n", ifname);
-    }else
-#endif
-    {
-        printf_note("[%s]net 1g:\n", ifname);
-    }
 
+    index = config_get_if_nametoindex(ifname);
+    if(index == -1)
+        return -1;
+    
     if(get_ipaddress(ifname, &ipaddr) != -1){
         network.ipaddress = ipaddr.s_addr;
         printf_note("ipaddress: %s\n", inet_ntoa(ipaddr));
@@ -93,14 +106,8 @@ int config_load_network(char *ifname)
         memcpy(network.mac, mac, sizeof(network.mac));
         printf_note("mac=%02X:%02X:%02X:%02X:%02X:%02X\n", mac[0],mac[1],mac[2],mac[3],mac[4],mac[5]);
     }
-#ifdef SUPPORT_NET_WZ
-    if(!strcmp(NETWORK_10G_EHTHERNET_POINT, ifname)){
-        memcpy(&config.oal_config.network_10g.addr, &network, sizeof(struct network_addr_st));
-    }else
-#endif
-    {
-        memcpy(&config.oal_config.network.addr, &network, sizeof(struct network_addr_st));
-    }
+    memcpy(&config.oal_config.network[index].addr, &network, sizeof(struct network_addr_st));
+
     return 0;
 }
 
@@ -546,7 +553,7 @@ int8_t config_save_all(void)
 *        0：成功
 ******************************************************************************/
 
-int8_t config_write_data(int cmd, uint8_t type, uint8_t ch, void *data)
+int8_t config_write_data(int cmd, uint8_t type, uint8_t ch, void *data, ...)
 {
     printf_info(" config_load_from_data\n");
 
@@ -554,7 +561,9 @@ int8_t config_write_data(int cmd, uint8_t type, uint8_t ch, void *data)
 
     if(data ==NULL)
         return -1;
-    
+
+     va_list argp;
+     va_start (argp, data);
      switch(cmd)
      {
         case EX_MID_FREQ_CMD:
@@ -590,7 +599,7 @@ int8_t config_write_data(int cmd, uint8_t type, uint8_t ch, void *data)
                     break;
                 default:
                     printf_err("not surpport type\n");
-                    return -1;
+                    break;
             }
             break;
         }
@@ -633,29 +642,30 @@ int8_t config_write_data(int cmd, uint8_t type, uint8_t ch, void *data)
                     break;
                 default:
                     printf_err("not surpport type\n");
-                    return -1;
+                    break;
             }
             break;
         }
         case EX_NETWORK_CMD:
         {
+            uint32_t index = va_arg(argp, uint32_t);
             switch(type)
             {
                 case EX_NETWORK_IP:
-                    poal_config->network.addr.ipaddress = *(int32_t *)data;
+                    poal_config->network[index].addr.ipaddress = *(int32_t *)data;
                     break;
                 case EX_NETWORK_MASK:
-                    poal_config->network.addr.netmask = *(int32_t *)data;
+                    poal_config->network[index].addr.netmask = *(int32_t *)data;
                     break;
                 case EX_NETWORK_GW:
-                    poal_config->network.addr.gateway = *(int32_t *)data;
+                    poal_config->network[index].addr.gateway = *(int32_t *)data;
                     break;
                 case EX_NETWORK_PORT:
-                    poal_config->network.port = *(int16_t *)data;
+                    poal_config->network[index].port = *(int16_t *)data;
                     break;
                 default:
                     printf_err("not surpport type\n");
-                    return -1;
+                    break;
             }
             break;
 
@@ -668,15 +678,15 @@ int8_t config_write_data(int cmd, uint8_t type, uint8_t ch, void *data)
                     break;
                 default:
                     printf_err("not surpport type\n");
-                    return -1;
+                    break;
              }
         }
             break;
         default:
             printf_err("invalid set data[%d]\n", cmd);
-            return -1;
+            break;
      }
-     
+    va_end(argp);
     return 0;
 }
 
@@ -782,19 +792,31 @@ int8_t config_read_by_cmd(exec_cmd cmd, uint8_t type, uint8_t ch, void *data, ..
         }
         case EX_NETWORK_CMD:
         {
+            char *ifname = NULL;
+            void *ptr = (void *)va_arg(argp,long);
+            int index = 0;
+            if(ptr == NULL)
+                break;
+            for(int i = 0; i < ARRAY_SIZE(poal_config->network); i++){
+                ifname = poal_config->network[i].ifname;
+                if(!strcmp((char *)ptr, ifname)){
+                    index = i;
+                    break;
+                }
+            }
             switch(type)
             {
                 case EX_NETWORK_IP:
-                    *(uint32_t *)data = poal_config->network.addr.ipaddress;
+                    *(uint32_t *)data = poal_config->network[index].addr.ipaddress;
                     break;
                 case EX_NETWORK_MASK:
-                    *(uint32_t *)data = poal_config->network.addr.netmask;
+                    *(uint32_t *)data = poal_config->network[index].addr.netmask;
                     break;
                 case EX_NETWORK_GW:
-                    *(uint32_t *)data = poal_config->network.addr.gateway;
+                    *(uint32_t *)data = poal_config->network[index].addr.gateway;
                     break;
                 case EX_NETWORK_PORT:
-                    *(uint16_t *)data = poal_config->network.port;
+                    *(uint16_t *)data = poal_config->network[index].port;
                     break;
                 default:
                     printf_err("not surpport type\n");

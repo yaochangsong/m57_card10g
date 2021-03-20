@@ -43,7 +43,7 @@ static struct rf_spi_node_info spi_node[] ={
     {"/dev/spidev32766.0",     SPI_FUNC_CLOCK,  8,   -1,      -1,  "spi clock 7044 chip"},
     {"/dev/spidev32766.1",     SPI_FUNC_AD,     8,   -1,      -1,  "spi ad 9690 chip"},
 #endif
-    {NULL,                     SPI_FUNC_NULL    -1,   -1,      -1,  NULL},
+    {NULL,                     SPI_FUNC_NULL,    -1,   -1,      -1,  NULL},
 };
 
 

@@ -68,6 +68,20 @@ int config_get_if_nametoindex(char *ifname)
     
     return -1;
 }
+
+char *config_get_if_indextoname(int index)
+{
+    for(int i = 0; i < ARRAY_SIZE(config.oal_config.network); i++){
+        if(config.oal_config.network[i].ifname){
+            if(index == i)
+                return config.oal_config.network[i].ifname;
+        }
+    }
+    
+    return NULL;
+}
+
+
 /** Accessor for the current configuration
 @return:  A pointer to the current config.
  */

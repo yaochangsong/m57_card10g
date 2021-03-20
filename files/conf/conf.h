@@ -73,6 +73,8 @@ extern int config_set_network(char *ifname, uint32_t ipaddr, uint32_t netmask, u
 extern int config_set_ip(char *ifname, uint32_t ipaddr);
 extern int config_set_netmask(char *ifname, uint32_t netmask);
 extern int config_set_gateway(char *ifname, uint32_t gateway);
+extern int config_get_if_nametoindex(char *ifname);
+extern char *config_get_if_indextoname(int index);
 
 #endif
 

@@ -19,9 +19,9 @@ union _data_srv{
 
 struct net_server{
     int number;
-    union _cmd_srv cmd[SRV_MAX_NET];
-    union _data_srv data[SRV_MAX_NET];
     struct uh_server *http_server;
+    union _cmd_srv cmd[0];
+    union _data_srv data[0];
 };
 
 extern int server_init(void);

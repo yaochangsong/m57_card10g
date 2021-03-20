@@ -26,9 +26,12 @@ pthread_mutex_t set_cmd_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 int executor_net_disconnect_notify(struct sockaddr_in *addr)
 {
-    struct net_udp_server *srv = get_udp_server();
     struct poal_config *poal_config = &(config_get_config()->oal_config);
+    struct net_udp_server *srv;
     
+    if((srv = udp_get_srv_by_addr(addr)) == NULL){
+        return -1;
+    }
     udp_client_delete(addr);
     /* client is 0 */
     printf_info("udp client number: %d\n", srv->nclients);

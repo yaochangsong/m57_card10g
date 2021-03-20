@@ -253,7 +253,7 @@ static int json_write_config_param(cJSON* root, s_config *sconfig)
             node = cJSON_GetArrayItem(network, i);
             ifname = cJSON_GetObjectItem(node, "ifname");
             if(cJSON_IsString(ifname)){
-               int index = config_get_if_nametoindex(ifname);
+               int index = config_get_if_nametoindex(ifname->valuestring);
                 value = cJSON_GetObjectItem(node, "port");
                 if(value != NULL){
                     port = cJSON_GetObjectItem(value, "command");

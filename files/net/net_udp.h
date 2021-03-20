@@ -40,10 +40,12 @@ typedef enum {
 extern struct net_udp_server *udp_server_new(const char *host, int port);
 extern void udp_send_data_to_client(struct net_udp_client *client, const void *data, int data_len);
 extern void udp_add_client_to_list(struct sockaddr_in *addr, int ch, int tag);
-extern struct net_udp_server *get_udp_server(void);
+extern struct net_udp_server *get_udp_server(int index);
 extern int udp_send_vec_data(struct iovec *iov, int iov_len, int tag);
 extern int udp_send_vec_data_to_taget_addr(struct iovec *iov, int iov_len);
 extern int udp_client_delete(struct sockaddr_in *udp_addr);
+extern struct net_udp_server *udp_get_srv_by_addr(struct sockaddr_in *addr);
+extern void udp_client_dump(void);
 
 #endif
 

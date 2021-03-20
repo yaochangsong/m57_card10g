@@ -159,7 +159,7 @@ int parse_json_client_net(int ch, const char * const body, char *type)
             }
         }
     }
-    
+    udp_client_dump();
     return RESP_CODE_OK;
 }
 

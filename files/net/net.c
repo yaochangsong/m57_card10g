@@ -11,6 +11,8 @@
 /*****************************************************************************     
 *  Rev 1.0   06 July 2019   yaochangsong
 *  Initial revision.
+*  Rev 2.0   06 March 2021   yaochangsong
+*  
 ******************************************************************************/
 
 #include "config.h"
@@ -28,25 +30,31 @@ static int on_request(struct uh_client *cl)
 }
 
 
-static struct net_server nserver;
+struct net_server *nserver;
 
 int get_use_ifname_num(void)
 {
-    return nserver.number;
+    return nserver->number;
 }
 void *get_cmd_srv(int index)
 {
-    return (void*)&nserver.cmd[index];
+    if(index >= nserver->number)
+        return NULL;
+    
+    return (void*)&nserver->cmd[index];
 }
 
 void *get_data_srv(int index)
 {
-    return (void*)&nserver.data[index];
+    if(index >= nserver->number)
+        return NULL;
+
+    return (void*)&nserver->data[index];
 }
 
 void *get_http_srv(int index)
 {
-    return (void*)nserver.http_server;
+    return (void*)nserver->http_server;
 }
 
 union _cmd_srv *cmd_cmd_server_init(char *ipaddr, int port, union _cmd_srv *cmdsrv)
@@ -112,35 +120,41 @@ int server_init(void)
     char *ifname = NULL, *str_ipaddr;
     struct in_addr ipaddr;
     int port;
+    int net_num = ARRAY_SIZE(poal_config->network);
+    
+    nserver = calloc(1, sizeof(struct net_server) + net_num * (sizeof(union _cmd_srv) + sizeof(union _data_srv)));
+    if (!nserver) {
+        printf("calloc");
+        return -1;
+    }
 
-    nserver.number = 0;
-    for(int i = 0; i < ARRAY_SIZE(poal_config->network); i++){
+    
+    for(int i = 0; i < net_num; i++){
         ifname = poal_config->network[i].ifname;
         if(ifname && get_ipaddress(ifname, &ipaddr) == -1){
             continue;
         }
         str_ipaddr = inet_ntoa(ipaddr);
         port = poal_config->network[i].port;
-        if(cmd_cmd_server_init(str_ipaddr, port, &nserver.cmd[i]) == NULL){
+        if(cmd_cmd_server_init(str_ipaddr, port, &nserver->cmd[i]) == NULL){
             return -1;
         }
 
         port = poal_config->network[i].data_port;
-        if(data_data_server_init(str_ipaddr, port, &nserver.data[i]) == NULL){
+        if(data_data_server_init(str_ipaddr, port, &nserver->data[i]) == NULL){
             return -1;
         }
-        nserver.number++;
+        nserver->number++;
     }
-    
 #ifdef  SUPPORT_PROTOCAL_HTTP
     struct uh_server *srv = NULL;
-    printf_note("http server init[port:%d]\n", 80);
-    srv = uh_server_new("0.0.0.0", 80);
+    printf_note("http server init[port:%d]\n", 8760);
+    srv = uh_server_new("0.0.0.0", 8760);
     if (!srv)
         return -1;
     srv->on_accept = on_accept;
     srv->on_request = on_request;
-    nserver.http_server = srv;
+    nserver->http_server = srv;
 #endif
     
     return 0;

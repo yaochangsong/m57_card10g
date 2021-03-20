@@ -782,7 +782,7 @@ struct poal_compile_Info *open_compile_info(const char *filename)
 
 next:
     c_info.build_time = _get_build_time();
-    c_info.build_version = PLATFORM_VERSION;
+    c_info.build_version = get_version();
 #ifdef VERSION_TAG
     c_info.code_hash = VERSION_TAG;
 #endif
@@ -826,13 +826,32 @@ char *get_jenkins_version(void)
     return version;
 }
 
+char *get_version(void)
+{
+#ifdef SUPPORT_PLATFORM_ARCH_ARM
+    #define PL_VER_NAME "/etc/platform_version"
+#else
+    #define PL_VER_NAME "conf/platform_version"
+#endif
+    static char version[16] = {"0"};
+    if(access(PL_VER_NAME, 0)){
+        sprintf(version, "v1.0.0");
+        return version;
+    }
+    if(read_file(version, sizeof(version), PL_VER_NAME) == 0){
+        version[sizeof(version)-1] = 0;
+    }else{
+        sprintf(version, "v1.0.0");
+    }
+    return version;
+}
 char *get_version_string(void)
 {
    static char version[256]={0};
    #ifdef VERSION_TAG
-   snprintf(version, sizeof(version), "%s_%s(%s-%s)-%s", PLATFORM_VERSION,get_jenkins_version(), get_build_time(), __TIME__,VERSION_TAG);
+   snprintf(version, sizeof(version), "%s_%s(%s-%s)-%s", get_version(),get_jenkins_version(), get_build_time(), __TIME__,VERSION_TAG);
    #else
-   snprintf(version, sizeof(version), "%s_%s(%s-%s)", PLATFORM_VERSION,get_jenkins_version(), get_build_time(), __TIME__);
+   snprintf(version, sizeof(version), "%s_%s(%s-%s)", get_version(),get_jenkins_version(), get_build_time(), __TIME__);
    #endif
    printf_debug("%s\n", version);
    return version;

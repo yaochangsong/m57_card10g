@@ -202,10 +202,6 @@ ifneq ($(findstring y,$(SUPPORT_SPECTRUM_SCAN_SEGMENT)),)
 endif
 
 
-#specturm kernel
-ifneq ($(findstring y,$(SUPPORT_SPECTRUM_KERNEL)),)
-	C_VAR += -DSUPPORT_SPECTRUM_KERNEL
-endif
 
 #
 ifneq ($(findstring y,$(SUPPORT_RESIDENCY_STRATEGY)),)

@@ -159,7 +159,7 @@ int parse_json_client_net(int ch, const char * const body, char *type)
             }
         }
     }
-    udp_client_dump();
+    
     return RESP_CODE_OK;
 }
 
@@ -423,6 +423,18 @@ int parse_json_muti_point(const char * const body,uint8_t cid)
          printfd("audio_sample_rate:%f,\n", config->channel[cid].multi_freq_point_param.audio_sample_rate);
 
     }
+    value = cJSON_GetObjectItem(root, "startFrequency");
+    if(value!=NULL&&cJSON_IsNumber(value)){
+         config->channel[cid].multi_freq_point_param.start_freq = value->valuedouble;
+         printfn("start_freq:%"PRIu64" ",config->channel[cid].multi_freq_point_param.start_freq);
+
+    }
+    value = cJSON_GetObjectItem(root, "endFrequency");
+    if(value!=NULL&&cJSON_IsNumber(value)){
+         config->channel[cid].multi_freq_point_param.end_freq = value->valuedouble;
+         printfn("end_freq:%"PRIu64" ",config->channel[cid].multi_freq_point_param.end_freq);
+
+    }
     cJSON *muti_point = NULL;
     uint32_t subcid;
     muti_point = cJSON_GetObjectItem(root, "array");
@@ -512,13 +524,16 @@ int parse_json_bddc(const char * const body,uint8_t ch)
     value = cJSON_GetObjectItem(root, "centerFreq");
     if(value!=NULL&&cJSON_IsNumber(value)){
          config->channel[ch].multi_freq_point_param.ddc.middle_freq = value->valuedouble;
-         printfd("middle_freq:%"PRIu64",\n", config->channel[ch].multi_freq_point_param.ddc.middle_freq);
+         printf_note("ch:%d,dec middle_freq:%"PRIu64", middlefreq=%"PRIu64"\n", ch, config->channel[ch].multi_freq_point_param.ddc.middle_freq, 
+                                                                                            _get_middle_freq(ch,value->valuedouble, NULL));
     }
     value = cJSON_GetObjectItem(root, "decBandwidth");
     if(value!=NULL&&cJSON_IsNumber(value)){
          config->channel[ch].multi_freq_point_param.ddc.bandwidth = value->valuedouble;
-         printfd("decBandwidth:%"PRIu64",\n", config->channel[ch].multi_freq_point_param.ddc.bandwidth);
+         printf_note("decBandwidth:%"PRIu64",\n", config->channel[ch].multi_freq_point_param.ddc.bandwidth);
     }
+    executor_set_command(EX_MID_FREQ_CMD, EX_DEC_BW, ch, &config->channel[ch].multi_freq_point_param.ddc.bandwidth);
+    executor_set_command(EX_MID_FREQ_CMD, EX_DEC_MID_FREQ, ch,&config->channel[ch].multi_freq_point_param.ddc.middle_freq, _get_middle_freq(ch,config->channel[ch].multi_freq_point_param.ddc.middle_freq, NULL));
     return code;
 }
 

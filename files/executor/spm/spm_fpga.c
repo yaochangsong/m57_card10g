@@ -265,7 +265,7 @@ static inline int spm_find_index_by_type(int ch, int subch, enum stream_type typ
 
     subch = subch;
     for(i = 0; i < ARRAY_SIZE(spm_stream); i++){
-        if((type == pstream[i].type) && (ch == pstream[i].ch)){
+        if((type == pstream[i].type) && (ch == pstream[i].ch || pstream[i].ch == -1)){
                 index = i;
                 find = 1;
                 break;
@@ -488,6 +488,7 @@ static int spm_send_fft_data(void *data, size_t fft_len, void *arg)
     hparam->data_len = data_byte_size; 
     hparam->type = DEFH_DTYPE_FLOAT;
     hparam->ex_type = DFH_EX_TYPE_PSD;
+    hparam->freq_resolution = config_get_resolution_by_fft(hparam->fft_size);
     ptr_header = xw_assamble_frame_data(&header_len, arg);
     if(ptr_header == NULL)
         return -1;

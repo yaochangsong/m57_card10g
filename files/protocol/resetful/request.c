@@ -48,7 +48,7 @@ static struct request_info http_req_cmd[] = {
     {"POST",    "/mode/multiBand/@ch",                  -1,                cmd_multi_band},
     {"POST",    "/demodulation/@ch/@subch",             -1,                cmd_demodulation},
     {"POST",    "/nddc/@ch/@subch",                     -1,                cmd_demodulation},
-    {"POST",    "/bddc/@ch/@subch",                     -1,                cmd_bddc},
+    {"POST",    "/bddc/@ch",                            -1,                cmd_bddc},
     /* 中频参数设置 */
     {"PUT",     "/if/@ch/@subch/@type/@value",          -1,                cmd_if_single_value_set},
     {"PUT",     "/if/@ch/@subch/@type/@value/@value2",  -1,                cmd_if_single_value_set},

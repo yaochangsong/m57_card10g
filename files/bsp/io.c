@@ -19,7 +19,6 @@
 #include "io.h"
 
 
-static int io_ctrl_fd = -1;
 
 /* 窄带表：解调方式为IQ系数表 */
 static struct  band_table_t iq_nbandtable[] ={
@@ -68,18 +67,13 @@ static struct  band_table_t bandtable[] ={
     {65536,  0, 100000000},
     {0,      0, 200000000},
 #else
-    {196658, 0,  1000000, 1.28},
-    {196633, 0,  2000000, 1.28},
-    {196618, 0,  5000000, 1.28},
-    {196613, 0,  10000000, 1.28},
-    {65541,  0,  20000000, 1.28},
-    {196608, 0,  40000000, 1.6},
-    {196608, 0,  60000000, 1.066667},
-    {65536,  0,  80000000, 1.6},
-    {65536,  0,  120000000, 1.066667},
-    {0,      0,  160000000, 1.6},
-    {0,      0,  175000000, 1.462857},
-    {0,      0,  200000000, 1.28},
+    {196632, 0,  1250000, 1.28},
+    {196620, 0,  2500000, 1.28},
+    {196614, 0,  5000000, 1.28},
+    {65542, 0,  10000000, 1.28},
+    {1114112, 0, 20000000, 1.28},
+    {1048576, 0, 40000000, 1.28},
+    {65536, 0,   60000000, 1.28},
 #endif
 }; 
 
@@ -205,13 +199,7 @@ void io_reset_fpga_data_link(void){
 
     printf_debug("[**REGISTER**]Reset FPGA\n");
 #if defined(SUPPORT_PLATFORM_ARCH_ARM)
-#if defined(SUPPORT_SPECTRUM_KERNEL) 
-    if(io_ctrl_fd<=0){
-        return ;
-    }
-    data = (RESET_ADDR &0xffff)<<16;
-    ret = ioctl(io_ctrl_fd,IOCTL_SET_DDC_REGISTER_VALUE,&data);
-#elif defined(SUPPORT_SPECTRUM_V2) 
+#if defined(SUPPORT_SPECTRUM_V2) 
     #if defined(SUPPORT_SPECTRUM_FPGA)
     SET_DATA_RESET(get_fpga_reg(),1);
 //    get_fpga_reg()->system->data_path_reset = 1;
@@ -239,17 +227,14 @@ int32_t io_set_bandwidth(uint32_t ch, uint32_t bandwidth){
     old_val = band_factor;
     old_ch = ch;
 #if defined(SUPPORT_PLATFORM_ARCH_ARM)
-#if defined(SUPPORT_SPECTRUM_KERNEL) 
-    set_factor = band_factor|0x1000000;
-    ret = ioctl(io_ctrl_fd, IOCTL_EXTRACT_CH0, set_factor);
-#elif defined(SUPPORT_SPECTRUM_V2) 
+#if defined(SUPPORT_SPECTRUM_V2) 
     #if defined(SUPPORT_SPECTRUM_FPGA)
     //get_fpga_reg()->broad_band->band = band_factor;
     SET_BROAD_BAND(get_fpga_reg(),band_factor, ch);
     #endif
 #endif
 #endif /* SUPPORT_PLATFORM_ARCH_ARM */
-    printf_note("[**REGISTER**]ch:%d, Set Bandwidth:%u,band_factor=0x%x,set_factor=0x%x\n", ch, bandwidth,band_factor,set_factor);
+    printf_debug("[**REGISTER**]ch:%d, Set Bandwidth:%u,band_factor=0x%x,set_factor=0x%x\n", ch, bandwidth,band_factor,set_factor);
 
     return ret;
 
@@ -288,8 +273,8 @@ int32_t io_set_dec_bandwidth(uint32_t ch, uint32_t dec_bandwidth){
     struct  band_table_t *table;
     uint32_t table_len = 0;
 
-    table= nbandtable;
-    table_len = sizeof(nbandtable)/sizeof(struct  band_table_t);
+    table= bandtable;
+    table_len = sizeof(bandtable)/sizeof(struct  band_table_t);
     io_get_bandwidth_factor(dec_bandwidth, &band_factor,&filter_factor, table, table_len);
     set_factor = band_factor;
     if((old_val == set_factor) && (ch == old_ch)){
@@ -298,16 +283,14 @@ int32_t io_set_dec_bandwidth(uint32_t ch, uint32_t dec_bandwidth){
     }
     old_val = set_factor;
     old_ch = ch;
-    printf_note("[**REGISTER**]ch:%d, Set Decode Bandwidth:%u, band_factor=0x%x, set_factor=0x%x\n", ch, dec_bandwidth, band_factor, set_factor);
+    printf_note("[**REGISTER**]ch:%d, Set Decode Bandwidth:%u, band_factor=0x%x, set_factor=0x%x, %u\n", ch, dec_bandwidth, band_factor, set_factor, set_factor);
 #if defined(SUPPORT_PLATFORM_ARCH_ARM)
-#if defined(SUPPORT_SPECTRUM_KERNEL) 
-    ret = ioctl(io_ctrl_fd, IOCTL_EXTRACT_CH0, set_factor|0x2000000);
-#elif defined(SUPPORT_SPECTRUM_V2) 
+#if defined(SUPPORT_SPECTRUM_V2) 
     #if defined(SUPPORT_SPECTRUM_FPGA)
    // get_fpga_reg()->narrow_band[ch]->band = band_factor;   //0x30190
-    SET_NARROW_BAND(get_fpga_reg(),ch,band_factor);
+    SET_NIQ_BAND(get_fpga_reg(),band_factor, ch);
     #endif
-    printf_note("narrow_band[%d]->band:%x\n",ch,band_factor);
+    printf_note("broard_band[%d]->band:%x\n",ch,band_factor);
 #endif
 #endif
     return ret;
@@ -347,9 +330,7 @@ int32_t io_set_dec_method(uint32_t ch, uint8_t dec_method){
    // old_ch = ch;
     printf_note("[**REGISTER**]ch:%d, Set Decode method:%u, d_method=0x%x\n", ch, dec_method, d_method);
 #if defined(SUPPORT_PLATFORM_ARCH_ARM)
-#if defined(SUPPORT_SPECTRUM_KERNEL) 
-    ret = ioctl(io_ctrl_fd,IOCTL_EXTRACT_CH0,d_method|0x4000000);
-#elif defined(SUPPORT_SPECTRUM_V2) 
+#if defined(SUPPORT_SPECTRUM_V2) 
     #if defined(SUPPORT_SPECTRUM_FPGA)
     SET_NARROW_DECODE_TYPE(get_fpga_reg(),ch,dec_method);;
     #endif
@@ -361,23 +342,6 @@ int32_t io_set_dec_method(uint32_t ch, uint8_t dec_method){
 }
 
 
-/*解调实际参数下发：内核发送数据头使用*/
-int32_t io_set_dec_parameter(uint32_t ch, uint64_t dec_middle_freq, uint8_t dec_method, uint32_t dec_bandwidth)
-{
-#if defined(SUPPORT_PLATFORM_ARCH_ARM)
-#if defined(SUPPORT_SPECTRUM_KERNEL) 
-    FIXED_FREQ_ANYS_D_PARAM_ST dq;
-    dq.cid = ch;
-    dq.bandwidth = dec_bandwidth;
-    dq.center_freq = dec_middle_freq;
-    dq.d_method = dec_method;
-    ioctl(io_ctrl_fd,IOCTL_RUN_DEC_PARAM,&dq);
-#endif
-#endif
-    return 0;
-}
-
-
 
 /*解调中心频率计算（需要根据中心频率计算）*/
 static uint32_t io_set_dec_middle_freq_reg(uint64_t dec_middle_freq, uint64_t middle_freq)
@@ -385,6 +349,8 @@ static uint32_t io_set_dec_middle_freq_reg(uint64_t dec_middle_freq, uint64_t mi
         /* delta_freq = (reg* 204800000)/2^32 ==>  reg= delta_freq*2^32/204800000 */
 #if defined(SUPPORT_PROJECT_WD_XCR) || defined(SUPPORT_PROJECT_WD_XCR_40G)
 #define FREQ_MAGIC1 (256000000)
+#elif defined(SUPPORT_PROJECT_TF713_4CH)
+#define FREQ_MAGIC1 (153600000)
 #else
 #define FREQ_MAGIC1 (204800000)
 #endif
@@ -437,15 +403,13 @@ int32_t io_set_dec_middle_freq(uint32_t ch, uint64_t dec_middle_freq, uint64_t m
     old_val = reg;
     old_ch = ch;
 #if defined(SUPPORT_PLATFORM_ARCH_ARM)
-#if defined(SUPPORT_SPECTRUM_KERNEL) 
-    ret = ioctl(io_ctrl_fd, IOCTL_DECODE_MID_FREQ, reg);
-#elif defined(SUPPORT_SPECTRUM_V2) 
+#if defined(SUPPORT_SPECTRUM_V2) 
     #if defined(SUPPORT_SPECTRUM_FPGA)
-    SET_NARROW_SIGNAL_CARRIER(get_fpga_reg(),ch,reg);
+    SET_NIQ_SIGNAL_CARRIER(get_fpga_reg(),reg, ch);
     #endif
 #endif
 #endif
-    printf_warn("[**REGISTER**]ch:%d, MiddleFreq =%"PRIu64",Decode MiddleFreq:%"PRIu64",reg=0x%x\n", ch, middle_freq, dec_middle_freq, reg);
+    printf_note("[**REGISTER**]ch:%d, MiddleFreq =%"PRIu64",Decode MiddleFreq:%"PRIu64",reg=0x%x\n", ch, middle_freq, dec_middle_freq, reg);
     return ret;
 }
 
@@ -491,12 +455,7 @@ int32_t io_set_subch_dec_middle_freq(uint32_t subch, uint64_t dec_middle_freq, u
         
         reg = io_set_dec_middle_freq_reg(dec_middle_freq, middle_freq);
 #if defined(SUPPORT_PLATFORM_ARCH_ARM)
-#if defined(SUPPORT_SPECTRUM_KERNEL) 
-        struct  ioctl_data_t odata;
-        odata.ch = subch;
-        memcpy(odata.data,&reg,sizeof(reg));
-        ret = ioctl(io_ctrl_fd, IOCTL_SUB_CH_MIDDLE_FREQ, &odata);
-#elif defined(SUPPORT_SPECTRUM_V2) 
+#if defined(SUPPORT_SPECTRUM_V2) 
         #if defined(SUPPORT_SPECTRUM_FPGA)
         SET_NARROW_SIGNAL_CARRIER(get_fpga_reg(),subch,reg);
         #endif
@@ -514,6 +473,8 @@ int32_t io_set_subch_onoff(uint32_t ch, uint32_t subch, uint8_t onoff)
 #if defined(SUPPORT_SPECTRUM_V2) 
     #if defined(SUPPORT_SPECTRUM_FPGA)
     if(onoff){
+        uint64_t midfreq = executor_get_mid_freq(ch);
+        _set_channel(get_fpga_reg(),ch, &midfreq);
         _set_narrow_channel(get_fpga_reg(),ch, subch,0x01);
     }
     else{
@@ -557,17 +518,7 @@ int32_t io_set_subch_bandwidth(uint32_t subch, uint32_t bandwidth, uint8_t dec_m
     io_get_bandwidth_factor(bandwidth, &band_factor,&filter_factor, table, table_len);
     /*设置子通道带宽系数*/
 #if defined(SUPPORT_PLATFORM_ARCH_ARM)
-#if defined(SUPPORT_SPECTRUM_KERNEL) 
-    struct  ioctl_data_t odata;
-    odata.ch = subch;
-    memcpy(odata.data,&band_factor,sizeof(band_factor));
-    ret = ioctl(io_ctrl_fd, IOCTL_SUB_CH_BANDWIDTH, &odata);
-
-    /*设置子通道滤波器系数*/
-    odata.ch = subch;
-    memcpy(odata.data,&filter_factor,sizeof(filter_factor));
-    ret = ioctl(io_ctrl_fd, IOCTL_SUB_CH_FILTER_COEFF, &odata);
-#elif defined(SUPPORT_SPECTRUM_V2) 
+#if defined(SUPPORT_SPECTRUM_V2) 
     #if defined(SUPPORT_SPECTRUM_FPGA)
     SET_NARROW_BAND(get_fpga_reg(),subch,band_factor);
     SET_NARROW_FIR_COEFF(get_fpga_reg(),subch,filter_factor);
@@ -599,13 +550,7 @@ int32_t io_set_subch_dec_method(uint32_t subch, uint8_t dec_method){
     old_ch = subch;
     
 #if defined(SUPPORT_PLATFORM_ARCH_ARM)
-#if defined(SUPPORT_SPECTRUM_KERNEL) 
-    struct  ioctl_data_t odata;
-    odata.ch = subch;
-    memcpy(odata.data,&d_method,sizeof(d_method));
-    printf_note("[**REGISTER**]subch:%d, Set Decode method:%u, d_method=0x%x\n", subch, dec_method, d_method);
-    ret = ioctl(io_ctrl_fd, IOCTL_SUB_CH_DECODE_TYPE, &odata);
-#elif defined(SUPPORT_SPECTRUM_V2) 
+#if defined(SUPPORT_SPECTRUM_V2) 
     #if defined(SUPPORT_SPECTRUM_FPGA)
     //get_fpga_reg()->narrow_band[subch]->decode_type = d_method;
     SET_NARROW_DECODE_TYPE(get_fpga_reg(),subch,d_method);
@@ -616,21 +561,6 @@ int32_t io_set_subch_dec_method(uint32_t subch, uint8_t dec_method){
 
 }
 
-static void io_set_common_param(uint8_t type, uint8_t *buf,uint32_t buf_len)
-{
-    printf_debug("set common param: type=%d,data_len=%d\n",type,buf_len);
-    
-#if defined(SUPPORT_PLATFORM_ARCH_ARM)
-#if defined(SUPPORT_SPECTRUM_KERNEL)  
-    COMMON_PARAM_ST c_p_param;
-    c_p_param.type = type;
-    if(buf_len >0){
-        memcpy(c_p_param.buf,buf,buf_len);
-    }
-    ioctl(io_ctrl_fd, IOCTL_COMMON_PARAM_CMD, &c_p_param);
-#endif
-#endif
-}
 
 /* 设置平滑数 */
 void io_set_smooth_time(uint32_t ch, uint16_t stime)
@@ -646,12 +576,7 @@ void io_set_smooth_time(uint32_t ch, uint16_t stime)
     printf_note("[**REGISTER**]ch:%u, Set Smooth time: factor=%d[0x%x]\n",ch, stime, stime);
     
 #if defined(SUPPORT_PLATFORM_ARCH_ARM)
-#if defined(SUPPORT_SPECTRUM_KERNEL)
-    //smooth mode
-    ioctl(io_ctrl_fd,IOCTL_SMOOTH_CH0,0x10000);
-    //smooth value
-    ioctl(io_ctrl_fd,IOCTL_SMOOTH_CH0,stime);
-#elif defined(SUPPORT_SPECTRUM_V2) 
+#if defined(SUPPORT_SPECTRUM_V2) 
     #if defined(SUPPORT_SPECTRUM_FPGA)
     SET_FFT_SMOOTH_TYPE(get_fpga_reg(),0, ch);
     SET_FFT_MEAN_TIME(get_fpga_reg(),stime, ch);
@@ -677,9 +602,7 @@ void io_set_calibrate_val(uint32_t ch, int32_t  cal_value)
     old_val[ch] = cal_value;
     printf_note("[**REGISTER**][ch=%d]Set Calibrate Val factor=%d[0x%x]\n",ch, cal_value,cal_value);
 #if defined(SUPPORT_PLATFORM_ARCH_ARM)
-#if defined(SUPPORT_SPECTRUM_KERNEL)
-    ioctl(io_ctrl_fd,IOCTL_CALIBRATE_CH0,&cal_value);
-#elif defined(SUPPORT_SPECTRUM_V2) 
+#if defined(SUPPORT_SPECTRUM_V2) 
     #if defined(SUPPORT_SPECTRUM_FPGA)
     SET_FFT_CALIB(get_fpga_reg(),(uint32_t)cal_value, ch);
     #elif defined(SUPPORT_SPECTRUM_CHIP) 
@@ -775,50 +698,6 @@ bool is_rf_calibration_source_enable(void)
     return enable;
 }
 
-void io_dma_dev_enable(uint32_t ch, uint8_t type, uint8_t continuous)
-{
-    uint32_t ctrl_val = 0;
-    /*data map: 
-     +------------------------------------------------------------------+
-     |                            data(ctrl_val) map                            |
-     +---------------------------------+-------------+-----------------+
-     |  continuous mode    |       ch       |fft|iq|dq(type)|      enable       |
-     +---------------- - +--------------+------------+------------------+
-     32bit              16bit              10bit          8bit                0bit
-     |<-continuous(16bit)->|<-----data_offset(8bit)------>|<---enable(8bit)-->|
-    */
-    uint8_t data_offset = (ch<<2)|type;
-    printf_debug("[**REGISTER**]ch=%d, type=%s, data_offset=%x, Enable\n", ch, type==0?"IQ":"FFT", data_offset);
-    
-#if defined(SUPPORT_PLATFORM_ARCH_ARM)
-#if defined(SUPPORT_SPECTRUM_KERNEL)
-    uint32_t con ;
-    con = continuous;
-    if (io_ctrl_fd > 0) {
-        ctrl_val = ((con&0xff)<<16) | ((data_offset & 0xFF) << 8) | 1;
-        ioctl(io_ctrl_fd,IOCTL_ENABLE_DISABLE,ctrl_val);
-    }
-#endif
-#endif
-}
-
-static void io_dma_dev_trans_len(uint32_t ch, uint8_t type, uint32_t len)
-{
-    TRANS_LEN_PARAMETERS tran_parameter;
-    uint8_t data_offset = (ch<<2)|type;
-    printf_debug("[**REGISTER**]ch=%d, type=%s, data_offset=%x Transfer len:%d\n", ch, type==0?"IQ":"FFT", data_offset, len);
-    uint32_t ctrl_val = 0;
-#if defined(SUPPORT_PLATFORM_ARCH_ARM)
-#if defined(SUPPORT_SPECTRUM_KERNEL)
-    if (io_ctrl_fd > 0) {
-        ctrl_val = (((data_offset & 0xF) << 28) | (len & 0xFFFFFF));
-        ioctl(io_ctrl_fd,IOCTL_TRANSLEN, ctrl_val);
-    }
-#endif
-#endif
-
-}
-
 void io_set_fft_size(uint32_t ch, uint32_t fft_size)
 {
     uint32_t factor;
@@ -848,12 +727,7 @@ void io_set_fft_size(uint32_t ch, uint32_t fft_size)
     }
     printf_info("[**REGISTER**][ch:%d]Set FFT Size=%u, factor=%u[0x%x]\n", ch, fft_size,factor, factor);
 #if defined(SUPPORT_PLATFORM_ARCH_ARM)
-#if defined(SUPPORT_SPECTRUM_KERNEL)
-    if(io_ctrl_fd<=0){
-        return;
-    }
-    ioctl(io_ctrl_fd,IOCTL_FFT_SIZE_CH0,factor);
-#elif defined(SUPPORT_SPECTRUM_V2) 
+#if defined(SUPPORT_SPECTRUM_V2) 
     #if defined(SUPPORT_SPECTRUM_FPGA)
     SET_FFT_FFT_LEN(get_fpga_reg(),factor, ch);
     //get_fpga_reg()->broad_band->fft_lenth = factor;
@@ -864,12 +738,7 @@ void io_set_fft_size(uint32_t ch, uint32_t fft_size)
 
 void io_set_fpga_sys_time(uint32_t time)
 {
-#if defined(SUPPORT_SPECTRUM_KERNEL)
-    if(io_ctrl_fd<=0){
-        return;
-    }
-    ioctl(io_ctrl_fd,IOCTL_SET_SYS_TIME,time);
-#elif defined(SUPPORT_SPECTRUM_V2) 
+#if defined(SUPPORT_SPECTRUM_V2) 
     #if defined(SUPPORT_SPECTRUM_FPGA)
     SET_CURRENT_TIME(get_fpga_reg(),time);
     //get_fpga_reg()->signal->current_time = time;
@@ -899,36 +768,15 @@ int32_t io_set_audio_volume(uint32_t ch,uint8_t volume)
     return 0;
 }
 
-
-static void io_dma_dev_disable(uint32_t ch,uint8_t type)
-{
-    uint32_t ctrl_val = 0;
-    int ret = -1;
-    
-#if defined(SUPPORT_PLATFORM_ARCH_ARM)
-#if defined(SUPPORT_SPECTRUM_KERNEL)
-    uint8_t data_offset = (ch<<2)|type;
-    if (io_ctrl_fd > 0) {
-        ctrl_val = (data_offset & 0xFF) << 8;
-        ret = ioctl(io_ctrl_fd,IOCTL_ENABLE_DISABLE,ctrl_val);
-    }
-    printf_debug("[**REGISTER**]ch=%d, type=%s data_offset=%x Disable, ret=%d\n", ch, type==0?"IQ":"FFT", data_offset, ret);
-#endif
-#endif
-}
-
-
 static void io_set_dma_SPECTRUM_out_en(int ch, int subch, uint32_t trans_len,uint8_t continuous)
 {
-    printf_debug("SPECTRUM out enable: ch[%d]output en\n",ch);
+    printf_debug("SPECTRUM out enable: ch[%d]output en, trans_len=%u\n",ch, trans_len);
 #if defined(SUPPORT_PLATFORM_ARCH_ARM)
-#if defined(SUPPORT_SPECTRUM_KERNEL)
-    io_dma_dev_disable(ch,IO_SPECTRUM_TYPE);
-    io_dma_dev_enable(ch,IO_SPECTRUM_TYPE,continuous);
-    io_dma_dev_trans_len(ch,IO_SPECTRUM_TYPE, trans_len*2);
-#elif defined(SUPPORT_SPECTRUM_V2)
-    if((get_spm_ctx()!=NULL) && get_spm_ctx()->ops->stream_start)
-    get_spm_ctx()->ops->stream_start(ch, subch, trans_len*sizeof(fft_t), continuous, STREAM_FFT);
+#if defined(SUPPORT_SPECTRUM_V2)
+    _set_channel(get_fpga_reg(),ch, NULL);
+    if((get_spm_ctx()!=NULL) && get_spm_ctx()->ops->stream_start){
+        get_spm_ctx()->ops->stream_start(ch, subch, trans_len*sizeof(fft_t), continuous, STREAM_FFT);
+    }
 #endif
 #endif
 }
@@ -938,9 +786,7 @@ static void io_set_dma_adc_out_en(int ch, int subch, uint32_t trans_len,uint8_t 
 {
     printf_debug("ADC out enable: output en\n");
 #if defined(SUPPORT_PLATFORM_ARCH_ARM)
-#if defined(SUPPORT_SPECTRUM_KERNEL)
-
-#elif defined(SUPPORT_SPECTRUM_V2)
+#if defined(SUPPORT_SPECTRUM_V2)
     if((get_spm_ctx()!= NULL) && get_spm_ctx()->ops->stream_start)
     get_spm_ctx()->ops->stream_start(ch, subch, trans_len, continuous, STREAM_ADC_READ);
 #endif
@@ -951,9 +797,7 @@ static void io_set_dma_adc_out_disable(int ch, int subch)
 {
     printf_debug("ADC out disable\n");
 #if defined(SUPPORT_PLATFORM_ARCH_ARM)
-#if defined(SUPPORT_SPECTRUM_KERNEL)
-
-#elif defined(SUPPORT_SPECTRUM_V2)
+#if defined(SUPPORT_SPECTRUM_V2)
     if((get_spm_ctx()!=NULL) && get_spm_ctx()->ops->stream_stop)
     get_spm_ctx()->ops->stream_stop(ch, subch, STREAM_ADC_READ);
 #endif
@@ -964,9 +808,7 @@ static void io_set_dma_adc_out_disable(int ch, int subch)
 static void io_set_dma_SPECTRUM_out_disable(int ch, int subch)
 {
 #if defined(SUPPORT_PLATFORM_ARCH_ARM)
-#if defined(SUPPORT_SPECTRUM_KERNEL)
-    io_dma_dev_disable(ch, IO_SPECTRUM_TYPE);
-#elif defined(SUPPORT_SPECTRUM_V2)
+#if defined(SUPPORT_SPECTRUM_V2)
     if((get_spm_ctx()!= NULL) && get_spm_ctx()->ops->stream_stop)
     get_spm_ctx()->ops->stream_stop(ch, subch, STREAM_FFT);
 #endif
@@ -1038,32 +880,6 @@ static void io_set_BIQ_out_disable(int ch, int subch)
 #endif 
 #endif
 }
-
-static void io_set_dma_DQ_out_en(int ch, int subch, uint32_t trans_len,uint8_t continuous)
-{
-#if defined(SUPPORT_PLATFORM_ARCH_ARM)
-#if defined(SUPPORT_SPECTRUM_KERNEL)
-    io_dma_dev_disable(ch,IO_DQ_TYPE);
-    io_dma_dev_enable(ch,IO_DQ_TYPE,continuous);
-    io_dma_dev_trans_len(ch,IO_DQ_TYPE, trans_len);
-#elif defined(SUPPORT_SPECTRUM_V2) 
-    
-#endif
-#endif
-}
-
-static void  io_set_dma_DQ_out_dis(int ch, int subch)
-{
-#if defined(SUPPORT_PLATFORM_ARCH_ARM)
-#if defined(SUPPORT_SPECTRUM_KERNEL)
-    io_dma_dev_disable(ch,IO_DQ_TYPE);
-#elif defined(SUPPORT_SPECTRUM_V2) 
-
-#endif
-#endif
-
-}
-
 
 int8_t io_set_enable_command(uint8_t type, int ch, int subc_ch, uint32_t fftsize)
 {
@@ -1173,13 +989,7 @@ int32_t io_get_agc_thresh_val(int ch)
     int nread = 0;
     uint16_t agc_val = 0;
 #if defined(SUPPORT_PLATFORM_ARCH_ARM)
-#if defined(SUPPORT_SPECTRUM_KERNEL)
-    nread = read(io_ctrl_fd, &agc_val, ch+1);
-    if(nread <= 0){
-        printf_err("read agc error[%d]\n", nread);
-        return -1;
-    }
-#elif defined(SUPPORT_SPECTRUM_V2) 
+#if defined(SUPPORT_SPECTRUM_V2) 
     #if defined(SUPPORT_SPECTRUM_FPGA)
     agc_val = GET_BROAD_AGC_THRESH(get_fpga_reg(), ch);
     //agc_val = get_fpga_reg()->broad_band->agc_thresh;
@@ -1364,10 +1174,7 @@ uint32_t get_fpga_version(void)
     int32_t ret = 0;
     uint32_t args = 0;
 #if defined(SUPPORT_PLATFORM_ARCH_ARM)
-#if defined(SUPPORT_SPECTRUM_KERNEL) 
-    /* filename */
-    ret = ioctl(io_ctrl_fd,IOCTL_GET_FPGA_VERSION,&args);
-#elif defined(SUPPORT_SPECTRUM_V2) 
+#if defined(SUPPORT_SPECTRUM_V2) 
     #if defined(SUPPORT_SPECTRUM_FPGA)
     args=GET_SYS_FPGA_VER(get_fpga_reg());
     //args = get_fpga_reg()->system->version;
@@ -1382,19 +1189,7 @@ uint32_t get_fpga_version(void)
 int16_t io_get_signal_strength(uint8_t ch)
 {
 #if defined(SUPPORT_PLATFORM_ARCH_ARM)
-#if defined(SUPPORT_SPECTRUM_KERNEL) 
-    struct signal_amp_t{
-        uint8_t cid;
-        uint16_t sig_amp;
-    }__attribute__ ((packed));
-
-    struct signal_amp_t sig_amp;
-    sig_amp.cid = ch;
-    if (io_ctrl_fd > 0) {
-        ioctl(io_ctrl_fd,IOCTL_GET_CH_SIGNAL_AMP,&sig_amp);
-        return sig_amp.sig_amp;
-    }
-#elif defined(SUPPORT_SPECTRUM_V2) 
+#if defined(SUPPORT_SPECTRUM_V2) 
     #if defined(SUPPORT_SPECTRUM_FPGA)
     return GET_NARROW_SIGNAL_VAL(get_fpga_reg(), ch);
     #endif
@@ -1406,112 +1201,10 @@ int16_t io_get_signal_strength(uint8_t ch)
 
 
 /* ---Disk-related function--- */
-int io_read_more_info_by_name(const char *name, void *info, int32_t (*iofunc)(void *))
-{
-    int ret = 0;
-    if(name == NULL || info == NULL)
-        return -1;
-    strcpy((char *)info, name);
-    ret = iofunc(info);
-    return ret;
-}
-
-int32_t io_set_format_disk(void *arg){
-    int32_t ret = 0;
-#if defined(SUPPORT_PLATFORM_ARCH_ARM)
-#if defined(SUPPORT_SPECTRUM_KERNEL) 
-    /* filename */
-    ret = ioctl(io_ctrl_fd,IOCTL_DISK_FORMAT,arg);
-#endif
-#endif
-    return ret;
-}
-
-
-int32_t io_set_refresh_disk_file_buffer(void *arg){
-    int32_t ret = 0;
-    
-#if defined(SUPPORT_PLATFORM_ARCH_ARM)
-#if defined(SUPPORT_SPECTRUM_KERNEL) 
-    /* filename */
-    ret = ioctl(io_ctrl_fd,IOCTL_DISK_REFRESH_FILE_BUFFER,arg);
-#endif
-#endif
-    return ret;
-}
-
-int32_t io_get_read_file_info(void *arg){
-    int32_t ret = 0;
-#if defined(SUPPORT_PLATFORM_ARCH_ARM)
-#if defined(SUPPORT_SPECTRUM_KERNEL) 
-    ret = ioctl(io_ctrl_fd,IOCTL_DISK_READ_FILE_INFO,arg);
-#endif
-#endif
-    return ret;
-}
-
-int32_t io_get_disk_info(void *arg){
-    int32_t ret = 0;
-    
-#if defined(SUPPORT_PLATFORM_ARCH_ARM)
-#if defined(SUPPORT_SPECTRUM_KERNEL) 
-    ret = ioctl(io_ctrl_fd,IOCTL_DISK_GET_INFO,arg);
-#endif
-#endif
-    return ret;
-}
-
-int32_t io_find_file_info(void *arg){
-    int32_t ret = 0;
-#if defined(SUPPORT_PLATFORM_ARCH_ARM)
-#if defined(SUPPORT_SPECTRUM_KERNEL) 
-    ret = ioctl(io_ctrl_fd,IOCTL_DISK_FIND_FILE_INFO,arg);
-#endif
-#endif
-    return ret;
-}
-
-int32_t io_delete_file(void *arg){
-    int32_t ret = 0;
-#if defined(SUPPORT_PLATFORM_ARCH_ARM)
-#if defined(SUPPORT_SPECTRUM_KERNEL) 
-    ret = ioctl(io_ctrl_fd,IOCTL_DISK_DELETE_FILE_INFO,arg);
-#endif
-#endif
-    return ret;
-}
-
-
-int32_t io_start_save_file(void *arg){
-    int32_t ret = 0;
-#if defined(SUPPORT_PLATFORM_ARCH_ARM)
-#if defined(SUPPORT_SPECTRUM_KERNEL) 
-    ret = ioctl(io_ctrl_fd,IOCTL_DISK_START_SAVE_FILE_INFO,arg);
-#endif
-#endif
-    return ret;
-}
-
-int32_t io_stop_save_file(void *arg){
-    int32_t ret = 0;
-#if defined(SUPPORT_PLATFORM_ARCH_ARM)
-#if defined(SUPPORT_SPECTRUM_KERNEL) 
-    ret = ioctl(io_ctrl_fd,IOCTL_DISK_STOP_SAVE_FILE_INFO,arg);
-#endif
-#endif
-    return ret;
-}
-
 void io_set_backtrace_mode(int ch, bool args)
 {
 #if defined(SUPPORT_PLATFORM_ARCH_ARM)
-#if defined(SUPPORT_SPECTRUM_KERNEL) 
-    if(args){
-        SW_TO_BACKTRACE_MODE();
-    }else{
-        SW_TO_AD_MODE();
-    }
-#elif defined(SUPPORT_SPECTRUM_V2) 
+#if defined(SUPPORT_SPECTRUM_V2) 
     #if defined(SUPPORT_SPECTRUM_FPGA)
     if(args){
         _set_ssd_mode(get_fpga_reg(), ch, 1);
@@ -1528,10 +1221,7 @@ void io_set_backtrace_mode(int ch, bool args)
 int32_t io_start_backtrace_file(void *arg){
     int32_t ret = 0;
 #if defined(SUPPORT_PLATFORM_ARCH_ARM)
-#if defined(SUPPORT_SPECTRUM_KERNEL) 
-    //SW_TO_BACKTRACE_MODE();
-    ret = ioctl(io_ctrl_fd,IOCTL_DISK_START_BACKTRACE_FILE_INFO,arg);
-#elif defined(SUPPORT_SPECTRUM_V2) 
+#if defined(SUPPORT_SPECTRUM_V2) 
     int ch;
     ch = *(int*)arg;
     io_set_backtrace_mode(ch, true);
@@ -1545,10 +1235,7 @@ int32_t io_start_backtrace_file(void *arg){
 int32_t io_stop_backtrace_file(void *arg){
     int32_t ret = 0;
 #if defined(SUPPORT_PLATFORM_ARCH_ARM)
-#if defined(SUPPORT_SPECTRUM_KERNEL) 
-    //SW_TO_AD_MODE();
-    ret = ioctl(io_ctrl_fd,IOCTL_DISK_STOP_BACKTRACE_FILE_INFO,arg);
-#elif defined(SUPPORT_SPECTRUM_V2) 
+#if defined(SUPPORT_SPECTRUM_V2) 
     int ch;
     ch = *(int*)arg;
     io_set_backtrace_mode(ch, false);
@@ -1558,15 +1245,6 @@ int32_t io_stop_backtrace_file(void *arg){
 #endif
     return ret;
 }
-
-
-int32_t io_dma_data_read(void *arg){
-    int32_t ret = 0;
-    //ret = ioctl(io_ctrl_fd,IOCTL_DMA_GET_ASYN_READ_INFO,arg);
-    return ret;
-}
-
-
 
 #ifdef SUPPORT_PLATFORM_ARCH_ARM
 #define do_system(cmd)   safe_system(cmd)
@@ -1582,12 +1260,6 @@ uint8_t  io_restart_app(void)
     sleep(1);
     return 0;
 }
-
-int io_get_fd(void)
-{
-    return io_ctrl_fd;
-}
-
 
 void io_init(void)
 {

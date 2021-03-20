@@ -556,7 +556,7 @@ int cmd_ch_enable_set(struct uh_client *cl, void **arg, void **content)
             poal_config->channel[ch].enable.psd_en = 0;
         INTERNEL_ENABLE_BIT_SET(poal_config->channel[ch].enable.bit_en,poal_config->channel[ch].enable);
         executor_set_command(EX_FFT_ENABLE_CMD, -1, ch, &enable);
-    }else if(!strcmp(s_type, "iq")){
+    }else if(!strcmp(s_type, "iq")||!strcmp(s_type, "biq")){
         if(enable)
             poal_config->channel[ch].enable.iq_en = 1;
         else
@@ -610,7 +610,7 @@ int cmd_subch_enable_set(struct uh_client *cl, void **arg, void **content)
     }
     poal_config->channel[ch].sub_channel_para.sub_ch_enable[subch].cid = ch;
     poal_config->channel[ch].sub_channel_para.sub_ch_enable[subch].sub_id = subch;
-    if(!strcmp(s_type, "iq")){
+    if(!strcmp(s_type, "iq")||!strcmp(s_type, "niq")){
         executor_set_command(EX_NIQ_ENABLE_CMD, -1, ch, &enable, subch);
     }else if(!strcmp(s_type, "audio")){
         executor_set_command(EX_NIQ_ENABLE_CMD, -1, ch, &enable, subch);

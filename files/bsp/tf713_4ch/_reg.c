@@ -96,7 +96,7 @@ static int fpga_memmap(int fd_dev, FPGA_CONFIG_REG *fpga_reg)
         printf("mmap failed, NULL pointer!\n");
         exit(1);
     }
-    for(i = 0; i < MAX_RADIO_CHANNEL_NUM; i++){
+    for(i = 0; i < BROAD_CH_NUM; i++){ /* 0: FFT 1:NIQ */
         fpga_reg->broad_band[i] = base_addr + BROAD_BAND_REG_OFFSET*i;
         printf_note("virtual address:%p, physical address:0x%x\n", fpga_reg->broad_band[i], FPGA_BRAOD_BAND_BASE+BROAD_BAND_REG_OFFSET*i);
     }
@@ -188,7 +188,7 @@ void fpga_io_init(void)
     usleep(100);
     fpga_reg->signal->data_path_reset = 1;
     usleep(100);
-    for(i = 0; i < MAX_RADIO_CHANNEL_NUM; i++){
+    for(i = 0; i < BROAD_CH_NUM; i++){
         fpga_reg->broad_band[i]->enable = 0xff;
         usleep(100);
         fpga_reg->broad_band[i]->band = 0; //200Mhz

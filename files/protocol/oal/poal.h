@@ -80,6 +80,8 @@ struct multi_freq_point_para_st{
     int32_t residence_policy;
     float audio_sample_rate;
     uint32_t freq_point_cnt;
+    uint64_t start_freq;    /* 多个频点频谱拼接使用 */
+    uint64_t end_freq;      /* 多个频点频谱拼接使用 */
     struct freq_points_st  points[MAX_SIG_CHANNLE];
     struct bddc_st ddc;
 };//__attribute__ ((packed));

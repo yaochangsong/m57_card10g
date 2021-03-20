@@ -254,8 +254,8 @@ int8_t  executor_points_scan(uint8_t ch, work_mode_type mode, void *args)
         if(poal_config->channel[ch].enable.audio_en){
             subch = CONFIG_AUDIO_CHANNEL;
             executor_set_command(EX_MID_FREQ_CMD, EX_DEC_METHOD, subch, &poal_config->channel[ch].multi_freq_point_param.points[i].d_method);
-            executor_set_command(EX_MID_FREQ_CMD, EX_DEC_BW, subch, &poal_config->channel[ch].multi_freq_point_param.points[i].d_bandwith);
-            executor_set_command(EX_MID_FREQ_CMD, EX_DEC_MID_FREQ, subch,&poal_config->channel[ch].multi_freq_point_param.points[i].center_freq,poal_config->channel[ch].multi_freq_point_param.points[i].center_freq);
+            executor_set_command(EX_MID_FREQ_CMD, EX_SUB_CH_DEC_BW, subch, &poal_config->channel[ch].multi_freq_point_param.points[i].d_bandwith);
+            executor_set_command(EX_MID_FREQ_CMD, EX_SUB_CH_MID_FREQ, subch,&poal_config->channel[ch].multi_freq_point_param.points[i].center_freq,poal_config->channel[ch].multi_freq_point_param.points[i].center_freq);
             executor_set_command(EX_MID_FREQ_CMD, EX_MUTE_THRE, subch,&poal_config->channel[ch].multi_freq_point_param.points[i].noise_thrh,poal_config->channel[ch].multi_freq_point_param.points[i].noise_en);
             
             executor_set_command(EX_MID_FREQ_CMD, EX_AUDIO_VOL_CTRL, subch,&point->points[i].audio_volume);
@@ -363,18 +363,18 @@ int8_t  executor_serial_points_scan(uint8_t ch, work_mode_type mode, void *args)
 #if defined(SUPPORT_PLATFORM_ARCH_ARM)
     if(spmctx->ops->sample_ctrl)
         spmctx->ops->sample_ctrl(r_args);
-    executor_set_command(EX_RF_FREQ_CMD,  EX_RF_MID_FREQ, 0, &point->points[i].center_freq);
-    executor_set_command(EX_MID_FREQ_CMD, EX_BANDWITH, 0, &point->points[i].bandwidth);
-    executor_set_command(EX_MID_FREQ_CMD, EX_MID_FREQ,    0, &point->points[i].center_freq);
-    executor_set_command(EX_MID_FREQ_CMD, EX_FFT_SIZE, 0, &point->points[i].fft_size);
-    executor_set_command(EX_MID_FREQ_CMD, EX_FPGA_CALIBRATE, 0, &point->points[0].fft_size, r_args->m_freq);
-    executor_set_command(EX_MID_FREQ_CMD, EX_SMOOTH_TIME, 0, &point->smooth_time);
-    io_set_enable_command(PSD_MODE_ENABLE, -1, -1, point->points[i].fft_size);
+    //executor_set_command(EX_RF_FREQ_CMD,  EX_RF_MID_FREQ, ch, &point->points[i].center_freq);
+    //executor_set_command(EX_MID_FREQ_CMD, EX_BANDWITH, ch, &point->points[i].bandwidth);
+    executor_set_command(EX_MID_FREQ_CMD, EX_MID_FREQ,    ch, &point->points[i].center_freq);
+    executor_set_command(EX_MID_FREQ_CMD, EX_FFT_SIZE, ch, &point->points[i].fft_size);
+    executor_set_command(EX_MID_FREQ_CMD, EX_FPGA_CALIBRATE, ch, &point->points[0].fft_size, r_args->m_freq);
+    executor_set_command(EX_MID_FREQ_CMD, EX_SMOOTH_TIME, ch, &point->smooth_time);
+    io_set_enable_command(PSD_MODE_ENABLE, ch, -1, point->points[i].fft_size);
     if(spmctx->ops->agc_ctrl)
         spmctx->ops->agc_ctrl(ch, spmctx);
     if(args != NULL)
         spm_deal(args, r_args, -1);
-    io_set_enable_command(PSD_MODE_DISABLE, -1, -1, point->points[i].fft_size);
+    io_set_enable_command(PSD_MODE_DISABLE, ch, -1, point->points[i].fft_size);
 #endif
     return 0;
 }
@@ -434,19 +434,8 @@ static int8_t executor_set_kernel_command(uint8_t type, uint8_t ch, void *data, 
             if(middle_freq == 0){
                 middle_freq = *(uint64_t *)data;
             }
-            printf_note("ch=%d, dec_middle=%"PRIu64", middle_freq=%"PRIu64"\n", ch, *(uint64_t *)data, middle_freq);
+            printf_note("ch=%d, dec_middle=%"PRIu64", middle_freq=%"PRIu64"\n", ch, *(uint64_t *)data, middle_freq);;
             io_set_dec_middle_freq(ch, *(uint64_t *)data, middle_freq);
-            break;
-        }
-        case EX_DEC_RAW_DATA:
-        {
-            uint64_t  middle_freq;
-            uint32_t bandwidth;
-            uint8_t  d_method;
-            middle_freq = *(uint64_t *)data;
-            bandwidth = va_arg(ap, uint32_t);
-            d_method = (uint8_t)va_arg(ap, uint32_t);
-            io_set_dec_parameter(ch, middle_freq, d_method, bandwidth);
             break;
         }
         case EX_SMOOTH_TIME:
@@ -530,6 +519,9 @@ static int8_t executor_set_kernel_command(uint8_t type, uint8_t ch, void *data, 
         {
             uint64_t  middle_freq;
             middle_freq = va_arg(ap, uint64_t);
+            if(middle_freq == 0){
+                middle_freq = *(uint64_t *)data;
+            }
             io_set_subch_dec_middle_freq(ch, *(uint64_t *)data, middle_freq);
             break;
         }

@@ -57,8 +57,6 @@ extern void io_set_dq_param(void *pdata);
 extern void io_set_smooth_time(uint32_t ch, uint16_t factor);
 extern void io_set_fft_size(uint32_t ch, uint32_t fft_size);
 extern int32_t io_set_extract_ch0(uint32_t ch, uint32_t bandwith);
-extern int io_read_more_info_by_name(const char *name, void *info, int32_t (*iofunc)(void *));
-extern int32_t io_find_file_info(void *arg);
 extern int32_t io_start_backtrace_file(void *arg);
 extern int32_t io_stop_backtrace_file(void *arg);
 extern bool io_get_adc_status(void *args);

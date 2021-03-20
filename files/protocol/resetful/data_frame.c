@@ -88,8 +88,8 @@ uint8_t * xw_assamble_frame_data(uint32_t *len, void *args)
         pdh->mode = pargs->mode;
         pdh->gain_mode = pargs->gain_mode;
         pdh->gain_value = pargs->gain_value;
-        pdh->mid_freq_hz = pargs->m_freq;
-        pdh->bandwidth = pargs->bandwidth;
+        pdh->mid_freq_hz = pargs->ddc_m_freq;//pargs->m_freq;
+        pdh->bandwidth = pargs->ddc_bandwidth;//pargs->bandwidth;
         pdh->sn = pargs->fft_sn;
         pdh->demodulate_type = pargs->d_method;
         pdh->data_type = pargs->type;

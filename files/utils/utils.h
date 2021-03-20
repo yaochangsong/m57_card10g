@@ -97,6 +97,7 @@ extern int get_ipaddress(char *ifname, struct in_addr *addr);
 extern int set_ipaddress(char *ifname, char *ipaddr, char *mask,char *gateway);
 extern int read_file(void *pdata, unsigned int data_len, char *filename);
 extern int thread_bind_cpu(int cpuindex);
+extern char *get_version(void);
 
 #endif
 

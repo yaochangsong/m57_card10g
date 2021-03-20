@@ -306,6 +306,32 @@ uint32_t  config_get_fft_size(uint8_t ch)
     return fftsize;
 }
 
+uint32_t config_get_resolution_by_fft(uint32_t fftsize)
+{
+    //sample rate: 153.6M
+    #define DEFAULT_RESOLUTION 25000
+    struct  res_fft_t{
+        uint32_t fft;
+        uint32_t resolution_hz;
+    } fft_table[] ={
+        {512, 400000},
+        {1024, 200000},
+        {2048, 100000},
+        {4096, 50000},
+        {8192, 25000},
+        {16384, 12500},
+        {32768, 6250},
+        {65536, 3125},
+    }; 
+    for(int i = 0; i < ARRAY_SIZE(fft_table); i++){
+        if(fft_table[i].fft == fftsize)
+            return fft_table[i].resolution_hz;
+    }
+    
+    printf_warn("NOT find FFT[%u], use default resolution: %u\n", fftsize, DEFAULT_RESOLUTION);
+    
+    return DEFAULT_RESOLUTION;
+}
 int32_t config_get_analysis_calibration_value(uint64_t m_freq_hz)
 {
     struct poal_config *poal_config = &(config_get_config()->oal_config);

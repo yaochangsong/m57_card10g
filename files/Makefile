@@ -48,6 +48,11 @@ ifneq ($(findstring xw,$(SUPPORT_PROTOCAL)),)
 
 endif
 
+ifneq ($(findstring m57,$(SUPPORT_PROTOCAL)),)
+	SOURCE_DIR += protocol/m57
+	C_VAR += -DSUPPORT_PROTOCAL_M57
+endif
+
 ifneq ($(findstring akt,$(SUPPORT_PROTOCAL)),)
 	SOURCE_DIR += protocol/akt
 	C_VAR += -DSUPPORT_PROTOCAL_AKT
@@ -57,6 +62,8 @@ ifneq ($(findstring akt,$(SUPPORT_DATA_PROTOCAL)),)
 	C_VAR += -DSUPPORT_DATA_PROTOCAL_AKT
 else ifneq ($(findstring xw,$(SUPPORT_DATA_PROTOCAL)),)
 	C_VAR += -DSUPPORT_DATA_PROTOCAL_XW
+else ifneq ($(findstring m57,$(SUPPORT_DATA_PROTOCAL)),)
+	C_VAR += -DSUPPORT_DATA_PROTOCAL_M57
 endif
 
 
@@ -243,6 +250,9 @@ else ifneq ($(findstring tf713_4ch,$(SUPPORT_PROJECT_NAME)),)
 else ifneq ($(findstring akt_4ch,$(SUPPORT_PROJECT_NAME)),)
 	SOURCE_DIR += bsp/akt_4ch
 	C_VAR += -DSUPPORT_PROJECT_AKT_4CH
+else ifneq ($(findstring card10g_57,$(SUPPORT_PROJECT_NAME)),)
+    SOURCE_DIR += bsp/card10g_57
+    C_VAR += -DSUPPORT_PROJECT_CARD10G_57
 endif
 
 ifneq ($(findstring y,$(SUPPORT_WAV)),)

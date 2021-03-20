@@ -777,14 +777,14 @@ char *assemble_json_find_file(char *filename)
 #else
     struct file_list{
         char *filename;
-        size_t size;
+        char * size;
         time_t ctime;
     };
     struct file_list fl[] = {
         {"test1.wav", "1201MByte", 14684468},
     };
     cJSON_AddStringToObject(root, "filename", filename);
-    cJSON_AddNumberToObject(root, "size", fl[i].size);
+    cJSON_AddStringToObject(root, "size", fl[i].size);
     cJSON_AddNumberToObject(root, "createTime", fl[i].ctime);
 #endif
     json_print(root, 1);

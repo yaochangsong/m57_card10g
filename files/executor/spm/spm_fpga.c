@@ -468,13 +468,13 @@ static int spm_send_fft_data(void *data, size_t fft_len, void *arg)
     uint8_t *ptr_header = NULL;
     uint32_t header_len = 0;
     size_t data_byte_size = 0;
+    struct spm_run_parm *hparam = NULL;
 
     if(data == NULL || fft_len == 0 || arg == NULL)
         return -1;
     data_byte_size = fft_len * sizeof(fft_t);
-#if (defined SUPPORT_DATA_PROTOCAL_AKT)
-    struct spm_run_parm *hparam;
     hparam = (struct spm_run_parm *)arg;
+#if (defined SUPPORT_DATA_PROTOCAL_AKT)
     hparam->data_len = data_byte_size; 
     hparam->sample_rate = get_side_band_rate(hparam->scan_bw)*hparam->scan_bw;
     hparam->type = SPECTRUM_DATUM_FLOAT;
@@ -483,8 +483,6 @@ static int spm_send_fft_data(void *data, size_t fft_len, void *arg)
         return -1;
     }
 #elif defined(SUPPORT_DATA_PROTOCAL_XW)
-    struct spm_run_parm *hparam;
-    hparam = (struct spm_run_parm *)arg;
     hparam->data_len = data_byte_size; 
     hparam->type = DEFH_DTYPE_FLOAT;
     hparam->ex_type = DFH_EX_TYPE_PSD;

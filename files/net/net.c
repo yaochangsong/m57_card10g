@@ -84,6 +84,21 @@ union _cmd_srv *cmd_cmd_server_init(char *ipaddr, int port, union _cmd_srv *cmds
     srv->on_accept = on_accept;
     srv->on_request = on_request;
     cmdsrv->uhsvr = srv;
+#elif defined(SUPPORT_PROTOCAL_M57)
+    struct net_tcp_server *tcpsrv = NULL;
+    printf_note("m57 cmd server init [ipaddr: %s, port:%d]\n", ipaddr, port);
+
+    tcpsrv = tcp_server_new(ipaddr, port);
+    if (!tcpsrv)
+        return NULL;
+
+    tcpsrv->on_header = m57_parse_header;
+    tcpsrv->on_execute = m57_execute;
+    tcpsrv->send_error =  m57_send_error;
+    //tcpsrv->on_end = akt_parse_end;
+    //tcpsrv->send_alert = akt_send_alert;
+    cmdsrv->tcpsvr = tcpsrv;
+
 #endif
 
     return cmdsrv;

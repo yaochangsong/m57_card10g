@@ -3,7 +3,7 @@
 
 struct net_tcp_client;
 
-#define MAX_RECEIVE_DATA_LEN  1024
+#define MAX_RECEIVE_DATA_LEN  4096
 #define NET_DATA_BUF_SIZE  512
 
 #define MAX_SEND_DATA_LEN  1024
@@ -19,6 +19,8 @@ enum net_tcp_state {
 
 struct net_tcp_request {
     void *header;
+    int   prio;
+    int   data_type;
     int   content_length; /*  payload len */
 };
 

@@ -77,6 +77,7 @@ struct spm_context {
     struct spm_run_parm *run_args[MAX_RADIO_CHANNEL_NUM];
 };
 
+#ifdef SUPPORT_SPECTRUM_V2
 extern pthread_mutex_t send_fft_mutex;
 extern pthread_mutex_t send_fft2_mutex;
 extern pthread_mutex_t send_iq_mutex;
@@ -117,6 +118,7 @@ extern pthread_mutex_t send_iq_mutex;
     __unlock_fft2_send__(); \
     __unlock_iq_send__(); \
 } while (0)
+#endif
 extern void *spm_init(void);
 extern struct spm_context *get_spm_ctx(void);
 extern void spm_deal(struct spm_context *ctx, void *args, int ch);

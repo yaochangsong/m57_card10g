@@ -61,6 +61,12 @@
 #include "bsp/akt_4ch/_reg.h"
 #include "bsp/akt_4ch/_reg_clk_adc.h"
 #include "bsp/akt_4ch/_ctrl.h"
+#elif defined(SUPPORT_PROJECT_CARD10G_57) 
+#include "bsp/card10g_57/bsp.h"
+#include "bsp/card10g_57/_reg.h"
+#include "bsp/card10g_57/_reg_clk_adc.h"
+#include "bsp/card10g_57/_ctrl.h"
+
 #endif
 
 #include "conf/conf.h"
@@ -71,6 +77,7 @@
 #include "protocol/resetful/parse_json.h"
 
 #include "protocol/akt/akt.h"
+#include "protocol/m57/m57.h"
 #include "protocol/oal/poal.h"
 
 #include "net/net.h"

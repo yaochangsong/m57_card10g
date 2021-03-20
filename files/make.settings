@@ -3,10 +3,10 @@ SUPPORT_PLAT_FORM_ARCH=x86
 #debug
 SUPPORT_GDB_DEBUG=n
 
-#命令协议(Command)Protocal Support: http akt resetful xw
-SUPPORT_PROTOCAL="http xw"
-#数据协议: xw akt
-SUPPORT_DATA_PROTOCAL="xw"
+#命令协议(Command)Protocal Support: http akt resetful xw m57
+SUPPORT_PROTOCAL="http m57"
+#数据协议: xw akt m57
+SUPPORT_DATA_PROTOCAL="m57"
 
 #配置文件存储方式: data store format support: json xml
 SUPPORT_DAO="json"
@@ -23,16 +23,17 @@ SUPPORT_REMOTE_LOCAL_CTRL_EN=n
 #(tf713_2ch)：713双通道
 #(tf713_4ch)：713四通道
 #(akt_4ch): 爱科特四通道
-SUPPORT_PROJECT_NAME="tf713_4ch"
+#card10g_57:57所万兆网卡
+SUPPORT_PROJECT_NAME="card10g_57"
 
 #频谱版本
 SUPPORT_SPECTRUM_V2=y
 #频谱处理；通过FPGA处理，还是通过AD芯片(ssa序列)
-SUPPORT_SPECTRUM_FPGA=y
+SUPPORT_SPECTRUM_FPGA=n
 SUPPORT_SPECTRUM_CHIP=n
 
 #spectrum channel serial or parallel
-SUPPORT_SPECTRUM_SERIAL=y
+SUPPORT_SPECTRUM_SERIAL=n
 
 #FFT用户层转换功能
 SUPPORT_SPECTRUM_FFT=n
@@ -42,7 +43,7 @@ SUPPORT_SPECTRUM_ANALYSIS=n
 SUPPORT_SPECTRUM_SCAN_SEGMENT=n
 
 #文件系统
-SUPPORT_FS=y
+SUPPORT_FS=n
 #xw私有协议文件系统
 SUPPORT_XWFS=n
 
@@ -82,7 +83,7 @@ ifneq ($(findstring x86,$(SUPPORT_PLAT_FORM_ARCH)),)
     SUPPORT_RESIDENCY_STRATEGY=y
 else
 	#uart: y n
-	SUPPORT_UART=y
+	SUPPORT_UART=n
 	#lcd: y n
 	SUPPORT_LCD=n
     #RS485
@@ -97,23 +98,23 @@ else
 	#rf
 	SUPPORT_RF=y
     SUPPORT_RF_SPI=n
-    SUPPORT_RF_FPGA=y
+    SUPPORT_RF_FPGA=n
     SUPPORT_RF_ADRV=n
     SUPPORT_RF_ADRV9009=n
     SUPPORT_RF_ADRV9361=n
     #adc clock
-    SUPPORT_CLOCK_ADC=y
+    SUPPORT_CLOCK_ADC=n
     SUPPORT_CLOCK_ADC_SPI=n
-    SUPPORT_CLOCK_ADC_FPGA=y
+    SUPPORT_CLOCK_ADC_FPGA=n
     #万兆
     SUPPORT_NET_WZ=y
 	#gps
-    SUPPORT_GPS=y
+    SUPPORT_GPS=n
     SUPPORT_DIRECT_SAMPLE=n
     #iio
     SUPPORT_LIB_IIO=n
     #通道信号驻留策略
-    SUPPORT_RESIDENCY_STRATEGY=y
+    SUPPORT_RESIDENCY_STRATEGY=n
     #衰减增益校准
-    SUPPORT_CALIBRATION_GAIN=y
+    SUPPORT_CALIBRATION_GAIN=n
 endif

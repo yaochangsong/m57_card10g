@@ -464,10 +464,12 @@ void *spm_init(void)
     pthread_attr_t attr;
     pthread_t work_id;
 #if defined(SUPPORT_PLATFORM_ARCH_ARM)
-#if defined(SUPPORT_SPECTRUM_CHIP)
-    spmctx = spm_create_chip_context();
-#elif defined (SUPPORT_SPECTRUM_FPGA)
+//#if defined(SUPPORT_SPECTRUM_CHIP)
+//    spmctx = spm_create_chip_context();
+#if defined (SUPPORT_SPECTRUM_FPGA)
     spmctx = spm_create_fpga_context();
+#else
+    spmctx = spm_create_chip_context();
 #endif
 
     if(spmctx != NULL){

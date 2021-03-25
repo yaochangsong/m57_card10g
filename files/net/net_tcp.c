@@ -273,7 +273,9 @@ void tcp_free(struct net_tcp_client *cl)
 {
     printf_info("tcp_free:");
     printf_info(": %s:%d\n", cl->get_peer_addr(cl), cl->get_peer_port(cl));
-    pthread_mutex_lock(&cl->srv->tcp_client_lock);
+    struct net_tcp_server *srv;
+    srv = cl->srv;
+    pthread_mutex_lock(&srv->tcp_client_lock);
     if (cl) {
         uloop_timeout_cancel(&cl->timeout);
         ustream_free(&cl->sfd.stream);
@@ -284,7 +286,7 @@ void tcp_free(struct net_tcp_client *cl)
         executor_net_disconnect_notify(&cl->peer_addr);
         free(cl);
     }
-    pthread_mutex_unlock(&cl->srv->tcp_client_lock);
+    pthread_mutex_unlock(&srv->tcp_client_lock);
 }
 
 

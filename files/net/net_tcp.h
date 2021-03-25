@@ -37,12 +37,33 @@ struct tcp_dispatch {
     void (*free)(struct net_tcp_client *cl);
 
     struct {
+        //char path[256];
         int fd;
+        uint32_t len;
+        //int len_offset;
+        //int sn;
     } file;
     int cmd; /* add by ycs */
     int post_len;
+    //bool  is_run_loadfile;
+    //bool  is_loadfile_ok;
+    //int chip_id;
     char *body;
 };
+
+struct tcp_section {
+    struct {
+        char path[256];
+        int fd;
+        uint32_t len;
+        int len_offset;
+        int sn;
+    } file;
+    bool  is_run_loadfile;
+    bool  is_loadfile_ok;
+    int chip_id;
+};
+
 
 struct net_tcp_client {
     struct list_head list;
@@ -56,6 +77,7 @@ struct net_tcp_client {
     struct sockaddr_in peer_addr;
     struct sockaddr_in serv_addr;
     struct tcp_dispatch dispatch;
+    struct tcp_section section;
     bool connection_close;
     int response_length;
     int tcp_keepalive_probes;

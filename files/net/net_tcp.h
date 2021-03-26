@@ -38,17 +38,11 @@ struct tcp_dispatch {
     void (*free)(struct net_tcp_client *cl);
 
     struct {
-        //char path[256];
         int fd;
         uint32_t len;
-        //int len_offset;
-        //int sn;
     } file;
     int cmd; /* add by ycs */
     int post_len;
-    //bool  is_run_loadfile;
-    //bool  is_loadfile_ok;
-    //int chip_id;
     char *body;
 };
 
@@ -63,6 +57,8 @@ struct tcp_section {
     bool  is_run_loadfile;
     bool  is_loadfile_ok;
     int chip_id;
+    uint16_t beatheat;
+    int prio;
 };
 
 

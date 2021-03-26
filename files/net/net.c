@@ -146,7 +146,7 @@ int server_init(void)
     
     for(int i = 0; i < net_num; i++){
         ifname = poal_config->network[i].ifname;
-        if(ifname && get_ipaddress(ifname, &ipaddr) == -1){
+        if(!ifname || get_ipaddress(ifname, &ipaddr) == -1){
             continue;
         }
         str_ipaddr = inet_ntoa(ipaddr);

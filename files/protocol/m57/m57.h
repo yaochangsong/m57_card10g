@@ -116,6 +116,7 @@ extern bool m57_parse_header(void *client, const char *buf, int len, int *head_l
 extern bool m57_execute(void *client, int *code);
 extern void m57_send_error(void *client, int code, void *args);
 extern void m57_send_resp(void *client, int code, void *args);
+extern void m57_send_heatbeat(void *client);
 
 
 #endif

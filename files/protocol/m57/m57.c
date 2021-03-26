@@ -458,7 +458,7 @@ bool m57_execute(void *client, int *code)
 }
 
 
-void m57_send_cmd(void *client, int code, void *args)
+void m57_send_cmd(void *client, int code, void *args, uint32_t len)
 {
     static uint8_t sn = 0;
     struct net_tcp_client *cl = client;
@@ -470,12 +470,12 @@ void m57_send_cmd(void *client, int code, void *args)
     
     header.header = M57_SYNC_HEADER;
     header.type = M57_CMD_TYPE;
-    header.prio = cl->response.prio;
+    header.prio = cl->section.prio;
     header.number = sn++;
-    header.len = hlen  + exhlen + cl->response.response_length;
-
+    header.len = hlen  + exhlen + len;
+    _m57_swap_send_header_element(&header);
     ex_header.cmd = code;
-    ex_header.len = exhlen + cl->response.response_length;
+    ex_header.len = exhlen + len;
 
     psend = calloc(1, header.len);
     if (!psend) {
@@ -484,12 +484,26 @@ void m57_send_cmd(void *client, int code, void *args)
         }
     memcpy(psend, &header, hlen);
     memcpy(psend + hlen, &ex_header, exhlen);
-    if(cl->response.response_length > 0 && cl->response.data)
-        memcpy(psend + hlen + exhlen, cl->response.data, cl->response.response_length);
+    if(len > 0 && args)
+        memcpy(psend + hlen + exhlen, args, len);
     
-    cl->send(cl, psend, hlen);
+    cl->send(cl, psend, header.len);
 
     safe_free(psend);
+}
+
+void m57_send_heatbeat(void *client)
+{
+    struct net_tcp_client *cl = client;
+    struct _beat_t{
+        uint16_t beat_count;
+        uint16_t beat_status;
+    };
+    struct _beat_t beatheart;
+    beatheart.beat_count = cl->section.beatheat ++;
+    beatheart.beat_status = 0;
+    cl->section.prio = M57_PRIO_LOW;
+    m57_send_cmd(client, CCT_BEAT_HART, &beatheart, sizeof(beatheart));
 }
 
 void m57_send_resp(void *client, int code, void *args)

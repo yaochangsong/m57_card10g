@@ -50,6 +50,14 @@ typedef enum {
 }m57_payload_type;
 
 typedef enum {
+    M57_PRIO_LOW        = 0,
+    M57_PRIO_NORMAL     = 1,
+    M57_PRIO_HIGH       = 2,
+    M57_PRIO_URGENT     = 3,
+}m57_prio_type;
+
+
+typedef enum {
     C_RET_CODE_SUCCSESS         = 0,
     C_RET_CODE_FORMAT_ERR       = 1,
     C_RET_CODE_PARAMTER_ERR     = 2,

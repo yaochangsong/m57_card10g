@@ -270,33 +270,6 @@ bool m57_execute_cmd(void *client, int *code)
             }__attribute__ ((packed));
             struct sub_st _sub;
             memcpy(&_sub,  payload, sizeof(_sub));
-            #if 0
-            struct net_tcp_server *srv = (struct net_tcp_server *)net_get_data_srv_ctx();
-            if(srv == NULL){
-                printf_warn("No srv\n");
-                err_code = C_RET_CODE_INTERNAL_ERR;
-                break;
-            }
-            char *ip;
-            struct net_tcp_client *data_cl;
-            
-            data_cl = tcp_get_client_by_ipaddr(srv, ip, _sub.port);
-            if(data_cl == NULL){
-                printf_warn("Not find ip: %s:%d is not connect\n", ip, _sub.port);
-                err_code = C_RET_CODE_PARAMTER_ERR;
-                break;
-            }
-
-            if(_sub.port > 0){
-                if(srv->sub_act)
-                    srv->sub_act->sub(srv->sub_act, data_cl, -1, _sub.chip_addr, NULL);
-            } else{
-                for_each_client(srv, ip){
-                    if(srv->sub_act)
-                        srv->sub_act->sub(srv->sub_act, cl_list, -1, _sub.chip_addr, NULL);
-                }
-            }
-            #endif
             break;
         }
         case CCT_DATA_UNSUB:
@@ -308,46 +281,45 @@ bool m57_execute_cmd(void *client, int *code)
             }__attribute__ ((packed));
             struct unsub_st _unsub;
             memcpy(&_unsub,  payload, sizeof(_unsub));
-            #if 0
-            struct net_tcp_server *srv = (struct net_tcp_server *)net_get_data_srv_ctx();
-            if(srv == NULL){
-                printf_warn("No srv\n");
-                err_code = C_RET_CODE_INTERNAL_ERR;
-                break;
-            }
-            
-            char *ip;
-            struct net_tcp_client *data_cl;
-            data_cl = tcp_get_client_by_ipaddr(srv, ip, _unsub.port);
-            if(data_cl == NULL){
-                printf_warn("Not find ip: %s:%d is not connect\n", ip, _unsub.port);
-                err_code = C_RET_CODE_PARAMTER_ERR;
-                break;
-            }
-
-            if(_unsub.port > 0){
-                if(srv->sub_act)
-                    srv->sub_act->unsub(srv->sub_act, data_cl, -1, _unsub.chip_addr, NULL);
-            } else{
-                for_each_client(srv, ip){
-                    if(srv->sub_act)
-                        srv->sub_act->unsub(srv->sub_act, cl_list, -1, _unsub.chip_addr, NULL);
-                }
-            }
-            #endif
             break;
         }
         case CCT_LIST_INFO:
         {
             uint8_t *info;
             int nbyte;
+            struct _req{
+                int16_t chipid;
+                int16_t fmcid; 
+            }__attribute__ ((packed));
+            struct _resp{
+                int16_t chipid;
+                int16_t fmcid; 
+                int32_t ret;
+            }__attribute__ ((packed));
+            struct _req *req = (struct _req *)payload;
+            
             nbyte = _reg_get_fpga_info(0, (void **)&info);
             printf_note("recv get info cmd: %d\n", nbyte);
             if(nbyte > 0){
                 cl->response.data = info;
                 cl->response.response_length = nbyte;
+                cl->response.prio = M57_PRIO_URGENT;
             }
             _code = CCT_RSP_LIST_INFO;
+            break;
+        }
+        case CCT_READ_BOARD_INFO:
+        {   
+            uint8_t *info;
+            int nbyte;
+            nbyte = _reg_get_board_info(0, (void **)&info);
+            printf_note("recv get info cmd: %d\n", nbyte);
+            if(nbyte > 0){
+                cl->response.data = info;
+                cl->response.response_length = nbyte;
+                cl->response.prio = M57_PRIO_URGENT;
+            }
+            _code = CCT_RSP_READ_BOARD_INFO;
             break;
         }
         case CCT_LOAD:
@@ -417,7 +389,7 @@ bool m57_execute_cmd(void *client, int *code)
                 cl->section.is_run_loadfile = false;
                 cl->section.is_loadfile_ok = false;
                 printf_err("receive file err\n");
-                break;
+                goto load_file_exit;
             }
             printf_debug("receive file:sn=%d, chipid = %d\n", pinfo->sn, pinfo->chipid);
             file = payload + sizeof(struct file_xinfo);
@@ -436,6 +408,24 @@ bool m57_execute_cmd(void *client, int *code)
                     close(cl->section.file.fd);
                 printf_note("receive file err, path = %s\n", cl->section.file.path);
             }
+load_file_exit:
+            /* now file receive over! response to client*/
+            if(cl->section.is_run_loadfile == false){
+                struct _resp{
+                    int16_t chipid;
+                    int32_t ret; 
+                }__attribute__ ((packed));
+                struct _resp *r_resp = safe_malloc(sizeof(struct _resp));
+                r_resp->chipid = pinfo->chipid;
+                if(cl->section.is_loadfile_ok)
+                    r_resp->ret = 0; /* ok */
+                else
+                    r_resp->ret = -1;    /* faild */
+                cl->response.data = r_resp;
+                cl->response.response_length = sizeof(struct _resp);
+                _code = CCT_RSP_LOAD;
+            }
+            
             break;
         }
     }
@@ -469,8 +459,8 @@ void m57_send_cmd(void *client, int code, void *args)
     uint8_t *psend;
     
     header.header = M57_SYNC_HEADER;
-    header.prio = 0x03;
-    header.type = 0x02;
+    header.type = M57_CMD_TYPE;
+    header.prio = cl->response.prio;
     header.number = sn++;
     header.len = hlen  + exhlen + cl->response.response_length;
 
@@ -508,8 +498,8 @@ void m57_send_resp(void *client, int code, void *args)
     printf_note("code = [0x%x, %d]\n", code, code);
     memset(&header, 0, sizeof(header));
     header.header = M57_SYNC_HEADER;
-    header.prio = 0x03;
-    header.type = 0x02;
+    header.type = M57_CMD_TYPE;
+    header.prio = cl->response.prio;
     header.number = sn++;
     header.len = hlen  + exhlen + cl->response.response_length;
     _m57_swap_send_header_element(&header);

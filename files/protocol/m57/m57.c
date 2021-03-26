@@ -33,17 +33,17 @@ void _m57_swap_send_header_element(struct m57_header_st *header)
 {
     uint16_t _tmp = header->number;
 
-    printf_note("type = 0x%x\n", header->type);
-    printf_note("prio = 0x%x\n", header->prio);
-    printf_note("number = 0x%x\n", header->number);
+    printf_debug("type = 0x%x\n", header->type);
+    printf_debug("prio = 0x%x\n", header->prio);
+    printf_debug("number = 0x%x\n", header->number);
 
     header->number = header->type | (header->prio << 4);
     header->type = (_tmp >> 4) &0x0ff; 
     header->prio = _tmp &0x0ff;
     
-    printf_note("after swap type = 0x%x\n", header->type);
-    printf_note("prio = 0x%x\n", header->prio);
-    printf_note("number = 0x%x\n", header->number);
+    printf_debug("after swap type = 0x%x\n", header->type);
+    printf_debug("prio = 0x%x\n", header->prio);
+    printf_debug("number = 0x%x\n", header->number);
 }
 
 
@@ -286,7 +286,20 @@ bool m57_execute_cmd(void *client, int *code)
         case CCT_LIST_INFO:
         {
             uint8_t *info;
-            int nbyte;
+            int nbyte = 0;
+            nbyte = _reg_get_fpga_info(0, (void **)&info);
+            if(nbyte >= 0){
+                cl->response.data = info;
+                cl->response.response_length = nbyte;
+                cl->response.prio = M57_PRIO_URGENT;
+            }
+            _code = CCT_RSP_LIST_INFO;
+            break;
+        }
+        case CCT_READ_BOARD_INFO:
+        {
+            uint8_t *info;
+            int nbyte = 0, h_nbyte;
             struct _req{
                 int16_t chipid;
                 int16_t fmcid; 
@@ -297,29 +310,26 @@ bool m57_execute_cmd(void *client, int *code)
                 int32_t ret;
             }__attribute__ ((packed));
             struct _req *req = (struct _req *)payload;
-            
-            nbyte = _reg_get_fpga_info(0, (void **)&info);
-            printf_note("recv get info cmd: %d\n", nbyte);
-            if(nbyte > 0){
-                cl->response.data = info;
-                cl->response.response_length = nbyte;
-                cl->response.prio = M57_PRIO_URGENT;
-            }
-            _code = CCT_RSP_LIST_INFO;
-            break;
-        }
-        case CCT_READ_BOARD_INFO:
-        {   
-            uint8_t *info;
-            int nbyte;
+            struct _resp *resp;
+
             nbyte = _reg_get_board_info(0, (void **)&info);
-            printf_note("recv get info cmd: %d\n", nbyte);
-            if(nbyte > 0){
-                cl->response.data = info;
-                cl->response.response_length = nbyte;
+            _code = CCT_RSP_READ_BOARD_INFO;
+            
+            h_nbyte = nbyte + sizeof(struct _resp);
+            if ((resp = safe_malloc(h_nbyte)) == NULL){
+              printf_err("Unable to malloc response buffer  %ld bytes!", nbyte + sizeof(struct _resp));
+              break;
+            }
+            memcpy((uint8_t *)resp + sizeof(struct _resp), info, nbyte);
+            resp->chipid = req->chipid;
+            resp->fmcid = req->fmcid;
+            resp->ret = 0;
+            if(h_nbyte > 0){
+                cl->response.data = resp;
+                cl->response.response_length = h_nbyte;
                 cl->response.prio = M57_PRIO_URGENT;
             }
-            _code = CCT_RSP_READ_BOARD_INFO;
+            safe_free(info);
             break;
         }
         case CCT_LOAD:

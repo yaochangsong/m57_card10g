@@ -411,6 +411,8 @@ static void tcp_accept_cb(struct uloop_fd *fd, unsigned int events)
     cl->send = tcp_send;
     cl->request_done = tcp_client_request_done;
     printf_note("New connection from: %s:%d\n", cl->get_peer_addr(cl), cl->get_peer_port(cl));
+    
+    cl->section.hash = net_hash_new();
 
     socklen_t serv_len = sizeof(cl->serv_addr); 
     getsockname(sfd, (struct sockaddr *)&cl->serv_addr, &serv_len); 

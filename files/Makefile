@@ -67,7 +67,6 @@ else ifneq ($(findstring m57,$(SUPPORT_DATA_PROTOCAL)),)
 endif
 
 
-
 #万兆
 ifneq ($(findstring y,$(SUPPORT_NET_WZ)),)
 	C_VAR += -DSUPPORT_NET_WZ
@@ -270,6 +269,12 @@ else ifneq ($(findstring xml,$(SUPPORT_DAO)),)
 	SUB_LIBS += dao/mxml-3.0/libmxml.a
 	SOURCE_DIR += dao/oal/xml
 	C_VAR += -DSUPPORT_DAO_XML
+endif
+
+#HASH
+ifneq ($(findstring y,$(SUPPORT_HASH)),)
+	C_VAR += -DSUPPORT_HASH
+	SOURCE_DIR += lib/hash
 endif
 
 

@@ -54,6 +54,7 @@ struct tcp_section {
         int len_offset;
         int sn;
     } file;
+    void *hash;
     bool  is_run_loadfile;
     bool  is_loadfile_ok;
     int chip_id;

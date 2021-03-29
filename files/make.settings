@@ -53,6 +53,8 @@ SUPPORT_BLK_HTTP_FILE=n
 SUPPORT_WAV=y
 #tools
 SUPPORT_TOOLS=y
+#
+SUPPORT_HASH=y
 
 ifneq ($(findstring x86,$(SUPPORT_PLAT_FORM_ARCH)),)
 	#uart: y n

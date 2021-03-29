@@ -14,6 +14,8 @@
 ******************************************************************************/
 #include "config.h"
 #include "m57.h"
+#include "../../net/net_sub.h"
+
 
 void _m57_swap_header_element(struct m57_header_st *header)
 {
@@ -252,35 +254,44 @@ bool m57_execute_cmd(void *client, int *code)
             }__attribute__ ((packed));
             struct register_st _reg;
             printf_note("channel register!!\n");// len: 40
-            #if 0
-            data_status_type _type;
-            memcpy(&_reg, sizeof(_reg), payload);
             
-            _type = (_reg.type == 1 ? TYPE_NORMAL: TYPE_URGENT);
-            cl->srv->sub_act->sub(cl->srv->sub_act, cl, _type, -1, NULL);
-            #endif
+            m57_prio_type _type;
+            memcpy(&_reg, payload, sizeof(_reg));
+            _type = (_reg.type == 1 ? M57_PRIO_LOW: M57_PRIO_URGENT);
+            net_hash_add(cl->section.hash, _type, RT_PRIOID);
             break;
         }
         case CCT_DATA_SUB:
         {
             struct sub_st{
-                uint16_t chip_addr;
-                uint16_t client_addr;       //??
+                uint16_t chip_id;
+                uint16_t func_id;
                 uint16_t port;
             }__attribute__ ((packed));
             struct sub_st _sub;
             memcpy(&_sub,  payload, sizeof(_sub));
+            printf_note("sub chip_id:0x%x, func_id=0x%x, port=0x%x\n", _sub.chip_id, _sub.func_id, _sub.port);
+            net_hash_add(cl->section.hash, _sub.chip_id, RT_CHIPID);
+            net_hash_add(cl->section.hash, _sub.func_id, RT_FUNCID);
+            net_hash_add(cl->section.hash, _sub.port, RT_PORTID);
+            net_hash_dump(cl->section.hash);
+            net_hash_find_type_set(cl->section.hash, RT_CHIPID, NULL);
             break;
         }
         case CCT_DATA_UNSUB:
         {
-            struct unsub_st{
-                uint16_t chip_addr;
-                uint16_t client_addr;
+             struct sub_st{
+                uint16_t chip_id;
+                uint16_t func_id;
                 uint16_t port;
             }__attribute__ ((packed));
-            struct unsub_st _unsub;
-            memcpy(&_unsub,  payload, sizeof(_unsub));
+            struct sub_st _sub;
+            memcpy(&_sub,  payload, sizeof(_sub));
+            printf_note("unsub chip_id:0x%x, func_id=0x%x, port=0x%x\n", _sub.chip_id, _sub.func_id, _sub.port);
+            net_hash_del(cl->section.hash, _sub.chip_id, RT_CHIPID);
+            net_hash_del(cl->section.hash, _sub.func_id, RT_FUNCID);
+            net_hash_del(cl->section.hash, _sub.port, RT_PORTID);
+            net_hash_dump(cl->section.hash);
             break;
         }
         case CCT_LIST_INFO:

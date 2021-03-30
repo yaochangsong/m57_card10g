@@ -157,7 +157,7 @@ void net_hash_find_type_set(hash_t *hash, int type, int (*callback) (int ))
         if(hxstr_to_int(keys[i], &ival, NULL) == false)
             continue;
         printf_note("ival = 0x%x, type=0x%x, %x, %x, %x\n", ival, type, ival&0x0f0000 & (type << 16), ival&0x0f0000 , (type << 16));
-        if(ival&0x0f0000 & (type << 16)){
+        if((ival&0x0f0000) & (type << 16)){
             if(callback)
                 callback(ival);
         }

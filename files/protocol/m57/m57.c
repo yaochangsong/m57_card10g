@@ -53,11 +53,13 @@ int _recv_file_over(struct net_tcp_client *cl, char *file, int file_len)
 {
 
     if(cl->section.file.fd > 0){
+        #if 0
         int rc = write(cl->section.file.fd, file, file_len);
         if (rc < 0){
             perror("write file");
             return -1;
         }
+        #endif
     }else{
         return -1;
     }
@@ -171,7 +173,7 @@ bool m57_parse_header(void *client, const char *buf, int len, int *head_len, int
         if(data_len >= 0){
             cl->request.content_length = data_len;
         }
-        printf_debug("len: %d\n", cl->request.content_length);
+        printf_debug("content_length: %d\n", cl->request.content_length);
     }else if(header->type == M57_DATA_TYPE){    /* 数据包 */
          printf_debug("data type\n");
         cl->request.header = NULL;
@@ -222,13 +224,13 @@ bool m57_execute_cmd(void *client, int *code)
     int err_code = C_RET_CODE_SUCCSESS;
     struct net_tcp_client *cl = client;
     int ex_header_len = sizeof(struct m57_ex_header_cmd_st);
-    char *payload = (char *)cl->dispatch.body + ex_header_len;
+    const char const *payload = (char *)cl->dispatch.body + ex_header_len;
     int payload_len = cl->request.content_length - ex_header_len;
     int _code = -1;
 
     struct m57_ex_header_cmd_st *header;
     header = (struct m57_ex_header_cmd_st *)cl->request.header;
-    printf_note("receive cmd[0x%x], payload_len=%d\n", header->cmd, payload_len);
+    printf_debug("receive cmd[0x%x], payload_len=%d\n", header->cmd, payload_len);
     if(payload_len < 0){
         printf_err("recv cmd data len err\n");
     }
@@ -271,11 +273,13 @@ bool m57_execute_cmd(void *client, int *code)
             struct sub_st _sub;
             memcpy(&_sub,  payload, sizeof(_sub));
             printf_note("sub chip_id:0x%x, func_id=0x%x, port=0x%x\n", _sub.chip_id, _sub.func_id, _sub.port);
+            #if 0
             net_hash_add(cl->section.hash, _sub.chip_id, RT_CHIPID);
             net_hash_add(cl->section.hash, _sub.func_id, RT_FUNCID);
             net_hash_add(cl->section.hash, _sub.port, RT_PORTID);
             net_hash_dump(cl->section.hash);
             net_hash_find_type_set(cl->section.hash, RT_CHIPID, NULL);
+            #endif
             break;
         }
         case CCT_DATA_UNSUB:
@@ -288,10 +292,12 @@ bool m57_execute_cmd(void *client, int *code)
             struct sub_st _sub;
             memcpy(&_sub,  payload, sizeof(_sub));
             printf_note("unsub chip_id:0x%x, func_id=0x%x, port=0x%x\n", _sub.chip_id, _sub.func_id, _sub.port);
+            #if 0
             net_hash_del(cl->section.hash, _sub.chip_id, RT_CHIPID);
             net_hash_del(cl->section.hash, _sub.func_id, RT_FUNCID);
             net_hash_del(cl->section.hash, _sub.port, RT_PORTID);
             net_hash_dump(cl->section.hash);
+            #endif
             break;
         }
         case CCT_LIST_INFO:
@@ -372,7 +378,7 @@ bool m57_execute_cmd(void *client, int *code)
                 }
                 cl->section.file.fd = fd;
             }
-            printf_debug("Prepare to receive file\n");
+            printf_note("Prepare to receive file[len:%u]\n", cl->section.file.len);
                 break;
         }
         case CCT_FILE_TRANSFER:
@@ -386,12 +392,17 @@ bool m57_execute_cmd(void *client, int *code)
             }__attribute__ ((packed));
             struct file_xinfo linfo, *pinfo;
             
-            printf_debug("start transfer file\n");
+            
             if(cl->section.is_run_loadfile == false){
                 printf_warn("load cmd is not receive!\n");
                 break;
             }
             pinfo = (struct file_xinfo *)payload;
+            if(pinfo->sn == 0)
+                printf_note("start transfer file\n");
+            else
+                printf_note("transfer file......\n");
+            
             if(cl->section.chip_id != pinfo->chipid){
                 printf_err("chipid err = %d\n", pinfo->chipid);
                 status = -1;
@@ -412,16 +423,17 @@ bool m57_execute_cmd(void *client, int *code)
                 printf_err("receive file err\n");
                 goto load_file_exit;
             }
-            printf_debug("receive file:sn=%d, chipid = %d\n", pinfo->sn, pinfo->chipid);
+            printf_note("receive file:sn=%d, chipid = %d\n", pinfo->sn, pinfo->chipid);
             file = payload + sizeof(struct file_xinfo);
-            file_len = payload_len;
+            file_len = payload_len - sizeof(struct file_xinfo);
             ret = _recv_file_over(cl, file, file_len);
+            printf_note("recv file ret: %d\n", ret);
             if(ret == 0){   /* receive over */
                 cl->section.is_run_loadfile = false;
                 cl->section.is_loadfile_ok = true;
                 if(cl->section.file.fd > 0)
                     close(cl->section.file.fd);
-                printf_note("receive file ok, path = %s\n", cl->section.file.path);
+                printf_note("receive file ok, path = %s, total size:%u[%u]\n", cl->section.file.path, cl->section.file.len_offset, cl->section.file.len);
             }else if(ret < 0){   /* receive err */
                 cl->section.is_run_loadfile = false;
                 cl->section.is_loadfile_ok = false;
@@ -554,10 +566,11 @@ void m57_send_resp(void *client, int code, void *args)
     if(cl->response.response_length > 0 && cl->response.data)
         memcpy(psend + hlen + exhlen, cl->response.data, cl->response.response_length);
 
-#if 1
+#if 0
     printfn("send resp[%d]: \n", header.len);
     for(int i = 0; i < header.len; i++)
         printfn("%02x ", psend[i]);
+    printfn("\n");
 #endif
     
     cl->send(cl, psend, header.len);

@@ -107,8 +107,11 @@ static void tcp_dispatch_done(struct net_tcp_client *cl)
 static void tcp_data_free(struct net_tcp_client *cl)
 {
     struct tcp_dispatch *d = &cl->dispatch;
-    if(d->body)
+    if(d->body){
         free(d->body);
+        d->body = NULL;
+    }
+        
 }
 
 static void tcp_post_done(struct net_tcp_client *cl)
@@ -128,27 +131,36 @@ static void tcp_post_done(struct net_tcp_client *cl)
 static int tcp_load_data(struct net_tcp_client *cl, const char *data, int len)
 {
     struct tcp_dispatch *d = &cl->dispatch;
-    d->post_len += len;
 
-    if (d->post_len > MAX_RECEIVE_DATA_LEN)
-        goto err;
-
-    if (d->post_len > NET_DATA_BUF_SIZE) {
-        printf_note("realloc: %p, %d\n", d->body, d->post_len);
+    
+    #if 0
+    if (len > NET_DATA_BUF_SIZE) {
+        printf_note("realloc: %p, %d\n", d->body, MAX_RECEIVE_DATA_LEN);
         d->body = realloc(d->body, MAX_RECEIVE_DATA_LEN);
         if (!d->body) {
             cl->srv->send_error(cl, 500, "No memory");
             return 0;
         }
     }
+    #endif
+    //printf_note("post len :%d, %p, len:%d\n", d->post_len, d->body , len);
+    if(len > 0)
+        memcpy(d->body + d->post_len, data, len);
 
-    memcpy(d->body, data, len);
+    d->post_len += len;
+    if (d->post_len > MAX_RECEIVE_DATA_LEN){
+        printf_err("post len is too long:%d\n", d->post_len);
+        goto err;
+    }
+
+#if 0
     int i;
     printfd("rec data: ");
     for(i = 0; i< len; i++){
         printfd("%02x ", d->body[i]);
     }
     printfd("\n");
+#endif
     return len;
 err:
     cl->srv->send_error(cl, 413, NULL);
@@ -164,35 +176,41 @@ static void tcp_client_poll_data(struct net_tcp_client *cl)
     char *buf;
     int len;
     int content_length = r->content_length;
-
+    
+    if(r->remain_length > 0)
+        content_length = r->remain_length;
+    
     if (cl->state == NET_TCP_CLIENT_STATE_DONE)
         return;
     d->post_data = tcp_load_data;
     d->post_done = tcp_post_done;
     d->free = tcp_data_free;
-    d->body = calloc(1, NET_DATA_BUF_SIZE);
+    if(d->body == NULL)
+        d->body = calloc(1, MAX_RECEIVE_DATA_LEN);
     if (!d->body)
         cl->srv->send_error(cl, 500, "Internal Server Error,No memory");
-
     while (1) {
         int cur_len;
-         /* 根据数据长度；循环读取数据 */
         buf = ustream_get_read_buf(cl->us, &len);
-        if (!buf || !len)
-            break;
+        if (!buf || !len){
+             if(content_length){
+                r->remain_length = content_length;
+                return;
+             }
+             break;
+        }
+            
 
         if (!d->post_data)
             return;
         cur_len = min(content_length, len);
-        if (cur_len) {
+        if (content_length) {
             if (d->post_data)
                 cur_len = d->post_data(cl, buf, cur_len);
-
             content_length -= cur_len;
             ustream_consume(cl->us, cur_len);
             continue;
         }else{
-            /* 如果数据后有结束标志；检测结束标志 */
              int end_len;
              if(cl->srv->on_end){
                 end_len = cl->srv->on_end(cl, buf, len);
@@ -223,6 +241,7 @@ static void tcp_client_request_done(struct net_tcp_client *cl)
     tcp_dispatch_done(cl);
     safe_free(cl->request.header);
     safe_free(cl->response.data);
+    tcp_data_free(cl);
     memset(&cl->request, 0, sizeof(cl->request));
     memset(&cl->response, 0, sizeof(cl->response));
 }
@@ -244,11 +263,14 @@ void tcp_client_read_cb(struct net_tcp_client *cl)
     
     do {
         str = ustream_get_read_buf(us, &len);
-        if (!str || !len)
+        if (!str || !len){
             return;
+        }
+            
 
-        if (cl->state >= ARRAY_SIZE(tcp_read_cbs) || !tcp_read_cbs[cl->state])
+        if (cl->state >= ARRAY_SIZE(tcp_read_cbs) || !tcp_read_cbs[cl->state]){
             return;
+        }
 
         if (!tcp_read_cbs[cl->state](cl, str, len)) {
             if (len == us->r.buffer_len && cl->state != NET_TCP_CLIENT_STATE_DATA)

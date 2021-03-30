@@ -22,6 +22,7 @@ struct net_tcp_request {
     int   prio;
     int   data_type;
     int   content_length; /*  payload len */
+    int   remain_length; 
 };
 
 struct net_tcp_response {

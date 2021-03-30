@@ -53,7 +53,7 @@ int _recv_file_over(struct net_tcp_client *cl, char *file, int file_len)
 {
 
     if(cl->section.file.fd > 0){
-        #if 0
+        #if 1
         int rc = write(cl->section.file.fd, file, file_len);
         if (rc < 0){
             perror("write file");
@@ -203,9 +203,10 @@ bool m57_execute_data(void *client, int *code)
     struct net_tcp_client *cl = client;
     char *payload = (char *)cl->dispatch.body;
     int payload_len = cl->request.content_length;
+    int _code = -1;
     /*  TODO */
-    printf_note("receive data[%d]...\n", payload_len);
-    
+    printf_debug("receive data[%d]...\n", payload_len);
+    *code = _code;
     return true;
 }
 
@@ -243,7 +244,7 @@ bool m57_execute_cmd(void *client, int *code)
             beat_count = *(uint16_t *)payload;
             beat_status = *((uint16_t *)payload + 1);
             printf_note("keepalive beat_count=%d, beat_status=%d\n", beat_count, beat_status);
-            update_tcp_keepalive(cl);
+            //update_tcp_keepalive(cl);
             break;
         }
         case CCT_REGISTER:
@@ -399,9 +400,9 @@ bool m57_execute_cmd(void *client, int *code)
             }
             pinfo = (struct file_xinfo *)payload;
             if(pinfo->sn == 0)
-                printf_note("start transfer file\n");
+                printf_debug("start transfer file\n");
             else
-                printf_note("transfer file......\n");
+                printf_debug("transfer file......\n");
             
             if(cl->section.chip_id != pinfo->chipid){
                 printf_err("chipid err = %d\n", pinfo->chipid);
@@ -423,16 +424,17 @@ bool m57_execute_cmd(void *client, int *code)
                 printf_err("receive file err\n");
                 goto load_file_exit;
             }
-            printf_note("receive file:sn=%d, chipid = %d\n", pinfo->sn, pinfo->chipid);
+            printf_debug("receive file:sn=%d, chipid = %d\n", pinfo->sn, pinfo->chipid);
             file = payload + sizeof(struct file_xinfo);
             file_len = payload_len - sizeof(struct file_xinfo);
             ret = _recv_file_over(cl, file, file_len);
-            printf_note("recv file ret: %d\n", ret);
+            printf_debug("recv file ret: %d\n", ret);
             if(ret == 0){   /* receive over */
                 cl->section.is_run_loadfile = false;
                 cl->section.is_loadfile_ok = true;
                 if(cl->section.file.fd > 0)
                     close(cl->section.file.fd);
+                printf_note("peer addr: %s:%d\n", cl->get_peer_addr(cl), cl->get_peer_port(cl));
                 printf_note("receive file ok, path = %s, total size:%u[%u]\n", cl->section.file.path, cl->section.file.len_offset, cl->section.file.len);
             }else if(ret < 0){   /* receive err */
                 cl->section.is_run_loadfile = false;
@@ -471,7 +473,7 @@ bool m57_execute(void *client, int *code)
 {
     struct net_tcp_client *cl = client;
 
-    update_tcp_keepalive(cl);
+    //update_tcp_keepalive(cl);
     if(cl->request.data_type == M57_DATA_TYPE)
         return m57_execute_data(client, code);
     else if(cl->request.data_type == M57_CMD_TYPE)
@@ -511,7 +513,11 @@ void m57_send_cmd(void *client, int code, void *args, uint32_t len)
         memcpy(psend + hlen + exhlen, args, len);
     
     cl->send(cl, psend, header.len);
-
+#if 0
+    for(int i = 0; i < header.len; i++)
+        printfn("%02x ", psend[i]);
+    printfn("\n");
+#endif
     safe_free(psend);
 }
 
@@ -523,9 +529,10 @@ void m57_send_heatbeat(void *client)
         uint16_t beat_status;
     };
     struct _beat_t beatheart;
-    beatheart.beat_count = cl->section.beatheat ++;
+    beatheart.beat_count = 0;//cl->section.beatheat ++;
     beatheart.beat_status = 0;
     cl->section.prio = M57_PRIO_LOW;
+    printfn("send beatheart to:[%s:%d],n=%d \n", cl->get_peer_addr(cl), cl->get_peer_port(cl), beatheart.beat_count);
     m57_send_cmd(client, CCT_BEAT_HART, &beatheart, sizeof(beatheart));
 }
 

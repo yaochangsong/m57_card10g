@@ -266,7 +266,6 @@ void tcp_client_read_cb(struct net_tcp_client *cl)
         if (!str || !len){
             return;
         }
-            
 
         if (cl->state >= ARRAY_SIZE(tcp_read_cbs) || !tcp_read_cbs[cl->state]){
             return;
@@ -363,8 +362,8 @@ static inline void tcp_keepalive_cb(struct uloop_timeout *timeout)
     m57_send_heatbeat((void *)cl);
 #endif
     if(++cl->tcp_keepalive_probes >= TCP_MAX_KEEPALIVE_PROBES){
-        printf_note("keepalive: find %s:%d disconnect; free\n", cl->get_peer_addr(cl), cl->get_peer_port(cl));
-        tcp_free(cl);
+        //printf_note("keepalive: find %s:%d disconnect; free\n", cl->get_peer_addr(cl), cl->get_peer_port(cl));
+       // tcp_free(cl);
     }
 }
 

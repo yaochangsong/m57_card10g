@@ -16,7 +16,7 @@
 #include "gpio_raw.h"
 
 struct gpio_node_info gpio_node[] ={
-
+#if 0
     /* pin   direction  default gpio value   func_code    func_name    fd */
     {63,      "out",       0,               GPIO_FUNC_ADC,          "ADC&Backtrace gpio ctrl",    -1 },  /* low:  adc ; high : backtrace*/
     {62,      "in",        -1,              GPIO_FUNC_ADC_STATUS,   "ADC Status",                 -1 },
@@ -27,6 +27,7 @@ struct gpio_node_info gpio_node[] ={
     {8,      "out",        0,               GPIO_RF_CH1,            "RF C1",                        -1 },
     {9,      "out",        0,               GPIO_RF_CH2,            "RF C2",                        -1 },
     {10,     "out",        0,               GPIO_RF_CH3,            "RF C3",                        -1 },
+#endif
 #endif
 };
 

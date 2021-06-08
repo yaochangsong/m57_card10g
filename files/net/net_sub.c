@@ -152,7 +152,7 @@ void net_hash_find_type_set(hash_t *hash, int type, int (*callback) (int ))
       vals[n] = val;
       n++;
     });
-
+    vals[0] = vals[0];  /*  warn */
     for(int i = 0; i < hash_size(hash); i++){
         if(hxstr_to_int(keys[i], &ival, NULL) == false)
             continue;

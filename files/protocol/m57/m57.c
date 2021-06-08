@@ -471,7 +471,7 @@ bool m57_execute_cmd(void *client, int *code)
               printf_err("Unable to malloc response buffer  %ld bytes!",  sizeof(struct _resp));
               break;
             }
-            id = (uint16_t*)payload;
+            id = *(uint16_t*)payload;
             _m57_start_unload_bitfile_from_fpga(id);
             resp->chipid = id;
             resp->ret = _reg_get_unload_result(get_fpga_reg(), id, NULL);

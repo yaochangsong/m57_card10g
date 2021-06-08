@@ -26,6 +26,8 @@
 #include <string.h>
 #include <linux/if_link.h>
 #include "../protocol/http/file.h"
+#include "net_sub.h"
+
 
 int get_ifa_name_by_ip(char *ipaddr, char *ifa_name)
 {

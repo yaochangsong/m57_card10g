@@ -573,6 +573,8 @@ static fft_t *spm_data_order(fft_t *fft_data,
         return NULL;
     }
     order_len = total_order_len;
+#else
+    p_buffer = p_buffer;
 #endif
 #if defined(SUPPORT_SPECTRUM_EXTRACT_POINT)
     order_len =  _spm_extract_half_point(p_buffer, order_len, run_args->fft_ptr_swap);

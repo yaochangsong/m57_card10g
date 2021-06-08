@@ -10,4 +10,8 @@
 #define CONFIG_SIGNAL_CHECK_CHANNEL     1   /* 信号检测子通道(多频点模式下有效) */
 #define BROAD_CH_NUM                    1   /* 宽带通道数FFT+NIQ */
 #define SEGMENT_FREQ_NUM               (0)
+#define MAX_FPGA_CARD_SLOT_NUM          (4) /* FPGA槽位 */
+#define MAX_FPGA_CHIPID_NUM             2   /* FPGA芯片数 */
+
+
 #endif

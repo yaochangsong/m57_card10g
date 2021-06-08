@@ -99,12 +99,4 @@ extern uint32_t io_get_fpga_sys_time(void);
 extern uint32_t io_get_fpga_sys_ns_time(void);
 extern void io_set_gps_status(bool is_ok);
 extern void io_set_rf_status(bool is_ok);
-extern void io_xdma_set_speed(int rate);
-extern void io_xdma_force_ready(int ch, bool is_force);
-extern void io_set_xdma_disable(int ch, int subch);
-extern void io_xdma_enable(int ch);
-extern void io_xdma_disable(int ch);
-
-
-
 #endif

@@ -100,8 +100,6 @@ static int xspm_create(void)
         memset(&ring_trans, 0, sizeof(struct xdma_ring_trans_ioctl));
         ring_trans.block_size = pstream[i].block_size;
         ring_trans.block_count = pstream[i].len / pstream[i].block_size;
-        io_xdma_set_speed(0);
-        io_xdma_force_ready(pstream[i].ch, true);
         xspm_stream_stop(pstream[i].ch, 0, XDMA_STREAM);
         usleep(1000);
     }
@@ -328,8 +326,6 @@ static int xspm_stream_start(int ch, int subch, uint32_t len,uint8_t continuous,
     else if(rc == 0){
         printf("WaitDeviceReady timeout\n");
     }
-
-    io_xdma_enable(ch);
     return 0;
 }
 
@@ -355,7 +351,6 @@ static int xspm_stream_stop(int ch, int subch, enum stream_type type)
     	printf_note("ioctl(IOCTL_XDMA_PERF_STOP) error:%d\n", ret);
     }
     #endif
-    io_xdma_disable(ch);
 
     printf_debug("stream_stop: %d, %s\n", index, pstream[index].name);
     return 0;

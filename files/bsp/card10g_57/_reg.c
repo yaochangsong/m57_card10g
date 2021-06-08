@@ -50,14 +50,24 @@ static int fpga_memmap(int fd_dev, FPGA_CONFIG_REG *fpga_reg)
     void *tmp_addr = NULL;
     int i = 0;
 
-   // fpga_reg->system = memmap(fd_dev, FPGA_SYSETM_BASE, SYSTEM_CONFG_4K_LENGTH); 
-    fpga_reg->system = memmap(fd_dev, 0, MAP_SIZE); 
+    fpga_reg->system = memmap(fd_dev, FPGA_SYSETM_BASE, MAP_SIZE); 
+    //fpga_reg->system = memmap(fd_dev, 0, MAP_SIZE); 
     if (!fpga_reg->system)
     {
         printf("mmap failed, NULL pointer!\n");
         return -1;
     }
     printf_note("virtual address:%p, physical address:0x%x\n", fpga_reg->system, FPGA_SYSETM_BASE);
+
+    for(i = 0; i < MAX_FPGA_CARD_SLOT_NUM; i++){
+        fpga_reg->status[i] = (STATUS_REG *)((uint8_t *)fpga_reg->system + FPGA_STAUS_OFFSET + CONFG_REG_LEN * i);
+        if (!fpga_reg->status[i])
+        {
+            printf("mmap failed, NULL pointer!\n");
+            return -1;
+        }
+        printf_note("virtual address:%p \n", fpga_reg->status[i]);
+    }
 
     return 0;
 }
@@ -67,7 +77,7 @@ static int fpga_unmemmap(FPGA_CONFIG_REG *fpga_reg)
     int i = 0;
     int ret = 0;
 
-    ret = munmap(fpga_reg->system, SYSTEM_CONFG_4K_LENGTH); 
+    ret = munmap(fpga_reg->system, MAP_SIZE); 
     if (ret)
     {
     	perror("munmap");
@@ -109,8 +119,9 @@ void fpga_io_init(void)
     fpga_memmap(fd_fpga, &_fpga_reg);
     
     fpga_reg = &_fpga_reg;
-    fpga_reg->system->speed = get_xdma_speed_rate();
-    printf_note("speed rate: %d , %d\n", fpga_reg->system->speed, get_xdma_speed_rate());
+    printf("FPGA version:%x\n", fpga_reg->system->version);
+    fpga_reg->system->system_reset = 1;
+    usleep(100);
     fpga_init_flag = true;
 }
 

@@ -19,23 +19,9 @@
 
 #define FPGA_REG_BASE           0x00000000
 #define FPGA_SYSETM_BASE        FPGA_REG_BASE
-#define FPGA_ADC_BASE 	        (FPGA_REG_BASE+0x1000)
-#define FPGA_SIGNAL_BASE 	    (FPGA_REG_BASE+0x2000)
-#define FPGA_BRAOD_BAND_BASE    (FPGA_REG_BASE+0x3000)
-#define FPGA_NARROR_BAND_BASE   (FPGA_REG_BASE+0x4000)
-#define FPGA_RF_BASE            (FPGA_REG_BASE+0x0100)
-#define FPGA_AUDIO_BASE   		FPGA_REG_BASE
+#define FPGA_STAUS_OFFSET 	    (0x100)
 
-#define SYSTEM_CONFG_REG_OFFSET	0x0
-#define SYSTEM_CONFG_REG_LENGTH 0x100
-#define BROAD_BAND_REG_OFFSET 	0x100
-#define BROAD_BAND_REG_LENGTH 	0x100
-#define NARROW_BAND_REG_BASE 	0xa0001000
-#define NARROW_BAND_REG_LENGTH 	0x100
-#define NARROW_BAND_CHANNEL_MAX_NUM 17
 #define CONFG_REG_LEN 0x100
-#define CONFG_AUDIO_OFFSET       0x800
-
 
 #ifndef MAX_SCAN_FREQ_HZ
 #define MAX_SCAN_FREQ_HZ (6000000000)
@@ -46,27 +32,37 @@
 
 typedef struct _SYSTEM_CONFG_REG_
 {
-	uint32_t speed;
-	uint32_t irq;
-    uint32_t enable;
-    uint32_t check;
-    uint32_t force_ready;
+    uint32_t version;
+    uint32_t system_reset;
+    uint32_t reserve1[0x2];
+    uint32_t fpga_status;
 }SYSTEM_CONFG_REG;
+
+typedef struct _STATUS_REG_
+{
+    uint32_t c0_load;       /* 芯片0加载结果  ，0 = 成功，其他 = 错误代码 */
+    uint32_t c0_unload;     /* 芯片0卸载结果，0 = 成功，其他 = 错误代码 */
+    uint32_t c1_load;       /* 芯片1加载结果  ，0 = 成功，其他 = 错误代码 */
+    uint32_t c1_unload;     /* 芯片1卸载结果，0 = 成功，其他 = 错误代码 */
+    uint32_t board_type;    /* 0:未知, 1: 威风，2：非威风*/
+    uint32_t board_status;  /* 0 = 故障，1 = 正常 */
+}STATUS_REG;
 
 
 typedef struct _FPGA_CONFIG_REG_
 {
-	SYSTEM_CONFG_REG *system;
+    SYSTEM_CONFG_REG *system;
+    STATUS_REG *status[MAX_FPGA_CARD_SLOT_NUM];
 }FPGA_CONFIG_REG;
 
 
 /*****system*****/
 /*GET*/
-#define GET_SYS_FPGA_VER(reg)				
-#define GET_SYS_FPGA_STATUS(reg)			
+#define GET_SYS_FPGA_VER(reg)				(reg->system->version)
+#define GET_SYS_FPGA_STATUS(reg)			(reg->system->fpga_status)
 #define GET_SYS_FPGA_BOARD_VI(reg)			
 /*SET*/
-#define SET_SYS_RESET(reg,v) 				
+#define SET_SYS_RESET(reg,v) 				(reg->system->system_reset=v)
 #define SET_SYS_IF_CH(reg,v) 				
 //#define SET_SYS_SSD_MODE(reg,v) 			(reg->system->ssd_mode=v)
 
@@ -207,7 +203,7 @@ static inline void _reg_set_rf_cali_source_choise(int ch, int index, uint8_t val
 {}
 
 //#平台信息查询回复命令(0x17)
-static inline int _reg_get_fpga_info(int id, void **args)
+static inline int _reg_get_fpga_info_(int id, void **args)
 {
     uint8_t data[] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 
                              0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
@@ -224,6 +220,60 @@ static inline int _reg_get_fpga_info(int id, void **args)
     *args = (void *)ptr;
     return sizeof(data);
 }
+
+static inline int _reg_get_fpga_info(FPGA_CONFIG_REG *reg, int id, void **args)
+{
+    uint8_t *ptr, *pstatus;
+    #define _MAX_CARD_SLOTS_NUM 16
+    pstatus = calloc(1, _MAX_CARD_SLOTS_NUM*2);
+    if(pstatus == NULL){
+        printf_err("malloc err\n");
+        return -1;
+    }
+    ptr = pstatus;
+
+    for(int i = 0; i <MAX_FPGA_CARD_SLOT_NUM; i++){
+        *ptr++ = reg->status[i]->board_type;
+    }
+    ptr = pstatus;
+    ptr += _MAX_CARD_SLOTS_NUM;
+    for(int i = 0; i <MAX_FPGA_CARD_SLOT_NUM; i++){
+        *ptr++ = reg->status[i]->board_status;
+    }
+    return (_MAX_CARD_SLOTS_NUM*2);
+}
+
+//加载命令结果查询回复
+static inline int _reg_get_load_result(FPGA_CONFIG_REG *reg, int id, void **args)
+{
+    int slot_id = 0, chip_id = 0;
+    int ret = -1, try_count = 0;
+    
+    chip_id = id & 0x0ff;
+    slot_id = (id >> 8) & 0x0f;
+    if(chip_id >= MAX_FPGA_CHIPID_NUM){
+        printf_err("chip id[%d] is bigger than max[%d]\n", chip_id, MAX_FPGA_CHIPID_NUM);
+        return ret;
+    }
+    if(slot_id >= _MAX_CARD_SLOTS_NUM){
+        printf_err("slot id[%d] is bigger than max[%d]\n", slot_id, _MAX_CARD_SLOTS_NUM);
+        return ret;
+    }
+    printf_note("id=%d, chip_id=%d, slot_id=%d\n", id, chip_id, slot_id);
+    do{
+        usleep(100);
+        if(chip_id == 0){
+            ret = reg->status[slot_id]->c0_load;
+        } else {
+            ret = reg->status[slot_id]->c1_load;
+        }
+        printf_note("load result: %d[id:%d], try_count:%d\n", ret, chip_id, try_count);
+    }while(ret < 0 && try_count++ < 3);
+    
+    return ret;
+}
+
+
 
 //读取板卡信息回复(0x13)
 static inline int _reg_get_board_info(int id, void **args)

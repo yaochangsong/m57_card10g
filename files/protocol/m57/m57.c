@@ -218,17 +218,19 @@ static void _m57_assamble_loadfile_cmd(uint16_t chip_id, uint8_t cmd, uint8_t *b
     *ptr++ = 0xe7;
     *ptr++ = 0xaa;
     *ptr++ = 0x55;
-    *(uint16_t *)ptr++ = ntohs(chip_id);
+    *(uint16_t *)ptr = chip_id;
+    ptr += 2;
     *ptr++ = cmd;
-    *ptr += 5;
+    ptr += 5;
     *ptr++ = 0x7e;
     *ptr++ = 0xe7;
     *ptr++ = 0xaa;
     *ptr++ = 0x55;
     for(int i = 0; i < ptr - ptr2; i++)
-        printfn("%x ", buffer[i]);
+        printfn("%02x ", buffer[i]);
     printfn("\n");
 }
+
 
 static int _m57_start_load_bitfile_to_fpga(uint16_t chip_id)
 {
@@ -237,6 +239,7 @@ static int _m57_start_load_bitfile_to_fpga(uint16_t chip_id)
     ssize_t nwrite;
     
     _ctx = get_spm_ctx();
+    memset(buffer, 0, sizeof(buffer));
     _m57_assamble_loadfile_cmd(chip_id, 0x00, buffer);
     nwrite = _ctx->ops->write_xdma_data(0, buffer, sizeof(buffer));
     printf_note("start write load file cmd to fpga: nwrite: %ld\n", nwrite);
@@ -288,6 +291,7 @@ static int  _m57_stop_load_bitfile_to_fpga(uint16_t chip_id)
     ssize_t nwrite;
     
     _ctx = get_spm_ctx();
+    memset(buffer, 0, sizeof(buffer));
     _m57_assamble_loadfile_cmd(chip_id, 0x01, buffer);
     nwrite = _ctx->ops->write_xdma_data(0, buffer, sizeof(buffer));
     printf_note("stop load fpga bit file, cmdnwrite: %ld\n", nwrite);
@@ -392,7 +396,7 @@ bool m57_execute_cmd(void *client, int *code)
         {
             uint8_t *info;
             int nbyte = 0;
-            nbyte = _reg_get_fpga_info(0, (void **)&info);
+            nbyte = _reg_get_fpga_info(get_fpga_reg(), 0, (void **)&info);
             if(nbyte >= 0){
                 cl->response.data = info;
                 cl->response.response_length = nbyte;
@@ -461,6 +465,10 @@ bool m57_execute_cmd(void *client, int *code)
             _m57_start_load_bitfile_to_fpga(cl->section.chip_id);
             printf_note("Prepare to receive file[len:%u]\n", cl->section.file.len);
                 break;
+        }
+        case CCT_UNLOAD:
+        {
+            break;
         }
         case CCT_FILE_TRANSFER:
         {
@@ -535,7 +543,8 @@ load_file_exit:
                 if(cl->section.is_loadfile_ok){
                     _m57_loading_bitfile_to_fpga(cl->section.file.path);
                     _m57_stop_load_bitfile_to_fpga(cl->section.chip_id);
-                    r_resp->ret = 0; /* ok */
+                    r_resp->ret = _reg_get_load_result(get_fpga_reg(), cl->section.chip_id, NULL);
+                    //r_resp->ret = 0; /* ok */
                 }
                 else
                     r_resp->ret = -1;    /* faild */

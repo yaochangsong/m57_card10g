@@ -300,6 +300,22 @@ static int  _m57_stop_load_bitfile_to_fpga(uint16_t chip_id)
 }
 
 
+static int _m57_start_unload_bitfile_from_fpga(uint16_t chip_id)
+{
+    uint8_t buffer[16];
+    struct spm_context *_ctx;
+    ssize_t nwrite;
+    
+    _ctx = get_spm_ctx();
+    memset(buffer, 0, sizeof(buffer));
+    _m57_assamble_loadfile_cmd(chip_id, 0x02, buffer);
+    nwrite = _ctx->ops->write_xdma_data(0, buffer, sizeof(buffer));
+    printf_note("unload_bitfile from fpga: nwrite: %ld\n", nwrite);
+    
+    return nwrite;
+}
+
+
 
 /*
 功能： 控制协议执行
@@ -441,6 +457,29 @@ bool m57_execute_cmd(void *client, int *code)
             safe_free(info);
             break;
         }
+        case CCT_UNLOAD:
+        {
+            int h_nbyte;
+            struct _resp{
+                int16_t chipid;
+                int32_t ret;
+            }__attribute__ ((packed));
+            uint16_t id;
+            struct _resp *resp;
+            h_nbyte = sizeof(struct _resp);
+            if ((resp = safe_malloc(h_nbyte)) == NULL){
+              printf_err("Unable to malloc response buffer  %ld bytes!",  sizeof(struct _resp));
+              break;
+            }
+            id = (uint16_t*)payload;
+            _m57_start_unload_bitfile_from_fpga(id);
+            resp->chipid = id;
+            resp->ret = _reg_get_unload_result(get_fpga_reg(), id, NULL);
+            cl->response.data = resp;
+            cl->response.response_length = h_nbyte;
+            cl->response.prio = M57_PRIO_URGENT;
+            break;
+        }
         case CCT_LOAD:
         {
             struct load_info *pload;
@@ -464,10 +503,6 @@ bool m57_execute_cmd(void *client, int *code)
             }
             _m57_start_load_bitfile_to_fpga(cl->section.chip_id);
             printf_note("Prepare to receive file[len:%u]\n", cl->section.file.len);
-                break;
-        }
-        case CCT_UNLOAD:
-        {
             break;
         }
         case CCT_FILE_TRANSFER:

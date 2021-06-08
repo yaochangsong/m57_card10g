@@ -273,6 +273,37 @@ static inline int _reg_get_load_result(FPGA_CONFIG_REG *reg, int id, void **args
     return ret;
 }
 
+//卸载命令结果查询回复
+static inline int _reg_get_unload_result(FPGA_CONFIG_REG *reg, int id, void **args)
+{
+    int slot_id = 0, chip_id = 0;
+    int ret = -1, try_count = 0;
+    
+    chip_id = id & 0x0ff;
+    slot_id = (id >> 8) & 0x0f;
+    if(chip_id >= MAX_FPGA_CHIPID_NUM){
+        printf_err("chip id[%d] is bigger than max[%d]\n", chip_id, MAX_FPGA_CHIPID_NUM);
+        return ret;
+    }
+    if(slot_id >= _MAX_CARD_SLOTS_NUM){
+        printf_err("slot id[%d] is bigger than max[%d]\n", slot_id, _MAX_CARD_SLOTS_NUM);
+        return ret;
+    }
+    printf_note("id=%d, chip_id=%d, slot_id=%d\n", id, chip_id, slot_id);
+    do{
+        usleep(100);
+        if(chip_id == 0){
+            ret = reg->status[slot_id]->c0_unload;
+        } else {
+            ret = reg->status[slot_id]->c1_unload;
+        }
+        printf_note("load result: %d[id:%d], try_count:%d\n", ret, chip_id, try_count);
+    }while(ret < 0 && try_count++ < 3);
+    
+    return ret;
+}
+
+
 
 
 //读取板卡信息回复(0x13)

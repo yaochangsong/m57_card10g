@@ -1431,7 +1431,7 @@ void io_set_xdma_disable(int ch, int subch)
 #if defined(SUPPORT_SPECTRUM_KERNEL)
 
 #elif defined(SUPPORT_SPECTRUM_V2)
-    #if defined(SUPPORT_SPECTRUM_XDMA)
+    #if defined(SUPPORT_SPECTRUM_FPGA)
     if((get_spm_ctx()!=NULL) && get_spm_ctx()->ops->stream_stop)
         get_spm_ctx()->ops->stream_stop(ch, subch, XDMA_STREAM);
     #endif

@@ -112,7 +112,7 @@ void fpga_io_init(void)
 
     fd_fpga = open(FPGA_REG_DEV, O_RDWR|O_SYNC);
     if (fd_fpga == -1){
-        printf_warn("%s, open error", FPGA_REG_DEV);
+        printf_warn("%s, open error\n", FPGA_REG_DEV);
         return;
     }
     
@@ -128,7 +128,7 @@ void fpga_io_init(void)
 
 void fpga_io_close(void)
 {
-    fpga_unmemmap(fpga_reg);
+    //fpga_unmemmap(fpga_reg);
     fpga_init_flag = false;
 }
 

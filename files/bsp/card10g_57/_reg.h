@@ -98,7 +98,11 @@ typedef struct _FPGA_CONFIG_REG_
 #define SET_TRIG_TIME(reg,v)			   
 #define SET_TRIG_COUNT(reg,v)			    
 
-#define AUDIO_REG(reg)                      
+#define GET_CURRENT_TIME(reg)			0
+#define GET_CURRENT_COUNT(reg)			0
+
+
+#define AUDIO_REG(reg)                      (void*)0
 
 
 static inline void _set_narrow_channel(FPGA_CONFIG_REG *reg, int ch, int subch, int enable)

@@ -480,9 +480,8 @@ void *spm_init(void)
 #if defined(SUPPORT_SPECTRUM_CHIP)
     spmctx = spm_create_chip_context();
 #elif defined (SUPPORT_SPECTRUM_FPGA)
-    spmctx = spm_create_fpga_context();
-#elif defined (SUPPORT_SPECTRUM_XDMA)
     spmctx = spm_create_xdma_context();
+   // spmctx = spm_create_fpga_context();
 #endif
 
     if(spmctx != NULL){

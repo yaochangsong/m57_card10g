@@ -252,6 +252,136 @@ static void tcp_ustream_read_data_cb(struct ustream *s , int bytes)
 }
 
 
+void net_data_add_client(struct sockaddr_in *addr, int ch, int type)
+{
+#if (defined SUPPORT_DATA_PROTOCAL_TCP)
+    struct net_tcp_server *srv ;
+    struct net_tcp_client *cl_list, *list_tmp;
+    int ret = 0;
+    for(int i = 0; i < get_use_ifname_num(); i++){
+        srv = (struct net_tcp_server *)get_data_server(i, type);
+        if(srv == NULL)
+            continue;
+        list_for_each_entry_safe(cl_list, list_tmp, &srv->clients, list){
+            if(addr->sin_addr.s_addr == cl_list->peer_addr.sin_addr.s_addr &&
+                addr->sin_port == cl_list->peer_addr.sin_port){
+                cl_list->section.type[type] = true;
+                cl_list->section.ch = ch;
+            }
+        }
+    }
+#else
+    udp_add_client_to_list(addr, ch, type);
+#endif
+}
+void net_data_remove_client(struct sockaddr_in *addr, int ch, int type)
+{
+#if (defined SUPPORT_DATA_PROTOCAL_TCP)
+    struct net_tcp_server *srv ;
+    struct net_tcp_client *cl_list, *list_tmp;
+    int ret = 0;
+    for(int i = 0; i < get_use_ifname_num(); i++){
+        srv = (struct net_tcp_server *)get_data_server(i, type);
+        if(srv == NULL)
+            continue;
+        list_for_each_entry_safe(cl_list, list_tmp, &srv->clients, list){
+            if(addr->sin_addr.s_addr == cl_list->peer_addr.sin_addr.s_addr &&
+                addr->sin_port == cl_list->peer_addr.sin_port){
+                cl_list->section.type[type] = false;
+                cl_list->section.ch = ch;
+            }
+        }
+    }
+#else
+    udp_client_delete(addr, type);
+#endif
+}
+static inline int tcp_send_vec_data_to_client(struct net_tcp_client *client, struct iovec *iov, int iov_len)
+{    
+    struct msghdr msgsent;
+    int r=0;
+    if(client == NULL)
+        return -1;
+    msgsent.msg_name = &client->peer_addr;
+    msgsent.msg_namelen = sizeof(client->peer_addr);
+    msgsent.msg_iovlen = iov_len;
+    msgsent.msg_iov = iov;
+    msgsent.msg_control = NULL;
+    msgsent.msg_controllen = 0;
+   // printf_debug("send: %s:%d\n", client->get_peer_addr(client), client->get_peer_port(client));
+    r = sendmsg(client->sfd.fd.fd, &msgsent, 0);
+    if(r < 0){
+        perror("sendmsg");
+    }
+    return 0;
+}
+
+static int tcp_send_data_to_client(int fd, const char *buf, int buflen)
+{
+    ssize_t ret = 0, len;
+
+    if (!buflen)
+        return 0;
+
+    while (buflen) {
+        len = send(fd, buf, buflen, 0);
+
+        if (len < 0) {
+            printf_note("[fd:%d]-send len : %ld, %d[%s]\n", fd, len, errno, strerror(errno));
+            if (errno == EINTR)
+                continue;
+
+            if (errno == EAGAIN || errno == EWOULDBLOCK || errno == ENOTCONN)
+                break;
+
+            return -1;
+        }
+
+        ret += len;
+        buf += len;
+        buflen -= len;
+    }
+    
+    return ret;
+}
+int tcp_send_data(void *data, int len, int type)
+{
+    struct net_tcp_server *srv ;
+    struct net_tcp_client *cl_list, *list_tmp;
+    int ret = 0;
+    for(int i = 0; i < get_use_ifname_num(); i++){
+        srv = (struct net_tcp_server *)get_data_server(i, type);
+        if(srv == NULL)
+            continue;
+        
+        list_for_each_entry_safe(cl_list, list_tmp, &srv->clients, list){
+#ifdef SUPPORT_CLIENT_DATA_DISTRIBUTE
+            if (cl_list->section.type[type] == true)
+#endif
+                tcp_send_data_to_client(cl_list->sfd.fd.fd, data, len);
+        }
+    }
+    return 0;
+}
+int tcp_send_vec_data(struct iovec *iov, int iov_len, int type)
+{
+    struct net_tcp_server *srv ;
+    struct net_tcp_client *cl_list, *list_tmp;
+    int ret = 0;
+    for(int i = 0; i < get_use_ifname_num(); i++){
+        srv = (struct net_tcp_server *)get_data_server(i, type);
+        if(srv == NULL)
+            continue;
+        
+        list_for_each_entry_safe(cl_list, list_tmp, &srv->clients, list){
+#ifdef SUPPORT_CLIENT_DATA_DISTRIBUTE
+            if (cl_list->section.type[type] == true)
+#endif
+                tcp_send_vec_data_to_client(cl_list, iov, iov_len);
+        }
+    }
+    return 0;
+}
 static void tcp_data_accept_cb(struct uloop_fd *fd, unsigned int events)
 {
     struct net_tcp_server *srv = container_of(fd, struct net_tcp_server, fd);
@@ -314,15 +444,40 @@ err:
 
 struct net_tcp_server *tcp_data_server_new(const char *host, int port)
 {
+    #define TCP_SEND_BUF 4*1024*1024
     struct net_tcp_server *srv;
-    int sock;
+    int sock, _err;
     
     sock = usock(USOCK_TCP | USOCK_SERVER | USOCK_IPV4ONLY, host, usock_port(port));
     if (sock < 0) {
         uh_log_err("usock");
         return NULL;
     }
-    printf_debug("sock=%d\n", sock);
+    int opt = 6;
+    _err = setsockopt(sock, SOL_SOCKET, SO_PRIORITY, &opt, sizeof(opt));
+    if(_err){
+        printf_err("setsockopt SO_PRIORITY failure \n");
+    }
+    int defrcvbufsize = -1;
+    int nSnd_buffer = TCP_SEND_BUF;
+    socklen_t optlen = sizeof(defrcvbufsize);
+    if(getsockopt(sock, SOL_SOCKET, SO_SNDBUF, &defrcvbufsize, &optlen) < 0)
+    {
+        printf("getsockopt error\n");
+        return NULL;
+    }
+    printf_info("Current tcp default send buffer size is:%d\n", defrcvbufsize);
+    if(setsockopt(sock, SOL_SOCKET, SO_SNDBUF, &nSnd_buffer, optlen) < 0)
+    {
+        printf("set tcp recive buffer size failed.\n");
+        return NULL;
+    }
+    if(getsockopt(sock, SOL_SOCKET, SO_SNDBUF, &defrcvbufsize, &optlen) < 0)
+    {
+        printf("getsockopt error\n");
+        return NULL;
+    }
+    printf_info("Now set tcp send buffer size to:%dByte\n",defrcvbufsize);
     srv = calloc(1, sizeof(struct net_tcp_server));
     if (!srv) {
         uh_log_err("calloc");

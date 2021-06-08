@@ -258,6 +258,94 @@ static int json_write_file(char *filename, cJSON *root)
     return 0;
 }
 
+static inline bool hxstr_to_int(char *str, int *ivalue, bool(*_check)(int))
+{
+    char *end;
+    int value;
+    
+    if(str == NULL || ivalue == NULL)
+        return false;
+    
+    value = (int) strtol(str, &end, 10);
+    if (str == end){
+        return false;
+    }
+    *ivalue = value;
+    if(*_check == NULL){
+         return true;
+    }
+       
+    return ((*_check)(value));
+}
+
+void write_cmd_port(cJSON* root, char *cport)
+{
+    cJSON* node;
+    cJSON *network = NULL;
+    cJSON* ifname, *port, *value;
+    int iport;
+    
+     if(hxstr_to_int(cport, &iport, NULL) == false)
+        return;
+     
+    network = cJSON_GetObjectItem(root, "network");
+    for(int i = 0; i < cJSON_GetArraySize(network); i++){
+        node = cJSON_GetArrayItem(network, i);
+        ifname = cJSON_GetObjectItem(node, "ifname");
+        if(cJSON_IsString(ifname)){
+            value = cJSON_GetObjectItem(node, "port");
+            if(value != NULL){
+                port = cJSON_GetObjectItem(value, "command");
+                if(cJSON_IsNumber(port)){
+                        port->valuedouble = iport;
+                }
+            }
+        }
+    }
+}
+
+
+void write_data_port(cJSON* root, char *array)
+{
+    cJSON* node;
+    cJSON *network = NULL;
+    cJSON* ifname, *port, *value,*portnode;
+    int iport[8], index = 0;
+    char *key, *brk;
+
+    if(array == NULL || root == NULL)
+        return;
+    
+    for (key = strtok_r(array, ",", &brk), index= 0; key;
+         key = strtok_r(NULL, ",", &brk), index++) {
+         if(hxstr_to_int(key, &iport[index], NULL) == false)
+            continue;
+    }
+    
+    network = cJSON_GetObjectItem(root, "network");
+    for(int i = 0; i < cJSON_GetArraySize(network); i++){
+        node = cJSON_GetArrayItem(network, i);
+        ifname = cJSON_GetObjectItem(node, "ifname");
+        if(cJSON_IsString(ifname)){
+            value = cJSON_GetObjectItem(node, "port");
+            if(value != NULL){
+                port = cJSON_GetObjectItem(value, "data");
+                if(port != NULL){
+                    for(int j = 0; j < cJSON_GetArraySize(port); j++){
+                        if(j >= index)
+                            break;
+                        portnode = cJSON_GetArrayItem(port, j);
+                        if(cJSON_IsNumber(portnode)){
+                                portnode->valuedouble = iport[j];
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+
 
 
 /* xjson -r -f /etc/config.json -n network,ipaddress -v $DEFAULT_IP */
@@ -272,8 +360,9 @@ int main(int argc, char **argv)
     char *file, *nodevaule, *nodestr;
     static cJSON* root_json = NULL;
     int action = 0; /* 0: read, 1:write */
+    char *data_array_port = NULL, *cmd_port = NULL;
 
-    while ((opt = getopt(argc, argv, "rwf:n:v:")) != -1) {
+    while ((opt = getopt(argc, argv, "rwf:n:v:d:c:")) != -1) {
         switch (opt)
         {
             case 'r':
@@ -290,6 +379,12 @@ int main(int argc, char **argv)
                 break;
             case 'v':
                 nodevaule = optarg;
+                break;
+            case 'd': /* data port */
+                data_array_port = optarg;
+                break;
+            case 'c': /* cmd port */
+                cmd_port = optarg;
                 break;
             default: /* '?' */
                 usage(argv[0]);
@@ -308,6 +403,13 @@ int main(int argc, char **argv)
     if(root_json == NULL){
         printf("json read error\n");
         exit(1);
+    }
+    
+    if(data_array_port != NULL || cmd_port != NULL){
+        write_data_port(root_json, data_array_port);
+        write_cmd_port(root_json, cmd_port);
+        json_write_file(file, root_json);
+        exit(0);
     }
 
     char *str_cpy = NULL,*saveptr = NULL, *cur_ptr=NULL;
@@ -344,7 +446,7 @@ int main(int argc, char **argv)
         //json_print(root_json, 1);
         json_write_file(file, root_json);
     }else{  /* read */
-        cJSON *obj = NULL;
+        cJSON *obj = root_json;
         for(i=param_num-2; i>=0; i--){
             if(json_node_buffer[i] == NULL)
                 continue;

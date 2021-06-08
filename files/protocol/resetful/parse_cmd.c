@@ -39,6 +39,7 @@ static struct response_err_code {
     {RESP_CODE_DISK_DETECTED_ERR,           "disk not detected"},
     {RESP_CODE_PATH_PARAM_ERR,              "path parameter error"},
     {RESP_CODE_EXECMD_ERR,                  "execute command error"},
+    {RESP_CODE_EXECMD_REBOOT,               "reboot,waiting..."},
 };
 
 /* 射频参数类型 */
@@ -66,9 +67,13 @@ static const char *const if_types[] = {
     [EX_DEC_BW] = "decBandwidth", 
     [EX_DEC_MID_FREQ] = "decMidFreq", 
     [EX_SMOOTH_TIME] = "smoothTimes", 
+    [EX_SMOOTH_TYPE] = "smoothMode",
+    [EX_SMOOTH_THRE] = "smoothThreshold",
     [EX_AUDIO_SAMPLE_RATE] = "audioSampleRate", 
-    [EX_FFT_SIZE] = "fftPoints", 
+    [EX_FFT_SIZE] = "fftSize", 
+    [EX_RESOLUTION] = "freqResolution",
     [EX_AUDIO_VOL_CTRL] = "audioVolume",
+    [EX_WINDOW_TYPE] = "windowType",
 };
 
 
@@ -547,7 +552,7 @@ int cmd_ch_enable_set(struct uh_client *cl, void **arg, void **content)
         goto error;
     }
 
-    printf_note("enable ch=%d, enable=%d\n", ch, enable);
+    printf_info("enable ch=%d, enable=%d\n", ch, enable);
     poal_config->channel[ch].enable.cid = ch;
     if(!strcmp(s_type, "psd")){
         if(enable)
@@ -698,6 +703,8 @@ int cmd_file_delete(struct uh_client *cl, void **arg, void **content)
     if(ret != 0)
         code = RESP_CODE_EXECMD_ERR;
     error:
+#else
+    filename = filename;
 #endif
     *arg = get_resp_message(code);
     return code;
@@ -828,4 +835,88 @@ int cmd_get_all_info(struct uh_client *cl, void **arg, void **content)
     
     *arg = get_resp_message(code);
     return code;
+}
+
+int cmd_get_selfcheck_info(struct uh_client *cl, void **arg, void **content)
+{
+    int code = RESP_CODE_OK;
+    *content = assemble_json_selfcheck_info();
+    if(*content == NULL)
+        code = RESP_CODE_EXECMD_ERR;
+    
+    *arg = get_resp_message(code);
+    return code;
+}
+
+int cmd_netget(struct uh_client *cl, void **arg, void **content)
+{
+    int code = RESP_CODE_OK;
+    *content = assemble_json_netlist_info();
+    if(*content == NULL)
+        code = RESP_CODE_EXECMD_ERR;
+    
+    *arg = get_resp_message(code);
+    return code;
+}
+
+/* gps: gps授时  irib：irib授时 */
+int cmd_timesource_set(struct uh_client *cl, void **arg, void **content)
+{
+    char *s_value;
+    int code = RESP_CODE_OK;
+
+    s_value = cl->get_restful_var(cl, "value");
+    if(!strcmp(s_value, "gps")){
+        printf_note("timesource: GPS\n");
+    }else if(!strcmp(s_value, "irib")){
+        printf_note("timesource: irib\n");
+    } else
+        code = RESP_CODE_PARSE_ERR;
+
+    *arg = get_resp_message(code);
+    return code;
+}
+
+
+
+int cmd_rf_power_onoff(struct uh_client *cl, void **arg, void **content)
+{
+    char *s_value;
+    int code = RESP_CODE_OK;
+
+    s_value = cl->get_restful_var(cl, "value");
+    if(!strcmp(s_value, "on")){
+        printf_note("RF Power On\n");
+        RF_POWER_ON();
+    }else if(!strcmp(s_value, "off")){
+        printf_note("RF Power Off\n");
+        RF_POWER_OFF();
+    } else
+        code = RESP_CODE_PARSE_ERR;
+
+    *arg = get_resp_message(code);
+    return code;
+}
+
+
+/* AGC  控制模式 0: 分段AGC（默认） 1：整个频段AGC */
+int cmd_rf_agcmode(struct uh_client *cl, void **arg, void **content)
+{
+    struct poal_config *config = &(config_get_config()->oal_config);
+    char *s_value;
+    int code = RESP_CODE_OK;
+
+    s_value = cl->get_restful_var(cl, "value");
+    if(!strcmp(s_value, "1")){
+        printf_note("AGC mode: range ctrl!\n");
+        config->ctrl_para.agc_ctrl_mode = 1;
+    }else if(!strcmp(s_value, "0")){
+        printf_note("AGC mode: segment ctrl!\n");
+        config->ctrl_para.agc_ctrl_mode = 0;
+    } else
+     code = RESP_CODE_PARSE_ERR;
+
+    *arg = get_resp_message(code);
+    return code;
+
 }

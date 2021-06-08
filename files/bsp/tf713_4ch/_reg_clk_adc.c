@@ -198,82 +198,79 @@ void volume_set(intptr_t base,uint8_t dat)//dat 0~100
     i2c_buf_write(base,2,buf);
 };
 
+#define ACLK0_DIV   2
+#define RCLK0_DIV   8
+#define ACLK1_DIV   3
 
-#define RCLK_DIV    4
-#define SCLK_DIVH   0x01
+#define RCLK1_DIV   12
+#define SCLK_DIVH   0x03
 #define SCLK_DIVL   0x00
-#define ACLK_DIV    1
 #define DCLK_TYPE   0x08
-#define SCLK_TYPE   0xa8
-static void hmc_7044_init(volatile char * Spi_synth,uint8_t cs)
+#define SCLK_TYPE   0xb0
+#define	DDS_CS      0
+#define	CLK_CS      1
+#define	ADC0_CS     2
+#define	ADC1_CS     3
+
+static void hmc_7043_init(volatile char * Spi_synth,uint8_t cs)
 {
     printf_note("spi_wrapper begin ......\r\n");
-    spi_wrapper(Spi_synth,0x000, 0x01,cs);//reset
+    spi_wrapper(Spi_synth,0x00, 0x01,cs);//reset
     usleep(50000);
-    spi_wrapper(Spi_synth,0x000, 0x00,cs);//reset
+    spi_wrapper(Spi_synth,0x00, 0x00,cs);//reset
     usleep(50000);
-    //system optimum
-    spi_wrapper(Spi_synth,0x09f, 0x4d,cs);
-    spi_wrapper(Spi_synth,0x0a0, 0xdf,cs);
-    spi_wrapper(Spi_synth,0x0a5, 0x06,cs);
-    spi_wrapper(Spi_synth,0x0a8, 0x06,cs);
-    spi_wrapper(Spi_synth,0x0b0, 0x04,cs);
-    //------------------------------------
-    spi_wrapper(Spi_synth,0x001, 0x60,cs);//noise pri
-    spi_wrapper(Spi_synth,0x002, 0x00,cs);//
-    spi_wrapper(Spi_synth,0x003, 0x04,cs);//eable pll1,,use pll2 2.1g~2.8g high vco disable rf_sync
-    spi_wrapper(Spi_synth,0x004, 0x3a,cs);//0-01,2-23,6-1213
-    spi_wrapper(Spi_synth,0x005, 0x23,cs);////ref0 ref1 active disable rf_sync adn sync
-    //spi_wrapper(Spi_synth,0x006, 0x01,cs);//clear alarm
-    spi_wrapper(Spi_synth,0x007, 0x00,cs);//
-    spi_wrapper(Spi_synth,0x009, 0x00,cs);//
-    spi_wrapper(Spi_synth,0x00a, 0x11,cs);//single end
-    spi_wrapper(Spi_synth,0x00b, 0x07,cs);//
-    spi_wrapper(Spi_synth,0x00c, 0x07,cs);//
-    spi_wrapper(Spi_synth,0x00d, 0x07,cs);//
-    spi_wrapper(Spi_synth,0x00e, 0x07,cs);//
-    spi_wrapper(Spi_synth,0x014, 0x01,cs);//pri 1000
-    spi_wrapper(Spi_synth,0x015, 0x03,cs);//
-    spi_wrapper(Spi_synth,0x016, 0x04,cs);//
-    spi_wrapper(Spi_synth,0x01a, 0x08,cs);//pll1 cap
-    spi_wrapper(Spi_synth,0x01b, 0x18,cs);
-    spi_wrapper(Spi_synth,0x01c, 0x01,cs);//ref0 div
-    spi_wrapper(Spi_synth,0x01d, 0x01,cs);//ref1 div
-    spi_wrapper(Spi_synth,0x01e, 0x01,cs);//ref2 div
-    spi_wrapper(Spi_synth,0x01f, 0x01,cs);//ref3 div
-    spi_wrapper(Spi_synth,0x020, 0x0a,cs);//OSC div
-    spi_wrapper(Spi_synth,0x021, 0x01,cs);//R1 div
-    spi_wrapper(Spi_synth,0x022, 0x00,cs);
-    spi_wrapper(Spi_synth,0x026, 0x0a,cs);//N1 div
-    spi_wrapper(Spi_synth,0x027, 0x00,cs);
-    spi_wrapper(Spi_synth,0x028, 0x0f,cs);
-    spi_wrapper(Spi_synth,0x029, 0x1f,cs);
-    spi_wrapper(Spi_synth,0x031, 0x01,cs);
-    spi_wrapper(Spi_synth,0x032, 0x01,cs);//disable x2
-    spi_wrapper(Spi_synth,0x033, 0x64,cs);//pll2 ref div
-    spi_wrapper(Spi_synth,0x034, 0x00,cs);
-    spi_wrapper(Spi_synth,0x035, 0x00,cs);//pll vco mul
-    spi_wrapper(Spi_synth,0x036, 0x0c,cs);//pll vco mul
-    spi_wrapper(Spi_synth,0x037, 0x0f,cs);//pll2 cap
-    spi_wrapper(Spi_synth,0x038, 0x18,cs);
-
-    spi_wrapper(Spi_synth,0x046, 0x00,cs);//gpi[0] disable
-    spi_wrapper(Spi_synth,0x047, 0x00,cs);//gpi[1] disable
-    spi_wrapper(Spi_synth,0x048, 0x00,cs);//gpi[2] disable
-    spi_wrapper(Spi_synth,0x049, 0x00,cs);//gpi[3] disable
-    spi_wrapper(Spi_synth,0x050, 0x2b,cs);//gpo[0]-ref1 status 2b--lock pll
-    spi_wrapper(Spi_synth,0x051, 0x0f,cs);//gpo[1]-disable     43--active 1
-    spi_wrapper(Spi_synth,0x052, 0x00,cs);//gpo[2]-disable
-    spi_wrapper(Spi_synth,0x053, 0x00,cs);//gpo[3]-disable
-    spi_wrapper(Spi_synth,0x054, 0x01,cs);//sdata tri mode
-    spi_wrapper(Spi_synth,0x05a, 0x07,cs);//0x4--8 pulse,0x7--constinue
-    spi_wrapper(Spi_synth,0x05b, 0x00,cs);//Bypass the retime
-    spi_wrapper(Spi_synth,0x05c, SCLK_DIVL,cs);//sysref lsb cnt
-    spi_wrapper(Spi_synth,0x05d, SCLK_DIVH,cs);//sysref msb cnt
-    spi_wrapper(Spi_synth,0x064, 0x01,cs);//low freq
+    //system default
+    spi_wrapper(Spi_synth,0x98, 0x00,cs);//
+    spi_wrapper(Spi_synth,0x99, 0x00,cs);//
+    // spi_wrapper(Spi_synth,0x9a, 0x00,cs);//
+    // spi_wrapper(Spi_synth,0x9b, 0xaa,cs);//
+    // spi_wrapper(Spi_synth,0x9c, 0xaa,cs);//
+    spi_wrapper(Spi_synth,0x9d, 0xaa,cs);//
+    spi_wrapper(Spi_synth,0x9e, 0xaa,cs);//
+    spi_wrapper(Spi_synth,0x9f, 0x4d,cs);//
+    spi_wrapper(Spi_synth,0xa0, 0xdf,cs);//
+    // spi_wrapper(Spi_synth,0xa1, 0x97,cs);//
+    spi_wrapper(Spi_synth,0xa2, 0x03,cs);//
+    spi_wrapper(Spi_synth,0xa3, 0x00,cs);//
+    spi_wrapper(Spi_synth,0xa4, 0x00,cs);//
+    spi_wrapper(Spi_synth,0xad, 0x00,cs);//
+    // spi_wrapper(Spi_synth,0xae, 0x08,cs);//
+    // spi_wrapper(Spi_synth,0xaf, 0x50,cs);//
+    // spi_wrapper(Spi_synth,0xb0, 0x04,cs);//
+    // spi_wrapper(Spi_synth,0xb1, 0x0d,cs);//
+    // spi_wrapper(Spi_synth,0xb2, 0x00,cs);//
+    // spi_wrapper(Spi_synth,0xb3, 0x00,cs);//
+    spi_wrapper(Spi_synth,0xb5, 0x00,cs);//
+    spi_wrapper(Spi_synth,0xb6, 0x00,cs);//
+    spi_wrapper(Spi_synth,0xb7, 0x00,cs);//
+    spi_wrapper(Spi_synth,0xb8, 0x00,cs);//
+     //-----------------------------------
+    spi_wrapper(Spi_synth,0x01, 0x40,cs);//noise pri
+    spi_wrapper(Spi_synth,0x02, 0x00,cs);//
+    spi_wrapper(Spi_synth,0x03, 0x14,cs);//if rfsync not use should be disable
+    spi_wrapper(Spi_synth,0x04, 0x7f,cs);//0-01,2-23,6-1213
+    spi_wrapper(Spi_synth,0x06, 0x00,cs);//
+    spi_wrapper(Spi_synth,0x07, 0x00,cs);//
+    spi_wrapper(Spi_synth,0x0a, 0x07,cs);//noise pri
+    spi_wrapper(Spi_synth,0x0b, 0x07,cs);//
+    spi_wrapper(Spi_synth,0x46, 0x00,cs);//
+    spi_wrapper(Spi_synth,0x50, 0x0e,cs);//
+    spi_wrapper(Spi_synth,0x54, 0x03,cs);//
+    spi_wrapper(Spi_synth,0x5a, 0x04,cs);//0x4--8 pulse,0x7--constinue
+    spi_wrapper(Spi_synth,0x5b, 0x04,cs);//
+    spi_wrapper(Spi_synth,0x5c, SCLK_DIVL,cs);//sysref lsb cnt
+    spi_wrapper(Spi_synth,0x5d, SCLK_DIVH,cs);//sysref msb cnt
+    spi_wrapper(Spi_synth,0x64, 0x00,cs);//low freq
+    spi_wrapper(Spi_synth,0x65, 0x00,cs);//
+    spi_wrapper(Spi_synth,0x71, 0x16,cs);//16
+    spi_wrapper(Spi_synth,0x78, 0x01,cs);//
+    spi_wrapper(Spi_synth,0x79, 0x02,cs);//
+    spi_wrapper(Spi_synth,0x7a, 0x03,cs);//
+    spi_wrapper(Spi_synth,0x7d, 0x04,cs);//
+    spi_wrapper(Spi_synth,0x91, 0x05,cs);//
      //channel 0
     spi_wrapper(Spi_synth,0x0c8, 0xd1,cs);//channel 0 config
-    spi_wrapper(Spi_synth,0x0c9, RCLK_DIV,cs);//div lsb
+    spi_wrapper(Spi_synth,0x0c9, ACLK0_DIV,cs);//div lsb
     spi_wrapper(Spi_synth,0x0ca, 0x00,cs);//div msb
     spi_wrapper(Spi_synth,0x0cb, 0x00,cs);//fine_delay
     spi_wrapper(Spi_synth,0x0cc, 0x00,cs);//coarse_delay
@@ -293,7 +290,7 @@ static void hmc_7044_init(volatile char * Spi_synth,uint8_t cs)
     spi_wrapper(Spi_synth,0x0da, SCLK_TYPE,cs);//[4:3]00-cml,01-lvpecl,10-lvds,11-cmos; [1:0]00-0, 01-100,11-50
      //channel 2
     spi_wrapper(Spi_synth,0x0dc, 0xd1,cs);//channel 2 config
-    spi_wrapper(Spi_synth,0x0dd, ACLK_DIV,cs);//div lsb
+    spi_wrapper(Spi_synth,0x0dd, ACLK1_DIV,cs);//div lsb
     spi_wrapper(Spi_synth,0x0de, 0x00,cs);//div msb
     spi_wrapper(Spi_synth,0x0df, 0x00,cs);//fine_delay
     spi_wrapper(Spi_synth,0x0e0, 0x00,cs);//coarse_delay
@@ -313,7 +310,7 @@ static void hmc_7044_init(volatile char * Spi_synth,uint8_t cs)
     spi_wrapper(Spi_synth,0x0ee, SCLK_TYPE,cs);//[4:3]00-cml,01-lvpecl,10-lvds,11-cmos; [1:0]00-0, 01-100,11-50
      //channel 4
     spi_wrapper(Spi_synth,0x0f0, 0xd1,cs);//channel 4 config
-    spi_wrapper(Spi_synth,0x0f1, RCLK_DIV,cs);//div lsb
+    spi_wrapper(Spi_synth,0x0f1, RCLK1_DIV,cs);//div lsb
     spi_wrapper(Spi_synth,0x0f2, 0x00,cs);//div msb
     spi_wrapper(Spi_synth,0x0f3, 0x00,cs);//fine_delay
     spi_wrapper(Spi_synth,0x0f4, 0x00,cs);//coarse_delay
@@ -333,7 +330,7 @@ static void hmc_7044_init(volatile char * Spi_synth,uint8_t cs)
     spi_wrapper(Spi_synth,0x102, SCLK_TYPE,cs);//[4:3]00-cml,01-lvpecl,10-lvds,11-cmos; [1:0]00-0, 01-100,11-50
     //channel 6
     spi_wrapper(Spi_synth,0x104, 0xd1,cs);//channel 6 config
-    spi_wrapper(Spi_synth,0x105, RCLK_DIV,cs);//div lsb
+    spi_wrapper(Spi_synth,0x105, RCLK1_DIV,cs);//div lsb
     spi_wrapper(Spi_synth,0x106, 0x00,cs);//div msb
     spi_wrapper(Spi_synth,0x107, 0x00,cs);//fine_delay
     spi_wrapper(Spi_synth,0x108, 0x00,cs);//coarse_delay
@@ -350,10 +347,10 @@ static void hmc_7044_init(volatile char * Spi_synth,uint8_t cs)
     spi_wrapper(Spi_synth,0x113, 0x00,cs);//mslip_lsb
     spi_wrapper(Spi_synth,0x114, 0x00,cs);//mslip_msb
     spi_wrapper(Spi_synth,0x115, 0x00,cs);//[1:0]00-divider,01-analog,10-other,11-input
-    spi_wrapper(Spi_synth,0x116, 0xb0,cs);//[4:3]00-cml,01-lvpecl,10-lvds,11-cmos; [1:0]00-0, 01-100,11-50
-    //channel 8
-    spi_wrapper(Spi_synth,0x118, 0xd1,cs);//channel 8 config
-    spi_wrapper(Spi_synth,0x119, RCLK_DIV,cs);//div lsb
+    spi_wrapper(Spi_synth,0x116, SCLK_TYPE,cs);//[4:3]00-cml,01-lvpecl,10-lvds,11-cmos; [1:0]00-0, 01-100,11-50
+    //channel 8 none
+    spi_wrapper(Spi_synth,0x118, 0xd1&0xfe,cs);//channel 8 config
+    spi_wrapper(Spi_synth,0x119, RCLK0_DIV,cs);//div lsb
     spi_wrapper(Spi_synth,0x11a, 0x00,cs);//div msb
     spi_wrapper(Spi_synth,0x11b, 0x00,cs);//fine_delay
     spi_wrapper(Spi_synth,0x11c, 0x00,cs);//coarse_delay
@@ -362,7 +359,7 @@ static void hmc_7044_init(volatile char * Spi_synth,uint8_t cs)
     spi_wrapper(Spi_synth,0x11f, 0x00,cs);//[1:0]00-divider,01-analog,10-other,11-input
     spi_wrapper(Spi_synth,0x120, DCLK_TYPE,cs);//[4:3]00-cml,01-lvpecl,10-lvds,11-cmos; [1:0]00-0, 01-100,11-50
     //channel 9
-    spi_wrapper(Spi_synth,0x122, 0x5d,cs);//channel 9 config
+    spi_wrapper(Spi_synth,0x122, 0x5d&0xfe,cs);//channel 9 config
     spi_wrapper(Spi_synth,0x123, SCLK_DIVL,cs);//div lsb
     spi_wrapper(Spi_synth,0x124, SCLK_DIVH,cs);//div msb
     spi_wrapper(Spi_synth,0x125, 0x00,cs);//fine_delay
@@ -373,7 +370,7 @@ static void hmc_7044_init(volatile char * Spi_synth,uint8_t cs)
     spi_wrapper(Spi_synth,0x12a, SCLK_TYPE,cs);////[4:3]00-cml,01-lvpecl,10-lvds,11-cmos; [1:0]00-0, 01-100,11-50
     //channel 10
     spi_wrapper(Spi_synth,0x12c, 0xd1,cs);//channel 10 config
-    spi_wrapper(Spi_synth,0x12d, RCLK_DIV,cs);//div lsb
+    spi_wrapper(Spi_synth,0x12d, RCLK0_DIV,cs);//div lsb
     spi_wrapper(Spi_synth,0x12e, 0x00,cs);//div msb
     spi_wrapper(Spi_synth,0x12f, 0x00,cs);//fine_delay
     spi_wrapper(Spi_synth,0x130, 0x00,cs);//coarse_delay
@@ -382,7 +379,7 @@ static void hmc_7044_init(volatile char * Spi_synth,uint8_t cs)
     spi_wrapper(Spi_synth,0x133, 0x00,cs);//[1:0]00-divider,01-analog,10-other,11-input
     spi_wrapper(Spi_synth,0x134, DCLK_TYPE,cs);////[4:3]00-cml,01-lvpecl,10-lvds,11-cmos; [1:0]00-0, 01-100,11-50
     //channel 11
-    spi_wrapper(Spi_synth,0x136, 0x5d,cs);//channel 11 config
+    spi_wrapper(Spi_synth,0x136, 0x5d&0xfe,cs);//channel 11 config
     spi_wrapper(Spi_synth,0x137, SCLK_DIVL,cs);//div lsb
     spi_wrapper(Spi_synth,0x138, SCLK_DIVH,cs);//div msb
     spi_wrapper(Spi_synth,0x139, 0x00,cs);//fine_delay
@@ -393,7 +390,7 @@ static void hmc_7044_init(volatile char * Spi_synth,uint8_t cs)
     spi_wrapper(Spi_synth,0x13e, SCLK_TYPE,cs);////[4:3]00-cml,01-lvpecl,10-lvds,11-cmos; [1:0]00-0, 01-100,11-50
     //channel 12
     spi_wrapper(Spi_synth,0x140, 0xd1,cs);//channel 12 config
-    spi_wrapper(Spi_synth,0x141, RCLK_DIV,cs);//div lsb
+    spi_wrapper(Spi_synth,0x141, RCLK1_DIV,cs);//div lsb
     spi_wrapper(Spi_synth,0x142, 0x00,cs);//div msb
     spi_wrapper(Spi_synth,0x143, 0x00,cs);//fine_delay
     spi_wrapper(Spi_synth,0x144, 0x00,cs);//coarse_delay
@@ -402,7 +399,7 @@ static void hmc_7044_init(volatile char * Spi_synth,uint8_t cs)
     spi_wrapper(Spi_synth,0x147, 0x00,cs);//[1:0]00-divider,01-analog,10-other,11-input
     spi_wrapper(Spi_synth,0x148, DCLK_TYPE,cs);////[4:3]00-cml,01-lvpecl,10-lvds,11-cmos; [1:0]00-0, 01-100,11-50
     //channel 13
-    spi_wrapper(Spi_synth,0x14a, 0x5d,cs);//channel 13 config
+    spi_wrapper(Spi_synth,0x14a, 0x5d&0xfe,cs);//channel 13 config
     spi_wrapper(Spi_synth,0x14b, SCLK_DIVL,cs);//div lsb
     spi_wrapper(Spi_synth,0x14c, SCLK_DIVH,cs);//div msb
     spi_wrapper(Spi_synth,0x14d, 0x00,cs);//fine_delay
@@ -420,23 +417,82 @@ static void hmc_7044_init(volatile char * Spi_synth,uint8_t cs)
 };
 
 
-static void hmc7044_generate_sync(char *Spi_synth,uint8_t cs)
+static void hmc7043_generate_sync(char *Spi_synth,uint8_t cs)
 {
     spi_wrapper(Spi_synth,0x01, 0x44,cs);//request pluse gen
     spi_wrapper(Spi_synth,0x01, 0x40,cs);
-    printf_note("gen pluse \r\n");
 }
 
-void ad_9680_ddc_5g_int(volatile char *Spi_synth,uint8_t cs)
+uint8_t spi_24bit_wrapper(volatile char * base,uint8_t addr,uint32_t data,uint8_t cs)
+{
+    uint8_t snd_buf[5];
+    uint8_t rcv_buf[5];
+    uint8_t slave_cs;
+    snd_buf[0] = addr;
+    snd_buf[1] = *((uint8_t *)(&data)+1);
+    snd_buf[2] = *((uint8_t *)(&data)+0);
+    slave_cs = cs & 0x0f;
+    apb_spi_setcs(base, slave_cs);
+    apb_spi_write(base, snd_buf, rcv_buf, 3);
+    apb_spi_setcs(base, 0x07);
+    return rcv_buf[2];
+}
+
+void lmx2582_3686MHz_init(volatile char * Spi_synth,uint8_t cs)
+{
+	spi_24bit_wrapper(Spi_synth,0x00,0x0002,cs);//reset
+    usleep(100);
+    spi_24bit_wrapper(Spi_synth,0x40,0x0077,cs);
+    spi_24bit_wrapper(Spi_synth,0x3E,0x0000,cs);
+    spi_24bit_wrapper(Spi_synth,0x3D,0x0001,cs);
+    spi_24bit_wrapper(Spi_synth,0x3B,0x0000,cs);
+    spi_24bit_wrapper(Spi_synth,0x30,0x03FC,cs);
+    spi_24bit_wrapper(Spi_synth,0x2F,0x00CF,cs);
+    spi_24bit_wrapper(Spi_synth,0x2E,0x3FA3,cs);
+    spi_24bit_wrapper(Spi_synth,0x2D,0x0050,cs);
+    spi_24bit_wrapper(Spi_synth,0x2C,0x0000,cs);
+    spi_24bit_wrapper(Spi_synth,0x2B,0x0000,cs);
+    spi_24bit_wrapper(Spi_synth,0x2A,0x0000,cs);
+    spi_24bit_wrapper(Spi_synth,0x29,0x00FA,cs);
+    spi_24bit_wrapper(Spi_synth,0x28,0x0000,cs);
+    spi_24bit_wrapper(Spi_synth,0x27,0x8204,cs);
+    spi_24bit_wrapper(Spi_synth,0x26,0x0170,cs);
+    spi_24bit_wrapper(Spi_synth,0x25,0x4000,cs);
+    spi_24bit_wrapper(Spi_synth,0x24,0x0C10,cs);
+    spi_24bit_wrapper(Spi_synth,0x23,0x001B,cs);
+    spi_24bit_wrapper(Spi_synth,0x22,0xC3EA,cs);
+    spi_24bit_wrapper(Spi_synth,0x21,0x2A0A,cs);
+    spi_24bit_wrapper(Spi_synth,0x20,0x210A,cs);
+    spi_24bit_wrapper(Spi_synth,0x1F,0x0601,cs);
+    spi_24bit_wrapper(Spi_synth,0x1E,0x0034,cs);
+    spi_24bit_wrapper(Spi_synth,0x1D,0x0084,cs);
+    spi_24bit_wrapper(Spi_synth,0x1C,0x2924,cs);
+    spi_24bit_wrapper(Spi_synth,0x19,0x0000,cs);
+    spi_24bit_wrapper(Spi_synth,0x18,0x0509,cs);
+    spi_24bit_wrapper(Spi_synth,0x17,0x8842,cs);
+    spi_24bit_wrapper(Spi_synth,0x16,0x2300,cs);
+    spi_24bit_wrapper(Spi_synth,0x14,0x012C,cs);
+    spi_24bit_wrapper(Spi_synth,0x13,0x0965,cs);
+    spi_24bit_wrapper(Spi_synth,0x0E,0x018C,cs);
+    spi_24bit_wrapper(Spi_synth,0x0D,0x4000,cs);
+    spi_24bit_wrapper(Spi_synth,0x0C,0x7001,cs);
+    spi_24bit_wrapper(Spi_synth,0x0B,0x0018,cs);
+    spi_24bit_wrapper(Spi_synth,0x0A,0x10D8,cs);
+    spi_24bit_wrapper(Spi_synth,0x09,0x0302,cs);
+    spi_24bit_wrapper(Spi_synth,0x08,0x1084,cs);
+    spi_24bit_wrapper(Spi_synth,0x07,0x28B2,cs);
+    spi_24bit_wrapper(Spi_synth,0x04,0x1943,cs);
+    spi_24bit_wrapper(Spi_synth,0x02,0x0500,cs);
+    spi_24bit_wrapper(Spi_synth,0x01,0x0808,cs);
+    spi_24bit_wrapper(Spi_synth,0x00,0x221c,cs);//vco cal
+    usleep(100);
+};
+void ad_9680_ddc_6g_int(volatile char *Spi_synth,uint8_t cs)
 {
     printf_note("%s......\r\n",__FUNCTION__);
     spi_wrapper(Spi_synth, 0x000,0x81,cs);
     usleep(10000);
     spi_wrapper(Spi_synth, 0x000,0x00,cs);
-    spi_wrapper(Spi_synth, 0x008,0x03,cs);
-    spi_wrapper(Spi_synth, 0x03f,0x80,cs);
-    spi_wrapper(Spi_synth, 0x040,0xbf,cs);
-    spi_wrapper(Spi_synth, 0x571,0x15,cs);
     spi_wrapper(Spi_synth, 0x018,0x40,cs);
     spi_wrapper(Spi_synth, 0x019,0x50,cs);
     spi_wrapper(Spi_synth, 0x01a,0x09,cs);
@@ -444,27 +500,78 @@ void ad_9680_ddc_5g_int(volatile char *Spi_synth,uint8_t cs)
     spi_wrapper(Spi_synth, 0x935,0x04,cs);
     spi_wrapper(Spi_synth, 0x025,0x0a,cs);
     spi_wrapper(Spi_synth, 0x030,0x18,cs);
+    spi_wrapper(Spi_synth, 0x016,0x0e,cs);//400 temination
     spi_wrapper(Spi_synth, 0x934,0x1f,cs);
-    spi_wrapper(Spi_synth, 0x016,0x00,cs);   
+    spi_wrapper(Spi_synth, 0x228,0x00,cs);//offset
+    spi_wrapper(Spi_synth, 0x008,0x03,cs);
+    spi_wrapper(Spi_synth, 0x03f,0x80,cs);
+    spi_wrapper(Spi_synth, 0x040,0xbf,cs);
+    spi_wrapper(Spi_synth, 0x571,0x15,cs);
     spi_wrapper(Spi_synth, 0x200,0x02,cs);//ddc0 & ddc1
-    spi_wrapper(Spi_synth, 0x201,0x01,cs);//dec 2
+    spi_wrapper(Spi_synth, 0x201,0x02,cs);//dec 2
 //----ddc0 mode
-    spi_wrapper(Spi_synth, 0x310,0x43,cs);//test mode and dec 2 == 0x33 03
-    spi_wrapper(Spi_synth, 0x311,0x05,cs);//ddc0 a
-    spi_wrapper(Spi_synth, 0x314,0x00,cs);//nco0 f/fs*4096
-    spi_wrapper(Spi_synth, 0x315,0x0c,cs);//nco0 f/fs*4096
+    spi_wrapper(Spi_synth, 0x310,0x40,cs);//test mode and dec 2 == 0x33
+    spi_wrapper(Spi_synth, 0x311,0x00,cs);//ddc0 a
+    spi_wrapper(Spi_synth, 0x314,0x49,cs);//nco0 f/fs*4096
+    spi_wrapper(Spi_synth, 0x315,0x0a,cs);//nco0 f/fs*4096
     spi_wrapper(Spi_synth, 0x320,0x00,cs);//nco0 phase
     spi_wrapper(Spi_synth, 0x321,0x00,cs);
 //----ddc1 mode
-    spi_wrapper(Spi_synth, 0x330,0x43,cs);// 03
-    spi_wrapper(Spi_synth, 0x331,0x00,cs);//ddc1 b
-    spi_wrapper(Spi_synth, 0x334,0x00,cs);//nco1 f/fs*4096
+    spi_wrapper(Spi_synth, 0x330,0x40,cs);
+    spi_wrapper(Spi_synth, 0x331,0x05,cs);//ddc1 b
+    spi_wrapper(Spi_synth, 0x334,0x48,cs);//nco1 f/fs*4096
+    spi_wrapper(Spi_synth, 0x335,0x0d,cs);//nco1 f/fs*4096
+    spi_wrapper(Spi_synth, 0x340,0x00,cs);//nco1 phase
+    spi_wrapper(Spi_synth, 0x341,0x00,cs);
+
+    spi_wrapper(Spi_synth, 0x570,0x52,cs);//5Gbps
+    spi_wrapper(Spi_synth, 0x56e,0x10,cs);//serial line rate less than 6.25Gbps
+    //spi_wrapper(Spi_synth, 0x550,0x0f,cs);
+    spi_wrapper(Spi_synth, 0x58b,0x03,cs);
+    spi_wrapper(Spi_synth, 0x120,0x02,cs);//constinuous
+    spi_wrapper(Spi_synth, 0x121,0x00,cs);
+    spi_wrapper(Spi_synth, 0x300,0x01,cs);
+    spi_wrapper(Spi_synth, 0x001,0x02,cs);
+    spi_wrapper(Spi_synth, 0x571,0x14,cs);
+}
+void ad_9680_ddc_9g_int(volatile char * Spi_synth,uint8_t cs)
+{
+    spi_wrapper(Spi_synth, 0x000,0x81,cs);
+    usleep(10000);
+    spi_wrapper(Spi_synth, 0x000,0x00,cs);
+    spi_wrapper(Spi_synth, 0x018,0x40,cs);
+    spi_wrapper(Spi_synth, 0x019,0x50,cs);
+    spi_wrapper(Spi_synth, 0x01a,0x09,cs);
+    spi_wrapper(Spi_synth, 0x11a,0x00,cs);
+    spi_wrapper(Spi_synth, 0x935,0x04,cs);
+    spi_wrapper(Spi_synth, 0x025,0x0a,cs);
+    spi_wrapper(Spi_synth, 0x030,0x18,cs);
+    spi_wrapper(Spi_synth, 0x016,0x0e,cs);//400 temination
+    spi_wrapper(Spi_synth, 0x934,0x1f,cs);
+    spi_wrapper(Spi_synth, 0x228,0x00,cs);//offset
+    spi_wrapper(Spi_synth, 0x008,0x03,cs);
+    spi_wrapper(Spi_synth, 0x03f,0x80,cs);
+    spi_wrapper(Spi_synth, 0x040,0xbf,cs);
+    spi_wrapper(Spi_synth, 0x571,0x15,cs);
+    spi_wrapper(Spi_synth, 0x200,0x02,cs);//ddc0 & ddc1
+    spi_wrapper(Spi_synth, 0x201,0x02,cs);//dec 2
+//----ddc0 mode
+    spi_wrapper(Spi_synth, 0x310,0x40,cs);//test mode and dec 2 == 0x33
+    spi_wrapper(Spi_synth, 0x311,0x00,cs);//ddc0 a
+    spi_wrapper(Spi_synth, 0x314,0xdd,cs);//nco0 f/fs*4096
+    spi_wrapper(Spi_synth, 0x315,0x02,cs);//nco0 f/fs*4096
+    spi_wrapper(Spi_synth, 0x320,0x00,cs);//nco0 phase
+    spi_wrapper(Spi_synth, 0x321,0x00,cs);
+//----ddc1 mode
+    spi_wrapper(Spi_synth, 0x330,0x40,cs);
+    spi_wrapper(Spi_synth, 0x331,0x05,cs);//ddc1 b
+    spi_wrapper(Spi_synth, 0x334,0xdc,cs);//nco1 f/fs*4096
     spi_wrapper(Spi_synth, 0x335,0x04,cs);//nco1 f/fs*4096
     spi_wrapper(Spi_synth, 0x340,0x00,cs);//nco1 phase
     spi_wrapper(Spi_synth, 0x341,0x00,cs);
 
-    spi_wrapper(Spi_synth, 0x570,0x91,cs);//5Gbps
-    spi_wrapper(Spi_synth, 0x56e,0x10,cs);//serial line rate less than 6.25Gbps
+    spi_wrapper(Spi_synth, 0x570,0x52,cs);//5Gbps
+    spi_wrapper(Spi_synth, 0x56e,0x00,cs);//serial line rate less than 6.25Gbps
     //spi_wrapper(Spi_synth, 0x550,0x0f,cs);
     spi_wrapper(Spi_synth, 0x58b,0x03,cs);
     spi_wrapper(Spi_synth, 0x120,0x02,cs);//constinuous
@@ -559,16 +666,22 @@ static int clock_adc_fpga_init(void)
         return -1;
     }
 
+    dds_reset_set(ca_ctx.vir_addr,1);
+    usleep(10000);
+    lmx2582_3686MHz_init(ca_ctx.vir_addr,0);
+    usleep(10000);
     clock_reset_set(ca_ctx.vir_addr,1);
     usleep(10000);
-    hmc_7044_init(ca_ctx.vir_addr,0);
+    hmc_7043_init(ca_ctx.vir_addr,CLK_CS);
     usleep(10000);
     adc_reset_set(ca_ctx.vir_addr,1);
-    ad_9680_ddc_5g_int(ca_ctx.vir_addr,1);
+    usleep(10000);
+	ad_9680_ddc_9g_int(ca_ctx.vir_addr,ADC0_CS);
+    ad_9680_ddc_6g_int(ca_ctx.vir_addr,ADC1_CS);
     usleep(10000);
     logic_reset_set(ca_ctx.vir_addr,1);
     usleep(10000);
-    hmc7044_generate_sync(ca_ctx.vir_addr,0);
+    hmc7043_generate_sync(ca_ctx.vir_addr,CLK_CS);
     usleep(10000);
     return 0;
 }

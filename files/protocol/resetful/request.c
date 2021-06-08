@@ -62,6 +62,7 @@ static struct request_info http_req_cmd[] = {
     {"POST",    "/rf/@ch",                              -1,                cmd_rf_multi_value_set},
     /* 网络参数 */
     {"POST",    "/net",                                 -1,                cmd_netset},
+    {"GET",     "/net",                                 -1,                cmd_netget},
     {"POST",    "/net/@ch/client",                      -1,                cmd_net_client},
     {"POST",    "/net/@ch/client/@type",                -1,                cmd_net_client_type},
     /* 使能控制 */
@@ -72,7 +73,11 @@ static struct request_info http_req_cmd[] = {
     /* 状态 */
     {"GET",     "/status/device/softversion",           -1,                cmd_get_softversion},
     {"GET",     "/status/device/fpgaInfo",              -1,                cmd_get_fpga_info},
-    {"GET",     "/status/device/all",                   -1,                cmd_get_all_info}
+    {"GET",     "/status/device/all",                   -1,                cmd_get_all_info},
+    {"GET",     "/status/device/selfcheckInfo",         -1,                cmd_get_selfcheck_info},
+    {"PUT",     "/timesource/@value",                   -1,                cmd_timesource_set},
+    {"PUT",     "/rf/power/@value",                     -1,                cmd_rf_power_onoff},
+    {"PUT",     "/rf/agcCtrlMode/@value",               -1,                cmd_rf_agcmode},
 };
 
 #define URL_SEPARATOR "/"
@@ -244,11 +249,16 @@ int http_on_request(struct uh_client *cl)
             if(http_req_cmd[i].dispatch_cmd == -1){
                  if(http_req_cmd[i].action){
                     ret = http_req_cmd[i].action(cl, (void **)&err_msg, (void **)&content);
-                    printf_note("action result: %d, %s\n", ret, err_msg);
+                    printf_info("action result: %d, %s\n", ret, err_msg);
                     if(err_msg){
                         cl->send_json(cl, ret, err_msg, content);
+                        if(RESP_CODE_EXECMD_REBOOT == ret){
+                            printf_warn("Platform Exit, Wait Reboot For Watchdog!\n");
+                            exit(0);
+                        }
                     }
                  }
+                 cl->update_keepalive(cl);
                  return UH_REQUEST_DONE;
             }else{
                 cl->dispatch.cmd = http_req_cmd[i].dispatch_cmd;

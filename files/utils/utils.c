@@ -117,6 +117,7 @@ int get_gateway(char *ifname, struct in_addr * gw)
     char iface[IF_NAMESIZE];
     char buf[256];
     FILE * file;
+    int ret = -1;
     struct sockaddr_in sin;
    // char *temp_gw = NULL;
     
@@ -138,17 +139,18 @@ int get_gateway(char *ifname, struct in_addr * gw)
                     //*gw = sin.sin_addr;
                     memcpy(gw, &sin.sin_addr, sizeof(struct in_addr));
                     //fprintf(stdout, "gateway: %s\n", temp_gw);
+                    ret = 0;
+                    goto exit;
                 }
-                fclose(file);
-                return 0;
             }
         }
     }
 
+exit:
     /* default route not found */
     if (file)
         fclose(file);
-    return -1;
+    return ret;
 }
 
 #include  <linux/ethtool.h>
@@ -234,7 +236,7 @@ struct ethtool_cmd {
        return -2;
    }
    close(fd);
-   printf_note("%s Speed: %dMb\n", ifname , ep.speed);
+   printf_debug("%s Speed: %dMb\n", ifname , ep.speed);
     return ep.speed;
 }
 
@@ -446,6 +448,31 @@ int read_file(void *pdata, unsigned int data_len, char *filename)
     return 0;
 }
 
+
+ssize_t read_file_whole(void *pdata, char *filename)
+{
+        
+    FILE *file;
+    size_t fsize;
+   // unsigned int *pdata_offset;
+
+    if(pdata == NULL){
+        return -1;
+    }
+
+    file = fopen(filename, "r");
+    if(!file){
+        printf("Open file error!\n");
+        return -1;
+    }
+    fseek(file, 0, SEEK_END);
+    fsize = ftell(file);
+    rewind(file);
+    fread(pdata,1, fsize, file);
+    fclose(file);
+
+    return fsize;
+}
 void* safe_malloc(size_t size) {
 
     void* result = malloc(size);
@@ -685,6 +712,7 @@ typedef enum {
     OBadOption,
     OBuildName,
     OBuildId,
+    OJobUrl,
     OGitUrl,
     OGitBranch,
     ORelease,
@@ -696,6 +724,7 @@ static const struct {
 } compile_name[] = {
     {"BUILD_NAME", OBuildName},
     {"BUILD_ID", OBuildId},
+    {"JOB_URL", OJobUrl},
     {"GIT_URL", OGitUrl},
     {"GIT_BRANCH", OGitBranch},
     {"RELEASE", ORelease},
@@ -754,7 +783,7 @@ struct poal_compile_Info *open_compile_info(const char *filename)
 
         if(p1 && p1[0] != '\0'){
             if((strncmp(s, "#", 1)) != 0){
-                printf_note("Parsing token: %s, value: %s\n", s, p1);
+                printf_info("Parsing token: %s, value: %s\n", s, p1);
                 opcode = parse_token(s, filename, linenum);
 
                 switch(opcode){
@@ -766,6 +795,9 @@ struct poal_compile_Info *open_compile_info(const char *filename)
                         break;
                     case OGitUrl:
                         c_info.code_url= safe_strdup(p1);
+                        break;
+                    case OJobUrl:
+                        c_info.build_jenkins_url = safe_strdup(p1);
                         break;
                     case OGitBranch:
                         c_info.code_branch= safe_strdup(p1);
@@ -847,11 +879,20 @@ char *get_version(void)
 }
 char *get_version_string(void)
 {
+    struct poal_compile_Info *pinfo;
+    pinfo = (struct poal_compile_Info *)get_compile_info();
+    char *debug = NULL;
+    if(pinfo && pinfo->release_debug){
+        debug = pinfo->release_debug;
+    }
+    if(debug == NULL){
+        debug = "debug";
+    }
    static char version[256]={0};
    #ifdef VERSION_TAG
-   snprintf(version, sizeof(version), "%s_%s(%s-%s)-%s", get_version(),get_jenkins_version(), get_build_time(), __TIME__,VERSION_TAG);
+    snprintf(version, sizeof(version), "%s_%s(%s-%s)-%s", get_version(),debug, get_build_time(), __TIME__,VERSION_TAG);
    #else
-   snprintf(version, sizeof(version), "%s_%s(%s-%s)", get_version(),get_jenkins_version(), get_build_time(), __TIME__);
+    snprintf(version, sizeof(version), "%s_%s(%s-%s)", get_version(),debug, get_build_time(), __TIME__);
    #endif
    printf_debug("%s\n", version);
    return version;

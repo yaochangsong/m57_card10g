@@ -76,6 +76,9 @@ extern int config_set_gateway(char *ifname, uint32_t gateway);
 extern int config_get_if_nametoindex(char *ifname);
 extern char *config_get_if_indextoname(int index);
 extern uint32_t config_get_resolution_by_fft(uint32_t fftsize);
+extern uint32_t config_get_fft_by_resolution(uint32_t resolution);
+extern bool config_is_temperature_warning(int16_t temperature);
+extern uint16_t *config_get_fft_window_data(int type, size_t *fsize);
 
 #endif
 

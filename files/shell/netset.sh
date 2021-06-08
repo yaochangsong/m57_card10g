@@ -6,6 +6,13 @@
 #netset.sh get_gw eth0 
 interface=/etc/network/interfaces 
 
+MOUNT_DIR="/mnt"
+#配置是否有独立分区
+is_mount=$(mount |grep $MOUNT_DIR|grep -v grep|wc -l)
+if [ $is_mount -ne 0 ];
+then
+	interface=/$MOUNT_DIR/network/interfaces 
+fi
 isValidIp() 
 {
 	local ip=$1
@@ -78,8 +85,11 @@ set_gw()
     new_gw=$2
     gateway=$(grep -A 50  $ifname $interface|grep 'gateway'|sed -n '1p'|awk '{print $2}')
     isValidIp $gateway
-    sed -i '/iface '"$ifname"'/,/gateway/s/'$gateway'/'$new_gw'/g' $interface
-    ip route add default via $new_gw dev $ifname
+	route del default gw $gateway
+    #sed -i '/iface '"$ifname"'/,/gateway/s/'$gateway'/'$new_gw'/g' $
+	sed -i '/iface '"$ifname"'/,/gateway/s/\<'${gateway}'\>/'$new_gw'/g' $interface
+	route add default gw $new_gw
+	#ip route add default via $new_gw dev $ifname
 }
 
 set_mac()

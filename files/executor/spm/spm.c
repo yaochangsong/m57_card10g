@@ -131,18 +131,19 @@ void spm_fft_deal_before(int ch)
 void spm_fft_serial_thread(void *arg)
 {
     struct poal_config *poal_config = &(config_get_config()->oal_config);
-    unsigned long ch = 0;
+    volatile unsigned long ch = 0;
     void *spm_arg = (void *)get_spm_ctx();
     int find_work = 0;
     pthread_detach(pthread_self());
     
 wait:
-    printf_warn("######Wait FFT enable######\n");
+    printf_note("######Wait FFT enable######\n");
    // sleep(1);
     pthread_mutex_lock(&spm_fft_cond_mutex);
     pthread_cond_wait(&spm_fft_cond, &spm_fft_cond_mutex);
     pthread_mutex_unlock(&spm_fft_cond_mutex);
     
+    #if 0
     for_each_set_bit(ch, get_ch_bitmap(CH_TYPE_FFT), MAX_RADIO_CHANNEL_NUM){
         if(ch >= MAX_RADIO_CHANNEL_NUM){
             printf_err("channel[%ld] is too big\n", ch);
@@ -150,6 +151,8 @@ wait:
         printf_note("ch: %ld,Fixed mode FFT start\n", ch);
         poal_config->channel[ch].enable.bit_reset = false;
     }
+    #endif
+    poal_config->channel[0].enable.bit_reset = false;
     while(1){
         find_work = 0;
         if(poal_config->channel[0].enable.bit_reset == true){
@@ -157,13 +160,20 @@ wait:
             printf_note("[ch:%lu]receive reset task sigal......\n", ch);
             goto wait;
         }
-         for_each_set_bit(ch, get_ch_bitmap(CH_TYPE_FFT), MAX_RADIO_CHANNEL_NUM){
+#if defined(SUPPORT_SPM_SEND_BUFFER)
+         for(ch = 0; ch < MAX_RADIO_CHANNEL_NUM; ch ++)
+#else
+         for_each_set_bit(ch, get_ch_bitmap(CH_TYPE_FFT), MAX_RADIO_CHANNEL_NUM)
+#endif
+        {
             if(ch >= MAX_RADIO_CHANNEL_NUM){
                 printf_err("channel[%ld] is too big\n", ch);
                 continue;
             }
             find_work ++;
-            executor_serial_points_scan(ch, poal_config->channel[ch].work_mode, spm_arg);
+            for(int j = 0; j < SEGMENT_FREQ_NUM; j++){
+                executor_serial_points_scan(ch, poal_config->channel[0].work_mode, j, spm_arg);
+            }
         }
         if(find_work == 0)
             goto wait;
@@ -223,7 +233,7 @@ loop:   printf_note("######channel[%d] wait to deal work######\n", ch);
             goto loop;
         }
         printf_note("-------------------------------------\n");
-        spm_fft_deal_before(ch);
+        //spm_fft_deal_before(ch);
         for(;;){
             switch(poal_config->channel[ch].work_mode)
             {
@@ -340,6 +350,7 @@ loop:
     do{
         len = ctx->ops->read_niq_data((void **)&ptr_iq);
         if(len > 0){
+            #if 0
             if(ctx->ops->niq_dispatcher && test_audio_on()){
                 ctx->ops->niq_dispatcher(ptr_iq, len, &run);
                 for_each_niq_type(type, run){
@@ -348,7 +359,9 @@ loop:
                     }
                 }
                 ctx->ops->read_niq_over_deal(&len);
-            }else{
+            }else
+            #endif
+            {
                 ctx->ops->send_niq_data(ptr_iq, len, &run);
             }
         }
@@ -464,12 +477,10 @@ void *spm_init(void)
     pthread_attr_t attr;
     pthread_t work_id;
 #if defined(SUPPORT_PLATFORM_ARCH_ARM)
-//#if defined(SUPPORT_SPECTRUM_CHIP)
-//    spmctx = spm_create_chip_context();
-#if defined (SUPPORT_SPECTRUM_FPGA)
-    spmctx = spm_create_fpga_context();
-#else
+#if defined(SUPPORT_SPECTRUM_CHIP)
     spmctx = spm_create_chip_context();
+#elif defined (SUPPORT_SPECTRUM_FPGA)
+    spmctx = spm_create_fpga_context();
 #endif
 
     if(spmctx != NULL){

@@ -143,19 +143,19 @@ int parse_json_client_net(int ch, const char * const body, char *type)
             }
             if(type != NULL){
                 if(!strcmp(type, "biq")){
-                    udp_add_client_to_list(&sclient, ch, TAG_BIQ);
+                    net_data_add_client(&sclient, ch, NET_DATA_TYPE_BIQ);
                 } else if(!strcmp(type, "niq")){
-                    udp_add_client_to_list(&sclient, ch, TAG_NIQ);
-                    udp_add_client_to_list(&sclient, ch, TAG_AUDIO);
+                    net_data_add_client(&sclient, ch, NET_DATA_TYPE_NIQ);
+                    net_data_add_client(&sclient, ch, NET_DATA_TYPE_AUDIO);
                 } else if(!strcmp(type, "fft")){
-                    udp_add_client_to_list(&sclient, ch, TAG_FFT);
+                    net_data_add_client(&sclient, ch, NET_DATA_TYPE_FFT);
                 }
                 
             }else{
-                udp_add_client_to_list(&sclient, ch, TAG_FFT);
-                udp_add_client_to_list(&sclient, ch, TAG_NIQ);
-                udp_add_client_to_list(&sclient, ch, TAG_BIQ);
-                udp_add_client_to_list(&sclient, ch, TAG_AUDIO);
+                net_data_add_client(&sclient, ch, NET_DATA_TYPE_BIQ);
+                net_data_add_client(&sclient, ch, NET_DATA_TYPE_NIQ);
+                net_data_add_client(&sclient, ch, NET_DATA_TYPE_FFT);
+                net_data_add_client(&sclient, ch, NET_DATA_TYPE_AUDIO);
             }
         }
     }
@@ -163,6 +163,23 @@ int parse_json_client_net(int ch, const char * const body, char *type)
     return RESP_CODE_OK;
 }
 
+static int _check_element_has_equal(uint32_t *data,uint32_t datalen)
+{
+   int i=0,j=0,ret=0;
+   
+   for(i=0; i < datalen -1; i++)
+   {
+      for(j=i+1; j < datalen; j++)
+        {
+           if(data[i] == data[j])
+            {
+                 printf_err("there are equal data, please check\n");
+                 return  ret = -1;
+            }
+        }
+   }
+   return ret;
+}
 
 int parse_json_net(const char * const body)
 {
@@ -170,6 +187,8 @@ int parse_json_net(const char * const body)
     cJSON *node, *value;
     char ifname[IFNAMSIZ];
     uint32_t ipaddr, netmask, gw;
+    struct in_addr addr;
+    int r;
     if (root == NULL)
     {
         const char *error_ptr = cJSON_GetErrorPtr();
@@ -180,13 +199,21 @@ int parse_json_net(const char * const body)
         return RESP_CODE_PARSE_ERR;
     }
     value = cJSON_GetObjectItem(root, "ifname");
-    if(value!=NULL&&cJSON_IsString(value)){
+    if(value != NULL&&cJSON_IsString(value) && (strlen(value->valuestring) != 0)){
         strcpy(ifname, value->valuestring);
-        printf_info("ifname: %s\n", ifname);
+        printf_info("ifname: %s, %ld\n", ifname, strlen(value->valuestring));
+    }else{
+        return RESP_CODE_PARSE_ERR;
     }
     value = cJSON_GetObjectItem(root, "ipaddr");
     if(value!=NULL&&cJSON_IsString(value)){
-        ipaddr = inet_addr(value->valuestring);
+        //ipaddr = inet_addr(value->valuestring);
+        r = inet_pton(AF_INET, value->valuestring, &addr);
+        if(r <= 0){
+            printf_warn("invalid addr: %s\n", value->valuestring);
+            return RESP_CODE_PARSE_ERR;
+        }
+        ipaddr = addr.s_addr;
         printf_info("set ipaddr: %s, 0x%x\n", value->valuestring, ipaddr);
         if(config_set_ip(ifname, ipaddr) != 0){
             return RESP_CODE_EXECMD_ERR;
@@ -195,24 +222,58 @@ int parse_json_net(const char * const body)
 
     value = cJSON_GetObjectItem(root, "netmask");
     if(value!=NULL&&cJSON_IsString(value)){
-        netmask = inet_addr(value->valuestring);
+        //netmask = inet_addr(value->valuestring);
+        r = inet_pton(AF_INET, value->valuestring, &addr);
+        if(r <= 0){
+            printf_warn("invalid netmask: %s\n", value->valuestring);
+            return RESP_CODE_PARSE_ERR;
+        }
+        netmask = addr.s_addr;
         printf_info("set netmask: %s, 0x%x\n", value->valuestring, netmask);
         if(config_set_netmask(ifname, netmask) != 0){
             return RESP_CODE_EXECMD_ERR;
         }
     }
-    
     value = cJSON_GetObjectItem(root, "gateway");
     if(value!=NULL&&cJSON_IsString(value)){
-        gw = inet_addr(value->valuestring);
+        
+        //gw = inet_addr(value->valuestring);
+        r = inet_pton(AF_INET, value->valuestring, &addr);
+        if(r <= 0){
+            printf_warn("invalid gateway: %s\n", value->valuestring);
+            return RESP_CODE_PARSE_ERR;
+        }
+        gw = addr.s_addr;
         printf_info("set gateway: %s, 0x%x\n", value->valuestring, gw);
         if(config_set_gateway(ifname, gw) != 0){
             return RESP_CODE_EXECMD_ERR;
         }
     }
-    //if(config_set_network(ifname, ipaddr, netmask, gw) == -1){
-    //    return RESP_CODE_EXECMD_ERR;
-    //}
+    cJSON *port, *data_port;
+    uint32_t allport[4]={0};
+    port = cJSON_GetObjectItem(root, "port");
+    if(port != NULL){
+        allport[0] = cJSON_GetObjectItem(port, "command")->valueint;
+        value = cJSON_GetObjectItem(port, "data");
+        if(value!=NULL){
+            for(int i = 0; i < cJSON_GetArraySize(value); i++){
+                allport[i+1] = cJSON_GetArrayItem(value, i)->valueint;
+                printf_debug("data_port[%d]=%d\n",i,allport[i+1]);
+            }
+        }
+        struct poal_config *config = &(config_get_config()->oal_config);
+        if(_check_element_has_equal(allport,sizeof(allport)/sizeof(uint32_t)) != -1){
+            int index = config_get_if_nametoindex(ifname);
+            config->network[index].port = allport[0];
+            for(int i=1;i<sizeof(allport)/sizeof(uint32_t);i++) {
+                 config->network[index].data_port[i-1] = allport[i];
+                 printf_debug("data port: %d. index=%d\n", config->network[index].data_port[i-1], index);
+            }
+            config_save_all();
+            return RESP_CODE_EXECMD_REBOOT;
+        }else
+            return RESP_CODE_EXECMD_ERR;
+    }
     
     return RESP_CODE_OK;
 }
@@ -241,16 +302,26 @@ int parse_json_rf_multi_value(const char * const body, uint8_t cid)
     if(value!=NULL&&cJSON_IsNumber(value)){
          config->channel[cid].rf_para.rf_mode_code=value->valueint;
          printfd("rf_mode_code:%d,\n", config->channel[cid].rf_para.rf_mode_code);
+         executor_set_command(EX_MID_FREQ_CMD, EX_RF_MODE_CODE, cid, &config->channel[cid].rf_para.rf_mode_code);
     }
     value = cJSON_GetObjectItem(root, "gainMode");
     if(value!=NULL&&cJSON_IsNumber(value)){
          config->channel[cid].rf_para.gain_ctrl_method=value->valueint;
          printfd("gain_ctrl_method:%d,\n", config->channel[cid].rf_para.gain_ctrl_method);
     }
+    if(config->channel[cid].rf_para.gain_ctrl_method == POAL_MGC_MODE){
     value = cJSON_GetObjectItem(root, "mgcGain");
     if(value!=NULL&&cJSON_IsNumber(value)){
          config->channel[cid].rf_para.mgc_gain_value=value->valueint;
-         printfd("gain_ctrl_method:%d,\n", config->channel[cid].rf_para.mgc_gain_value);
+             printfd("mgc_gain_value:%d,\n", config->channel[cid].rf_para.mgc_gain_value);
+             executor_set_command(EX_RF_FREQ_CMD, EX_RF_MGC_GAIN, cid, &config->channel[cid].rf_para.mgc_gain_value);
+        }
+        value = cJSON_GetObjectItem(root, "rfAttenuation");
+        if(value!=NULL&&cJSON_IsNumber(value)){
+             config->channel[cid].rf_para.attenuation=value->valueint;
+             printfd("attenuation:%d,\n", config->channel[cid].rf_para.attenuation);
+             executor_set_command(EX_RF_FREQ_CMD, EX_RF_ATTENUATION, cid, &config->channel[cid].rf_para.attenuation);
+        }
     }
     value = cJSON_GetObjectItem(root, "agcCtrlTime");
     if(value!=NULL&&cJSON_IsNumber(value)){
@@ -280,6 +351,7 @@ int parse_json_multi_band(const char * const body,uint8_t cid)
      uint32_t subcid;
      int code = RESP_CODE_OK;
      struct poal_config *config = &(config_get_config()->oal_config);
+     struct multi_freq_point_para_st *point;
      cJSON *root = cJSON_Parse(body);
     if (root == NULL)
     {
@@ -292,6 +364,7 @@ int parse_json_multi_band(const char * const body,uint8_t cid)
     }
     config->channel[cid].multi_freq_fregment_para.cid=cid;
      printfd("cid:%d,\n", config->channel[cid].multi_freq_fregment_para.cid);
+    point = &config->channel[cid].multi_freq_point_param;
     value = cJSON_GetObjectItem(root, "windowType");
     if(value!=NULL&&cJSON_IsNumber(value)){
          config->channel[cid].multi_freq_fregment_para.window_type=value->valueint;
@@ -306,9 +379,9 @@ int parse_json_multi_band(const char * const body,uint8_t cid)
     }
     value = cJSON_GetObjectItem(root, "smoothTimes");
     if(value!=NULL&&cJSON_IsNumber(value)){
-         config->channel[cid].multi_freq_fregment_para.smooth_time=value->valueint;
-         printfd("smoothTimes:%d,\n", config->channel[cid].multi_freq_fregment_para.smooth_time);
-
+         point->smooth_time=value->valueint;
+         printfd("smoothTimes:%d,\n", point->smooth_time);
+         executor_set_command(EX_MID_FREQ_CMD, EX_SMOOTH_TIME, cid, &point->smooth_time);
     }
     value = cJSON_GetObjectItem(root, "freqSegmentCnt");
     if(value!=NULL&&cJSON_IsNumber(value)){
@@ -346,14 +419,16 @@ int parse_json_multi_band(const char * const body,uint8_t cid)
             value = cJSON_GetObjectItem(node, "freqResolution");
             if(cJSON_IsNumber(value)){
                 config->channel[cid].multi_freq_fregment_para.fregment[subcid].freq_resolution = value->valuedouble;
-                printfd("endFrequency:%f, ",config->channel[cid].multi_freq_fregment_para.fregment[subcid].freq_resolution);
-            }
+                printfd("freq_resolution:%f, ",config->channel[cid].multi_freq_fregment_para.fregment[subcid].freq_resolution);
+                config->channel[cid].multi_freq_fregment_para.fregment[subcid].fft_size = config_get_fft_by_resolution((uint32_t)value->valuedouble);
+            }else{
             value = cJSON_GetObjectItem(node, "fftSize");
             if(cJSON_IsNumber(value)){
                 config->channel[cid].multi_freq_fregment_para.fregment[subcid].fft_size=value->valueint;
                  printfd("fftSize:%d, ",config->channel[cid].multi_freq_fregment_para.fregment[subcid].fft_size);
+                }
             }
-            
+            printfd("ch:%d, fft_size=%u\n", cid, config->channel[cid].multi_freq_fregment_para.fregment[subcid].fft_size);
             printfd("\n");
            
         }
@@ -367,13 +442,12 @@ int parse_json_multi_band(const char * const body,uint8_t cid)
     }else{
         config->channel[cid].work_mode = OAL_MULTI_ZONE_SCAN_MODE;
     }
-    printfd("\n*****************解析完成************\n");
+    
     return code;
 }
 
 int parse_json_muti_point(const char * const body,uint8_t cid)
 {
-    printfn(" \n*************multi point set*****************\n");
     cJSON *node, *value;
     int code = RESP_CODE_OK;
     struct poal_config *config = &(config_get_config()->oal_config);
@@ -426,17 +500,27 @@ int parse_json_muti_point(const char * const body,uint8_t cid)
     value = cJSON_GetObjectItem(root, "startFrequency");
     if(value!=NULL&&cJSON_IsNumber(value)){
          config->channel[cid].multi_freq_point_param.start_freq = value->valuedouble;
-         printfn("start_freq:%"PRIu64" ",config->channel[cid].multi_freq_point_param.start_freq);
+         printfd("start_freq:%"PRIu64" ",config->channel[cid].multi_freq_point_param.start_freq);
 
     }
     value = cJSON_GetObjectItem(root, "endFrequency");
     if(value!=NULL&&cJSON_IsNumber(value)){
          config->channel[cid].multi_freq_point_param.end_freq = value->valuedouble;
-         printfn("end_freq:%"PRIu64" ",config->channel[cid].multi_freq_point_param.end_freq);
+         printfd("end_freq:%"PRIu64" ",config->channel[cid].multi_freq_point_param.end_freq);
 
     }
+    value = cJSON_GetObjectItem(root, "smoothMode");
+    if(value!=NULL&&cJSON_IsNumber(value)){
+         config->channel[cid].multi_freq_point_param.smooth_mode = value->valueint;
+         printfd("smooth_mode:%d ",config->channel[cid].multi_freq_point_param.smooth_mode);
+    }
+    value = cJSON_GetObjectItem(root, "smoothThreshold");
+    if(value!=NULL&&cJSON_IsNumber(value)){
+         config->channel[cid].multi_freq_point_param.smooth_threshold = value->valueint;
+         printfd("smooth_threshold:%d ",config->channel[cid].multi_freq_point_param.smooth_threshold);
+    }
     cJSON *muti_point = NULL;
-    uint32_t subcid;
+    uint32_t subcid = 0;
     muti_point = cJSON_GetObjectItem(root, "array");
     if(muti_point!=NULL){
         config->channel[cid].multi_freq_point_param.freq_point_cnt = cJSON_GetArraySize(muti_point);
@@ -446,49 +530,54 @@ int parse_json_muti_point(const char * const body,uint8_t cid)
             if(cJSON_IsNumber(value)){
                 config->channel[cid].multi_freq_point_param.points[value->valueint].index=value->valueint;
                 subcid=value->valueint;
-                printfn("index:%d, subcid=%d ",config->channel[cid].multi_freq_point_param.points[subcid].index,subcid);
+                printfd("index:%d, subcid=%d ",config->channel[cid].multi_freq_point_param.points[subcid].index,subcid);
             }
             value = cJSON_GetObjectItem(node, "centerFreq");
             if(cJSON_IsNumber(value)){
                 config->channel[cid].multi_freq_point_param.points[subcid].center_freq=value->valuedouble;
-                printfn("middle_freq:%"PRIu64" ",config->channel[cid].multi_freq_point_param.points[subcid].center_freq);
+                printfd("middle_freq:%"PRIu64" ",config->channel[cid].multi_freq_point_param.points[subcid].center_freq);
             }
             value = cJSON_GetObjectItem(node, "bandwidth");
             if(cJSON_IsNumber(value)){
                 config->channel[cid].multi_freq_point_param.points[subcid].bandwidth=value->valuedouble;
-                printfn("bandwidth:%"PRIu64" ",config->channel[cid].multi_freq_point_param.points[subcid].bandwidth);
+                printfd("bandwidth:%"PRIu64" ",config->channel[cid].multi_freq_point_param.points[subcid].bandwidth);
             } 
             value = cJSON_GetObjectItem(node, "freqResolution");
             if(cJSON_IsNumber(value)){
-                config->channel[cid].multi_freq_point_param.points[subcid].freq_resolution=value->valuedouble;
-                printfn("freq_resolution:%f ",config->channel[cid].multi_freq_point_param.points[subcid].freq_resolution);
-            } 
-             value = cJSON_GetObjectItem(node, "fftSize");
-             if(cJSON_IsNumber(value)){
-                 config->channel[cid].multi_freq_point_param.points[subcid].fft_size=value->valueint;
-                 printfn("fftSize:%u, ",config->channel[cid].multi_freq_point_param.points[subcid].fft_size);
-             }
+                config->channel[cid].multi_freq_point_param.points[subcid].freq_resolution=value->valueint;
+                config->channel[cid].multi_freq_point_param.points[subcid].fft_size = config_get_fft_by_resolution((uint32_t)value->valuedouble);
+            } else {
+                 value = cJSON_GetObjectItem(node, "fftSize");
+                 if(cJSON_IsNumber(value)){
+                     config->channel[cid].multi_freq_point_param.points[subcid].fft_size=value->valueint;
+                     printfd("fftSize:%u, ",config->channel[cid].multi_freq_point_param.points[subcid].fft_size);
+                 }
+            }
+            if(config->channel[cid].multi_freq_point_param.points[subcid].freq_resolution == 0){
+                printf_warn("%d, %d, freq_resolution is 0\n", cid, subcid);
+            }
+            
              value = cJSON_GetObjectItem(node, "decMethodId");
              if(cJSON_IsNumber(value)){
                  config->channel[cid].multi_freq_point_param.points[subcid].d_method=xw_decode_method_convert(value->valueint);
-                 printfn("decMethodId:%d, ",config->channel[cid].multi_freq_point_param.points[subcid].d_method);
+                 printfd("decMethodId:%d, ",config->channel[cid].multi_freq_point_param.points[subcid].d_method);
              }
              value = cJSON_GetObjectItem(node, "decBandwidth");
              if(cJSON_IsNumber(value)){
                 config->channel[cid].multi_freq_point_param.points[subcid].d_bandwith = value->valueint;
-                printfn("decBandwidth:%u, ",config->channel[cid].multi_freq_point_param.points[subcid].d_bandwith);
+                printfd("decBandwidth:%u, ",config->channel[cid].multi_freq_point_param.points[subcid].d_bandwith);
              }
              value = cJSON_GetObjectItem(node, "muteSwitch");
              if(cJSON_IsNumber(value)){
                  config->channel[cid].multi_freq_point_param.points[subcid].noise_en=value->valueint;
-                 printfn("muteSwitch:%d, ",config->channel[cid].multi_freq_point_param.points[subcid].noise_en);
+                 printfd("muteSwitch:%d, ",config->channel[cid].multi_freq_point_param.points[subcid].noise_en);
              }
              value = cJSON_GetObjectItem(node, "muteThreshold");
              if(cJSON_IsNumber(value)){
                  config->channel[cid].multi_freq_point_param.points[subcid].noise_thrh=value->valueint;
-                 printfn("muteThreshold:%d, ",config->channel[cid].multi_freq_point_param.points[subcid].noise_thrh);
+                 printfd("muteThreshold:%d, ",config->channel[cid].multi_freq_point_param.points[subcid].noise_thrh);
              }
-             printfn("\n");
+             printfd("\n");
                   
         }
          
@@ -525,7 +614,7 @@ int parse_json_bddc(const char * const body,uint8_t ch)
     if(value!=NULL&&cJSON_IsNumber(value)){
          config->channel[ch].multi_freq_point_param.ddc.middle_freq = value->valuedouble;
          printf_note("ch:%d,dec middle_freq:%"PRIu64", middlefreq=%"PRIu64"\n", ch, config->channel[ch].multi_freq_point_param.ddc.middle_freq, 
-                                                                                            _get_middle_freq(ch,value->valuedouble, NULL));
+                                      _get_middle_freq(ch,value->valuedouble, &config->channel[ch].multi_freq_point_param.points[0].center_freq));
     }
     value = cJSON_GetObjectItem(root, "decBandwidth");
     if(value!=NULL&&cJSON_IsNumber(value)){
@@ -533,7 +622,8 @@ int parse_json_bddc(const char * const body,uint8_t ch)
          printf_note("decBandwidth:%"PRIu64",\n", config->channel[ch].multi_freq_point_param.ddc.bandwidth);
     }
     executor_set_command(EX_MID_FREQ_CMD, EX_DEC_BW, ch, &config->channel[ch].multi_freq_point_param.ddc.bandwidth);
-    executor_set_command(EX_MID_FREQ_CMD, EX_DEC_MID_FREQ, ch,&config->channel[ch].multi_freq_point_param.ddc.middle_freq, _get_middle_freq(ch,config->channel[ch].multi_freq_point_param.ddc.middle_freq, NULL));
+    executor_set_command(EX_MID_FREQ_CMD, EX_DEC_MID_FREQ, ch,&config->channel[ch].multi_freq_point_param.ddc.middle_freq,
+                    _get_middle_freq(ch,config->channel[ch].multi_freq_point_param.ddc.middle_freq, &config->channel[ch].multi_freq_point_param.points[0].center_freq));
     return code;
 }
 
@@ -544,6 +634,8 @@ int parse_json_demodulation(const char * const body,uint8_t cid,uint8_t subid )
      int code = RESP_CODE_OK;
      uint8_t ch = cid;
      struct poal_config *config = &(config_get_config()->oal_config);
+     struct sub_channel_freq_para_st *sub_channel_array;
+     sub_channel_array = &(config->channel[ch].sub_channel_para);
      cJSON *root = cJSON_Parse(body);
     if (root == NULL)
     {
@@ -559,8 +651,9 @@ int parse_json_demodulation(const char * const body,uint8_t cid,uint8_t subid )
     
     value = cJSON_GetObjectItem(root, "audioSampleRate");
     if(value!=NULL&&cJSON_IsNumber(value)){
-         config->channel[ch].sub_channel_para.audio_sample_rate=value->valuedouble;
-         printfd("audioSampleRate:%f,\n", config->channel[ch].sub_channel_para.audio_sample_rate);
+         config->channel[ch].sub_channel_para.sub_ch[subid].audio_sample_rate_khz=value->valueint;
+         printfd("audioSampleRate:%d,\n", value->valueint);
+         executor_set_command(EX_MID_FREQ_CMD, EX_SUB_CH_AUDIO_SAMPLE_RATE, subid,  &sub_channel_array->sub_ch[subid].audio_sample_rate_khz);
     }
     value = cJSON_GetObjectItem(root, "centerFreq");
     if(value!=NULL&&cJSON_IsNumber(value)){
@@ -570,7 +663,7 @@ int parse_json_demodulation(const char * const body,uint8_t cid,uint8_t subid )
     value = cJSON_GetObjectItem(root, "decBandwidth");
     if(value!=NULL&&cJSON_IsNumber(value)){
          config->channel[ch].sub_channel_para.sub_ch[subid].d_bandwith=value->valueint;
-         printfd("center_freq:%u\n", config->channel[ch].sub_channel_para.sub_ch[subid].d_bandwith);
+         printfd("d_bandwith:%u\n", config->channel[ch].sub_channel_para.sub_ch[subid].d_bandwith);
     }
     value = cJSON_GetObjectItem(root, "fftSize");
     if(value!=NULL&&cJSON_IsNumber(value)){
@@ -581,8 +674,10 @@ int parse_json_demodulation(const char * const body,uint8_t cid,uint8_t subid )
     value = cJSON_GetObjectItem(root, "decMethodId");
     if(value!=NULL&&cJSON_IsNumber(value)){
          config->channel[ch].sub_channel_para.sub_ch[subid].d_method = xw_decode_method_convert(value->valueint);
-         printfd("cid=%d, subid=%d,decMethodId:%d,\n",cid, subid, config->channel[ch].sub_channel_para.sub_ch[subid].d_method);
-
+         config->channel[ch].sub_channel_para.sub_ch[subid].raw_d_method = value->valueint;
+         printfd("cid=%d, subid=%d,decMethodId:%d,raw_d_method=%d\n",cid, subid, 
+            config->channel[ch].sub_channel_para.sub_ch[subid].d_method, 
+            config->channel[ch].sub_channel_para.sub_ch[subid].raw_d_method);
     }
     value = cJSON_GetObjectItem(root, "muteSwitch");
     if(value!=NULL&&cJSON_IsNumber(value)){
@@ -594,15 +689,30 @@ int parse_json_demodulation(const char * const body,uint8_t cid,uint8_t subid )
     if(value!=NULL&&cJSON_IsNumber(value)){
          config->channel[ch].sub_channel_para.sub_ch[subid].noise_thrh=value->valueint;
          printfd("muteThreshold:%d,\n", config->channel[ch].sub_channel_para.sub_ch[subid].noise_thrh);
-
     }
-    
-    struct sub_channel_freq_para_st *sub_channel_array;
-    sub_channel_array = &config->channel[ch].sub_channel_para;
+    value = cJSON_GetObjectItem(root, "gainMode");
+    if(value!=NULL&&cJSON_IsNumber(value)){
+         sub_channel_array->sub_ch[subid].gain_mode=value->valueint;
+         printfn("gain_mode:%s,\n", sub_channel_array->sub_ch[subid].gain_mode == POAL_MGC_MODE ? "MGC" : "AGC");
+         executor_set_command(EX_MID_FREQ_CMD, EX_SUB_CH_GAIN_MODE, subid,  &sub_channel_array->sub_ch[subid].gain_mode);
+    }
+    if(sub_channel_array->sub_ch[subid].gain_mode == POAL_MGC_MODE){
+        value = cJSON_GetObjectItem(root, "mgcGain");
+        if(value!=NULL&&cJSON_IsNumber(value)){
+             config->channel[ch].sub_channel_para.sub_ch[subid].mgc_gain=value->valueint;
+             printfd("mgc_gain:%d,\n", config->channel[ch].sub_channel_para.sub_ch[subid].mgc_gain);
+             executor_set_command(EX_MID_FREQ_CMD, EX_SUB_CH_MGC_GAIN, subid,  &sub_channel_array->sub_ch[subid].mgc_gain);
+        }
+    }
+    value = cJSON_GetObjectItem(root, "agcCtrlTime");
+    if(value!=NULL&&cJSON_IsNumber(value)){
+         config->channel[ch].sub_channel_para.sub_ch[subid].agc_ctrl_time=value->valueint;
+         printfd("agc_ctrl_time:%d,\n", config->channel[ch].sub_channel_para.sub_ch[subid].agc_ctrl_time);
+    }
     /* 解调中心频率需要工作中心频率计算 */
     executor_set_command(EX_MID_FREQ_CMD, EX_SUB_CH_MID_FREQ, subid,
         &sub_channel_array->sub_ch[subid].center_freq,/* 解调频率*/
-        config->channel[cid].multi_freq_point_param.points[0].center_freq); /* 频点工作频率 */
+        _get_middle_freq(subid,sub_channel_array->sub_ch[subid].center_freq, &config->channel[ch].multi_freq_point_param.points[0].center_freq)); /* 频点工作频率 */
     /* 解调带宽, 不同解调方式，带宽系数表不一样*/
     executor_set_command(EX_MID_FREQ_CMD, EX_SUB_CH_DEC_BW, subid, 
         &sub_channel_array->sub_ch[subid].d_bandwith,
@@ -809,6 +919,8 @@ char *assemble_json_build_info(void)
             cJSON_AddStringToObject(root, "build_time", pinfo->build_time);
         if(pinfo->build_version)
             cJSON_AddStringToObject(root, "build_version", pinfo->build_version);
+        if(pinfo->build_jenkins_url)
+            cJSON_AddStringToObject(root, "build_jenkins_url", pinfo->build_jenkins_url);
         if(pinfo->code_branch)
             cJSON_AddStringToObject(root, "code_branch", pinfo->code_branch);
         if(pinfo->code_hash)
@@ -860,25 +972,43 @@ char *assemble_json_fpag_info(void)
     str_json = cJSON_PrintUnformatted(root);
     return str_json;
 }
+
+#if defined (SUPPORT_GPS)
 char *assemble_json_gps_info(void)
 {
     char *str_json = NULL;
-    struct arg_s{
-        uint32_t status;
-    };
-    struct arg_s args;
+    bool is_ok = false;
     cJSON *root = cJSON_CreateObject();
-    cJSON_AddStringToObject(root, "status", 
-#if defined (SUPPORT_GPS)
-        (gps_location_is_valid() == true ? "ok" : "no")
-#else
-        "no"
-#endif
-        );
+    struct gps_info *gpsi;
+    char buffer[32];
+    is_ok = gps_location_is_valid();
+    if(is_ok == true){
+        gpsi = gps_get_info();
+        cJSON_AddStringToObject(root, "status",  "ok");
+        cJSON_AddNumberToObject(root, "utc_hms", gpsi->utc_hms);
+        cJSON_AddNumberToObject(root, "utc_ymd", gpsi->utc_ymd);
+        cJSON_AddNumberToObject(root, "latitude", gpsi->latitude);
+        cJSON_AddNumberToObject(root, "longitude", gpsi->longitude);
+        cJSON_AddNumberToObject(root, "altitude", gpsi->altitude);
+        snprintf(buffer, sizeof(buffer) - 1, "%c", gpsi->ns);
+        cJSON_AddStringToObject(root, "ns", buffer);
+        snprintf(buffer, sizeof(buffer) - 1, "%c", gpsi->ew);
+        cJSON_AddStringToObject(root, "ew", buffer);
+        cJSON_AddNumberToObject(root, "horizontal_speed", gpsi->horizontal_speed);
+        cJSON_AddNumberToObject(root, "vertical_speed", gpsi->vertical_speed);
+        cJSON_AddNumberToObject(root, "location_type", gpsi->location_type);
+        cJSON_AddNumberToObject(root, "true_north_angle", gpsi->true_north_angle);
+        cJSON_AddNumberToObject(root, "magnetic_angle", gpsi->magnetic_angle);
+    } else{
+        cJSON_AddStringToObject(root, "status",  "no");
+    }
+    cJSON_AddNumberToObject(root, "code", get_gps_status_code(is_ok));
     json_print(root, 1);
     str_json = cJSON_PrintUnformatted(root);
     return str_json;
 }
+#endif
+
 char *assemble_json_clock_info(void)
 {
     char *str_json = NULL;
@@ -888,7 +1018,8 @@ char *assemble_json_clock_info(void)
     lock_ok =  io_get_inout_clock_status(&external_clk);
     cJSON_AddStringToObject(root, "inout", (external_clk == 1 ? "out" : "in"));
     cJSON_AddStringToObject(root, "status", (lock_ok == false ? "no":"ok"));
-    cJSON_AddNumberToObject(root, "frequency", io_get_raw_sample_rate(0,0));
+    cJSON_AddNumberToObject(root, "code", get_adc_status_code(lock_ok));
+    cJSON_AddNumberToObject(root, "frequency", get_clock_frequency());
     json_print(root, 1);
     str_json = cJSON_PrintUnformatted(root);
     return str_json;
@@ -896,6 +1027,7 @@ char *assemble_json_clock_info(void)
 char *assemble_json_board_info(void)
 {
     char *str_json = NULL;
+    int16_t temp;
     struct arg_s{
         float v;
         float i;
@@ -903,7 +1035,10 @@ char *assemble_json_board_info(void)
     struct arg_s power;
     cJSON *root = cJSON_CreateObject();
     io_get_board_power(&power);
-    cJSON_AddNumberToObject(root, "temperature", io_get_adc_temperature());
+    temp = io_get_adc_temperature();
+    cJSON_AddNumberToObject(root, "temperature", temp);
+    if(config_is_temperature_warning(temp))
+        cJSON_AddStringToObject(root, "warning", "temperature");
     cJSON_AddNumberToObject(root, "voltage", power.v);
     cJSON_AddNumberToObject(root, "current", power.i);
     json_print(root, 1);
@@ -947,6 +1082,7 @@ char *assemble_json_net_info(void)
 
 char *assemble_json_net_list_info(void)
 {
+    #define NULL_STR ""
     char *str_json = NULL, *s_speed = "", *s_link = "error";
     int i;
     struct speed_table{
@@ -967,14 +1103,22 @@ char *assemble_json_net_list_info(void)
     cJSON *array = cJSON_CreateArray();
     cJSON* item = NULL;
     for(int index = 1; index <= num; index++){
-        cJSON_AddItemToArray(array, item = cJSON_CreateObject());
         name = if_indextoname(index, if_name);
         if(name == NULL)
             continue;
         link = get_netlink_status(if_name);
         if(link >= 0)
             s_link = (link == 0 ? "down" : "up");
+        else
+            continue;
+        cJSON_AddItemToArray(array, item = cJSON_CreateObject());
         speed = get_ifname_speed(if_name);
+        if(speed != 0){
+            if(!strcmp(if_name, NETWORK_10G_EHTHERNET_POINT)){
+                speed = SPEED_10000;
+            }
+        }
+        s_speed = NULL_STR; 
         for(i = 0; i < ARRAY_SIZE(spt); i++){
             if(speed == spt[i].i_speed){
                 s_speed = spt[i].s_speed;
@@ -1008,15 +1152,32 @@ char *assemble_json_rf_info(void)
     cJSON *array = cJSON_CreateArray();
     cJSON* item = NULL;
     int16_t  rf_temp = 0;
+    int8_t  rfAttenuation = 0;
+    int8_t  mgcGain = 0;
+    int8_t  modeCode = 0;
     for(i = 0; i <MAX_RF_NUM; i++){
         cJSON_AddItemToArray(array, item = cJSON_CreateObject());
         cJSON_AddNumberToObject(item, "index", i);
         executor_get_command(EX_RF_FREQ_CMD, EX_RF_STATUS_TEMPERAT, i,  &rf_temp);
-        if(rf_temp < 0)
+        if(rf_temp <= 0){
             cJSON_AddStringToObject(item, "status", "no");
+            cJSON_AddNumberToObject(item, "code", get_rf_status_code(true));
+        }
         else{
             cJSON_AddStringToObject(item, "status", "ok");
+            cJSON_AddNumberToObject(item, "code", get_rf_status_code(false));
             cJSON_AddNumberToObject(item, "temperature", rf_temp);
+            #if 0
+            if(executor_get_command(EX_RF_FREQ_CMD, EX_RF_ATTENUATION, i,  &rfAttenuation) == 0){
+                cJSON_AddNumberToObject(item, "rfAttenuation", rfAttenuation); 
+            }
+            if(executor_get_command(EX_RF_FREQ_CMD, EX_RF_MGC_GAIN, i,  &mgcGain) == 0){
+                cJSON_AddNumberToObject(item, "mgcGain", mgcGain);
+            }
+            if(executor_get_command(EX_RF_FREQ_CMD, EX_RF_MODE_CODE, i,  &modeCode) == 0){
+                cJSON_AddNumberToObject(item, "modeCode", modeCode);
+            }
+            #endif
         }
     }
    str_json = cJSON_PrintUnformatted(array);
@@ -1031,6 +1192,7 @@ char *assemble_json_disk_info(void)
     cJSON* item = NULL;
     bool b_valid = false;
     struct statfs diskInfo;
+    memset(&diskInfo, 0, sizeof(diskInfo));
 #if defined(SUPPORT_FS)
     struct fs_context *fs_ctx;
     fs_ctx = get_fs_ctx_ex();
@@ -1040,6 +1202,7 @@ char *assemble_json_disk_info(void)
         cJSON_AddItemToArray(array, item = cJSON_CreateObject());
         cJSON_AddNumberToObject(item, "index", i);
         cJSON_AddStringToObject(item, "status", (b_valid == false ? "no":"ok"));
+        cJSON_AddNumberToObject(item, "code", get_gps_disk_code(b_valid, &diskInfo));
         if(b_valid){
             cJSON_AddNumberToObject(item, "totalSpace", diskInfo.f_bsize * diskInfo.f_blocks);
             cJSON_AddNumberToObject(item, "freeSpace", diskInfo.f_bsize * diskInfo.f_bfree);
@@ -1055,12 +1218,38 @@ char *assemble_json_all_info(void)
     cJSON_AddItemToObject(root, "versionInfo", cJSON_Parse(assemble_json_softversion()));
     cJSON_AddItemToObject(root, "diskInfo", cJSON_Parse(assemble_json_disk_info()));
     cJSON_AddItemToObject(root, "clockInfo", cJSON_Parse(assemble_json_clock_info()));
-    cJSON_AddItemToObject(root, "rfInfo", cJSON_Parse(assemble_json_rf_info()));
+    //cJSON_AddItemToObject(root, "rfInfo", cJSON_Parse(assemble_json_rf_info()));
     cJSON_AddItemToObject(root, "boardInfo", cJSON_Parse(assemble_json_board_info()));
     cJSON_AddItemToObject(root, "fpgaInfo", cJSON_Parse(assemble_json_fpag_info()));
+#if defined (SUPPORT_GPS)
     cJSON_AddItemToObject(root, "gpsInfo", cJSON_Parse(assemble_json_gps_info()));
+#endif
     cJSON_AddItemToObject(root, "netInfo", cJSON_Parse(assemble_json_net_list_info()));
     cJSON_AddItemToObject(root, "buildInfo", cJSON_Parse(assemble_json_build_info()));
+    json_print(root, 1);
+    str_json = cJSON_PrintUnformatted(root);
+    return str_json;
+}
+char *assemble_json_selfcheck_info(void)
+{
+    char *str_json = NULL;
+    cJSON *root = cJSON_CreateObject();
+    cJSON_AddItemToObject(root, "diskInfo", cJSON_Parse(assemble_json_disk_info()));
+    cJSON_AddItemToObject(root, "clockInfo", cJSON_Parse(assemble_json_clock_info()));
+    cJSON_AddItemToObject(root, "boardInfo", cJSON_Parse(assemble_json_board_info()));
+    cJSON_AddItemToObject(root, "fpgaInfo", cJSON_Parse(assemble_json_fpag_info()));
+#if defined (SUPPORT_GPS)
+    cJSON_AddItemToObject(root, "gpsInfo", cJSON_Parse(assemble_json_gps_info()));
+#endif
+    json_print(root, 1);
+    str_json = cJSON_PrintUnformatted(root);
+    return str_json;
+}
+char *assemble_json_netlist_info(void)
+{
+    char *str_json = NULL;
+    cJSON *root = cJSON_CreateObject();
+    cJSON_AddItemToObject(root, "netInfo", cJSON_Parse(assemble_json_net_list_info()));
     json_print(root, 1);
     str_json = cJSON_PrintUnformatted(root);
     return str_json;

@@ -11,7 +11,7 @@
 #include <netdb.h>
 #include <sys/wait.h>
 #define SNDSIZE 1024*1024
-#define SERVER_PORT 6080 // 服务器端口
+#define SERVER_PORT 1235 // 服务器端口
 #define FILE_NAME "rawdata"
 
 int recv_cnt = 0;

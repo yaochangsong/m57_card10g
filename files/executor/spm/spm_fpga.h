@@ -16,12 +16,9 @@
 #define _SPM_FPGA_H
 
 #define DMA_FFT_DEV   "/dev/dma_fft"
-#define DMA_BIQ0_DEV  "/dev/dma_biq0"
-#define DMA_BIQ1_DEV  "/dev/dma_biq1"
-#define DMA_BIQ2_DEV  "/dev/dma_biq2"
-#define DMA_BIQ3_DEV  "/dev/dma_biq3"
+#define DMA_BIQ_DEV  "/dev/dma_biq"
 //#define DMA_NIQ_DEV   "/dev/dma_niq"
-#define DMA_NIQ_DEV   "/dev/dma_iq"
+#define DMA_NIQ_DEV   "/dev/dma_niq"
 
 
 #define DMA_MAX_BLOCK (3)

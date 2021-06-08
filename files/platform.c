@@ -72,6 +72,13 @@ bool is_spectrum_continuous_mode(void)
     return spectrum_continuous_mode;
 }
 
+int speed_rate = 4;
+int get_xdma_speed_rate(void)
+{
+    /* speed = 8G / (speed_rate + 1) */
+    return speed_rate;
+}
+
 static void pl_handle_sig(int sig)
 {
     printf("ctrl+c or killed; ready to exit!!\n");
@@ -86,7 +93,7 @@ int main(int argc, char **argv)
 {
     int debug_level = -1;
     int opt;
-    while ((opt = getopt(argc, argv, "d:tm:cf")) != -1) {
+    while ((opt = getopt(argc, argv, "d:tm:cfr:")) != -1) {
         switch (opt)
         {
         case 'd':
@@ -115,6 +122,9 @@ int main(int argc, char **argv)
             printf("format disk once; when start\n");
             disk_format = true;
             break;
+        case 'r':
+            speed_rate = atoi(optarg);
+            break;
         default: /* '?' */
             usage(argv[0]);
         }
@@ -137,6 +147,9 @@ int main(int argc, char **argv)
     gpio_init_control();
 #else
     gpio_raw_init();
+#endif
+#ifdef SUPPORT_NRS1800
+    nsr1800_init();
 #endif
 #ifdef SUPPORT_AUDIO
     audio_init();

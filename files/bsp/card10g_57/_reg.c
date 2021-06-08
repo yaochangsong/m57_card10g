@@ -24,7 +24,6 @@
 #include "config.h"
 #include "_reg.h"
 
-pthread_mutex_t rf_param_mutex[MAX_RF_NUM] = {PTHREAD_MUTEX_INITIALIZER};
 
 void *memmap(int fd_dev, off_t phr_addr, int length)
 {
@@ -42,13 +41,17 @@ void *memmap(int fd_dev, off_t phr_addr, int length)
 }
 
 #define SYSTEM_CONFG_4K_LENGTH 0x1000
+#define MAP_SIZE (32*1024UL)
+
+
 
 static int fpga_memmap(int fd_dev, FPGA_CONFIG_REG *fpga_reg)
 {
-    void *base_addr = NULL;
+    void *tmp_addr = NULL;
     int i = 0;
 
-    fpga_reg->system = memmap(fd_dev, FPGA_SYSETM_BASE, SYSTEM_CONFG_4K_LENGTH); 
+   // fpga_reg->system = memmap(fd_dev, FPGA_SYSETM_BASE, SYSTEM_CONFG_4K_LENGTH); 
+    fpga_reg->system = memmap(fd_dev, 0, MAP_SIZE); 
     if (!fpga_reg->system)
     {
         printf("mmap failed, NULL pointer!\n");
@@ -56,63 +59,6 @@ static int fpga_memmap(int fd_dev, FPGA_CONFIG_REG *fpga_reg)
     }
     printf_note("virtual address:%p, physical address:0x%x\n", fpga_reg->system, FPGA_SYSETM_BASE);
 
-    for(i = 0; i < MAX_RADIO_CHANNEL_NUM; i++){
-        fpga_reg->rfReg[i] = (RF_REG *)((uint8_t *)fpga_reg->system +CONFG_REG_LEN);
-        if (!fpga_reg->rfReg[i])
-        {
-            printf("mmap failed, NULL pointer!\n");
-            return -1;
-        }
-        printf_note("virtual address:%p, physical address:0x%x\n", fpga_reg->rfReg[i], FPGA_RF_BASE);
-    }
-
-    fpga_reg->audioReg = (AUDIO_REG *)((uint8_t *)fpga_reg->system + CONFG_AUDIO_OFFSET);
-    if (!fpga_reg->audioReg)
-    {
-        printf("mmap failed, NULL pointer!\n");
-        return -1;
-    }
-    printf_debug("virtual address:%p, physical address:0x%x\n", fpga_reg->audioReg, FPGA_AUDIO_BASE);
-
-    fpga_reg->adcReg = memmap(fd_dev, FPGA_ADC_BASE, SYSTEM_CONFG_REG_LENGTH); 
-    if (!fpga_reg->adcReg)
-    {
-        printf("mmap failed, NULL pointer!\n");
-        return -1;
-    }
-    printf_debug("virtual address:%p, physical address:0x%x\n", fpga_reg->adcReg, FPGA_ADC_BASE);
-
-    fpga_reg->signal = memmap(fd_dev, FPGA_SIGNAL_BASE, SYSTEM_CONFG_REG_LENGTH); 
-    if (!fpga_reg->signal)
-    {
-        printf("mmap failed, NULL pointer!\n");
-        return -1;
-    }
-    printf_debug("virtual address:%p, physical address:0x%x\n", fpga_reg->signal, FPGA_SIGNAL_BASE);
-
-    base_addr =  memmap(fd_dev, FPGA_BRAOD_BAND_BASE, SYSTEM_CONFG_4K_LENGTH); 
-    if (!base_addr)
-    {
-        printf("mmap failed, NULL pointer!\n");
-        exit(1);
-    }
-    for(i = 0; i < BROAD_CH_NUM; i++){ /* 0: FFT 1:NIQ */
-        fpga_reg->broad_band[i] = base_addr + BROAD_BAND_REG_OFFSET*i;
-        printf_note("virtual address:%p, physical address:0x%x\n", fpga_reg->broad_band[i], FPGA_BRAOD_BAND_BASE+BROAD_BAND_REG_OFFSET*i);
-    }
-
-    fpga_reg->narrow_band[0] = memmap(fd_dev, FPGA_NARROR_BAND_BASE, SYSTEM_CONFG_REG_LENGTH * NARROW_BAND_CHANNEL_MAX_NUM); 
-    if (!fpga_reg->narrow_band[0])
-    {
-        printf("mmap failed, NULL pointer!\n");
-        return -1;
-    }
-    printf_debug("virtual address:%p, physical address:0x%x\n", fpga_reg->narrow_band[0], FPGA_NARROR_BAND_BASE);
-
-    
-    for (i = 1; i < NARROW_BAND_CHANNEL_MAX_NUM; ++i){
-        fpga_reg->narrow_band[i] = (void *)fpga_reg->narrow_band[0] + NARROW_BAND_REG_LENGTH * i;
-    }
     return 0;
 }
 
@@ -128,27 +74,6 @@ static int fpga_unmemmap(FPGA_CONFIG_REG *fpga_reg)
         return -1;
     }
 
-    ret = munmap(fpga_reg->signal, SYSTEM_CONFG_REG_LENGTH); 
-    if (ret)
-    {
-        perror("munmap");
-        return -1;
-    }
-    
-    ret = munmap(fpga_reg->broad_band[0], SYSTEM_CONFG_4K_LENGTH); 
-    if (ret)
-    {
-    	perror("munmap");
-        return -1;
-    }
-
-    ret = munmap(fpga_reg->narrow_band[0], SYSTEM_CONFG_REG_LENGTH * NARROW_BAND_CHANNEL_MAX_NUM); 
-    if (ret)
-    {
-    	perror("munmap");
-        return -1;
-    }
-    printf_note("munmap OK\n");
     return 0;
 }
 
@@ -182,26 +107,18 @@ void fpga_io_init(void)
     }
     
     fpga_memmap(fd_fpga, &_fpga_reg);
+    
     fpga_reg = &_fpga_reg;
-    printf("FPGA version:%x\n", fpga_reg->system->version);
-    fpga_reg->system->system_reset = 1;
-    usleep(100);
-    fpga_reg->signal->data_path_reset = 1;
-    usleep(100);
-    for(i = 0; i < BROAD_CH_NUM; i++){
-        fpga_reg->broad_band[i]->enable = 0xff;
-        usleep(100);
-        fpga_reg->broad_band[i]->band = 0; //200Mhz
-        usleep(100);
-        fpga_reg->broad_band[i]->signal_carrier = 0;
-        usleep(100);
-    }
+    fpga_reg->system->speed = get_xdma_speed_rate();
+    printf_note("speed rate: %d , %d\n", fpga_reg->system->speed, get_xdma_speed_rate());
     fpga_init_flag = true;
 }
+
 
 void fpga_io_close(void)
 {
     fpga_unmemmap(fpga_reg);
     fpga_init_flag = false;
 }
+
 

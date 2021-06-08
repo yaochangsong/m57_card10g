@@ -33,7 +33,20 @@ int clock_adc_init(void)
     #error "NOT define clock_adc function!!!!"
     return -1;
 #endif
-    _ca_ctx->ops->init();
+    bool adc_check = false;
+    for(int c = 0; c < 3; c++){
+        _ca_ctx->ops->init();
+        sleep(1);
+        if(io_get_adc_status()){
+            adc_check = true;
+            break;
+        }
+        sleep(1);
+    }
+    if(adc_check)
+        printf_note("ADC init OK!\n");
+    else
+        printf_note("ADC init Faild!\n");
 #endif
 	return 0;
 }

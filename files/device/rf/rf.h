@@ -17,7 +17,7 @@ struct  calibration_source_args_t{
 }__attribute__ ((packed)); 
 extern    int8_t   rf_init(void);                                                      //射频初始化
 extern    uint8_t  rf_set_interface(uint8_t cmd,uint8_t ch,void *data);                 //射频设置接口
-extern    uint8_t  rf_read_interface(uint8_t cmd,uint8_t ch,void *data, va_list ap);                //射频查询接口
+extern    int8_t  rf_read_interface(uint8_t cmd,uint8_t ch,void *data, va_list ap);                //射频查询接口
 extern    int rf_calibration_source_start(void *args);
 extern    int rf_calibration_source_stop(void *args);
 #endif

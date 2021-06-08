@@ -25,6 +25,7 @@
 
 #include "config.h"
 #include "data_frame.h"
+#include "../../bsp/io.h"
 
 uint8_t * xw_assamble_frame_data(uint32_t *len, void *args)
 {
@@ -43,8 +44,9 @@ uint8_t * xw_assamble_frame_data(uint32_t *len, void *args)
     pfh = (struct data_frame_header *)ptr;
     /* 组装数据帧头 */
     pfh->sysn = SYN_HEADER;
-    pfh->timestamp = time(NULL);
-    pfh->time_counter = _t_counter++;
+    pfh->timestamp = io_get_fpga_sys_time();//time(NULL);
+    pfh->time_ns = io_get_fpga_sys_ns_time();
+    pfh->version = XW_PROTOCAL_VERSION;
     pfh->ex_frame_type = pargs->ex_type;
     header_len = sizeof(struct data_frame_header);
     /* 组装频谱扩展帧头 */
@@ -75,7 +77,7 @@ uint8_t * xw_assamble_frame_data(uint32_t *len, void *args)
         printfd("-----------------------------assamble psd head----------------------------------------\n");
         printfd("ch=[%d], mode[%d], gain_mode[%d],gain_value[%d],start_freq_hz[%"PRIu64"]\n" , 
                     pexh->ch,pexh->mode, pexh->gain_mode, pexh->gain_value, pexh->start_freq_hz);
-        printfd("end_freq_hz[%"PRIu64"], mid_freq_hz[%"PRIu64"], freq_resolution[%f],sn[%u],fft[%u]\n" , 
+        printfd("end_freq_hz[%"PRIu64"], mid_freq_hz[%"PRIu64"], freq_resolution[%u],sn[%u],fft[%u]\n" , 
                     pexh->end_freq_hz, pexh->mid_freq_hz, pexh->freq_resolution,pexh->sn,pexh->fft_len);
         printfd("data_type[%d], data_len[%u]\n", pexh->data_type, pexh->data_len);
         printfd("----------------------------------------------------------------------------------------\n");
@@ -108,7 +110,7 @@ uint8_t * xw_assamble_frame_data(uint32_t *len, void *args)
     *len = header_len;
     printfd("-----------------------------assamble  head---------------------------------------------\n");
     printfd("header_len=%u", header_len);
-    printfd("syn=0x%x, timestamp=0x%x, time_counter=%u, ex_frame_header_len=%d\n", pfh->sysn, pfh->timestamp, pfh->time_counter, pfh->ex_frame_header_len);
+    printfd("syn=0x%x, timestamp=0x%x, version=%d, ex_frame_header_len=%d\n", pfh->sysn, pfh->timestamp, pfh->version, pfh->ex_frame_header_len);
     printfd("----------------------------------------------------------------------------------------\n");
     
     return ptr;

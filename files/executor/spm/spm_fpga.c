@@ -50,28 +50,33 @@ int32_t subch_ref_val_0dbm[MAX_RF_NUM];
 
 
 
-FILE *_file_fd;
-static  void init_write_file(char *filename)
+FILE *_file_fd[4];
+static  void init_write_file(char *filename, int index)
 {
-    _file_fd = fopen(filename, "w+b");
-    if(!_file_fd){
+    _file_fd[index] = fopen(filename, "w+b");
+    if(!_file_fd[index]){
         printf_err("Open file error!\n");
     }
 }
 
-static inline int write_file_ascii(int16_t *pdata)
+static inline int write_file_ascii(int16_t *pdata, int index)
 {
     char _file_buffer[32] = {0};
     sprintf(_file_buffer, "%d ", *pdata);
-    fwrite((void *)_file_buffer,strlen(_file_buffer), 1, _file_fd);
+    fwrite((void *)_file_buffer,strlen(_file_buffer), 1, _file_fd[index]);
 
     return 0;
 }
 
-static inline int write_lf(void)
+static inline int write_file_nfft(int16_t *pdata, int n, int index)
+{
+    fwrite((void *)pdata, sizeof(int16_t), n, _file_fd[index]);
+    return 0;
+}
+static inline int write_lf(int index)
 {
     char lf = '\n';
-    fwrite((void *)&lf,1, 1, _file_fd);
+    fwrite((void *)&lf,1, 1, _file_fd[index]);
 
     return 0;
 }
@@ -157,9 +162,9 @@ static inline const char * get_str_by_code(const char *const *list, int max, int
 
 
 static struct _spm_stream spm_stream[] = {
-//        {DMA_BIQ0_DEV,     -1, 0, NULL, DMA_IQ_BUFFER_SIZE,  "BIQ0 Stream",      DMA_READ, STREAM_IQ},
+        {DMA_BIQ_DEV,     - 1,-1, NULL, DMA_IQ_BUFFER_SIZE,  "BIQ0 Stream",      DMA_READ, STREAM_BIQ},
         {DMA_FFT_DEV,      -1,-1, NULL, DMA_BUFFER_16M_SIZE, "FFT0 Stream",    DMA_READ, STREAM_FFT},
-        {DMA_NIQ_DEV,      -1,-1, NULL, DMA_IQ_BUFFER_SIZE,  "NIQ Stream",     DMA_READ, STREAM_IQ},
+        {DMA_NIQ_DEV,      -1,-1, NULL, DMA_IQ_BUFFER_SIZE,  "NIQ Stream",     DMA_READ, STREAM_NIQ},
 #if 0
         {DMA_BIQ1_DEV,        -1, 1, NULL, DMA_IQ_BUFFER_SIZE,  "BIQ1 Stream",      DMA_READ, STREAM_IQ},
         {DMA_BIQ2_DEV,        -1, 2, NULL, DMA_IQ_BUFFER_SIZE,  "BIQ2 Stream",      DMA_READ, STREAM_IQ},
@@ -240,7 +245,7 @@ static ssize_t spm_stream_read(int type, void **data)
            // printf_note("DMA get [%s] status:%s[%d]\n", pstream[type].name, dma_str_status(status.status), status.status);
             if(status.status == DMA_STATUS_IDLE){
                 printf_debug("[%s]DMA idle!\n", pstream[type].name);
-                return -1;
+                usleep(1);
             }
            // usleep(5);
             if(pstream[type].type == STREAM_FFT){
@@ -281,7 +286,7 @@ static inline int spm_find_index_by_type(int ch, int subch, enum stream_type typ
 static ssize_t spm_read_biq_data(int ch, void **data)
 {
     int index;
-    index = spm_find_index_by_type(ch, -1, STREAM_IQ);
+    index = spm_find_index_by_type(ch, -1, STREAM_BIQ);
     if(index < 0)
         return -1;
     
@@ -292,7 +297,7 @@ static ssize_t spm_read_biq_data(int ch, void **data)
 static ssize_t spm_read_niq_data(void **data)
 {
     int index;
-    index = spm_find_index_by_type(-1, -1, STREAM_IQ);
+    index = spm_find_index_by_type(-1, -1, STREAM_NIQ);
     if(index < 0)
         return -1;
     
@@ -347,7 +352,7 @@ static int spm_read_biq_over_deal(int ch, void *arg)
     struct _spm_stream *pstream = spm_stream;
     int index;
     
-    index = spm_find_index_by_type(ch, -1, STREAM_IQ);
+    index = spm_find_index_by_type(ch, -1, STREAM_BIQ);
     if(index < 0)
         return -1;
 
@@ -364,7 +369,7 @@ static int spm_read_niq_over_deal(void *arg)
     struct _spm_stream *pstream = spm_stream;
     int index;
     
-    index = spm_find_index_by_type(-1, -1, STREAM_IQ);
+    index = spm_find_index_by_type(-1, -1, STREAM_NIQ);
     if(index < 0)
         return -1;
 
@@ -374,7 +379,121 @@ static int spm_read_niq_over_deal(void *arg)
     return 0;
 }
 
+static int _spm_extract_half_point(void *data, int len, void *outbuf)
+{
+    fft_t *pdata = (fft_t *)data;
+    for(int i = 0; i < len; i++){
+        *(uint8_t *)outbuf++ = *pdata & 0x0ff;
+        pdata++;
+    }
+    return len/2;
+}
 
+#if defined(SUPPORT_SPM_SEND_BUFFER)
+static  void *_spm_send_buffer_init(void)
+{
+    #define SPM_SEGMENT_MAX_NUM 12
+    int package_num = 0;
+    package_num = MAX_FFT_SIZE * SPM_SEGMENT_MAX_NUM;
+    
+    return memory_pool_create(sizeof(fft_t), package_num);
+}
+
+static  void _spm_send_buffer_exit(void *args)
+{
+    memory_pool_destroy(args);
+}
+
+static  void _spm_send_buffer_free(void *pool_buffer)
+{
+    memory_pool_free(pool_buffer);
+}
+
+static void _spm_add_send_buffer(const fft_t * ptr, size_t len, void *args, void 
+*fft_ptr_buffer)
+{
+    struct spm_run_parm *run_args = args;
+    void *pool_ptr;
+    if(fft_ptr_buffer){
+        //write_file_nfft(ptr, len, 0);
+        pool_ptr = memory_pool_alloc_blocksize_num(fft_ptr_buffer, len);
+        if(pool_ptr){
+            memcpy(pool_ptr, ptr, len*sizeof(fft_t));
+           // write_file_nfft(pool_ptr, len, 1);
+        }
+        else
+            printf_err("Get Pool ptr err\n");
+    }
+}
+
+static void *_spm_read_send_buffer(size_t *len, void *args, void *fft_ptr_buffer)
+{
+    struct spm_run_parm *run_args = args;
+    void *first;
+    size_t total_fft_len = 0;
+    if(fft_ptr_buffer){
+        first = memory_pool_first(fft_ptr_buffer);
+        total_fft_len = memory_pool_get_use_count(fft_ptr_buffer);
+        //write_file_nfft(first, total_fft_len, 2);
+    }else
+        return NULL;
+    *len = total_fft_len;
+    return first;
+}
+
+static  fft_t* _spm_send_buffer_package(const fft_t *ptr, size_t fft_len, size_t *t_order_len, void *args)
+{
+    struct spm_run_parm *run_args = args;
+    size_t s_offset = 0, e_offset = 0, order_len = 0;
+    fft_t *ptr_buffer;
+    bool is_package_over = false;
+    struct spm_context *_ctx;
+    void *pool_buffer = NULL;
+    _ctx = get_spm_ctx();
+    pool_buffer = _ctx->pool_buffer;
+    order_len = fft_len;
+    
+    if(run_args->ch == 0 || run_args->ch == 1 || run_args->ch == 2){
+        if(run_args->point == 0){
+            s_offset = MHZ(2.5)/run_args->freq_resolution;
+            order_len = fft_len - s_offset;
+        }
+        else if(run_args->point == 2){
+            e_offset = MHZ(2.5)/run_args->freq_resolution;
+            order_len = fft_len - e_offset;
+        }
+    } else if(run_args->ch == 3){
+        if(run_args->point == 0){
+            s_offset =  MHZ(2.5)/run_args->freq_resolution;
+            order_len = fft_len - s_offset;
+        } else if(run_args->point == 2){
+            is_package_over = true;
+        }
+    } 
+    ptr_buffer = ptr + s_offset;
+    printf_debug("ch=%d, point:%d,s_offset = %ld, e_offset=%ld, len =%ld, ptr_buffer=%p,ptr=%p, freq_resolution=%u, mfreq=%"PRIu64"\n",
+        run_args->ch, run_args->point,  s_offset, e_offset, order_len, ptr_buffer, ptr, run_args->freq_resolution, run_args->m_freq_s);
+
+    if(pool_buffer == NULL){
+        pool_buffer = _spm_send_buffer_init();
+        _ctx->pool_buffer = pool_buffer;
+    }
+
+    if(pool_buffer && run_args->ch == 0 && run_args->point == 0){
+         _spm_send_buffer_free(pool_buffer);
+    }
+
+    _spm_add_send_buffer(ptr_buffer, order_len, args, pool_buffer);
+    if(is_package_over == true){
+        void *first;
+        first = _spm_read_send_buffer(t_order_len, args, pool_buffer);
+        return first;
+    }
+    return NULL;
+}
+
+
+#endif
 static  float get_side_band_rate(uint32_t bandwidth)
 {
     #define DEFAULT_SIDE_BAND_RATE  (1.28)
@@ -400,7 +519,7 @@ static fft_t *spm_data_order(fft_t *fft_data,
     uint64_t start_freq_hz = 0;
     int i;
     size_t order_len = 0;
-
+    fft_t *p_buffer = NULL;
     if(fft_data == NULL || fft_len == 0){
         printf_note("null data\n");
         return NULL;
@@ -410,10 +529,10 @@ static fft_t *spm_data_order(fft_t *fft_data,
     /* 获取边带率 */
     side_rate  =  get_side_band_rate(run_args->scan_bw);
     /* 去边带后FFT长度 */
-    order_len = (size_t)((float)(fft_len) / side_rate);
+    order_len = (size_t)((float)(fft_len) / side_rate + 0.5);
     /*双字节对齐*/
     order_len = order_len&0x0fffffffe; 
-    printf_debug("side_rate = %f[fft_len:%lu, order_len=%lu], scan_bw=%u\n", side_rate, fft_len, order_len, run_args->scan_bw);
+   //printf_note("side_rate = %f[fft_len:%lu, order_len=%lu], scan_bw=%u\n", side_rate, fft_len, order_len, run_args->scan_bw);
     // printf_warn("run_args->fft_ptr=%p, fft_data=%p, order_len=%u, fft_len=%u, side_rate=%f\n", run_args->fft_ptr, fft_data, order_len,fft_len, side_rate);
     /* 信号倒谱 */
     /*
@@ -446,10 +565,24 @@ static fft_t *spm_data_order(fft_t *fft_data,
              order_len = (order_len * run_args->bandwidth)/run_args->scan_bw;
          }
      }
+    run_args->fft_ptr = (fft_t *)run_args->fft_ptr + offset;
+    p_buffer = run_args->fft_ptr;
+#if defined(SUPPORT_SPM_SEND_BUFFER)
+    size_t total_order_len = 0;
+    if((p_buffer = _spm_send_buffer_package(run_args->fft_ptr, order_len, &total_order_len, run_args)) == NULL){
+        return NULL;
+    }
+    order_len = total_order_len;
+#endif
+#if defined(SUPPORT_SPECTRUM_EXTRACT_POINT)
+    order_len =  _spm_extract_half_point(p_buffer, order_len, run_args->fft_ptr_swap);
     *order_fft_len = order_len;
-    printf_debug("order_len=%lu, offset = %u, start_freq_hz=%"PRIu64", s_freq_offset=%"PRIu64", m_freq=%"PRIu64", scan_bw=%u\n", 
-        order_len, offset, start_freq_hz, run_args->s_freq_offset, run_args->m_freq_s, run_args->scan_bw);
-    return (fft_t *)run_args->fft_ptr + offset;
+    return (fft_t *)run_args->fft_ptr_swap;
+#endif
+    *order_fft_len = order_len;
+    printf_debug("order_len=%lu, offset = %u, start_freq_hz=%"PRIu64", s_freq_offset=%"PRIu64", m_freq=%"PRIu64", scan_bw=%u,fft_len=%lu\n", 
+        order_len, offset, start_freq_hz, run_args->s_freq_offset, run_args->m_freq_s, run_args->scan_bw,fft_len);
+    return (fft_t *)run_args->fft_ptr;
 }
 
 /*********************************************************
@@ -468,12 +601,12 @@ static int spm_send_fft_data(void *data, size_t fft_len, void *arg)
     uint8_t *ptr_header = NULL;
     uint32_t header_len = 0;
     size_t data_byte_size = 0;
-    struct spm_run_parm *hparam = NULL;
+    struct spm_run_parm *hparam;
+    hparam = (struct spm_run_parm *)arg;
 
     if(data == NULL || fft_len == 0 || arg == NULL)
         return -1;
     data_byte_size = fft_len * sizeof(fft_t);
-    hparam = (struct spm_run_parm *)arg;
 #if (defined SUPPORT_DATA_PROTOCAL_AKT)
     hparam->data_len = data_byte_size; 
     hparam->sample_rate = get_side_band_rate(hparam->scan_bw)*hparam->scan_bw;
@@ -484,9 +617,12 @@ static int spm_send_fft_data(void *data, size_t fft_len, void *arg)
     }
 #elif defined(SUPPORT_DATA_PROTOCAL_XW)
     hparam->data_len = data_byte_size; 
-    hparam->type = DEFH_DTYPE_FLOAT;
+    #if defined(SUPPORT_SPECTRUM_EXTRACT_POINT)
+    hparam->type = DEFH_DTYPE_CHAR;
+    #else
+    hparam->type = DEFH_DTYPE_SHORT;
+    #endif
     hparam->ex_type = DFH_EX_TYPE_PSD;
-    hparam->freq_resolution = config_get_resolution_by_fft(hparam->fft_size);
     ptr_header = xw_assamble_frame_data(&header_len, arg);
     if(ptr_header == NULL)
         return -1;
@@ -502,7 +638,11 @@ static int spm_send_fft_data(void *data, size_t fft_len, void *arg)
         __lock_fft_send__();
     else
         __lock_fft2_send__();
-    udp_send_vec_data(iov, 2, TAG_FFT);
+#if (defined SUPPORT_DATA_PROTOCAL_TCP)
+    tcp_send_vec_data(iov, 2, NET_DATA_TYPE_FFT);
+#else
+    udp_send_vec_data(iov, 2, NET_DATA_TYPE_FFT);
+#endif
     if(hparam->ch == 0)
         __unlock_fft_send__();
     else
@@ -522,34 +662,42 @@ static int spm_send_fft_data(void *data, size_t fft_len, void *arg)
         NULL: 失败
         非空: 协议头指针; 使用后需要释放
 *********************************************************/
-static void *_assamble_iq_header(size_t subch, size_t *hlen, size_t data_len, void *arg)
+static void *_assamble_iq_header(int ch, size_t subch, size_t *hlen, size_t data_len, void *arg, enum stream_iq_type type)
 {
     uint8_t *ptr = NULL, *ptr_header = NULL;
-    uint32_t header_len = 0, ch;
-
+    uint32_t header_len = 0;
+    struct poal_config *poal_config = &(config_get_config()->oal_config);
+    struct sub_channel_freq_para_st *sub_channel_array;
     if(data_len == 0 || arg == NULL)
         return NULL;
 
-#ifdef SUPPORT_DATA_PROTOCAL_AKT
     struct spm_run_parm *hparam;
-    struct poal_config *poal_config = &(config_get_config()->oal_config);
-    struct sub_channel_freq_para_st *sub_channel_array;
 
     hparam = (struct spm_run_parm *)arg;
+#ifdef SUPPORT_DATA_PROTOCAL_AKT
     hparam->data_len = data_len;
     hparam->type = BASEBAND_DATUM_IQ;
     hparam->ex_type = DEMODULATE_DATUM;
     ch = hparam->ch;
+    if(type == STREAM_NIQ_TYPE_AUDIO){
+        int i;
+        struct multi_freq_point_para_st  *points = &poal_config->channel[ch].multi_freq_point_param;
+        i = executor_get_audio_point(ch);
+        hparam->sub_ch_para.bandwidth_hz = points->points[i].d_bandwith;
+        hparam->sub_ch_para.m_freq_hz =  points->points[i].center_freq;
+        hparam->sub_ch_para.d_method = points->points[i].raw_d_method;
+        hparam->sub_ch_para.sample_rate = 32000;    /* audio 32Khz */
+    }else if(type == STREAM_NIQ_TYPE_RAW){
     sub_channel_array = &poal_config->channel[ch].sub_channel_para;
     hparam->sub_ch_para.bandwidth_hz = sub_channel_array->sub_ch[subch].d_bandwith;
     hparam->sub_ch_para.m_freq_hz = sub_channel_array->sub_ch[subch].center_freq;
     hparam->sub_ch_para.d_method = sub_channel_array->sub_ch[subch].raw_d_method;
     hparam->sub_ch_para.sample_rate = io_get_narrowband_iq_factor(hparam->bandwidth) * hparam->sub_ch_para.bandwidth_hz; 
+    }
     
-    printf_debug("ch=%d, subch = %ld, factor:%f,m_freq_hz=%"PRIu64", bandwidth:%uhz, sample_rate=%u, d_method=%d\n", 
+    printf_debug("ch=%d, subch = %ld, m_freq_hz=%"PRIu64", bandwidth:%uhz, sample_rate=%u, d_method=%d\n", 
         ch,
         subch,
-        io_get_narrowband_iq_factor(hparam->bandwidth), 
         hparam->sub_ch_para.m_freq_hz,
         hparam->sub_ch_para.bandwidth_hz, 
         hparam->sub_ch_para.sample_rate,  
@@ -560,68 +708,28 @@ static void *_assamble_iq_header(size_t subch, size_t *hlen, size_t data_len, vo
     }
     
 #elif defined(SUPPORT_DATA_PROTOCAL_XW)
-    struct spm_run_parm *hparam;
-    hparam = (struct spm_run_parm *)arg;
+    //ch = subch;
     hparam->data_len = data_len; 
-    hparam->type = DEFH_DTYPE_BB_IQ;
-    hparam->ex_type = DFH_EX_TYPE_DEMO;
-   // hparam->sub_ch = subch;
-    ptr_header = xw_assamble_frame_data(&header_len, arg);
-    if(ptr_header == NULL)
-        return NULL;
-#endif
-    *hlen = header_len;
-
-    return ptr_header;
-
-}
-
-static void *_assamble_audio_header(int subch, size_t *hlen, size_t data_len, void *arg)
-{
-    uint8_t *ptr = NULL, *ptr_header = NULL;
-    uint32_t header_len = 0;
-    struct spm_run_parm *hparam;
-    uint32_t i, ch;
-    uint64_t d_m_freq_hz;
-    uint32_t d_method;
-    struct poal_config *poal_config = &(config_get_config()->oal_config);
-    hparam = (struct spm_run_parm *)arg;
-    struct multi_freq_point_para_st  *points = &poal_config->channel[hparam->ch].multi_freq_point_param;
-    
-    if(data_len == 0 || arg == NULL)
-        return NULL;
-
-    ch = hparam->ch;
-    i = executor_get_audio_point(ch);
-    hparam->sub_ch_para.bandwidth_hz = points->points[i].d_bandwith;
-    hparam->sub_ch_para.m_freq_hz =  points->points[i].center_freq;
-    hparam->sub_ch_para.d_method = points->points[i].raw_d_method;
-    hparam->sub_ch_para.sample_rate = 32000;    /* audio 32Khz */
-
-    printf_debug("ch=%d, subch = %d, i=%d,m_freq_hz=%"PRIu64", bandwidth:%uhz, sample_rate=%u, d_method=%d\n", 
-        ch,
-        subch, i,
-        hparam->sub_ch_para.m_freq_hz,
-        hparam->sub_ch_para.bandwidth_hz, 
-        hparam->sub_ch_para.sample_rate,  
-        hparam->sub_ch_para.d_method );
-
-#ifdef SUPPORT_DATA_PROTOCAL_AKT
-    hparam->data_len = data_len;
-    hparam->type = DIGITAL_AUTDIO;
-    hparam->ex_type = DEMODULATE_DATUM;
-    if((ptr_header = akt_assamble_data_frame_header_data(&header_len, arg))== NULL){
-        return NULL;
+    if(type == STREAM_BIQ_TYPE_RAW){
+        printf_debug("ch=%d,middle_freq=%"PRIu64",bandwidth=%"PRIu64"\n",ch,poal_config->channel[ch].multi_freq_point_param.ddc.middle_freq,
+                        poal_config->channel[ch].multi_freq_point_param.ddc.bandwidth);
+        hparam->type = DEFH_DTYPE_BB_IQ;
+        hparam->ddc_m_freq = poal_config->channel[ch].multi_freq_point_param.ddc.middle_freq;
+        hparam->ddc_bandwidth = poal_config->channel[ch].multi_freq_point_param.ddc.bandwidth;
     }
-    
-#elif defined(SUPPORT_DATA_PROTOCAL_XW)
-    hparam->data_len = data_len; 
-    hparam->type = DEFH_DTYPE_AUDIO;
+    else if(type == STREAM_NIQ_TYPE_RAW || STREAM_NIQ_TYPE_AUDIO){
+        sub_channel_array = &poal_config->channel[ch].sub_channel_para;
+        hparam->ddc_bandwidth = sub_channel_array->sub_ch[subch].d_bandwith;
+        hparam->ddc_m_freq = sub_channel_array->sub_ch[subch].center_freq;
+        hparam->d_method = sub_channel_array->sub_ch[subch].raw_d_method;
+        hparam->type = (type ==  STREAM_NIQ_TYPE_RAW ? DEFH_DTYPE_CH_IQ : DEFH_DTYPE_AUDIO);
+    }
     hparam->ex_type = DFH_EX_TYPE_DEMO;
-   // hparam->sub_ch = subch;
     ptr_header = xw_assamble_frame_data(&header_len, arg);
     if(ptr_header == NULL)
         return NULL;
+#else
+    hparam = hparam;
 #endif
     *hlen = header_len;
 
@@ -629,7 +737,7 @@ static void *_assamble_audio_header(int subch, size_t *hlen, size_t data_len, vo
 
 }
 
-static int spm_send_dispatcher_niq(enum stream_niq_type type, iq_t *data, size_t len, void *arg)
+static int spm_send_dispatcher_niq(enum stream_iq_type type, iq_t *data, size_t len, void *arg)
 {
     size_t header_len = 0, subch = 0;
     struct _spm_stream *pstream = spm_stream;
@@ -644,19 +752,9 @@ static int spm_send_dispatcher_niq(enum stream_niq_type type, iq_t *data, size_t
     if(len < _send_byte)
         return -1;
 
-    if(type == STREAM_NIQ_TYPE_AUDIO){
-        if((hptr = _assamble_audio_header(CONFIG_AUDIO_CHANNEL, &header_len, _send_byte, arg)) == NULL){
+    if((hptr = _assamble_iq_header(0, hparam->sub_ch_index, &header_len, _send_byte, arg, type)) == NULL){
             printf_err("assamble head error\n");
-            return -1;
-        }
-    } else if(type == STREAM_NIQ_TYPE_RAW){
-        if((hptr = _assamble_iq_header(hparam->sub_ch_index, &header_len, _send_byte, arg)) == NULL){
-            printf_err("assamble head error\n");
-            return -1;
-        }
 
-    } else{
-        printf_err("unknow type: %d\n", type);
         return -1;
     }
     
@@ -673,14 +771,14 @@ static int spm_send_dispatcher_niq(enum stream_niq_type type, iq_t *data, size_t
 		for(i = 0; i<index; i++){
 	        iov[1].iov_base = pdata;
 	        iov[1].iov_len = _send_byte;
-	        udp_send_vec_data(iov, 2, TAG_AUDIO);
+            udp_send_vec_data(iov, 2, NET_DATA_TYPE_AUDIO);
 	        pdata += _send_byte;
 	    }
 	} else if(type == STREAM_NIQ_TYPE_RAW){
 		for(i = 0; i<index; i++){
 	        iov[1].iov_base = pdata;
 	        iov[1].iov_len = _send_byte;
-	        udp_send_vec_data(iov, 2, TAG_NIQ);
+            udp_send_vec_data(iov, 2, NET_DATA_TYPE_NIQ);
 	        pdata += _send_byte;
 	    }
 	}
@@ -766,7 +864,7 @@ int spm_send_niq_data(void *data, size_t len, void *arg)
 {
     size_t header_len = 0;
     struct _spm_stream *pstream = spm_stream;
-    size_t _send_byte = (iq_send_unit_byte > 0 ? iq_send_unit_byte : DEFAULT_IQ_SEND_BYTE);
+    size_t _send_byte = 32768;//(iq_send_unit_byte > 0 ? iq_send_unit_byte : DEFAULT_IQ_SEND_BYTE);
     uint8_t *hptr = NULL;
     
     if(data == NULL || len == 0 || arg == NULL)
@@ -774,7 +872,7 @@ int spm_send_niq_data(void *data, size_t len, void *arg)
 
     if(len < _send_byte)
         return -1;
-    if((hptr = _assamble_iq_header(1, &header_len, _send_byte, arg)) == NULL){
+    if((hptr = _assamble_iq_header(0, 0, &header_len, _send_byte, arg, STREAM_NIQ_TYPE_RAW)) == NULL){
         printf_err("assamble head error\n");
         return -1;
     }
@@ -791,7 +889,11 @@ int spm_send_niq_data(void *data, size_t len, void *arg)
     for(i = 0; i<index; i++){
         iov[1].iov_base = pdata;
         iov[1].iov_len = _send_byte;
-        udp_send_vec_data(iov, 2, TAG_NIQ);
+#if (defined SUPPORT_DATA_PROTOCAL_TCP)
+    tcp_send_vec_data(iov, 2, NET_DATA_TYPE_NIQ);
+#else
+    udp_send_vec_data(iov, 2, NET_DATA_TYPE_NIQ);
+#endif
         pdata += _send_byte;
     }
     __unlock_iq_send__();
@@ -814,7 +916,7 @@ int spm_send_biq_data(int ch, void *data, size_t len, void *arg)
 
     if(len < _send_byte)
         return -1;
-    if((hptr = _assamble_iq_header(1, &header_len, _send_byte, arg)) == NULL){
+    if((hptr = _assamble_iq_header(ch, 0, &header_len, _send_byte, arg, STREAM_BIQ_TYPE_RAW)) == NULL){
         printf_err("assamble head error\n");
         return -1;
     }
@@ -831,7 +933,11 @@ int spm_send_biq_data(int ch, void *data, size_t len, void *arg)
     for(i = 0; i<index; i++){
         iov[1].iov_base = pdata;
         iov[1].iov_len = _send_byte;
-        udp_send_vec_data(iov, 2, TAG_BIQ);
+#if (defined SUPPORT_DATA_PROTOCAL_TCP)
+    tcp_send_vec_data(iov, 2, NET_DATA_TYPE_BIQ);
+#else
+    udp_send_vec_data(iov, 2, NET_DATA_TYPE_BIQ);
+#endif
         pdata += _send_byte;
     }
     __unlock_iq_send__();
@@ -1141,7 +1247,7 @@ static int spm_stream_start(int ch, int subch, uint32_t len,uint8_t continuous, 
     if(index < 0)
         return -1;
 
-    printf_debug("%d stream start, pstream[%d].name = %s, continuous[%d], len=%u\n",
+    printf_debug("ch:%d, %d stream start, pstream[%d].name = %s, continuous[%d], len=%u\n",ch,
                 type,  index, pstream[index].name, continuous, len);
     
     if(pstream[index].rd_wr == DMA_READ)
@@ -1183,7 +1289,7 @@ static int _spm_close(void *_ctx)
         safe_free(ctx->run_args[ch]->fft_ptr);
         safe_free(ctx->run_args[ch]);
     }
-    printf_note("close stream\n");
+    printf_debug("close stream\n");
     return 0;
 }
 

@@ -12,11 +12,13 @@ uint8_t rf_set_interface(uint8_t cmd,uint8_t ch,void *data){
         case EX_RF_MID_FREQ :{
             /* only set once when value changed */
             static uint64_t old_freq = 0;/* Hz */
-            if(old_freq != *(uint64_t*)data){
-                old_freq = *(uint64_t*)data;
-            }else{
+            static int32_t old_ch=-1;
+            if((old_freq == *(uint64_t*)data) && (ch == old_ch)){
+                /* 避免重复设置相同参数 */
                 break;
             }
+            old_freq = *(uint64_t*)data;
+            old_ch = ch;
             printf_debug("[**RF**]ch=%d, middle_freq=%"PRIu64"\n",ch, *(uint64_t*)data);
 #ifdef SUPPORT_RF_ADRV
             uint64_t mid_freq = *(uint64_t*)data;
@@ -26,21 +28,27 @@ uint8_t rf_set_interface(uint8_t cmd,uint8_t ch,void *data){
             gpio_select_rf_channel(mid_freq);
             adrv_set_rx_freq(mid_freq);
 #elif defined(SUPPORT_RF_SPI)
+    #if defined(SUPPORT_RF_SPI_TF713)
+            uint64_t freq_khz = old_freq/1000;/* NOTE: Hz => KHz */
+            ret = spi_rf_set_command(ch, SPI_RF_FREQ_SET, &freq_khz);
+            usleep(30);
+    #else
             uint64_t freq_khz = old_freq/1000;/* NOTE: Hz => KHz */
             uint64_t host_freq=htobe64(freq_khz) >> 24; //小端转大端（文档中心频率为大端字节序列，5个字节,单位为Hz,实际为Khz）
             uint64_t recv_freq = 0, recv_freq_htob;
 
             for(int i = 0; i<3; i++){
-                ret = spi_rf_set_command(SPI_RF_FREQ_SET, &host_freq);
+                ret = spi_rf_set_command(ch, SPI_RF_FREQ_SET, &host_freq);
                 usleep(300);
                 recv_freq = 0;
-                ret = spi_rf_get_command(SPI_RF_FREQ_GET, &recv_freq);
+                ret = spi_rf_get_command(ch, SPI_RF_FREQ_GET, &recv_freq, 0);
                 recv_freq_htob =  (htobe64(recv_freq) >> 24) ;  /* khz */
                 printf_debug("host_freq=%"PRIu64", 0x%llx, recv_freq = %"PRIu64", 0x%llx, htobe64=0x%llx\n",freq_khz, freq_khz,recv_freq ,recv_freq,recv_freq_htob);
                 if(recv_freq_htob == freq_khz){
                         break;
                 }
             }
+     #endif
 #elif defined(SUPPORT_RF_FPGA)
     #if defined(SUPPORT_DIRECT_SAMPLE)
             #define DIRECT_FREQ_THR (200000000)
@@ -68,9 +76,13 @@ uint8_t rf_set_interface(uint8_t cmd,uint8_t ch,void *data){
             adrv_set_rx_bw(mbw);
 #elif  SUPPORT_RF_SPI
             //uint32_t filter=htobe32(*(uint32_t *)data) >> 24;
-            ret = spi_rf_set_command(SPI_RF_MIDFREQ_BW_FILTER_SET, &mbw);
-            usleep(300);
-            ret = spi_rf_get_command(SPI_RF_MIDFREQ_BW_FILTER_GET, &mbw);
+#if defined(SUPPORT_RF_SPI_TF713)
+            if(mbw == MHZ(160)) mbw = 1;
+            else    mbw = 0;
+#endif
+            ret = spi_rf_set_command(ch, SPI_RF_MIDFREQ_BW_FILTER_SET, &mbw);
+            //usleep(300);
+            //ret = spi_rf_get_command(ch, SPI_RF_MIDFREQ_BW_FILTER_GET, &mbw);
 #elif defined(SUPPORT_RF_FPGA)
            _reg_set_rf_bandwidth(ch, 0, mbw, get_fpga_reg());
 #endif
@@ -78,16 +90,28 @@ uint8_t rf_set_interface(uint8_t cmd,uint8_t ch,void *data){
         }
 
         case EX_RF_MODE_CODE :{
+            static uint8_t old_mode = 0;/* Hz */
+            static int32_t old_ch=-1;
             uint8_t noise_mode;
             /* noise_mode: 低失真模式(0x00)     常规模式(0x01) 低噪声模式(0x02) */
             noise_mode = *((uint8_t *)data);
-            printf_debug("[**RF**]ch=%d, noise_mode=%d\n", ch, noise_mode);
+            if((old_mode == noise_mode) && (ch == old_ch)){
+                break;
+            }
+            old_mode = noise_mode;
+            old_ch = ch;
+#if defined(SUPPORT_RF_SPI_TF713)
+            /* 常规和低噪声参数交换 */
+            if(noise_mode == 0x02) noise_mode = 0x01;
+            else  noise_mode = 0x0;
+#endif
+            printf_note("[**RF**]ch=%d, noise_mode=%d\n", ch, noise_mode);
 #if defined(SUPPORT_RF_ADRV)
         
 #elif  defined(SUPPORT_RF_SPI)
-            ret = spi_rf_set_command(SPI_RF_NOISE_MODE_SET, &noise_mode);
-            usleep(300);
-            ret = spi_rf_get_command(SPI_RF_NOISE_MODE_GET, &noise_mode);
+            ret = spi_rf_set_command(ch, SPI_RF_NOISE_MODE_SET, &noise_mode);
+            //usleep(300);
+            //ret = spi_rf_get_command(ch, SPI_RF_NOISE_MODE_GET, &noise_mode);
 #elif defined(SUPPORT_RF_FPGA)
             _reg_set_rf_mode_code(ch, 0, noise_mode, get_fpga_reg());
 #endif
@@ -101,19 +125,19 @@ uint8_t rf_set_interface(uint8_t cmd,uint8_t ch,void *data){
             int8_t mgc_gain_value;
             mgc_gain_value = *((int8_t *)data);
             /* only set once when value changed */
-            static int32_t old_data = -1000;
-            if(old_data != mgc_gain_value){
-                old_data = mgc_gain_value;
-            }else{
-                break;
-            }
+            //static int32_t old_data = -1000;
+            //if(old_data != mgc_gain_value){
+            //    old_data = mgc_gain_value;
+           // }else{
+           //     break;
+           // }
             printf_note("[**RF**]ch=%d, mgc_gain_value=%d\n",ch, mgc_gain_value);
 #ifdef SUPPORT_RF_ADRV
             adrv_set_rx_gain(mgc_gain_value);
 #elif defined(SUPPORT_RF_SPI)
-            ret = spi_rf_set_command(SPI_RF_MIDFREQ_GAIN_SET, &mgc_gain_value);
-            usleep(300);
-            ret = spi_rf_get_command(SPI_RF_MIDFREQ_GAIN_GET, &mgc_gain_value);
+            ret = spi_rf_set_command(ch, SPI_RF_MIDFREQ_GAIN_SET, &mgc_gain_value);
+            //usleep(300);
+            //ret = spi_rf_get_command(ch, SPI_RF_MIDFREQ_GAIN_GET, &mgc_gain_value);
 #elif defined(SUPPORT_RF_FPGA)
             _reg_set_rf_mgc_gain(ch, 0, mgc_gain_value, get_fpga_reg());
 #endif
@@ -135,9 +159,9 @@ uint8_t rf_set_interface(uint8_t cmd,uint8_t ch,void *data){
 #ifdef SUPPORT_RF_ADRV
             gpio_select_rf_attenuation(rf_gain_value);
 #elif defined(SUPPORT_RF_SPI)
-            ret = spi_rf_set_command(SPI_RF_GAIN_SET, &rf_gain_value);
-            usleep(300);
-            ret = spi_rf_get_command(SPI_RF_GAIN_GET, &rf_gain_value);
+            ret = spi_rf_set_command(ch, SPI_RF_GAIN_SET, &rf_gain_value);
+            //usleep(300);
+            //ret = spi_rf_get_command(ch, SPI_RF_GAIN_GET, &rf_gain_value);
 #elif defined(SUPPORT_RF_FPGA)
             _reg_set_rf_attenuation(ch, 0, rf_gain_value, get_fpga_reg());
 #endif
@@ -158,7 +182,7 @@ uint8_t rf_set_interface(uint8_t cmd,uint8_t ch,void *data){
             }
             printf_note("source=%d, middle_freq_khz=%uKhz, power=%d\n", cs.source, cs.middle_freq_khz, cs.power);
 #if defined(SUPPORT_RF_SPI)
-            ret = spi_rf_set_command(SPI_RF_CALIBRATE_SOURCE_SET, &cs);
+            ret = spi_rf_set_command(ch, SPI_RF_CALIBRATE_SOURCE_SET, &cs);
 #endif
             break;
         }
@@ -233,8 +257,8 @@ uint8_t rf_set_interface(uint8_t cmd,uint8_t ch,void *data){
     return ret;
 }
 
-uint8_t rf_read_interface(uint8_t cmd,uint8_t ch,void *data, va_list ap){
-    uint8_t ret = -1;
+int8_t rf_read_interface(uint8_t cmd,uint8_t ch,void *data, va_list ap){
+    int8_t ret = -1;
 
     switch(cmd){
         case EX_RF_MID_FREQ : {
@@ -245,12 +269,26 @@ uint8_t rf_read_interface(uint8_t cmd,uint8_t ch,void *data, va_list ap){
             break; 
         }
         case EX_RF_MODE_CODE :{
+#if defined(SUPPORT_RF_SPI_TF713)
+            uint8_t str[6]={0};
+            uint8_t *p_str = NULL;
+            ret = spi_rf_get_command(ch, SPI_RF_WORK_PARA_GET, str, sizeof(str));
+            p_str=str;
+            *(uint8_t *)data = *(p_str+4)&0x07;
+#endif
             break; 
         }
         case EX_RF_GAIN_MODE :{
             break; 
         }
         case EX_RF_MGC_GAIN : {
+#if defined(SUPPORT_RF_SPI_TF713)
+            uint8_t str[6] = {0};
+            uint8_t *p_str = NULL;
+            ret = spi_rf_get_command(ch, SPI_RF_WORK_PARA_GET, str, sizeof(str));
+            p_str=str;
+            *(int8_t *)data =((*(p_str+4)&0xf8)>>3)|((*(p_str+3)&0x01)<<5);
+#endif
             break; 
         }
         case EX_RF_AGC_CTRL_TIME : {
@@ -263,21 +301,59 @@ uint8_t rf_read_interface(uint8_t cmd,uint8_t ch,void *data, va_list ap){
             break; 
         }
         case EX_RF_ATTENUATION :{
+#if defined(SUPPORT_RF_SPI_TF713)
+            uint8_t str[6]={0};
+            uint8_t *p_str = NULL;
+            ret = spi_rf_get_command(ch, SPI_RF_WORK_PARA_GET, str, sizeof(str));
+            p_str=str;
+            *(int8_t *)data = ((*(p_str+3)&0x7e)>>1);
+#endif
             break; 
         }
         case EX_RF_STATUS_TEMPERAT :{
             int16_t  rf_temperature = 0;
-            int i;
 #if defined(SUPPORT_PLATFORM_ARCH_ARM)
 #if defined(SUPPORT_RF_SPI)
-            ret = spi_rf_get_command(SPI_RF_TEMPRATURE_GET, &rf_temperature);
+            ret = spi_rf_get_command(ch, SPI_RF_TEMPRATURE_GET, &rf_temperature, sizeof(int16_t));
+#if defined(SUPPORT_RF_SPI_TF713)
+            int16_t sign_bit;
+            rf_temperature = ntohs(rf_temperature);
+            sign_bit=(rf_temperature&0x2000)>>13;    //sign_bit=0正数， sign_bit=1负数
+            if(sign_bit == 0){
+              rf_temperature = rf_temperature/32.0;
+            }
+            else if(sign_bit == 1){
+              rf_temperature= (rf_temperature-16384)/32.0;
+            }
+#endif
 #elif defined(SUPPORT_RF_FPGA)
             rf_temperature = _reg_get_rf_temperature(ch, 0, get_fpga_reg());
-            printf_note("[ch=%d]get rf temperature = %d\n", ch, rf_temperature);
+            printf_debug("[ch=%d]get rf temperature = %d\n", ch, rf_temperature);
 #endif
 #endif
             *(int16_t *)data = rf_temperature;
-            printf_info("rf temprature:%d\n", *(int16_t *)data);
+            printf_info("ch:%d, rf temprature:%d\n", ch, *(int16_t *)data);
+            break;
+        }
+        case EX_RF_STATUS:
+        {
+            uint8_t status = 0;
+#if defined(SUPPORT_RF_SPI_TF713)
+            spi_rf_get_command(ch, SPI_RF_HANDSHAKE, &status, sizeof(status));
+            status = status & 0x000ff;
+            if((status == 0xffffffa8) || (status == 0xa8)){
+                ret = 0; /* ok */
+            }
+            else
+            ret = -1;
+#endif
+            if(ret == -1){
+                io_set_rf_status(false);
+            }else
+                io_set_rf_status(true);
+            
+            if(data)
+                *(int8_t *)data = ret;
             break;
         }
         default:{
@@ -299,6 +375,8 @@ int8_t rf_init(void)
 #endif
 #if defined(SUPPORT_RF_SPI)
     ret = spi_rf_init();
+    ret = executor_get_command(EX_RF_FREQ_CMD, EX_RF_STATUS, 0,  NULL);
+    printf_warn("RF SPI Check[%s]!\n", ret == 0 ? "OK" : "Faild");
 #endif
     return ret;
 }

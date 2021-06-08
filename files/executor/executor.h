@@ -40,10 +40,13 @@ enum {
     EX_DEC_MID_FREQ,           /* 解调中心频率 */
     EX_DEC_RAW_DATA,           /* 解调原始参数 */
     EX_SMOOTH_TIME,            /*平滑次数*/
+    EX_SMOOTH_TYPE,            /*平滑类型*/
+    EX_SMOOTH_THRE,            /*平滑门限*/
     EX_RESIDENCE_TIME,         /*驻留时间*/
     EX_RESIDENCE_POLICY,       /*驻留策略*/
     EX_AUDIO_SAMPLE_RATE,      /*音频采样速率*/
     EX_FFT_SIZE,               /*FFT 点数*/
+    EX_RESOLUTION,             /* 分辨率 */
     EX_FRAME_DROP_CNT,         /*丢帧次数*/
     EX_CHANNEL_SELECT,         /*通道选择*/
     EX_FILL_RF_PARAM,          /*填充中频参数*/
@@ -54,8 +57,12 @@ enum {
     EX_SUB_CH_DEC_METHOD,      /* 子通道解调方式 */
     EX_SUB_CH_MUTE_THRE,       /* 子通道静噪门限 */
     EX_SUB_CH_ONOFF,           /* 子通道开关 */
+    EX_SUB_CH_GAIN_MODE,       /* 子通道增益模式 mgc/agc */
+    EX_SUB_CH_MGC_GAIN,        /* 子通道mgc增益值 */
+    EX_SUB_CH_AUDIO_SAMPLE_RATE,/*子通道音频采样速率*/
     EX_SAMPLE_CTRL,            /*  0关闭直采，1开启直采*/
-    EX_AUDIO_VOL_CTRL          /*  音频音量控制*/
+    EX_AUDIO_VOL_CTRL,         /*  音频音量控制*/
+    EX_WINDOW_TYPE             /* 窗函数类型 */
 };
 
 /* executor: enable paramter */
@@ -109,6 +116,7 @@ enum {
     EX_RF_CALIBRATE,              /*校正*/
     EX_RF_SAMPLE_CTRL,             /* 直采控制 0关闭直采，1开启直采 */
     EX_RF_LOW_NOISE,              /* 低噪放 */
+    EX_RF_STATUS,                   /* 射频状态 0:ok -1:failed */
 };
 
 /* network paramters */
@@ -175,8 +183,9 @@ struct spm_run_parm{
     uint64_t m_freq;             /* 频谱显示中心频率 */
     uint64_t m_freq_s;           /* 频谱扫描实际中心频率 */
     uint64_t ddc_m_freq;         /* DDC解调中心频率 */
-    float freq_resolution;       /* 分辨率 */
+    uint32_t freq_resolution;       /* 分辨率 */
     uint8_t ch;
+    uint8_t point;               /* 分段时,每个大频段包含小频段数 */
     uint8_t datum_type;          /* 0x00：字符型 0x01：短整型 0x02 浮点型 */
     uint8_t mode;
     uint8_t d_method;           /* 解调类型 */
@@ -190,6 +199,7 @@ struct spm_run_parm{
     struct spm_iq_parm sub_ch_para; /* 子通道参数 */
     void *fft_ptr;              /* fft数据缓冲区 */
     void *fft_ptr_swap;         /* fft数据交换缓冲区,dma存储区存在拷贝数据对齐问题,需要将dma数据拷贝到交换区后再处理 */
+    void *fft_pool;             /* fft数据内存池，用作数据处理 */
     struct spm_dispatcher_iq dis_iq;
 };
 
@@ -205,8 +215,8 @@ struct spm_run_parm{
     pthread_mutex_unlock(&set_cmd_mutex); \
 } while (0)
 
-#define delta_bw  MHZ(30)
-#define middle_freq_resetting(bw, mfreq)    ((bw/2) >= (mfreq) ? (bw/2+delta_bw) : (mfreq))
+#define DELTA_BW  MHZ(30)
+#define middle_freq_resetting(bw, mfreq)    ((bw/2) >= (mfreq) ? (bw/2+DELTA_BW) : (mfreq))
 
 #include "config.h"
 
@@ -220,7 +230,7 @@ extern uint32_t executor_get_audio_point(uint8_t ch);
 extern uint64_t executor_get_mid_freq(uint8_t ch);
 extern void executor_close(void);
 extern void udp_free(struct net_udp_client *cl);
-extern int8_t  executor_serial_points_scan(uint8_t ch, work_mode_type mode, void *args);
+extern int8_t  executor_serial_points_scan(uint8_t ch, work_mode_type mode, int points, void *args);
 extern int8_t  executor_points_scan(uint8_t ch, work_mode_type mode, void *args);
 extern int8_t  executor_fragment_scan(uint32_t fregment_num,uint8_t ch, work_mode_type mode, void *args);
 

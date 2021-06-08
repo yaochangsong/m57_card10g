@@ -30,7 +30,7 @@
 #include "utils.h"
 #include "uhttpd-cgi.h"
 
-
+#include "../../net/net.h"
 //#include "uh_ssl.h"
 #include "log/log.h"
 #include "../resetful/parse_json.h"
@@ -174,6 +174,10 @@ static int client_srv_send_request(struct uh_client *cl)
     char *send_buffer;
     int j = 0;
     int ret = -1;
+    
+    if(cl == NULL)
+        return -1;
+    
     enum http_method method = cl->srv_request.method;
     char *path = cl->srv_request.path;
     char *host = cl->srv_request.host;
@@ -184,21 +188,25 @@ static int client_srv_send_request(struct uh_client *cl)
     char *http_headers = (char*)malloc(HTTP_HEADER_LEN);
     if(http_headers == NULL)
         return -1;
+    
+    j = sprintf(http_headers,"%s", http_methods[method]);
+    j += sprintf(http_headers+j," %s", path);
+    j += sprintf(http_headers+j," HTTP/1.1\r\n");
+    j += sprintf(http_headers+j,"Host: %s\r\n", host);
+    j += sprintf(http_headers+j,"Connection: keep-alive\r\n");
+    if(method == UH_HTTP_METHOD_POST)
+        j += sprintf(http_headers+j,"Content-Length: %d\r\n", data_len);
+    j += sprintf(http_headers+j,"Content-Type: application/json\r\n");
+    j += sprintf(http_headers+j, "\r\n");
+    if(j > HTTP_HEADER_LEN){
+        printf_err("the head is %d is more than buffer len %d\n", j, HTTP_HEADER_LEN);
+        return -1;
+    }
+
     switch(method){
         case UH_HTTP_METHOD_GET:
             break;
         case UH_HTTP_METHOD_POST:
-            j = sprintf(http_headers,"%s", http_methods[method]);
-            j += sprintf(http_headers+j," %s", path);
-            j += sprintf(http_headers+j," HTTP/1.1\r\n");
-            j += sprintf(http_headers+j,"Host: %s\r\n", host);
-            j += sprintf(http_headers+j,"Connection: keep-alive\r\n");
-            j += sprintf(http_headers+j,"Content-Length: %d\r\n", data_len);
-            j += sprintf(http_headers+j,"Content-Type: application/json\r\n");
-            if(j > HTTP_HEADER_LEN){
-                printf_err("the head is %d is more than buffer len %d\n", j, HTTP_HEADER_LEN);
-                return -1;
-            }
             if(HTTP_HEADER_LEN - j < data_len){
                 http_headers=(char*)realloc(http_headers, HTTP_HEADER_LEN+data_len);
                 if(http_headers == NULL){
@@ -206,61 +214,101 @@ static int client_srv_send_request(struct uh_client *cl)
                 }
             }
             printf_note("http_headers:%s\n", http_headers);
-            sprintf(http_headers+j, "\r\n%s", data);
-            cl->printf(cl, http_headers);
+            if(data)
+                sprintf(http_headers+j, "%s", data);
             break;
         default:
             break;
     }
+    
 exit:
-    free(http_headers);
+    cl->printf(cl, http_headers);
+    if(http_headers)
+        free(http_headers);
     http_headers = NULL;
     return ret;
 }
 
 
-int client_assemble_post(struct uh_client *cl, char *path, char *data)
+static int client_assemble_post(struct uh_client *cl, char *path, char *data)
 {
     char host[64] = {0};
-    printf_note("send post on list:%s, port=%d\n",  cl->get_peer_addr(cl), cl->get_peer_port(cl));
+    printf_debug("send post on list:%s, port=%d\n",  cl->get_peer_addr(cl), cl->get_peer_port(cl));
     snprintf(host, sizeof(host), "%s:%d", cl->get_peer_addr(cl), cl->get_peer_port(cl));
-    printf_note("host:%s\n", host);
+    printf_debug("host:%s\n", host);
     cl->srv_request.method = UH_HTTP_METHOD_POST;
     cl->srv_request.host = &host[0];
     cl->srv_request.path = path;
     cl->srv_request.data = data;
     cl->srv_request.content_length = strlen(data);
-    printf_note("srv host:%s\n", cl->srv_request.host);
+    printf_debug("srv host:%s\n", cl->srv_request.host);
     
     return 0;
 }
 
-/* 向http客户端发送POST请求
+static int client_assemble_get(struct uh_client *cl, char *path, char *data)
+{
+    char host[64] = {0};
+    printf_debug("send post on list:%s, port=%d\n",  cl->get_peer_addr(cl), cl->get_peer_port(cl));
+    snprintf(host, sizeof(host), "%s:%d", cl->get_peer_addr(cl), cl->get_peer_port(cl));
+    printf_debug("host:%s\n", host);
+    cl->srv_request.method = UH_HTTP_METHOD_GET;
+    cl->srv_request.host = &host[0];
+    cl->srv_request.path = path;
+    printf_debug("srv host:%s\n", cl->srv_request.host);
+    
+    return 0;
+}
+
+/* 向http客户端发送POST/GET请求
     @uh_srv: 服务端指针(可能在多个地址或不同端口监听)
     @path: 请求路径
     @data: 请求数据
     @addr: 发送目的地址，若为NULL，表示向所有连接的http客户端发送请求
 */
-int client_srv_send_post(struct uh_server *uh_srv, char *path, char *data, struct sockaddr_in *addr)
+static int _client_srv_send(struct uh_client *client, char *path, char *data, struct sockaddr_in *addr)
+{
+    if(data && strlen(data) > 0)
+        client_assemble_post(client, path, data);
+    else
+        client_assemble_get(client, path, data);
+    
+    return client_srv_send_request(client);
+}
+
+
+
+/* 服务器向客户端发送http GET/POST参数， addr=NULL,向所有连接客户端 */
+void uh_client_srv_send(char *path, char *data, struct sockaddr_in *addr)
 {
     struct uh_client *cl_list, *list_tmp;
-    char host[64] = {0};
+    union _cmd_srv *cmdsrv;
+    
+    for(int i = 0; i < get_use_ifname_num(); i++){
+        cmdsrv = (union _cmd_srv *)get_cmd_server(i);
+        if(cmdsrv == NULL)
+            return;
+        struct uh_server *srv = (struct uh_server *)cmdsrv->uhsvr;
+        if(srv == NULL)
+            return;
 
-    if(uh_srv == NULL)
-        return -1;
-    printf_note("path:%s\n", path);
-    list_for_each_entry_safe(cl_list, list_tmp, &uh_srv->clients, list){
-        if(addr == NULL){
-            client_assemble_post(cl_list, path, data);
-            client_srv_send_request(cl_list);
-        }else if(memcmp(&cl_list->peer_addr.sin_addr, &addr->sin_addr, sizeof(addr->sin_addr)) == 0){
-            client_assemble_post(cl_list, path, data);
-            client_srv_send_request(cl_list);
-            break;
+        //pthread_mutex_lock(&srv->tcp_client_lock);
+        list_for_each_entry_safe(cl_list, list_tmp, &srv->clients, list){
+            if(addr != NULL){
+                if(memcmp(&cl_list->peer_addr.sin_addr, &addr->sin_addr, sizeof(addr->sin_addr)) == 0){
+                    _client_srv_send(cl_list, path, data, addr); 
+                }
+            } else {
+                _client_srv_send(cl_list, path, data, addr);
+            }
+         
+            printf_debug("send status to %s:%d\n", cl_list->get_peer_addr(cl_list), cl_list->get_peer_port(cl_list));
+            
         }
+       // pthread_mutex_unlock(&srv->tcp_client_lock);
     }
-    return 0;
 }
+
 
 static inline const char *client_get_version(struct uh_client *cl)
 {
@@ -323,7 +371,7 @@ static int post_post_data(struct uh_client *cl, const char *data, int len)
 {
     struct dispatch *d = &cl->dispatch;
     d->post_len += len;
-    printf_warn("d->post_len=%d\n", d->post_len);
+    //printf_warn("d->post_len=%d\n", d->post_len);
 
     if (d->post_len > UH_POST_MAX_POST_SIZE)
         goto err;
@@ -447,9 +495,22 @@ static inline void connection_close(struct uh_client *cl)
 static inline void keepalive_cb(struct uloop_timeout *timeout)
 {
     struct uh_client *cl = container_of(timeout, struct uh_client, timeout);
-    printf_warn("keepalive_cb###\n");
-
+    printf_note("keepalive_cb###\n");
+    uloop_timeout_set(&cl->timeout, UHTTPD_CONNECTION_TIMEOUT * 1000);
+    if(++cl->tcp_keepalive_probes >= UHTTPD_MAX_KEEPALIVE_PROBES){
+        printf_warn("client %s:%d keep alive timeout, close connection!!!\n", cl->get_peer_addr(cl), cl->get_peer_port(cl));
     connection_close(cl);
+    }
+}
+static void client_update_keepalive(struct uh_client *cl)
+{
+    if(cl == NULL)
+        return;
+    printf_debug("client %s:%d keep alive\n", cl->get_peer_addr(cl), cl->get_peer_port(cl));
+    if(&cl->timeout && (sizeof(struct uloop_timeout) == sizeof(cl->timeout))){
+        uloop_timeout_set(&cl->timeout, UHTTPD_CONNECTION_TIMEOUT * 1000);
+        cl->tcp_keepalive_probes = 0;
+    } 
 }
 
 static void dispatch_done(struct uh_client *cl)
@@ -498,6 +559,7 @@ static void client_free(struct uh_client *cl)
         if (cl->srv->ssl){
            // uh_ssl_client_detach(cl);
         }
+        cl->srv->nclients--;
         executor_net_disconnect_notify(&cl->peer_addr);
         ustream_free(&cl->sfd.stream);
         shutdown(cl->sfd.fd.fd, SHUT_RDWR);
@@ -506,7 +568,6 @@ static void client_free(struct uh_client *cl)
         kvlist_free(&cl->request.url);
         kvlist_free(&cl->request.var);
         kvlist_free(&cl->request.header);
-        cl->srv->nclients--;
 
         if (cl->srv->on_client_free)
             cl->srv->on_client_free(cl);
@@ -640,12 +701,14 @@ static bool client_init_cb(struct uh_client *cl, char *buf, int len)
         return true;
     }
     *newline = 0;    
+    #if 0
     if(client_srv_parse_response(cl, buf) == 0){
         /* if data is response, return */
         ustream_consume(cl->us, newline + 2 - buf);
         cl->state = CLIENT_STATE_HEADER;
         return true;
     }
+    #endif
     cl->state = client_parse_request(cl, buf);
     ustream_consume(cl->us, newline + 2 - buf);
     if (cl->state == CLIENT_STATE_DONE)
@@ -830,7 +893,6 @@ void uh_client_notify_state(struct uh_client *cl)
 static inline void client_notify_state(struct ustream *s)
 {
     struct uh_client *cl = container_of(s, struct uh_client, sfd.stream);
-    printf_warn("notify######\n");
 
     uh_client_notify_state(cl);
 }
@@ -896,8 +958,8 @@ void uh_accept_client(struct uh_server *srv, bool ssl)
     cl->header_end = client_header_end;
     cl->redirect = client_redirect;
     cl->request_done = client_request_done;
-    cl->srv_send_post = client_srv_send_post;
     cl->parse_resetful_var = parse_resetful_var;
+    cl->update_keepalive = client_update_keepalive;
 
     cl->send = client_send;
     cl->printf = uh_printf;

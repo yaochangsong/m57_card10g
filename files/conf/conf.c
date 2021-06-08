@@ -18,6 +18,7 @@
 
 extern uint32_t config_get_disk_file_notifier_timeout(void);
 int config_load_network(char *ifname);
+static int config_fft_window_data_init(void);
 
 
 static s_config config;
@@ -52,6 +53,7 @@ void config_init(void)
             config_load_network(config.oal_config.network[i].ifname);
         }
     }
+    //config_fft_window_data_init();
 }
 
 int config_get_if_nametoindex(char *ifname)
@@ -287,6 +289,18 @@ uint32_t config_get_disk_file_notifier_timeout(void)
         return config.oal_config.ctrl_para.disk_file_notifier_timeout_ms;
 }
 
+bool config_is_temperature_warning(int16_t temperature)
+{
+    #define DEFAILT_TEMP_WARN_THRESHOLD 85
+    if(config.oal_config.ctrl_para.temperature_warn_threshold <= 0)
+        config.oal_config.ctrl_para.temperature_warn_threshold = DEFAILT_TEMP_WARN_THRESHOLD;
+    
+    if(temperature > config.oal_config.ctrl_para.temperature_warn_threshold)
+        return true;
+    
+    return false;
+}
+
 
 uint32_t  config_get_fft_size(uint8_t ch)
 {
@@ -314,14 +328,12 @@ uint32_t config_get_resolution_by_fft(uint32_t fftsize)
         uint32_t fft;
         uint32_t resolution_hz;
     } fft_table[] ={
-        {512, 400000},
-        {1024, 200000},
-        {2048, 100000},
-        {4096, 50000},
-        {8192, 25000},
-        {16384, 12500},
-        {32768, 6250},
-        {65536, 3125},
+        {512, 100000},
+        {1024, 50000},
+        {2048, 25000},
+        {4096, 12500},
+        {8192, 6250},
+        {16384, 3125},
     }; 
     for(int i = 0; i < ARRAY_SIZE(fft_table); i++){
         if(fft_table[i].fft == fftsize)
@@ -332,6 +344,29 @@ uint32_t config_get_resolution_by_fft(uint32_t fftsize)
     
     return DEFAULT_RESOLUTION;
 }
+uint32_t config_get_fft_by_resolution(uint32_t resolution)
+{
+    //sample rate: 153.6M
+    #define DEFAULT_FFT 2048
+    struct  res_fft_t{
+        uint32_t fft;
+        uint32_t resolution_hz;
+    } fft_table[] ={
+        {512, 100000},
+        {1024, 50000},
+        {2048, 25000},
+        {4096, 12500},
+        {8192, 6250},
+        {16384, 3125},
+    }; 
+    for(int i = 0; i < ARRAY_SIZE(fft_table); i++){
+        if(fft_table[i].resolution_hz == resolution)
+            return fft_table[i].fft;
+    }
+    printf_note("NOT find resolution:%u, use default FFT: %u\n", resolution, DEFAULT_FFT);
+    return DEFAULT_FFT;
+}
+
 int32_t config_get_analysis_calibration_value(uint64_t m_freq_hz)
 {
     struct poal_config *poal_config = &(config_get_config()->oal_config);
@@ -496,7 +531,7 @@ int32_t  config_get_fft_calibration_value(uint8_t ch, uint32_t fft_size, uint64_
             }
         }
         if(found == 0){
-            printf_warn("RF mode Error: %d\n", mode);
+            printf_debug("RF mode Error: %d\n", mode);
                     }
         /* 衰减模式校准 */
         /* attenuation */
@@ -636,6 +671,31 @@ int8_t config_write_data(int cmd, uint8_t type, uint8_t ch, void *data, ...)
                     break;
                 case EX_AUDIO_VOL_CTRL:
                     poal_config->channel[ch].multi_freq_point_param.points[0].audio_volume = *(int16_t *)data;
+                    break;
+                case EX_FFT_SIZE:
+                    poal_config->channel[ch].multi_freq_point_param.points[0].fft_size = *(int32_t *)data;
+                    /* 根据FFT设置分辨率 */
+                    poal_config->channel[ch].multi_freq_point_param.points[0].freq_resolution = config_get_resolution_by_fft(*(int32_t *)data);
+                    break;
+                case EX_RESOLUTION:
+                    poal_config->channel[ch].multi_freq_point_param.points[0].freq_resolution = *(int32_t *)data;
+                    poal_config->channel[ch].multi_freq_point_param.points[0].fft_size = config_get_fft_by_resolution(*(int32_t *)data);
+                    break;
+                case EX_SMOOTH_TIME:
+                    poal_config->channel[ch].multi_freq_point_param.smooth_time = *(int16_t *)data;
+                    printf_note("smooth_time: %d\n", poal_config->channel[ch].multi_freq_point_param.smooth_time);
+                    break;
+                case EX_SMOOTH_TYPE:
+                    poal_config->channel[ch].multi_freq_point_param.smooth_mode = *(int16_t *)data;
+                    printf_note("smooth_mode: %d\n", poal_config->channel[ch].multi_freq_point_param.smooth_mode);
+                    break;
+                case EX_SMOOTH_THRE:
+                    poal_config->channel[ch].multi_freq_point_param.smooth_threshold = *(int16_t *)data;
+                    printf_note("smooth_threshold: %d\n", poal_config->channel[ch].multi_freq_point_param.smooth_threshold);
+                    break;
+                case EX_WINDOW_TYPE:
+                    poal_config->channel[ch].multi_freq_point_param.window_type = *(int8_t *)data;
+                    printf_note("window_type: %d\n", poal_config->channel[ch].multi_freq_point_param.window_type);
                     break;
                 default:
                     printf_err("not surpport type\n");
@@ -778,6 +838,14 @@ int8_t config_read_by_cmd(exec_cmd cmd, uint8_t type, uint8_t ch, void *data, ..
                     *(uint32_t *)data = poal_config->channel[ch].multi_freq_point_param.points[index].bandwidth;
                     break;
                 }
+                case EX_SUB_CH_MID_FREQ:
+                {
+                    *(uint64_t *)data = poal_config->channel[ch].sub_channel_para.sub_ch[index].center_freq;
+                    break;
+                }
+                case EX_SMOOTH_TYPE:
+                    *(uint16_t *)data = poal_config->channel[ch].multi_freq_point_param.smooth_mode;
+                    break;
                 default:
                     printf_err("not surpport type\n");
                     goto exit;
@@ -937,6 +1005,54 @@ exit:
 }
 
 
+struct fft_windows_type_info{
+    uint16_t *fptr;
+    size_t f_size;
+};
+
+static struct fft_windows_type_info fwt[WINDOW_TYPE_MAX];
+
+uint16_t *config_get_fft_window_data(int type, size_t *fsize)
+{
+    uint32_t *ptr = NULL;
+    if(type >= WINDOW_TYPE_MAX)
+        return NULL;
+    *fsize = fwt[type].f_size;
+    
+    return fwt[type].fptr;
+}
 
 
-
+static int config_fft_window_data_init(void)
+{
+    char *filepath[WINDOW_TYPE_MAX];
+    ssize_t ret = 0;
+    struct stat fstat;
+    int result = 0;
+    
+    filepath[WINDOW_TYPE_BLACKMAN] = "/etc/win/blackman.bin"; 
+    filepath[WINDOW_TYPE_HAMMING] = "/etc/win/hamming.bin";
+    filepath[WINDOW_TYPE_HANNING] = "/etc/win/hanning.bin"; 
+    filepath[WINDOW_TYPE_RECT] = "/etc/win/rectwin.bin"; 
+    
+    for(int i = 0; i< WINDOW_TYPE_MAX; i++){
+        result = stat(filepath[i], &fstat);
+        if(result != 0){
+            perror("Faild!");
+            continue;
+        }
+        printfn("file:%s, size = %ld\n", filepath[i], fstat.st_size);
+        fwt[i].fptr = safe_malloc(fstat.st_size + 16);
+        ret = read_file_whole(fwt[i].fptr, filepath[i]);
+        if(ret == -1)
+            continue;
+        fwt[i].f_size = ret;
+        #if 0
+        for(int j = 0; j < 8; j++){
+            printfn("%u ", fwt[i].fptr[j]);
+        }
+        printfn("\n");
+        #endif
+    }
+    return 0;
+}

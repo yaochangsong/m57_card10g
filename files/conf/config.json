@@ -1,16 +1,16 @@
 {
 	"version":	"1.1",
 	"network":	[{
-			"ifname":	"eno2",
+			"ifname":	"eth0",
 			"port":	{
 				"command":	1234,
-				"data":	1234
+				"data":	[1235, 1236, 1237]
 			}
 		}, {
 			"ifname":	"eno1",
 			"port":	{
-				"command":	5000,
-				"data":	5000
+				"command":	1234,
+				"data":	[1235, 1236, 1237]
 			}
 		}],
 	"control_parm":	{
@@ -26,7 +26,7 @@
 	},
 	"status_parm":	{
 		"soft_version":	{
-			"app":	"v1.1.111_debug(2021-03-26-16:27:46)-c87aa163a58a23b29b21c2102f82b255df3c1bce ",
+			"app":	"v1.1.111_debug(2021-06-08-16:01:09)-e4480090c3c4c1151a983ae446ff7c3204d07ca7 ",
 			"fpga":	"202012",
 			"kernel":	""
 		},

@@ -21,7 +21,7 @@
 
 static void on_accept(struct uh_client *cl)
 {
-    printf_info("New connection from: %s:%d\n", cl->get_peer_addr(cl), cl->get_peer_port(cl));
+    printf_note("New connection from: %s:%d\n", cl->get_peer_addr(cl), cl->get_peer_port(cl));
 }
 
 static int on_request(struct uh_client *cl)
@@ -36,15 +36,14 @@ int get_use_ifname_num(void)
 {
     return nserver->number;
 }
-void *get_cmd_srv(int index)
+void *get_cmd_server(int index)
 {
     if(index >= nserver->number)
         return NULL;
-    
     return (void*)&nserver->cmd[index];
 }
 
-void *get_data_srv(int index)
+static void *_get_data_server(int index)
 {
     if(index >= nserver->number)
         return NULL;
@@ -52,7 +51,38 @@ void *get_data_srv(int index)
     return (void*)&nserver->data[index];
 }
 
-void *get_http_srv(int index)
+static enum net_listen_data_type _get_net_listen_index(int type)
+{
+    int listen_type = 0;
+    if(type == NET_DATA_TYPE_FFT)
+        listen_type = NET_DATA_TYPE_FFT;
+#ifdef SUPPORT_DATA_PROTOCAL_TCP
+    else if(type == NET_DATA_TYPE_BIQ)
+        listen_type = NET_LISTEN_TYPE_BIQ;
+    else if(type == NET_DATA_TYPE_AUDIO || type == NET_DATA_TYPE_NIQ)
+        listen_type = NET_LISTEN_TYPE_NIQ;
+#endif
+    if(listen_type >= NET_LISTEN_TYPE_MAX)
+        listen_type = 0;
+    return listen_type;
+}
+
+
+void *get_data_server(int index, int type)
+{
+    int listen_type = 0;
+    union _data_srv *srv;
+    srv = (union _data_srv *)_get_data_server(index);
+    if(srv == NULL)
+        return NULL;
+    listen_type = _get_net_listen_index(type);
+#if (defined SUPPORT_DATA_PROTOCAL_TCP)
+    return srv->tcpsrv[listen_type];
+#else
+    return srv->udpsrv[listen_type];
+#endif
+}
+void *get_http_server(int index)
 {
     return (void*)nserver->http_server;
 }
@@ -104,7 +134,7 @@ union _cmd_srv *cmd_cmd_server_init(char *ipaddr, int port, union _cmd_srv *cmds
     return cmdsrv;
 }
 
-union _data_srv *data_data_server_init(char *ipaddr, int port, union _data_srv *datasrv)
+union _data_srv *data_data_server_init(char *ipaddr, int port, int index, union _data_srv *datasrv)
 {
 #if (defined SUPPORT_PROTOCAL_AKT) 
     struct net_udp_server *udpsrv = NULL;
@@ -119,12 +149,21 @@ union _data_srv *data_data_server_init(char *ipaddr, int port, union _data_srv *
     udpsrv->on_discovery = akt_parse_discovery;
     datasrv->udpsrv = udpsrv;
 #elif defined(SUPPORT_PROTOCAL_XW)
+#if defined(SUPPORT_DATA_PROTOCAL_TCP)
+    printf_note("xw data tcp server init [ipaddr: %s, port:%d]\n", ipaddr, port);
+    struct net_tcp_server *tcpsrv = NULL;
+    tcpsrv = tcp_data_server_new(ipaddr, port);
+    if (!tcpsrv)
+        return NULL;
+    datasrv->tcpsrv[index] = tcpsrv;
+#else
     struct net_udp_server *udpsrv = NULL;
     printf_note("xw data udp server init [ipaddr: %s, port:%d]\n", ipaddr, port);
     udpsrv = udp_server_new(ipaddr, port);
     if (!udpsrv)
         return NULL;
-    datasrv->udpsrv = udpsrv;
+    datasrv->udpsrv[index] = udpsrv;
+#endif
 #endif
     return datasrv;
 }
@@ -154,10 +193,15 @@ int server_init(void)
         if(cmd_cmd_server_init(str_ipaddr, port, &nserver->cmd[i]) == NULL){
             return -1;
         }
-
-        port = poal_config->network[i].data_port;
-        if(data_data_server_init(str_ipaddr, port, &nserver->data[i]) == NULL){
+        for(int j = 0; j < NET_LISTEN_TYPE_MAX; j++){
+            port = poal_config->network[i].data_port[j];
+            if(port <= 0){
+                printf_warn("%d, %d, net port: %d err!!\n", i,j,port);
+                continue;
+            }
+            if(data_data_server_init(str_ipaddr, port, j, &nserver->data[i]) == NULL){
             return -1;
+            }
         }
         nserver->number++;
     }

@@ -6,6 +6,7 @@
 #define FPGA_REG_DEV "/dev/mem"
 
 #include <stdint.h>
+#include <math.h>
 #include "../../utils/utils.h"
 #include "../../log/log.h"
 #include "../../protocol/oal/poal.h"
@@ -32,7 +33,7 @@
 #define BROAD_BAND_REG_LENGTH 	0x100
 #define NARROW_BAND_REG_BASE 	0xa0001000
 #define NARROW_BAND_REG_LENGTH 	0x100
-#define NARROW_BAND_CHANNEL_MAX_NUM 17
+#define NARROW_BAND_CHANNEL_MAX_NUM MAX_SIGNAL_CHANNEL_NUM
 #define CONFG_REG_LEN 0x100
 #define CONFG_AUDIO_OFFSET       0x800
 
@@ -76,12 +77,14 @@ typedef struct _BROAD_BAND_REG_
 	uint32_t fft_mean_time;
 	uint32_t fft_smooth_type;
 	uint32_t fft_calibration;
-	uint32_t reserves;
+	uint32_t fft_smooth_threshold;
 	uint32_t fft_lenth;
-	uint32_t reserve;
-	uint32_t agc_thresh;
+	uint32_t amplitude;     /* 通道幅度值 */
+	uint32_t agc_thresh;    /* RF AGC幅度值 */
 	uint32_t reserves1[0x3];
 	uint32_t fir_coeff;
+	uint32_t reserves2[0x2];
+	uint32_t fft_win;
 }BROAD_BAND_REG;
 
 typedef struct _NARROW_BAND_REG_
@@ -156,9 +159,12 @@ typedef struct _FPGA_CONFIG_REG_
 #define SET_SYS_IF_CH(reg,v) 				(reg->system->if_ch=v)
 #define SET_SYS_SSD_MODE(reg,v) 			(reg->system->ssd_mode=v)
 
+
+#define GET_ADC_STATUS(reg)			        (reg->adcReg->STATE)
+
 /*****broad band*****/
 /*GET*/
-#define GET_BROAD_AGC_THRESH(reg, ch) 			(reg->broad_band[0]->agc_thresh)
+#define GET_BROAD_AGC_THRESH(reg, ch) 			(reg->broad_band[ch+2]->agc_thresh)
 /*SET*/
 #define SET_BROAD_SIGNAL_CARRIER(reg,v, ch) 	(reg->broad_band[0]->signal_carrier=v)
 #define SET_BROAD_ENABLE(reg,v, ch) 			(reg->broad_band[0]->enable=v)
@@ -166,12 +172,17 @@ typedef struct _FPGA_CONFIG_REG_
 #define SET_BROAD_FIR_COEFF(reg,v, ch) 			(reg->broad_band[0]->fir_coeff=v)
 /*fft smooth */
 #define SET_FFT_SMOOTH_TYPE(reg,v, ch) 			(reg->broad_band[0]->fft_smooth_type=v)
+#define SET_FFT_SMOOTH_THRESHOLD(reg,v, ch) 	(reg->broad_band[0]->fft_smooth_threshold=v)
 #define SET_FFT_MEAN_TIME(reg,v, ch) 			(reg->broad_band[0]->fft_mean_time=v)
 #define SET_FFT_CALIB(reg,v, ch) 				(reg->broad_band[0]->fft_calibration=v)
 #define SET_FFT_FFT_LEN(reg,v, ch) 				(reg->broad_band[0]->fft_lenth=v)
+#define SET_FFT_WINDOW_TYPE(reg,v, ch) 			(reg->broad_band[0]->fft_win=v)
+
 /* NIQ */
 #define SET_NIQ_SIGNAL_CARRIER(reg,v, ch) 		(reg->broad_band[1]->signal_carrier=v)
 #define SET_NIQ_BAND(reg,v, ch) 				(reg->broad_band[1]->band=v)
+#define SET_NIQ_ENABLE(reg,v, ch) 				(reg->broad_band[1]->enable=v)
+
 
 /*****narrow band*****/
 /*GET*/
@@ -191,17 +202,194 @@ typedef struct _FPGA_CONFIG_REG_
 #define SET_TRIG_TIME(reg,v)			    (reg->signal->trig_time=v)
 #define SET_TRIG_COUNT(reg,v)			    (reg->signal->trig_count=v)
 
+#define GET_CURRENT_TIME(reg)			    (reg->signal->current_time)
+#define GET_CURRENT_COUNT(reg)			    (reg->signal->current_count)
+
 #define AUDIO_REG(reg)                      (&reg->audioReg->volume)
 
+static inline bool _get_adc_status(FPGA_CONFIG_REG *reg)
+{
+    uint32_t _reg = GET_ADC_STATUS(reg);
+    //printf_note("get adc status:0x%x\n", _reg);
+    if ((_reg & 0x0f) == 0x0f) {
+        return true;
+    } else {
+        return false;
+    }
+}
 static inline void _set_narrow_channel(FPGA_CONFIG_REG *reg, int ch, int subch, int enable)
 {
     uint32_t _reg;
-
-    _reg = enable &0x01;
+    uint32_t val;
+    val = reg->narrow_band[subch]->enable;
+    _reg = (enable &0x01)|val;
     reg->narrow_band[subch]->enable = _reg;
+    printf_debug("[subch:%d] _ch: %d, reg: 0x%x, val=0x%x enable:0x%x,%d\n", subch, ch, _reg, val, reg->narrow_band[subch]->enable, enable);
 }
 
+static inline void _set_narrow_audio_sample_rate(FPGA_CONFIG_REG *reg, int ch, int subch, int rate)
+{
+    struct  sample_rate_t{
+        int val;
+        uint32_t sample_rate_khz;
+    }sample_rate_table [] = {
+        {0, 32},
+        {1, 16},
+        {3, 8},
+    };
+
+    uint32_t _reg, _val;
+    int found = 0;
+    
+    for(int i = 0; i< ARRAY_SIZE(sample_rate_table); i++){
+        if(rate == sample_rate_table[i].sample_rate_khz){
+            found ++;
+            _val = sample_rate_table[i].val;
+            break;
+        }
+    }
+    if(found == 0){
+        printf_warn("sample rate:%dkhz not find in table!",  rate);
+        return;
+    }
+    
+    _reg = reg->narrow_band[subch]->audio_cfg;
+    _reg = _reg & 0x0ffff;
+    printf_note("sample rate raw val = %dKhz[0x%x]\n",  rate, _val);
+    _val = (_val << 16) & 0x0ff0000;
+    _reg = _reg | _val;
+    printf_note("[subch:%d]sample rate reg val: regval=0x%x, val = 0x%x\n", subch,  _reg, _val);
+    reg->narrow_band[subch]->audio_cfg = _reg;
+    
+}
+
+static inline void _set_narrow_audio_gain(FPGA_CONFIG_REG *reg, int ch, int subch, float gain)
+{
+    #define SUB_CH_MAX_GAIN_VAL 90//(57.855)
+    #define SUB_CH_MIN_GAIN_VAL 0 //(-30.0)
+    uint32_t _reg;
+    int32_t _val;
+    /*  
+        gain: 0dbm~90dbm
+        reg = 10^(gain/20); 
+    */
+    printf_note("set audio gain: raw gain = %f\n",  gain);
+    if(f_sgn(gain-SUB_CH_MAX_GAIN_VAL) > 0){
+        gain = SUB_CH_MAX_GAIN_VAL;
+    } else if(f_sgn(gain-SUB_CH_MIN_GAIN_VAL) < 0){
+        gain = SUB_CH_MIN_GAIN_VAL;
+    }
+
+    _reg = reg->narrow_band[subch]->audio_cfg;
+    _reg = _reg & 0xff8000;
+    _val = (int32_t)(pow(10, (float)gain/20.0));
+    _reg = _reg | _val;
+    printf_note("[subch:%d]set audio gain: %f, regval=0x%x, val = 0x%x\n", subch, gain, _reg, _val);
+    reg->narrow_band[subch]->audio_cfg = _reg;
+}
+
+
+static inline void _set_narrow_audio_gain_mode(FPGA_CONFIG_REG *reg, int ch, int subch, int mode)
+{
+    #define SUB_CH_AGC_VAL 80.0//(57.855) /* 57dbm */
+    uint32_t _reg, _val;
+    _val = (mode == POAL_MGC_MODE ? 1 : 0); /* val=0: agc;  val=1, mgc */
+    _reg = reg->narrow_band[subch]->audio_cfg;
+    _reg = _reg & (~0x08000);
+    _reg = _reg & 0x0ffffff;
+    _val = (_val << 15) & 0x08000;
+    _reg = _reg | _val;
+    printf_note("[subch:%d]set audio gain mode: %s, regval=0x%x, val = 0x%x\n", subch, mode == POAL_MGC_MODE ? "mgc" : "agc", _reg, _val);
+    reg->narrow_band[subch]->audio_cfg = _reg;
+    if(mode == POAL_AGC_MODE){  /* agc */
+        printf_note("AGC Mode,Set Agc gain: %fDbm\n", SUB_CH_AGC_VAL);
+        _set_narrow_audio_gain(reg, ch, subch, SUB_CH_AGC_VAL);
+    }
+}
+
+
+
+
+static inline void _set_niq_channel(FPGA_CONFIG_REG *reg, int subch, void *args, int enable)
+{
+/*
+    ch   频段范围（MHz）
+    0	108～228
+    1	220～340
+    2	335～455
+    3	450～570
+*/
+    struct  freq_rang_t{
+        int ch;
+        uint64_t s_freq;
+        uint64_t e_freq;
+    }freq_rang [] = {
+        {0, MHZ(105), MHZ(222.5)},//105~225
+        {1, MHZ(222.5), MHZ(337.5)},//220~340
+        {2, MHZ(337.5), MHZ(452.5)},//335~455
+        {3, MHZ(452.5), MHZ(570)},//450~570
+        };
+    uint32_t _reg;
+    uint32_t val;
+    int _ch = 0;
+
+    if(args != NULL && subch >= 0){
+        uint64_t freq = *(uint64_t *)args;
+        for(int i = 0; i< ARRAY_SIZE(freq_rang); i++){
+            if(freq >= freq_rang[i].s_freq && freq <= freq_rang[i].e_freq){
+                _ch = freq_rang[i].ch;
+                break;
+            }
+        }
+    }
+    if(enable)
+        _reg = 0x01;
+    else
+        _reg = 0x00;
+    val = _ch << 8;
+    _reg = (_reg & 0x00ff)|val;
+    reg->narrow_band[subch]->enable = _reg;
+    
+    if(enable)
+        printf_debug("[subch:%d] _ch: %d, set reg: 0x%x, val=0x%x 0x%x, freq=%"PRIu64"\n", subch, _ch, _reg, val, reg->narrow_band[subch]->enable, *(uint64_t *)args);
+    else
+        printf_debug("[subch:%d] _ch: %d, set reg: 0x%x, val=0x%x 0x%x\n", subch, _ch, _reg, val, reg->narrow_band[subch]->enable);
+}
+
+
 static inline uint64_t _get_middle_freq_by_channel(int ch, void *args)
+{
+    /*
+    ch   中心频率（MHz）
+    0	165
+    1	280
+    2	395
+    3	510
+*/
+    struct  freq_rang_t{
+        int ch;
+        uint64_t m_freq;
+    }freq_rang [] = {
+            {0, MHZ(165) - MHZ(0.075)},
+            {1, MHZ(280) - MHZ(0.1)},
+            {2, MHZ(395) - MHZ(0.05)},
+            {3, MHZ(510)},
+        };
+    int _ch = ch;
+    
+    args = args;
+    for(int i = 0; i< ARRAY_SIZE(freq_rang); i++){
+        if(ch == freq_rang[i].ch){
+            return freq_rang[i].m_freq;
+        }
+            
+    }
+   // printf_warn("ch[%d]can't find frequeny, use default:%"PRIu64"Hz\n",  freq_rang[0].m_freq);
+    return freq_rang[0].m_freq;
+}
+
+
+static inline uint64_t _get_rel_middle_freq_by_channel(int ch, void *args)
 {
     /*
     ch   中心频率（MHz）
@@ -223,10 +411,11 @@ static inline uint64_t _get_middle_freq_by_channel(int ch, void *args)
     
     args = args;
     for(int i = 0; i< ARRAY_SIZE(freq_rang); i++){
-        if(ch == freq_rang[i].ch)
+        if(ch == freq_rang[i].ch){
             return freq_rang[i].m_freq;
+        }
+            
     }
-    //printf_warn("ch[%d]can't find frequeny, use default:%"PRIu64"Hz\n",  freq_rang[0].m_freq);
     return freq_rang[0].m_freq;
 }
 
@@ -249,7 +438,6 @@ static inline uint64_t _get_middle_freq(int ch, uint64_t rang_freq, void *args)
         {2, MHZ(337.5), MHZ(452.5)},//335~455
         {3, MHZ(452.5), MHZ(570)},//450~570
     };
-        
     args = args;
     for(int i = 0; i< ARRAY_SIZE(freq_rang); i++){
         if(rang_freq >= freq_rang[i].s_freq && rang_freq < freq_rang[i].e_freq){
@@ -258,9 +446,35 @@ static inline uint64_t _get_middle_freq(int ch, uint64_t rang_freq, void *args)
     }
     return 0;
 }
+static inline int _get_channel_by_mfreq(uint64_t rang_freq, void *args)
+{
+    /*
+    ch	 频段范围（MHz）
+    0	108～228
+    1	220～340
+    2	335～455
+    3	450～570
+    */
+    struct	freq_rang_t{
+        int ch;
+        uint64_t s_freq;
+        uint64_t e_freq;
+    }freq_rang [] = {
+        {0, MHZ(105), MHZ(222.5)},//105~225
+        {1, MHZ(222.5), MHZ(337.5)},//220~340
+        {2, MHZ(337.5), MHZ(452.5)},//335~455
+        {3, MHZ(452.5), MHZ(570)},//450~570
+    };
+    args = args;
+    for(int i = 0; i< ARRAY_SIZE(freq_rang); i++){
+        if(rang_freq >= freq_rang[i].s_freq && rang_freq < freq_rang[i].e_freq){
+            return freq_rang[i].ch;
+        }
+    }
+    return 0;
+}
 
-
-static inline void _set_channel(FPGA_CONFIG_REG *reg, int ch, void *args)
+static inline void _set_fft_channel(FPGA_CONFIG_REG *reg, int ch, void *args)
 {
 /*
     ch   频段范围（MHz）
@@ -297,7 +511,48 @@ static inline void _set_channel(FPGA_CONFIG_REG *reg, int ch, void *args)
     val = _ch << 8;
     _reg = (_reg & 0x00ff)|val;
     reg->broad_band[0]->enable = _reg;
-    //printf_note("[ch:%d]set reg: 0x%x, val=0x%x 0x%x\n", ch,  _reg, val, reg->broad_band[0]->enable);
+    printf_debug("[ch:%d]set reg: 0x%x, val=0x%x 0x%x\n", ch,  _reg, val, reg->broad_band[0]->enable);
+}
+
+
+
+static inline void _set_biq_channel(FPGA_CONFIG_REG *reg, int ch, void *args)
+{
+/*
+    ch   频段范围（MHz）
+    0	108～228
+    1	220～340
+    2	335～455
+    3	450～570
+*/
+    struct  freq_rang_t{
+        int ch;
+        uint64_t s_freq;
+        uint64_t e_freq;
+    }freq_rang [] = {
+            {0, MHZ(108), MHZ(228)},
+            {1, MHZ(220), MHZ(340)},
+            {2, MHZ(335), MHZ(455)},
+            {3, MHZ(450), MHZ(570)},
+        };
+    uint32_t _reg;
+    uint32_t val;
+    int _ch = ch;
+    if(args != NULL && _ch < 0){
+        uint64_t freq = *(uint64_t *)args;
+        for(int i = 0; i< ARRAY_SIZE(freq_rang); i++){
+            if(freq >= freq_rang[i].s_freq && freq <= freq_rang[i].e_freq){
+                _ch = freq_rang[i].ch;
+                break;
+            }
+        }
+    }
+
+    _reg = reg->broad_band[1]->enable;
+    val = _ch << 8;
+    _reg = (_reg & 0x00ff)|val;
+    reg->broad_band[1]->enable = _reg;
+    printf_note(" BIQ [ch:%d]set reg: 0x%x, val=0x%x 0x%x\n", ch,  _reg, val, reg->broad_band[1]->enable);
 }
 
 /*
@@ -494,8 +749,8 @@ static inline void _reg_set_rf_mode_code(int ch, int index, uint8_t code, FPGA_C
         
         struct _reg _reg[] = {
                 {0,     0x02},
-                {1,     0x00},
-                {2,     0x01},
+                {1,     0x01},
+                {2,     0x00},
         };
 
         if(ch >= MAX_RADIO_CHANNEL_NUM)

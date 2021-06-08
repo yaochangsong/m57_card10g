@@ -24,6 +24,8 @@ enum gpio_func_code{
     GPIO_RF_CH4             = 0x09,
     GPIO_RF_CH5             = 0x0a,
     GPIO_RF_CH6             = 0x0b,
+    GPIO_RF_POWER_ONOFF     = 0x0c,
+    GPIO_GPS_LOCK           = 0x0d,
 };
 
 #define SET_GPIO_ARRAY(v1, v2, v3) do{      \
@@ -32,6 +34,10 @@ enum gpio_func_code{
         gpio_raw_write_value(GPIO_RF_CH3, v3);           \
     }while(0);
 
+#define RF_POWER_ON()  gpio_raw_write_value(GPIO_RF_POWER_ONOFF, 0)
+#define RF_POWER_OFF() gpio_raw_write_value(GPIO_RF_POWER_ONOFF, 1)
+#define GPS_LOCKED()   gpio_raw_write_value(GPIO_GPS_LOCK, 1)
+#define GPS_UNLOCKED() gpio_raw_write_value(GPIO_GPS_LOCK, 0)
 
 struct gpio_node_info{
     int pin_num;

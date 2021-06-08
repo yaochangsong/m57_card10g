@@ -1,6 +1,7 @@
 #ifndef _PROTOCOL_OAL_H_
 #define _PROTOCOL_OAL_H_
 
+#include "../../net/net.h"
 #define FILE_PATH_MAX_LEN 256
 
 /* 工作模式参数参数 */
@@ -26,7 +27,22 @@ typedef enum _ctrl_mode_param {
     CTRL_MODE_REMOTE  = 1,
 }ctrl_mode_param;
 
-    
+/* 加窗类型 */
+enum {
+       WINDOW_TYPE_BLACKMAN  = 0x00,    /* 布莱克曼*/
+       WINDOW_TYPE_HAMMING,             /* 海明 */
+       WINDOW_TYPE_HANNING,             /* 汉宁 */
+       WINDOW_TYPE_RECT,                /* 矩形 */
+       WINDOW_TYPE_MAX,
+};
+
+/* 平滑类型 */
+enum {
+       FFT_SMOOTH_TYPE_AVG  = 0x00,    /* 平均值 */
+       FFT_SMOOTH_TYPE_MAX,            /* 最大值 */
+       FFT_SMOOTH_TYPE_MIN,            /* 最小值 */
+       FFT_SMOOTH_TYPE_THRESHOLD,      /* 门限检测 */
+};
 #define INTERNEL_ENABLE_BIT_SET(en, s) \
     (en=(s.psd_en<<PSD_EN_BIT_OFFSET|s.audio_en<<AUDIO_EN_BIT_OFFSET|s.iq_en<<IQ_EN_BIT_OFFSET|s.spec_analy_en<<SPEC_ANALY_EN_BIT_OFFSET|s.direction_en<<DIRECTION_EN_BIT_OFFSET))
     
@@ -57,12 +73,16 @@ struct freq_points_st{
     int8_t noise_thrh;
     uint8_t raw_d_method; /* Original demodulation */
     uint8_t d_method;
-    float freq_resolution;
+    uint32_t freq_resolution;
     volatile uint32_t fft_size;
     uint32_t d_bandwith;
     uint64_t center_freq; /* middle_freq 中心频率 */
     uint64_t bandwidth;   /* rf */
     int16_t audio_volume;   /* 音频音量 */
+    uint8_t gain_mode;      /* 增益模式 agc/mgc */
+    int8_t mgc_gain;       /* mgc增益值 */
+    uint8_t agc_ctrl_time;  /* agc控制时间 */
+    uint8_t audio_sample_rate_khz;  /* 音频采样率 */
 };//__attribute__ ((packed));
 
 struct bddc_st{
@@ -82,6 +102,8 @@ struct multi_freq_point_para_st{
     uint32_t freq_point_cnt;
     uint64_t start_freq;    /* 多个频点频谱拼接使用 */
     uint64_t end_freq;      /* 多个频点频谱拼接使用 */
+    uint16_t smooth_mode;       /* 平滑模式 */
+    uint16_t smooth_threshold;  /* 平滑门限 */
     struct freq_points_st  points[MAX_SIG_CHANNLE];
     struct bddc_st ddc;
 };//__attribute__ ((packed));
@@ -92,7 +114,6 @@ struct sub_channel_freq_para_st{
     uint8_t cid;
     uint8_t frame_drop_cnt;
     uint16_t sub_channel_num;
-    float audio_sample_rate;
     struct output_en_st sub_ch_enable[MAX_SIGNAL_CHANNEL_NUM];
     struct freq_points_st  sub_ch[MAX_SIGNAL_CHANNEL_NUM];
 };//__attribute__ ((packed));
@@ -180,7 +201,7 @@ struct network_addr_st{
 struct network_st{
     char *ifname;
     uint16_t port;
-    uint16_t data_port;
+    uint16_t data_port[NET_DATA_TYPE_MAX];
     struct network_addr_st addr;
 }__attribute__ ((packed));
 
@@ -225,6 +246,8 @@ struct control_st{
     int32_t agc_ref_val_0dbm;                                     /*  AGC 模式下，0DB 对应校准值*/
     int32_t subch_ref_val_0dbm;                                   /*  多频点模式下 0DBm 对应校准值*/
     uint32_t disk_file_notifier_timeout_ms;
+    volatile uint8_t agc_ctrl_mode;                                        /* AGC  控制模式 0: 分段AGC（默认） 1：整个频段AGC */
+    int16_t temperature_warn_threshold;                           /* 板卡温度报警阀值 */
 };//__attribute__ ((packed));
 
 /*状态参数*/
@@ -287,6 +310,7 @@ struct poal_compile_Info{
     char *build_time;
     char *build_version;
     char *build_jenkins_id;
+    char *build_jenkins_url;
     char *code_url;
     char *code_branch;
     char *code_hash;

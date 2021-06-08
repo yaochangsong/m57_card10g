@@ -30,6 +30,7 @@
 #endif
 
 #define UHTTPD_CONNECTION_TIMEOUT 60
+#define UHTTPD_MAX_KEEPALIVE_PROBES 3
 
 #define UH_POST_DATA_BUF_SIZE   1024
 #define UH_POST_MAX_POST_SIZE   4096
@@ -143,7 +144,7 @@ struct uh_client {
     struct dispatch dispatch;
     bool connection_close;
     int response_length;
-
+    int tcp_keepalive_probes;
     struct {
         uint64_t offset;
         uint64_t length;
@@ -157,9 +158,8 @@ struct uh_client {
     void (*header_end)(struct uh_client *cl);
     void (*redirect)(struct uh_client *cl, int code, const char *fmt, ...);
     void (*request_done)(struct uh_client *cl);
-    int  (*srv_send_post)(struct uh_server *uh_srv, char *path, char *data, struct sockaddr_in *addr);
     void (*parse_resetful_var)(struct uh_client *cl, char *str);
-    
+    void (*update_keepalive)(struct uh_client *cl);
     void (*send)(struct uh_client *cl, const void *data, int len);
     void (*printf)(struct uh_client *cl, const char *format, ...);
     void (*vprintf)(struct uh_client *cl, const char *format, va_list arg);
@@ -184,5 +184,6 @@ struct uh_client {
 void uh_client_read_cb(struct uh_client *cl);
 void uh_client_notify_state(struct uh_client *cl);
 void uh_accept_client(struct uh_server *srv, bool ssl);
+void uh_client_srv_send(char *path, char *data, struct sockaddr_in *addr);
 
 #endif

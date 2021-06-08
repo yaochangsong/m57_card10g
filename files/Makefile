@@ -124,6 +124,12 @@ ifneq ($(findstring y,$(SUPPORT_AUDIO)),)
 	C_VAR += -DSUPPORT_AUDIO
 endif
 
+#NRS1800
+ifneq ($(findstring y,$(SUPPORT_NRS1800)),)
+	SOURCE_DIR += device/nrs1800
+	C_VAR += -DSUPPORT_NRS1800
+endif
+
 #gps
 ifneq ($(findstring y,$(SUPPORT_GPS)),)
 	SOURCE_DIR += device/gps

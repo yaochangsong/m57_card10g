@@ -416,11 +416,10 @@ int32_t io_set_dec_middle_freq(uint32_t ch, uint64_t dec_middle_freq, uint64_t m
 
 uint64_t io_get_raw_sample_rate(uint32_t ch, uint64_t middle_freq)
 {
-    #define _SAMPLE_RATE_ MHZ(512)
+    return get_clock_frequency();
     
-    return _SAMPLE_RATE_;
 }
-int32_t io_set_middle_freq(uint32_t ch, uint64_t middle_freq)
+int32_t io_set_middle_freq(uint32_t ch, uint64_t middle_freq, uint64_t rel_mfreq)
 {
 #if defined(SUPPORT_DIRECT_SAMPLE)
 #define DIRECT_FREQ_THR (200000000) /* 直采截止频率 */
@@ -438,10 +437,13 @@ int32_t io_set_middle_freq(uint32_t ch, uint64_t middle_freq)
             reg = (val+FREQ_MAGIC1)*FREQ_MAGIC2/FREQ_MAGIC1;
         }
     }
+#else
+    uint32_t reg = io_set_dec_middle_freq_reg(rel_mfreq, middle_freq);
     #if defined(SUPPORT_SPECTRUM_FPGA)
     SET_BROAD_SIGNAL_CARRIER(get_fpga_reg(),reg, ch);
     #endif
-    printf_debug(">>>>>>feq:%"PRIu64", reg=0x%x\n", middle_freq, reg);
+    printf_debug("ch:%d, freq:%"PRIu64", reg=0x%x\n", ch, middle_freq, reg);
+    printf_debug(">>>>>>ch:%d, feq:%"PRIu64",rel_middle_freq=%"PRIu64", reg=0x%x\n",ch, middle_freq,rel_mfreq,  reg);
 #endif
     return 0;
 }
@@ -473,12 +475,12 @@ int32_t io_set_subch_onoff(uint32_t ch, uint32_t subch, uint8_t onoff)
 #if defined(SUPPORT_SPECTRUM_V2) 
     #if defined(SUPPORT_SPECTRUM_FPGA)
     if(onoff){
-        uint64_t midfreq = executor_get_mid_freq(ch);
-        _set_channel(get_fpga_reg(),ch, &midfreq);
-        _set_narrow_channel(get_fpga_reg(),ch, subch,0x01);
+        uint64_t midfreq = 0;
+        config_read_by_cmd(EX_MID_FREQ_CMD, EX_SUB_CH_MID_FREQ, ch, &midfreq, subch);
+        _set_niq_channel(get_fpga_reg(),subch, &midfreq, 0x01);
     }
     else{
-        _set_narrow_channel(get_fpga_reg(),ch, subch,0x00);
+        _set_niq_channel(get_fpga_reg(),subch, NULL, 0x00);
     }
     #else
 
@@ -506,7 +508,7 @@ int32_t io_set_subch_bandwidth(uint32_t subch, uint32_t bandwidth, uint8_t dec_m
     }
     old_val = bandwidth;
     old_ch = subch;
-    dec_method = IO_DQ_MODE_IQ; /* TEST */
+   // dec_method = IO_DQ_MODE_IQ; /* TEST */
     if(dec_method == IO_DQ_MODE_IQ){
         table= iq_nbandtable;
         table_len = sizeof(iq_nbandtable)/sizeof(struct  band_table_t);
@@ -538,7 +540,7 @@ int32_t io_set_subch_dec_method(uint32_t subch, uint8_t dec_method){
    
     uint32_t d_method = 0;
     static int32_t old_ch=-1;
-    static uint32_t old_val=0;
+    static int32_t old_val=-1;
    
 
     d_method = dec_method;
@@ -561,6 +563,79 @@ int32_t io_set_subch_dec_method(uint32_t subch, uint8_t dec_method){
 
 }
 
+void io_set_subch_audio_sample_rate(uint32_t ch, uint32_t subch,  int rate)
+{
+#if defined(SUPPORT_PLATFORM_ARCH_ARM)
+#if defined(SUPPORT_SPECTRUM_FPGA)
+    _set_narrow_audio_sample_rate(get_fpga_reg(), ch, subch, rate);
+#endif
+#endif
+}
+
+void io_set_subch_audio_gain_mode(uint32_t ch, uint32_t subch,  int mode)
+{
+#if defined(SUPPORT_PLATFORM_ARCH_ARM)
+#if defined(SUPPORT_SPECTRUM_FPGA)
+    _set_narrow_audio_gain_mode(get_fpga_reg(), ch, subch, mode);
+#endif
+#endif
+}
+
+
+void io_set_subch_audio_gain(uint32_t ch, uint32_t subch,  int gain)
+{
+#if defined(SUPPORT_PLATFORM_ARCH_ARM)
+#if defined(SUPPORT_SPECTRUM_FPGA)
+    _set_narrow_audio_gain(get_fpga_reg(), ch, subch, (float)gain);
+#endif
+#endif
+}
+
+/* 设置加窗类型 */
+void io_set_window_type(uint32_t ch, int type)
+{
+#if defined(SUPPORT_PLATFORM_ARCH_ARM)
+#if defined(SUPPORT_SPECTRUM_FPGA)
+    uint16_t *data, *ptr;
+    uint32_t reg_val = 0;
+    size_t fsize = 0;
+    data = config_get_fft_window_data(type, &fsize);
+    fsize = fsize / sizeof(uint16_t);
+    ptr = data;
+    printf_note("fsize: %ld type=%d\n", fsize, type);
+    if(data != NULL && fsize > 0){
+        for(int i = 0; i < fsize; i += 4){
+            /* reg_val: 高16bit为0,1,2..递增数，低16bit为读取窗文件抽取数据 */
+            reg_val = *ptr + ((i / 4) << 16);
+            ptr += 4;
+            SET_FFT_WINDOW_TYPE(get_fpga_reg(), reg_val, ch);
+        }
+    }
+#endif
+#endif
+}
+
+
+/* 设置平滑类型 */
+void io_set_smooth_type(uint32_t ch, int type)
+{
+#if defined(SUPPORT_PLATFORM_ARCH_ARM)
+#if defined(SUPPORT_SPECTRUM_FPGA)
+    SET_FFT_SMOOTH_TYPE(get_fpga_reg(),type, ch);
+#endif
+#endif
+}
+
+/* 设置平滑门限 */
+void io_set_smooth_threshold(uint32_t ch, int val)
+{
+#if defined(SUPPORT_PLATFORM_ARCH_ARM)
+#if defined(SUPPORT_SPECTRUM_FPGA)
+    SET_FFT_SMOOTH_THRESHOLD(get_fpga_reg(),val, ch);
+#endif
+#endif
+}
+
 
 /* 设置平滑数 */
 void io_set_smooth_time(uint32_t ch, uint16_t stime)
@@ -578,7 +653,7 @@ void io_set_smooth_time(uint32_t ch, uint16_t stime)
 #if defined(SUPPORT_PLATFORM_ARCH_ARM)
 #if defined(SUPPORT_SPECTRUM_V2) 
     #if defined(SUPPORT_SPECTRUM_FPGA)
-    SET_FFT_SMOOTH_TYPE(get_fpga_reg(),0, ch);
+    //SET_FFT_SMOOTH_TYPE(get_fpga_reg(),0, ch);
     SET_FFT_MEAN_TIME(get_fpga_reg(),stime, ch);
     #elif defined(SUPPORT_SPECTRUM_CHIP) 
     if((get_spm_ctx() != NULL) && get_spm_ctx()->ops->set_smooth_time)
@@ -685,7 +760,7 @@ void io_set_rf_calibration_source_enable(int ch, int enable)
 #endif
     usleep(300);
     poal_config->channel[ch].enable.cali_source_en = (enable == 0 ? 0 : 1);
-    printf_note("cali_source_en: 0x%x\n", poal_config->channel[ch].enable.cali_source_en);
+    printf_debug("cali_source_en: 0x%x\n", poal_config->channel[ch].enable.cali_source_en);
 }
 bool is_rf_calibration_source_enable(void)
 {
@@ -746,6 +821,57 @@ void io_set_fpga_sys_time(uint32_t time)
 #endif
 }
 
+uint32_t io_get_fpga_sys_ns_time(void)
+{
+    uint32_t _ns = 0;
+#if defined(SUPPORT_SPECTRUM_V2) 
+    #if defined(SUPPORT_SPECTRUM_FPGA)
+    _ns = GET_CURRENT_COUNT(get_fpga_reg());
+    _ns = _ns & 0x0fffffff;
+    _ns = (_ns * 1000.0)/153.6;
+    #endif
+#endif
+    return _ns;
+}
+
+uint32_t io_get_fpga_sys_time(void)
+{
+    uint32_t _sec = 0;
+    uint32_t stime = 0;
+#if defined(SUPPORT_SPECTRUM_V2) 
+    #if defined(SUPPORT_SPECTRUM_FPGA)
+    _sec = GET_CURRENT_TIME(get_fpga_reg());
+    //uint32_t y , d;
+	uint32_t h, m, s;
+    uint32_t yue;
+    struct tm stm;
+    memset (&stm,0,sizeof(stm));
+   // y = ((_sec & 0xfc000000) >> 26 );
+   //d = (_sec & 0x03fe0000) >> 17;
+    h = (_sec & 0x01f000) >> 12;
+    m = (_sec & 0x0fc0) >> 6;
+    s =  _sec & 0x3f;
+
+    time_t tnow;
+    tnow = time(0);
+    struct tm *tm_sys;
+    tm_sys = localtime(&tnow);
+
+     stm.tm_year = tm_sys->tm_year;
+     stm.tm_mon = tm_sys->tm_mon;
+     stm.tm_mday = tm_sys->tm_mday;
+     stm.tm_hour = h ;
+     stm.tm_min  = m;
+     stm.tm_sec  = s;
+  // printf_note(" y=%lu,m=%lu,d =%lu,h=%lu,m=%lu, s=%lu\n",stm.tm_year + 1900 ,stm.tm_mon+1,stm.tm_mday,
+                                                    //  stm.tm_hour,stm.tm_min, stm.tm_sec );
+
+    stime = mktime(&stm);
+  //  printf_note("tnow =%d mktime(&stm)=%ld\n", tnow,mktime(&stm));
+    #endif
+#endif
+    return stime;
+}
 void io_set_fpga_sample_ctrl(uint8_t val)
 {
 #if defined(SUPPORT_PLATFORM_ARCH_ARM)
@@ -773,7 +899,7 @@ static void io_set_dma_SPECTRUM_out_en(int ch, int subch, uint32_t trans_len,uin
     printf_debug("SPECTRUM out enable: ch[%d]output en, trans_len=%u\n",ch, trans_len);
 #if defined(SUPPORT_PLATFORM_ARCH_ARM)
 #if defined(SUPPORT_SPECTRUM_V2)
-    _set_channel(get_fpga_reg(),ch, NULL);
+    _set_fft_channel(get_fpga_reg(),ch, NULL);
     if((get_spm_ctx()!=NULL) && get_spm_ctx()->ops->stream_start){
         get_spm_ctx()->ops->stream_start(ch, subch, trans_len*sizeof(fft_t), continuous, STREAM_FFT);
     }
@@ -826,7 +952,7 @@ static void io_set_NIQ_out_disable(int ch, int subch)
 #if defined(SUPPORT_PLATFORM_ARCH_ARM)
 #if defined(SUPPORT_SPECTRUM_V2) 
     if(subch_bitmap_weight(CH_TYPE_IQ) == 0 && (get_spm_ctx()!=NULL) && get_spm_ctx()->ops->stream_stop){
-        get_spm_ctx()->ops->stream_stop(-1, subch, STREAM_IQ);
+        get_spm_ctx()->ops->stream_stop(-1, subch, STREAM_NIQ);
     }
 #endif 
 #endif
@@ -839,7 +965,7 @@ static void io_set_NIQ_out_en(int ch, int subch, uint32_t trans_len,uint8_t cont
 #if defined(SUPPORT_PLATFORM_ARCH_ARM)
 #if defined(SUPPORT_SPECTRUM_V2) 
     if((get_spm_ctx()!=NULL) && get_spm_ctx()->ops->stream_start){
-        get_spm_ctx()->ops->stream_start(-1, subch, trans_len, continuous, STREAM_IQ);
+        get_spm_ctx()->ops->stream_start(-1, subch, trans_len, continuous, STREAM_NIQ);
     }
 #endif
 #endif
@@ -855,7 +981,7 @@ static void io_set_BIQ_out_en(int ch, int subch, uint32_t trans_len,uint8_t cont
 #if defined(SUPPORT_PLATFORM_ARCH_ARM)
 #if defined(SUPPORT_SPECTRUM_V2) 
     if((get_spm_ctx()!=NULL) && get_spm_ctx()->ops->stream_start)
-        get_spm_ctx()->ops->stream_start(ch, subch, trans_len, continuous, STREAM_IQ);
+        get_spm_ctx()->ops->stream_start(ch, subch, trans_len, continuous, STREAM_BIQ);
 #endif
 #endif
     if(ch >= 0){
@@ -875,7 +1001,7 @@ static void io_set_BIQ_out_disable(int ch, int subch)
 #if defined(SUPPORT_PLATFORM_ARCH_ARM)
 #if defined(SUPPORT_SPECTRUM_V2) 
     if((get_spm_ctx()!=NULL) && get_spm_ctx()->ops->stream_stop){
-        get_spm_ctx()->ops->stream_stop(ch, subch, STREAM_IQ);
+        get_spm_ctx()->ops->stream_stop(ch, subch, STREAM_BIQ);
     }
 #endif 
 #endif
@@ -1008,16 +1134,15 @@ int16_t io_get_adc_temperature(void)
     static FILE * fp = NULL;
     int raw_data;
 
-    if(fp == NULL){
         fp = fopen ("/sys/bus/iio/devices/iio:device0/in_temp0_ps_temp_raw", "r");
         if(!fp){
             printf("Open file error!\n");
             return -1;
-        }
     }
     rewind(fp);
     fscanf(fp, "%d", &raw_data);
-    printf_note("temp: %d\n", raw_data);
+    fclose(fp);
+    printf_debug("temp: %d\n", raw_data);
     result = ((raw_data * 509.314)/65536.0) - 280.23;
 #endif
 
@@ -1039,16 +1164,16 @@ void io_get_fpga_status(void *args)
     #define STATUS_BIT (10)
     reg_status = GET_SYS_FPGA_STATUS(get_fpga_reg());
     //reg_status = get_fpga_reg()->system->fpga_status;
-    printf_note("reg_status=0x%x\n", reg_status);
+    printf_debug("reg_status=0x%x\n", reg_status);
     reg_dup = reg_status & STATUS_MASK; /* temp */
     param->temp = (uint32_t)((reg_dup * 503.93)/1024.0) - 280.23;
-    printf_note("temp=0x%x, %u\n", reg_dup, param->temp);
+    printf_debug("temp=0x%x, %u\n", reg_dup, param->temp);
     reg_dup = (reg_status >> STATUS_BIT)&STATUS_MASK; /* fpga_int_vol */
     param->vol = 3.0* reg_dup/1024.0;
-    printf_note("fpga_int_vol=0x%x, %f\n", reg_dup, param->vol);
+    printf_debug("fpga_int_vol=0x%x, %f\n", reg_dup, param->vol);
     reg_dup = (reg_status >> (STATUS_BIT*2))&STATUS_MASK; /* fpga_bram_vol */
     param->current = 3.0* reg_dup/1024.0;
-    printf_note("fpga_bram_vol=0x%x, %f\n", reg_dup, param->current);
+    printf_debug("fpga_bram_vol=0x%x, %f\n", reg_dup, param->current);
     param->resources = 65;
 #endif
 #endif
@@ -1067,27 +1192,59 @@ void io_get_board_power(void *args)
     //reg_status = get_fpga_reg()->system->board_vi;
     power->v = 24.845*(reg_status&0x3ff)/1024.0;
     power->i = 8.585*((reg_status >> 10)&0x3ff)/1024.0;
-    printf_note("[0x%x]power.v=%f, power.i=%f\n", reg_status, power->v, power->i);
+    printf_debug("[0x%x]power.v=%f, power.i=%f\n", reg_status, power->v, power->i);
     #endif
 #endif
 }
 
+void io_set_gps_status(bool is_ok)
+{
+    FILE * fp = NULL;
+    char *status = (is_ok == true ? "ok" : "false");
+    bool ret;
+    fp = fopen ("/run/status/gps", "w");
+    if(!fp){
+        printf_err("Open file error!\n");
+        return;
+    }
+    rewind(fp);
+    fwrite((void *)status, 1,  strlen(status), fp);
+    fclose(fp);
+    if(is_ok)
+        GPS_LOCKED();
+    else
+        GPS_UNLOCKED();
+}
+void io_set_rf_status(bool is_ok)
+{
+    FILE * fp = NULL;
+    char *status = (is_ok == true ? "ok" : "false");
+    bool ret;
+    fp = fopen ("/run/status/rf", "w");
+    if(!fp){
+        printf_err("Open file error!\n");
+        return;
+    }
+    rewind(fp);
+    fwrite((void *)status, 1,  strlen(status), fp);
+    fclose(fp);
+}
 bool io_get_adc_status(void *args)
 {
+    bool ret = false;
+#if 0
     #define STATUS_ADC_OK  "ok"
-    static FILE * fp = NULL;
+    FILE * fp = NULL;
     char status[32];
-    bool ret;
     args = args;
-    if(fp == NULL){
         fp = fopen ("/run/status/adc", "r");
         if(!fp){
             printf_err("Open file error!\n");
             return false;
-        }
     }
     rewind(fp);
     fscanf(fp, "%s", status);
+    fclose(fp);
     status[sizeof(status) -1] = 0;
     printf_debug("adc status: %s\n", status);
     if(strncmp(STATUS_ADC_OK, status, sizeof(STATUS_ADC_OK)) == 0){
@@ -1095,6 +1252,13 @@ bool io_get_adc_status(void *args)
     }else{
         ret = false;
     }
+#else
+#ifdef SUPPORT_PLATFORM_ARCH_ARM
+    #if defined(SUPPORT_SPECTRUM_FPGA)
+    ret = _get_adc_status(get_fpga_reg());
+    #endif
+#endif
+#endif
     return ret;
 }
 
@@ -1105,7 +1269,7 @@ bool io_get_clock_status(void *args)
     #define STATUS_LOCKED     "locked"
     #define STATUS_NO_LOCKED  "no_locked"
     
-    static FILE * fp = NULL;
+    FILE * fp = NULL;
 
     /**** stack smashing detected ***: <unknown> terminated; then exit
       if we use uint8 lock_ok=0, external_clk=0;
@@ -1114,16 +1278,15 @@ bool io_get_clock_status(void *args)
     char external_clk[32], lock_ok[32];
     bool ret = false;
     
-    if(fp == NULL){
         fp = fopen ("/run/status/clock", "r");
         if(!fp){
             printf_err("Open file error!\n");
             return false;
-        }
     }
     
     rewind(fp);
     fscanf(fp, "%s %s", external_clk, lock_ok);
+    fclose(fp);
     
     external_clk[sizeof(external_clk) -1] = 0;
     lock_ok[sizeof(lock_ok) -1] = 0;
@@ -1260,6 +1423,91 @@ uint8_t  io_restart_app(void)
     sleep(1);
     return 0;
 }
+
+
+void io_xdma_enable(int ch)
+{
+#if defined(SUPPORT_SPECTRUM_XDMA) 
+    uint32_t reg;
+    if(get_fpga_reg() == NULL)
+        return;
+
+    reg = get_fpga_reg()->system->enable;
+    reg |= (0x1 << ch);
+    get_fpga_reg()->system->enable = reg;
+    printf_note("ch = %d, reg=0x%x\n", ch, get_fpga_reg()->system->enable);
+#endif
+}
+
+void io_xdma_disable(int ch)
+{
+#if defined(SUPPORT_SPECTRUM_XDMA) 
+    uint32_t reg;
+    if(get_fpga_reg() == NULL)
+        return;
+
+    reg = get_fpga_reg()->system->enable;
+    reg &= ~(0x1 << ch);
+    get_fpga_reg()->system->enable = reg;
+    printf_note("ch = %d, reg=0x%x\n", ch, get_fpga_reg()->system->enable);
+#endif
+}
+
+void io_xdma_set_speed(int rate)
+{
+#if defined(SUPPORT_SPECTRUM_XDMA) 
+    get_fpga_reg()->system->speed = get_xdma_speed_rate();
+#endif
+}
+
+void io_xdma_force_ready(int ch, bool is_force)
+{
+#if 1
+    uint32_t reg;
+    if(get_fpga_reg() == NULL)
+        return;
+    
+    if(is_force){
+        /* 强制有效 */
+        reg = get_fpga_reg()->system->force_ready;
+        printf_note("reg=%x\n", reg);
+        reg |= (0x1 << ch);
+        printf_note("reg=%x\n", reg);
+        reg = 0x0f;
+        get_fpga_reg()->system->force_ready = reg;
+    } else {
+        reg = get_fpga_reg()->system->force_ready;
+        reg &= ~(0x1 << ch);
+        get_fpga_reg()->system->enable = reg;
+    }
+    printf_warn("ch = %d, reg=0x%x, 0x%x, get_fpga_reg()->system=%p\n", ch,reg, get_fpga_reg()->system->force_ready, get_fpga_reg()->system);
+#else
+    #define PCIE_USER_MODE_OFFSET 	0x0010  //
+    uint32_t vaule = 0;
+    	/*set force ready mode*/
+    vaule = read_register_32bit((void *)get_fpga_reg()->system + PCIE_USER_MODE_OFFSET);
+    vaule |=  0x1 << ch;
+    write_register_32bit((void *)get_fpga_reg()->system + PCIE_USER_MODE_OFFSET, vaule);
+    printf_note("ch = %d, _reg=0x%x\n", ch, read_register_32bit((void *)get_fpga_reg()->system + PCIE_USER_MODE_OFFSET));
+#endif
+
+}
+
+void io_set_xdma_disable(int ch, int subch)
+{
+    printf_debug("ADC out disable\n");
+#if defined(SUPPORT_PLATFORM_ARCH_ARM)
+#if defined(SUPPORT_SPECTRUM_KERNEL)
+
+#elif defined(SUPPORT_SPECTRUM_V2)
+    #if defined(SUPPORT_SPECTRUM_XDMA)
+    if((get_spm_ctx()!=NULL) && get_spm_ctx()->ops->stream_stop)
+        get_spm_ctx()->ops->stream_stop(ch, subch, XDMA_STREAM);
+    #endif
+#endif
+#endif
+}
+
 
 void io_init(void)
 {

@@ -29,6 +29,7 @@
 #define RESP_CODE_DISK_DETECTED_ERR     -10
 #define RESP_CODE_PATH_PARAM_ERR        -11
 #define RESP_CODE_EXECMD_ERR            -12
+#define RESP_CODE_EXECMD_REBOOT         -13
 
 
 extern int cmd_muti_point(struct uh_client *cl, void **arg, void **content);
@@ -55,6 +56,11 @@ extern int cmd_net_client_type(struct uh_client *cl, void **arg, void **content)
 extern int cmd_get_softversion(struct uh_client *cl, void **arg, void **content);
 extern int cmd_get_fpga_info(struct uh_client *cl, void **arg, void **content);
 extern int cmd_get_all_info(struct uh_client *cl, void **arg, void **content);
+extern int cmd_get_selfcheck_info(struct uh_client *cl, void **arg, void **content);
 extern int cmd_bddc(struct uh_client *cl, void **arg, void **content);
+extern int cmd_rf_power_onoff(struct uh_client *cl, void **arg, void **content);
+extern int cmd_rf_agcmode(struct uh_client *cl, void **arg, void **content);
+extern int cmd_timesource_set(struct uh_client *cl, void **arg, void **content);
+extern int cmd_netget(struct uh_client *cl, void **arg, void **content);
 
 #endif

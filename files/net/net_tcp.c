@@ -292,8 +292,8 @@ static void tcp_ustream_write_cb(struct ustream *s, int bytes)
 
 void tcp_free(struct net_tcp_client *cl)
 {
-    printf_info("tcp_free:");
-    printf_info(": %s:%d\n", cl->get_peer_addr(cl), cl->get_peer_port(cl));
+    printf_note("tcp_free:");
+    printf_note(": %s:%d\n", cl->get_peer_addr(cl), cl->get_peer_port(cl));
     struct net_tcp_server *srv;
     srv = cl->srv;
     pthread_mutex_lock(&srv->tcp_client_lock);
@@ -479,7 +479,7 @@ void tcp_active_send_all_client(uint8_t *data, int len)
     union _cmd_srv *cmdsrv;
     
     for(int i = 0; i < get_use_ifname_num(); i++){
-        cmdsrv = (union _cmd_srv *)get_cmd_srv(i);
+        cmdsrv = (union _cmd_srv *)get_cmd_server(i);
         if(cmdsrv == NULL)
             return;
         struct net_tcp_server *srv = (struct net_tcp_server *)cmdsrv->tcpsvr;

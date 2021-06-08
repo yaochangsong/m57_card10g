@@ -19,6 +19,7 @@
 
 #include <stdlib.h>
 #include <unistd.h>
+#include <netinet/tcp.h>
 #include "lib/libubox/usock.h"
 #include "lib/libubox/avl-cmp.h"
 
@@ -71,6 +72,9 @@ int uh_server_open(const char *host, int port)
         uh_log_err("usock");
         return sock;
     }
+    int     noDelay;
+    noDelay = 1;
+    setsockopt(sock, IPPROTO_TCP, TCP_NODELAY, (char*) &noDelay, sizeof(int));
 
     return sock;
 }

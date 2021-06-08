@@ -18,21 +18,24 @@
 typedef int16_t fft_t;
 typedef int16_t iq_t;
 
-#define MAX_FFT_SIZE  (64768)
+#define MAX_FFT_SIZE  (65536)
 
 enum stream_type {
-    STREAM_IQ = 0,
+    STREAM_NIQ = 0,
+    STREAM_BIQ,
     STREAM_FFT,
     STREAM_ADC_WRITE,
     STREAM_ADC_READ,
+    XDMA_STREAM,
 };
 
 #define DMA_IQ_TYPE_BUFFER_SIZE (DMA_IQ_BUFFER_SIZE*2)
 
-enum stream_niq_type {
+enum stream_iq_type {
     STREAM_NIQ_TYPE_AUDIO,
     STREAM_NIQ_TYPE_RAW,
     STREAM_NIQ_TYPE_MAX,
+    STREAM_BIQ_TYPE_RAW,
 };
 #define for_each_niq_type(type, run) \
     for (int i = 0; \
@@ -46,13 +49,16 @@ struct spm_backend_ops {
     ssize_t (*read_biq_data)(int ch, void **data);
     ssize_t (*read_fft_data)(int, void **, void*);
     ssize_t (*read_adc_data)(int,void **);
+    ssize_t (*read_xdma_data)(int, void **, void *);
+    int (*read_xdma_over_deal)(int, void *);
     int (*read_adc_over_deal)(int,void *);
     int (*read_niq_over_deal)(void *);
     fft_t *(*data_order)(fft_t *, size_t,  size_t *, void *);
     int (*send_fft_data)(void *, size_t, void *);
     int (*send_biq_data)(int, void *, size_t, void *);
     int (*send_niq_data)(void *, size_t, void *);
-    int (*send_niq_type)(enum stream_niq_type, iq_t *, size_t, void *);
+    int (*send_niq_type)(enum stream_iq_type, iq_t *, size_t, void *);
+    int (*send_xdma_data)(int ch, const char *buf, int len, void *args);
     int (*niq_dispatcher)(iq_t *, size_t, void *);
     int (*agc_ctrl)(int, void *);
     bool (*residency_time_arrived)(uint8_t, int, bool);
@@ -75,6 +81,7 @@ struct spm_context {
     struct poal_config *pdata;
     const struct spm_backend_ops *ops;
     struct spm_run_parm *run_args[MAX_RADIO_CHANNEL_NUM];
+    void *pool_buffer;
 };
 
 #ifdef SUPPORT_SPECTRUM_V2

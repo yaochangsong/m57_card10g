@@ -17,6 +17,7 @@
 ******************************************************************************/
 #include "config.h"
 #include <math.h>
+#include "../../bsp/io.h"
 
 #define UART_HANDER_TIMROUT 1000   //ms
 #define FPGA_TIME_INTERVAL (1000 * 360)
@@ -57,6 +58,11 @@ enum GGA_PARA_INDEX{
     GGA_PRECISION,
     GGA_AUTITUDE,     //10
     GGA_AUTI_UNIT,
+    GGA_BASE_VAL,   //大地水准面差值
+    GGA_BAVA_UINT,  //差值单位
+    GGA_CALI_AGE,   //差分校准年龄
+    GGA_STA_ID,     //差分站ID      
+    GGA_SEG_MAX,
 };
 
 enum RMC_PARA_INDEX{
@@ -71,21 +77,28 @@ enum RMC_PARA_INDEX{
     RMC_ANGLE_GROUND,
     RMC_UTC_YMD,        //10
     RMC_ANGLE_MAGNETIC,
+    RMC_EW_MAGNETIC,    //东西指示
+    RMC_MODE,           //模式，A：自主 D：差分
+    RMC_SEG_MAX,
+};
+enum VTG_PARA_INDEX{
+    VTG_ID = 1,         //消息ID
+    VTG_AZIMUTH1,        //方位角
+    VTG_REFER1,         //参考 T：代表真北
+    VTG_AZIMUTH2,        //方位角
+    VTG_REFER2,         //参考 M：代表磁北
+    VTG_HORI_SPEED,     //水平速度
+    VTG_HORI_UNIT,      //单位N：节
+    VTG_VERTI_SPEED,    //垂直速度
+    VTG_VERTI_UINT,     //单位K：千米每小时
+    VTG_MODE,           //模式，A：自主 D：差分
+    VTG_SEG_MAX,
 };
 /*	
 	GPS解析：GGA语句和RMC语句
 */
 
 
-struct gps_info {
-    float utc_hms;		/*utc时间*/	
-    int utc_ymd;		
-    float latitude;		/*纬度*/
-    float longitude;	/*经度*/
-    char  ns;			/*南北指示*/
-    char  ew;			/*东西指示*/
-    float   altitude;     /*海拔高度*/
-};
 
 struct uloop_timeout *gps_timer = NULL;
 struct uloop_timeout *fpga_timer = NULL;
@@ -94,11 +107,15 @@ static struct gps_info g_gps_info;
 static bool gps_status = false;         /*定位状态*/
 
 
+struct gps_info * gps_get_info(void)
+{
+    return &g_gps_info;
+}
 
 int gps_parse_recv_msg_rmc(char *str, size_t nbyte)
 {
-    #define _GPS_HEADER1      "$GNRMC"
-    #define _GPS_HEADER2      "$GPRMC"
+    #define GPS_RMC_HEADER1      "$GNRMC"
+    #define GPS_RMC_HEADER2      "$GPRMC"
     #define GPS_SEPARATOR    ","
 
     char *ptr1 = NULL, *ptr2 = NULL;
@@ -109,8 +126,8 @@ int gps_parse_recv_msg_rmc(char *str, size_t nbyte)
     if(str == NULL || nbyte == 0)
         return -1;
 
-    if ((ptr1 = strstr(str, _GPS_HEADER1)) == NULL && 
-        (ptr1 = strstr(str, _GPS_HEADER2)) == NULL ) {
+    if ((ptr1 = strstr(str, GPS_RMC_HEADER1)) == NULL && 
+        (ptr1 = strstr(str, GPS_RMC_HEADER2)) == NULL ) {
         return -1;
     }
 
@@ -138,40 +155,41 @@ int gps_parse_recv_msg_rmc(char *str, size_t nbyte)
                     return -1;
                 } else {
                     gps_status = true;
+                    g_gps_info.utc_hms = gps_info.utc_hms;
                 }
                 break;
             }
             case RMC_LATITUDE:
             {
-                gps_info.latitude= atof(para_buf);
+                g_gps_info.latitude= atof(para_buf);
                 break;
             }
             case RMC_NS_STA:
             {
                 if (strstr(para_buf, "N")) {
-                    gps_info.ns = 'N';
+                    g_gps_info.ns = 'N';
                 } else if (strstr(para_buf, "S")) {
-                    gps_info.ns = 'S';
+                    g_gps_info.ns = 'S';
                 }
                 break;
             }
             case RMC_LONGITUDE:
             {
-                gps_info.longitude= atof(para_buf);
+                g_gps_info.longitude= atof(para_buf);
                 break;
             }
             case RMC_EW_STA:
             {
                 if (strstr(para_buf, "E")) {
-                    gps_info.ew = 'E';
+                    g_gps_info.ew = 'E';
                 } else if (strstr(para_buf, "W")) {
-                    gps_info.ew = 'W';
+                    g_gps_info.ew = 'W';
                 }
                 break;
             }
             case RMC_UTC_YMD:
             {
-                gps_info.utc_ymd= atoi(para_buf);
+                g_gps_info.utc_ymd= atoi(para_buf);
                 break;
             }
         }
@@ -182,13 +200,7 @@ int gps_parse_recv_msg_rmc(char *str, size_t nbyte)
             break;
         }
     }
-
-    if (param_num < RMC_UTC_YMD) {
-        printf_info("gps para n=%d, failed!\n", param_num);
-        return -1;
-    }
-
-    memcpy(&g_gps_info, &gps_info, sizeof(gps_info));
+    
     printf_info("latitude:[%c]%.4f, longitude:[%c]%.4f, utc_time:%d %.3f\n", 
         g_gps_info.ns,g_gps_info.latitude, g_gps_info.ew, g_gps_info.longitude, g_gps_info.utc_ymd, g_gps_info.utc_hms);
     return 0;
@@ -197,8 +209,8 @@ int gps_parse_recv_msg_rmc(char *str, size_t nbyte)
 
 int gps_parse_recv_msg_gga(char *str, size_t nbyte)
 {
-    #define GPS_HEADER1      "$GNGGA"
-    #define GPS_HEADER2      "$GPGGA"
+    #define GPS_GGA_HEADER1      "$GNGGA"
+    #define GPS_GGA_HEADER2      "$GPGGA"
     #define GPS_SEPARATOR    ","
 
     char *ptr1 = NULL, *ptr2 = NULL;
@@ -209,8 +221,8 @@ int gps_parse_recv_msg_gga(char *str, size_t nbyte)
     if(str == NULL || nbyte == 0)
         return -1;
 
-    if ((ptr1 = strstr(str, GPS_HEADER1)) == NULL && 
-        (ptr1 = strstr(str, GPS_HEADER2)) == NULL ) {
+    if ((ptr1 = strstr(str, GPS_GGA_HEADER1)) == NULL && 
+        (ptr1 = strstr(str, GPS_GGA_HEADER2)) == NULL ) {
         return -1;
     }
 
@@ -229,17 +241,19 @@ int gps_parse_recv_msg_gga(char *str, size_t nbyte)
             {
                 if (atoi(para_buf) <= 0 ) {  // 0:无效 1：SPS 2：DGPS
                     gps_status = false;
+                    g_gps_info.location_type = 0;
                     printf_debug("invalid gps data:%s\n", para_buf);
-                    return -1;
+                    return -1;  //无效数据直接退出
                 } else {
                     gps_status = true;
+                    g_gps_info.location_type = atoi(para_buf);
                 }
                 break;
             }
-
+            
             case GGA_AUTITUDE:
             {
-                gps_info.altitude = atof(para_buf);
+                g_gps_info.altitude = atof(para_buf);  //米
                 break;
             }
             
@@ -252,13 +266,79 @@ int gps_parse_recv_msg_gga(char *str, size_t nbyte)
         }
     }
 
-    if (param_num < GGA_AUTITUDE) {
-        printf_info("gps para n=%d, failed!\n", param_num);
+    printf_info("location type:%s, altitude:%.1f m\n", ((g_gps_info.location_type==1)?"SPS":"SGPS"),g_gps_info.altitude);
+    return 0;
+}
+
+
+int gps_parse_recv_msg_vtg(char *str, size_t nbyte)
+{
+    #define GPS_VTG_HEADER1      "$GNVTG"
+    #define GPS_VTG_HEADER2      "$GPVTG"
+    #define GPS_SEPARATOR    ","
+
+    char *ptr1 = NULL, *ptr2 = NULL;
+    char para_buf[24];
+    int param_num = 0, n = 0;
+    struct gps_info gps_info;
+    
+    if(str == NULL || nbyte == 0)
+        return -1;
+
+    if ((ptr1 = strstr(str, GPS_VTG_HEADER1)) == NULL && 
+        (ptr1 = strstr(str, GPS_VTG_HEADER2)) == NULL ) {
         return -1;
     }
 
-    g_gps_info.altitude = gps_info.altitude;
-    printf_info("altitude:%.1f m\n", g_gps_info.altitude);
+    memset(&gps_info, 0, sizeof(struct gps_info));
+    ptr2 = strstr(ptr1, GPS_SEPARATOR);
+    
+    while (ptr2 != NULL) {
+    
+        n = ptr2 - ptr1;
+        memset(para_buf, 0, sizeof(para_buf));
+        strncpy(para_buf, ptr1, n);
+        param_num++;
+        switch (param_num) {
+
+            case VTG_AZIMUTH1:
+            {
+                if (gps_status && n > 0)
+                    g_gps_info.true_north_angle = atof(para_buf);
+                break;
+            }
+
+            case VTG_AZIMUTH2:
+            {
+                if (gps_status && n > 0)
+                    g_gps_info.magnetic_angle = atof(para_buf);
+                break;
+            }
+            
+            case VTG_HORI_SPEED:
+            {
+                if (gps_status && n > 0)
+                    g_gps_info.horizontal_speed = atof(para_buf);  //米
+                break;
+            }
+
+            case VTG_VERTI_SPEED:
+            {
+                if (gps_status && n > 0)
+                    g_gps_info.vertical_speed = atof(para_buf);  //米
+                break;
+            }
+        }
+
+        ptr1 = ptr2 + 1;
+        ptr2 = strstr(ptr1, GPS_SEPARATOR);
+        if (param_num >= VTG_VERTI_SPEED) {
+            break;
+        }
+    }
+
+    printf_info("true_north_angle:%.2f, magnetic_angle:%.2f, horizontal_speed:%.2f N, vertical_speed:%.2f K\n", g_gps_info.true_north_angle,
+        g_gps_info.magnetic_angle, g_gps_info.horizontal_speed, g_gps_info.vertical_speed);
     return 0;
 }
 
@@ -476,6 +556,7 @@ void gps_timer_task_cb(struct uloop_timeout *t)
     static int tick = 0;
     memset(buf,0,SERIAL_BUF_LEN);
     tick++;
+    io_set_gps_status(gps_status);
     struct uart_info *gps_uart = get_uart_info_by_index(UART_INFO_GPS);
     if (!gps_uart)
         return;
@@ -508,6 +589,7 @@ void gps_timer_task_cb(struct uloop_timeout *t)
             }
         }
         gps_parse_recv_msg_gga(buf, nread);
+        gps_parse_recv_msg_vtg(buf, nread);
     } 
     
     tcflush(fd, TCIOFLUSH);
@@ -564,6 +646,8 @@ int gps_init(void)
     memset(&g_gps_info, 0, sizeof(struct gps_info));
     g_gps_info.latitude = 400000000;
     g_gps_info.longitude = 400000000;
+    g_gps_info.ns = 'S';
+    g_gps_info.ew = 'W';
     gps_task_init();
     time_fpga_task_init();
 	return 0;

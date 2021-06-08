@@ -242,12 +242,11 @@ static int json_write_config_param(cJSON* root, s_config *sconfig)
     cJSON *network = NULL;
     struct sockaddr_in saddr;
 
-    printf_note("sconfig->version=%s\n", sconfig->version);
     if((sconfig->version != NULL) && !strcmp(sconfig->version, "1.0")){
         json_write_double_param(NULL, "network", "port", config->network[0].port);
         json_write_double_param(NULL, "network_10g", "port", config->network[0].port);
     } else{
-        cJSON* ifname, *port, *value;
+        cJSON* ifname, *port, *value,*portnode;
         network = cJSON_GetObjectItem(root, "network");
         for(int i = 0; i < cJSON_GetArraySize(network); i++){
             node = cJSON_GetArrayItem(network, i);
@@ -261,8 +260,13 @@ static int json_write_config_param(cJSON* root, s_config *sconfig)
                             port->valuedouble = config->network[index].port;
                     }
                     port = cJSON_GetObjectItem(value, "data");
-                    if(cJSON_IsNumber(port)){
-                            port->valuedouble = config->network[index].data_port;
+                    if(port != NULL){
+                        for(int j = 0; j < cJSON_GetArraySize(port); j++){
+                            portnode = cJSON_GetArrayItem(port, j);
+                            if(cJSON_IsNumber(portnode)){
+                                    portnode->valuedouble = config->network[index].data_port[j];
+                            }
+                        }
                     }
                 }
             }
@@ -458,8 +462,8 @@ static int json_parse_config_param(const cJSON* root, s_config *sconfig)
                 index ++;
                 if(port!= NULL && cJSON_IsNumber(port)){
                     config->network[index].port = port->valueint;
-                    config->network[index].data_port = port->valueint+1;
-                    printf_note("port=>value is:%d\n",config->network[index].port);
+                    config->network[index].data_port[0] = port->valueint+1;
+                    printf_debug("port=>value is:%d\n",config->network[index].port);
                 }
             }
             network = cJSON_GetObjectItem(root, "network_10g");
@@ -468,8 +472,8 @@ static int json_parse_config_param(const cJSON* root, s_config *sconfig)
                 port = cJSON_GetObjectItem(network, "port");
                 if(port!= NULL && cJSON_IsNumber(port)){
                     config->network[index].port = port->valueint;
-                    config->network[index].data_port = port->valueint+1;
-                    printf_note("10g port=>value is:%d\n",config->network[index].port);
+                    config->network[index].data_port[0] = port->valueint+1;
+                    printf_debug("10g port=>value is:%d\n",config->network[index].port);
                 }
             }
         }else{
@@ -488,12 +492,20 @@ static int json_parse_config_param(const cJSON* root, s_config *sconfig)
                         port = cJSON_GetObjectItem(value, "command");
                         if(cJSON_IsNumber(port)){
                             config->network[i].port = port->valueint;
-                            printf_note("%s cmd port:%d\n",config->network[i].ifname, config->network[i].port);
+                            printf_debug("%s cmd port:%d\n",config->network[i].ifname, config->network[i].port);
                         }
                         port = cJSON_GetObjectItem(value, "data");
-                        if(cJSON_IsNumber(port)){
-                            config->network[i].data_port = port->valueint;
-                            printf_note("%s data port:%d\n",config->network[i].ifname, config->network[i].data_port);
+                        if(port != NULL){
+                            printf_debug("%s data port:\n", config->network[i].ifname);
+                            cJSON *port_details = NULL;
+                           for(int j = 0; j < cJSON_GetArraySize(port); j++)
+                           {
+                               port_details = cJSON_GetArrayItem(port, j);
+                               if(cJSON_IsNumber(port_details)){
+                                  config->network[i].data_port[j] = port_details->valueint;
+                                  printf_debug("config->network[%d].data_port[%d]=%d\n",i,j,config->network[i].data_port[j]);
+                               }
+                           }
                         }
                     }
                 }
@@ -542,17 +554,17 @@ static int json_parse_config_param(const cJSON* root, s_config *sconfig)
     value = cJSON_GetObjectItem(control_parm, "disk_full_alert_threshold_MB");
     if(value!= NULL && cJSON_IsNumber(value)){
         config->status_para.diskInfo.alert.alert_threshold_byte = (uint64_t)value->valueint * 1024 * 1024;
-        printf_note("alert_threshold_byte: %dMbyte, %" PRIu64"\n",value->valueint, config->status_para.diskInfo.alert.alert_threshold_byte);
+        printf_debug("alert_threshold_byte: %dMbyte, %" PRIu64"\n",value->valueint, config->status_para.diskInfo.alert.alert_threshold_byte);
     }
     value = cJSON_GetObjectItem(control_parm, "disk_split_file_threshold_MB");
     if(value!= NULL && cJSON_IsNumber(value)){
         config->status_para.diskInfo.alert.split_file_threshold_byte = (uint64_t)value->valueint * 1024 * 1024;
-        printf_note("split_file_threshold_mb:%dMbyte, %" PRIu64"\n",value->valueint, config->status_para.diskInfo.alert.split_file_threshold_byte);
+        printf_debug("split_file_threshold_mb:%dMbyte, %" PRIu64"\n",value->valueint, config->status_para.diskInfo.alert.split_file_threshold_byte);
     }
     value = cJSON_GetObjectItem(control_parm, "disk_file_notifier_timeout_ms");
     if(value!= NULL && cJSON_IsNumber(value)){
         config->ctrl_para.disk_file_notifier_timeout_ms = value->valueint;
-        printf_note("disk_file_notifier_timeout_ms:%dms, %ums, \n",value->valueint, config->ctrl_para.disk_file_notifier_timeout_ms);
+        printf_debug("disk_file_notifier_timeout_ms:%dms, %ums, \n",value->valueint, config->ctrl_para.disk_file_notifier_timeout_ms);
     }
     
 /* calibration_parm */

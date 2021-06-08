@@ -1,14 +1,6 @@
 #include "config.h"
 
-struct net_udp_server *get_udp_server(int index)
-{
-    union _data_srv *srv;
-    srv = (union _data_srv *)get_data_srv(index);
     
-    if(srv == NULL)
-        return NULL;
-    return srv->udpsrv;
-}
 
 static int udp_get_ifname(struct net_udp_client *cl, char *ifname)
 {
@@ -121,18 +113,18 @@ static inline int udp_send_vec_data_to_client(struct net_udp_client *client, str
     return 0;
 }
 
-int udp_send_vec_data(struct iovec *iov, int iov_len, int tag)
+int udp_send_vec_data(struct iovec *iov, int iov_len, int type)
 {
     struct net_udp_server *srv ;
     struct net_udp_client *cl_list, *list_tmp;
     int ret = 0;
     
     for(int i = 0; i < get_use_ifname_num(); i++){
-        srv = get_udp_server(i);
+        srv = get_data_server(i, type);
         if(srv == NULL)
             continue;
         list_for_each_entry_safe(cl_list, list_tmp, &srv->clients, list){
-            if (cl_list->tag == tag)
+            if (cl_list->section.type[type] == true)
                 udp_send_vec_data_to_client(cl_list, iov, iov_len);
         }
     }
@@ -149,7 +141,7 @@ int udp_send_vec_data_to_taget_addr(struct iovec *iov, int iov_len)
     if(client_init_flag == false){
         client.peer_addr.sin_family = AF_INET;
         client.peer_addr.sin_port = htons(U_PORT);
-        client.srv =  get_udp_server(0);
+        client.srv =  get_data_server(0, 0);
 
         if(inet_aton(SERVER, &client.peer_addr.sin_addr) == 0){
             printf_err("error server ip\n");
@@ -169,18 +161,23 @@ void udp_client_dump(void)
     int ret = 0;
     char *ifname = NULL;
     printf("dump client: \n");
+    for(int j = 0; j < NET_DATA_TYPE_MAX; j++){
     for(int i = 0; i < get_use_ifname_num(); i++){
-        srv = get_udp_server(i);
+            srv = get_data_server(i, j);
         if(srv == NULL)
             continue;
         list_for_each_entry_safe(cl_list, list_tmp, &srv->clients, list){
-            printf("udp client: addr=%s, port=%d, tag=%d\n", cl_list->get_peer_addr(cl_list), cl_list->get_peer_port(cl_list), cl_list->tag);
+                printf("udp client: addr=%s, port=%d, type=%d[%d]\n", cl_list->get_peer_addr(cl_list), cl_list->get_peer_port(cl_list), j, cl_list->section.type[j]);
+            }
         }
     }
 }
 
-struct net_udp_server *udp_get_srv_by_addr(struct sockaddr_in *addr)
+struct net_udp_server *udp_get_srv_by_addr(struct sockaddr_in *addr, int type)
 {
+#if (defined SUPPORT_DATA_PROTOCAL_TCP)
+    return NULL;
+#else
     struct net_udp_server *srv;
     char if_name[IF_NAMESIZE] = {0};
     int index = 0;
@@ -192,16 +189,17 @@ struct net_udp_server *udp_get_srv_by_addr(struct sockaddr_in *addr)
         printf_warn("ifname %s is not set on config\n",  if_name);
         return NULL;
     }
-    srv = get_udp_server(index);
+    srv = get_data_server(index, type);
     return srv;
+#endif
 }
 
 
-int udp_client_delete(struct sockaddr_in *udp_addr)
+int udp_client_delete(struct sockaddr_in *udp_addr, int type)
 {
     struct net_udp_client *cl_list, *list_tmp;
     struct net_udp_server *srv;
-    if((srv = udp_get_srv_by_addr(udp_addr)) == NULL){
+    if((srv = udp_get_srv_by_addr(udp_addr, type)) == NULL){
         return -1;
     }
 
@@ -219,20 +217,20 @@ int udp_client_delete(struct sockaddr_in *udp_addr)
 }
 
 
-void udp_add_client_to_list(struct sockaddr_in *addr, int ch, int tag)
+void udp_add_client_to_list(struct sockaddr_in *addr, int ch, int type)
 {
     struct net_udp_client *cl = NULL;
     struct net_udp_client *cl_list, *list_tmp;
     struct net_udp_server *srv;
 
-    if((srv = udp_get_srv_by_addr(addr)) == NULL){
+    if((srv = udp_get_srv_by_addr(addr, type)) == NULL){
         return;
     }
 
     list_for_each_entry_safe(cl_list, list_tmp, &srv->clients, list){
         if((memcmp(&cl_list->peer_addr.sin_addr, &addr->sin_addr, sizeof(addr->sin_addr)) == 0) && 
             (memcmp(&cl_list->peer_addr.sin_port, &addr->sin_port, sizeof(addr->sin_port)) == 0) &&
-            (cl_list->tag == tag)) {
+            (cl_list->section.type[type] == true)) {
             printf_warn("Find ipaddress on list:%s:%d，delete it\n",  cl_list->get_peer_addr(cl_list), cl_list->get_peer_port(cl_list));
             __lock_send__();
             udp_free(cl_list);
@@ -254,11 +252,11 @@ void udp_add_client_to_list(struct sockaddr_in *addr, int ch, int tag)
         return;
     }
     memcpy(&cl->peer_addr, addr, sizeof(struct sockaddr_in));
-    cl->tag = tag;
+    cl->section.type[type] = true;
+    cl->section.ch  = ch;
     cl->get_peer_addr = udp_get_peer_addr;
     cl->get_peer_port = udp_get_peer_port;
     cl->peer_addr.sin_family = AF_INET;
-    cl->ch = ch;
     list_add(&cl->list, &srv->clients);
     cl->srv = srv;
     cl->srv->nclients++;

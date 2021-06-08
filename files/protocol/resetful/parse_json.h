@@ -49,6 +49,8 @@ extern char *assemble_json_net_info(void);
 extern char *assemble_json_rf_info(void);
 extern char *assemble_json_disk_info(void);
 extern char *assemble_json_all_info(void);
+extern char *assemble_json_selfcheck_info(void);
+extern char *assemble_json_netlist_info(void);
 
 #endif
 

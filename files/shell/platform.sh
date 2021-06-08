@@ -10,6 +10,7 @@ start()
 		echo "TZ=UTC-08:00" >> /etc/profile
 		echo "export TZ" >> /etc/profile
     fi
+    /etc/config.sh
     #LED
     /etc/led.sh init	>/dev/null 2>&1
     /etc/led.sh power on >/dev/null 2>&1
@@ -43,10 +44,10 @@ start()
 
 factory_setting()
 {
-    factory_config=/etc/.config_default.json
-    if [ ! -f "$factory_config" ]; then
-        cp -f /etc/config.json $factory_config
-    fi
+    #factory_config=/etc/.config_default.json
+    #if [ ! -f "$factory_config" ]; then
+    #    cp -f /etc/config.json $factory_config
+    #fi
     
 	factory_network=/etc/network/.interfaces_default
 	if [ ! -f "$factory_network" ]; then
@@ -57,6 +58,7 @@ factory_setting()
 
 stop()
 {
+	killall checkproc.sh >/dev/null 2>&1
     if start-stop-daemon -K -x $DAEMON >/dev/null 2>&1; then
     	echo "Stop FlatForm..."
     fi

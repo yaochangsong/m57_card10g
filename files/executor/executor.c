@@ -27,15 +27,25 @@ pthread_mutex_t set_cmd_mutex = PTHREAD_MUTEX_INITIALIZER;
 int executor_net_disconnect_notify(struct sockaddr_in *addr)
 {
     struct poal_config *poal_config = &(config_get_config()->oal_config);
+#if (defined SUPPORT_DATA_PROTOCAL_TCP)
+    struct net_tcp_server *srv;
+#else
     struct net_udp_server *srv;
-    
-    if((srv = udp_get_srv_by_addr(addr)) == NULL){
-        return -1;
+    for(int type = 0; type < NET_DATA_TYPE_MAX ; type++){
+        net_data_remove_client(addr, -1, type);
     }
-    udp_client_delete(addr);
+#endif
+    int clinets = 0;
+    
+    for(int i = 0; i < get_use_ifname_num(); i++){
+        if((srv = get_cmd_server(i)) == NULL){
+                continue;
+            clinets += srv->nclients;
+        }
+    }
     /* client is 0 */
-    printf_info("udp client number: %d\n", srv->nclients);
-    if(srv->nclients == 0){
+    printf_note("total client number: %d, clinets=%d\n", srv->nclients, clinets);
+    if(clinets == 0){
         #if defined(SUPPORT_XWFS)
         xwfs_stop_backtrace(NULL);  /* 停止回溯 ，回到正常状 */
         #endif
@@ -48,6 +58,7 @@ int executor_net_disconnect_notify(struct sockaddr_in *addr)
                 executor_set_command(EX_MID_FREQ_CMD, EX_SUB_CH_ONOFF, ch, &enable, i);
                 executor_set_command(EX_MID_FREQ_CMD, EX_SUB_CH_DEC_METHOD, i, &default_method);
                 memset(&poal_config->channel[ch].sub_channel_para.sub_ch_enable[i], 0, sizeof(struct output_en_st));
+                io_set_enable_command(IQ_MODE_DISABLE, ch,i, 0);
             }
             io_set_rf_calibration_source_enable(ch, 0);
             /* 所有客户端离线，关闭相关使能，线程复位到等待状�?*/
@@ -235,7 +246,7 @@ int8_t  executor_points_scan(uint8_t ch, work_mode_type mode, void *args)
         r_args->gain_value = poal_config->channel[ch].rf_para.mgc_gain_value;
         r_args->freq_resolution = (float)point->points[i].bandwidth * BAND_FACTOR / (float)point->points[i].fft_size;
         printf_info("ch=%d, s_freq=%"PRIu64", e_freq=%"PRIu64" fft_size=%u, d_method=%d\n", ch, s_freq, e_freq, r_args->fft_size,r_args->d_method);
-        printf_info("rf scan bandwidth=%u, middlebw=%u, m_freq=%"PRIu64", freq_resolution=%f\n",r_args->scan_bw,r_args->bandwidth , r_args->m_freq, r_args->freq_resolution);
+        printf_info("rf scan bandwidth=%u, middlebw=%u, m_freq=%"PRIu64", freq_resolution=%u\n",r_args->scan_bw,r_args->bandwidth , r_args->m_freq, r_args->freq_resolution);
         if(spmctx->ops->sample_ctrl)
             spmctx->ops->sample_ctrl(r_args);
         executor_set_command(EX_RF_FREQ_CMD,  EX_RF_MID_FREQ, ch, &point->points[i].center_freq);
@@ -316,12 +327,31 @@ int8_t  executor_points_scan(uint8_t ch, work_mode_type mode, void *args)
     printf_info("Exit points scan function\n");
     return 0;
 }
+static uint64_t _get_sp_middle_freq(int points, uint64_t mfreq, uint32_t bw)
+{
 
-int8_t  executor_serial_points_scan(uint8_t ch, work_mode_type mode, void *args)
+    uint64_t _m_freq;
+    uint32_t _bw = bw;
+    
+    if(points == 0){
+        _m_freq = mfreq - _bw;
+    } else if(points == 1){
+        _m_freq = mfreq;
+    } else if(points == 2){
+        _m_freq = mfreq + _bw;
+    } else{
+        printf_err("err points: %d\n", points);
+    }
+    return _m_freq;
+    return 0;
+}
+int8_t  executor_serial_points_scan(uint8_t ch, work_mode_type mode, int 
+_points, void *args)
 {
     struct poal_config *poal_config = &(config_get_config()->oal_config);
     uint32_t points_count, i = 0;
-    uint64_t c_freq, s_freq, e_freq, m_freq;
+    uint32_t fft_size;
+    uint64_t c_freq, s_freq, e_freq, m_freq,relative_mfreq;
     struct spm_context *spmctx;
     struct spm_run_parm *r_args;
     struct multi_freq_point_para_st *point;
@@ -330,51 +360,69 @@ int8_t  executor_serial_points_scan(uint8_t ch, work_mode_type mode, void *args)
     struct timeval beginTime, endTime;
     double  diff_time_us = 0;
     bool residency_time_arrived = false;
+    uint8_t _ch;
+    uint32_t _bandwidth = 0;
+    
+#if defined(SUPPORT_SPM_SEND_BUFFER)
+    _ch = 0;
+#else
+    _ch = ch;
+#endif
     //int32_t policy = poal_config->ctrl_para.residency.policy[ch];
-    int32_t policy = poal_config->channel[ch].multi_freq_point_param.residence_time;
+    int32_t policy = poal_config->channel[_ch].multi_freq_point_param.residence_time;
     spmctx = (struct spm_context *)args;
     r_args = spmctx->run_args[ch];
-
-    point = &poal_config->channel[ch].multi_freq_point_param;
-    
+    point = &poal_config->channel[_ch].multi_freq_point_param;
     i = 0;
     points_count = 1;
-    s_freq = point->points[i].center_freq - point->points[i].bandwidth/2;
-    e_freq = point->points[i].center_freq + point->points[i].bandwidth/2;
-    r_args->ch = ch;
+    r_args->bandwidth = point->points[i].bandwidth;
+    if(SEGMENT_FREQ_NUM > 0){
+        _bandwidth = point->points[i].bandwidth/SEGMENT_FREQ_NUM;
+    }
+#if defined(SUPPORT_SPM_SEND_BUFFER)
+    s_freq = MHZ(107.5);//point->start_freq; 
+    e_freq = MHZ(570);//point->end_freq; 
+    //r_args->bandwidth = e_freq - s_freq;
+    poal_config->channel[ch].multi_freq_point_param.points[i].center_freq = _get_rel_middle_freq_by_channel(ch, NULL);
+    r_args->m_freq = s_freq + (e_freq - s_freq) / 2;
+    r_args->m_freq_s = _get_sp_middle_freq(_points, poal_config->channel[ch].multi_freq_point_param.points[i].center_freq, _bandwidth);
+#else
+    s_freq = point->start_freq; 
+    e_freq = point->end_freq; 
+    r_args->m_freq = _get_sp_middle_freq(_points, point->points[i].center_freq, _bandwidth);
+#endif
+    r_args->ch = ch; 
+    r_args->point = _points;
     r_args->fft_sn = i;
     r_args->audio_points = i;
     r_args->s_freq = s_freq;
     r_args->e_freq = e_freq;
     r_args->total_fft = points_count;
-    r_args->fft_size = point->points[i].fft_size;
-    r_args->bandwidth = point->points[i].bandwidth;
-    r_args->m_freq = point->points[i].center_freq;
     r_args->mode = mode;
-    
-    /* fixed bug for IQ &audio decode type error */
     r_args->d_method = 0;
     r_args->scan_bw = point->points[i].bandwidth;
-    r_args->gain_mode = poal_config->channel[ch].rf_para.gain_ctrl_method;
-    r_args->gain_value = poal_config->channel[ch].rf_para.mgc_gain_value;
-    r_args->freq_resolution = (float)point->points[i].bandwidth * BAND_FACTOR / (float)point->points[i].fft_size;
-    printf_debug("ch=%d, s_freq=%"PRIu64", e_freq=%"PRIu64" fft_size=%u, d_method=%d\n", ch, s_freq, e_freq, r_args->fft_size,r_args->d_method);
-    printf_debug("rf scan bandwidth=%u, middlebw=%u, m_freq=%"PRIu64", freq_resolution=%f\n",r_args->scan_bw,r_args->bandwidth , r_args->m_freq, r_args->freq_resolution);
+    r_args->gain_mode = poal_config->channel[_ch].rf_para.gain_ctrl_method;
+    r_args->gain_value = poal_config->channel[_ch].rf_para.mgc_gain_value;
+    r_args->freq_resolution =point->points[i].freq_resolution;
+    r_args->fft_size = point->points[i].fft_size;
+    fft_size =  r_args->fft_size;
+    printf_debug("ch:%d, fft_size=%u, m_freq=%"PRIu64", freq=%u\n", ch, fft_size, r_args->m_freq, r_args->freq_resolution);
 #if defined(SUPPORT_PLATFORM_ARCH_ARM)
     if(spmctx->ops->sample_ctrl)
         spmctx->ops->sample_ctrl(r_args);
-    //executor_set_command(EX_RF_FREQ_CMD,  EX_RF_MID_FREQ, ch, &point->points[i].center_freq);
-    //executor_set_command(EX_MID_FREQ_CMD, EX_BANDWITH, ch, &point->points[i].bandwidth);
-    executor_set_command(EX_MID_FREQ_CMD, EX_MID_FREQ,    ch, &point->points[i].center_freq);
-    executor_set_command(EX_MID_FREQ_CMD, EX_FFT_SIZE, ch, &point->points[i].fft_size);
-    executor_set_command(EX_MID_FREQ_CMD, EX_FPGA_CALIBRATE, ch, &point->points[0].fft_size, r_args->m_freq);
+    m_freq = _get_middle_freq_by_channel(ch, NULL);
+    executor_set_command(EX_MID_FREQ_CMD, EX_MID_FREQ,ch, &m_freq, _get_sp_middle_freq(_points, poal_config->channel[ch].multi_freq_point_param.points[i].center_freq, _bandwidth));
+    executor_set_command(EX_MID_FREQ_CMD, EX_FFT_SIZE, ch, &fft_size);
+    executor_set_command(EX_MID_FREQ_CMD, EX_FPGA_CALIBRATE, ch, &fft_size, m_freq);
     executor_set_command(EX_MID_FREQ_CMD, EX_SMOOTH_TIME, ch, &point->smooth_time);
-    io_set_enable_command(PSD_MODE_ENABLE, ch, -1, point->points[i].fft_size);
+    executor_set_command(EX_MID_FREQ_CMD, EX_SMOOTH_TYPE, ch, &point->smooth_mode);
+    executor_set_command(EX_MID_FREQ_CMD, EX_SMOOTH_THRE, ch, &point->smooth_threshold);
+    io_set_enable_command(PSD_MODE_ENABLE, ch, -1, fft_size);
     if(spmctx->ops->agc_ctrl)
         spmctx->ops->agc_ctrl(ch, spmctx);
     if(args != NULL)
         spm_deal(args, r_args, -1);
-    io_set_enable_command(PSD_MODE_DISABLE, ch, -1, point->points[i].fft_size);
+    io_set_enable_command(PSD_MODE_DISABLE, ch, -1, fft_size);
 #endif
     return 0;
 }
@@ -416,7 +464,9 @@ static int8_t executor_set_kernel_command(uint8_t type, uint8_t ch, void *data, 
         }
         case EX_MID_FREQ:
         {
-            io_set_middle_freq(ch, *(uint64_t *)data);
+            uint64_t fm  = *(uint64_t *)data;
+            uint64_t fp  = va_arg(ap, uint64_t);
+            io_set_middle_freq(ch, fm, fp);
             break;
         }
         case EX_DEC_METHOD:
@@ -430,17 +480,35 @@ static int8_t executor_set_kernel_command(uint8_t type, uint8_t ch, void *data, 
         case EX_DEC_MID_FREQ:
         {
             uint64_t  middle_freq;
+            int ch;
             middle_freq = va_arg(ap, uint64_t);
             if(middle_freq == 0){
                 middle_freq = *(uint64_t *)data;
             }
-            printf_note("ch=%d, dec_middle=%"PRIu64", middle_freq=%"PRIu64"\n", ch, *(uint64_t *)data, middle_freq);;
+            ch =  _get_channel_by_mfreq(*(uint64_t *)data, NULL);
+            _set_biq_channel(get_fpga_reg(),ch, NULL);
             io_set_dec_middle_freq(ch, *(uint64_t *)data, middle_freq);
             break;
         }
+        case EX_WINDOW_TYPE:
+        {
+            io_set_window_type(ch, *(uint16_t *)data);
+            break;
+        } 
         case EX_SMOOTH_TIME:
         {
             io_set_smooth_time(ch, *(uint16_t *)data);
+            break;
+        }
+        case EX_SMOOTH_TYPE:
+            io_set_smooth_type(ch, *(uint16_t *)data);
+            break;
+        case EX_SMOOTH_THRE:
+        {
+            int32_t val = 0;
+            val = config_get_fft_calibration_value(ch, 0, 0);
+            val += *(uint16_t *)data * 2;
+            io_set_smooth_threshold(ch, val);
             break;
         }
         case EX_RESIDENCE_TIME:
@@ -480,13 +548,18 @@ static int8_t executor_set_kernel_command(uint8_t type, uint8_t ch, void *data, 
             int32_t  value = 0;
             uint32_t fftsize;
             uint64_t m_freq = 0;
-            
+            uint16_t smooth_type = 0;
 
             if(data !=NULL){
                 fftsize = *(uint32_t *)data;
             }
             m_freq = (uint64_t)va_arg(ap, uint64_t);
+            config_read_by_cmd(EX_MID_FREQ_CMD, EX_SMOOTH_TYPE, 0, &smooth_type);
+            if(FFT_SMOOTH_TYPE_THRESHOLD == smooth_type){
+                value = 0;
+            }else {
             value = config_get_fft_calibration_value(ch, fftsize, m_freq);
+            }
             //printf_debug("ch:%d, fft calibration value:%d m_freq :%d\n", ch, value,m_freq);
             io_set_calibrate_val(ch, value);
             #if defined(SUPPORT_PROJECT_SSA) || defined(SUPPORT_PROJECT_SSA_MONITOR)
@@ -532,6 +605,33 @@ static int8_t executor_set_kernel_command(uint8_t type, uint8_t ch, void *data, 
         }
         case EX_SUB_CH_MUTE_THRE:
         {
+            break;
+        }
+        case EX_SUB_CH_MGC_GAIN:
+        {
+            uint32_t subch;
+            int8_t val;
+            subch = ch;
+            val = *(int8_t *)data;
+            io_set_subch_audio_gain(ch, subch, val);
+            break;
+        }
+        case EX_SUB_CH_GAIN_MODE:
+        {
+            uint32_t subch;
+            uint8_t val;
+            subch = ch;
+            val = *(uint8_t *)data;
+            io_set_subch_audio_gain_mode(ch, subch, val);
+            break;
+        }
+        case EX_SUB_CH_AUDIO_SAMPLE_RATE:
+        {
+            uint32_t subch;
+            uint8_t val;
+            subch = ch;
+            val = *(uint8_t *)data;
+            io_set_subch_audio_sample_rate(ch, subch, val);
             break;
         }
         case EX_SAMPLE_CTRL:
@@ -580,11 +680,16 @@ int8_t executor_set_command(exec_cmd cmd, uint8_t type, uint8_t ch,  void *data,
         case EX_FFT_ENABLE_CMD:
         {
 #ifdef SUPPORT_SPECTRUM_SERIAL
-            int32_t enable = *(int32_t *)data;
+            int32_t enable;
+            if(data != NULL)
+                enable = *(int32_t *)data;
             if(enable)
                 ch_bitmap_set(ch, CH_TYPE_FFT);
-            else
+            else{
+                poal_config->channel[0].enable.bit_reset = true;
                 ch_bitmap_clear(ch, CH_TYPE_FFT);
+            }
+            if(ch < MAX_RADIO_CHANNEL_NUM && enable)
 #else
             if(type == PSD_MODE_DISABLE){
                 poal_config->channel[ch].enable.psd_en = 0;
@@ -594,9 +699,10 @@ int8_t executor_set_command(exec_cmd cmd, uint8_t type, uint8_t ch,  void *data,
                 get_spm_ctx()->ops->set_flush_trigger(true);
             /* notify thread to deal data */
             poal_config->channel[ch].enable.bit_reset = true; /* reset(stop) all working task */
+            if(ch < MAX_RADIO_CHANNEL_NUM)
 #endif
-            if(ch < MAX_RADIO_CHANNEL_NUM){
-                printf_note("ch=%d, notify thread to deal fft data\n", ch);
+            {
+                printf_warn("ch=%d, notify thread to deal fft data\n", ch);
                 spm_fft_deal_notify(&ch);
             }
             break;
@@ -607,6 +713,8 @@ int8_t executor_set_command(exec_cmd cmd, uint8_t type, uint8_t ch,  void *data,
             int32_t enable = *(int32_t *)data;
             printf_note("subch:%d, BIQ %s\n", subch, enable == 0 ? "disable" : "enable");
             if(enable){
+                for(int i = 0; i < MAX_RADIO_CHANNEL_NUM; i++)
+                    io_set_enable_command(BIQ_MODE_DISABLE, i, subch, 0);
                 io_set_enable_command(BIQ_MODE_ENABLE, ch, subch, 0);
                 spm_biq_deal_notify(&ch);
             }
@@ -639,6 +747,7 @@ int8_t executor_set_command(exec_cmd cmd, uint8_t type, uint8_t ch,  void *data,
 
 int8_t executor_get_command(exec_cmd cmd, uint8_t type, uint8_t ch,  void *data, ...)
 {    
+    int ret = 0;
     va_list argp;
     va_start (argp, data);
     switch(cmd)
@@ -651,7 +760,7 @@ int8_t executor_get_command(exec_cmd cmd, uint8_t type, uint8_t ch,  void *data,
         case EX_RF_FREQ_CMD:
         {
 #ifdef SUPPORT_RF
-            rf_read_interface(type, ch, data, argp);
+            ret = rf_read_interface(type, ch, data, argp);
 #endif
             break;
         }
@@ -659,7 +768,7 @@ int8_t executor_get_command(exec_cmd cmd, uint8_t type, uint8_t ch,  void *data,
             printf_err("invalid get command[%d]\n", cmd);
     }
     va_end(argp);
-    return 0;
+    return ret;
 
 }
 
@@ -741,26 +850,26 @@ int8_t executor_set_enable_command(uint8_t ch)
     return 0;
 }
 
+#if 0
+void executor_alert(void)
+{
+    uint16_t adc_temp, rf_temp;
+    adc_temp = io_get_adc_temperature();
+    if(adc_temp > 80){
+        uh_client_srv_send("/alert/temperature", NULL, NULL);
+    }
+}
+#endif
 void executor_timer_task1_cb(struct uloop_timeout *t)
 {
-
+    uloop_timeout_set(t, 5000); /* 5000 ms */
 }
 void executor_timer_task_init(void)
 {
     static  struct uloop_timeout task1_timeout;
-    printf_warn("executor_timer_task\n");
+    printf_note("executor timer task\n");
     uloop_timeout_set(&task1_timeout, 5000); /* 5000 ms */
     task1_timeout.cb = executor_timer_task1_cb;
-    #if 0
-    if(!is_spectrum_continuous_mode()){ 
-        printf_note("timer task: fft data send opened:%d\n", is_spectrum_continuous_mode());
-        task1_timeout.cb = executor_timer_task1_cb;
-        uloop_timeout_set(&task1_timeout, 5000); /* 5000 ms */
-        printf_note("executor_timer_task ok\n");
-    }else{
-        printf_note("timer task: fft data send shutdown:%d\n", is_spectrum_continuous_mode());
-    }
-    #endif
 }
 
 void executor_init(void)

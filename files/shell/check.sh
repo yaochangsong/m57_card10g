@@ -3,6 +3,8 @@
 status_dir=/run/status
 adc_status_file=$status_dir/adc
 clk_status_file=$status_dir/clock
+gps_status_file=$status_dir/gps
+rf_status_file=$status_dir/rf
 proj_name=check.sh
 bin_name=platform
 #devmem 0xb00010c0 32
@@ -36,13 +38,15 @@ self_status_cheak()
 	#[1= adc3 ok 0=error] [1= adc2 ok 0=error] [1= adc1 ok 0=error] [1= adc0 ok 0=error]
 	adc_stat=0
 	adc_ok="false"
+	gps_ok=$(cat $gps_status_file)
+	rf_ok=$(cat $rf_status_file)
 	inner_clk_stat=0
 	inner_clk=0
 	lock_stat=0
 	lock_ok="no_locked"
 	external_clk="inner_clock"
 	reg_val=`devmem $ADC_STATE_REG_ADDR 32`
-	let "adc_stat=$reg_val&0xff" 
+	let "adc_stat=$reg_val&0x03" 
 	if [ $adc_stat -eq $((0x03)) ]; then
 		log_out "adc status check ok!"
 		adc_ok="ok"
@@ -71,12 +75,17 @@ self_status_cheak()
 	fi
 	echo -n $external_clk $lock_ok > $clk_status_file
 	
-	if [ "$lock_ok" == "locked" ] && [ "$adc_ok" == "ok" ]; then
+	if [ "$gps_ok" == "ok" ]; then
+		log_out "GPS OK!"
+	else
+		log_out "GPS Faild!"
+	fi
+	if [ "$lock_ok" == "locked" ] && [ "$adc_ok" == "ok" ] && [ "$rf_ok" == "ok" ]; then
 		log_out "ok status..."
-		/etc/led.sh check off
+		/etc/led.sh check_ok
 	else
 		log_out "faild status"
-		/etc/led.sh check off
+		/etc/led.sh check_faild
 	fi
 	
 	is_exist $bin_name

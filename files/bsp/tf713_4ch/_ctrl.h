@@ -41,4 +41,45 @@ static inline  void _ctrl_freq(void *args)
 #endif
 }
 
+static inline int get_rf_status_code(bool is_ok)
+{
+    if(is_ok)
+        return 5;
+    else
+        return 4;
+}
+
+static inline int get_adc_status_code(bool is_ok)
+{
+    if(is_ok)
+        return 5;
+    else
+        return 4;
+}
+
+static inline int get_gps_status_code(bool is_ok)
+{
+    if(is_ok)
+        return 7;
+    else
+        return 4;
+}
+
+static inline int get_gps_disk_code(bool is_ok,  void *args)
+{
+    args = args;
+    if(is_ok)
+        return 5;
+    else
+        return 4;
+}
+
+static inline int get_clock_frequency(void)
+{
+    /* 153.6Mhz */
+    return 153600000;
+}
+
+
+
 #endif

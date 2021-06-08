@@ -19,7 +19,11 @@ struct data_frame_header{
     uint32_t sysn;
     //time_t timestamp;
     uint32_t timestamp;
-    uint32_t time_counter;
+    uint32_t time_ns;
+    #define XW_PROTOCAL_VERSION 1
+    uint32_t version    : 8;
+    uint32_t resv       : 24;
+    //uint32_t time_counter;
     uint16_t ex_frame_type;
 #define  DFH_EX_TYPE_PSD   0x00
 #define  DFH_EX_TYPE_DEMO  0x01
@@ -31,16 +35,19 @@ struct data_ex_frame_psd_head{
     uint8_t mode;
     uint8_t gain_mode;  /* 0: 手动; 1:自动 */
     int8_t   gain_value; 
+    uint32_t power    : 8;
+    uint32_t resv     : 24;
     uint64_t start_freq_hz;
     uint64_t end_freq_hz;
     uint64_t mid_freq_hz;
     uint32_t bandwidth;
-    float freq_resolution;
+    uint32_t freq_resolution;
     uint32_t sn;
     uint16_t fft_len;
     uint16_t data_type;
 #define  DEFH_DTYPE_CHAR   0x00
-#define  DEFH_DTYPE_FLOAT  0x02
+#define  DEFH_DTYPE_SHORT  0x02
+#define  DEFH_DTYPE_FLOAT  0x04
     uint32_t data_len;
 }__attribute__ ((packed));
 
@@ -49,6 +56,8 @@ struct data_ex_frame_demodulation_head{
     uint8_t mode;
     uint8_t gain_mode;  /* 0: 手动; 1:自动 */
     int8_t   gain_value; 
+    uint32_t power    : 8;
+    uint32_t resv     : 24;
     uint64_t mid_freq_hz;
     uint32_t bandwidth;
     uint32_t sn;

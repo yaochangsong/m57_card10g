@@ -86,6 +86,18 @@ void * memory_pool_alloc(memory_pool_t *mp)
   }
 }
 
+void * memory_pool_alloc_blocksize_num(memory_pool_t *mp, size_t blocksize_num)
+{
+  void *p;
+  if(mp->used_count < mp->count){
+    p = mp->empty_blocks;
+    mp->empty_blocks = (void*)((uint8_t *) mp->empty_blocks + mp->block_size * blocksize_num);
+    mp->used_count += blocksize_num;
+    return p;
+  }else{
+    return NULL;
+  }
+}
 void memory_pool_write_value(void *w_addr, void *data, size_t data_byte_len)
 {
     if(w_addr && data)

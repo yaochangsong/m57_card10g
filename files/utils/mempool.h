@@ -21,11 +21,13 @@ void memory_pool_destroy(memory_pool_t *mp);
 void memory_pool_clear(memory_pool_t *mp);
 void memory_pool_dump(memory_pool_t *mp, void (* print_func) (void *value));
 void * memory_pool_alloc(memory_pool_t *mp);
+void * memory_pool_alloc_blocksize_num(memory_pool_t *mp, size_t blocksize_num);
 void memory_pool_free(memory_pool_t *mp);
 void memory_pool_set_pool_step(memory_pool_t *mp, size_t size);
-
+size_t  memory_pool_get_use_count(memory_pool_t *mp);
 size_t  memory_pool_get_count(memory_pool_t *mp);
 size_t  memory_pool_get_attr_len(memory_pool_t *mp);
+void *memory_pool_first(memory_pool_t *mp);
 
 
 

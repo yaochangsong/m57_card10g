@@ -682,7 +682,7 @@ static int akt_execute_set_command(void *cl)
             printf_note("[%s]udp client ipstr=%s, port=%d, type=%d\n",ifname, 
                 inet_ntoa(client.sin_addr),  client.sin_port, net_para.type);
             /* UDP链表以大端模式存储客户端地址信息；内部以小端模式处理；注意转换 */
-            udp_add_client_to_list(&client, ch, TAG_FFT);
+            net_data_add_client(&client, ch, NET_DATA_TYPE_FFT);
 
             /*分端口*/
             if (payload_len == sizeof(SNIFFER_DATA_REPORT_ST) && net_para.iq_port != 0) {
@@ -690,14 +690,14 @@ static int akt_execute_set_command(void *cl)
             } else {
                 client.sin_port = net_para.port;
             }
-            udp_add_client_to_list(&client, ch, TAG_NIQ);
+            net_data_add_client(&client, ch, NET_DATA_TYPE_NIQ);
 
             if (payload_len == sizeof(SNIFFER_DATA_REPORT_ST) && net_para.audio_port != 0) {
                 client.sin_port = net_para.audio_port;
             } else {
                 client.sin_port = net_para.port;
             }
-            udp_add_client_to_list(&client, ch, TAG_AUDIO);
+            net_data_add_client(&client, ch, NET_DATA_TYPE_AUDIO);
             
             break;
         }
@@ -2066,7 +2066,7 @@ uint8_t *akt_assamble_data_extend_frame_header_data(uint32_t *len, void *config)
     ext_hdr->freq_resolution = header_param->freq_resolution;
     ext_hdr->frag_total_num = 1;
     ext_hdr->frag_cur_num = 0;
-    ext_hdr->frag_data_len = (int16_t)((float)(header_param->data_len)/BAND_FACTOR);
+    ext_hdr->frag_data_len = (int16_t)(header_param->data_len);
     
 
 #if 1

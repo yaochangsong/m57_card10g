@@ -64,6 +64,7 @@ struct spm_backend_ops {
     bool (*residency_time_arrived)(uint8_t, int, bool);
     int32_t (*signal_strength)(uint8_t ch,uint8_t subch, uint32_t, bool *is_singal, uint16_t *strength);
     int (*back_running_file)(int, enum stream_type, int);
+    ssize_t (*write_xdma_data)(int, const void *, size_t);
     int (*stream_start)(int, int, uint32_t ,uint8_t , enum stream_type);
     int (*stream_stop)(int, int, enum stream_type);
     int (*sample_ctrl)(void *);

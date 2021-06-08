@@ -42,6 +42,17 @@ struct m57_data_st {
     uint8_t  *payload;              /* 内容   */
 };
 
+/* 加载命令数定义 */
+struct load_info{
+    uint16_t chipid;
+    uint8_t is_reload;
+    uint8_t resv;
+    uint8_t encry;
+    uint8_t resv2;
+    uint32_t file_len;
+}__attribute__ ((packed));
+
+
 #define M57_SYNC_HEADER 0x5751
 
 typedef enum {

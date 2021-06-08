@@ -210,6 +210,93 @@ bool m57_execute_data(void *client, int *code)
     return true;
 }
 
+static void _m57_assamble_loadfile_cmd(uint16_t chip_id, uint8_t cmd, uint8_t *buffer)
+{
+    uint8_t *ptr = NULL, *ptr2 = NULL;
+    ptr2 = ptr = buffer;
+    *ptr++ = 0x7e;
+    *ptr++ = 0xe7;
+    *ptr++ = 0xaa;
+    *ptr++ = 0x55;
+    *(uint16_t *)ptr++ = ntohs(chip_id);
+    *ptr++ = cmd;
+    *ptr += 5;
+    *ptr++ = 0x7e;
+    *ptr++ = 0xe7;
+    *ptr++ = 0xaa;
+    *ptr++ = 0x55;
+    for(int i = 0; i < ptr - ptr2; i++)
+        printfn("%x ", buffer[i]);
+    printfn("\n");
+}
+
+static int _m57_start_load_bitfile_to_fpga(uint16_t chip_id)
+{
+    uint8_t buffer[16];
+    struct spm_context *_ctx;
+    ssize_t nwrite;
+    
+    _ctx = get_spm_ctx();
+    _m57_assamble_loadfile_cmd(chip_id, 0x00, buffer);
+    nwrite = _ctx->ops->write_xdma_data(0, buffer, sizeof(buffer));
+    printf_note("start write load file cmd to fpga: nwrite: %ld\n", nwrite);
+    
+    return nwrite;
+}
+
+static int  _m57_loading_bitfile_to_fpga(char *filename)
+{
+    #define LOAD_BITFILE_SIZE	1024
+    struct stat fstat;
+    int result = 0, rc;
+    unsigned char buffer[LOAD_BITFILE_SIZE];
+    struct spm_context *_ctx;
+    ssize_t nwrite, total_write = 0;;
+    FILE *file;
+    
+    _ctx = get_spm_ctx();
+    result = stat(filename, &fstat);
+    if(result != 0){
+        perror("Faild!");
+        return -1;
+    }
+    printf_note("loading file:%s, size = %ld\n", filename, fstat.st_size);
+    
+    file = fopen(filename, "r");
+    if(!file){
+        printf("Open file error!\n");
+        return -1;
+    }
+    
+    rc = fread(buffer, 1, LOAD_BITFILE_SIZE, file);
+    while(rc){
+        nwrite = _ctx->ops->write_xdma_data(0, buffer, sizeof(buffer));
+        total_write += nwrite;
+        printf_note("nwrite: %ld, total_write = %ld\n", nwrite, total_write);
+        rc = fread(buffer, 1, LOAD_BITFILE_SIZE, file);
+        printf_note("rc=%d\n", rc);
+    }
+    printf_note("write fpga bit over: %s[%ldByte]\n", filename, total_write);
+    fclose(file);
+    return 0;
+}
+
+static int  _m57_stop_load_bitfile_to_fpga(uint16_t chip_id)
+{
+    uint8_t buffer[16];
+    struct spm_context *_ctx;
+    ssize_t nwrite;
+    
+    _ctx = get_spm_ctx();
+    _m57_assamble_loadfile_cmd(chip_id, 0x01, buffer);
+    nwrite = _ctx->ops->write_xdma_data(0, buffer, sizeof(buffer));
+    printf_note("stop load fpga bit file, cmdnwrite: %ld\n", nwrite);
+
+    return 0;
+}
+
+
+
 /*
 功能： 控制协议执行
 输入参数
@@ -352,14 +439,6 @@ bool m57_execute_cmd(void *client, int *code)
         }
         case CCT_LOAD:
         {
-            struct load_info{
-                uint16_t chipid;
-                uint8_t is_reload;
-                uint8_t resv;
-                uint8_t encry;
-                uint8_t resv2;
-                uint32_t file_len;
-            }__attribute__ ((packed));
             struct load_info *pload;
             int fd;
             
@@ -379,6 +458,7 @@ bool m57_execute_cmd(void *client, int *code)
                 }
                 cl->section.file.fd = fd;
             }
+            _m57_start_load_bitfile_to_fpga(cl->section.chip_id);
             printf_note("Prepare to receive file[len:%u]\n", cl->section.file.len);
                 break;
         }
@@ -452,8 +532,11 @@ load_file_exit:
                 }__attribute__ ((packed));
                 struct _resp *r_resp = safe_malloc(sizeof(struct _resp));
                 r_resp->chipid = pinfo->chipid;
-                if(cl->section.is_loadfile_ok)
+                if(cl->section.is_loadfile_ok){
+                    _m57_loading_bitfile_to_fpga(cl->section.file.path);
+                    _m57_stop_load_bitfile_to_fpga(cl->section.chip_id);
                     r_resp->ret = 0; /* ok */
+                }
                 else
                     r_resp->ret = -1;    /* faild */
                 cl->response.data = r_resp;

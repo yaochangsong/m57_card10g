@@ -473,6 +473,36 @@ ssize_t read_file_whole(void *pdata, char *filename)
 
     return fsize;
 }
+
+static int writen(int fd, const char *buf, int buflen)
+{
+    ssize_t ret = 0, len;
+
+    if (!buflen)
+        return 0;
+
+    while (buflen) {
+        len = write(fd, buf, buflen);
+
+        if (len < 0) {
+            printf_note("[fd:%d]-send len : %ld, %d[%s]\n", fd, len, errno, strerror(errno));
+            if (errno == EINTR)
+                continue;
+
+            if (errno == EAGAIN || errno == EWOULDBLOCK || errno == ENOTCONN)
+                break;
+
+            return -1;
+        }
+
+        ret += len;
+        buf += len;
+        buflen -= len;
+    }
+    
+    return ret;
+}
+
 void* safe_malloc(size_t size) {
 
     void* result = malloc(size);

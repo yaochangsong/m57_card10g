@@ -2,17 +2,16 @@
 #define __NET_H_H
 
 enum net_listen_data_type {
-    NET_LISTEN_TYPE_FFT = 0,
-    NET_LISTEN_TYPE_BIQ = 1,
-    NET_LISTEN_TYPE_NIQ = 2,
+    NET_LISTEN_TYPE_XDMA = 0,
     NET_LISTEN_TYPE_MAX,
 };
 
 enum net_data_type {
-    NET_DATA_TYPE_FFT = 0,
-    NET_DATA_TYPE_BIQ = 1,
-    NET_DATA_TYPE_NIQ = 2,
-    NET_DATA_TYPE_AUDIO = 3,
+    NET_DATA_TYPE_XDMA= 0,
+    NET_DATA_TYPE_FFT = 1,
+    NET_DATA_TYPE_BIQ = 2,
+    NET_DATA_TYPE_NIQ = 3,
+    NET_DATA_TYPE_AUDIO = 4,
     NET_DATA_TYPE_MAX,
 };
 

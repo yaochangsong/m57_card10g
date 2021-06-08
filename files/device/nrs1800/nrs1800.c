@@ -326,7 +326,7 @@ int nsr1800_set_port_speed(int file)
 			}			
 		}
 	}
-
+	return 0;
 }
 
 static uint32_t getopt_integer(char *optarg)

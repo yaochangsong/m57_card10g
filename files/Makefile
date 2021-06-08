@@ -192,6 +192,9 @@ ifneq ($(findstring y,$(SUPPORT_SPECTRUM_V2)),)
 	ifneq ($(findstring y,$(SUPPORT_SPECTRUM_CHIP)),)
 		C_VAR += -DSUPPORT_SPECTRUM_CHIP
 	endif
+	ifneq ($(findstring y,$(SUPPORT_SPECTRUM_XDMA)),)
+		C_VAR += -DSUPPORT_SPECTRUM_XDMA
+	endif
 endif
 
 ifneq ($(findstring y,$(SUPPORT_SPECTRUM_SERIAL)),)

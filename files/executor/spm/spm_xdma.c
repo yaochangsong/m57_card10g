@@ -194,6 +194,46 @@ int xspm_get_dma_fd(int ch)
     return pstream[index].id;
 }
 
+static int xspm_stram_write(int ch, const void *data, size_t data_len)
+{
+    ssize_t ret = 0, len;
+    int index, buflen = data_len;
+    char *buf = data;
+    struct _spm_xstream *pstream;
+
+    if (!buflen)
+        return 0;
+
+    pstream = spm_xstream;
+    
+    index = xspm_find_index_by_type(ch, -1, XDMA_STREAM);
+    if(index < 0)
+        return -1;
+    
+    if(pstream[index].id < 0)
+        return -1;
+
+    while (buflen) {
+        len =  write(pstream[index].id, buf, buflen);
+        if (len < 0) {
+            printf_note("[fd:%d]-send len : %ld, %d[%s]\n", pstream[index].id, len, errno, strerror(errno));
+            if (errno == EINTR)
+                continue;
+
+            if (errno == EAGAIN || errno == EWOULDBLOCK || errno == ENOTCONN)
+                break;
+
+            return -1;
+        }
+
+        ret += len;
+        buf += len;
+        buflen -= len;
+    }
+    
+    return ret;
+}
+
 
 static ssize_t xspm_read_xdma_data(int ch, void **data, void *args)
 {
@@ -215,9 +255,9 @@ static int xspm_send_data(int ch, const char *buf, int len, void *args)
     iov[0].iov_len = len;
 
 #if (defined SUPPORT_DATA_PROTOCAL_TCP)
-    tcp_send_vec_data(iov, 1, NET_DATA_TYPE_FFT);
+    tcp_send_vec_data(iov, 1, NET_DATA_TYPE_XDMA);
 #else
-    udp_send_vec_data(iov, 1, NET_DATA_TYPE_FFT);
+    udp_send_vec_data(iov, 1, NET_DATA_TYPE_XDMA);
 #endif
     #if 0
     struct net_tcp_client  *cl = tcp_get_datasrv_client(ch);
@@ -394,6 +434,7 @@ static const struct spm_backend_ops xspm_ops = {
     .read_xdma_over_deal = xspm_read_xdma_data_over,// xspm_read_xdma_data_over_test,//xspm_read_xdma_data_over,
     .stream_start = xspm_stream_start,
     .stream_stop = xspm_stream_stop,
+    .write_xdma_data = xspm_stram_write,
     //.data_dispatcher = xspm_data_dispatcher,
     .send_xdma_data = xspm_send_data,
     //.send_dispatcher = xspm_dispatcher_send,

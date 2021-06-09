@@ -881,7 +881,7 @@ void executor_init(void)
     struct poal_config *poal_config = &(config_get_config()->oal_config);
     ch_bitmap_init();
     subch_bitmap_init();
-#if defined(SUPPORT_PLATFORM_ARCH_ARM)
+//#if defined(SUPPORT_PLATFORM_ARCH_ARM)
 #if defined(SUPPORT_SPECTRUM_V2) 
     spmctx = spm_init();
     if(spmctx == NULL){
@@ -889,7 +889,7 @@ void executor_init(void)
         exit(-1);
     }
 #endif
-#endif /* SUPPORT_PLATFORM_ARCH_ARM */
+//#endif /* SUPPORT_PLATFORM_ARCH_ARM */
    // executor_timer_task_init();
     /* set default network */
     /* shutdown all channel */

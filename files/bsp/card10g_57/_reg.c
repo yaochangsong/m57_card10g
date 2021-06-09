@@ -106,7 +106,7 @@ void fpga_io_init(void)
 {
     int fd_fpga, i;
     static FPGA_CONFIG_REG _fpga_reg;
-    
+
     if(fpga_init_flag)
         return;
 

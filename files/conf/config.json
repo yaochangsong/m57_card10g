@@ -9,7 +9,7 @@
 		}, {
 			"ifname":	"eno1",
 			"port":	{
-				"command":	1234,
+				"command":	5000,
 				"data":	[1235, 1236, 1237]
 			}
 		}],
@@ -26,7 +26,7 @@
 	},
 	"status_parm":	{
 		"soft_version":	{
-			"app":	"v1.1.111_debug(2021-06-08-16:01:09)-e4480090c3c4c1151a983ae446ff7c3204d07ca7 ",
+			"app":	"v1.1.111_debug(2021-06-09-09:53:37)-4bdea8dc6b1ca6ce8d27f0d6e1770952448a6960 ",
 			"fpga":	"202012",
 			"kernel":	""
 		},

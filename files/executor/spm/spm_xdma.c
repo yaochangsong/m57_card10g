@@ -34,7 +34,7 @@ static bool is_client_equal(struct net_tcp_client *cl, struct net_tcp_client *ds
 
 
 static struct _spm_xstream spm_xstream[] = {
-        {XDMA_R_DEV0,        -1, 0, NULL, XDMA_BUFFER_SIZE, XDMA_BLOCK_SIZE, "XDMA Stream0", XDMA_READ, XDMA_STREAM, -1},
+        {XDMA_R_DEV0,        -1, 0, NULL, XDMA_BUFFER_SIZE, XDMA_BLOCK_SIZE, "XDMA Stream0", XDMA_WRITE, XDMA_STREAM, -1},
         {XDMA_R_DEV1,        -1, 1, NULL, XDMA_BUFFER_SIZE, XDMA_BLOCK_SIZE, "XDMA Stream1", XDMA_READ, XDMA_STREAM, -1},
 //        {XDMA_R_DEV2,        -1, 2, NULL, XDMA_BUFFER_SIZE, XDMA_BLOCK_SIZE, "XDMA Stream2", XDMA_READ, XDMA_STREAM, -1},
 //        {XDMA_R_DEV3,        -1, 3, NULL, XDMA_BUFFER_SIZE, XDMA_BLOCK_SIZE, "XDMA Stream3", XDMA_READ, XDMA_STREAM, -1},
@@ -88,11 +88,13 @@ static int xspm_create(void)
             fprintf(stderr, "[%d]open:%s, %s\n", i, pstream[i].devname, strerror(errno));
             continue;
         }
-
-        pstream[i].ptr = mmap(NULL, pstream[i].len, PROT_READ | PROT_WRITE,MAP_SHARED, pstream[i].id, 0);
-        if (pstream[i].ptr == (void*) -1) {
-            fprintf(stderr, "mmap: %s\n", strerror(errno));
-            exit(-1);
+        printf_note("mmap: %s\n", pstream[i].devname);
+        if(pstream[i].rd_wr == XDMA_READ){
+            pstream[i].ptr = mmap(NULL, pstream[i].len, PROT_READ | PROT_WRITE,MAP_SHARED, pstream[i].id, 0);
+            if (pstream[i].ptr == (void*) -1) {
+                fprintf(stderr, "mmap: %s\n", strerror(errno));
+                exit(-1);
+            }
         }
         printf_warn("[%d, ch=%d]create stream[%s]: dev:%s, ptr=%p, len=%d\n", pstream[i].id,pstream[i].ch,
             pstream[i].name, pstream[i].devname, pstream[i].ptr, pstream[i].len);
@@ -100,7 +102,7 @@ static int xspm_create(void)
         memset(&ring_trans, 0, sizeof(struct xdma_ring_trans_ioctl));
         ring_trans.block_size = pstream[i].block_size;
         ring_trans.block_count = pstream[i].len / pstream[i].block_size;
-        xspm_stream_stop(pstream[i].ch, 0, XDMA_STREAM);
+        //xspm_stream_stop(pstream[i].ch, 0, XDMA_STREAM);
         usleep(1000);
     }
     
@@ -214,21 +216,18 @@ static int xspm_stram_write(int ch, const void *data, size_t data_len)
     while (buflen) {
         len =  write(pstream[index].id, buf, buflen);
         if (len < 0) {
-            printf_note("[fd:%d]-send len : %ld, %d[%s]\n", pstream[index].id, len, errno, strerror(errno));
+            printf_note("[fd:%d]-send len : %ld, %d[%s][%s], %ld, %p\n", pstream[index].id, len, errno, strerror(errno), pstream[index].name, buflen, buf);
             if (errno == EINTR)
                 continue;
 
             if (errno == EAGAIN || errno == EWOULDBLOCK || errno == ENOTCONN)
                 break;
-
             return -1;
         }
-
         ret += len;
         buf += len;
         buflen -= len;
     }
-    
     return ret;
 }
 
@@ -446,7 +445,7 @@ struct spm_context * spm_create_xdma_context(void)
 
     ctx->ops = &xspm_ops;
     ctx->pdata = &config_get_config()->oal_config;
-
+    printf_note("create xdma ctx\n");
 err_set_errno:
     errno = -ret;
     return ctx;

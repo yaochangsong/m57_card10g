@@ -129,7 +129,6 @@ int main(int argc, char **argv)
     // Listen to ctrl+c and ASSERT
     signal(SIGINT, pl_handle_sig);
     signal(SIGKILL, pl_handle_sig);
-
     config_init();
     uloop_init();
 #if defined(SUPPORT_PROJECT_SSA) || defined(SUPPORT_PROJECT_SSA_MONITOR)

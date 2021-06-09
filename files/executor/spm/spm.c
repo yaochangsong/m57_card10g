@@ -476,7 +476,8 @@ void *spm_init(void)
     static int s_ch[MAX_RADIO_CHANNEL_NUM];
     pthread_attr_t attr;
     pthread_t work_id;
-#if defined(SUPPORT_PLATFORM_ARCH_ARM)
+    printf_note("spm_init\n");
+//#if defined(SUPPORT_PLATFORM_ARCH_ARM)
 #if defined(SUPPORT_SPECTRUM_CHIP)
     spmctx = spm_create_chip_context();
 #elif defined (SUPPORT_SPECTRUM_FPGA)
@@ -546,7 +547,7 @@ void *spm_init(void)
     if(ret!=0)
         perror("pthread cread niq");
     
-#endif /* SUPPORT_PLATFORM_ARCH_ARM */
+//#endif /* SUPPORT_PLATFORM_ARCH_ARM */
     return (void *)spmctx;
 }
 

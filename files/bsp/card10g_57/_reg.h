@@ -207,7 +207,7 @@ static inline void _reg_set_rf_cali_source_choise(int ch, int index, uint8_t val
 {}
 
 //#平台信息查询回复命令(0x17)
-static inline int _reg_get_fpga_info_(int id, void **args)
+static inline int _reg_get_fpga_info(FPGA_CONFIG_REG *reg,int id, void **args)
 {
     uint8_t data[] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 
                              0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
@@ -225,7 +225,7 @@ static inline int _reg_get_fpga_info_(int id, void **args)
     return sizeof(data);
 }
 
-static inline int _reg_get_fpga_info(FPGA_CONFIG_REG *reg, int id, void **args)
+static inline int _reg_get_fpga_info_(FPGA_CONFIG_REG *reg, int id, void **args)
 {
     uint8_t *ptr, *pstatus;
     #define _MAX_CARD_SLOTS_NUM 16
@@ -244,6 +244,11 @@ static inline int _reg_get_fpga_info(FPGA_CONFIG_REG *reg, int id, void **args)
     for(int i = 0; i <MAX_FPGA_CARD_SLOT_NUM; i++){
         *ptr++ = reg->status[i]->board_status;
     }
+    ptr = pstatus;
+    for(int i = 0; i <_MAX_CARD_SLOTS_NUM*2; i++){
+        printfn("%02x ", *ptr++);
+    }
+    printfn("\n");
     return (_MAX_CARD_SLOTS_NUM*2);
 }
 
@@ -255,11 +260,11 @@ static inline int _reg_get_load_result(FPGA_CONFIG_REG *reg, int id, void **args
     
     chip_id = id & 0x0ff;
     slot_id = (id >> 8) & 0x0f;
-    if(chip_id >= MAX_FPGA_CHIPID_NUM){
+    if(chip_id > MAX_FPGA_CHIPID_NUM){
         printf_err("chip id[%d] is bigger than max[%d]\n", chip_id, MAX_FPGA_CHIPID_NUM);
         return ret;
     }
-    if(slot_id >= _MAX_CARD_SLOTS_NUM){
+    if(slot_id > _MAX_CARD_SLOTS_NUM){
         printf_err("slot id[%d] is bigger than max[%d]\n", slot_id, _MAX_CARD_SLOTS_NUM);
         return ret;
     }
@@ -285,11 +290,11 @@ static inline int _reg_get_unload_result(FPGA_CONFIG_REG *reg, int id, void **ar
     
     chip_id = id & 0x0ff;
     slot_id = (id >> 8) & 0x0f;
-    if(chip_id >= MAX_FPGA_CHIPID_NUM){
+    if(chip_id > MAX_FPGA_CHIPID_NUM){
         printf_err("chip id[%d] is bigger than max[%d]\n", chip_id, MAX_FPGA_CHIPID_NUM);
         return ret;
     }
-    if(slot_id >= _MAX_CARD_SLOTS_NUM){
+    if(slot_id > _MAX_CARD_SLOTS_NUM){
         printf_err("slot id[%d] is bigger than max[%d]\n", slot_id, _MAX_CARD_SLOTS_NUM);
         return ret;
     }

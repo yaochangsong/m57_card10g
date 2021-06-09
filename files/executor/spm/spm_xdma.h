@@ -1,8 +1,9 @@
 #ifndef _SPM_XDMA_H
 #define _SPM_XDMA_H
 
-#define XDMA_R_DEV0 "/dev/xdma0_c2h_0"
-#define XDMA_R_DEV1 "/dev/xdma0_c2h_1"
+//#define XDMA_R_DEV0 "/dev/xdma0_c2h_0"
+#define XDMA_R_DEV0 "/dev/xdma0_h2c_0"  //下行
+#define XDMA_R_DEV1 "/dev/xdma0_c2h_0"  //上行
 #define XDMA_R_DEV2 "/dev/xdma0_c2h_2"
 #define XDMA_R_DEV3 "/dev/xdma0_c2h_3"
 
@@ -96,6 +97,8 @@ struct spm_dispatcher{
 extern struct spm_context * spm_create_xdma_context(void);
 extern int xspm_get_dma_fd(int ch);
 extern void *xspm_dispatcher_init(void);
+extern struct spm_context * spm_create_xdma_context(void);
+
 
 #endif
 

@@ -623,7 +623,7 @@ load_file_exit:
                     } else{
                         r_resp->ret = -1;
                     }
-                    //r_resp->ret = _reg_get_load_result(get_fpga_reg(), cl->section.chip_id, NULL);
+                   // r_resp->ret = _reg_get_load_result(get_fpga_reg(), cl->section.chip_id, NULL);
                     r_resp->ret = 0; /* ok */
                 }
                 else

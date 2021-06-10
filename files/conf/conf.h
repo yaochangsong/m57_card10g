@@ -15,7 +15,7 @@
     #ifdef SUPPORT_PLATFORM_ARCH_ARM
     #define DEFAULT_CONFIGFILE "/etc/config.json"
     #else
-    #define DEFAULT_CONFIGFILE "conf/config.json"
+    #define DEFAULT_CONFIGFILE "/etc/config.json"
     #endif
 #endif
 

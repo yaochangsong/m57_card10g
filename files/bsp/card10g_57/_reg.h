@@ -19,7 +19,7 @@
 
 #define FPGA_REG_BASE           0x00000000
 #define FPGA_SYSETM_BASE        FPGA_REG_BASE
-#define FPGA_STAUS_OFFSET 	    (0x100)
+#define FPGA_STAUS_OFFSET 	    (0x1000)
 
 #define CONFG_REG_LEN 0x100
 
@@ -228,8 +228,9 @@ static inline int _reg_get_fpga_info(FPGA_CONFIG_REG *reg,int id, void **args)
 static inline int _reg_get_fpga_info_(FPGA_CONFIG_REG *reg, int id, void **args)
 {
     uint8_t *ptr, *pstatus;
-    #define _MAX_CARD_SLOTS_NUM 16
-    pstatus = calloc(1, _MAX_CARD_SLOTS_NUM*2);
+    //#define _MAX_CARD_SLOTS_NUM 16
+    printf_note("_reg_get_fpga_info>\n");
+    pstatus = calloc(1, MAX_FPGA_CARD_SLOT_NUM*2);
     if(pstatus == NULL){
         printf_err("malloc err\n");
         return -1;
@@ -240,16 +241,17 @@ static inline int _reg_get_fpga_info_(FPGA_CONFIG_REG *reg, int id, void **args)
         *ptr++ = reg->status[i]->board_type;
     }
     ptr = pstatus;
-    ptr += _MAX_CARD_SLOTS_NUM;
+    ptr += MAX_FPGA_CARD_SLOT_NUM;
     for(int i = 0; i <MAX_FPGA_CARD_SLOT_NUM; i++){
         *ptr++ = reg->status[i]->board_status;
     }
     ptr = pstatus;
-    for(int i = 0; i <_MAX_CARD_SLOTS_NUM*2; i++){
+    for(int i = 0; i <MAX_FPGA_CARD_SLOT_NUM*2; i++){
         printfn("%02x ", *ptr++);
     }
     printfn("\n");
-    return (_MAX_CARD_SLOTS_NUM*2);
+    *args = (void *)pstatus;
+    return (MAX_FPGA_CARD_SLOT_NUM*2);
 }
 
 //加载命令结果查询回复
@@ -260,15 +262,18 @@ static inline int _reg_get_load_result(FPGA_CONFIG_REG *reg, int id, void **args
     
     chip_id = id & 0x0ff;
     slot_id = (id >> 8) & 0x0f;
-    if(chip_id > MAX_FPGA_CHIPID_NUM){
+    if(chip_id > 0)
+        chip_id -= 1;
+    
+    if(chip_id >= MAX_FPGA_CHIPID_NUM){
         printf_err("chip id[%d] is bigger than max[%d]\n", chip_id, MAX_FPGA_CHIPID_NUM);
         return ret;
     }
-    if(slot_id > _MAX_CARD_SLOTS_NUM){
-        printf_err("slot id[%d] is bigger than max[%d]\n", slot_id, _MAX_CARD_SLOTS_NUM);
+    if(slot_id >= MAX_FPGA_CARD_SLOT_NUM){
+        printf_err("slot id[%d] is bigger than max[%d]\n", slot_id, MAX_FPGA_CARD_SLOT_NUM);
         return ret;
     }
-    printf_note("id=%d, chip_id=%d, slot_id=%d\n", id, chip_id, slot_id);
+    printf_note("id=0x%x, chip_id=0x%x, slot_id=0x%x\n", id, chip_id, slot_id);
     do{
         usleep(100);
         if(chip_id == 0){
@@ -276,10 +281,10 @@ static inline int _reg_get_load_result(FPGA_CONFIG_REG *reg, int id, void **args
         } else {
             ret = reg->status[slot_id]->c1_load;
         }
-        printf_note("load result: %d[id:%d], try_count:%d\n", ret, chip_id, try_count);
+        printf_note("load result: %x[slot_id:0x%x, chip_id:0x%x], try_count:%d\n", ret, slot_id, chip_id, try_count);
     }while(ret < 0 && try_count++ < 3);
     
-    return ret;
+    return (ret == 1 ? 0 : -1);
 }
 
 //卸载命令结果查询回复
@@ -290,15 +295,19 @@ static inline int _reg_get_unload_result(FPGA_CONFIG_REG *reg, int id, void **ar
     
     chip_id = id & 0x0ff;
     slot_id = (id >> 8) & 0x0f;
-    if(chip_id > MAX_FPGA_CHIPID_NUM){
+    printf_note("id=0x%x, chip_id=0x%x, slot_id=0x%x\n", id, chip_id, slot_id);
+    if(chip_id > 0)
+        chip_id -= 1;
+    
+    if(chip_id >= MAX_FPGA_CHIPID_NUM){
         printf_err("chip id[%d] is bigger than max[%d]\n", chip_id, MAX_FPGA_CHIPID_NUM);
         return ret;
     }
-    if(slot_id > _MAX_CARD_SLOTS_NUM){
-        printf_err("slot id[%d] is bigger than max[%d]\n", slot_id, _MAX_CARD_SLOTS_NUM);
+    if(slot_id >= MAX_FPGA_CARD_SLOT_NUM){
+        printf_err("slot id[%d] is bigger than max[%d]\n", slot_id, MAX_FPGA_CARD_SLOT_NUM);
         return ret;
     }
-    printf_note("id=%d, chip_id=%d, slot_id=%d\n", id, chip_id, slot_id);
+    printf_note("id=0x%x, chip_id=0x%x, slot_id=0x%x\n", id, chip_id, slot_id);
     do{
         usleep(100);
         if(chip_id == 0){
@@ -306,10 +315,10 @@ static inline int _reg_get_unload_result(FPGA_CONFIG_REG *reg, int id, void **ar
         } else {
             ret = reg->status[slot_id]->c1_unload;
         }
-        printf_note("load result: %d[id:%d], try_count:%d\n", ret, chip_id, try_count);
+        printf_note("load result: %d[id:%d,slot_id:%d], try_count:%d\n", ret, chip_id, slot_id, try_count);
     }while(ret < 0 && try_count++ < 3);
     
-    return ret;
+    return (ret == 1 ? 0 : -1);;
 }
 
 

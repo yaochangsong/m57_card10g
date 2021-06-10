@@ -9,6 +9,8 @@
 #include <getopt.h>
 #include <arpa/inet.h>
 #include "nrs1800.h" 
+#include "../../log/log.h"
+
 
 #define NSR1800_PORT_NUM 18
 #define NSR1800_LANE_NUM 48
@@ -218,7 +220,7 @@ int nsr1800_set_router_rule(int file, uint8_t in_port, uint16_t destID, uint8_t 
 	value = out_port;
 	if(!nsr1800_7bit_write_i2c_register(file, NSR1800_I2C_SLAVE_7BIT_ADDR, addr, &value, sizeof(value)))
 	{
-		printf("write addr:0x%x value:0x%x\n", addr, value);
+		printf_debug("write addr:0x%x value:0x%x\n", addr, value);
 	}
 	else
 	{
@@ -271,7 +273,7 @@ int nsr1800_set_port_speed(int file)
 	
 	for(i = 0; i < sizeof(ports_info) / sizeof(srio_port_info); i++)
 	{
-		printf("port_num%d\n", ports_info[i].port_num);
+		printf_debug("port_num%d\n", ports_info[i].port_num);
 		addr=0xFF0000 + 0x10 * ports_info[i].pll_num;
 		if(ports_info[i].speed == LANE_SPEED_3_125_G || ports_info[i].speed == LANE_SPEED_6_25_G)
 			value=0x1;
@@ -279,7 +281,7 @@ int nsr1800_set_port_speed(int file)
 			value=0x0;
 		if(!nsr1800_7bit_write_i2c_register(file, NSR1800_I2C_SLAVE_7BIT_ADDR, addr, &value, sizeof(value)))
 		{
-			printf("write addr:0x%x value:0x%x\n", addr, value);
+			printf_debug("write addr:0x%x value:0x%x\n", addr, value);
 		}
 		else
 		{
@@ -317,7 +319,7 @@ int nsr1800_set_port_speed(int file)
 			
 			if(!nsr1800_7bit_write_i2c_register(file, NSR1800_I2C_SLAVE_7BIT_ADDR, addr, &value, sizeof(value)))
 			{
-				printf("write addr:0x%x value:0x%x\n", addr, value);
+				printf_debug("write addr:0x%x value:0x%x\n", addr, value);
 			}
 			else
 			{
@@ -372,7 +374,7 @@ int nsr1800_init(void)
 	int i = 0, j = 0;
 	int file;
 
-	printf("nsr1800 I2C init\n");
+	printf_note("nsr1800 I2C init\n");
 
 	file = open("/dev/i2c-1", O_RDWR);
 	if(file < 0){  
@@ -380,7 +382,7 @@ int nsr1800_init(void)
 		return (-1);  
 	}
 
-	printf("**********disable Idle2 mode**********\n");
+	printf_debug("**********disable Idle2 mode**********\n");
 	//关闭Idle2模式	
 	for(i = 0; i < NSR1800_PORT_NUM; i++)
 	{
@@ -388,7 +390,7 @@ int nsr1800_init(void)
 		value = 0x88000000;
 		if(!nsr1800_7bit_write_i2c_register(file, NSR1800_I2C_SLAVE_7BIT_ADDR, addr, &value, sizeof(value)))
 		{
-			printf("write addr:0x%x value:0x%x\n", addr, value);
+			printf_debug("write addr:0x%x value:0x%x\n", addr, value);
 		}
 		else
 		{
@@ -397,13 +399,13 @@ int nsr1800_init(void)
 		}
 	}
 
-	printf("\n**********enable port input and output**********\n");
+	printf_debug("\n**********enable port input and output**********\n");
 	for(i = 0; i < NSR1800_PORT_NUM; i++)
 	{
 		addr = 0x15c + 0x20 * i;
 		if(!nsr1800_7bit_read_i2c_register(file, NSR1800_I2C_SLAVE_7BIT_ADDR, addr, &value, sizeof(value)))
 		{
-			printf("read addr:0x%x value:0x%08x\n", addr, value);
+			printf_debug("read addr:0x%x value:0x%08x\n", addr, value);
 		}
 		else
 		{
@@ -414,7 +416,7 @@ int nsr1800_init(void)
 		value |= 0x00600000;
 		if(!nsr1800_7bit_write_i2c_register(file, NSR1800_I2C_SLAVE_7BIT_ADDR, addr, &value, sizeof(value)))
 		{
-			printf("write addr:0x%x value:0x%x\n", addr, value);
+			printf_debug("write addr:0x%x value:0x%x\n", addr, value);
 		}
 		else
 		{
@@ -423,7 +425,7 @@ int nsr1800_init(void)
 		}
 	}
 
-	printf("\n**********init all lanes**********\n");
+	printf_debug("\n**********init all lanes**********\n");
 	//Serdes初始化
 	for(i = 0; i < 12; i++)
 	{
@@ -431,7 +433,7 @@ int nsr1800_init(void)
 		value = 0x1e1557a8;
 		if(!nsr1800_7bit_write_i2c_register(file, NSR1800_I2C_SLAVE_7BIT_ADDR, addr, &value, sizeof(value)))
 		{
-			printf("write addr:0x%x value:0x%x\n", addr, value);
+			printf_debug("write addr:0x%x value:0x%x\n", addr, value);
 		}
 		else
 		{
@@ -446,7 +448,7 @@ int nsr1800_init(void)
 		value = 0x6a1b6400;
 		if(!nsr1800_7bit_write_i2c_register(file, NSR1800_I2C_SLAVE_7BIT_ADDR, addr, &value, sizeof(value)))
 		{
-			printf("write addr:0x%x value:0x%x\n", addr, value);
+			printf_debug("write addr:0x%x value:0x%x\n", addr, value);
 		}
 		else
 		{
@@ -461,7 +463,7 @@ int nsr1800_init(void)
 		value = 0x00007800;
 		if(!nsr1800_7bit_write_i2c_register(file, NSR1800_I2C_SLAVE_7BIT_ADDR, addr, &value, sizeof(value)))
 		{
-			printf("write addr:0x%x value:0x%x\n", addr, value);
+			printf_debug("write addr:0x%x value:0x%x\n", addr, value);
 		}
 		else
 		{
@@ -476,7 +478,7 @@ int nsr1800_init(void)
 		value = 0x0004071f;
 		if(!nsr1800_7bit_write_i2c_register(file, NSR1800_I2C_SLAVE_7BIT_ADDR, addr, &value, sizeof(value)))
 		{
-			printf("write addr:0x%x value:0x%x\n", addr, value);
+			printf_debug("write addr:0x%x value:0x%x\n", addr, value);
 		}
 		else
 		{
@@ -491,7 +493,7 @@ int nsr1800_init(void)
 		value = 0x9c422220;
 		if(!nsr1800_7bit_write_i2c_register(file, NSR1800_I2C_SLAVE_7BIT_ADDR, addr, &value, sizeof(value)))
 		{
-			printf("write addr:0x%x value:0x%x\n", addr, value);
+			printf_debug("write addr:0x%x value:0x%x\n", addr, value);
 		}
 		else
 		{
@@ -506,7 +508,7 @@ int nsr1800_init(void)
 		value = 0x45400090;
 		if(!nsr1800_7bit_write_i2c_register(file, NSR1800_I2C_SLAVE_7BIT_ADDR, addr, &value, sizeof(value)))
 		{
-			printf("write addr:0x%x value:0x%x\n", addr, value);
+			printf_debug("write addr:0x%x value:0x%x\n", addr, value);
 		}
 		else
 		{
@@ -515,10 +517,10 @@ int nsr1800_init(void)
 		}
 	}		
 
-	printf("\n**********set route rule**********\n");
+	printf_debug("\n**********set route rule**********\n");
 	nsr1800_set_router_rules(file);
 
-	printf("\n**********set port speed**********\n");
+	printf_debug("\n**********set port speed**********\n");
 #if 0	
 	addr=0xFF0050;
 	value=0x1;
@@ -610,13 +612,13 @@ int nsr1800_init(void)
 	}
 #endif
 #endif	
-	printf("\n**********reset all port**********\n");
+	printf_debug("\n**********reset all port**********\n");
 	//复位所有端口
 	addr = 0xF20300;
 	value = 0xbfffffff;
 	if(!nsr1800_7bit_write_i2c_register(file, NSR1800_I2C_SLAVE_7BIT_ADDR, addr, &value, sizeof(value)))
 	{
-		printf("write addr:0x%x value:0x%x\n", addr, value);
+		printf_debug("write addr:0x%x value:0x%x\n", addr, value);
 	}
 	else
 	{
@@ -632,13 +634,13 @@ int nsr1800_soft_reset(int file)
 	uint32_t addr = 0;
 	uint32_t value = 0;
 
-	printf("\n**********nsr1800 soft reset**********\n");
+	printf_debug("\n**********nsr1800 soft reset**********\n");
 	
 	addr = 0xF20040;
 	value = 0x00030097;
 	if(!nsr1800_7bit_write_i2c_register(file, NSR1800_I2C_SLAVE_7BIT_ADDR, addr, &value, sizeof(value)))
 	{
-		printf("write addr:0x%x value:0x%x\n", addr, value);
+		printf_debug("write addr:0x%x value:0x%x\n", addr, value);
 	}
 	else
 	{

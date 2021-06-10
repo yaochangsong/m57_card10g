@@ -365,11 +365,20 @@ w, 0xFF8030 + 0x100[48],0x45400090
 w, 0xF20300,0xbfffffff
 */
 
-int nsr1800_init(int file)
+int nsr1800_init(void)
 {
 	uint32_t addr = 0;
 	uint32_t value = 0;
 	int i = 0, j = 0;
+	int file;
+
+	printf("nsr1800 I2C init\n");
+
+	file = open("/dev/i2c-1", O_RDWR);
+	if(file < 0){  
+		printf("####i2c device open failed####\n");  
+		return (-1);  
+	}
 
 	printf("**********disable Idle2 mode**********\n");
 	//关闭Idle2模式	
@@ -614,7 +623,7 @@ int nsr1800_init(int file)
 		printf("error write addr:0x%x value:0x%x\n", addr, value);
 		return -1;
 	}
-
+	close(file);
 	return 0;
 }
 
@@ -640,6 +649,7 @@ int nsr1800_soft_reset(int file)
 	return 0;
 }
 
+#if 0
 static int main_test(int argc, char *argv[])
 {
 	int cmd_opt;
@@ -733,4 +743,5 @@ static int main_test(int argc, char *argv[])
     close(i2c_fd);
     return 0;
 }
+#endif
 

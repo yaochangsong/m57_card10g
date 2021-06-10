@@ -243,7 +243,7 @@ static int _m57_start_load_bitfile_to_fpga(uint16_t chip_id)
     printfn("Start Load BitFile [fpga id:0x%x]\n", chip_id);
     _m57_assamble_loadfile_cmd(chip_id, 0x00, buffer);
     nwrite = _ctx->ops->write_xdma_data(0, buffer, sizeof(buffer));
-    printfn("Start Load %s[%ld]\n",  (nwrite == sizeof(buffer)) ? "OK" : "Faild", nwrite);
+    printfn("Start Load %s![%ld]\n",  (nwrite == sizeof(buffer)) ? "OK" : "Faild", nwrite);
     
     return nwrite;
 }
@@ -290,7 +290,7 @@ static void* _m57_loading_bitfile_to_fpga_thread(void   *args)
         rc = fread(buffer, 1, LOAD_BITFILE_SIZE, file);
         printfn("Loading.......................................[%ld, %ld]%ld%%\r",  total_write,fstat.st_size, (total_write*100)/fstat.st_size);
     }
-    printfn("\nLoad Bitfile %s[%ld]\n",  (total_write == fstat.st_size) ? "OK" : "Faild", nwrite);
+    printfn("\nLoad Bitfile %s!\n",  (total_write == fstat.st_size) ? "OK" : "Faild");
     fclose(file);
 exit:
     free(filename);
@@ -331,7 +331,7 @@ static bool  _m57_stop_load_bitfile_to_fpga(uint16_t chip_id)
     printfn("Stop Load BitFile [fpga id:0x%x]\n", chip_id);
     _m57_assamble_loadfile_cmd(chip_id, 0x01, buffer);
     nwrite = _ctx->ops->write_xdma_data(0, buffer, sizeof(buffer));
-    printfn("Stop Load %s[%ld]\n", (nwrite == sizeof(buffer)) ? "OK" : "Faild", nwrite);
+    printfn("Stop Load %s![%ld]\n", (nwrite == sizeof(buffer)) ? "OK" : "Faild", nwrite);
     
     if(nwrite != sizeof(buffer))
         return false;
@@ -351,7 +351,7 @@ static int _m57_start_unload_bitfile_from_fpga(uint16_t chip_id)
     printfn("Unload BitFile [fpga id:0x%x]\n", chip_id);
     _m57_assamble_loadfile_cmd(chip_id, 0x02, buffer);
     nwrite = _ctx->ops->write_xdma_data(0, buffer, sizeof(buffer));
-    printfn("Unload %s[%ld]\n",  (nwrite == sizeof(buffer)) ? "OK" : "Faild", nwrite);
+    printfn("Unload %s![%ld]\n",  (nwrite == sizeof(buffer)) ? "OK" : "Faild", nwrite);
     
     return nwrite;
 }

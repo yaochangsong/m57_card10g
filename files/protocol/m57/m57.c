@@ -86,7 +86,7 @@ int _recv_file_over(struct net_tcp_client *cl, char *file, int file_len)
 
 char *_create_tmp_path(struct net_tcp_client *cl)
 {
-    #define _LOAD_TMP_DIR "tmp"
+    #define _LOAD_TMP_DIR "/tmp"
 
     if(cl->section.file.fd > 0){
         close(cl->section.file.fd);

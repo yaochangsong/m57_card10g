@@ -21,6 +21,7 @@
 #include <assert.h>
 #include "spm_fpga.h"
 #include "spm_chip.h"
+#include "spm_xdma.h"
 #include "../../bsp/io.h"
 #include "../../utils/bitops.h"
 

@@ -86,9 +86,19 @@ static bool tcp_client_header_cb(struct net_tcp_client *cl, char *buf, int len)
 
     stat = cl->srv->on_header(cl, buf, len, &head_len, &code);
     if(stat == false){
-        ustream_consume(cl->us, len);
         cl->state = NET_TCP_CLIENT_STATE_DONE;
         cl->srv->send_error(cl, code, NULL);
+        ustream_consume(cl->us, len);
+        cl->request_done(cl);
+        return false;
+    }
+    if(cl->request.data_state == NET_TCP_DATA_WAIT){
+        cl->state = NET_TCP_CLIENT_STATE_DONE;
+        cl->request_done(cl);
+        return false;
+    } else if(cl->request.data_state == NET_TCP_DATA_NO_DEAL){
+        cl->state = NET_TCP_CLIENT_STATE_DONE;
+        ustream_consume(cl->us, head_len);
         cl->request_done(cl);
         return false;
     }

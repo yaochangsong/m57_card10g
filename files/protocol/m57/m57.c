@@ -15,6 +15,8 @@
 #include "config.h"
 #include "m57.h"
 #include "../../net/net_sub.h"
+static int _m57_write_data_to_fpga(uint8_t *ptr, size_t len);
+
 
 void _m57_swap_header_element(struct m57_header_st *header)
 {
@@ -130,19 +132,28 @@ bool m57_parse_header(void *client, const char *buf, int len, int *head_len, int
     hlen = sizeof(struct m57_header_st);
 
     _code = C_RET_CODE_SUCCSESS;
+    cl->request.data_state = NET_TCP_DATA_NORMAL;
     _header_len = len;
     if(len < hlen){
-        _code = C_RET_CODE_HEADER_ERR;
-        printf_err("rev data len too short: %d\n", len);
+        cl->request.data_state = NET_TCP_DATA_WAIT;
+        printf_warn("recv data len too short: %d\n", len);
         goto exit;
     }
 
     header = (struct m57_header_st *)buf;
     if(header->header != M57_SYNC_HEADER){
         _code = C_RET_CODE_HEADER_ERR;
+        cl->request.data_state = NET_TCP_DATA_ERR;
         printf_err("header err:%x\n", header->header);
         goto exit;
     }
+#if 1
+    if(header->len > len){
+       // cl->request.data_state = NET_TCP_DATA_WAIT;
+        printf_warn("recv data len too short: %d[header len:%d]\n", len, header->len);
+        //goto exit;
+    }
+#endif
     printf_debug("size = %ld, %ld\n", sizeof(struct m57_header_st), sizeof(struct m57_ex_header_cmd_st));
     printf_debug("header = 0x%x\n", header->header);
     printf_debug("type = 0x%x\n", header->type);
@@ -164,6 +175,13 @@ bool m57_parse_header(void *client, const char *buf, int len, int *head_len, int
         memcpy(ex_header, buf + hlen, ex_header_len);
         cl->request.header = ex_header;
         
+        struct m57_ex_header_cmd_st *cmd_header = (struct m57_ex_header_cmd_st *)cl->request.header;
+        static int _dup = -1;
+        if(_dup != cmd_header->cmd){
+            printf_note("CMD: %x\n", cmd_header->cmd);
+            _dup = cmd_header->cmd;
+        }
+        
         /* 命令长度 = 协议头长度 + 扩展命令头长度 */
         _header_len= hlen ;//+ ex_header_len;
         
@@ -174,17 +192,23 @@ bool m57_parse_header(void *client, const char *buf, int len, int *head_len, int
         }
         printf_debug("content_length: %d\n", cl->request.content_length);
     }else if(header->type == M57_DATA_TYPE){    /* 数据包 */
-         printf_debug("data type\n");
         cl->request.header = NULL;
-        /* 命令长度 = 协议头长度 */
-        _header_len = hlen;
+        /* 处理长度 = 协议头长度 */
+        _header_len = header->len;
+        #if 0
         /* 数据内容长度 */
         data_len = header->len - hlen;
         if(data_len >= 0){
             cl->request.content_length = data_len;
         }
+        #endif
+        /* 数据包不处理透传 */
+        cl->request.data_state = NET_TCP_DATA_NO_DEAL;
+        _m57_write_data_to_fpga((uint8_t *)buf, _header_len);
     } else{
+        _header_len = len;
         _code = C_RET_CODE_HEADER_ERR;
+        cl->request.data_state = NET_TCP_DATA_ERR;
         printf_err("unknow type:%x\n", header->type);
         goto exit;
     }
@@ -284,6 +308,7 @@ static void* _m57_loading_bitfile_to_fpga_thread(void   *args)
     }
     rc = fread(buffer, 1, LOAD_BITFILE_SIZE, file);
     printfn("Load Bitfile:[%s]\n", filename);
+    printfn("Loading.......................................[%ld, %ld]%ld%%\r",  total_write,fstat.st_size, (total_write*100)/fstat.st_size);
     while(rc){
         nwrite = _ctx->ops->write_xdma_data(0, buffer, rc);
         total_write += nwrite;
@@ -352,6 +377,18 @@ static int _m57_start_unload_bitfile_from_fpga(uint16_t chip_id)
     _m57_assamble_loadfile_cmd(chip_id, 0x02, buffer);
     nwrite = _ctx->ops->write_xdma_data(0, buffer, sizeof(buffer));
     printfn("Unload %s![%ld]\n",  (nwrite == sizeof(buffer)) ? "OK" : "Faild", nwrite);
+    
+    return nwrite;
+}
+
+static int _m57_write_data_to_fpga(uint8_t *ptr, size_t len)
+{
+    struct spm_context *_ctx;
+    ssize_t nwrite;
+    
+    _ctx = get_spm_ctx();
+    nwrite = _ctx->ops->write_xdma_data(0, ptr, len);
+    printfn("Write data %s![%ld]\n",  (nwrite == len) ? "OK" : "Faild", nwrite);
     
     return nwrite;
 }
@@ -646,9 +683,10 @@ bool m57_execute(void *client, int *code)
     struct net_tcp_client *cl = client;
 
     //update_tcp_keepalive(cl);
-    if(cl->request.data_type == M57_DATA_TYPE)
-        return m57_execute_data(client, code);
-    else if(cl->request.data_type == M57_CMD_TYPE)
+    //if(cl->request.data_type == M57_DATA_TYPE)
+    //    return m57_execute_data(client, code);
+    //else 
+    if(cl->request.data_type == M57_CMD_TYPE)
         return m57_execute_cmd(client, code);
     
     return false;

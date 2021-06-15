@@ -216,7 +216,7 @@ static int xspm_stram_write(int ch, const void *data, size_t data_len)
     while (buflen) {
         len =  write(pstream[index].id, buf, buflen);
         if (len < 0) {
-            printf_note("[fd:%d]-send len : %ld, %d[%s][%s], %ld, %p\n", pstream[index].id, len, errno, strerror(errno), pstream[index].name, buflen, buf);
+            printf_note("[fd:%d]-send len : %ld, %d[%s][%s], %d, %p\n", pstream[index].id, len, errno, strerror(errno), pstream[index].name, buflen, buf);
             if (errno == EINTR)
                 continue;
 

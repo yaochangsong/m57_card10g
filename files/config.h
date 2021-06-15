@@ -130,6 +130,9 @@
 #if defined(SUPPORT_RS485)
 #include "device/rs485/rs485_com.h"
 #endif
+#if defined(SUPPORT_NRS1800)
+#include "device/nrs1800/nrs1800.h"
+#endif
 
 #if defined(SUPPORT_XWFS)
 #include "executor/xwfs/xwfs.h"

@@ -72,6 +72,13 @@ bool is_spectrum_continuous_mode(void)
     return spectrum_continuous_mode;
 }
 
+char *config_path = NULL;
+char *get_config_path(void)
+{
+    return config_path;
+}
+
+
 static void pl_handle_sig(int sig)
 {
     printf("ctrl+c or killed; ready to exit!!\n");
@@ -85,7 +92,7 @@ int main(int argc, char **argv)
 {
     int debug_level = -1;
     int opt;
-    while ((opt = getopt(argc, argv, "d:tm:cf")) != -1) {
+    while ((opt = getopt(argc, argv, "d:tm:cfi:")) != -1) {
         switch (opt)
         {
         case 'd':
@@ -113,6 +120,10 @@ int main(int argc, char **argv)
         case 'f':
             printf("format disk once; when start\n");
             disk_format = true;
+            break;
+        case 'i':
+            printf("config path: %s\n", optarg);
+            config_path = strdup(optarg);
             break;
         default: /* '?' */
             usage(argv[0]);

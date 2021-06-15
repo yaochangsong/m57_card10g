@@ -13,5 +13,6 @@
 extern bool is_disk_format(void);
 extern uint32_t get_power_level_threshold(void);
 extern bool is_spectrum_aditool_debug(void);
+extern char *get_config_path(void);
 
 #endif

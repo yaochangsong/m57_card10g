@@ -17,12 +17,21 @@ enum net_tcp_state {
     NET_TCP_CLIENT_STATE_CLOSE
 };
 
+enum net_tcp_data_state {
+    NET_TCP_DATA_NORMAL,
+    NET_TCP_DATA_ERR,
+    NET_TCP_DATA_WAIT,
+    NET_TCP_DATA_NO_DEAL,
+};
+
+
 struct net_tcp_request {
     void *header;
     int   prio;
     int   data_type;
     int   content_length; /*  payload len */
     int   remain_length; 
+    int   data_state;
 };
 
 struct net_tcp_response {

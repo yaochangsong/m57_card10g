@@ -31,11 +31,15 @@ pthread_mutex_t config_mutex = PTHREAD_MUTEX_INITIALIZER;
 /** Sets the default config parameters and initialises the configuration system */
 void config_init(void)
 {  
-
+    char *path;
     printf_debug("config init\n");
     memset(&config, 0, sizeof(config));
     printf_debug("config init\n");
-    config.configfile = safe_strdup(DEFAULT_CONFIGFILE);
+    path = get_config_path();
+    if( path == NULL)
+        config.configfile = safe_strdup(DEFAULT_CONFIGFILE);
+    else
+        config.configfile = path;
     config.daemon = -1;
 
     for(int i= 0; i< MAX_RADIO_CHANNEL_NUM; i++)

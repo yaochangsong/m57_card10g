@@ -879,8 +879,7 @@ void executor_init(void)
     pthread_t work_id;
     void *spmctx;
     struct poal_config *poal_config = &(config_get_config()->oal_config);
-    ch_bitmap_init();
-    subch_bitmap_init();
+    io_init();
 //#if defined(SUPPORT_PLATFORM_ARCH_ARM)
 #if defined(SUPPORT_SPECTRUM_V2) 
     spmctx = spm_init();
@@ -889,6 +888,7 @@ void executor_init(void)
         exit(-1);
     }
 #endif
+    #if 0
 //#endif /* SUPPORT_PLATFORM_ARCH_ARM */
    // executor_timer_task_init();
     /* set default network */
@@ -913,6 +913,7 @@ void executor_init(void)
             executor_set_command(EX_MID_FREQ_CMD, EX_SUB_CH_DEC_METHOD, j, &default_method);
         }
     }
+    #endif
 }
 
 void executor_close(void)

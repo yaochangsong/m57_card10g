@@ -134,6 +134,7 @@ extern int spm_close(void);
 extern void spm_fft_deal_notify(void *arg);
 extern void spm_niq_deal_notify(void *arg);
 extern void spm_biq_deal_notify(void *arg);
+extern void spm_xdma_deal_notify(void *arg);
 
 
 #endif

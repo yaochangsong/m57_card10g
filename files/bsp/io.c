@@ -79,6 +79,60 @@ static struct  band_table_t bandtable[] ={
 
 static DECLARE_BITMAP(subch_bmp[CH_TYPE_MAX], MAX_SIGNAL_CHANNEL_NUM);
 static DECLARE_BITMAP(ch_bmp[CH_TYPE_MAX], MAX_RADIO_CHANNEL_NUM);
+static DECLARE_BITMAP(cl_sock_bmp, MAX_CLINET_SOCKET_NUM);
+
+void socket_bitmap_init(void)
+{
+    bitmap_zero(cl_sock_bmp, MAX_CLINET_SOCKET_NUM);
+}
+
+void socket_bitmap_set(int index)
+{
+    set_bit(index, cl_sock_bmp);
+}
+
+void socket_bitmap_clear(int index)
+{
+    clear_bit(index, cl_sock_bmp);
+}
+
+size_t socket_bitmap_weight(void)
+{
+    return bitmap_weight(cl_sock_bmp, MAX_CLINET_SOCKET_NUM);
+}
+
+
+ssize_t socket_bitmap_find_index(void)
+{
+    return find_first_zero_bit(cl_sock_bmp, MAX_CLINET_SOCKET_NUM);
+}
+
+const unsigned long *socket_get_bitmap(void)
+{
+    return cl_sock_bmp;
+}
+
+
+void io_socket_set_id(int id)
+{
+    id = id;
+}
+
+
+void io_socket_set_sub(int id, uint16_t chip_id, uint16_t func_id, uint16_t port)
+{
+    id = id;
+    chip_id = chip_id;
+    func_id = func_id;
+    port = port;
+}
+
+
+void io_socket_set_unsub(int id, uint16_t chip_id, uint16_t func_id, uint16_t port)
+{
+    
+}
+
 
 
 void subch_bitmap_init(void)
@@ -1443,6 +1497,9 @@ void io_set_xdma_disable(int ch, int subch)
 void io_init(void)
 {
     printf_info("io init!\n");
+    socket_bitmap_init();
+    //ch_bitmap_init();
+    //subch_bitmap_init();
 }
 
 

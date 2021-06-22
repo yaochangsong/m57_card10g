@@ -23,13 +23,62 @@ static inline void *zalloc(size_t size)
 	return calloc(1, size);
 }
 
-static bool is_client_equal(struct net_tcp_client *cl, struct net_tcp_client *dst_cl)
+#define RUN_MAX_TIMER 1
+static struct timeval *runtimer[RUN_MAX_TIMER];
+static int32_t _init_run_timer(uint8_t ch)
 {
-    if(cl->peer_addr.sin_addr.s_addr == dst_cl->peer_addr.sin_addr.s_addr && 
-        cl->peer_addr.sin_port == dst_cl->peer_addr.sin_port){
-        return true;
+    int i;
+    for(i = 0; i< RUN_MAX_TIMER ; i++){
+        runtimer[i] = (struct timeval *)malloc(sizeof(struct timeval)*ch);
+        memset(runtimer[i] , 0, sizeof(struct timeval)*ch);
     }
-    return false;
+    
+    return 0;
+}
+
+static int32_t _get_run_timer(uint8_t index, uint8_t ch)
+{
+    struct timeval *oldTime; 
+    struct timeval newTime; 
+    int32_t _t_us, ntime_us; 
+    if(ch >= MAX_RADIO_CHANNEL_NUM){
+        return -1;
+    }
+    if(index >= RUN_MAX_TIMER){
+        return -1;
+    }
+    oldTime = runtimer[index]+ch;
+     if(oldTime->tv_sec == 0 && oldTime->tv_usec == 0){
+        gettimeofday(oldTime, NULL);
+        return 0;
+    }
+    gettimeofday(&newTime, NULL);
+    //printf("newTime:%zd,%zd\n",newTime.tv_sec, newTime.tv_usec);
+    //printf("oldTime:%zd,%zd\n",oldTime->tv_sec, oldTime->tv_usec);
+    _t_us = (newTime.tv_sec - oldTime->tv_sec)*1000000 + (newTime.tv_usec - oldTime->tv_usec); 
+    //printf("_t_us:%d\n",_t_us);
+    if(_t_us > 0)
+        ntime_us = _t_us; 
+    else 
+        ntime_us = 0; 
+    
+    return ntime_us;
+}
+
+static int32_t _reset_run_timer(uint8_t index, uint8_t ch)
+{
+    struct timeval newTime; 
+    struct timeval *oldTime; 
+    if(ch >= MAX_RADIO_CHANNEL_NUM){
+        return -1;
+    }
+    if(index >= RUN_MAX_TIMER){
+        return -1;
+    }
+    gettimeofday(&newTime, NULL);
+    oldTime = runtimer[index]+ch;
+    memcpy(oldTime, &newTime, sizeof(struct timeval)); 
+    return 0;
 }
 
 
@@ -112,8 +161,9 @@ static int xspm_create(void)
 
 struct xdma_ring_trans_ioctl xinfo[4];
 
-static ssize_t xspm_stream_read(int type,  void **data, void *args)
+static ssize_t xspm_stream_read(int ch, int type,  void **data, void *args)
 {
+    #define _STREAM_READ_TIMEOUT_US (1000000)
     int rc;
     struct _spm_xstream *pstream;
     pstream = spm_xstream;
@@ -123,9 +173,10 @@ static ssize_t xspm_stream_read(int type,  void **data, void *args)
     memset(info, 0, sizeof(struct xdma_ring_trans_ioctl));
     
     if(pstream[type].id < 0){
-        printf_warn("%d stream node:%s not found\n",type, pstream[type].name);
+        printf_debug("%d stream node:%s not found\n",type, pstream[type].name);
         return -1;
     }
+    _reset_run_timer(0, 0);
     do{
         rc =  ioctl(pstream[type].id, IOCTL_XDMA_TRANS_GET, info);
         if (rc) {
@@ -147,6 +198,10 @@ static ssize_t xspm_stream_read(int type,  void **data, void *args)
             usleep(10);
         } else if(info->status == RING_TRANS_PENDING)
             usleep(1);
+        if(_get_run_timer(0, 0) > _STREAM_READ_TIMEOUT_US){
+            printf_warn("Read TimeOut!\n");
+            return -1;
+        }
     }while(info->status == RING_TRANS_PENDING);
     readn = info->block_size;
     *data = pstream[type].ptr + info->rx_index*readn;
@@ -181,6 +236,27 @@ static inline int xspm_find_index_by_type(int ch, int subch, enum stream_type ty
     return index;
 }
 
+static inline int xspm_find_index_by_rw(int ch, int subch, int rw)
+{
+    struct _spm_xstream *pstream = spm_xstream;
+    int i, find = 0, index = -1;
+
+    subch = subch;
+    for(i = 0; i < ARRAY_SIZE(spm_xstream); i++){
+        if(rw == pstream[i].rd_wr){
+            index = i;
+            find = 1;
+            break;
+        }
+    }
+    
+    if(find == 0)
+        return -1;
+    
+    return index;
+}
+
+
 int xspm_get_dma_fd(int ch)
 {
     int index;
@@ -206,7 +282,8 @@ static int xspm_stram_write(int ch, const void *data, size_t data_len)
 
     pstream = spm_xstream;
     
-    index = xspm_find_index_by_type(ch, -1, XDMA_STREAM);
+    //index = xspm_find_index_by_type(ch, -1, XDMA_STREAM);
+    index = xspm_find_index_by_rw(ch, -1, XDMA_WRITE);
     if(index < 0)
         return -1;
     
@@ -236,11 +313,12 @@ static ssize_t xspm_read_xdma_data(int ch, void **data, void *args)
 {
     int index;
 
-    index = xspm_find_index_by_type(ch, -1, XDMA_STREAM);
+    //index = xspm_find_index_by_type(ch, -1, XDMA_STREAM);
+    index = xspm_find_index_by_rw(ch, -1, XDMA_READ);
     if(index < 0)
         return -1;
     //printf_warn("index=%d, ch=%d\n", index, ch);
-    return xspm_stream_read(index, data, args);
+    return xspm_stream_read(ch, index, data, args);
 }
 
 static int xspm_send_data(int ch, const char *buf, int len, void *args)
@@ -445,6 +523,7 @@ struct spm_context * spm_create_xdma_context(void)
 
     ctx->ops = &xspm_ops;
     ctx->pdata = &config_get_config()->oal_config;
+    _init_run_timer(MAX_XDMA_NUM);
     printf_note("create xdma ctx\n");
 err_set_errno:
     errno = -ret;

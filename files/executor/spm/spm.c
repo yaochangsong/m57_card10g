@@ -47,6 +47,11 @@ static pthread_mutex_t spm_niq_cond_mutex;
 /* fft */
 static pthread_cond_t spm_fft_cond;
 static pthread_mutex_t spm_fft_cond_mutex;
+
+/* xdma */
+static pthread_cond_t spm_xdma_cond[MAX_XDMA_NUM];
+static pthread_mutex_t spm_xdma_cond_mutex[MAX_XDMA_NUM];
+
 struct sem_st work_sem;
 
 
@@ -54,6 +59,11 @@ static struct spm_context *spmctx = NULL;
 
 static void spm_cond_init(void)
 {
+    for(int i = 0; i < MAX_XDMA_NUM; i++){
+        pthread_cond_init(&spm_xdma_cond[i], NULL);
+        pthread_mutex_init(&spm_xdma_cond_mutex[i], NULL);
+    }
+#if 0
     for(int i = 0; i < MAX_RADIO_CHANNEL_NUM; i++){
         pthread_cond_init(&spm_biq_cond[i], NULL);
         pthread_mutex_init(&spm_biq_cond_mutex[i], NULL);
@@ -63,6 +73,7 @@ static void spm_cond_init(void)
     
     pthread_cond_init(&spm_fft_cond, NULL);
     pthread_mutex_init(&spm_fft_cond_mutex, NULL);
+#endif
 }
 
 
@@ -99,6 +110,20 @@ void spm_biq_deal_notify(void *arg)
         return;
     /* 通知IQ处理线程开始处理IQ数据 */
     pthread_cond_signal(&spm_biq_cond[ch]);
+}
+
+void spm_xdma_deal_notify(void *arg)
+{
+    int ch;
+    
+    if(arg == NULL)
+        return;
+    
+    ch = *(uint8_t *)arg;
+    
+    if(ch >= MAX_XDMA_NUM)
+        return;
+    pthread_cond_signal(&spm_xdma_cond[ch]);
 }
 
 void spm_niq_deal_notify(void *arg)
@@ -448,6 +473,49 @@ void spm_deal(struct spm_context *ctx, void *args, int ch)
     }
 }
 
+void spm_xdma_data_handle_thread(void *arg)
+{
+    void *ptr = NULL;
+    struct spm_context *ctx = NULL;
+    char *ptr_data = NULL;
+    ssize_t  len = 0;
+    int ch, section_id = 0;
+
+    ctx = spmctx;
+    ch = *(int *)arg;
+    if(ch >= MAX_XDMA_NUM)
+        pthread_exit(0);
+    
+    pthread_detach(pthread_self());
+loop:
+    printf_note(">>>>>XDMA%d Wait!\n", ch);
+    pthread_mutex_lock(&spm_xdma_cond_mutex[ch]);
+    while(socket_bitmap_weight() == 0)
+        pthread_cond_wait(&spm_xdma_cond[ch], &spm_xdma_cond_mutex[ch]);
+    pthread_mutex_unlock(&spm_xdma_cond_mutex[ch]);
+    printf_note(">>>>>XDMA%d read start\n", ch);
+    do{
+        for_each_set_bit(section_id, socket_get_bitmap(), MAX_CLINET_SOCKET_NUM){
+            io_socket_set_id(section_id);
+            do{
+                if(ctx->ops->read_xdma_data)
+                    len = ctx->ops->read_xdma_data(ch, (void **)&ptr_data, NULL);
+                if(len > 0){
+                    if(ctx->ops->send_xdma_data)
+                        ctx->ops->send_xdma_data(ch, ptr_data, len, NULL);
+                }
+                if(socket_bitmap_weight() == 0){
+                    printf_note("all client offline\n");
+                    usleep(1000);
+                    goto loop;
+                }
+            }while(len > 0);
+        }
+    }while(1);
+    
+}
+
+
 struct spm_context *get_spm_ctx(void)
 {
     if(spmctx == NULL){
@@ -474,7 +542,8 @@ void *spm_init(void)
 {
     static pthread_t send_thread_id, recv_thread_id;
     int ret, ch, type;
-    static int s_ch[MAX_RADIO_CHANNEL_NUM];
+    //static int s_ch[MAX_RADIO_CHANNEL_NUM];
+    static int xdma_ch[MAX_XDMA_NUM];
     pthread_attr_t attr;
     pthread_t work_id;
     printf_note("spm_init\n");
@@ -493,7 +562,7 @@ void *spm_init(void)
         printf_warn("spm create failed\n");
         return NULL;
     }
-
+#if 0
     for(ch = 0; ch< MAX_RADIO_CHANNEL_NUM; ch++){
         spmctx->run_args[ch] = calloc(1, sizeof(struct spm_run_parm));
         spmctx->run_args[ch]->fft_ptr = calloc(1, MAX_FFT_SIZE*sizeof(fft_t));
@@ -517,8 +586,8 @@ void *spm_init(void)
         }
     }
 
-    spm_cond_init();
     
+
 #ifdef SUPPORT_SPECTRUM_SERIAL
     /* 创建串行处理FFT线程 */
     ret=pthread_create(&work_id, NULL, (void *)spm_fft_serial_thread, NULL);
@@ -547,7 +616,16 @@ void *spm_init(void)
     ret=pthread_create(&recv_thread_id,NULL,(void *)spm_niq_handle_thread, spmctx);
     if(ret!=0)
         perror("pthread cread niq");
-    
+#endif
+    for(int i = 0; i <MAX_XDMA_NUM; i++){
+        xdma_ch[i] = i;
+        ret=pthread_create(&recv_thread_id,NULL,(void *)spm_xdma_data_handle_thread, &xdma_ch[i]);
+        if(ret!=0)
+            perror("pthread cread xdma");
+    }
+    spm_cond_init();
+
+
 //#endif /* SUPPORT_PLATFORM_ARCH_ARM */
     return (void *)spmctx;
 }

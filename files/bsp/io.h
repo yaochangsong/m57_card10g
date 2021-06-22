@@ -99,4 +99,13 @@ extern uint32_t io_get_fpga_sys_time(void);
 extern uint32_t io_get_fpga_sys_ns_time(void);
 extern void io_set_gps_status(bool is_ok);
 extern void io_set_rf_status(bool is_ok);
+extern void io_socket_set_id(int id);
+extern void io_socket_set_sub(int id, uint16_t chip_id, uint16_t func_id, uint16_t port);
+extern void io_socket_set_unsub(int id, uint16_t chip_id, uint16_t func_id, uint16_t port);
+extern const unsigned long *socket_get_bitmap(void);
+extern ssize_t socket_bitmap_find_index(void);
+extern size_t socket_bitmap_weight(void);
+extern void socket_bitmap_clear(int index);
+extern void socket_bitmap_set(int index);
+
 #endif

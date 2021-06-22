@@ -15,6 +15,8 @@
 #include "config.h"
 #include "m57.h"
 #include "../../net/net_sub.h"
+#include "../../bsp/io.h"
+
 static int _m57_write_data_to_fpga(uint8_t *ptr, size_t len);
 
 
@@ -442,11 +444,13 @@ bool m57_execute_cmd(void *client, int *code)
             }__attribute__ ((packed));
             struct register_st _reg;
             printf_note("channel register!!\n");// len: 40
-            
+            int ch = 0
+                ;
             m57_prio_type _type;
             memcpy(&_reg, payload, sizeof(_reg));
             _type = (_reg.type == 1 ? M57_PRIO_LOW: M57_PRIO_URGENT);
             net_hash_add(cl->section.hash, _type, RT_PRIOID);
+            //spm_xdma_deal_notify(&ch);
             break;
         }
         case CCT_DATA_SUB:
@@ -459,6 +463,7 @@ bool m57_execute_cmd(void *client, int *code)
             struct sub_st _sub;
             memcpy(&_sub,  payload, sizeof(_sub));
             printf_info("sub chip_id:0x%x, func_id=0x%x, port=0x%x\n", _sub.chip_id, _sub.func_id, _sub.port);
+            io_socket_set_sub(cl->section.section_id, _sub.chip_id, _sub.func_id, _sub.port);
             #if 0
             net_hash_add(cl->section.hash, _sub.chip_id, RT_CHIPID);
             net_hash_add(cl->section.hash, _sub.func_id, RT_FUNCID);
@@ -478,6 +483,7 @@ bool m57_execute_cmd(void *client, int *code)
             struct sub_st _sub;
             memcpy(&_sub,  payload, sizeof(_sub));
             printf_note("unsub chip_id:0x%x, func_id=0x%x, port=0x%x\n", _sub.chip_id, _sub.func_id, _sub.port);
+            io_socket_set_unsub(cl->section.section_id, _sub.chip_id, _sub.func_id, _sub.port);
             #if 0
             net_hash_del(cl->section.hash, _sub.chip_id, RT_CHIPID);
             net_hash_del(cl->section.hash, _sub.func_id, RT_FUNCID);

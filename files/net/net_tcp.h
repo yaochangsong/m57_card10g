@@ -71,6 +71,7 @@ struct tcp_section {
     uint16_t beatheat;
     int prio;
 	bool type[32];
+    int section_id;
 };
 
 

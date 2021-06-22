@@ -27,6 +27,7 @@
 #include <linux/if_link.h>
 #include "../protocol/http/file.h"
 #include "net_sub.h"
+#include "../bsp/io.h"
 
 
 int get_ifa_name_by_ip(char *ipaddr, char *ifa_name)
@@ -316,6 +317,7 @@ void tcp_free(struct net_tcp_client *cl)
         close(cl->sfd.fd.fd);
         list_del(&cl->list);
         cl->srv->nclients--;
+        socket_bitmap_clear(cl->section.section_id);
         executor_net_disconnect_notify(&cl->peer_addr);
         free(cl);
     }
@@ -396,6 +398,7 @@ static int  tcp_send(struct net_tcp_client *cl, const void *data, int len)
     return s;
 }
 
+
 static void tcp_accept_cb(struct uloop_fd *fd, unsigned int events)
 {
     struct net_tcp_server *srv = container_of(fd, struct net_tcp_server, fd);
@@ -446,7 +449,14 @@ static void tcp_accept_cb(struct uloop_fd *fd, unsigned int events)
     printf_note("New connection from: %s:%d\n", cl->get_peer_addr(cl), cl->get_peer_port(cl));
     
     cl->section.hash = net_hash_new();
-
+    cl->section.section_id = socket_bitmap_find_index();
+    if(cl->section.section_id >= MAX_CLINET_SOCKET_NUM)
+        printf_warn("client: %s:%d. socket section id[%d] is use over[%d]!!\n", 
+                cl->get_peer_addr(cl), cl->get_peer_port(cl), cl->section.section_id, MAX_CLINET_SOCKET_NUM);
+    else
+        socket_bitmap_set(cl->section.section_id);
+    printf_note("section id=%d\n",cl->section.section_id);
+    
     socklen_t serv_len = sizeof(cl->serv_addr); 
     getsockname(sfd, (struct sockaddr *)&cl->serv_addr, &serv_len); 
     cl->get_serv_addr = get_serv_addr;

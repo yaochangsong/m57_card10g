@@ -371,7 +371,7 @@ static inline void tcp_keepalive_cb(struct uloop_timeout *timeout)
     
     struct net_tcp_client *cl = container_of(timeout, struct net_tcp_client, timeout);
     uloop_timeout_set(&cl->timeout, TCP_CONNECTION_TIMEOUT * 1000);
-    printf_note("tcp_keepalive_probes = %d\n", cl->tcp_keepalive_probes);
+    printf_info("tcp_keepalive_probes = %d\n", cl->tcp_keepalive_probes);
 #ifdef  SUPPORT_PROTOCAL_M57
     m57_send_heatbeat((void *)cl);
 #endif

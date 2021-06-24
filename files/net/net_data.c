@@ -382,6 +382,28 @@ int tcp_send_vec_data(struct iovec *iov, int iov_len, int type)
     }
     return 0;
 }
+
+int tcp_send_vec_data_by_secid(struct iovec *iov, int iov_len, int type, int sec_id)
+{
+#if defined(SUPPORT_PROTOCAL_M57)
+    struct net_tcp_server *srv ;
+    struct net_tcp_client *cl_list, *list_tmp;
+    int ret = 0;
+    for(int i = 0; i < get_use_ifname_num(); i++){
+        srv = (struct net_tcp_server *)get_cmd_server(i);
+        if(srv == NULL)
+            continue;
+        
+        list_for_each_entry_safe(cl_list, list_tmp, &srv->clients, list){
+            if (cl_list->section.section_id == sec_id)
+                tcp_send_vec_data_to_client(cl_list, iov, iov_len);
+        }
+    }
+#endif
+    return 0;
+}
+
+
 static void tcp_data_accept_cb(struct uloop_fd *fd, unsigned int events)
 {
     struct net_tcp_server *srv = container_of(fd, struct net_tcp_server, fd);

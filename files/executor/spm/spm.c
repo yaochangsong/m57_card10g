@@ -502,7 +502,7 @@ loop:
                     len = ctx->ops->read_xdma_data(ch, (void **)&ptr_data, NULL);
                 if(len > 0){
                     if(ctx->ops->send_xdma_data)
-                        ctx->ops->send_xdma_data(ch, ptr_data, len, NULL);
+                        ctx->ops->send_xdma_data(ch, ptr_data, len, &section_id);
                 }
                 if(socket_bitmap_weight() == 0){
                     printf_note("all client offline\n");

@@ -8,4 +8,5 @@ extern int tcp_send_data(void *data, int len, int type);
 extern void net_data_add_client(struct sockaddr_in *addr, int ch, int type);
 extern void net_data_remove_client(struct sockaddr_in *addr, int ch, int type);
 
+extern int tcp_send_vec_data_by_secid(struct iovec *iov, int iov_len, int type, int sec_id);
 #endif

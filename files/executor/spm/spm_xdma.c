@@ -323,11 +323,16 @@ static ssize_t xspm_read_xdma_data(int ch, void **data, void *args)
 
 static int xspm_send_data(int ch, const char *buf, int len, void *args)
 {
-
+    int section_id = *(int *)args;
     struct iovec iov[2];
 
     iov[0].iov_base = buf;
     iov[0].iov_len = len;
+
+#if defined(SUPPORT_PROTOCAL_M57)
+    tcp_send_vec_data_by_secid(iov, 1, NET_DATA_TYPE_XDMA, section_id);
+    return 0;
+#endif
 
 #if (defined SUPPORT_DATA_PROTOCAL_TCP)
     tcp_send_vec_data(iov, 1, NET_DATA_TYPE_XDMA);

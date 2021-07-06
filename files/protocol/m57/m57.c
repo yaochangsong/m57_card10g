@@ -152,7 +152,7 @@ bool m57_parse_header(void *client, const char *buf, int len, int *head_len, int
 #if 1
     if(header->len > len){
        // cl->request.data_state = NET_TCP_DATA_WAIT;
-        printf_warn("recv data len too short: %d[header len:%d]\n", len, header->len);
+        printf_debug("recv data len too short: %d[header len:%d]\n", len, header->len);
         //goto exit;
     }
 #endif
@@ -258,40 +258,51 @@ static void _m57_assamble_loadfile_cmd(uint16_t chip_id, uint8_t cmd, uint8_t *b
 }
 
 
+
 static int _m57_start_load_bitfile_to_fpga(uint16_t chip_id)
 {
-    uint8_t buffer[16];
+    #define _LOAD_FILE_CMD_LEN 16
+    //uint8_t buffer[16];
+    void *buffer;
     struct spm_context *_ctx;
     ssize_t nwrite;
-    
+    int pagesize = 0;
+
+    pagesize=getpagesize();
+    posix_memalign((void **)&buffer, pagesize /*alignment */ , _LOAD_FILE_CMD_LEN + pagesize);
+    if (!buffer) {
+        fprintf(stderr, "OOM %u.\n", pagesize);
+        return -1;
+    }
     _ctx = get_spm_ctx();
-    memset(buffer, 0, sizeof(buffer));
+    memset(buffer, 0, _LOAD_FILE_CMD_LEN);
     printfn("Start Load BitFile [fpga id:0x%x]\n", chip_id);
     _m57_assamble_loadfile_cmd(chip_id, 0x00, buffer);
-    nwrite = _ctx->ops->write_xdma_data(0, buffer, sizeof(buffer));
-    printfn("Start Load %s![%ld]\n",  (nwrite == sizeof(buffer)) ? "OK" : "Faild", nwrite);
+    nwrite = _ctx->ops->write_xdma_data(0, buffer, _LOAD_FILE_CMD_LEN);
+    printfn("Start Load %s![%ld]\n",  (nwrite == _LOAD_FILE_CMD_LEN) ? "OK" : "Faild", nwrite);
+    free(buffer);
+    buffer = NULL;
     
     return nwrite;
 }
+
 static void* _m57_loading_bitfile_to_fpga_thread(void   *args)
 {
     #define LOAD_BITFILE_SIZE	4096
     struct stat fstat;
     int result = 0, rc, ret = 0;
-    unsigned char buffer[LOAD_BITFILE_SIZE];
-    //unsigned char *buffer;
+    unsigned char *buffer;
     struct spm_context *_ctx;
     ssize_t nwrite, total_write = 0;;
     FILE *file;
     char *filename = strdup(args);
-    #if 0
+    //char *filename = "test.bin";
     posix_memalign((void **)&buffer, 4096 /*alignment */ , LOAD_BITFILE_SIZE + 4096);
     if (!buffer) {
-    	fprintf(stderr, "OOM %lu.\n", LOAD_BITFILE_SIZE + 4096);
-    	rc = -ENOMEM;
-    	return -1;
+        fprintf(stderr, "OOM %u.\n", LOAD_BITFILE_SIZE + 4096);
+        rc = -ENOMEM;
+        goto exit2;
     }
-    #endif
     
     _ctx = get_spm_ctx();
     result = stat(filename, &fstat);
@@ -320,6 +331,9 @@ static void* _m57_loading_bitfile_to_fpga_thread(void   *args)
     printfn("\nLoad Bitfile %s!\n",  (total_write == fstat.st_size) ? "OK" : "Faild");
     fclose(file);
 exit:
+    free(buffer);
+    buffer = NULL;
+exit2:
     free(filename);
     pthread_exit((void *)ret);
 }
@@ -349,20 +363,32 @@ static bool   _m57_loading_bitfile_to_fpga(char *filename)
 
 static bool  _m57_stop_load_bitfile_to_fpga(uint16_t chip_id)
 {
-    uint8_t buffer[16];
+     #define _STOP_LOAD_FILE_CMD_LEN 16
+    //uint8_t buffer[16];
+    void *buffer = NULL;
     struct spm_context *_ctx;
     ssize_t nwrite;
-    
+     int pagesize = 0;
+
+    pagesize=getpagesize();
+    posix_memalign((void **)&buffer, pagesize /*alignment */ , _STOP_LOAD_FILE_CMD_LEN + pagesize);
+    if (!buffer) {
+        fprintf(stderr, "OOM %u.\n", pagesize);
+        return false;
+    }
     _ctx = get_spm_ctx();
-    memset(buffer, 0, sizeof(buffer));
+    memset(buffer, 0, _STOP_LOAD_FILE_CMD_LEN);
     printfn("Stop Load BitFile [fpga id:0x%x]\n", chip_id);
     _m57_assamble_loadfile_cmd(chip_id, 0x01, buffer);
-    nwrite = _ctx->ops->write_xdma_data(0, buffer, sizeof(buffer));
-    printfn("Stop Load %s![%ld]\n", (nwrite == sizeof(buffer)) ? "OK" : "Faild", nwrite);
-    
-    if(nwrite != sizeof(buffer))
+    nwrite = _ctx->ops->write_xdma_data(0, buffer, _STOP_LOAD_FILE_CMD_LEN);
+    printfn("Stop Load %s![%ld]\n", (nwrite == _STOP_LOAD_FILE_CMD_LEN) ? "OK" : "Faild", nwrite);
+
+    free(buffer);
+    buffer = NULL;
+    if(nwrite != _STOP_LOAD_FILE_CMD_LEN){
         return false;
-        
+    }
+
     return true;
 }
 
@@ -387,11 +413,22 @@ static int _m57_write_data_to_fpga(uint8_t *ptr, size_t len)
 {
     struct spm_context *_ctx;
     ssize_t nwrite;
-    
+    void *buffer = NULL;
+    int pagesize = 0;
+
+    pagesize=getpagesize();
+    posix_memalign((void **)&buffer, pagesize /*alignment */ , len + pagesize);
+    if (!buffer) {
+        fprintf(stderr, "OOM %u.\n", pagesize);
+        return -1;
+    }
+    memcpy(buffer, ptr, len);
     _ctx = get_spm_ctx();
-    nwrite = _ctx->ops->write_xdma_data(0, ptr, len);
+    nwrite = _ctx->ops->write_xdma_data(0, buffer, len);
     printfn("Write data %s![%ld]\n",  (nwrite == len) ? "OK" : "Faild", nwrite);
     
+    free(buffer);
+    buffer = NULL;
     return nwrite;
 }
 
@@ -412,13 +449,13 @@ bool m57_execute_cmd(void *client, int *code)
     int err_code = C_RET_CODE_SUCCSESS;
     struct net_tcp_client *cl = client;
     int ex_header_len = sizeof(struct m57_ex_header_cmd_st);
-    const char const *payload = (char *)cl->dispatch.body + ex_header_len;
+    const char *payload = (char *)cl->dispatch.body + ex_header_len;
     int payload_len = cl->request.content_length - ex_header_len;
     int _code = -1;
 
     struct m57_ex_header_cmd_st *header;
     header = (struct m57_ex_header_cmd_st *)cl->request.header;
-    printf_info("receive cmd[0x%x], payload_len=%d\n", header->cmd, payload_len);
+    printf_debug("receive cmd[0x%x], payload_len=%d\n", header->cmd, payload_len);
     if(payload_len < 0){
         printf_err("recv cmd data len err\n");
     }

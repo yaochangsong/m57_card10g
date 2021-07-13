@@ -127,7 +127,7 @@ char *_create_tmp_path(struct net_tcp_client *cl)
 bool m57_parse_header(void *client, const char *buf, int len, int *head_len, int *code)
 {
     struct net_tcp_client *cl = client;
-    struct m57_header_st *header;
+    struct m57_header_st  hbuffer, *header;
     void *ex_header;
     int ex_header_len = 0, _header_len = 0, _code = 0;
     int hlen = 0, i, data_len = 0;
@@ -141,8 +141,9 @@ bool m57_parse_header(void *client, const char *buf, int len, int *head_len, int
         printf_warn("recv data len too short: %d\n", len);
         goto exit;
     }
-
-    header = (struct m57_header_st *)buf;
+    //header = (struct m57_header_st *)buf;
+    memcpy(&hbuffer, buf, sizeof(struct m57_header_st));
+    header = &hbuffer;
     if(header->header != M57_SYNC_HEADER){
         _code = C_RET_CODE_HEADER_ERR;
         cl->request.data_state = NET_TCP_DATA_ERR;
@@ -161,7 +162,6 @@ bool m57_parse_header(void *client, const char *buf, int len, int *head_len, int
     printf_debug("type = 0x%x\n", header->type);
     printf_debug("prio = 0x%x\n", header->prio);
     printf_debug("number = 0x%x\n", header->number);
-    
     _m57_swap_header_element(header);
     cl->request.prio = header->prio;
     cl->request.data_type = header->type;
@@ -192,6 +192,7 @@ bool m57_parse_header(void *client, const char *buf, int len, int *head_len, int
         if(data_len >= 0){
             cl->request.content_length = data_len;
         }
+        cl->state = NET_TCP_CLIENT_STATE_DATA;
         printf_debug("content_length: %d\n", cl->request.content_length);
     }else if(header->type == M57_DATA_TYPE){    /* 数据包 */
         cl->request.header = NULL;
@@ -204,8 +205,8 @@ bool m57_parse_header(void *client, const char *buf, int len, int *head_len, int
             cl->request.content_length = data_len;
         }
         #endif
+        cl->state = NET_TCP_CLIENT_STATE_HEADER;
         /* 数据包不处理透传 */
-        cl->request.data_state = NET_TCP_DATA_NO_DEAL;
         _m57_write_data_to_fpga((uint8_t *)buf, _header_len);
     } else{
         _header_len = len;
@@ -699,12 +700,14 @@ load_file_exit:
                 r_resp->chipid = pinfo->chipid;
                 if(cl->section.is_loadfile_ok){
                     if(_m57_loading_bitfile_to_fpga(cl->section.file.path) == true){
+                          usleep(20000);
                          _m57_stop_load_bitfile_to_fpga(cl->section.chip_id);
                     } else{
                         r_resp->ret = -1;
                     }
                    // r_resp->ret = _reg_get_load_result(get_fpga_reg(), cl->section.chip_id, NULL);
                     r_resp->ret = 0; /* ok */
+                    usleep(30000);
                 }
                 else
                     r_resp->ret = -1;    /* faild */

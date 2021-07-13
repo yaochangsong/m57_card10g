@@ -104,7 +104,7 @@ static bool tcp_client_header_cb(struct net_tcp_client *cl, char *buf, int len)
         return false;
     }
     ustream_consume(cl->us, head_len);
-    cl->state = NET_TCP_CLIENT_STATE_DATA;
+    //cl->state = NET_TCP_CLIENT_STATE_DATA;
     return stat;
 }
 

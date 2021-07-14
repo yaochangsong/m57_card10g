@@ -78,6 +78,8 @@ static struct request_info http_req_cmd[] = {
     {"PUT",     "/timesource/@value",                   -1,                cmd_timesource_set},
     {"PUT",     "/rf/power/@value",                     -1,                cmd_rf_power_onoff},
     {"PUT",     "/rf/agcCtrlMode/@value",               -1,                cmd_rf_agcmode},
+    /* 路由表加载 */
+    {"GET",     "/route/reload",                        -1,                cmd_route_reload},
 };
 
 #define URL_SEPARATOR "/"

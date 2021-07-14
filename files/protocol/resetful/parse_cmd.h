@@ -62,5 +62,6 @@ extern int cmd_rf_power_onoff(struct uh_client *cl, void **arg, void **content);
 extern int cmd_rf_agcmode(struct uh_client *cl, void **arg, void **content);
 extern int cmd_timesource_set(struct uh_client *cl, void **arg, void **content);
 extern int cmd_netget(struct uh_client *cl, void **arg, void **content);
+extern int cmd_route_reload(struct uh_client *cl, void **arg, void **content);
 
 #endif

@@ -925,7 +925,7 @@ int cmd_route_reload(struct uh_client *cl, void **arg, void **content)
 {
     int code = RESP_CODE_OK;
     printf_note("route reload\n");
-    system("tools/nrs1800/sroute -c tools/nrs1800/nr_config.json");
+    system("/usr/bin/sroute -c /etc/nr_config.json");
     *arg = get_resp_message(code);
     return code;
 }

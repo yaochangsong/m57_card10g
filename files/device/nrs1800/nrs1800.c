@@ -29,24 +29,19 @@ static srio_port_info ports_info[] =
 
 static srio_route_rule default_rules[] =
 {
-	{3,0x48,10},
-	{10,0x49,3},
 	{4,0x48,10},
 	{5,0x48,10},
 	{7,0x48,10},
 	{9,0x48,10},
-	{12,0x48,10},
-	{13,0x48,10},
-	{16,0x48,10},
-	{17,0x48,10},
-//	{10,0x40,4},
+	{12,0x1e,10},
+	{13,0x1e,10},
+	{16,0x1e,10},
+	{17,0x1e,10},
+	{10,0x1a,12},
+	{10,0x1c,13},
+	{10,0x1b,16},
+	{10,0x1d,17},
 	{10,0x40,5},
-//	{10,0x40,7},
-//	{10,0x40,9},
-	{10,0x1A,12},
-	{10,0x1C,13},
-	{10,0x1B,16},
-	{10,0x1D,17},	
 };
 
 static int nsr1800_10bit_read_i2c_register(int file, uint16_t dev_addr, uint32_t mem_addr, uint32_t *value, int len) 

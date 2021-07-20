@@ -18,5 +18,6 @@ tool_sub:
 	do $(MAKE) -C $$dir all || exit 1; \
 	done
 .PHONY:clean all  
-clean:  
+clean:
+	@for dir in $(tool_sub_dir); do make -C $$dir clean|| exit 1; done
 	-rm -rf $(TARGETS)

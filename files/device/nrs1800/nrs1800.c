@@ -369,6 +369,10 @@ int nsr1800_init(void)
 	int i = 0, j = 0;
 	int file;
 
+	printf("/usr/bin/sroute -c /etc/nr_config.json &");
+	system("/usr/bin/sroute -c /etc/nr_config.json &");
+	return 0;
+	
 	printf_note("nsr1800 I2C init\n");
 
 	file = open("/dev/i2c-1", O_RDWR);

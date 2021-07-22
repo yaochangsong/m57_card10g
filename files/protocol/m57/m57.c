@@ -410,6 +410,18 @@ static int _m57_start_unload_bitfile_from_fpga(uint16_t chip_id)
     return nwrite;
 }
 
+static void print_array(uint8_t *ptr, ssize_t len)
+{
+    if(ptr == NULL || len <= 0)
+        return;
+    
+    for(int i = 0; i< len; i++){
+        printf("%02x ", *ptr++);
+    }
+    printf("\n");
+}
+
+
 static int _m57_write_data_to_fpga(uint8_t *ptr, size_t len)
 {
     struct spm_context *_ctx;

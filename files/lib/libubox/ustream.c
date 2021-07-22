@@ -122,7 +122,7 @@ void ustream_init_defaults(struct ustream *s)
 
 	DEFAULT_SET(s->r.min_buffers, 1);
 	DEFAULT_SET(s->r.max_buffers, 1);
-	DEFAULT_SET(s->r.buffer_len, 4096);
+	DEFAULT_SET(s->r.buffer_len, 32768);
 
 	DEFAULT_SET(s->w.min_buffers, 2);
 	DEFAULT_SET(s->w.max_buffers, -1);

@@ -136,12 +136,13 @@ bool m57_parse_header(void *client, const char *buf, int len, int *head_len, int
     _code = C_RET_CODE_SUCCSESS;
     cl->request.data_state = NET_TCP_DATA_NORMAL;
     _header_len = len;
+    
     if(len < hlen){
         cl->request.data_state = NET_TCP_DATA_WAIT;
         printf_warn("recv data len too short: %d\n", len);
         goto exit;
     }
-    //header = (struct m57_header_st *)buf;
+    
     memcpy(&hbuffer, buf, sizeof(struct m57_header_st));
     header = &hbuffer;
     if(header->header != M57_SYNC_HEADER){
@@ -150,13 +151,7 @@ bool m57_parse_header(void *client, const char *buf, int len, int *head_len, int
         printf_err("header err:%x\n", header->header);
         goto exit;
     }
-#if 1
-    if(header->len > len){
-       // cl->request.data_state = NET_TCP_DATA_WAIT;
-        printf_debug("recv data len too short: %d[header len:%d]\n", len, header->len);
-        //goto exit;
-    }
-#endif
+
     printf_debug("size = %ld, %ld\n", sizeof(struct m57_header_st), sizeof(struct m57_ex_header_cmd_st));
     printf_debug("header = 0x%x\n", header->header);
     printf_debug("type = 0x%x\n", header->type);
@@ -165,46 +160,40 @@ bool m57_parse_header(void *client, const char *buf, int len, int *head_len, int
     _m57_swap_header_element(header);
     cl->request.prio = header->prio;
     cl->request.data_type = header->type;
+    
     if(header->type == M57_CMD_TYPE){ /* 命令包 */
-        printf_debug("cmd type\n");
-        ex_header_len = sizeof(struct m57_ex_header_cmd_st);
-        ex_header = calloc(1, ex_header_len);
-        if (!ex_header) {
+
+        void *hheader = calloc(1, hlen);
+        if (!hheader) {
             printf_err("calloc\n");
             exit(1);
         }
-        /* 拷贝命令头 */
-        memcpy(ex_header, buf + hlen, ex_header_len);
-        cl->request.header = ex_header;
+        memcpy(hheader, header, hlen);
+        cl->request.header = hheader;
         
-        struct m57_ex_header_cmd_st *cmd_header = (struct m57_ex_header_cmd_st *)cl->request.header;
-        static int _dup = -1;
-        if(_dup != cmd_header->cmd){
-            printf_note("CMD: %x\n", cmd_header->cmd);
-            _dup = cmd_header->cmd;
-        }
-        
-        /* 命令长度 = 协议头长度 + 扩展命令头长度 */
-        _header_len= hlen ;//+ ex_header_len;
-        
-        /* 命令内容长度 */
-        data_len = header->len - hlen;// - ex_header_len;
-        if(data_len >= 0){
-            cl->request.content_length = data_len;
-        }
-        cl->state = NET_TCP_CLIENT_STATE_DATA;
-        printf_debug("content_length: %d\n", cl->request.content_length);
-    }else if(header->type == M57_DATA_TYPE){    /* 数据包 */
-        cl->request.header = NULL;
-        /* 处理长度 = 协议头长度 */
-        _header_len = header->len;
-        #if 0
         /* 数据内容长度 */
         data_len = header->len - hlen;
         if(data_len >= 0){
             cl->request.content_length = data_len;
+        }else{
+            printf_err("%d,data_len error\n",data_len);
+            _code = C_RET_CODE_HEADER_ERR;
+            cl->request.data_state = NET_TCP_DATA_ERR;
+            goto exit;
         }
-        #endif
+        
+        _header_len = hlen;     //消费header
+        cl->state = NET_TCP_CLIENT_STATE_DATA;
+    }else if(header->type == M57_DATA_TYPE){    /* 数据包 */
+
+        if (len < header->len) {  //必须等到完整数据帧
+             cl->request.data_state = NET_TCP_DATA_WAIT;
+            printf_warn("recv data packet len too short: %d， %d\n", len, header->len);
+            goto exit;
+        }
+        
+        cl->request.header = NULL;
+        _header_len = header->len;//消费帧长
         cl->state = NET_TCP_CLIENT_STATE_HEADER;
         /* 数据包不处理透传 */
         _m57_write_data_to_fpga((uint8_t *)buf, _header_len);
@@ -465,13 +454,18 @@ bool m57_execute_cmd(void *client, int *code)
     const char *payload = (char *)cl->dispatch.body + ex_header_len;
     int payload_len = cl->request.content_length - ex_header_len;
     int _code = -1;
-
+    
     struct m57_ex_header_cmd_st *header;
-    header = (struct m57_ex_header_cmd_st *)cl->request.header;
+    header = (struct m57_ex_header_cmd_st *)cl->dispatch.body;  //扩展头包含在body中
     printf_debug("receive cmd[0x%x], payload_len=%d\n", header->cmd, payload_len);
     if(payload_len < 0){
         printf_err("recv cmd data len err\n");
     }
+    
+    if (header->cmd != CCT_FILE_TRANSFER) {
+        printf_note("recv cmd:  0x%04x\n", header->cmd);
+    }
+
     switch (header->cmd)
     {
         case CCT_BEAT_HART:
@@ -658,7 +652,7 @@ bool m57_execute_cmd(void *client, int *code)
             }
             pinfo = (struct file_xinfo *)payload;
             if(pinfo->sn == 0)
-                printf_debug("start transfer file\n");
+                printf_note("start transfer file\n");
             else
                 printf_debug("transfer file......\n");
             

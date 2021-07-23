@@ -88,13 +88,13 @@ static bool tcp_client_header_cb(struct net_tcp_client *cl, char *buf, int len)
     stat = cl->srv->on_header(cl, buf, len, &head_len, &code);
     if(stat == false){
         cl->state = NET_TCP_CLIENT_STATE_DONE;
-        cl->srv->send_error(cl, code, NULL);
+        //cl->srv->send_error(cl, code, NULL);
         ustream_consume(cl->us, len);
         cl->request_done(cl);
         return false;
     }
     if(cl->request.data_state == NET_TCP_DATA_WAIT){
-        cl->state = NET_TCP_CLIENT_STATE_DONE;
+        cl->state = NET_TCP_CLIENT_STATE_HEADER;
         cl->request_done(cl);
         return false;
     } else if(cl->request.data_state == NET_TCP_DATA_NO_DEAL){
@@ -285,8 +285,8 @@ void tcp_client_read_cb(struct net_tcp_client *cl)
         }
 
         if (!tcp_read_cbs[cl->state](cl, str, len)) {
-            if (len == us->r.buffer_len && cl->state != NET_TCP_CLIENT_STATE_DATA)
-                cl->srv->send_error(cl, 413, NULL);
+            //if (len == us->r.buffer_len && cl->state != NET_TCP_CLIENT_STATE_DATA)
+               // cl->srv->send_error(cl, 413, NULL);
             break;
         }
     } while(1);
@@ -318,7 +318,7 @@ void tcp_free(struct net_tcp_client *cl)
         list_del(&cl->list);
         cl->srv->nclients--;
         socket_bitmap_clear(cl->section.section_id);
-        executor_net_disconnect_notify(&cl->peer_addr);
+        //executor_net_disconnect_notify(&cl->peer_addr);
         free(cl);
     }
     pthread_mutex_unlock(&srv->tcp_client_lock);

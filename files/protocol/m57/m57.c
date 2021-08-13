@@ -488,13 +488,12 @@ bool m57_execute_cmd(void *client, int *code)
             }__attribute__ ((packed));
             struct register_st _reg;
             printf_note("channel register!!\n");// len: 40
-            int ch = 0
-                ;
+            int enable = 1;
             m57_prio_type _type;
             memcpy(&_reg, payload, sizeof(_reg));
             _type = (_reg.type == 1 ? M57_PRIO_LOW: M57_PRIO_URGENT);
             net_hash_add(cl->section.hash, _type, RT_PRIOID);
-            //spm_xdma_deal_notify(&ch);
+            //executor_set_command(EX_XDMA_ENABLE_CMD, -1, 1, &enable, -1);
             break;
         }
         case CCT_DATA_SUB:

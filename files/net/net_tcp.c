@@ -517,6 +517,57 @@ void tcp_active_send_all_client(uint8_t *data, int len)
     }
 }
 
+static inline int _send_vec_data_to_client(struct net_tcp_client *client, struct iovec *iov, int iov_len)
+{    
+    struct msghdr msgsent;
+    int r=0;
+    if(client == NULL)
+        return -1;
+    msgsent.msg_name = &client->peer_addr;
+    msgsent.msg_namelen = sizeof(client->peer_addr);
+    msgsent.msg_iovlen = iov_len;
+    msgsent.msg_iov = iov;
+    msgsent.msg_control = NULL;
+    msgsent.msg_controllen = 0;
+   // printf_debug("send: %s:%d\n", client->get_peer_addr(client), client->get_peer_port(client));
+    r = sendmsg(client->sfd.fd.fd, &msgsent, 0);
+    if(r < 0){
+        perror("sendmsg");
+    }
+    return 0;
+}
+
+
+int tcp_send_vec_data_uplink(struct iovec *iov, int iov_len, void *args)
+{
+    struct net_tcp_server *srv ;
+    struct net_tcp_client *cl_list, *list_tmp;
+    int ret = 0;
+    union _cmd_srv *cmdsrv;
+    char *ifname;
+
+    struct net_sub_st *parg = args;
+    if(parg == NULL)
+        return -1;
+    for(int i = 0; i < get_use_ifname_num()+1; i++){
+        ifname = config_get_if_indextoname(i);
+        if(!ifname || get_netlink_status(ifname) == -1)
+            continue;
+        cmdsrv = (union _cmd_srv *)get_cmd_server(i);
+        srv = (struct net_tcp_server *)cmdsrv->tcpsvr;
+        if(srv == NULL)
+            continue;
+        list_for_each_entry_safe(cl_list, list_tmp, &srv->clients, list){
+            printf_note("port: %d\n", cl_list->get_peer_port(cl_list));
+            //if(net_hash_find(cl_list->section.hash, parg->chip_id, RT_CHIPID) && 
+            //    net_hash_find(cl_list->section.hash, parg->func_id, RT_FUNCID)){
+                    _send_vec_data_to_client(cl_list, iov, iov_len);
+            //    }
+                
+        }
+    }
+    return 0;
+}
 
 bool tcp_get_peer_addr_port(void *cl, struct sockaddr_in *_peer_addr)
 {

@@ -16,7 +16,7 @@
 #include "../../net/net_sub.h"
 
 
-static int xspm_stream_stop(int ch, int subch, enum stream_type type);
+static int xspm_read_stream_stop(int ch, int subch, enum stream_type type);
 static int xspm_read_xdma_data_over(int ch,  void *arg);
 
 static inline void *zalloc(size_t size)
@@ -84,10 +84,8 @@ static int32_t _reset_run_timer(uint8_t index, uint8_t ch)
 
 
 static struct _spm_xstream spm_xstream[] = {
-        {XDMA_R_DEV0,        -1, 0, XDMA_BUFFER_SIZE, XDMA_BLOCK_SIZE, "XDMA Stream0", XDMA_WRITE, XDMA_STREAM, -1},
-        {XDMA_R_DEV1,        -1, 1, XDMA_BUFFER_SIZE, XDMA_BLOCK_SIZE, "XDMA Stream1", XDMA_READ, XDMA_STREAM, -1},
-//        {XDMA_R_DEV2,        -1, 2, NULL, XDMA_BUFFER_SIZE, XDMA_BLOCK_SIZE, "XDMA Stream2", XDMA_READ, XDMA_STREAM, -1},
-//        {XDMA_R_DEV3,        -1, 3, NULL, XDMA_BUFFER_SIZE, XDMA_BLOCK_SIZE, "XDMA Stream3", XDMA_READ, XDMA_STREAM, -1},
+        {XDMA_R_DEV0,        -1, 0, XDMA_BUFFER_SIZE, XDMA_BLOCK_SIZE, "Write XDMA Stream", XDMA_WRITE, XDMA_STREAM, -1},
+        {XDMA_R_DEV1,        -1, 1, XDMA_BUFFER_SIZE, XDMA_BLOCK_SIZE, "Read XDMA Stream",  XDMA_READ,  XDMA_STREAM, -1},
 };
 
 int _WaitDeviceReady(int dev_fd)
@@ -125,41 +123,6 @@ int _WaitDeviceReady(int dev_fd)
 	return 0;   // time out 
 }
 
-#if 0
-int _WaitDeviceReady(int dev_fd)
-{
-    #define DEVICE_READY_TIMEOUT 1000  //unit is ms
-	int ret = 0;
-	int isReady = 0;
-	int timeout = DEVICE_READY_TIMEOUT;
-	struct xdma_ring_trans_ioctl ring_trans;
-	memset(&ring_trans, 0, sizeof(struct xdma_ring_trans_ioctl));
-
-	while(timeout--)
-	{
-		ret = ioctl(dev_fd, IOCTL_XDMA_TRANS_GET, &ring_trans);
-		if (ret) 
-		{
-			printf("ioctl(IOCTL_XDMA_TRANS_GET) failed %d\n", ret);
-			return -1;	  
-		}	
-		
-		if(ring_trans.status != RING_TRANS_INITIALIZING)
-		{
-			isReady = 1;
-			break;
-		}
-		
-		usleep(1000);
-	}
-
-	if(isReady)
-		return 1;
-		
-	return 0;   // time out 
-}
-#endif
-
 static int xspm_create(void)
 {
     struct _spm_xstream *pstream;
@@ -181,7 +144,7 @@ static int xspm_create(void)
         ring_trans.block_size = pstream[i].block_size;
         ring_trans.block_count = pstream[i].len / pstream[i].block_size;
         printf_warn("block_size=%u, block_count=%u, len=%u\n", ring_trans.block_size, ring_trans.block_count, pstream[i].len);
-        xspm_stream_stop(pstream[i].ch, -1, XDMA_STREAM);
+        xspm_read_stream_stop(pstream[i].ch, -1, XDMA_STREAM);
         if(pstream[i].rd_wr == XDMA_READ){
         rc = ioctl(pstream[i].id, IOCTL_XDMA_INIT_BUFF, &ring_trans);  //close时释放
         if (rc == 0) {
@@ -202,7 +165,6 @@ static int xspm_create(void)
                 printf_warn("block[%d]: ptr=%p, pagesize=%d\n", j, pstream[i].ptr[j], pagesize);
             }
         }
-        //xspm_stream_stop(pstream[i].ch, 0, XDMA_STREAM);
         usleep(1000);
     }
     
@@ -315,20 +277,6 @@ static inline int xspm_find_index_by_rw(int ch, int subch, int rw)
     return index;
 }
 
-
-int xspm_get_dma_fd(int ch)
-{
-    int index;
-    struct _spm_xstream *pstream;
-    pstream = spm_xstream;
-
-    index = xspm_find_index_by_type(ch, -1, XDMA_STREAM);
-    if(index < 0)
-        return -1;
-
-    return pstream[index].id;
-}
-
 static int xspm_stram_write(int ch, const void *data, size_t data_len)
 {
     ssize_t ret = 0, len;
@@ -381,6 +329,76 @@ static ssize_t xspm_read_xdma_data(int ch , void **data, uint32_t *len, void *ar
     return xspm_stream_read(ch, index, data, len, args);
 }
 
+static int xdma_data_dispatcher(int ch, void **data, ssize_t nsize, void *args)
+{
+/*
+51 57 0f 30 18 01 00 00 00 00 02 05 00 00 08 01 02 02 00 00 00 00 00 00 aa aa 55 55 63 02 00 00 2f 05 74 09 36 05 c5 09 00 00（上行）
+|---------------------|  | a|  | b|  | c|  | d|  | e|  | f|  | g|
+
+a:物理目的地址
+b:物理源地址
+c:目的地址(目的组件/连接器地址)
+d:载荷长度
+e:分段表示，消息类型，请求表示
+f:源组件地址
+g:命令表示
+*/
+    uint8_t *ptr = *data;
+    uint8_t *payload = ptr + 8;
+
+    struct data_frame_st{
+        uint16_t py_dist_addr;
+        uint16_t py_src_addr;
+        uint16_t dist_addr;
+        uint16_t len;
+        uint16_t type;
+        uint16_t src_addr;
+        uint16_t cmd;
+    }__attribute__ ((packed));
+    struct data_frame_st *pdata;
+    
+    if(args == NULL){
+        return -1;
+    }
+    if(*(uint16_t *)ptr != 0x5751){  /* header */
+        printf_warn("error header=0x%x\n", *(uint16_t *)ptr);
+        return -1;
+    }
+
+    //if(*(uint16_t *)(ptr+ 4) != nsize){       /* length */
+    //    printf_warn("error size nsize=%ld, length=%d\n", nsize, *(uint16_t *)(ptr+ 4));
+    //    return -1;
+    //}
+        
+    struct net_sub_st *parg = args;
+    pdata = (struct data_frame_st *)payload;
+    parg->chip_id = pdata->py_src_addr;
+    parg->func_id = pdata->src_addr;
+    //printf_note("chip_id=0x%x, func_id=0x%x\n", parg->chip_id, parg->func_id);
+
+    return 0;
+}
+
+static ssize_t xspm_read_xdma_data_dispatcher(int ch , void **data, uint32_t *len, void *args)
+{
+    int index;
+    ssize_t count = 0;
+
+    index = xspm_find_index_by_rw(ch, -1, XDMA_READ);
+    if(index < 0)
+        return -1;
+
+    //nsize = xspm_stream_read(ch, index, data, NULL);
+    count = xspm_stream_read(ch, index, data, len, args);
+    if(count > 0){
+        if(xdma_data_dispatcher(ch, data, count, args) == -1){
+            return -1;
+        }
+    }
+    return count;
+}
+
+
 static int xspm_send_data(int ch, char *buf[], uint32_t len[], int count, void *args)
 {
     int section_id = *(int *)args;
@@ -390,68 +408,25 @@ static int xspm_send_data(int ch, char *buf[], uint32_t len[], int count, void *
     for(int i = 0; i < count; i++){
         iov[i].iov_base = buf[i];
         iov[i].iov_len = len[i];
-        printf_note("base: %p, %lu\n", iov[i].iov_base, iov[i].iov_len);
+        //printf_note("base: %p, %lu\n", iov[i].iov_base, iov[i].iov_len);
     }
+    tcp_send_vec_data_uplink(iov, count, args);
     xspm_read_xdma_data_over(ch, NULL);
-
-#if defined(SUPPORT_PROTOCAL_M57)
-    //tcp_send_vec_data_by_secid(iov, 1, NET_DATA_TYPE_XDMA, section_id);
-    return 0;
-#endif
-
-#if (defined SUPPORT_DATA_PROTOCAL_TCP)
-    tcp_send_vec_data(iov, 1, NET_DATA_TYPE_XDMA);
-#else
-    udp_send_vec_data(iov, 1, NET_DATA_TYPE_XDMA);
-#endif
-    #if 0
-    struct net_tcp_client  *cl = tcp_get_datasrv_client(ch);
-    int r;
     
-    if(cl == NULL)
-        return -1;
-
-    r = cl->send_raw(cl, buf, buflen);
-
-    printf_debug("ch=%d, r = %d, buflen = %d\n", ch, r, buflen);
-    #endif
     return 0;
 }
 
-static ssize_t xspm_read_xdma_data_test(int ch, void **data)
-{   
-    static int count = 0;
-    static char buffer[4096*8] = {0};
-    int index;
-    
-    index = xspm_find_index_by_type(ch, -1, XDMA_STREAM);
-    if(index < 0)
-        return -1;
-    
-    for(int i = 0; i< sizeof(buffer); i++){
-        buffer[i] = i;
-    }
-    //printf_note("%d , %d, buffer=%p\n", buffer[0], buffer[1], buffer);
-    *data = buffer;
-    
-   // if(count++ >= 1)
-   //     return -1;
-    return sizeof(buffer);
-    //return xspm_stream_read(index, data);
-}
 
-
-
-static int xspm_stream_start(int ch, int subch, uint32_t len,uint8_t continuous, enum stream_type type)
+static int xspm_read_stream_start(int ch, int subch, uint32_t len,uint8_t continuous, enum stream_type type)
 {
     int index, reg, rc;
     struct _spm_xstream *pstream = spm_xstream;
     struct xdma_ring_trans_ioctl ring_trans;
     
-    index = xspm_find_index_by_type(ch, subch, type);
+    index = xspm_find_index_by_rw(ch, -1, XDMA_READ);
     if(index < 0)
         return -1;
-    
+
     memset(&ring_trans, 0, sizeof(struct xdma_ring_trans_ioctl));
     ring_trans.block_size = pstream[index].block_size;
     ring_trans.block_count = pstream[index].len / pstream[index].block_size;
@@ -476,16 +451,16 @@ static int xspm_stream_start(int ch, int subch, uint32_t len,uint8_t continuous,
     return 0;
 }
 
-static int xspm_stream_stop(int ch, int subch, enum stream_type type)
+static int xspm_read_stream_stop(int ch, int subch, enum stream_type type)
 {
     struct _spm_xstream *pstream = spm_xstream;
     int index, ret, reg;
     struct xdma_ring_trans_ioctl ring_trans;
-    
-    index = xspm_find_index_by_type(ch, subch, type);
+
+    index = xspm_find_index_by_rw(ch, -1, XDMA_READ);
     if(index < 0)
         return -1;
-    printf_note("ch=%d, type=%d, id=%d\n", ch, type, pstream[index].id);
+    printf_note("name=%s, type=%d, id=%d\n", pstream[index].name, type, pstream[index].id);
 
     #if 1
     if(pstream[index].id < 0)
@@ -510,8 +485,8 @@ static int _xspm_close(void *_ctx)
     int i, ch;
 
     for(i = 0; i< ARRAY_SIZE(spm_xstream) ; i++){
-        for(int ch = 0; ch  < MAX_XDMA_NUM; ch ++)
-            xspm_stream_stop(ch, -1, XDMA_STREAM);
+            if(pstream[i].rd_wr == XDMA_READ)
+                xspm_read_stream_stop(-1, -1, XDMA_STREAM);
         close(pstream[i].id);
     }
     for(ch = 0; ch< MAX_RADIO_CHANNEL_NUM; ch++){
@@ -529,7 +504,8 @@ static int xspm_read_xdma_data_over(int ch,  void *arg)
     
     int index;
 
-    index = xspm_find_index_by_type(ch, -1, XDMA_STREAM);
+    //index = xspm_find_index_by_type(ch, -1, XDMA_STREAM);
+    index = xspm_find_index_by_rw(ch, -1, XDMA_READ);
     if(index < 0)
         return -1;
     
@@ -575,8 +551,8 @@ static const struct spm_backend_ops xspm_ops = {
     //.read_xdma_data = xspm_read_xdma_data,//xspm_read_xdma_data_test, //
     .read_xdma_data = xspm_read_xdma_data,
     .read_xdma_over_deal = xspm_read_xdma_data_over,// xspm_read_xdma_data_over_test,//xspm_read_xdma_data_over,
-    .stream_start = xspm_stream_start,
-    .stream_stop = xspm_stream_stop,
+    .stream_start = xspm_read_stream_start,
+    .stream_stop = xspm_read_stream_stop,
     .write_xdma_data = xspm_stram_write,
     //.data_dispatcher = xspm_data_dispatcher,
     .send_xdma_data = xspm_send_data,

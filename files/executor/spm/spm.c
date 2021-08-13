@@ -24,7 +24,7 @@
 #include "spm_xdma.h"
 #include "../../bsp/io.h"
 #include "../../utils/bitops.h"
-
+#include "../../net/net_sub.h"
 
 
 
@@ -473,7 +473,7 @@ void spm_deal(struct spm_context *ctx, void *args, int ch)
     }
 }
 
-void spm_xdma_data_handle_thread(void *arg)
+void spm_xdma_read_data_handle_thread(void *arg)
 {
     struct spm_context *ctx = NULL;
     char *ptr_data[256] = {NULL};
@@ -488,12 +488,12 @@ void spm_xdma_data_handle_thread(void *arg)
     
     pthread_detach(pthread_self());
 loop:
-    printf_note(">>>>>XDMA%d Wait!\n", ch);
+    printf_note(">>>>>XDMA read Wait!\n");
     pthread_mutex_lock(&spm_xdma_cond_mutex[ch]);
     while(socket_bitmap_weight() == 0)
         pthread_cond_wait(&spm_xdma_cond[ch], &spm_xdma_cond_mutex[ch]);
     pthread_mutex_unlock(&spm_xdma_cond_mutex[ch]);
-    printf_note(">>>>>XDMA%d read start\n", ch);
+    printf_note(">>>>>XDMA read start\n");
     do{
         for_each_set_bit(section_id, socket_get_bitmap(), MAX_CLINET_SOCKET_NUM){
             io_socket_set_id(section_id);
@@ -510,6 +510,44 @@ loop:
                     goto loop;
                 }
             }while(count > 0);
+        }
+    }while(1);
+    
+}
+void spm_xdma_data_handle_thread_dispatcher(void *arg)
+{
+    void *ptr = NULL;
+    struct spm_context *ctx = NULL;
+    char *ptr_data[256] = {NULL};
+    uint32_t  len[256] = {0};
+    int ch, section_id = 0;
+    int count = 0;
+    struct net_sub_st sub_args;
+
+    ctx = spmctx;
+    ch = *(int *)arg;
+    if(ch >= MAX_XDMA_NUM)
+        pthread_exit(0);
+    
+    pthread_detach(pthread_self());
+loop:
+    printf_note(">>>>>XDMA%d Wait!\n", ch);
+    pthread_mutex_lock(&spm_xdma_cond_mutex[ch]);
+    while(socket_bitmap_weight() == 0)
+        pthread_cond_wait(&spm_xdma_cond[ch], &spm_xdma_cond_mutex[ch]);
+    pthread_mutex_unlock(&spm_xdma_cond_mutex[ch]);
+    printf_note(">>>>>XDMA%d read start\n", ch);
+    do{
+        if(ctx->ops->read_xdma_data)
+            count = ctx->ops->read_xdma_data(ch, (void **)ptr_data, len, NULL);
+        if(count > 0){
+            if(ctx->ops->send_xdma_data)
+                ctx->ops->send_xdma_data(ch, ptr_data, len, count, &section_id);
+        }
+        if(socket_bitmap_weight() == 0){
+            printf_note("all client offline\n");
+            usleep(1000);
+            goto loop;
         }
     }while(1);
     
@@ -617,9 +655,9 @@ void *spm_init(void)
     if(ret!=0)
         perror("pthread cread niq");
 #endif
-    for(int i = 0; i <MAX_XDMA_NUM; i++){
-        xdma_ch[i] = i;
-        ret=pthread_create(&recv_thread_id,NULL,(void *)spm_xdma_data_handle_thread, &xdma_ch[i]);
+    for(int i = 0; i <1; i++){
+        xdma_ch[i] = 1;
+        ret=pthread_create(&recv_thread_id,NULL,(void *)spm_xdma_read_data_handle_thread, &xdma_ch[i]);
         if(ret!=0)
             perror("pthread cread xdma");
     }

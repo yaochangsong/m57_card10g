@@ -111,7 +111,6 @@ struct spm_dispatcher{
     uint32_t urgent_num[_DATA_CARDID_NUM_MAX];
 };
 
-extern int xspm_get_dma_fd(int ch);
 extern void *xspm_dispatcher_init(void);
 extern struct spm_context * spm_create_xdma_context(void);
 

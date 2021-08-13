@@ -38,8 +38,8 @@ int get_use_ifname_num(void)
 }
 void *get_cmd_server(int index)
 {
-    if(index >= nserver->number)
-        return NULL;
+    //if(index >= nserver->number)
+    //    return NULL;
     return (void*)&nserver->cmd[index];
 }
 

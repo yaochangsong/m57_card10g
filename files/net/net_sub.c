@@ -127,9 +127,14 @@ bool net_hash_find(hash_t *hash, short id, int type)
     snprintf(val, sizeof(val) - 1, "%x", id);
 
     value = hash_get(hash, key);
-    
-    if(!strcmp(value, val))
+    if(value == NULL){
+       // printf_note("not find id:%x in hash table\n", id);
+        return false;
+    }
+    if(value && !strcmp(value, val)){
+       // printf_note("YES find id:%x, %x\n", id, type);
         return true;
+    }
 
     return false;
 }

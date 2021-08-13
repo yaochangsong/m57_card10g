@@ -9,6 +9,11 @@ enum route_table_type {
         RT_PORTID = 0x8,
 };
 
+struct net_sub_st{
+    uint16_t chip_id;
+    uint16_t func_id;
+    uint16_t port;
+};
 extern void *net_hash_new(void);
 extern void net_hash_dump(hash_t *hash);
 extern void net_hash_add(hash_t *hash, short id, int type);

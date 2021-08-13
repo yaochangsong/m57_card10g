@@ -23,6 +23,7 @@ typedef enum {
     EX_FFT_ENABLE_CMD,         /*FFT工作使能命令*/
     EX_BIQ_ENABLE_CMD,         /*宽带IQ工作使能命令*/
     EX_NIQ_ENABLE_CMD,         /*窄带IQ工作使能命令*/
+    EX_XDMA_ENABLE_CMD,
     EX_STATUS_CMD,             /*状态参数命令*/
     EX_WORK_MODE_CMD,          /*工作模式命令*/
     EX_NETWORK_CMD,            /*网络参数命令*/
@@ -75,6 +76,8 @@ enum {
     IQ_MODE_DISABLE,
     BIQ_MODE_ENABLE,             /*宽带IQ 数据使能*/
     BIQ_MODE_DISABLE,
+    XDMA_MODE_ENABLE,
+    XDMA_MODE_DISABLE,
     SPCTRUM_MODE_ANALYSIS_ENABLE,/*频谱分析使能*/
     SPCTRUM_MODE_ANALYSIS_DISABLE,
     DIRECTION_MODE_ENABLE,       /*测向使能位*/

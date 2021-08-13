@@ -1144,6 +1144,16 @@ int8_t io_set_enable_command(uint8_t type, int ch, int subc_ch, uint32_t fftsize
             io_set_BIQ_out_disable(ch, subc_ch);
             break;
         }
+        case XDMA_MODE_ENABLE:
+        {
+            io_set_xdma_enable(ch, subc_ch);
+            break;
+        }
+        case XDMA_MODE_DISABLE:
+        {
+            io_set_xdma_disable(ch, subc_ch);
+            break;
+        }
         case SPCTRUM_MODE_ANALYSIS_ENABLE:
         {
             break;
@@ -1480,17 +1490,20 @@ uint8_t  io_restart_app(void)
 
 void io_set_xdma_disable(int ch, int subch)
 {
-    printf_debug("ADC out disable\n");
-#if defined(SUPPORT_PLATFORM_ARCH_ARM)
-#if defined(SUPPORT_SPECTRUM_KERNEL)
+    printf_note("Xdma out disable\n");
+//#if defined(SUPPORT_PLATFORM_ARCH_ARM)
 
-#elif defined(SUPPORT_SPECTRUM_V2)
-    #if defined(SUPPORT_SPECTRUM_FPGA)
     if((get_spm_ctx()!=NULL) && get_spm_ctx()->ops->stream_stop)
         get_spm_ctx()->ops->stream_stop(ch, subch, XDMA_STREAM);
-    #endif
-#endif
-#endif
+//#endif
+}
+
+void io_set_xdma_enable(int ch, int subch)
+{
+    printf_note("Xdma out enable\n");
+    if((get_spm_ctx()!=NULL) && get_spm_ctx()->ops->stream_start)
+        get_spm_ctx()->ops->stream_start(ch, subch, 0, 0, XDMA_STREAM);
+//#endif
 }
 
 

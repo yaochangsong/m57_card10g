@@ -13,7 +13,7 @@
 #define MAX_FPGA_CARD_SLOT_NUM          (16) /* FPGA槽位 */
 #define MAX_FPGA_CHIPID_NUM             2   /* FPGA芯片数 */
 #define MAX_CLINET_SOCKET_NUM           4   /* 客户端socket数 */
-#define MAX_XDMA_NUM                    1   /* XDMA数 */
+#define MAX_XDMA_NUM                    2   /* XDMA数 */
 
 
 #endif

@@ -107,5 +107,7 @@ extern ssize_t socket_bitmap_find_index(void);
 extern size_t socket_bitmap_weight(void);
 extern void socket_bitmap_clear(int index);
 extern void socket_bitmap_set(int index);
+extern void io_set_xdma_enable(int ch, int subch);
+extern void io_set_xdma_disable(int ch, int subch);
 
 #endif

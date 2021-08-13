@@ -14,23 +14,24 @@
 #define DMA_BUFFER_64M_SIZE (64 * 1024 * 1024)
 #define DMA_BUFFER_128M_SIZE (128 * 1024 * 1024)
 #define DMA_BUFFER_1G_SIZE (0x40000000)
-#define DMA_BUFFER_256M_SIZE (0x10000000)
+#define DMA_BUFFER_256M_SIZE (0x10000000U)
 
 #define XDMA_BUFFER_SIZE DMA_BUFFER_256M_SIZE
-#define XDMA_BLOCK_SIZE 8388608
+#define XDMA_BLOCK_SIZE (0x400000)
+#define XDMA_TRANSFER_MAX_DESC (2048)
 
 
 struct _spm_xstream {
     char *devname;      /* 流设备节点名称 */
     int id;             /* 频谱流类型描述符 */
     int ch;
-    uint8_t *ptr;       /* 频谱流数据buffer指针 */
     uint32_t len;       /* 频谱流数据buffer长度 */
     uint32_t block_size;
     char *name;         /* 频谱流名称 */
     int rd_wr;
     enum stream_type type;
     int consume_index;  /* 每次消费的块索引 */
+    uint8_t *ptr[XDMA_TRANSFER_MAX_DESC];       /* 频谱流数据buffer指针 */
 };
 
 typedef enum _xdma_tx_rx_
@@ -48,18 +49,32 @@ enum xdma_ring_trans_state {
 	RING_TRANS_PENDING          //DMA运行中，但没有接收到数据
 };
 
+enum xdma_status {
+	XDMA_STATUS_STOP = 0,	//DMA停止状态
+	XDMA_STATUS_BUSY,		//DMA工作忙状态
+	XDMA_STATUS_IDLE,		//DMA空闲状态
+	XDMA_STATUS_ERROR       //DMA出错误状态
+};
+
+struct ring_xdma_result 
+{
+	uint32_t status;
+	uint32_t length;
+} __packed;
+
 struct xdma_ring_trans_ioctl
 {
-        uint32_t version;
-        uint32_t block_size;
-        uint32_t rx_index;
-        uint32_t invalid_index;
-        uint32_t ready_count;
-        uint32_t free_count;
-        uint32_t invalid_count;
-        uint32_t pending_count;
-        uint32_t block_count;
-        enum xdma_ring_trans_state status;  //defined from xdma_ring_trans_state
+    uint32_t version;
+    uint32_t block_size;
+    uint32_t rx_index;
+    uint32_t invalid_index;
+    uint32_t ready_count;
+    uint32_t free_count;
+    uint32_t invalid_count;
+    uint32_t pending_count;
+    uint32_t block_count;
+    enum xdma_ring_trans_state status;  //defined from xdma_ring_trans_state
+    struct ring_xdma_result results[XDMA_TRANSFER_MAX_DESC];
 };
 /*bob 20191017*/
 
@@ -77,6 +92,8 @@ struct xdma_ring_trans_ioctl
 #define IOCTL_XDMA_TRANS_STOP    _IOW('q', 8, struct xdma_ring_trans_ioctl *)
 #define IOCTL_XDMA_TRANS_GET     _IOR('q', 9, struct xdma_ring_trans_ioctl *)
 #define IOCTL_XDMA_TRANS_SET	 _IOW('q', 10, struct xdma_ring_trans_ioctl *)
+#define IOCTL_XDMA_STATUS	 _IOW('q', 11, struct xdma_ring_trans_ioctl *)
+#define IOCTL_XDMA_INIT_BUFF	 _IOW('q', 12, struct xdma_ring_trans_ioctl *)
 /*bob 20191017*/
 
 

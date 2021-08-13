@@ -475,10 +475,10 @@ void spm_deal(struct spm_context *ctx, void *args, int ch)
 
 void spm_xdma_data_handle_thread(void *arg)
 {
-    void *ptr = NULL;
     struct spm_context *ctx = NULL;
-    char *ptr_data = NULL;
-    ssize_t  len = 0;
+    char *ptr_data[256] = {NULL};
+    uint32_t  len[256] = {0};
+    int count = 0;
     int ch, section_id = 0;
 
     ctx = spmctx;
@@ -499,17 +499,17 @@ loop:
             io_socket_set_id(section_id);
             do{
                 if(ctx->ops->read_xdma_data)
-                    len = ctx->ops->read_xdma_data(ch, (void **)&ptr_data, NULL);
-                if(len > 0){
+                    count = ctx->ops->read_xdma_data(ch, (void **)ptr_data, len, NULL);
+                if(count > 0){
                     if(ctx->ops->send_xdma_data)
-                        ctx->ops->send_xdma_data(ch, ptr_data, len, &section_id);
+                        ctx->ops->send_xdma_data(ch, ptr_data, len, count, &section_id);
                 }
                 if(socket_bitmap_weight() == 0){
                     printf_note("all client offline\n");
                     usleep(1000);
                     goto loop;
                 }
-            }while(len > 0);
+            }while(count > 0);
         }
     }while(1);
     

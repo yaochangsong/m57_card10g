@@ -26,7 +26,7 @@
 	},
 	"status_parm":	{
 		"soft_version":	{
-			"app":	"v1.1.111_debug(2021-06-09-09:53:37)-4bdea8dc6b1ca6ce8d27f0d6e1770952448a6960 ",
+			"app":	"v1.1.111_debug(2021-08-13-13:42:35)-46d4c451757318b71d824ccee5828106daa6ce9a ",
 			"fpga":	"202012",
 			"kernel":	""
 		},

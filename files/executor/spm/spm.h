@@ -49,7 +49,8 @@ struct spm_backend_ops {
     ssize_t (*read_biq_data)(int ch, void **data);
     ssize_t (*read_fft_data)(int, void **, void*);
     ssize_t (*read_adc_data)(int,void **);
-    ssize_t (*read_xdma_data)(int, void **, void *);
+   // ssize_t (*read_xdma_data)(int, void **, void *);
+   ssize_t (*read_xdma_data)(int, void **, uint32_t*, void *);
     int (*read_xdma_over_deal)(int, void *);
     int (*read_adc_over_deal)(int,void *);
     int (*read_niq_over_deal)(void *);
@@ -58,7 +59,8 @@ struct spm_backend_ops {
     int (*send_biq_data)(int, void *, size_t, void *);
     int (*send_niq_data)(void *, size_t, void *);
     int (*send_niq_type)(enum stream_iq_type, iq_t *, size_t, void *);
-    int (*send_xdma_data)(int ch, const char *buf, int len, void *args);
+    //int (*send_xdma_data)(int ch, const char *buf, int len, void *args);
+    int (*send_xdma_data)(int ch, char *buf[], uint32_t len[], int count, void *args);
     int (*niq_dispatcher)(iq_t *, size_t, void *);
     int (*agc_ctrl)(int, void *);
     bool (*residency_time_arrived)(uint8_t, int, bool);

@@ -17,6 +17,7 @@
 
 
 static int xspm_stream_stop(int ch, int subch, enum stream_type type);
+static int xspm_read_xdma_data_over(int ch,  void *arg);
 
 static inline void *zalloc(size_t size)
 {
@@ -83,12 +84,48 @@ static int32_t _reset_run_timer(uint8_t index, uint8_t ch)
 
 
 static struct _spm_xstream spm_xstream[] = {
-        {XDMA_R_DEV0,        -1, 0, NULL, XDMA_BUFFER_SIZE, XDMA_BLOCK_SIZE, "XDMA Stream0", XDMA_WRITE, XDMA_STREAM, -1},
-        {XDMA_R_DEV1,        -1, 1, NULL, XDMA_BUFFER_SIZE, XDMA_BLOCK_SIZE, "XDMA Stream1", XDMA_READ, XDMA_STREAM, -1},
+        {XDMA_R_DEV0,        -1, 0, XDMA_BUFFER_SIZE, XDMA_BLOCK_SIZE, "XDMA Stream0", XDMA_WRITE, XDMA_STREAM, -1},
+        {XDMA_R_DEV1,        -1, 1, XDMA_BUFFER_SIZE, XDMA_BLOCK_SIZE, "XDMA Stream1", XDMA_READ, XDMA_STREAM, -1},
 //        {XDMA_R_DEV2,        -1, 2, NULL, XDMA_BUFFER_SIZE, XDMA_BLOCK_SIZE, "XDMA Stream2", XDMA_READ, XDMA_STREAM, -1},
 //        {XDMA_R_DEV3,        -1, 3, NULL, XDMA_BUFFER_SIZE, XDMA_BLOCK_SIZE, "XDMA Stream3", XDMA_READ, XDMA_STREAM, -1},
 };
 
+int _WaitDeviceReady(int dev_fd)
+{
+    #define DEVICE_READY_TIMEOUT 10000  //unit is ms
+	int ret = 0;
+	int isReady = 0;
+	int timeout = DEVICE_READY_TIMEOUT;
+	enum xdma_status status;
+	struct xdma_ring_trans_ioctl ring_trans;
+	memset(&ring_trans, 0, sizeof(struct xdma_ring_trans_ioctl));
+
+	while(timeout--)
+	{
+		ret = ioctl(dev_fd, IOCTL_XDMA_STATUS, &status);
+		if (ret) 
+		{
+			printf("ioctl(IOCTL_XDMA_STATUS) failed %d\n", ret);
+			return -1;	  
+		}	
+
+		printf("IOCTL_XDMA_STATUS:%d\n", status);
+		if(status == XDMA_STATUS_BUSY)
+		{
+			isReady = 1;
+			break;
+		}
+		
+		usleep(1000);
+	}
+
+	if(isReady)
+		return 1;
+		
+	return 0;   // time out 
+}
+
+#if 0
 int _WaitDeviceReady(int dev_fd)
 {
     #define DEVICE_READY_TIMEOUT 1000  //unit is ms
@@ -121,6 +158,7 @@ int _WaitDeviceReady(int dev_fd)
 		
 	return 0;   // time out 
 }
+#endif
 
 static int xspm_create(void)
 {
@@ -128,6 +166,7 @@ static int xspm_create(void)
     struct xdma_ring_trans_ioctl ring_trans;
     pstream = spm_xstream;
     int i = 0, rc;
+    int pagesize = getpagesize();
     printf_note("SPM init.%ld\n", ARRAY_SIZE(spm_xstream));
     
     /* create stream */
@@ -138,19 +177,31 @@ static int xspm_create(void)
             continue;
         }
         printf_note("mmap: %s\n", pstream[i].devname);
-        if(pstream[i].rd_wr == XDMA_READ){
-            pstream[i].ptr = mmap(NULL, pstream[i].len, PROT_READ | PROT_WRITE,MAP_SHARED, pstream[i].id, 0);
-            if (pstream[i].ptr == (void*) -1) {
-                fprintf(stderr, "mmap: %s\n", strerror(errno));
-                exit(-1);
-            }
-        }
-        printf_warn("[%d, ch=%d]create stream[%s]: dev:%s, ptr=%p, len=%d\n", pstream[i].id,pstream[i].ch,
-            pstream[i].name, pstream[i].devname, pstream[i].ptr, pstream[i].len);
-        
         memset(&ring_trans, 0, sizeof(struct xdma_ring_trans_ioctl));
         ring_trans.block_size = pstream[i].block_size;
         ring_trans.block_count = pstream[i].len / pstream[i].block_size;
+        printf_warn("block_size=%u, block_count=%u, len=%u\n", ring_trans.block_size, ring_trans.block_count, pstream[i].len);
+        xspm_stream_stop(pstream[i].ch, -1, XDMA_STREAM);
+        if(pstream[i].rd_wr == XDMA_READ){
+        rc = ioctl(pstream[i].id, IOCTL_XDMA_INIT_BUFF, &ring_trans);  //close时释放
+        if (rc == 0) {
+            printf("IOCTL_XDMA_INIT_BUFF succesful.\n");
+        } 
+        else {
+            printf("ioctl(IOCTL_XDMA_INIT_BUFF) failed= %d\n", rc);
+            exit(-1);
+        }
+            printf_warn("[%d, ch=%d]create stream[%s] dev:%s len=%u, block_size:%u, block_count=%u\n", pstream[i].id,pstream[i].ch, pstream[i].name, 
+                                pstream[i].devname, pstream[i].len, pstream[i].block_size, ring_trans.block_count);
+            for(int j = 0; j < ring_trans.block_count; j++){
+                pstream[i].ptr[j] = mmap(NULL, ring_trans.block_size, PROT_READ | PROT_WRITE,MAP_SHARED, pstream[i].id, j * pagesize);
+                if (pstream[i].ptr[j] == (void*) -1) {
+                    fprintf(stderr, "mmap: %s\n", strerror(errno));
+                    exit(-1);
+                }
+                printf_warn("block[%d]: ptr=%p, pagesize=%d\n", j, pstream[i].ptr[j], pagesize);
+            }
+        }
         //xspm_stream_stop(pstream[i].ch, 0, XDMA_STREAM);
         usleep(1000);
     }
@@ -161,7 +212,7 @@ static int xspm_create(void)
 
 struct xdma_ring_trans_ioctl xinfo[4];
 
-static ssize_t xspm_stream_read(int ch, int type,  void **data, void *args)
+static ssize_t xspm_stream_read(int ch, int type,  void **data, uint32_t *len, void *args)
 {
     #define _STREAM_READ_TIMEOUT_US (1000000)
     int rc;
@@ -203,15 +254,23 @@ static ssize_t xspm_stream_read(int ch, int type,  void **data, void *args)
             return -1;
         }
     }while(info->status == RING_TRANS_PENDING);
-    readn = info->block_size;
-    *data = pstream[type].ptr + info->rx_index*readn;
-    pstream[type].consume_index = info->rx_index;
+    //readn = info->block_size;
+    //*data = pstream[type].ptr + info->rx_index*readn;
+   // pstream[type].consume_index = info->rx_index;
    // if(args != NULL)
    //     memcpy(args, info, sizeof(info));
+   int index;
 
-    printf_debug("[%p, %p, offset=0x%x]%s, readn:%lu\n", *data, pstream[type].ptr, info->rx_index,  pstream[type].name, readn);
+    printf_note("ready_count: %u\n", info->ready_count);
+    for(int i = 0; i < info->ready_count; i++){
+        index = (info->rx_index + i) % info->block_count;
+        data[i] = pstream[type].ptr[index];
+        len[i] = info->results[index].length;
+        printf_note("[%d,index:%d][%p, %p, len:%u, offset=0x%x]%s\n", 
+                i, index, data[i], pstream[type].ptr[i], len[i], info->rx_index,  pstream[type].name);
+    }
 
-    return readn;
+    return info->ready_count;
 }
 
 
@@ -309,7 +368,8 @@ static int xspm_stram_write(int ch, const void *data, size_t data_len)
 }
 
 
-static ssize_t xspm_read_xdma_data(int ch, void **data, void *args)
+//static ssize_t xspm_read_xdma_data(int ch, void **data, void *args)
+static ssize_t xspm_read_xdma_data(int ch , void **data, uint32_t *len, void *args)
 {
     int index;
 
@@ -318,19 +378,24 @@ static ssize_t xspm_read_xdma_data(int ch, void **data, void *args)
     if(index < 0)
         return -1;
     //printf_warn("index=%d, ch=%d\n", index, ch);
-    return xspm_stream_read(ch, index, data, args);
+    return xspm_stream_read(ch, index, data, len, args);
 }
 
-static int xspm_send_data(int ch, const char *buf, int len, void *args)
+static int xspm_send_data(int ch, char *buf[], uint32_t len[], int count, void *args)
 {
     int section_id = *(int *)args;
-    struct iovec iov[2];
+    struct iovec iov[count];
 
-    iov[0].iov_base = buf;
-    iov[0].iov_len = len;
+    printf_note("count:%d\n", count);
+    for(int i = 0; i < count; i++){
+        iov[i].iov_base = buf[i];
+        iov[i].iov_len = len[i];
+        printf_note("base: %p, %lu\n", iov[i].iov_base, iov[i].iov_len);
+    }
+    xspm_read_xdma_data_over(ch, NULL);
 
 #if defined(SUPPORT_PROTOCAL_M57)
-    tcp_send_vec_data_by_secid(iov, 1, NET_DATA_TYPE_XDMA, section_id);
+    //tcp_send_vec_data_by_secid(iov, 1, NET_DATA_TYPE_XDMA, section_id);
     return 0;
 #endif
 
@@ -445,7 +510,8 @@ static int _xspm_close(void *_ctx)
     int i, ch;
 
     for(i = 0; i< ARRAY_SIZE(spm_xstream) ; i++){
-        xspm_stream_stop(-1, -1, i);
+        for(int ch = 0; ch  < MAX_XDMA_NUM; ch ++)
+            xspm_stream_stop(ch, -1, XDMA_STREAM);
         close(pstream[i].id);
     }
     for(ch = 0; ch< MAX_RADIO_CHANNEL_NUM; ch++){
@@ -483,7 +549,7 @@ static int xspm_read_xdma_data_over(int ch,  void *arg)
     printf_note("*OVER index=%d block_size=%u,block_count=%u,ready_count=%u,rx_index=%u\n", index,
         ring_trans->block_size, ring_trans->block_count, ring_trans->ready_count, ring_trans->rx_index);
     ring_trans->invalid_index = ring_trans->rx_index;
-    ring_trans->invalid_count = 1;//ring_trans->ready_count;
+    ring_trans->invalid_count = ring_trans->ready_count;
     if(pstream[index].id < 0)
         return -1;
 

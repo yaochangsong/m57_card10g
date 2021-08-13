@@ -24,6 +24,7 @@
 #include <error.h>  
 #include <net/route.h>  
 #include <sys/sysinfo.h>
+#include <sys/wait.h>
 
 
 /** Duplicates a string or die if memory cannot be allocated

@@ -318,7 +318,7 @@ void tcp_free(struct net_tcp_client *cl)
         list_del(&cl->list);
         cl->srv->nclients--;
         socket_bitmap_clear(cl->section.section_id);
-        //executor_net_disconnect_notify(&cl->peer_addr);
+        executor_net_disconnect_notify(&cl->peer_addr);
         free(cl);
     }
     pthread_mutex_unlock(&srv->tcp_client_lock);
@@ -517,6 +517,36 @@ void tcp_active_send_all_client(uint8_t *data, int len)
     }
 }
 
+static int tcp_send_data_to_client(int fd, const char *buf, int buflen)
+{
+    ssize_t ret = 0, len;
+
+    if (!buflen)
+        return 0;
+
+    while (buflen) {
+        len = send(fd, buf, buflen, 0);
+
+        if (len < 0) {
+            printf_note("[fd:%d]-send len : %ld, %d[%s]\n", fd, len, errno, strerror(errno));
+            if (errno == EINTR)
+                continue;
+
+            if (errno == EAGAIN || errno == EWOULDBLOCK || errno == ENOTCONN)
+                break;
+
+            return -1;
+        }
+
+        ret += len;
+        buf += len;
+        buflen -= len;
+    }
+    
+    return ret;
+}
+
+
 static inline int _send_vec_data_to_client(struct net_tcp_client *client, struct iovec *iov, int iov_len)
 {    
     struct msghdr msgsent;
@@ -558,12 +588,42 @@ int tcp_send_vec_data_uplink(struct iovec *iov, int iov_len, void *args)
         if(srv == NULL)
             continue;
         list_for_each_entry_safe(cl_list, list_tmp, &srv->clients, list){
-            printf_note("port: %d\n", cl_list->get_peer_port(cl_list));
-            //if(net_hash_find(cl_list->section.hash, parg->chip_id, RT_CHIPID) && 
-            //    net_hash_find(cl_list->section.hash, parg->func_id, RT_FUNCID)){
+            if(net_hash_find(cl_list->section.hash, parg->chip_id, RT_CHIPID) && 
+                net_hash_find(cl_list->section.hash, parg->func_id, RT_FUNCID)){
+                    //printf_note("send to port: %d, 0x%x, 0x%x\n", cl_list->get_peer_port(cl_list), parg->chip_id, parg->func_id);
                     _send_vec_data_to_client(cl_list, iov, iov_len);
-            //    }
+                }
                 
+        }
+    }
+    return 0;
+}
+
+int tcp_send_data_uplink(char  *data, int len, void *args)
+{
+    struct net_tcp_server *srv ;
+    struct net_tcp_client *cl_list, *list_tmp;
+    int ret = 0;
+    union _cmd_srv *cmdsrv;
+    char *ifname;
+
+    struct net_sub_st *parg = args;
+    if(parg == NULL)
+        return -1;
+    for(int i = 0; i < get_use_ifname_num()+1; i++){
+        ifname = config_get_if_indextoname(i);
+        if(!ifname || get_netlink_status(ifname) == -1)
+            continue;
+        cmdsrv = (union _cmd_srv *)get_cmd_server(i);
+        srv = (struct net_tcp_server *)cmdsrv->tcpsvr;
+        if(srv == NULL)
+            continue;
+        list_for_each_entry_safe(cl_list, list_tmp, &srv->clients, list){
+            if(net_hash_find(cl_list->section.hash, parg->chip_id, RT_CHIPID) && 
+                net_hash_find(cl_list->section.hash, parg->func_id, RT_FUNCID)){
+                    //printf_note("send to port: %d, 0x%x, 0x%x\n", cl_list->get_peer_port(cl_list), parg->chip_id, parg->func_id);
+                    tcp_send_data_to_client(cl_list->sfd.fd.fd, data, len);
+                }
         }
     }
     return 0;

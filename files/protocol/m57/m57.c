@@ -505,15 +505,21 @@ bool m57_execute_cmd(void *client, int *code)
             }__attribute__ ((packed));
             struct sub_st _sub;
             memcpy(&_sub,  payload, sizeof(_sub));
-            printf_info("sub chip_id:0x%x, func_id=0x%x, port=0x%x\n", _sub.chip_id, _sub.func_id, _sub.port);
+            printf_note("[%d]sub chip_id:0x%x, func_id=0x%x, port=0x%x\n", cl->get_peer_port(cl), _sub.chip_id, _sub.func_id, _sub.port);
             io_socket_set_sub(cl->section.section_id, _sub.chip_id, _sub.func_id, _sub.port);
-            #if 0
+            #if 1
             net_hash_add(cl->section.hash, _sub.chip_id, RT_CHIPID);
             net_hash_add(cl->section.hash, _sub.func_id, RT_FUNCID);
             net_hash_add(cl->section.hash, _sub.port, RT_PORTID);
-            net_hash_dump(cl->section.hash);
-            net_hash_find_type_set(cl->section.hash, RT_CHIPID, NULL);
+            //net_hash_dump(cl->section.hash);
+            //net_hash_find_type_set(cl->section.hash, RT_CHIPID, NULL);
+            //printf_warn("find chipId:%s\n", net_hash_find(cl->section.hash, _sub.chip_id, RT_CHIPID) == true ? "YES": "NO");
+            //printf_warn("find func_id:%s\n", net_hash_find(cl->section.hash, _sub.func_id, RT_FUNCID) == true ? "YES": "NO");
+            //printf_warn("find port:%s\n", net_hash_find(cl->section.hash, _sub.port, RT_PORTID) == true ? "YES": "NO");
             #endif
+            int enable = 1;
+            //if(_sub.chip_id == 0x0502 && _sub.func_id == 0x03)
+            //    executor_set_command(EX_XDMA_ENABLE_CMD, -1, 1, &enable, -1);
             break;
         }
         case CCT_DATA_UNSUB:
@@ -527,7 +533,7 @@ bool m57_execute_cmd(void *client, int *code)
             memcpy(&_sub,  payload, sizeof(_sub));
             printf_note("unsub chip_id:0x%x, func_id=0x%x, port=0x%x\n", _sub.chip_id, _sub.func_id, _sub.port);
             io_socket_set_unsub(cl->section.section_id, _sub.chip_id, _sub.func_id, _sub.port);
-            #if 0
+            #if 1
             net_hash_del(cl->section.hash, _sub.chip_id, RT_CHIPID);
             net_hash_del(cl->section.hash, _sub.func_id, RT_FUNCID);
             net_hash_del(cl->section.hash, _sub.port, RT_PORTID);

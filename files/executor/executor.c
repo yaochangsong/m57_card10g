@@ -27,51 +27,17 @@ pthread_mutex_t set_cmd_mutex = PTHREAD_MUTEX_INITIALIZER;
 int executor_net_disconnect_notify(struct sockaddr_in *addr)
 {
     struct poal_config *poal_config = &(config_get_config()->oal_config);
-#if (defined SUPPORT_DATA_PROTOCAL_TCP)
-    struct net_tcp_server *srv;
-#else
-    struct net_udp_server *srv;
+#if (defined SUPPORT_DATA_PROTOCAL_UDP)
     for(int type = 0; type < NET_DATA_TYPE_MAX ; type++){
         net_data_remove_client(addr, -1, type);
     }
 #endif
-    int clinets = 0;
-    
-    for(int i = 0; i < get_use_ifname_num(); i++){
-        if((srv = get_cmd_server(i)) == NULL){
-                continue;
-            clinets += srv->nclients;
-        }
-    }
-    /* client is 0 */
-    printf_note("total client number: %d, clinets=%d\n", srv->nclients, clinets);
+    int enable = 0;
+    int clinets = get_cmd_server_clients();
+    printf_note("cmd server:total client number: %d\n", clinets);
+
     if(clinets == 0){
-        #if defined(SUPPORT_XWFS)
-        xwfs_stop_backtrace(NULL);  /* 停止回溯 ，回到正常状 */
-        #endif
-        /* 关闭所有子通道 */
-        uint8_t enable =0;
-        uint8_t default_method = IO_DQ_MODE_IQ;
-        int i = 0, ch;
-        for(ch = 0; ch< MAX_RADIO_CHANNEL_NUM; ch++){
-            for(i = 0; i< MAX_SIGNAL_CHANNEL_NUM; i++){
-                executor_set_command(EX_MID_FREQ_CMD, EX_SUB_CH_ONOFF, ch, &enable, i);
-                executor_set_command(EX_MID_FREQ_CMD, EX_SUB_CH_DEC_METHOD, i, &default_method);
-                memset(&poal_config->channel[ch].sub_channel_para.sub_ch_enable[i], 0, sizeof(struct output_en_st));
-                io_set_enable_command(IQ_MODE_DISABLE, ch,i, 0);
-            }
-            io_set_rf_calibration_source_enable(ch, 0);
-            /* 所有客户端离线，关闭相关使能，线程复位到等待状�?*/
-            memset(&poal_config->channel[ch].enable, 0, sizeof(poal_config->channel[ch].enable));
-            poal_config->channel[ch].enable.bit_reset = true; /* reset(stop) all working task */
-            #ifdef SUPPORT_FS
-            struct fs_context *fs_ctx;
-            fs_ctx = get_fs_ctx();
-            if(fs_ctx != NULL){
-                fs_ctx->ops->fs_stop_save_file(ch, NULL);
-            }
-            #endif
-        }
+        executor_set_command(EX_XDMA_ENABLE_CMD, -1, 1, &enable, -1);
     }
     return 0;
 }

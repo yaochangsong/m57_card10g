@@ -141,6 +141,7 @@ extern bool tcp_find_client(struct sockaddr_in *addr);
 extern void tcp_active_send_all_client(uint8_t *data, int len);
 extern void update_tcp_keepalive(void *client);
 extern int tcp_send_vec_data_uplink(struct iovec *iov, int iov_len, void *args);
+extern int tcp_send_data_uplink(char  *data, int len, void *args);
 
 #endif
 

@@ -67,6 +67,29 @@ static enum net_listen_data_type _get_net_listen_index(int type)
     return listen_type;
 }
 
+int get_cmd_server_clients(void)
+{
+    int clients = 0;
+#if (defined SUPPORT_PROTOCAL_AKT) || (defined SUPPORT_PROTOCAL_M57)
+    struct net_tcp_server *srv;
+    for(int i = 0; i < get_use_ifname_num(); i++){
+        if((srv = ((union _cmd_srv *)get_cmd_server(i))->tcpsvr) == NULL){
+            continue;
+        }
+        clients += srv->nclients;
+    }
+#elif defined(SUPPORT_PROTOCAL_XW)
+    struct uh_server *srv;
+    for(int i = 0; i < get_use_ifname_num(); i++){
+        if((srv = ((union _cmd_srv *)get_cmd_server(i))->uhsvr) == NULL){
+            continue;
+        }
+        clients += srv->nclients;
+    }
+#endif
+    return clients;
+}
+
 
 void *get_data_server(int index, int type)
 {

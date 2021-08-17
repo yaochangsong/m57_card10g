@@ -476,8 +476,8 @@ void spm_deal(struct spm_context *ctx, void *args, int ch)
 void spm_xdma_read_data_handle_thread(void *arg)
 {
     struct spm_context *ctx = NULL;
-    char *ptr_data[256] = {NULL};
-    uint32_t  len[256] = {0};
+    char *ptr_data[XDMA_TRANSFER_MAX_DESC] = {NULL};
+    uint32_t  len[XDMA_TRANSFER_MAX_DESC] = {0};
     int count = 0;
     int ch, section_id = 0;
 
@@ -539,10 +539,10 @@ loop:
     printf_note(">>>>>XDMA%d read start\n", ch);
     do{
         if(ctx->ops->read_xdma_data)
-            count = ctx->ops->read_xdma_data(ch, (void **)ptr_data, len, NULL);
+            count = ctx->ops->read_xdma_data(ch, (void **)ptr_data, len, &sub_args);
         if(count > 0){
             if(ctx->ops->send_xdma_data)
-                ctx->ops->send_xdma_data(ch, ptr_data, len, count, &section_id);
+                ctx->ops->send_xdma_data(ch, ptr_data, len, count, &sub_args);
         }
         if(socket_bitmap_weight() == 0){
             printf_note("all client offline\n");
@@ -657,7 +657,7 @@ void *spm_init(void)
 #endif
     for(int i = 0; i <1; i++){
         xdma_ch[i] = 1;
-        ret=pthread_create(&recv_thread_id,NULL,(void *)spm_xdma_read_data_handle_thread, &xdma_ch[i]);
+        ret=pthread_create(&recv_thread_id,NULL,(void *)spm_xdma_data_handle_thread_dispatcher, &xdma_ch[i]);
         if(ret!=0)
             perror("pthread cread xdma");
     }

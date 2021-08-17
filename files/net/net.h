@@ -37,6 +37,7 @@ extern int get_use_ifname_num(void);
 extern void *get_cmd_server(int index);
 extern void *get_http_server(int index);
 extern void *get_data_server(int index, int type);
+extern int get_cmd_server_clients(void);
 
 #endif
 

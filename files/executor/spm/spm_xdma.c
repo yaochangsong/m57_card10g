@@ -139,11 +139,11 @@ static int xspm_create(void)
             fprintf(stderr, "[%d]open:%s, %s\n", i, pstream[i].devname, strerror(errno));
             continue;
         }
-        printf_note("mmap: %s\n", pstream[i].devname);
+        printf_info("mmap: %s\n", pstream[i].devname);
         memset(&ring_trans, 0, sizeof(struct xdma_ring_trans_ioctl));
         ring_trans.block_size = pstream[i].block_size;
         ring_trans.block_count = pstream[i].len / pstream[i].block_size;
-        printf_warn("block_size=%u, block_count=%u, len=%u\n", ring_trans.block_size, ring_trans.block_count, pstream[i].len);
+        printf_info("block_size=%u, block_count=%u, len=%u\n", ring_trans.block_size, ring_trans.block_count, pstream[i].len);
         xspm_read_stream_stop(pstream[i].ch, -1, XDMA_STREAM);
         if(pstream[i].rd_wr == XDMA_READ){
         rc = ioctl(pstream[i].id, IOCTL_XDMA_INIT_BUFF, &ring_trans);  //close时释放
@@ -154,7 +154,7 @@ static int xspm_create(void)
             printf("ioctl(IOCTL_XDMA_INIT_BUFF) failed= %d\n", rc);
             exit(-1);
         }
-            printf_warn("[%d, ch=%d]create stream[%s] dev:%s len=%u, block_size:%u, block_count=%u\n", pstream[i].id,pstream[i].ch, pstream[i].name, 
+            printf_info("[%d, ch=%d]create stream[%s] dev:%s len=%u, block_size:%u, block_count=%u\n", pstream[i].id,pstream[i].ch, pstream[i].name, 
                                 pstream[i].devname, pstream[i].len, pstream[i].block_size, ring_trans.block_count);
             for(int j = 0; j < ring_trans.block_count; j++){
                 pstream[i].ptr[j] = mmap(NULL, ring_trans.block_size, PROT_READ | PROT_WRITE,MAP_SHARED, pstream[i].id, j * pagesize);
@@ -162,7 +162,7 @@ static int xspm_create(void)
                     fprintf(stderr, "mmap: %s\n", strerror(errno));
                     exit(-1);
                 }
-                printf_warn("block[%d]: ptr=%p, pagesize=%d\n", j, pstream[i].ptr[j], pagesize);
+                printf_info("block[%d]: ptr=%p, pagesize=%d\n", j, pstream[i].ptr[j], pagesize);
             }
         }
         usleep(1000);
@@ -173,7 +173,6 @@ static int xspm_create(void)
 
 
 struct xdma_ring_trans_ioctl xinfo[4];
-
 static ssize_t xspm_stream_read(int ch, int type,  void **data, uint32_t *len, void *args)
 {
     #define _STREAM_READ_TIMEOUT_US (1000000)
@@ -193,7 +192,7 @@ static ssize_t xspm_stream_read(int ch, int type,  void **data, uint32_t *len, v
     do{
         rc =  ioctl(pstream[type].id, IOCTL_XDMA_TRANS_GET, info);
         if (rc) {
-            printf_err("type=%d, id=%d ioctl(IOCTL_XDMA_TRANS_GET) failed %d, info=%p, %p, %p\n",type, pstream[type].id, rc, info, &xinfo[0], &xinfo[1]);
+            //printf_err("type=%d, id=%d ioctl(IOCTL_XDMA_TRANS_GET) failed %d, info=%p, %p, %p\n",type, pstream[type].id, rc, info, &xinfo[0], &xinfo[1]);
             return -1;
         }
         if(info->status == RING_TRANS_OK){
@@ -213,25 +212,20 @@ static ssize_t xspm_stream_read(int ch, int type,  void **data, uint32_t *len, v
             usleep(1);
         if(_get_run_timer(0, 0) > _STREAM_READ_TIMEOUT_US){
             printf_warn("Read TimeOut!\n");
-            return -1;
+            //return -1;
         }
     }while(info->status == RING_TRANS_PENDING);
-    //readn = info->block_size;
-    //*data = pstream[type].ptr + info->rx_index*readn;
-   // pstream[type].consume_index = info->rx_index;
-   // if(args != NULL)
-   //     memcpy(args, info, sizeof(info));
+
    int index;
 
-    printf_note("ready_count: %u\n", info->ready_count);
+    //printf_info("ready_count: %u\n", info->ready_count);
     for(int i = 0; i < info->ready_count; i++){
         index = (info->rx_index + i) % info->block_count;
         data[i] = pstream[type].ptr[index];
         len[i] = info->results[index].length;
-        printf_note("[%d,index:%d][%p, %p, len:%u, offset=0x%x]%s\n", 
-                i, index, data[i], pstream[type].ptr[i], len[i], info->rx_index,  pstream[type].name);
+        printf_info("[%d,index:%d][%p, %p, len:%u, offset=0x%x]%s\n", 
+                i, index, data[i], pstream[type].ptr[index], len[i], info->rx_index,  pstream[type].name);
     }
-
     return info->ready_count;
 }
 
@@ -315,19 +309,61 @@ static int xspm_stram_write(int ch, const void *data, size_t data_len)
     return ret;
 }
 
+static ssize_t xspm_stream_read_test(int ch, int type,  void **data, uint32_t *len, void *args)
+{
+    static uint8_t buffer[8192] = {
+        0x51,0x57,0xbe,0x30,0x18,0x01,0x00,0x00,0x00,0x00,
+        0x01,0x05,0x00,0x00,0x08,0x01,0x02,0x02,0x00,0x00,0x00,0x00,0x00,0x00,0xaa,0xaa,
+        0x55,0x55,0xc8,0x02,0x00,0x00,0x30,0x05,0x74,0x09,0x38,0x05,0xc9,0x09,0x00,0x00,
+        0x00,0x00,0x00,0x00,0x00,0x00,0x01,0x00,0x00,0x00,0x25,0x10,0x18,0x20,0x00,0x00,
+        0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
+        0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
+        0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
+        0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
+        0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
+        0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
+        0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
+        0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
+        0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
+        0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
+        0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
+        0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
+        0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
+        0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x55,0x55,0xaa,0xaa
+    };
+
+    int count = 10;
+    for(int i= 0; i < count; i++){
+         data[i] = buffer;
+         len[i] = sizeof(buffer);
+    }
+    return count;
+}
+
+
 
 //static ssize_t xspm_read_xdma_data(int ch, void **data, void *args)
 static ssize_t xspm_read_xdma_data(int ch , void **data, uint32_t *len, void *args)
 {
     int index;
+    struct net_sub_st *parg = args;
 
-    //index = xspm_find_index_by_type(ch, -1, XDMA_STREAM);
     index = xspm_find_index_by_rw(ch, -1, XDMA_READ);
     if(index < 0)
         return -1;
-    //printf_warn("index=%d, ch=%d\n", index, ch);
+    //test
+    #if 0
+    if(parg){
+        parg->chip_id = 0x502;
+        parg->func_id = 0x6;
+    }
+    #endif
+
+    //return xspm_stream_read_test(ch, index, data, len, args);
     return xspm_stream_read(ch, index, data, len, args);
 }
+
+
 
 static int xdma_data_dispatcher(int ch, void **data, ssize_t nsize, void *args)
 {
@@ -404,11 +440,12 @@ static int xspm_send_data(int ch, char *buf[], uint32_t len[], int count, void *
     int section_id = *(int *)args;
     struct iovec iov[count];
 
-    printf_note("count:%d\n", count);
+   // printf_note("count:%d\n", count);
     for(int i = 0; i < count; i++){
         iov[i].iov_base = buf[i];
-        iov[i].iov_len = len[i];
+        iov[i].iov_len =  len[i];
         //printf_note("base: %p, %lu\n", iov[i].iov_base, iov[i].iov_len);
+        //tcp_send_data_uplink(buf[i], len[i], args);
     }
     tcp_send_vec_data_uplink(iov, count, args);
     xspm_read_xdma_data_over(ch, NULL);
@@ -436,7 +473,7 @@ static int xspm_read_stream_start(int ch, int subch, uint32_t len,uint8_t contin
     
     rc = ioctl(pstream[index].id, IOCTL_XDMA_TRANS_START, &ring_trans);
     if (rc == 0) {
-        printf("IOCTL_XDMA_TRANS_START succesful.\n");
+        printf_info("IOCTL_XDMA_TRANS_START succesful.\n");
     } 
     else {
         printf("ioctl(IOCTL_XDMA_TRANS_START) failed= %d\n", rc);
@@ -460,14 +497,14 @@ static int xspm_read_stream_stop(int ch, int subch, enum stream_type type)
     index = xspm_find_index_by_rw(ch, -1, XDMA_READ);
     if(index < 0)
         return -1;
-    printf_note("name=%s, type=%d, id=%d\n", pstream[index].name, type, pstream[index].id);
+    printf_info("name=%s, type=%d, id=%d\n", pstream[index].name, type, pstream[index].id);
 
     #if 1
     if(pstream[index].id < 0)
         return -1;
     ret = ioctl(pstream[index].id, IOCTL_XDMA_TRANS_STOP, &ring_trans);
     if (ret == 0) {
-    	printf_note("IOCTL_XDMA_PERF_STOP succesful.\n");
+    	printf_info("IOCTL_XDMA_PERF_STOP succesful.\n");
     } 
     else {
     	printf_note("ioctl(IOCTL_XDMA_PERF_STOP) error:%d\n", ret);
@@ -493,7 +530,6 @@ static int _xspm_close(void *_ctx)
         safe_free(ctx->run_args[ch]->fft_ptr);
         safe_free(ctx->run_args[ch]);
     }
-    printf_note("close..\n");
     return 0;
 }
 
@@ -522,7 +558,7 @@ static int xspm_read_xdma_data_over(int ch,  void *arg)
     ring_trans.invalid_count = 1;
     #endif
     //struct xdma_ring_trans_ioctl *ring_trans = arg;
-    printf_note("*OVER index=%d block_size=%u,block_count=%u,ready_count=%u,rx_index=%u\n", index,
+    printf_info("*OVER index=%d block_size=%u,block_count=%u,ready_count=%u,rx_index=%u\n", index,
         ring_trans->block_size, ring_trans->block_count, ring_trans->ready_count, ring_trans->rx_index);
     ring_trans->invalid_index = ring_trans->rx_index;
     ring_trans->invalid_count = ring_trans->ready_count;

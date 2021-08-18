@@ -1,0 +1,43 @@
+#
+# For a description of the syntax of this configuration file,
+# see Documentation/kbuild/kconfig-language.txt.
+#
+menuconfig PROTOCOL
+	bool "Application Net Protocol"
+	default y
+	depends on NET
+	if PROTOCOL               
+		choice                            
+			prompt "Protocol Select"  
+			default PROTOCOL_XW     
+
+			config PROTOCOL_XW      
+				bool "showay"
+
+			config PROTOCOL_ACT
+				bool "act"	
+		endchoice                         
+	endif
+	
+	if PROTOCOL               
+		choice                            
+			prompt "Data Protocol Select"  
+			default PROTOCOL_DATA_TCP     
+
+			config PROTOCOL_DATA_TCP      
+				bool "tcp"
+
+			config PROTOCOL_DATA_UDP
+				bool "udp"	
+		endchoice                         
+	endif
+
+	config PROTOCOL_CLINET_SUB_DATA
+        bool "Client Sub Data Type"
+        default n
+		depends on PROTOCOL
+		
+	config PROTOCOL_HTTP_PORT
+        int "HTTP Port"
+        default 80
+		depends on PROTOCOL

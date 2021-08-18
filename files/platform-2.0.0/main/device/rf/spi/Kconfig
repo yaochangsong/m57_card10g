@@ -1,0 +1,15 @@
+#
+# For a description of the syntax of this configuration file,
+# see Documentation/kbuild/kconfig-language.txt.
+#
+choice
+    prompt "rf spi protocol"
+    optional
+
+config DEVICE_RF_SPI_ACT
+    bool "act"
+
+config DEVICE_RF_SPI_TF713
+    bool "tf713"
+
+endchoice

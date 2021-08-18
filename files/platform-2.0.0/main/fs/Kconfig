@@ -1,0 +1,54 @@
+#
+# For a description of the syntax of this configuration file,
+# see Documentation/kbuild/kconfig-language.txt.
+#
+config FS
+	bool "File & Disk Management"
+	default n
+	
+config FS_FORMAT_WAV
+	bool "Format Wav"
+	default n
+	depends on FS
+	
+config FS_NOTIFIER
+	bool "Notify"
+	default n
+	depends on FS
+	
+config FS_PROGRESS
+	bool "Progress"
+	default n
+	depends on FS
+	
+config FS_PAUSE
+	bool "Pause"
+	default n
+	depends on FS
+	
+config FS_SAVE_PAUSE
+	bool "Save Pause"
+	default n
+	depends on FS_PAUSE
+	
+config FS_BACK_PAUSE
+	bool "BackTrace Pause"
+	default n
+	depends on FS_PAUSE
+	
+menuconfig FS_FILENAME_RULE
+	bool "File Naming Rule"
+	default y
+	depends on FS
+	if FS_FILENAME_RULE
+	choice
+		prompt "Select File Naming Rule"
+		default FS_FILENAME_RULE_TF713
+		
+		config FS_FILENAME_RULE_TF713
+		bool "TF713"
+		
+		config FS_FILENAME_RULE_ACT
+		bool "ACT"
+	endchoice
+	endif

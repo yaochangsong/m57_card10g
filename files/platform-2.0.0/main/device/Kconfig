@@ -1,0 +1,118 @@
+#
+# For a description of the syntax of this configuration file,
+# see Documentation/kbuild/kconfig-language.txt.
+#
+menuconfig USER_DEVICE
+        bool "User Device Select"
+        default y
+        if USER_DEVICE
+            config DEVICE_AUDIO
+                bool "Audio"
+                default n
+
+            config DEVICE_ADC_CLOCK
+                bool "Adc&Clock"
+                default y
+                
+            config DEVICE_GPIO
+                bool "Gpio"
+                default y
+
+            config DEVICE_GPS
+                bool "GPS"
+                default n  
+                
+            config DEVICE_LCD
+                bool "LCD"
+                default n
+                
+            config DEVICE_UART
+                bool "UART"
+                default n        
+
+            config DEVICE_RS485
+                bool "RS485"
+                select DEVICE_UART
+                default n
+				
+			config DEVICE_RS485_AMP
+                bool "RS485 Amplifier"
+                select DEVICE_UART
+                default n
+				depends on DEVICE_RS485
+			
+			config DEVICE_RS485_EC
+                bool "RS485 Electronic Compass"
+                select DEVICE_UART
+                default n
+				depends on DEVICE_RS485
+                
+            config DEVICE_HUMIDITY
+                bool "Humity"
+                default n  
+	
+		    menuconfig DEVICE_RF  
+			#config DEVICE_RF			
+			bool "RF"
+			default y		   
+			if DEVICE_RF               
+				choice                            
+					prompt "RF Control Select"  
+					default DEVICE_RF_FPGA  
+					
+					config DEVICE_RF_FPGA     
+					bool "FPGA register"
+					
+					#menuconfig DEVICE_RF_SPI 					
+					config DEVICE_RF_SPI      
+					bool "SPI Protocol Enable"
+					
+					if DEVICE_RF_SPI
+						choice 
+							prompt "SPI Protocol Select"  
+							default DEVICE_RF_SPI_TF713
+
+							config DEVICE_RF_SPI_TF713     
+							bool "tf713"
+							
+							config DEVICE_RF_SPI_ACT     
+							bool "act"
+						endchoice  						
+					endif
+						
+					config DEVICE_RF_ADRV
+					bool  "Chip &GPIO Control"
+					
+					menuconfig DEVICE_RF_ADRV_CONDITION 
+					#config DEVICE_RF_ADRV_CONDITION 
+						bool "GPIO Control(Condition Module)"	
+						default y
+						depends on DEVICE_RF_ADRV && DEVICE_RF_ADRV
+					if DEVICE_RF_ADRV_CONDITION
+						choice 
+							prompt "Condition"  
+							default DEVICE_RF_ADRV_CONDITION_GPIO
+
+							config DEVICE_RF_ADRV_CONDITION_GPIO     
+							bool "GPIO"
+							
+							config DEVICE_RF_ADRV_CONDITION_SPI     
+							bool "SPI"
+						endchoice  						
+					endif
+						
+					if DEVICE_RF_ADRV
+						choice 
+							prompt "AD/RF Chip Select "  
+							default DEVICE_RF_ADRV_9009
+
+							config DEVICE_RF_ADRV_9009     
+							bool "ADRV9009"
+							
+							config DEVICE_RF_ADRV_9361     
+							bool "ADRV9361"
+						endchoice 						
+					endif
+				endchoice                        
+			endif
+        endif

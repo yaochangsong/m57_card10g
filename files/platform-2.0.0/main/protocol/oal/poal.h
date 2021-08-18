@@ -1,0 +1,465 @@
+#ifndef _PROTOCOL_OAL_H_
+#define _PROTOCOL_OAL_H_
+
+#include "../../net/net.h"
+#include "../../fs/fs.h"
+#define FILE_PATH_MAX_LEN 256
+
+/* 工作模式参数参数 */
+typedef enum _work_mode_type {
+    OAL_NULL_MODE               = 0xff,
+    OAL_FIXED_FREQ_ANYS_MODE    = 0x00,
+    OAL_FAST_SCAN_MODE          = 0x01,
+    OAL_MULTI_ZONE_SCAN_MODE    = 0x02,
+    OAL_MULTI_POINT_SCAN_MODE   = 0x03,
+}work_mode_type;
+
+/* bit_en：内部使能位定义 */
+enum {
+    PSD_EN_BIT_OFFSET           = 0x00,
+    AUDIO_EN_BIT_OFFSET         = 0x01,
+    IQ_EN_BIT_OFFSET            = 0x02,
+    SPEC_ANALY_EN_BIT_OFFSET    = 0x03,
+    DIRECTION_EN_BIT_OFFSET     = 0x04,
+};
+
+typedef enum _ctrl_mode_param {	
+    CTRL_MODE_LOCAL   = 0,
+    CTRL_MODE_REMOTE  = 1,
+}ctrl_mode_param;
+
+/* 加窗类型 */
+enum {
+       WINDOW_TYPE_BLACKMAN  = 0x00,    /* 布莱克曼*/
+       WINDOW_TYPE_HAMMING,             /* 海明 */
+       WINDOW_TYPE_HANNING,             /* 汉宁 */
+       WINDOW_TYPE_RECT,                /* 矩形 */
+       WINDOW_TYPE_MAX,
+};
+
+/* 平滑类型 */
+enum {
+       FFT_SMOOTH_TYPE_AVG  = 0x00,    /* 平均值 */
+       FFT_SMOOTH_TYPE_MAX,            /* 最大值 */
+       FFT_SMOOTH_TYPE_MIN,            /* 最小值 */
+       FFT_SMOOTH_TYPE_THRESHOLD,      /* 门限检测 */
+};
+
+union enable_bitmap_t
+{
+    volatile uint32_t enable;
+    struct bit_map_t{
+        volatile uint32_t fft    : 1;
+        volatile uint32_t audio  : 1;
+        volatile uint32_t iq     : 1;
+        volatile uint32_t analy  : 1;
+        volatile uint32_t cali   : 1;
+    }bit;
+};
+
+/* 输出使能 */
+struct output_en_st{
+    volatile uint8_t cid;
+    volatile int8_t  sub_id;
+    union enable_bitmap_t map;
+    volatile bool  bit_reset;
+};
+
+
+//#include "config.h"
+
+/* 频点参数 */
+struct freq_points_st{
+    int16_t index;
+    uint8_t  noise_en;  /* mute_switch 静噪开关 */
+    int8_t noise_thrh;
+    uint8_t raw_d_method; /* Original demodulation */
+    uint8_t d_method;
+    uint32_t freq_resolution;
+    volatile uint32_t fft_size;
+    uint32_t d_bandwith;
+    uint64_t center_freq; /* middle_freq 中心频率 */
+    uint64_t bandwidth;   /* rf */
+    int16_t audio_volume;   /* 音频音量 */
+    uint8_t gain_mode;      /* 增益模式 agc/mgc */
+    int8_t mgc_gain;       /* mgc增益值 */
+    uint8_t agc_ctrl_time;  /* agc控制时间 */
+    uint8_t audio_sample_rate_khz;  /* 音频采样率 */
+};//__attribute__ ((packed));
+
+struct bddc_st{
+    uint64_t middle_freq; /* 宽带ddc中心频率 */
+    uint64_t bandwidth;   /* 宽带ddc带宽 */
+};
+
+/* 多频点/定频扫描参数 */
+struct multi_freq_point_para_st{
+    uint8_t cid;
+    uint8_t window_type;
+    uint8_t frame_drop_cnt;
+    uint16_t smooth_time;
+    uint32_t residence_time;
+    int32_t residence_policy;
+    float audio_sample_rate;
+    uint32_t freq_point_cnt;
+    uint64_t start_freq;    /* 多个频点频谱拼接使用 */
+    uint64_t end_freq;      /* 多个频点频谱拼接使用 */
+    uint16_t smooth_mode;       /* 平滑模式 */
+    uint16_t smooth_threshold;  /* 平滑门限 */
+    struct freq_points_st  points[MAX_SIG_CHANNLE];
+    struct bddc_st ddc;
+};//__attribute__ ((packed));
+
+
+/* 子通道解调参数 */
+struct sub_channel_freq_para_st{
+    uint8_t cid;
+    uint8_t frame_drop_cnt;
+    uint16_t sub_channel_num;
+    struct output_en_st sub_ch_enable[MAX_SIGNAL_CHANNEL_NUM];
+    struct freq_points_st  sub_ch[MAX_SIGNAL_CHANNEL_NUM];
+};//__attribute__ ((packed));
+
+
+/* 频段参数 */
+struct freq_fregment_para_st{
+    int16_t  index;
+    uint32_t  step;
+    float freq_resolution;
+    uint32_t fft_size;
+    uint64_t start_freq;
+    uint64_t end_freq;
+};//__attribute__ ((packed));
+
+/* 多频段扫描参数 */
+struct multi_freq_fregment_para_st{
+    uint8_t cid;
+    uint8_t window_type;
+    uint8_t frame_drop_cnt;
+    uint16_t smooth_time;
+    uint32_t freq_segment_cnt;
+    struct freq_fregment_para_st  fregment[MAX_SIG_CHANNLE];
+};//__attribute__ ((packed));
+
+
+struct db_rang_st{
+    int32_t start;
+    int32_t end;
+};
+
+#define RF_MODE_NUMBER 3
+struct  rf_mode_param_st{
+    int32_t mode[RF_MODE_NUMBER];
+    int32_t mag[RF_MODE_NUMBER];
+    struct db_rang_st rf_attenuation[RF_MODE_NUMBER];
+    struct db_rang_st mgc_attenuation[RF_MODE_NUMBER];
+    struct db_rang_st detection[RF_MODE_NUMBER];
+};
+
+/* 射频参数 */
+struct rf_para_st{
+    uint8_t cid;
+    volatile uint8_t rf_mode_code;           /* 射频模式码; 0：低失真 1：常规 2：低噪声 */
+    volatile uint8_t gain_ctrl_method;       /* 增益方法; 0：手动控制（MGC） 1：自动控制（AGC）*/
+    volatile int8_t mgc_gain_value;          /* MGC 增益值; 单位 dB，精度 1dB*/
+    volatile int8_t agc_mid_freq_out_level;  /* AGC 中频 输出幅度;单位，dBm 默认值：-10dBm*/
+    uint8_t antennas_elect;         /* 天线选择 */
+    int8_t  attenuation;            /* 射频衰减 ;  -100 至 120 单位 dB，精度 1dB*/
+    int16_t temperature;            /* 射频温度 */
+    volatile uint32_t agc_ctrl_time;         /* AGC 控制时间; 单位：10 微秒 快速：100 微秒  中速：1000 微秒 慢速：10000 微秒*/
+    uint32_t mid_bw;                /* 射频中频带宽; 0~2^32 */
+    uint64_t mid_freq;              /* 中心频率 */
+    int32_t agc_ref_val_0dbm;       /* AGC: 0DB 主通道读取值 */
+    int32_t subch_ref_val_0dbm;       /* 多频点模式下: 0DB 主通道读取值  */
+    struct  rf_mode_param_st rf_mode;  /* 射频模式参数 */
+};//__attribute__ ((packed));
+
+typedef enum _rf_ctrl_method_val{
+    POAL_LOW_DISTORTION = 0,   //低失真
+    POAL_NORMAL,               //常规
+    POAL_LOW_NOISE,            //低噪声
+}rf_ctrl_method_val;
+
+typedef enum _rf_gain_mode_val{
+    POAL_MGC_MODE = 0,          //手动增益
+    POAL_AGC_MODE,              //自动增益
+}rf_gain_mode_val;
+
+
+/* 控制参数 */
+struct ctrl_st{
+    
+}__attribute__ ((packed));
+
+
+/* 网络参数 */
+struct network_addr_st{
+    uint8_t mac[6];
+    uint32_t ipaddress;
+    uint32_t netmask;
+    uint32_t gateway;
+}__attribute__ ((packed));
+
+struct network_st{
+    char *ifname;
+    uint16_t port;
+    uint16_t data_port[NET_DATA_TYPE_MAX];
+    struct network_addr_st addr;
+}__attribute__ ((packed));
+
+/* 频谱分析控制参数 */
+struct specturm_analysis_control_st{
+    uint32_t bandwidth_hz;        /* 频谱分析带宽*/
+    uint64_t frequency_hz;        /* 频谱分析频率点 */
+};//__attribute__ ((packed));
+
+
+struct residency_policy{
+    int32_t policy[MAX_RADIO_CHANNEL_NUM];
+};
+
+struct scan_bindwidth_info{
+    bool     fixed_bindwidth_flag[8];                            /* 固定扫描带宽标志： ture:使用某固定带宽扫描； false: 根据带宽扫描 */
+    uint32_t bindwidth_hz[8];                                /* 扫描带宽 */
+    float    sideband_rate[8];                                   /* 扫描带宽边带率 */
+    bool     work_fixed_bindwidth_flag;
+    uint32_t work_bindwidth_hz;
+    float    work_sideband_rate;
+};//__attribute__ ((packed));
+
+struct calibration_singal_threshold_st{
+    int32_t   threshold;    /* 有无信号门限值 */
+};
+
+/* 不同带宽发送帧大小 */
+struct send_frame_size{
+    uint64_t bw;
+    size_t size;
+};
+
+struct bindwidth_factor_table{
+    uint32_t bw_hz;
+    uint32_t extract;
+    uint32_t filter;
+};
+
+/* 控制/配置参数 */
+struct control_st{
+    uint8_t remote_local;                                         /* 本控 or 远控 */
+    uint8_t fft_noise_threshold;                                  /* FFT 计算噪音门限 */
+    uint8_t internal_clock;                                       /* 内外时钟>=1:内部 0外部 */
+    uint32_t spectrum_time_interval;                              /* 发送频谱时间间隔 */
+    struct specturm_analysis_control_st specturm_analysis_param;  /* 频谱分析控制参数 */
+    struct scan_bindwidth_info scan_bw;                           /* 扫描带宽参数 */
+#ifdef CONFIG_NET_10G
+    uint32_t wz_threshold_bandwidth;                              /* 万兆信道带宽阀值 ，带宽<该值，使用千兆口；否则使用万兆口传输IQ */
+#endif
+    struct residency_policy residency;                            /* 驻留时间策略 */
+    struct calibration_singal_threshold_st signal;
+	uint32_t iq_data_length;                                      /* iq数据包发送长度*/
+    int32_t agc_ref_val_0dbm;                                     /*  AGC 模式下，0DB 对应校准值*/
+    int32_t subch_ref_val_0dbm;                                   /*  多频点模式下 0DBm 对应校准值*/
+    uint32_t disk_file_notifier_timeout_ms;
+    volatile uint8_t agc_ctrl_mode;                               /* AGC  控制模式 0: 分段AGC（默认） 1：整个频段AGC */
+    int16_t temperature_warn_threshold;                           /* 板卡温度报警阀值 */
+    char *device_code;                                            /* 设备编码 */
+#ifdef CONFIG_FS
+    struct fs_save_sample_args  fs_save_args;                     /* 文件存储参数 */
+#endif
+    struct bindwidth_factor_table bband_bw_factor[32];            /* 宽带系数表 */
+    struct bindwidth_factor_table niq_bw_factor[32];              /* 窄带iq系数表 */
+    struct bindwidth_factor_table dem_bw_factor[32];              /* 解调系数表 */
+    
+};//__attribute__ ((packed));
+
+/*状态参数*/
+
+/*4 获取设备基本信息*/
+
+
+struct poal_soft_version{
+   char* app;
+   char* kernel;
+   char* uboot;
+   char* fpga;
+}__attribute__ ((packed));           
+
+struct poal_disk_Node{
+    uint32_t totalSpace;
+    uint32_t freeSpace;
+    uint8_t status;
+}__attribute__ ((packed));
+
+struct poal_disk_alert{
+    uint64_t alert_threshold_byte;
+    uint64_t split_file_threshold_byte;
+};
+
+struct poal_disk_Info{
+    uint16_t diskNum; //?
+    struct poal_disk_Node diskNode;
+    struct poal_disk_alert alert;
+}__attribute__ ((packed));     
+
+struct poal_clk_Info{
+    uint8_t inout;
+    uint8_t  status;
+    uint32_t frequency;
+}__attribute__ ((packed)); 
+
+struct poal_ad_Info{
+    uint8_t status;
+}__attribute__ ((packed)); 
+
+
+struct poal_rf_node{
+    uint8_t status;
+    uint16_t   temprature;      
+}__attribute__ ((packed));    
+
+struct poal_rf_Info{
+    uint8_t rfnum;
+    struct poal_rf_node  rfnode;//struct rf_node  rfnode[MAX_SIG_CHANNLE];
+}__attribute__ ((packed));  
+
+
+struct poal_fpga_Info{
+    uint16_t temprature;
+}__attribute__ ((packed));
+
+struct poal_compile_Info{
+    char *build_name;
+    char *build_time;
+    char *build_version;
+    char *build_jenkins_id;
+    char *build_jenkins_url;
+    char *code_url;
+    char *code_branch;
+    char *code_hash;
+    char *release_debug;
+}__attribute__ ((packed));
+
+
+struct poal_status_info{
+    struct poal_soft_version softVersion;
+    struct poal_disk_Info diskInfo;
+    struct poal_clk_Info  clkInfo;
+    struct poal_ad_Info   adInfo;  
+    struct poal_rf_Info   rfInfo;
+    struct poal_fpga_Info  fpgaInfo;
+    struct poal_compile_Info compileInfo;
+    char *device_sn;
+}__attribute__ ((packed));
+
+
+struct calibration_specturm_info_st{
+    uint32_t start_freq_khz[40];
+    uint32_t end_freq_khz[40];
+    int power_level[40];
+    int global_roughly_power_lever;
+    int low_distortion_power_level;
+    int low_noise_power_level;
+    bool gain_calibration_onoff;
+};//__attribute__ ((packed));
+
+struct calibration_specturm_node_st{
+    uint32_t start_freq_khz;
+    uint32_t end_freq_khz;
+    int power_level;
+    uint32_t fft;
+}__attribute__ ((packed));
+
+struct calibration_attenuation_node_st{
+    int32_t  rf_mode;
+    int32_t start_range;
+    int32_t end_range;
+}__attribute__ ((packed));
+
+
+struct calibration_mgc_attenuation_node_st{
+    int32_t start_range;
+    int32_t end_range;
+}__attribute__ ((packed));
+
+
+struct calibration_specturm_v2_st{
+    struct calibration_specturm_node_st cal_node[128];
+    struct calibration_attenuation_node_st att_node[3];
+    struct calibration_mgc_attenuation_node_st mgc_attr_node;
+    int global_roughly_power_lever;
+}__attribute__ ((packed));
+
+/* For ADRVxxxx CHIP */
+struct calibration_dc_offset_info_st{
+    uint32_t start_freq_khz[40];
+    uint32_t end_freq_khz[40];
+    int mshift[40];
+    int global_mshift;  /* mShift (valid value range is 8 to 20). */
+    bool is_open;
+};
+
+struct calibration_analysis_info_st{
+    uint32_t start_freq_khz[40];
+    uint32_t end_freq_khz[40];
+    int power_level[40];
+    int global_roughly_power_lever;
+};//__attribute__ ((packed));
+
+struct calibration_lo_leakage_info_st{
+    uint32_t fft_size[16];
+    int16_t threshold[16];
+    int16_t renew_data_len[16];
+    int16_t global_threshold;
+    int16_t global_renew_data_len;
+    int16_t global_copy_points;
+};//__attribute__ ((packed));
+
+struct calibration_mgc_info_st{
+    uint32_t start_freq_khz[32];
+    uint32_t end_freq_khz[32];
+    int32_t  gain_val[32];
+    int32_t  global_gain_val;
+};//__attribute__ ((packed));
+
+struct calibration_low_noise_info_st{
+    int32_t  global_power_val;
+};//__attribute__ ((packed));
+
+
+struct calibration_fft_st{
+    uint32_t  fftsize[16];
+    int32_t   cali_value[16];
+};
+
+struct calibration_info_st{
+    struct calibration_specturm_info_st specturm;
+    struct calibration_specturm_v2_st   spm_level;
+    struct calibration_analysis_info_st analysis;
+    struct calibration_low_noise_info_st low_noise;
+    struct calibration_lo_leakage_info_st lo_leakage;
+    struct calibration_mgc_info_st mgc;
+    struct calibration_fft_st cali_fft;
+    struct calibration_dc_offset_info_st dc_offset;
+};//__attribute__ ((packed));
+
+
+struct channel_para{
+    volatile work_mode_type work_mode;                              /* 通道工作模式 */
+    struct output_en_st enable;                                     /* 通道使能 */
+    struct multi_freq_point_para_st  multi_freq_point_param;        /* 通道多频点/定频 */
+    struct multi_freq_fregment_para_st  multi_freq_fregment_para;   /* 通道多频段/扫频 */
+    struct sub_channel_freq_para_st sub_channel_para;               /* 通道子通道参数 */
+    struct rf_para_st rf_para;                                      /* 通道射频参数 */
+};
+
+
+struct poal_config{
+    uint8_t cid;                                                    /* 设置通道*/
+    struct channel_para channel[MAX_RADIO_CHANNEL_NUM];                     /* 通道参数 */
+    struct network_st network[CONFIG_NET_NUMBERS];             /* 网络参数 */
+    struct control_st ctrl_para;                                    /* 控制配置参数 */
+    struct poal_status_info status_para;                            /* 状态信息参数 */
+    struct calibration_info_st cal_level;                           /* 校准参数 */
+};
+
+#endif

@@ -1,0 +1,1 @@
+obj-$(CONFIG_DAO_JSON)     += dao_conf.o dao_oal.o

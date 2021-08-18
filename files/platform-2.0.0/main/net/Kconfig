@@ -1,0 +1,29 @@
+menuconfig NET
+	bool "Application Net"
+	default y
+		config NET_NUMBERS
+			int "Number of network nodes"
+			default 2  
+			depends on NET	
+			
+		config NET_10G
+			bool "Net 10G"
+			default n  
+			depends on NET	
+			
+		config NET_10G_IFNAME
+			string "ifname"
+			default "eth0"
+		depends on NET_10G && NET
+
+		config NET_1G
+			bool "Net 1G"
+			default y  
+			depends on NET
+			
+		config NET_1G_IFNAME
+			string "ifname"
+			default "eth1"
+			depends on NET_1G && NET
+			
+		source "main/protocol/Kconfig"

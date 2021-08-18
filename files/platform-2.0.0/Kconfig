@@ -1,0 +1,83 @@
+menu "Showay Platform Config"     
+
+menuconfig ARCH
+	bool "arch"
+	default y
+	if ARCH               
+		choice                            
+			prompt "bsp Select"  
+			default ARCH_ARM64    
+				
+			config ARCH_ARM64      
+				bool "arm64"
+				select ARCH_ARM
+				
+			config ARCH_ARM32      
+				bool "arm32"	
+				select ARCH_ARM
+				
+			config ARCH_X86_64
+				bool "x86_64"
+				select ARCH_X86
+				
+			config ARCH_X86_32
+				bool "x86_32"	
+				select ARCH_X86
+				
+		endchoice
+		
+		choice                            
+			prompt "Xilinx Arch Select"  
+			default XILINX_ARCH_ZYNQMP    
+
+			config XILINX_ARCH_ZYNQMP      
+				bool "zynqmp"
+				depends on !X86_64
+
+			config XILINX_ARCH_ZYNQ
+				bool "zynq"	
+				depends on !X86_64
+		endchoice 
+
+		config CROSS_COMPILE
+		string "Cross-compiler tool prefix"
+		help
+		  Same as running 'make CROSS_COMPILE=prefix-' but stored for
+		  default make runs in this kernel build directory.  You don't
+		  need to set this unless you want the configured kernel build
+		  directory to select the cross-compiler automatically.
+	endif
+	config ARCH_ARM
+        bool
+	config ARCH_X86
+        bool
+	
+
+menu "Platform Function Module"   #定义2级菜单
+	
+    source "main/bsp/Kconfig"
+	source "main/dao/Kconfig"
+	source "main/device/Kconfig"
+	source "main/executor/Kconfig"
+	source "main/fs/Kconfig"
+	source "main/net/Kconfig"
+endmenu                             # 2级菜单的结束
+
+menu "Others" 
+
+config CALIBRATION_GAIN
+	bool "Calibration Gain"
+	default n
+	
+config RESIDENCY_STRATEGY
+	bool "Signal Residency Strategy"
+	default n	
+	help
+		The Residency Strategy takes effect in multi frequency mode!!
+		
+config LOCAL_CTRL_EN
+	bool "Enable Remote or Local Control"
+	default n
+endmenu   
+	
+endmenu

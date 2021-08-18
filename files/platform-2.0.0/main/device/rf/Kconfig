@@ -1,0 +1,25 @@
+#
+# For a description of the syntax of this configuration file,
+# see Documentation/kbuild/kconfig-language.txt.
+#
+choice
+    prompt "rf control"
+    optional
+
+config DEVICE_RF_FPGA
+    bool "fpga"
+	default y
+
+config DEVICE_RF_SPI
+    bool "spi"
+if DEVICE_RF_SPI
+	source "main/device/rf/spi/Kconfig"
+endif
+
+config DEVICE_RF_ADRV
+    bool "adrv"
+if DEVICE_RF_ADRV
+	source "main/device/rf/adrv/Kconfig"
+endif
+	
+endchoice

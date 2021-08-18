@@ -1,0 +1,92 @@
+#
+# For a description of the syntax of this configuration file,
+# see Documentation/kbuild/kconfig-language.txt.
+#
+menu "Spectrum Function"
+
+
+		
+menuconfig SPM
+	bool "Enable Spectrum"
+	default y
+	
+	if SPM               
+		choice 
+			prompt "Spectrum Source Select"  
+			default SPM_SOURCE_FPGA	
+			
+			config SPM_SOURCE_FPGA      
+				bool "FPGA DMA"
+
+			config SPM_SOURCE_CHIP
+				bool "chip(adrv90xx)"
+				
+			config SPM_SOURCE_X86
+				bool "X86 Demo"
+		endchoice                         
+	endif
+	
+	config SPM_FFT_WINDOWS
+        bool "Windows"
+        default n
+		depends on SPM && SPM_SOURCE_FPGA
+		
+	config SPM_FFT_AGC
+        bool "AGC"
+        default n
+		depends on SPM && SPM_SOURCE_FPGA
+		
+	config SPM_FFT_EXTRACT_POINT
+        bool "Extrace Point"
+        default n
+		depends on SPM && SPM_SOURCE_FPGA
+		
+	config SPM_FFT_BOTTOM
+        bool "FFT Bottom calibration"
+        default n
+		depends on SPM
+		
+	config SPM_FFT_SCAN_SEGMNET
+        bool "FFT Scan Frequency Segmentation"
+        default n
+		depends on SPM && SPM_SOURCE_FPGA
+		
+	config SPM_FFT_IQ_CONVERT
+        bool "IQ -> FFT convert"
+        default n
+		depends on SPM && SPM_SOURCE_CHIP
+	
+	config SPM_FFT_SIGNAL_ANALYSIS
+        bool "FFT analysis"
+        default n
+		depends on SPM && SPM_SOURCE_CHIP && SPM_FFT_IQ_CONVERT
+	
+	config SPM_FFT_BY_RESOLUTION
+        bool "Get FFT Size by Resolution"
+        default n
+		depends on SPM
+	
+	config SPM_FFT_PACKAGING_PROCESS
+        bool "FFT Packaging Processing"
+        default n
+		depends on SPM
+		
+	config SPM_FFT_CONTROL	
+		bool "FFT Thread Control"
+		depends on SPM && SPM_SOURCE_FPGA
+		if SPM_FFT_CONTROL               
+			choice 
+				prompt "FFT Thread Control Select"  
+				default SPM_FFT_PARALLEL	
+				
+				config SPM_FFT_PARALLEL    
+					bool "Parallel Control"
+
+				config SPM_FFT_SERIAL
+					bool "Serial Control"
+			endchoice                         
+		endif
+	
+	
+endmenu
+	

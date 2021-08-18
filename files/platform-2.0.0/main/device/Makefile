@@ -1,0 +1,9 @@
+obj-$(CONFIG_DEVICE_AUDIO)     += audio/
+obj-$(CONFIG_DEVICE_ADC_CLOCK) += clk_adc/
+obj-$(CONFIG_DEVICE_GPIO)      += gpio/
+obj-$(CONFIG_DEVICE_HUMIDITY)  += humidity/
+obj-$(CONFIG_DEVICE_GPS)  	   += gps/
+obj-$(CONFIG_DEVICE_LCD)  	   += lcd/
+obj-$(CONFIG_DEVICE_RF)  	   += rf/
+obj-$(CONFIG_DEVICE_RS485)     += rs485/
+obj-$(CONFIG_DEVICE_UART)  	   += uart/

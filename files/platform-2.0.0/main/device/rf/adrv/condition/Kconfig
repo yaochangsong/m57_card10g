@@ -1,0 +1,15 @@
+#
+# For a description of the syntax of this configuration file,
+# see Documentation/kbuild/kconfig-language.txt.
+#
+choice
+    prompt "condition"
+    optional
+
+config DEVICE_RF_ADRV_CONDITION_GPIO
+    bool "gpio"
+
+config CONFIG_DEVICE_RF_ADRV_CONDITION_SPI
+    bool "spi"
+	
+endchoice

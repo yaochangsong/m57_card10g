@@ -1,0 +1,18 @@
+#
+# For a description of the syntax of this configuration file,
+# see Documentation/kbuild/kconfig-language.txt.
+#
+
+source "main/bsp/Kconfig"
+source "main/dao/Kconfig"
+
+#config DEVICE
+#    bool "device"
+#	default y
+	
+#if DEVICE
+source "main/device/Kconfig"
+#endif
+
+
+

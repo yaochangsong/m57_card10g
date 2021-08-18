@@ -1,0 +1,25 @@
+#
+# For a description of the syntax of this configuration file,
+# see Documentation/kbuild/kconfig-language.txt.
+#
+choice
+    prompt "adrv"
+    optional
+
+config DEVICE_RF_ADRV_9009
+    bool "adrv9009"
+
+config DEVICE_RF_ADRV_9361
+    bool "adrv9361"
+	
+endchoice
+
+config DEVICE_RF_ADRV_CONDITION
+    bool "condition control"
+	if DEVICE_RF_ADRV_CONDITION
+		source "main/device/rf/condition/Kconfig"
+	endif
+
+config DEVICE_RF_ADRV_HOP_FREQ
+    bool "Frequency Hop"
+	default n

@@ -1,0 +1,19 @@
+#
+# For a description of the syntax of this configuration file,
+# see Documentation/kbuild/kconfig-language.txt.
+#
+menuconfig DAO
+	bool "Config Data Access(Dao)"
+	default y
+	if DAO               #条件判断
+		choice                            #选择配置项，其值可选，类似单选框功能
+			prompt "Select data access"  #配置项的显示名称
+			default DAO_JSON     #默认选择的配置
+
+			config DAO_JSON      #配置选项
+				bool "json"
+
+			config DAO_XML
+				bool "xml"	
+		endchoice                         #结束选择配置项
+	endif

@@ -1,0 +1,55 @@
+#
+# For a description of the syntax of this configuration file,
+# see Documentation/kbuild/kconfig-language.txt.
+#
+menuconfig BSP
+	bool "BSP"
+	default y
+	if BSP               #条件判断
+		choice                            #选择配置项，其值可选，类似单选框功能
+			prompt "Select bsp"  #配置项的显示名称
+			default BSP_DEMO     #默认选择的配置
+
+			config BSP_DEMO      #配置选项
+				bool "demo"
+
+			config BSP_WD_XCR
+				bool "wd_xcr"
+				
+			config BSP_40G
+				bool "40g"
+				
+			config BSP_SSA_MONITOR
+				bool "ssa monitor"
+			
+			config BSP_SSA
+				bool "ssa"
+				
+			config BSP_TF713_4CH
+				bool "tf713_4ch"
+
+			config BSP_TF713_2CH
+				bool "tf713_2ch"
+				
+			config BSP_YF21015
+				bool "yf21015"
+		endchoice                         #结束选择配置项
+		
+	config BSP_NAME
+		string "Bsp Name"
+	
+	config FPGA_REGISTER
+		bool "Fpga Register"
+		default n
+		
+	config IF_FPGA_REGISTER
+		bool "IF Fpga Register"
+		default y
+		depends on FPGA_REGISTER
+		
+	config RF_FPGA_REGISTER
+		bool "RF Fpga Register"
+		default y
+		depends on FPGA_REGISTER
+
+	endif

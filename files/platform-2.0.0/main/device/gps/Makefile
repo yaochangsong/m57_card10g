@@ -1,0 +1,1 @@
+obj-y     							+= gps_com.o

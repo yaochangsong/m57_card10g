@@ -1,0 +1,1 @@
+obj-$(CONFIG_DAO_JSON)     += cJSON.o

@@ -1,0 +1,1 @@
+obj-y     							+= lcd.o ss_k600.o

@@ -37,6 +37,7 @@ menuconfig BSP
 		
 	config BSP_NAME
 		string "Bsp Name"
+		default "wd_xcr"
 	
 	config FPGA_REGISTER
 		bool "Fpga Register"

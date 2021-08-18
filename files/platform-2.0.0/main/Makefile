@@ -12,7 +12,7 @@ obj-y  					+= utils/
 
 install:
 	echo ">>>>>>>>>>>>>>>>>>>${TOPDIR}"
-	cp bsp/$(BSP_NAME)/config.json conf/
+	cp ${S}/main/bsp/$(BSP_NAME)/config.json conf/
 	install -d ${D}${bindir}
 	install -d ${D}${libdir}
 	install -d ${D}/etc/init.d/

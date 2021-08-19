@@ -20,7 +20,7 @@ SRC_URI = "file://platform-2.0.0"
 S = "${WORKDIR}/platform-2.0.0"
 CFLAGS_prepend = "-I ${S}/include"
 
-EXTRA_OEMAKE = "'CC=${CC}' -I${S}."
+EXTRA_OEMAKE = "'CC=${CC}' PETAENV=1 -I${S}."
 
 do_configure () {
 	# Specify any needed configure commands here

@@ -38,5 +38,4 @@ endif
 	install -m 0755 ${S}/main/conf/compile.info ${D}/etc/
 	#install -m 0755 tools/xjson ${D}${bindir}
 	#install -m 0755 tools/reset-button  ${D}${bindir}
-	cp ${S}/platform ${TOPDIR}/images/linux/
-	
+	$(shell if [ ! -d ${TOPDIR}/images/linux ]; then cp ${S}/platform ${TOPDIR}/images/linux/; fi)

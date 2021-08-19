@@ -339,13 +339,14 @@ endif # $(dot-config)
 # command line.
 # This allow a user to issue only 'make' to build a kernel including modules
 # Defaults to vmlinux, but the arch makefile usually adds further targets
-all: platform
+all: platform tools
 
 
 objs-y		:= main
 #objs-y		+= main/fun
 libs-y		:= lib
 libs-y		+= lib/libubox
+libs-y		+= main/dao/json
 
 libs-y := $(sort $(libs-y))
 myapp-dirs	:= $(objs-y) $(libs-y)
@@ -361,6 +362,11 @@ quiet_cmd_myapp = LD      $@
 
 platform: $(myapp-all)
 	$(call if_changed,myapp)
+
+tools: 
+	for dir in main/tools; \
+	do $(MAKE) -C $$dir all CC=$(CC) LIBS=../dao/json/lib.a || exit 1; \
+	done
 
 # The actual objects are generated when descending, 
 # make sure no implicit rule kicks in
@@ -412,6 +418,7 @@ clean: $(clean-dirs)
 		-o -name '.*.d' -o -name '.*.tmp' -o -name '*.mod.c' \
 		-o -name modules.builtin -o -name '.tmp_*.o.*' \
 		-o -name '*.gcno' \) -type f -print | xargs rm -f
+	for dir in main/tools; do make -C $$dir clean CC=$(CC)|| exit 1; done
 
 # mrproper - Delete all generated files, including .config
 #

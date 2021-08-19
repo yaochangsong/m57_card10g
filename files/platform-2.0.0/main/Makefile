@@ -11,7 +11,6 @@ obj-y  					+= protocol/
 obj-y  					+= utils/
 
 install:
-	echo ">>>>>>>>>>>>>>>>>>>${TOPDIR}"
 	cp ${S}/main/bsp/$(BSP_NAME)/config.json conf/
 	install -d ${D}${bindir}
 	install -d ${D}${libdir}

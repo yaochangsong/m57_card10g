@@ -38,3 +38,7 @@ do_install () {
 	oe_runmake install  D=${D} S=${S} TOPDIR=${TOPDIR}/.. BINDIR=${bindir} SBINDIR=${sbindir} \
 						MANDIR=${mandir} INCLUDEDIR=${includedir} 
 }
+INSANE_SKIP_${PN} = "ldflags"
+INSANE_SKIP_${PN}-dev = "ldflags"
+INSANE_SKIP_${PN} +="already-stripped"
+FILES_${PN} += "/usr/*"

@@ -1,7 +1,7 @@
 SOURCE = $(wildcard *.c)  
 TARGETS = $(patsubst %.c, %, $(SOURCE))  
-top_dir ?= $(abspath $(shell pwd)/../)
-LIBS = $(LIBS)
+TOPDIR = $(abspath $(shell pwd)/../../)
+LIBDIR = $(TOPDIR)/$(LIBS)
 LDLIBS += -lpthread
 
 CFLAGS = -Wall -g 
@@ -11,7 +11,7 @@ tool_sub_dir =
 all:$(TARGETS)  tool_sub
 
 $(TARGETS):%:%.c  
-	$(CC) $< $(CFLAGS) -o $@  -Wl,--start-group $(LIBS) -Wl,--end-group $(LDLIBS)
+	@$(CC) $< $(CFLAGS) -o $@  -Wl,--start-group $(LIBDIR) -Wl,--end-group $(LDLIBS)
 	
 tool_sub:
 	for dir in $(tool_sub_dir); \

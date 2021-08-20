@@ -60,10 +60,10 @@
 #include "../main/utils/mq.h"
 
 
-#ifdef CONFIG_BSP_X86_64
-#include "../main/bsp/x86_64/bsp.h"
-#include "../main/bsp/x86_64/dev.h"
-#include "../main/bsp/x86_64/misc.h"
+#ifdef CONFIG_BSP_DEMO
+#include "../main/bsp/demo/bsp.h"
+#include "../main/bsp/demo/dev.h"
+#include "../main/bsp/demo/misc.h"
 #elif defined(CONFIG_BSP_WD_XCR) 
 #include "../main/bsp/wd_xcr/bsp.h"
 #include "../main/bsp/wd_xcr/reg.h"

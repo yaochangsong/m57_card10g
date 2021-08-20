@@ -365,7 +365,7 @@ platform: $(myapp-all)
 
 tools: $(myapp-libs)
 	for dir in main/tools; \
-	do $(MAKE) -C $$dir all CC="$(CC)" LIBS=$(S)/main/dao/json/lib.a || exit 1; \
+	do $(MAKE) -C $$dir all CC="$(CC)" LIBS=main/dao/json/lib.a || exit 1; \
 	done
 
 # The actual objects are generated when descending, 

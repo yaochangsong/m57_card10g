@@ -35,7 +35,6 @@ endif
 	install -m 0755 ${S}/main/conf/config.json ${D}/etc/config.json.jffs2
 	install -m 0755 ${S}/main/conf/platform_version ${D}/etc/
 	install -m 0755 ${S}/main/conf/compile.info ${D}/etc/
-	#install -m 0755 tools/xjson ${D}${bindir}
-	#install -m 0755 tools/reset-button  ${D}${bindir}
-	#@echo ">>>>>>if [ ! -d ${TOPDIR}/images/linux ]; then cp ${S}/platform ${TOPDIR}/images/linux/; fi"
-	#$(shell if [ ! -d ${TOPDIR}/images/linux ]; then cp ${S}/platform ${TOPDIR}/images/linux/; fi)
+	install -m 0755 tools/xjson ${D}${bindir}
+	install -m 0755 tools/reset-button  ${D}${bindir}
+	$(shell if [ -d ${TOPDIR}/images/linux ]; then cp ${S}/platform ${TOPDIR}/images/linux/; fi)

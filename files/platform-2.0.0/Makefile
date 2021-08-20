@@ -99,7 +99,7 @@ VPATH		:= $(srctree)
 export srctree objtree VPATH
 
 CROSS_COMPILE	?= $(CONFIG_CROSS_COMPILE:"%"=%)
-BSP_NAME	?= $(CONFIG_BSP_NAME:"%"=%)
+BSP_NAME	= $(CONFIG_BSP_NAME:"%"=%)
 
 KCONFIG_CONFIG	?= .config
 export KCONFIG_CONFIG BSP_NAME
@@ -185,10 +185,9 @@ CHECKFLAGS     := -D__linux__ -Dlinux -D__STDC__ -Dunix -D__unix__ \
 CFLAGS_KERNEL	= 
 AFLAGS_KERNEL	=
 
-
 # Use LINUXINCLUDE when you must reference the include/ directory.
 # Needed to be compatible with the O= option
-LINUXINCLUDE    := -Iinclude \
+LINUXINCLUDE    = -Iinclude -I main/bsp/$(BSP_NAME) \
                    $(if $(KBUILD_SRC), -I$(srctree)/include) \
                    -include include/generated/autoconf.h
 
@@ -339,7 +338,7 @@ endif # $(dot-config)
 # command line.
 # This allow a user to issue only 'make' to build a kernel including modules
 # Defaults to vmlinux, but the arch makefile usually adds further targets
-all: tools platform
+all: platform tools
 
 
 objs-y		:= main

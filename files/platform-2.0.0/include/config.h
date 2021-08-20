@@ -59,20 +59,28 @@
 #include "../main/utils/bitops.h"
 #include "../main/utils/mq.h"
 
+//BSP
+#include "bsp.h"
+#include "misc.h"
+#include "dev.h"
+#ifdef __has_include
 
-#ifdef CONFIG_BSP_DEMO
-#include "../main/bsp/demo/bsp.h"
-#include "../main/bsp/demo/dev.h"
-#include "../main/bsp/demo/misc.h"
-#elif defined(CONFIG_BSP_WD_XCR) 
-#include "../main/bsp/wd_xcr/bsp.h"
-#include "../main/bsp/wd_xcr/reg.h"
-#include "../main/bsp/wd_xcr/adclock.h"
-#include "../main/bsp/wd_xcr/misc.h"
-#include "../main/bsp/wd_xcr/dev.h"
-#include "../main/bsp/wd_xcr/reg_rf.h"
-#include "../main/bsp/wd_xcr/reg_if.h"
-#include "../main/bsp/wd_xcr/reg_misc.h"
+#   if __has_include ("reg_misc.h")
+#include "reg_misc.h"
+#   endif
+#   if __has_include ("reg_if.h")
+#include "reg_if.h"
+#   endif
+#   if __has_include ("reg_rf.h")
+#include "reg_rf.h"
+#   endif
+#   if __has_include ("adclock.h")
+#include "adclock.h"
+#   endif
+#   if __has_include ("reg.h")
+#include "reg.h"
+#   endif
+
 #endif
 
 #include "../main/fs/fs.h"

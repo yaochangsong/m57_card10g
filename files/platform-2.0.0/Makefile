@@ -339,7 +339,7 @@ endif # $(dot-config)
 # command line.
 # This allow a user to issue only 'make' to build a kernel including modules
 # Defaults to vmlinux, but the arch makefile usually adds further targets
-all: platform tools
+all: tools platform
 
 
 objs-y		:= main
@@ -363,9 +363,9 @@ quiet_cmd_myapp = LD      $@
 platform: $(myapp-all)
 	$(call if_changed,myapp)
 
-tools: 
+tools: $(myapp-libs)
 	for dir in main/tools; \
-	do $(MAKE) -C $$dir all CC=$(CC) LIBS=../dao/json/lib.a || exit 1; \
+	do $(MAKE) -C $$dir all CC="$(CC)" LIBS=$(S)/main/dao/json/lib.a || exit 1; \
 	done
 
 # The actual objects are generated when descending, 

@@ -1,17 +1,17 @@
 SOURCE = $(wildcard *.c)  
 TARGETS = $(patsubst %.c, %, $(SOURCE))  
 top_dir ?= $(abspath $(shell pwd)/../)
-SUB_LIBS = $(LIBS)
+LIBS = $(LIBS)
 LDLIBS += -lpthread
 
 CFLAGS = -Wall -g 
 
-tool_sub_dir = ftp-client
+tool_sub_dir = 
 
 all:$(TARGETS)  tool_sub
 
 $(TARGETS):%:%.c  
-	@$(CC) $< $(CFLAGS) -o $@  $(SUB_LIBS)  -L.$(top_dir)/dao/json/ $(LDLIBS)
+	$(CC) $< $(CFLAGS) -o $@  -Wl,--start-group $(LIBS) -Wl,--end-group $(LDLIBS)
 	
 tool_sub:
 	for dir in $(tool_sub_dir); \

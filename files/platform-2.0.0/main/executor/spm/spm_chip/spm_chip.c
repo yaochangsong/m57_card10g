@@ -731,7 +731,8 @@ static int spm_chip_close(void *args)
 
 static int spm_sample_ctrl(void *args)
 {
-    _ctrl_freq(args);
+    if(misc_get()->freq_ctrl)
+        misc_get()->freq_ctrl(args);
     return 0;
 }
 

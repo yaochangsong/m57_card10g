@@ -5,6 +5,7 @@ obj-$(CONFIG_BSP_WD_XCR)  	+= wd_xcr/
 obj-$(CONFIG_BSP_DEMO)  	+= demo/
 obj-$(CONFIG_BSP_40G)  		+= 40g/
 obj-$(CONFIG_BSP_SSA_MONITOR) += ssa_monitor/
+obj-$(CONFIG_BSP_SSA) 	       += ssa/
 obj-$(CONFIG_BSP_TF713_2CH) += tf713_2ch/
 obj-$(CONFIG_BSP_TF713_4CH) += tf713_4ch/
 obj-$(CONFIG_BSP_YF21015)   += yf21015/

@@ -21,7 +21,6 @@
 #include <string.h>
 #include <signal.h>
 #include <stdio.h>
-#include "log/log.h"
 #include "config.h"
 #include "adrv9009-iiostream.h"
 

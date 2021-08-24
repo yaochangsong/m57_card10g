@@ -14,7 +14,12 @@
 #include <arpa/inet.h>
 #include <stdbool.h>
 #include <math.h>
+#include <fftw3.h>
 
+
+
+void smooth2(float* fftdata,int fftdatanum,float *smoothdata);
+void hannwindow(int num,float *w);
 
 
 

@@ -53,9 +53,11 @@ menuconfig SPM
 		
 	config SPM_FFT_IQ_CONVERT
         bool "IQ -> FFT convert"
+	    select LIBIIO 
+        select LIBFFTW3
         default n
 		depends on SPM && SPM_SOURCE_CHIP
-	
+    
 	config SPM_FFT_SIGNAL_ANALYSIS
         bool "FFT analysis"
         default n
@@ -87,6 +89,13 @@ menuconfig SPM
 			endchoice                         
 		endif
 	
+	config LIBIIO
+        bool
+        default n
+
+    config LIBFFTW3
+        bool
+        default n	
 	
 endmenu
 	

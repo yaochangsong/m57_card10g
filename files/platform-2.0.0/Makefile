@@ -100,6 +100,9 @@ export srctree objtree VPATH
 
 CROSS_COMPILE	?= $(CONFIG_CROSS_COMPILE:"%"=%)
 BSP_NAME	= $(CONFIG_BSP_NAME:"%"=%)
+LIBFFTW3	= $(CONFIG_LIBFFTW3:"%"=%)
+LIBIIO		= $(CONFIG_LIBIIO:"%"=%)
+ARM_ARCH		= $(CONFIG_ARCH_ARM:"%"=%)
 
 KCONFIG_CONFIG	?= .config
 export KCONFIG_CONFIG BSP_NAME
@@ -109,6 +112,7 @@ CONFIG_SHELL := $(shell if [ -x "$$BASH" ]; then echo $$BASH; \
 	  else if [ -x /bin/bash ]; then echo /bin/bash; \
 	  else echo sh; fi ; fi)
 LDFLAGS :=
+LLIBS :=
 HOSTCC       = gcc
 HOSTCXX      = g++
 HOSTCFLAGS   = -Wall -Wmissing-prototypes -Wstrict-prototypes -O2 -fomit-frame-pointer
@@ -205,6 +209,24 @@ KBUILD_CFLAGS   := -Wall -Wundef -Wstrict-prototypes -Wno-trigraphs \
 KBUILD_AFLAGS_KERNEL :=
 KBUILD_CFLAGS_KERNEL :=
 KBUILD_AFLAGS   := -D__ASSEMBLY__
+
+#TODO 
+ifeq ($(findstring y,$(ARM_ARCH)),)
+	ARCH_STR:="arm"
+else
+	ARCH_STR:="x86"
+endif
+ifeq ($(findstring y,$(LIBFFTW3)),)
+	LDFLAGS += -Llib/libfftw3/$(ARCH_STR)/lib
+	LINUXINCLUDE += -I lib/libfftw3/$(ARCH_STR)/include
+	LLIBS 	+= -lfftw3f
+endif
+
+ifeq ($(findstring y,$(LIBIIO)),)
+	LLIBS 	+= -liio
+endif
+#END TODO
+
 
 # Read KERNELRELEASE from include/config/kernel.release (if it exists)
 KERNELRELEASE = $(shell cat include/config/kernel.release 2> /dev/null)
@@ -356,8 +378,8 @@ myapp-all	:= $(myapp-objs) $(myapp-libs)
 # Do modpost on a prelinked vmlinux. The finally linked vmlinux has
 # relevant sections renamed as per the linker script.
 quiet_cmd_myapp = LD      $@
-      cmd_myapp = $(CC) $(LDFLAGS) -o $@                          \
-      -Wl,--start-group -lpthread -lrt -lm $(myapp-libs) $(myapp-objs) -Wl,--end-group
+	cmd_myapp = $(CC) $(LDFLAGS) -o $@                          \
+	-Wl,--start-group  -lpthread -lrt -lm  $(LLIBS) $(myapp-libs) $(myapp-objs) -Wl,--end-group
 
 platform: $(myapp-all)
 	$(call if_changed,myapp)

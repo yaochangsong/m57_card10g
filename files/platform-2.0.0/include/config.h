@@ -90,6 +90,12 @@
 #include "../main/device/lcd/lcd.h"
 #include "../main/device/rf/rf.h"
 #include "../main/device/rf/fpga/rf_driver.h"
+#include "../main/device/rf/adrv/adrv.h"
+#ifdef CONFIG_DEVICE_RF_ADRV
+#include "../main/device/rf/adrv/adrv9009/adrv9009-iiostream.h"
+#include "../main/device/rf/adrv/adrv9361/adrv9361-iiostream.h"
+#endif
+#include "../main/device/rf/adrv/condition/condition.h"
 #include "../main/device/rs485/rs485_com.h"
 #include "../main/device/uart/uart.h"
 
@@ -101,6 +107,8 @@
 #include "../main/executor/spm/spm_fpga/spm_fpga.h"
 #include "../main/executor/executor.h"
 #include "../main/executor/spm/bottom/bottom.h"
+#include "../main/executor/fft/fft.h"
+#include "../main/executor/analysis/spm_analysis.h"
 
 #include "../main/protocol/akt/akt.h"
 #include "../main/protocol/resetful/request.h"

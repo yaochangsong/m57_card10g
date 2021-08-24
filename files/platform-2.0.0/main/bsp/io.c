@@ -172,7 +172,7 @@ int32_t io_set_bandwidth(uint32_t ch, uint32_t bandwidth){
     uint32_t set_factor = 0,band_factor = 0, filter_factor = 0, filter_factor2 = 0;
     static int32_t old_ch=-1;
     static uint32_t old_val=0;
-    struct  band_table_t *table;
+    struct  band_table_t *table = NULL;
     struct bindwidth_factor_table *config_table = config_get_config()->oal_config.ctrl_para.bband_bw_factor;
     int table_len = 0;
 
@@ -185,7 +185,11 @@ int32_t io_set_bandwidth(uint32_t ch, uint32_t bandwidth){
     }
     else
     {
+#ifdef CONFIG_FPGA_REGISTER
         table = broadband_factor_table(&table_len);
+#endif
+        if(table == NULL)
+            return -1;
         io_get_bandwidth_factor(bandwidth, &band_factor,&filter_factor, &filter_factor2, table, table_len);
     }
 
@@ -233,7 +237,7 @@ int32_t io_set_dec_bandwidth(uint32_t ch, uint32_t dec_bandwidth){
     uint32_t set_factor, band_factor, filter_factor, filter_factor2;
     static int32_t old_ch=-1;
     static uint32_t old_val=0;
-    struct  band_table_t *table;
+    struct  band_table_t *table = NULL;
     struct bindwidth_factor_table *config_table = config_get_config()->oal_config.ctrl_para.bband_bw_factor;
     int table_len = 0;
 
@@ -243,7 +247,11 @@ int32_t io_set_dec_bandwidth(uint32_t ch, uint32_t dec_bandwidth){
      }
     else
     {
+#ifdef CONFIG_FPGA_REGISTER
         table = broadband_factor_table(&table_len);
+#endif
+        if(table == NULL)
+            return -1;
         //table= bandtable;
         //table_len = sizeof(bandtable)/sizeof(struct  band_table_t);
         io_get_bandwidth_factor(dec_bandwidth, &band_factor,&filter_factor,&filter_factor2, table, table_len);
@@ -438,7 +446,7 @@ int32_t io_set_subch_bandwidth(uint32_t subch, uint32_t bandwidth, uint8_t dec_m
 {
     int32_t ret = 0;
     uint32_t band_factor, filter_factor, filter_factor2;
-    struct  band_table_t *table;
+    struct  band_table_t *table = NULL;
     struct bindwidth_factor_table *config_table;
     int table_len = 0;
     uint32_t config_table_len = 0;
@@ -454,14 +462,18 @@ int32_t io_set_subch_bandwidth(uint32_t subch, uint32_t bandwidth, uint8_t dec_m
     old_ch = subch;
    // dec_method = IO_DQ_MODE_IQ; /* TEST */
     if(dec_method == IO_DQ_MODE_IQ){
+#ifdef CONFIG_FPGA_REGISTER
         table = narrowband_iq_factor_table(&table_len);
+#endif
         //table= iq_nbandtable;
         //table_len = sizeof(iq_nbandtable)/sizeof(struct  band_table_t);
         config_table = config_get_config()->oal_config.ctrl_para.niq_bw_factor;
         config_table_len = ARRAY_SIZE(config_get_config()->oal_config.ctrl_para.niq_bw_factor);
         printf_debug("config_table_len is:%d\n", config_table_len);
     }else{
+#ifdef CONFIG_FPGA_REGISTER
         table = narrowband_demo_factor_table(&table_len);
+#endif
         //table= nbandtable;
         //table_len = sizeof(nbandtable)/sizeof(struct  band_table_t);
         config_table = config_get_config()->oal_config.ctrl_para.dem_bw_factor;
@@ -469,7 +481,8 @@ int32_t io_set_subch_bandwidth(uint32_t subch, uint32_t bandwidth, uint8_t dec_m
         printf_debug("config_table_len is:%d\n", config_table_len);
 
     }
-
+    if(table == NULL)
+        return -1;
     if(config_table[0].bw_hz != 0 ){
         io_get_config_bandwidth_factor(bandwidth, &band_factor,&filter_factor, config_table, config_table_len);
     }

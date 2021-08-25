@@ -105,7 +105,7 @@ LIBIIO		= $(CONFIG_LIBIIO)
 ARM_ARCH	= $(CONFIG_ARCH_ARM)
 
 KCONFIG_CONFIG	?= .config
-export KCONFIG_CONFIG BSP_NAME
+export KCONFIG_CONFIG BSP_NAME CONFIG_LIBIIO CONFIG_SPM_FFT_WINDOWS CONFIG_LIBFFTW3
 
 # SHELL used by kbuild
 CONFIG_SHELL := $(shell if [ -x "$$BASH" ]; then echo $$BASH; \
@@ -388,7 +388,6 @@ tools: $(myapp-libs)
 	for dir in main/tools; \
 	do $(MAKE) -C $$dir all CC="$(CC)" LIBS=main/dao/json/lib.a || exit 1; \
 	done
-
 # The actual objects are generated when descending, 
 # make sure no implicit rule kicks in
 $(sort $(myapp-all)): $(myapp-dirs) ;

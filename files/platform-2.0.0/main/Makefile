@@ -19,6 +19,10 @@ install:
 ifeq ($(CONFIG_SPM_FFT_WINDOWS),y)
 	install -d ${D}/etc/win/
 endif
+ifeq ($(CONFIG_LIBFFTW3),y)
+	install -m 0755 ${S}/main/device/rf/adrv/cfg/Rx_BW*.txt ${D}/var/local/
+	install -m 0755 ${S}/lib/libfftw3/arm/lib/libfftw3f.so.3 ${D}${libdir}
+endif
 	install -m 0755 ${S}/platform ${D}${bindir}
 	install -m 0755 ${S}/main/shell/platform.sh ${D}/etc/init.d/
 	install -m 0755 ${S}/main/shell/led.sh ${D}/etc/

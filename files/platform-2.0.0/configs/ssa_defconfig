@@ -86,3 +86,8 @@ CONFIG_PROTOCOL_HTTP_PORT=80
 # CONFIG_CALIBRATION_GAIN is not set
 # CONFIG_RESIDENCY_STRATEGY is not set
 # CONFIG_LOCAL_CTRL_EN is not set
+
+#
+# Compile Selection
+#
+CONFIG_DEPENDS_LIB="libiio"

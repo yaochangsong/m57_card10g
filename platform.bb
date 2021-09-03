@@ -14,11 +14,10 @@ INITSCRIPT_PARAMS = "start 99 5 ."
 SRC_URI = "file://platform-2.0.0"
 S = "${WORKDIR}/platform-2.0.0"
 
-DEPENDS = " ${@depend_str('CONFIG_DEPENDS_LIB',d)}"
-RDEPENDS_${PN} = " ${@depend_str('CONFIG_DEPENDS_LIB',d)}"
-LLIB = "${@depend_str('CONFIG_LINK_LIB',d)}"
+DEPENDS = "${@depend_str('CONFIG_DEPENDS_LIB',d)}"
+RDEPENDS_${PN} = "${@depend_str('CONFIG_DEPENDS_LIB',d)}"
 
-EXTRA_OEMAKE = "'CC=${CC}' PETAENV=1 -I${S}. LLIBS=${LLIB}"
+EXTRA_OEMAKE = "'CC=${CC}' PETAENV=1 -I${S}. "
 
 
 def depend_str(b, d):
@@ -39,7 +38,7 @@ def depend_str(b, d):
 
 do_configure () {
 	# Specify any needed configure commands here
-	#bbplain "DEPENDS=${DEPENDS}, RDEPENDS_${PN}=${RDEPENDS_${PN}}"
+	bbplain "DEPENDS=${DEPENDS}, RDEPENDS_${PN}=${RDEPENDS_${PN}}"
 	:
 }
 

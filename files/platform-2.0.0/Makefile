@@ -99,20 +99,19 @@ VPATH		:= $(srctree)
 export srctree objtree VPATH
 
 CROSS_COMPILE	?= $(CONFIG_CROSS_COMPILE:"%"=%)
+LLIBS	        ?= $(CONFIG_LINK_LIB:"%"=%)
 BSP_NAME	= $(CONFIG_BSP_NAME:"%"=%)
 LIBFFTW3	= $(CONFIG_LIBFFTW3)
-LIBIIO		= $(CONFIG_LIBIIO)
 ARM_ARCH	= $(CONFIG_ARCH_ARM)
 
 KCONFIG_CONFIG	?= .config
-export KCONFIG_CONFIG BSP_NAME CONFIG_LIBIIO CONFIG_SPM_FFT_WINDOWS CONFIG_LIBFFTW3
+export KCONFIG_CONFIG BSP_NAME CONFIG_SPM_FFT_WINDOWS CONFIG_LIBFFTW3
 
 # SHELL used by kbuild
 CONFIG_SHELL := $(shell if [ -x "$$BASH" ]; then echo $$BASH; \
 	  else if [ -x /bin/bash ]; then echo /bin/bash; \
 	  else echo sh; fi ; fi)
 LDFLAGS :=
-LLIBS :=
 HOSTCC       = gcc
 HOSTCXX      = g++
 HOSTCFLAGS   = -Wall -Wmissing-prototypes -Wstrict-prototypes -O2 -fomit-frame-pointer
@@ -219,11 +218,6 @@ endif
 ifeq ($(findstring y,$(LIBFFTW3)),)
 	LDFLAGS += -Llib/libfftw3/$(ARCH_STR)/lib
 	LINUXINCLUDE += -I lib/libfftw3/$(ARCH_STR)/include
-	LLIBS 	+= -lfftw3f
-endif
-
-ifeq ($(findstring y,$(LIBIIO)),)
-	LLIBS 	+= -liio
 endif
 #END TODO
 

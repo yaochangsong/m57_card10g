@@ -91,3 +91,4 @@ CONFIG_PROTOCOL_HTTP_PORT=80
 # Compile Selection
 #
 CONFIG_DEPENDS_LIB="libiio"
+CONFIG_LINK_LIB="-liio"

@@ -14,13 +14,14 @@ INITSCRIPT_PARAMS = "start 99 5 ."
 SRC_URI = "file://platform-2.0.0"
 S = "${WORKDIR}/platform-2.0.0"
 
-DEPENDS = " ${@depend_str(d)}"
-RDEPENDS_${PN} = " ${@depend_str(d)}"
+DEPENDS = " ${@depend_str('CONFIG_DEPENDS_LIB',d)}"
+RDEPENDS_${PN} = " ${@depend_str('CONFIG_DEPENDS_LIB',d)}"
+LLIB = "${@depend_str('CONFIG_LINK_LIB',d)}"
 
-EXTRA_OEMAKE = "'CC=${CC}' PETAENV=1 -I${S}. "
+EXTRA_OEMAKE = "'CC=${CC}' PETAENV=1 -I${S}. LLIBS=${LLIB}"
 
 
-def depend_str(d):
+def depend_str(b, d):
     import os
     config=d.getVar("S", True)+'/.config'
     if (not os.path.exists(config)):
@@ -30,7 +31,7 @@ def depend_str(d):
     with open(config, "r") as data:
             lines = data.readlines()
             for line in lines:
-                if "CONFIG_DEPENDS_LIB" in line:
+                if b in line:
                     a=eval(line.split("=")[1])
                     #bb.plain("split: %s" % (a))
     return a

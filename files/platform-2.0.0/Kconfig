@@ -79,5 +79,11 @@ config LOCAL_CTRL_EN
 	bool "Enable Remote or Local Control"
 	default n
 endmenu   
+
+menu "Compile Selection" 
+config DEPENDS_LIB
+	string "petalinux depends lib"
+	default ""
+endmenu
 	
 endmenu

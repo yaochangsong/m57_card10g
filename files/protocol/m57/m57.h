@@ -54,6 +54,8 @@ struct load_info{
 
 
 #define M57_SYNC_HEADER 0x5751
+#define CARD_SLOT_NUM(x) (((x)>>8) & 0xff)    //05
+#define CARD_CHIP_NUM(x) ((x)& 0xff)    //02
 
 typedef enum {
     M57_DATA_TYPE =  0,

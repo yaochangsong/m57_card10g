@@ -80,6 +80,45 @@ static struct  band_table_t bandtable[] ={
 static DECLARE_BITMAP(subch_bmp[CH_TYPE_MAX], MAX_SIGNAL_CHANNEL_NUM);
 static DECLARE_BITMAP(ch_bmp[CH_TYPE_MAX], MAX_RADIO_CHANNEL_NUM);
 static DECLARE_BITMAP(cl_sock_bmp, MAX_CLINET_SOCKET_NUM);
+static DECLARE_BITMAP(cards_status_bmp, MAX_FPGA_CARD_SLOT_NUM);
+
+void cards_status_bitmap_init(void)
+{
+    bitmap_zero(cards_status_bmp, MAX_FPGA_CARD_SLOT_NUM);
+}
+
+void cards_status_set(int index)
+{
+    set_bit(index, cards_status_bmp);
+}
+
+void cards_status_clear(int index)
+{
+    clear_bit(index, cards_status_bmp);
+}
+
+size_t cards_status_weight(void)
+{
+    return bitmap_weight(cards_status_bmp, MAX_FPGA_CARD_SLOT_NUM);
+}
+
+bool cards_status_test(int bit)
+{
+    return test_bit(bit, cards_status_bmp);
+}
+
+uint32_t get_cards_status(void)
+{
+    uint32_t mask = 0;
+    size_t bit = 0;
+    for_each_set_bit(bit, cards_status_bmp, MAX_FPGA_CARD_SLOT_NUM){
+        mask |= (1<<bit);
+    }
+    printf_note("mask=%x\n", mask);
+    return mask;
+}
+
+
 
 void socket_bitmap_init(void)
 {
@@ -1511,6 +1550,7 @@ void io_init(void)
 {
     printf_info("io init!\n");
     socket_bitmap_init();
+    cards_status_bitmap_init();
     //ch_bitmap_init();
     //subch_bitmap_init();
 }

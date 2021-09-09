@@ -38,6 +38,11 @@ struct  band_table_t{
     #define io_get_ambient_humidity()    0
 #endif
 extern void io_init(void);
+extern uint32_t get_cards_status(void);
+extern void cards_status_set(int index);
+extern void cards_status_clear(int index);
+extern size_t cards_status_weight(void);
+extern bool cards_status_test(int bit);
 extern void subch_bitmap_init(void);
 extern void subch_bitmap_set(uint8_t subch, CH_TYPE type);
 extern void subch_bitmap_clear(uint8_t subch, CH_TYPE type);

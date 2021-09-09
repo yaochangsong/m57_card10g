@@ -958,7 +958,7 @@ char *assemble_json_fpag_info(void)
         uint32_t resources;
     };
     struct arg_s args;
-    char version[32] = {0};
+    char version[32] = {0}, _status[32];
     cJSON *root = cJSON_CreateObject();
     io_get_fpga_status(&args);
     snprintf(version, sizeof(version), "%x", get_fpga_version());
@@ -968,6 +968,8 @@ char *assemble_json_fpag_info(void)
     cJSON_AddNumberToObject(root, "fpgaIntVol", args.vol);
     cJSON_AddNumberToObject(root, "fpgaBramVol", args.current);
     cJSON_AddNumberToObject(root, "fpgaResources", args.resources);
+    snprintf(_status, sizeof(_status), "0x%x", get_cards_status());
+    cJSON_AddStringToObject(root, "status", _status);
     json_print(root, 1);
     str_json = cJSON_PrintUnformatted(root);
     return str_json;

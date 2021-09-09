@@ -37,6 +37,19 @@ enum stream_iq_type {
     STREAM_NIQ_TYPE_MAX,
     STREAM_BIQ_TYPE_RAW,
 };
+
+#include "../../net/net_sub.h"
+struct xstream_dispatcher_type{
+    struct net_sub_st subinfo;
+    struct iovec *vec;
+    int offset;
+};
+
+struct xstream_dispatcher_info{
+    struct xstream_dispatcher_type *type;
+    int type_num;
+};
+
 #define for_each_niq_type(type, run) \
     for (int i = 0; \
             type = i, run.dis_iq.send_ptr = run.dis_iq.ptr[i],run.dis_iq.send_len = run.dis_iq.offset[i]*sizeof(iq_t), i < STREAM_NIQ_TYPE_MAX; \

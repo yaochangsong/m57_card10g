@@ -9,6 +9,8 @@
 #include "../../utils/utils.h"
 #include "../../log/log.h"
 #include "../../protocol/oal/poal.h"
+#include "../../bsp/io.h"
+
 
 #ifndef MHZ
 #define MHZ(x) ((long long)(x*1000000.0+0.5))
@@ -220,7 +222,7 @@ static inline int _reg_get_fpga_info(FPGA_CONFIG_REG *reg,int id, void **args)
         return -1;
     }
     memcpy(ptr, data, sizeof(data));
-
+    cards_status_set(5);
     *args = (void *)ptr;
     return sizeof(data);
 }
@@ -244,6 +246,8 @@ static inline int _reg_get_fpga_info_(FPGA_CONFIG_REG *reg, int id, void **args)
     ptr += MAX_FPGA_CARD_SLOT_NUM;
     for(int i = 0; i <MAX_FPGA_CARD_SLOT_NUM; i++){
         *ptr++ = reg->status[i]->board_status;
+        if(reg->status[i]->board_status)
+            cards_status_set(i);
     }
     ptr = pstatus;
     for(int i = 0; i <MAX_FPGA_CARD_SLOT_NUM*2; i++){

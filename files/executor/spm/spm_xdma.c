@@ -364,8 +364,17 @@ static ssize_t xspm_read_xdma_data(int ch , void **data, uint32_t *len, void *ar
 }
 
 
+static inline int find_hash_id(uint16_t chip_id, uint16_t func_id)
+{
+    int hashid;
+    //eg: HASH ID[8bit]: bit7~5[funcId] bit[4~3]chip bit[2~0]slot 
+    hashid = (CARD_SLOT_NUM(chip_id) + (CARD_CHIP_NUM(chip_id)<<CARD_SLOT_OFFSET) +(func_id<<(CARD_SLOT_OFFSET+CARD_CHIP_OFFSET)));
+    printf_note(">>>>>>>>>>>>hashid = %d\n", hashid);
+    return hashid;
+}
 
-static int xdma_data_dispatcher(int ch, void **data, ssize_t nsize, void *args)
+
+static int xdma_data_dispatcher(int ch, void **data, uint32_t *len, ssize_t count, void *args)
 {
 /*
 51 57 0f 30 18 01 00 00 00 00 02 05 00 00 08 01 02 02 00 00 00 00 00 00 aa aa 55 55 63 02 00 00 2f 05 74 09 36 05 c5 09 00 00（上行）
@@ -379,8 +388,9 @@ e:分段表示，消息类型，请求表示
 f:源组件地址
 g:命令表示
 */
-    uint8_t *ptr = *data;
-    uint8_t *payload = ptr + 8;
+
+    struct net_sub_st parg;
+    struct spm_run_parm *arg = args; 
 
     struct data_frame_st{
         uint16_t py_dist_addr;
@@ -396,21 +406,42 @@ g:命令表示
     if(args == NULL){
         return -1;
     }
-    if(*(uint16_t *)ptr != 0x5751){  /* header */
-        printf_warn("error header=0x%x\n", *(uint16_t *)ptr);
-        return -1;
-    }
+    
+    uint8_t *ptr = NULL;
+    uint8_t *payload = NULL;
+    int hashid = 0,*offset = 0;
 
-    //if(*(uint16_t *)(ptr+ 4) != nsize){       /* length */
-    //    printf_warn("error size nsize=%ld, length=%d\n", nsize, *(uint16_t *)(ptr+ 4));
-    //    return -1;
-    //}
-        
-    struct net_sub_st *parg = args;
-    pdata = (struct data_frame_st *)payload;
-    parg->chip_id = pdata->py_src_addr;
-    parg->func_id = pdata->src_addr;
-    //printf_note("chip_id=0x%x, func_id=0x%x\n", parg->chip_id, parg->func_id);
+    for(int index = 0; index < count; index++){
+        ptr = data[index];
+        if(ptr == NULL){
+            printf_err("ptr is null\n");
+            continue;
+        }
+
+        if(*(uint16_t *)ptr != 0x5751){  /* header */
+            printf_warn("error header=0x%x\n", *(uint16_t *)ptr);
+            return -1;
+        }
+
+        payload = ptr + 8;
+        pdata = (struct data_frame_st *)payload;
+        parg.chip_id = pdata->py_src_addr;
+        parg.func_id = pdata->src_addr;
+
+        hashid = find_hash_id(parg.chip_id, parg.func_id);
+        if(hashid > MAX_XDMA_DISP_TYPE_NUM || hashid < 0){
+            printf_err("hash id err[%d]\n", hashid);
+            continue;
+        }
+        offset = &arg->xdma_disp.type[hashid].offset;
+        arg->xdma_disp.type[hashid].subinfo.chip_id = parg.chip_id;
+        arg->xdma_disp.type[hashid].subinfo.func_id = parg.func_id;
+        arg->xdma_disp.type[hashid].vec[*offset].iov_base = data[index];
+        arg->xdma_disp.type[hashid].vec[*offset].iov_len = len[index];
+        arg->xdma_disp.type_num++;
+        *offset++;
+        printf_note("chip_id=0x%x, func_id=0x%x,hashid=%d, offset=%d\n", parg.chip_id, parg.func_id, hashid, *offset);
+    }
 
     return 0;
 }
@@ -427,13 +458,36 @@ static ssize_t xspm_read_xdma_data_dispatcher(int ch , void **data, uint32_t *le
     //nsize = xspm_stream_read(ch, index, data, NULL);
     count = xspm_stream_read(ch, index, data, len, args);
     if(count > 0){
-        if(xdma_data_dispatcher(ch, data, count, args) == -1){
+        if(xdma_data_dispatcher(ch, data, len, count, args) == -1){
             return -1;
         }
     }
     return count;
 }
 
+static int xspm_send_data_dispatcher(int ch, char *buf[], uint32_t len[], int count, void *args)
+{
+    struct spm_run_parm *arg = args; 
+    struct net_sub_st *sub;
+    struct iovec iov[count];
+
+    for(int i = 0; i < arg->xdma_disp.type_num; i++){
+        sub = &arg->xdma_disp.type[i].subinfo;
+        if(arg->xdma_disp.type[i].offset > count){
+            printf_err("type offset err:%d, %d\n", arg->xdma_disp.type[i].offset, count);
+            break;
+        }
+        for(int j = 0; j < arg->xdma_disp.type[i].offset; j++){
+            iov[j].iov_base = arg->xdma_disp.type[i].vec[j].iov_base;
+            iov[j].iov_len =  arg->xdma_disp.type[i].vec[j].iov_len;
+        }
+        if(arg->xdma_disp.type[i].offset > 0)
+            tcp_send_vec_data_uplink(iov, arg->xdma_disp.type[i].offset, sub);
+    }
+    xspm_read_xdma_data_over(ch, NULL);
+    
+    return 0;
+}
 
 static int xspm_send_data(int ch, char *buf[], uint32_t len[], int count, void *args)
 {
@@ -584,7 +638,7 @@ static int xspm_read_xdma_data_over_test(int ch,  void *arg)
 
 static const struct spm_backend_ops xspm_ops = {
     .create = xspm_create,
-    //.read_xdma_data = xspm_read_xdma_data,//xspm_read_xdma_data_test, //
+    //.read_xdma_data = xspm_stream_read_test,
     .read_xdma_data = xspm_read_xdma_data,
     .read_xdma_over_deal = xspm_read_xdma_data_over,// xspm_read_xdma_data_over_test,//xspm_read_xdma_data_over,
     .stream_start = xspm_read_stream_start,

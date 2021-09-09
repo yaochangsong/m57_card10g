@@ -576,6 +576,47 @@ void thread_attr_set(pthread_attr_t *attr, int policy, int prio)
     pthread_attr_setinheritsched(attr,PTHREAD_EXPLICIT_SCHED);
 }
 
+int spm_xdma_disp_init(struct spm_context *ctx, int ch)
+{
+    struct spm_run_parm *param;
+    unsigned int index = 0;
+    int ret = -1;
+
+    param = calloc(1, sizeof(*param));
+    if (!param)
+        return -ENOMEM;
+
+    param->xdma_disp.type_num = 0;
+    param->xdma_disp.type = calloc(MAX_XDMA_DISP_TYPE_NUM, sizeof(*param->xdma_disp.type));
+    if (!param->xdma_disp.type) {
+        ret = -ENOMEM;
+        goto err_free;
+    }
+
+    for(index = 0; index < MAX_XDMA_DISP_TYPE_NUM; index++){
+        param->xdma_disp.type[index].vec = calloc(XDMA_TRANSFER_MAX_DESC, sizeof(*param->xdma_disp.type[index].vec));
+        if (!param->xdma_disp.type[index].vec) {
+            ret = -ENOMEM;
+            goto err_free1;
+        }
+        param->xdma_disp.type[index].offset = 0;
+    }
+
+    ctx->run_args[ch] = param;
+    ctx->run_args[ch]->xdma_disp.type = param->xdma_disp.type;
+    
+    //for(int i = 0; i < MAX_XDMA_DISP_TYPE_NUM; i++)
+    //    printf_note("[%d]xdma_disp: %p\n", i, param->xdma_disp.type[i].vec);
+    
+    return 0;
+    
+err_free1:
+    safe_free(param->xdma_disp.type);
+err_free:
+    safe_free(param);
+    printf_err("malloc err\n");
+    return ret;
+}
 void *spm_init(void)
 {
     static pthread_t send_thread_id, recv_thread_id;
@@ -600,6 +641,7 @@ void *spm_init(void)
         printf_warn("spm create failed\n");
         return NULL;
     }
+    spm_xdma_disp_init(spmctx, 0);
 #if 0
     for(ch = 0; ch< MAX_RADIO_CHANNEL_NUM; ch++){
         spmctx->run_args[ch] = calloc(1, sizeof(struct spm_run_parm));

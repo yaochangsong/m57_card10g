@@ -42,11 +42,11 @@ enum stream_iq_type {
 struct xstream_dispatcher_type{
     struct net_sub_st subinfo;
     struct iovec *vec;
-    int offset;
+    int vec_cnt;
 };
 
 struct xstream_dispatcher_info{
-    struct xstream_dispatcher_type *type;
+    struct xstream_dispatcher_type **type;
     int type_num;
 };
 

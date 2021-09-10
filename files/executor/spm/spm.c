@@ -120,7 +120,6 @@ void spm_xdma_deal_notify(void *arg)
         return;
     
     ch = *(uint8_t *)arg;
-    
     if(ch >= MAX_XDMA_NUM)
         return;
     pthread_cond_signal(&spm_xdma_cond[ch]);
@@ -522,8 +521,7 @@ void spm_xdma_data_handle_thread_dispatcher(void *arg)
     uint32_t  len[256] = {0};
     int ch, section_id = 0;
     int count = 0;
-    struct net_sub_st sub_args;
-
+    
     ctx = spmctx;
     ch = *(int *)arg;
     if(ch >= MAX_XDMA_NUM)
@@ -539,10 +537,10 @@ loop:
     printf_note(">>>>>XDMA%d read start\n", ch);
     do{
         if(ctx->ops->read_xdma_data)
-            count = ctx->ops->read_xdma_data(ch, (void **)ptr_data, len, &sub_args);
+            count = ctx->ops->read_xdma_data(ch, (void **)ptr_data, len, ctx->run_args[ch]);
         if(count > 0){
             if(ctx->ops->send_xdma_data)
-                ctx->ops->send_xdma_data(ch, ptr_data, len, count, &sub_args);
+                ctx->ops->send_xdma_data(ch, ptr_data, len, count, ctx->run_args[ch]);
         }
         if(socket_bitmap_weight() == 0){
             printf_note("all client offline\n");
@@ -586,6 +584,7 @@ int spm_xdma_disp_init(struct spm_context *ctx, int ch)
     if (!param)
         return -ENOMEM;
 
+    memset(&param->xdma_disp, 0 ,sizeof(param->xdma_disp));
     param->xdma_disp.type_num = 0;
     param->xdma_disp.type = calloc(MAX_XDMA_DISP_TYPE_NUM, sizeof(*param->xdma_disp.type));
     if (!param->xdma_disp.type) {
@@ -594,24 +593,35 @@ int spm_xdma_disp_init(struct spm_context *ctx, int ch)
     }
 
     for(index = 0; index < MAX_XDMA_DISP_TYPE_NUM; index++){
-        param->xdma_disp.type[index].vec = calloc(XDMA_TRANSFER_MAX_DESC, sizeof(*param->xdma_disp.type[index].vec));
-        if (!param->xdma_disp.type[index].vec) {
+        param->xdma_disp.type[index] = calloc(1, sizeof(*param->xdma_disp.type[index]));
+        if (!param->xdma_disp.type[index]) {
             ret = -ENOMEM;
             goto err_free1;
         }
-        param->xdma_disp.type[index].offset = 0;
+        param->xdma_disp.type[index]->vec = calloc(XDMA_TRANSFER_MAX_DESC, sizeof(*param->xdma_disp.type[index]->vec));
+        if (!param->xdma_disp.type[index]->vec) {
+            ret = -ENOMEM;
+            goto err_free2;
+        }
+        param->xdma_disp.type[index]->vec_cnt = 0;
     }
 
     ctx->run_args[ch] = param;
     ctx->run_args[ch]->xdma_disp.type = param->xdma_disp.type;
     
     //for(int i = 0; i < MAX_XDMA_DISP_TYPE_NUM; i++)
-    //    printf_note("[%d]xdma_disp: %p\n", i, param->xdma_disp.type[i].vec);
+    //     printf_note("[%d]xdma_disp: %p, %d, %p\n", i, param->xdma_disp.type[i], sizeof(*param->xdma_disp.type[i]), ctx->run_args[ch]);
     
     return 0;
-    
+
+err_free2:
+    for(index = 0; index < MAX_XDMA_DISP_TYPE_NUM; index++){
+        safe_free(param->xdma_disp.type[index]->vec);
+    }
 err_free1:
-    safe_free(param->xdma_disp.type);
+    for(index = 0; index < MAX_XDMA_DISP_TYPE_NUM; index++){
+        safe_free(param->xdma_disp.type[index]);
+    }
 err_free:
     safe_free(param);
     printf_err("malloc err\n");
@@ -641,7 +651,7 @@ void *spm_init(void)
         printf_warn("spm create failed\n");
         return NULL;
     }
-    spm_xdma_disp_init(spmctx, 0);
+    spm_xdma_disp_init(spmctx, 1);
 #if 0
     for(ch = 0; ch< MAX_RADIO_CHANNEL_NUM; ch++){
         spmctx->run_args[ch] = calloc(1, sizeof(struct spm_run_parm));

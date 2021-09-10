@@ -13,6 +13,7 @@ struct net_sub_st{
     uint16_t chip_id;
     uint16_t func_id;
     uint16_t port;
+    uint16_t rev;
 };
 extern void *net_hash_new(void);
 extern void net_hash_dump(hash_t *hash);

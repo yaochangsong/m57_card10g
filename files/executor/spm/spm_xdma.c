@@ -15,10 +15,21 @@
 #include "../../lib/libubox/list.h"
 #include "../../net/net_sub.h"
 
-//#define  SPM_DISPATCHER_ON
+#define  SPM_DISPATCHER_ON
 
 static int xspm_read_stream_stop(int ch, int subch, enum stream_type type);
 static int xspm_read_xdma_data_over(int ch,  void *arg);
+
+static void print_array(uint8_t *ptr, ssize_t len)
+{
+    if(ptr == NULL || len <= 0)
+        return;
+    
+    for(int i = 0; i< len; i++){
+        printf("%02x ", *ptr++);
+    }
+    printf("\n");
+}
 
 static inline void *zalloc(size_t size)
 {
@@ -224,8 +235,8 @@ static ssize_t xspm_stream_read(int ch, int type,  void **data, uint32_t *len, v
         index = (info->rx_index + i) % info->block_count;
         data[i] = pstream[type].ptr[index];
         len[i] = info->results[index].length;
-        printf_info("[%d,index:%d][%p, %p, len:%u, offset=0x%x]%s\n", 
-                i, index, data[i], pstream[type].ptr[index], len[i], info->rx_index,  pstream[type].name);
+        //printf_info("[%d,index:%d][%p, %p, len:%u, offset=0x%x]%s\n", 
+        //        i, index, data[i], pstream[type].ptr[index], len[i], info->rx_index,  pstream[type].name);
     }
     return info->ready_count;
 }
@@ -337,7 +348,9 @@ static ssize_t xspm_stream_read_test(int ch, int type,  void **data, uint32_t *l
     for(int i= 0; i < count; i++){
          data[i] = buffer;
          len[i] = sizeof(buffer);
+       // print_array(data[i], 32);
     }
+    //sleep(1);
     return count;
 }
 
@@ -366,6 +379,23 @@ static ssize_t xspm_stream_read_test2(int ch, int type,  void **data, uint32_t *
     static uint8_t buffer2[8192] = {
         0x51,0x57,0xbe,0x30,0x18,0x01,0x00,0x00,0x00,0x00,
         0x02,0x05,0x00,0x00,0x08,0x01,0x02,0x02,0x00,0x00,0x00,0x00,0x00,0x00,0xaa,0xaa,
+        0x55,0x55,0xc8,0x02,0x00,0x00,0x30,0x05,0x74,0x09,0x38,0x05,0xc9,0x09,0x00,0x00,
+        0x00,0x00,0x00,0x00,0x00,0x00,0x01,0x00,0x00,0x00,0x25,0x10,0x18,0x20,0x00,0x00,
+        0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
+        0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
+        0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
+        0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
+        0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
+        0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
+        0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
+        0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
+        0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
+        0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
+        0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
+        0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
+        0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
+        0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x55,0x55,0xaa,0xaa,0x51,0x57,0xbe,0x30,0x18,0x01,0x00,0x00,0x00,0x00,
+        0x02,0x06,0x00,0x00,0x08,0x01,0x02,0x02,0x00,0x00,0x00,0x00,0x00,0x00,0xaa,0xaa,
         0x55,0x55,0xc8,0x02,0x00,0x00,0x30,0x05,0x74,0x09,0x38,0x05,0xc9,0x09,0x00,0x00,
         0x00,0x00,0x00,0x00,0x00,0x00,0x01,0x00,0x00,0x00,0x25,0x10,0x18,0x20,0x00,0x00,
         0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
@@ -434,7 +464,7 @@ static inline int find_hash_id(uint16_t chip_id, uint16_t func_id)
 {
     int hashid;
     //eg: HASH ID[8bit]: bit7~5[funcId] bit[4~3]chip bit[2~0]slot 
-    hashid = (CARD_SLOT_NUM(chip_id) + (CARD_CHIP_NUM(chip_id)<<CARD_SLOT_OFFSET) +(func_id<<(CARD_SLOT_OFFSET+CARD_CHIP_OFFSET)));
+    hashid = (CARD_SLOT_NUM(chip_id) + (CARD_CHIP_NUM(chip_id)<<CARD_SLOT_OFFSET) + (func_id<<(CARD_SLOT_OFFSET+CARD_CHIP_OFFSET)));
     return hashid;
 }
 
@@ -448,24 +478,31 @@ static inline void xdma_data_dispatcher_refresh(int ch, void *args)
     }
 }
 
-static int xdma_data_dispatcher(int ch, void **data, uint32_t *len, ssize_t count, void *args)
-{
 /*
-51 57 0f 30 18 01 00 00 00 00 02 05 00 00 08 01 02 02 00 00 00 00 00 00 aa aa 55 55 63 02 00 00 2f 05 74 09 36 05 c5 09 00 00（上行）
-|---------------------|  | a|  | b|  | c|  | d|  | e|  | f|  | g|
-
-a:物理目的地址
-b:物理源地址
-c:目的地址(目的组件/连接器地址)
-d:载荷长度
-e:分段表示，消息类型，请求表示
-f:源组件地址
-g:命令表示
+    input parameter:
+    @data: The package data header
+    @len:  The package data len 
+    @next: the next one frame data pointer in package 
+    
+    out:the length of one frame 
+        -1: not find
+        >=0: find ok
 */
-
-    struct net_sub_st parg;
-    struct spm_run_parm *arg = args; 
-
+static ssize_t _of_xdma_data_valid(int ch, void *data, uint32_t len, uint8_t **next, void *args)
+{
+    /*
+    51 57 0f 30 18 01 00 00 00 00 02 05 00 00 08 01 02 02 00 00 00 00 00 00 aa aa 55 55 63 02 00 00 2f 05 74 09 36 05 c5 09 00 00（上行）
+    |---------------------|  | a|  | b|  | c|  | d|  | e|  | f|  | g|
+    
+    a:物理目的地址
+    b:物理源地址
+    c:目的地址(目的组件/连接器地址)
+    d:载荷长度
+    e:分段表示，消息类型，请求表示
+    f:源组件地址
+    g:命令表示
+    */
+    struct net_sub_st *parg = args; 
     struct data_frame_st{
         uint16_t py_dist_addr;
         uint16_t py_src_addr;
@@ -476,15 +513,42 @@ g:命令表示
         uint16_t cmd;
     }__attribute__ ((packed));
     struct data_frame_st *pdata;
+    uint8_t *ptr = data;
+    uint8_t *payload = NULL;
+    ssize_t payload_len = 0, frame_len = 0;
+
+    if(*(uint16_t *)ptr != 0x5751){  /* header */
+        //printf_warn("error header=0x%x\n", *(uint16_t *)ptr);
+        return -1;
+    }
+
+    payload = ptr + 8;
+    pdata = (struct data_frame_st *)payload;
+    payload_len = pdata->len;
+    if(payload_len <= 0)
+        return -1;
+
+    parg->chip_id = pdata->py_src_addr;
+    parg->func_id = pdata->src_addr;
+
+    frame_len = *(uint16_t *)(ptr + 4);
+    *next = ptr + frame_len;
+    //printf_note("frame_len=%ld[%x%x]\n", frame_len, parg->chip_id, parg->func_id);
+    return frame_len;
+}
+
+static int xdma_data_dispatcher(int ch, void **data, uint32_t *len, ssize_t count, void *args)
+{
+    struct net_sub_st parg;
+    struct spm_run_parm *arg = args; 
+    uint8_t *ptr = NULL, *next = NULL;
+    int hashid = 0,vec_cnt = 0;
+    int one_frame_len = 0;
     
     if(args == NULL){
         return -1;
     }
     
-    uint8_t *ptr = NULL;
-    uint8_t *payload = NULL;
-    int hashid = 0,vec_cnt = 0;
-
     for(int index = 0; index < count; index++){
         ptr = data[index];
         if(ptr == NULL){
@@ -492,33 +556,24 @@ g:命令表示
             continue;
         }
 
-        if(*(uint16_t *)ptr != 0x5751){  /* header */
-            printf_warn("error header=0x%x\n", *(uint16_t *)ptr);
-            return -1;
+        while((one_frame_len =_of_xdma_data_valid(ch, ptr, len[index], &next, &parg)) > 0){
+            hashid = find_hash_id(parg.chip_id, parg.func_id);
+            if(hashid > MAX_XDMA_DISP_TYPE_NUM || hashid < 0 || arg->xdma_disp.type[hashid] == NULL){
+                printf_err("hash id err[%d]\n", hashid);
+                continue;
+            }
+            vec_cnt = arg->xdma_disp.type[hashid]->vec_cnt;
+            arg->xdma_disp.type[hashid]->subinfo.chip_id = parg.chip_id;
+            arg->xdma_disp.type[hashid]->subinfo.func_id = parg.func_id;
+            arg->xdma_disp.type[hashid]->vec[vec_cnt].iov_base = ptr;
+            arg->xdma_disp.type[hashid]->vec[vec_cnt].iov_len = one_frame_len;
+            arg->xdma_disp.type_num++;
+            arg->xdma_disp.type[hashid]->vec_cnt++;
+            //printf_note("[%d]iov_base=%p, iov_len=%lu\n", vec_cnt, arg->xdma_disp.type[hashid]->vec[vec_cnt].iov_base, 
+            //                                          arg->xdma_disp.type[hashid]->vec[vec_cnt].iov_len);
+            ptr = next;
         }
-
-        payload = ptr + 8;
-        pdata = (struct data_frame_st *)payload;
-        parg.chip_id = pdata->py_src_addr;
-        parg.func_id = pdata->src_addr;
-
-        hashid = find_hash_id(parg.chip_id, parg.func_id);
-        if(hashid > MAX_XDMA_DISP_TYPE_NUM || hashid < 0 || arg->xdma_disp.type[hashid] == NULL){
-            printf_err("hash id err[%d]\n", hashid);
-            continue;
-        }
-        vec_cnt = arg->xdma_disp.type[hashid]->vec_cnt;
-        arg->xdma_disp.type[hashid]->subinfo.chip_id = parg.chip_id;
-        arg->xdma_disp.type[hashid]->subinfo.func_id = parg.func_id;
-        arg->xdma_disp.type[hashid]->vec[vec_cnt].iov_base = data[index];
-        arg->xdma_disp.type[hashid]->vec[vec_cnt].iov_len = len[index];
-        //printf_note("iov_base=%p, iov_len=%lu\n", 
-        //    arg->xdma_disp.type[hashid]->vec[offset].iov_base, arg->xdma_disp.type[hashid]->vec[offset].iov_len);
-        arg->xdma_disp.type_num++;
-        arg->xdma_disp.type[hashid]->vec_cnt++;
-        //printf_note("offset=%d, chip_id=0x%x, func_id=0x%x,hashid=%d, type_num=%d\n", offset, parg.chip_id, parg.func_id, hashid,  arg->xdma_disp.type_num);
     }
-
     return 0;
 }
 
@@ -534,6 +589,7 @@ static ssize_t xspm_read_xdma_data_dispatcher(int ch , void **data, uint32_t *le
    //count = xspm_stream_read(ch, index, data, NULL);
     count = xspm_stream_read(ch, index, data, len, args);
     //count = xspm_stream_read_test2(ch, index, data, len, args);
+    //count = xspm_stream_read_test(ch, index, data, len, args);
     if(count > 0){
         if(xdma_data_dispatcher(ch, data, len, count, args) == -1){
             return -1;
@@ -563,7 +619,7 @@ static int xspm_send_data_dispatcher(int ch, char *buf[], uint32_t len[], int co
             //printf_note("[%d]iov=%p, %lu, vec_cnt=%d\n", j, iov[j].iov_base, iov[j].iov_len, arg->xdma_disp.type[i]->vec_cnt);
         }
         if(arg->xdma_disp.type[i]->vec_cnt > 0){
-           // printf_note("tcp send: %d, %x\n", arg->xdma_disp.type[i]->vec_cnt, sub->chip_id);
+            //printf_note("tcp send: %d, %x\n", arg->xdma_disp.type[i]->vec_cnt, sub->chip_id);
             tcp_send_vec_data_uplink(iov, arg->xdma_disp.type[i]->vec_cnt, sub);
         }
     }

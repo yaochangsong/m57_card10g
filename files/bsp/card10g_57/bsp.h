@@ -16,12 +16,14 @@
 #define MAX_XDMA_NUM                    2   /* XDMA数 */
 
 //HASH MAP OFFSET
-#define CARD_SLOT_OFFSET (3)
-#define CARD_CHIP_OFFSET (2)
-#define CARD_FUNC_OFFSET (3)
+#define CARD_SLOT_OFFSET (2)
+#define CARD_CHIP_OFFSET (1)
+#define CARD_FUNC_OFFSET (4)
+#define CARD_PORT_OFFSET (1)
+
 
 /* XDMA分发类型数 */
-////HASH ID: funcId |chip |slot 
+////HASH ID: funcId |chip |slot
 #define MAX_XDMA_DISP_TYPE_NUM  (2 << (CARD_SLOT_OFFSET + CARD_CHIP_OFFSET + CARD_FUNC_OFFSET - 1))
 
 

@@ -542,6 +542,7 @@ loop:
             if(ctx->ops->send_xdma_data)
                 ctx->ops->send_xdma_data(ch, ptr_data, len, count, ctx->run_args[ch]);
         }
+        ctx->ops->read_xdma_over_deal(ch, NULL);
         if(socket_bitmap_weight() == 0){
             printf_note("all client offline\n");
             usleep(1000);
@@ -652,6 +653,7 @@ void *spm_init(void)
         return NULL;
     }
     spm_xdma_disp_init(spmctx, 1);
+    io_set_enable_command(XDMA_MODE_ENABLE, 1, 0, 0);
 #if 0
     for(ch = 0; ch< MAX_RADIO_CHANNEL_NUM; ch++){
         spmctx->run_args[ch] = calloc(1, sizeof(struct spm_run_parm));

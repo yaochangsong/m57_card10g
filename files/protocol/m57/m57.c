@@ -493,7 +493,7 @@ bool m57_execute_cmd(void *client, int *code)
             memcpy(&_reg, payload, sizeof(_reg));
             _type = (_reg.type == 1 ? M57_PRIO_LOW: M57_PRIO_URGENT);
             net_hash_add(cl->section.hash, _type, RT_PRIOID);
-            //executor_set_command(EX_XDMA_ENABLE_CMD, -1, 1, &enable, -1);
+            executor_set_command(EX_XDMA_ENABLE_CMD, -1, 1, &enable, -1);
             break;
         }
         case CCT_DATA_SUB:

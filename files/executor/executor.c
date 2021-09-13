@@ -709,11 +709,11 @@ int8_t executor_set_command(exec_cmd cmd, uint8_t type, uint8_t ch,  void *data,
             int32_t enable = *(int32_t *)data;
             printf_note("ch=%d, subch:%d,enable=%d XDMA %s\n",ch, subch, enable, enable == 0 ? "disable" : "enable");
             if(enable){
-                io_set_enable_command(XDMA_MODE_ENABLE, ch, subch, 0);
+                //io_set_enable_command(XDMA_MODE_ENABLE, ch, subch, 0);
                 spm_xdma_deal_notify(&ch);
             }
             else{
-                io_set_enable_command(XDMA_MODE_DISABLE, ch,subch, 0);
+                //io_set_enable_command(XDMA_MODE_DISABLE, ch,subch, 0);
             }
             
             break;

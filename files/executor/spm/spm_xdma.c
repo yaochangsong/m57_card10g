@@ -212,7 +212,7 @@ static ssize_t xspm_stream_read(int ch, int type,  void **data, uint32_t *len, v
         } else if(info->status == RING_TRANS_PENDING)
             usleep(1);
         if(_get_run_timer(0, 0) > _STREAM_READ_TIMEOUT_US){
-            printf_warn("Read TimeOut!\n");
+            //printf_warn("Read TimeOut!\n");
             //return -1;
         }
     }while(info->status == RING_TRANS_PENDING);
@@ -531,9 +531,9 @@ static ssize_t xspm_read_xdma_data_dispatcher(int ch , void **data, uint32_t *le
     if(index < 0)
         return -1;
 
-    //nsize = xspm_stream_read(ch, index, data, NULL);
-    //count = xspm_stream_read(ch, index, data, len, args);
-    count = xspm_stream_read_test2(ch, index, data, len, args);
+   //count = xspm_stream_read(ch, index, data, NULL);
+    count = xspm_stream_read(ch, index, data, len, args);
+    //count = xspm_stream_read_test2(ch, index, data, len, args);
     if(count > 0){
         if(xdma_data_dispatcher(ch, data, len, count, args) == -1){
             return -1;
@@ -567,7 +567,6 @@ static int xspm_send_data_dispatcher(int ch, char *buf[], uint32_t len[], int co
             tcp_send_vec_data_uplink(iov, arg->xdma_disp.type[i]->vec_cnt, sub);
         }
     }
-    xspm_read_xdma_data_over(ch, NULL);
     xdma_data_dispatcher_refresh(ch, args);
 
     return 0;

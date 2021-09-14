@@ -20,20 +20,74 @@
 static int xspm_read_stream_stop(int ch, int subch, enum stream_type type);
 static int xspm_read_xdma_data_over(int ch,  void *arg);
 
-static void print_array(uint8_t *ptr, ssize_t len)
-{
-    if(ptr == NULL || len <= 0)
-        return;
-    
-    for(int i = 0; i< len; i++){
-        printf("%02x ", *ptr++);
-    }
-    printf("\n");
-}
-
 static inline void *zalloc(size_t size)
 {
 	return calloc(1, size);
+}
+
+FILE *_file_fd[64] = {0};
+static  void init_write_file(char *filename, int index)
+{
+    _file_fd[index] = fopen(filename, "w+b");
+    if(!_file_fd[index]){
+        printf_err("Open file error!\n");
+    }
+}
+
+static inline void create_file_path(int index)
+{
+    char buffer[64];
+    
+    if(_file_fd[index] > 0)
+        return;
+    
+    sprintf(buffer, "/tmp/ch_%d", index);
+    init_write_file(buffer, index);
+    printf_note("create file: %s\n", buffer);
+}
+
+static inline void close_file(void)
+{
+    for(int i = 0; i < 64; i++){
+        if(_file_fd[i] > 0){
+            fclose(_file_fd[i]);
+        }
+    }
+    
+}
+
+
+static inline int write_file(uint8_t *pdata, int index, int len)
+{
+    char _file_buffer[32] = {0};
+    uint8_t *ptr = pdata;
+    for(int i = 0; i < len; i++){
+        sprintf(_file_buffer, "0x%02x ", *ptr++);
+        fwrite((void *)_file_buffer,1, strlen(_file_buffer), _file_fd[index]);
+    }
+
+
+    return 0;
+}
+
+static inline int write_file_nfft(int16_t *pdata, int n, int index)
+{
+    fwrite((void *)pdata, sizeof(int16_t), n, _file_fd[index]);
+    return 0;
+}
+static inline int write_lf(int index)
+{
+    char lf = '\n';
+    fwrite((void *)&lf,1, 1, _file_fd[index]);
+    return 0;
+}
+
+static inline int write_over(int index, uint32_t len)
+{
+    char buffer[128];
+    sprintf(buffer, "\n------------read frame over: %u[0x%x]---------------\n", len,len);
+    fwrite((void *)buffer, 1, strlen(buffer), _file_fd[index]);
+    sync();
 }
 
 #define RUN_MAX_TIMER 1
@@ -235,6 +289,14 @@ static ssize_t xspm_stream_read(int ch, int type,  void **data, uint32_t *len, v
         index = (info->rx_index + i) % info->block_count;
         data[i] = pstream[type].ptr[index];
         len[i] = info->results[index].length;
+		#if 0
+        if(i < 64){
+            printf_note("[%d]len: %u\n", i, len[i]);
+            create_file_path(i);
+            write_file(data[i], i, len[i]);
+            write_over(i, len[i]);
+        }
+		#endif
         //printf_info("[%d,index:%d][%p, %p, len:%u, offset=0x%x]%s\n", 
         //        i, index, data[i], pstream[type].ptr[index], len[i], info->rx_index,  pstream[type].name);
     }
@@ -478,31 +540,24 @@ static inline void xdma_data_dispatcher_refresh(int ch, void *args)
     }
 }
 
-/*
-    input parameter:
-    @data: The package data header
-    @len:  The package data len 
-    @next: the next one frame data pointer in package 
-    
-    out:the length of one frame 
-        -1: not find
-        >=0: find ok
-*/
-static ssize_t _of_xdma_data_valid(int ch, void *data, uint32_t len, uint8_t **next, void *args)
+static int xdma_data_dispatcher(int ch, void **data, uint32_t *len, ssize_t count, void *args)
 {
-    /*
-    51 57 0f 30 18 01 00 00 00 00 02 05 00 00 08 01 02 02 00 00 00 00 00 00 aa aa 55 55 63 02 00 00 2f 05 74 09 36 05 c5 09 00 00（上行）
-    |---------------------|  | a|  | b|  | c|  | d|  | e|  | f|  | g|
-    
-    a:物理目的地址
-    b:物理源地址
-    c:目的地址(目的组件/连接器地址)
-    d:载荷长度
-    e:分段表示，消息类型，请求表示
-    f:源组件地址
-    g:命令表示
-    */
-    struct net_sub_st *parg = args; 
+/*
+51 57 0f 30 18 01 00 00 00 00 02 05 00 00 08 01 02 02 00 00 00 00 00 00 aa aa 55 55 63 02 00 00 2f 05 74 09 36 05 c5 09 00 00（上行）
+|---------------------|  | a|  | b|  | c|  | d|  | e|  | f|  | g|
+
+a:物理目的地址
+b:物理源地址
+c:目的地址(目的组件/连接器地址)
+d:载荷长度
+e:分段表示，消息类型，请求表示
+f:源组件地址
+g:命令表示
+*/
+
+    struct net_sub_st parg;
+    struct spm_run_parm *arg = args; 
+
     struct data_frame_st{
         uint16_t py_dist_addr;
         uint16_t py_src_addr;
@@ -513,42 +568,15 @@ static ssize_t _of_xdma_data_valid(int ch, void *data, uint32_t len, uint8_t **n
         uint16_t cmd;
     }__attribute__ ((packed));
     struct data_frame_st *pdata;
-    uint8_t *ptr = data;
-    uint8_t *payload = NULL;
-    ssize_t payload_len = 0, frame_len = 0;
-
-    if(*(uint16_t *)ptr != 0x5751){  /* header */
-        //printf_warn("error header=0x%x\n", *(uint16_t *)ptr);
-        return -1;
-    }
-
-    payload = ptr + 8;
-    pdata = (struct data_frame_st *)payload;
-    payload_len = pdata->len;
-    if(payload_len <= 0)
-        return -1;
-
-    parg->chip_id = pdata->py_src_addr;
-    parg->func_id = pdata->src_addr;
-
-    frame_len = *(uint16_t *)(ptr + 4);
-    *next = ptr + frame_len;
-    //printf_note("frame_len=%ld[%x%x]\n", frame_len, parg->chip_id, parg->func_id);
-    return frame_len;
-}
-
-static int xdma_data_dispatcher(int ch, void **data, uint32_t *len, ssize_t count, void *args)
-{
-    struct net_sub_st parg;
-    struct spm_run_parm *arg = args; 
-    uint8_t *ptr = NULL, *next = NULL;
-    int hashid = 0,vec_cnt = 0;
-    int one_frame_len = 0;
     
     if(args == NULL){
         return -1;
     }
     
+    uint8_t *ptr = NULL;
+    uint8_t *payload = NULL;
+    int hashid = 0,vec_cnt = 0,flen = 0;
+
     for(int index = 0; index < count; index++){
         ptr = data[index];
         if(ptr == NULL){
@@ -556,24 +584,35 @@ static int xdma_data_dispatcher(int ch, void **data, uint32_t *len, ssize_t coun
             continue;
         }
 
-        while((one_frame_len =_of_xdma_data_valid(ch, ptr, len[index], &next, &parg)) > 0){
-            hashid = find_hash_id(parg.chip_id, parg.func_id);
-            if(hashid > MAX_XDMA_DISP_TYPE_NUM || hashid < 0 || arg->xdma_disp.type[hashid] == NULL){
-                printf_err("hash id err[%d]\n", hashid);
-                continue;
-            }
-            vec_cnt = arg->xdma_disp.type[hashid]->vec_cnt;
-            arg->xdma_disp.type[hashid]->subinfo.chip_id = parg.chip_id;
-            arg->xdma_disp.type[hashid]->subinfo.func_id = parg.func_id;
-            arg->xdma_disp.type[hashid]->vec[vec_cnt].iov_base = ptr;
-            arg->xdma_disp.type[hashid]->vec[vec_cnt].iov_len = one_frame_len;
-            arg->xdma_disp.type_num++;
-            arg->xdma_disp.type[hashid]->vec_cnt++;
-            //printf_note("[%d]iov_base=%p, iov_len=%lu\n", vec_cnt, arg->xdma_disp.type[hashid]->vec[vec_cnt].iov_base, 
-            //                                          arg->xdma_disp.type[hashid]->vec[vec_cnt].iov_len);
-            ptr = next;
+        if(*(uint16_t *)ptr != 0x5751){  /* header */
+            printf_warn("error header=0x%x\n", *(uint16_t *)ptr);
+            return -1;
         }
+        flen = *(uint16_t *)(ptr + 4);
+        if(flen > len[index])
+            printf_note("frame len: [0x%x]%d, %d[0x%x]\n", flen,flen, len[index],len[index]);
+        payload = ptr + 8;
+        pdata = (struct data_frame_st *)payload;
+        parg.chip_id = pdata->py_src_addr;
+        parg.func_id = pdata->src_addr;
+
+        hashid = find_hash_id(parg.chip_id, parg.func_id);
+        if(hashid > MAX_XDMA_DISP_TYPE_NUM || hashid < 0 || arg->xdma_disp.type[hashid] == NULL){
+            printf_err("hash id err[%d]\n", hashid);
+            continue;
+        }
+        vec_cnt = arg->xdma_disp.type[hashid]->vec_cnt;
+        arg->xdma_disp.type[hashid]->subinfo.chip_id = parg.chip_id;
+        arg->xdma_disp.type[hashid]->subinfo.func_id = parg.func_id;
+        arg->xdma_disp.type[hashid]->vec[vec_cnt].iov_base = data[index];
+        arg->xdma_disp.type[hashid]->vec[vec_cnt].iov_len = len[index];
+        //printf_note("iov_base=%p, iov_len=%lu\n", 
+        //    arg->xdma_disp.type[hashid]->vec[offset].iov_base, arg->xdma_disp.type[hashid]->vec[offset].iov_len);
+        arg->xdma_disp.type_num++;
+        arg->xdma_disp.type[hashid]->vec_cnt++;
+        //printf_note("offset=%d, chip_id=0x%x, func_id=0x%x,hashid=%d, type_num=%d\n", offset, parg.chip_id, parg.func_id, hashid,  arg->xdma_disp.type_num);
     }
+
     return 0;
 }
 
@@ -720,9 +759,10 @@ static int _xspm_close(void *_ctx)
         close(pstream[i].id);
     }
     for(ch = 0; ch< MAX_RADIO_CHANNEL_NUM; ch++){
-        safe_free(ctx->run_args[ch]->fft_ptr);
-        safe_free(ctx->run_args[ch]);
+        //safe_free(ctx->run_args[ch]->fft_ptr);
+       // safe_free(ctx->run_args[ch]);
     }
+    close_file();
     return 0;
 }
 
@@ -761,7 +801,7 @@ static int xspm_read_xdma_data_over(int ch,  void *arg)
     if(pstream){
         ret = ioctl(pstream[index].id, IOCTL_XDMA_TRANS_SET, ring_trans);
         if (ret){
-            printf("ioctl(IOCTL_XDMA_TRANS_SET) failed:%d\n", ret);
+           // printf("ioctl(IOCTL_XDMA_TRANS_SET) failed:%d\n", ret);
             return -1;
         }
     }

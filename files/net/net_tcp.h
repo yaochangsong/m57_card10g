@@ -72,6 +72,7 @@ struct tcp_section {
     int prio;
 	bool type[32];
     int section_id;
+    struct net_thread_context *thread;
 };
 
 
@@ -142,6 +143,9 @@ extern void tcp_active_send_all_client(uint8_t *data, int len);
 extern void update_tcp_keepalive(void *client);
 extern int tcp_send_vec_data_uplink(struct iovec *iov, int iov_len, void *args);
 extern int tcp_send_data_uplink(char  *data, int len, void *args);
+extern int tcp_client_do_for_each(int (*f)(struct net_tcp_client *));
+extern int send_vec_data_to_client(struct net_tcp_client *client, struct iovec *iov, int iov_len);
+
 
 #endif
 

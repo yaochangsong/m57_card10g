@@ -169,4 +169,29 @@ void net_hash_find_type_set(hash_t *hash, int type, int (*callback) (int ))
     }
 }
 
+void net_hash_for_each(hash_t *hash, int (*callback) (void *), void *args)
+{
+    const char *keys[HASH_NODE_MAX];
+    void *vals[HASH_NODE_MAX];
+    int n = 0;
+    int ival = 0;
+
+    if(hash_size(hash) > HASH_NODE_MAX){
+        printf_err("hash_size %d is bigger than %d\n", hash_size(hash), HASH_NODE_MAX);
+        return;
+    }
+    
+    hash_each(hash, {
+      keys[n] = key;
+      vals[n] = val;
+      n++;
+    });
+    vals[0] = vals[0];  /*  warn */
+    for(int i = 0; i < hash_size(hash); i++){
+        if(callback)
+            callback(args);
+    }
+}
+
+
 

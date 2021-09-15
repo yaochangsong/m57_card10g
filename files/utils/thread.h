@@ -18,12 +18,12 @@
 extern void pthread_bmp_init(void);
 extern int pthread_create_detach (const pthread_attr_t *attr, int (*init_callback) (void *),
                                         int (*start_routine) (void *), int (*exit_callback) (void *), 
-                                        char *name, void *arg_cb, void *arg_exit);
+                                        char *name, void *arg_cb, void *arg_exit, pthread_t *tid);
 
 extern void *pthread_cancel_by_name(char *name);
 extern int pthread_exit_by_name(char *name);
 extern bool pthread_check_alive_by_name(char *name);
-
-
+extern bool pthread_check_alive_by_tid(pthread_t tid);
+extern int pthread_cancel_by_tid(pthread_t tid);
 
 #endif

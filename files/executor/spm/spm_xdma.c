@@ -88,6 +88,7 @@ static inline int write_over(int index, uint32_t len)
     sprintf(buffer, "\n------------read frame over: %u[0x%x]---------------\n", len,len);
     fwrite((void *)buffer, 1, strlen(buffer), _file_fd[index]);
     sync();
+    return 0;
 }
 
 #define RUN_MAX_TIMER 1

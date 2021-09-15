@@ -28,6 +28,8 @@
 #include "../protocol/http/file.h"
 #include "net_sub.h"
 #include "../bsp/io.h"
+#include "net_thread.h"
+
 
 
 int get_ifa_name_by_ip(char *ipaddr, char *ifa_name)
@@ -447,7 +449,8 @@ static void tcp_accept_cb(struct uloop_fd *fd, unsigned int events)
     cl->send = tcp_send;
     cl->request_done = tcp_client_request_done;
     printf_note("New connection from: %s:%d\n", cl->get_peer_addr(cl), cl->get_peer_port(cl));
-    
+
+    cl->section.thread = net_thread_create_context(cl);
     cl->section.hash = net_hash_new();
     cl->section.section_id = socket_bitmap_find_index();
     if(cl->section.section_id >= MAX_CLINET_SOCKET_NUM)
@@ -517,6 +520,34 @@ void tcp_active_send_all_client(uint8_t *data, int len)
     }
 }
 
+
+int tcp_client_do_for_each(int (*f)(struct net_tcp_client *))
+{
+    struct net_tcp_client *cl_list, *list_tmp;
+    union _cmd_srv *cmdsrv;
+    int client_num = 0, ret = -1;
+    
+    for(int i = 0; i < get_use_ifname_num(); i++){
+        cmdsrv = (union _cmd_srv *)get_cmd_server(i);
+        if(cmdsrv == NULL)
+            return -1;
+        struct net_tcp_server *srv = (struct net_tcp_server *)cmdsrv->tcpsvr;
+        if(srv == NULL)
+            return -1;
+
+        pthread_mutex_lock(&srv->tcp_client_lock);
+        list_for_each_entry_safe(cl_list, list_tmp, &srv->clients, list){
+            ret = f(cl_list);
+            if(ret > 0)
+                client_num++;
+            //printf_debug("1g send status to %s:%d\n", cl_list->get_peer_addr(cl_list), cl_list->get_peer_port(cl_list));
+        }
+        pthread_mutex_unlock(&srv->tcp_client_lock);
+    }
+    return client_num;
+}
+
+
 static int tcp_send_data_to_client(int fd, const char *buf, int buflen)
 {
     ssize_t ret = 0, len;
@@ -547,7 +578,7 @@ static int tcp_send_data_to_client(int fd, const char *buf, int buflen)
 }
 
 
-static inline int _send_vec_data_to_client(struct net_tcp_client *client, struct iovec *iov, int iov_len)
+int send_vec_data_to_client(struct net_tcp_client *client, struct iovec *iov, int iov_len)
 {    
     struct msghdr msgsent;
     int r=0;
@@ -591,7 +622,7 @@ int tcp_send_vec_data_uplink(struct iovec *iov, int iov_len, void *args)
             if(net_hash_find(cl_list->section.hash, parg->chip_id, RT_CHIPID) && 
                 net_hash_find(cl_list->section.hash, parg->func_id, RT_FUNCID)){
                     //printf_note("send to port: %d, 0x%x, 0x%x\n", cl_list->get_peer_port(cl_list), parg->chip_id, parg->func_id);
-                    _send_vec_data_to_client(cl_list, iov, iov_len);
+                    send_vec_data_to_client(cl_list, iov, iov_len);
                 }
                 
         }

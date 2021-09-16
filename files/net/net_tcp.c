@@ -529,18 +529,22 @@ int tcp_client_do_for_each(int (*f)(struct net_tcp_client *))
     
     for(int i = 0; i < get_use_ifname_num(); i++){
         cmdsrv = (union _cmd_srv *)get_cmd_server(i);
-        if(cmdsrv == NULL)
-            return -1;
+        if(cmdsrv == NULL){
+            printf_note("cmd server is null\n");
+            return client_num;
+        }
+            
         struct net_tcp_server *srv = (struct net_tcp_server *)cmdsrv->tcpsvr;
-        if(srv == NULL)
-            return -1;
+        if(srv == NULL){
+            printf_note("tcp server is null\n");
+            return client_num;
+        }
 
         pthread_mutex_lock(&srv->tcp_client_lock);
         list_for_each_entry_safe(cl_list, list_tmp, &srv->clients, list){
             ret = f(cl_list);
-            if(ret > 0)
+            if(ret == 0)
                 client_num++;
-            //printf_debug("1g send status to %s:%d\n", cl_list->get_peer_addr(cl_list), cl_list->get_peer_port(cl_list));
         }
         pthread_mutex_unlock(&srv->tcp_client_lock);
     }

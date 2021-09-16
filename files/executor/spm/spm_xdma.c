@@ -478,15 +478,20 @@ static ssize_t xspm_stream_read_test2(int ch, int type,  void **data, uint32_t *
         0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x55,0x55,0xaa,0xaa
     };
     #define _read_cnt 10
-    uint8_t **alloc_mem;
-    alloc_mem = calloc(_read_cnt, sizeof(*alloc_mem));
-    if (!alloc_mem) {
-        return -ENOMEM;
-    }
-    for(int i = 0; i < _read_cnt; i++){
-        alloc_mem[i] = calloc(1, 8192);
-        if (!alloc_mem[i]) {
+    static uint8_t **alloc_mem = NULL;
+    if(alloc_mem == NULL){
+        alloc_mem = calloc(_read_cnt, sizeof(*alloc_mem));
+        if (!alloc_mem) {
             return -ENOMEM;
+        }
+    }
+
+    for(int i = 0; i < _read_cnt; i++){
+        if(alloc_mem[i] == NULL){
+            alloc_mem[i] = calloc(1, 8192);
+            if (!alloc_mem[i]) {
+                return -ENOMEM;
+            }
         }
         if(i < _read_cnt - 3)
             memcpy(alloc_mem[i], buffer, 8192);
@@ -495,7 +500,7 @@ static ssize_t xspm_stream_read_test2(int ch, int type,  void **data, uint32_t *
         data[i] = alloc_mem[i];
         len[i] = 8192;
     }
-
+    usleep(100);
     return _read_cnt;
 }
 
@@ -621,8 +626,8 @@ static ssize_t xspm_read_xdma_data_dispatcher(int ch , void **data, uint32_t *le
 
    //count = xspm_stream_read(ch, index, data, NULL);
     //count = xspm_stream_read(ch, index, data, len, args);
-    //count = xspm_stream_read_test2(ch, index, data, len, args);
-    count = xspm_stream_read_test(ch, index, data, len, args);
+    count = xspm_stream_read_test2(ch, index, data, len, args);
+    //count = xspm_stream_read_test(ch, index, data, len, args);
     if(count > 0){
         if(xdma_data_dispatcher(ch, data, len, count, args) == -1){
             return -1;

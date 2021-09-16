@@ -413,7 +413,8 @@ static ssize_t xspm_stream_read_test(int ch, int type,  void **data, uint32_t *l
          len[i] = sizeof(buffer);
        // print_array(data[i], 32);
     }
-    //sleep(1);
+    //usleep(1000);
+    sleep(1);
     return count;
 }
 
@@ -522,15 +523,6 @@ static ssize_t xspm_read_xdma_data(int ch , void **data, uint32_t *len, void *ar
     return xspm_stream_read(ch, index, data, len, args);
 }
 
-
-static inline int find_hash_id(uint16_t chip_id, uint16_t func_id)
-{
-    int hashid;
-    //eg: HASH ID[8bit]: bit7~5[funcId] bit[4~3]chip bit[2~0]slot 
-    hashid = (CARD_SLOT_NUM(chip_id) + (CARD_CHIP_NUM(chip_id)<<CARD_SLOT_OFFSET) + (func_id<<(CARD_SLOT_OFFSET+CARD_CHIP_OFFSET)));
-    return hashid;
-}
-
 static inline void xdma_data_dispatcher_refresh(int ch, void *args)
 {
     struct spm_run_parm *arg = args;
@@ -596,8 +588,9 @@ g:命令表示
         pdata = (struct data_frame_st *)payload;
         parg.chip_id = pdata->py_src_addr;
         parg.func_id = pdata->src_addr;
-
-        hashid = find_hash_id(parg.chip_id, parg.func_id);
+        hashid = GET_HASHMAP_ID(parg.chip_id, parg.func_id);
+       // hashid = find_hash_id(parg.chip_id, parg.func_id);
+        //printf_note("hashid:%d, vec_cnt=%d\n", hashid, vec_cnt);
         if(hashid > MAX_XDMA_DISP_TYPE_NUM || hashid < 0 || arg->xdma_disp.type[hashid] == NULL){
             printf_err("hash id err[%d]\n", hashid);
             continue;
@@ -627,9 +620,9 @@ static ssize_t xspm_read_xdma_data_dispatcher(int ch , void **data, uint32_t *le
         return -1;
 
    //count = xspm_stream_read(ch, index, data, NULL);
-    count = xspm_stream_read(ch, index, data, len, args);
+    //count = xspm_stream_read(ch, index, data, len, args);
     //count = xspm_stream_read_test2(ch, index, data, len, args);
-    //count = xspm_stream_read_test(ch, index, data, len, args);
+    count = xspm_stream_read_test(ch, index, data, len, args);
     if(count > 0){
         if(xdma_data_dispatcher(ch, data, len, count, args) == -1){
             return -1;

@@ -21,5 +21,5 @@ extern void net_hash_add(hash_t *hash, short id, int type);
 extern void net_hash_del(hash_t *hash, short id, int type);
 extern bool net_hash_find(hash_t *hash, short id, int type);
 extern void net_hash_find_type_set(hash_t *hash, int type, int (*callback) (int ));
-extern void net_hash_for_each(hash_t *hash, int (*callback) (void *), void *args);
+extern void net_hash_for_each(hash_t *hash, int (*callback) (void *, int), void *args);
 #endif

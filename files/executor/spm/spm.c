@@ -25,6 +25,7 @@
 #include "../../bsp/io.h"
 #include "../../utils/bitops.h"
 #include "../../net/net_sub.h"
+#include "../../net/net_thread.h"
 
 
 
@@ -539,8 +540,9 @@ loop:
         if(ctx->ops->read_xdma_data)
             count = ctx->ops->read_xdma_data(ch, (void **)ptr_data, len, ctx->run_args[ch]);
         if(count > 0){
-            if(ctx->ops->send_xdma_data)
-                ctx->ops->send_xdma_data(ch, ptr_data, len, count, ctx->run_args[ch]);
+            net_thread_con_broadcast(ctx->run_args[ch]);
+            //if(ctx->ops->send_xdma_data)
+            //    ctx->ops->send_xdma_data(ch, ptr_data, len, count, ctx->run_args[ch]);
         }
         ctx->ops->read_xdma_over_deal(ch, NULL);
         if(socket_bitmap_weight() == 0){

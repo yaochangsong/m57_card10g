@@ -121,40 +121,40 @@ static inline int _get_hash_id(void *args)
     return id;
 }
 
-static int  data_dispatcher(void *args)
+static int  data_dispatcher(void *args, int hid)
 {
-    //struct net_sub_st *sub;
-    //struct iovec iov[MAX_XDMA_DISP_TYPE_NUM];
-
     struct net_thread_context *ctx = args;
     struct spm_context *spm_ctx = ctx->args;
     struct spm_run_parm *arg = spm_ctx->run_args[1];
     struct net_tcp_client *cl = ctx->thread.client;
     
-    int index = _get_hash_id(cl);
-    int vec_cnt = ctx->consum[index].num;
+    int index = hid;
+    int vec_cnt = arg->xdma_disp.type[index]->vec_cnt;
 
+    printf_note("vec_cnt=%d, hid=%d\n", vec_cnt, hid);
     if(arg->xdma_disp.type[index] == NULL || vec_cnt == 0)
         return -1;
-    
-    //sub = &arg->xdma_disp.type[index]->subinfo;
 
-    //for(int j = 0; j < vec_cnt; j++){
-    //    iov[j].iov_base = arg->xdma_disp.type[index]->vec[j].iov_base;
-    //    iov[j].iov_len =  arg->xdma_disp.type[index]->vec[j].iov_len;
-        //printf_note("[%d]iov=%p, %lu, vec_cnt=%d\n", j, iov[j].iov_base, iov[j].iov_len, arg->xdma_disp.type[i]->vec_cnt);
-    //}
     if(vec_cnt > 0){
-        //printf_note("tcp send: %d, %x\n", arg->xdma_disp.type[i]->vec_cnt, sub->chip_id);
-        //tcp_send_vec_data_uplink(iov, vec_cnt, sub);
-       // tcp_send_vec_data_uplink(arg->xdma_disp.type[index]->vec, vec_cnt, sub);
-       send_vec_data_to_client(cl, arg->xdma_disp.type[index]->vec, vec_cnt);
+       // printf_note("tcp send hid:%d\n", hid);
+        send_vec_data_to_client(cl, arg->xdma_disp.type[index]->vec, vec_cnt);
     }
 
     return 0;
 }
 
-void  net_thread_con_broadcast(void)
+static inline void _net_thread_dispatcher_refresh(void *args)
+{
+    struct spm_run_parm *arg = args;
+    
+    arg->xdma_disp.type_num = 0;
+    for(int i = 0; i < MAX_XDMA_DISP_TYPE_NUM; i++){
+        arg->xdma_disp.type[i]->vec_cnt = 0;
+    }
+}
+
+
+void  net_thread_con_broadcast(void *args)
 {
     static bool first = true;
     static struct thread_con_wait *wait;
@@ -171,6 +171,7 @@ void  net_thread_con_broadcast(void)
     int num = tcp_client_do_for_each(_net_thread_con_nofity);
     printf_note("broadcast clinet num: %d\n", num);
     _net_thread_con_wait(con_wait, num);
+    _net_thread_dispatcher_refresh(args);
 }
 
 

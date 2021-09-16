@@ -31,7 +31,6 @@ static inline bool hxstr_to_int(char *str, int *ivalue, bool(*_check)(int))
     }
     *ivalue = value;
     if(*_check == NULL){
-         printf_note("null func\n");
          return true;
     }
        
@@ -84,6 +83,17 @@ void net_hash_add(hash_t *hash, short id, int type)
     hash_set(hash, keydup, valdup);
 }
 
+static inline int _get_type_by_key(char *key)
+{
+    int type = 0, ikey = 0;
+    
+    if(hxstr_to_int(key, &ikey, NULL) == false)
+        return -1;
+    
+    type = (ikey >> 16)& 0x0ff;
+    
+    return type;
+}
 void net_hash_del(hash_t *hash, short id, int type)
 {
     int h_id = id | (type << 16);
@@ -169,12 +179,14 @@ void net_hash_find_type_set(hash_t *hash, int type, int (*callback) (int ))
     }
 }
 
-void net_hash_for_each(hash_t *hash, int (*callback) (void *), void *args)
+void net_hash_for_each(hash_t *hash, int (*callback) (void *, int), void *args)
 {
     const char *keys[HASH_NODE_MAX];
     void *vals[HASH_NODE_MAX];
-    int n = 0;
-    int ival = 0;
+    int n = 0, hid = 0;
+    short itype = 0, ival[HASH_NODE_MAX];
+    short cid_ival[HASH_NODE_MAX] = {0}, *pcid = NULL, cid_num = 0;
+    short fid_ival[HASH_NODE_MAX] = {0}, *fcid = NULL, fid_num = 0;
 
     if(hash_size(hash) > HASH_NODE_MAX){
         printf_err("hash_size %d is bigger than %d\n", hash_size(hash), HASH_NODE_MAX);
@@ -187,9 +199,30 @@ void net_hash_for_each(hash_t *hash, int (*callback) (void *), void *args)
       n++;
     });
     vals[0] = vals[0];  /*  warn */
+    pcid = cid_ival;
+    fcid = fid_ival;
     for(int i = 0; i < hash_size(hash); i++){
-        if(callback)
-            callback(args);
+        itype = _get_type_by_key(keys[i]);
+        if(itype == -1)
+            continue;
+        if(hxstr_to_int(vals[i], (int *)&ival[i], NULL) == false)
+            continue;
+        if(itype == RT_CHIPID){
+            *pcid++ = ival[i];
+            cid_num++;
+        } else if(itype == RT_FUNCID){
+            *fcid++ = ival[i];
+            fid_num++;
+        }
+        //printf("itype=%d, k=%s, v=%s, %x\n", itype, keys[i], (char *)vals[i], ival[i]);
+    }
+    for(int j = 0; j < cid_num; j++){
+        for(int k = 0; k < fid_num; k++){
+            hid = GET_HASHMAP_ID(cid_ival[j], fid_ival[k]);
+            //printf("cid:%x, fid:%x, hid:%d\n", cid_ival[j], fid_ival[k], hid);
+            if(callback)
+                callback(args, hid);
+        }
     }
 }
 

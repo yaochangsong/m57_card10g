@@ -38,7 +38,7 @@ struct net_thread_context {
     struct thread_consume_fin fin_con;
 };
 
-extern void  net_thread_con_broadcast(void);
+extern void  net_thread_con_broadcast(void *args);
 extern struct net_thread_context * net_thread_create_context(void *cl);
 
 #endif

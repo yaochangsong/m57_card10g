@@ -27,7 +27,7 @@
 #include "utils.h"
 
 
-#define MAX_TEST_BITS 20
+#define MAX_TEST_BITS 32
 
 static DECLARE_BITMAP(thread_bmp, MAX_TEST_BITS);
 

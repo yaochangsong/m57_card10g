@@ -319,6 +319,9 @@ void tcp_free(struct net_tcp_client *cl)
         close(cl->sfd.fd.fd);
         list_del(&cl->list);
         cl->srv->nclients--;
+        /* close clinet dispatcher thread */
+        if(cl->section.thread && cl->section.thread->ops->close)
+            cl->section.thread->ops->close(cl);
         socket_bitmap_clear(cl->section.section_id);
         executor_net_disconnect_notify(&cl->peer_addr);
         free(cl);
@@ -449,7 +452,6 @@ static void tcp_accept_cb(struct uloop_fd *fd, unsigned int events)
     cl->send = tcp_send;
     cl->request_done = tcp_client_request_done;
     printf_note("New connection from: %s:%d\n", cl->get_peer_addr(cl), cl->get_peer_port(cl));
-
     cl->section.thread = net_thread_create_context(cl);
     cl->section.hash = net_hash_new();
     cl->section.section_id = socket_bitmap_find_index();
@@ -521,7 +523,7 @@ void tcp_active_send_all_client(uint8_t *data, int len)
 }
 
 
-int tcp_client_do_for_each(int (*f)(struct net_tcp_client *))
+int tcp_client_do_for_each(int (*f)(struct net_tcp_client *), void **cl)
 {
     struct net_tcp_client *cl_list, *list_tmp;
     union _cmd_srv *cmdsrv;
@@ -541,10 +543,20 @@ int tcp_client_do_for_each(int (*f)(struct net_tcp_client *))
         }
 
         pthread_mutex_lock(&srv->tcp_client_lock);
-        list_for_each_entry_safe(cl_list, list_tmp, &srv->clients, list){
-            ret = f(cl_list);
-            if(ret == 0)
-                client_num++;
+        //list_for_each_entry_safe(cl_list, list_tmp, &srv->clients, list){
+        list_for_each_entry_reverse(cl_list, &srv->clients, list){
+        #if 0
+            if(client_num == 0){
+                *cl = cl_list;
+                //client_num++;
+            }else
+        #endif
+            {
+                ret = f(cl_list);
+                if(ret == 0){
+                    client_num++;
+                }
+            }
         }
         pthread_mutex_unlock(&srv->tcp_client_lock);
     }
@@ -623,11 +635,11 @@ int tcp_send_vec_data_uplink(struct iovec *iov, int iov_len, void *args)
         if(srv == NULL)
             continue;
         list_for_each_entry_safe(cl_list, list_tmp, &srv->clients, list){
-            if(net_hash_find(cl_list->section.hash, parg->chip_id, RT_CHIPID) && 
-                net_hash_find(cl_list->section.hash, parg->func_id, RT_FUNCID)){
+            //if(net_hash_find(cl_list->section.hash, parg->chip_id, RT_CHIPID) && 
+            //    net_hash_find(cl_list->section.hash, parg->func_id, RT_FUNCID)){
                     //printf_note("send to port: %d, 0x%x, 0x%x\n", cl_list->get_peer_port(cl_list), parg->chip_id, parg->func_id);
                     send_vec_data_to_client(cl_list, iov, iov_len);
-                }
+            //    }
                 
         }
     }

@@ -16,9 +16,12 @@
 #include "../../net/net_sub.h"
 
 #define  SPM_DISPATCHER_ON
+//#define  SPM_HEADER_CHECK
 
 static int xspm_read_stream_stop(int ch, int subch, enum stream_type type);
 static int xspm_read_xdma_data_over(int ch,  void *arg);
+static int xspm_xdma_data_clear(int ch,  void *arg);
+
 
 static inline void *zalloc(size_t size)
 {
@@ -89,6 +92,17 @@ static inline int write_over(int index, uint32_t len)
     fwrite((void *)buffer, 1, strlen(buffer), _file_fd[index]);
     sync();
     return 0;
+}
+
+static void print_array(uint8_t *ptr, ssize_t len)
+{
+    if(ptr == NULL || len <= 0)
+        return;
+    
+    for(int i = 0; i< len; i++){
+        printf("%02x ", *ptr++);
+    }
+    printf("\n");
 }
 
 #define RUN_MAX_TIMER 1
@@ -242,8 +256,8 @@ static int xspm_create(void)
 struct xdma_ring_trans_ioctl xinfo[4];
 static ssize_t xspm_stream_read(int ch, int type,  void **data, uint32_t *len, void *args)
 {
-    #define _STREAM_READ_TIMEOUT_US (1000000)
-    int rc;
+    #define _STREAM_READ_TIMEOUT_US (500000000)
+    int rc, overrun = 0;
     struct _spm_xstream *pstream;
     pstream = spm_xstream;
     struct xdma_ring_trans_ioctl *info = &xinfo[type];
@@ -272,11 +286,16 @@ static ssize_t xspm_stream_read(int ch, int type,  void **data, uint32_t *len, v
             return -1;
         } else if(info->status == RING_TRANS_OVERRUN){
             printf_warn("*****status:RING_TRANS_OVERRUN.*****\n");
+            xspm_xdma_data_clear(0, args);
+            overrun = 1;
         } else if(info->status == RING_TRANS_INITIALIZING){
             printf_warn("*****status:RING_TRANS_INITIALIZING.*****\n");
             usleep(10);
-        } else if(info->status == RING_TRANS_PENDING)
+        } else if(info->status == RING_TRANS_PENDING){
+            //printf_warn("*****status:RING_TRANS_PENDING\n");
             usleep(1);
+        }
+           
         if(_get_run_timer(0, 0) > _STREAM_READ_TIMEOUT_US){
             //printf_warn("Read TimeOut!\n");
             //return -1;
@@ -293,9 +312,10 @@ static ssize_t xspm_stream_read(int ch, int type,  void **data, uint32_t *len, v
 		#if 0
         if(i < 64){
             printf_note("[%d]len: %u\n", i, len[i]);
-            create_file_path(i);
-            write_file(data[i], i, len[i]);
-            write_over(i, len[i]);
+            print_array(data[i], 32);
+            //create_file_path(i);
+            //write_file(data[i], i, len[i]);
+            //write_over(i, len[i]);
         }
 		#endif
         //printf_info("[%d,index:%d][%p, %p, len:%u, offset=0x%x]%s\n", 
@@ -387,10 +407,10 @@ static int xspm_stram_write(int ch, const void *data, size_t data_len)
 static ssize_t xspm_stream_read_test(int ch, int type,  void **data, uint32_t *len, void *args)
 {
     static uint8_t buffer[8192] = {
-        0x51,0x57,0xbe,0x30,0x18,0x01,0x00,0x00,0x00,0x00,
-        0x01,0x05,0x00,0x00,0x08,0x01,0x02,0x02,0x00,0x00,0x00,0x00,0x00,0x00,0xaa,0xaa,
-        0x55,0x55,0xc8,0x02,0x00,0x00,0x30,0x05,0x74,0x09,0x38,0x05,0xc9,0x09,0x00,0x00,
-        0x00,0x00,0x00,0x00,0x00,0x00,0x01,0x00,0x00,0x00,0x25,0x10,0x18,0x20,0x00,0x00,
+        0x51,0x57,0x1f,0x30,0x18,0x01,0x00,0x00,0x00,0x00,0x02,0x05,0x00,0x00,0x08,0x01,
+        0x02,0x02,0x00,0x00,0x00,0x00,0x00,0x00,0xaa,0xaa,0x55,0x55,0xfa,0x0b,0x00,0x00,
+        0x30,0x05,0x78,0x09,0x36,0x05,0xdc,0x09,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
+        0x00,0x00,0x00,0x00,0x25,0x10,0x18,0x20,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
         0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
         0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
         0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
@@ -404,7 +424,25 @@ static ssize_t xspm_stream_read_test(int ch, int type,  void **data, uint32_t *l
         0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
         0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
         0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
-        0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x55,0x55,0xaa,0xaa
+        0x00,0x00,0x00,0x00,0x55,0x55,0xaa,0xaa,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00, 
+        0x51,0x57,0x1f,0x30,0x18,0x01,0x00,0x00,0x00,0x00,0x01,0x05,0x00,0x00,0x08,0x01,
+        0x02,0x02,0x00,0x00,0x00,0x00,0x00,0x00,0xaa,0xaa,0x55,0x55,0xfa,0x0b,0x00,0x00,
+        0x30,0x05,0x78,0x09,0x36,0x05,0xdc,0x09,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
+        0x00,0x00,0x00,0x00,0x25,0x10,0x18,0x20,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
+        0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
+        0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
+        0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
+        0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
+        0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
+        0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
+        0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
+        0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
+        0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
+        0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
+        0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
+        0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
+        0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
+        0x00,0x00,0x00,0x00,0x55,0x55,0xaa,0xaa,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00, 
     };
 
     int count = 10;
@@ -413,8 +451,8 @@ static ssize_t xspm_stream_read_test(int ch, int type,  void **data, uint32_t *l
          len[i] = sizeof(buffer);
        // print_array(data[i], 32);
     }
-    //usleep(1000);
-    sleep(1);
+    usleep(10);
+    //sleep(1);
     return count;
 }
 
@@ -519,8 +557,8 @@ static ssize_t xspm_stream_read_test2(int ch, int type,  void **data, uint32_t *
         data[i] = alloc_mem[i];
         len[i] = 8192;
     }
-    //usleep(100);
-    sleep(1);
+    //usleep(500000);
+    //sleep(1);
     return _read_cnt;
 }
 
@@ -579,7 +617,7 @@ static ssize_t _xdma_of_match_pkgs(void *data, uint32_t len, void *args, size_t 
 
     do{
         if(*(uint16_t *)ptr != 0x5751){  /* header */
-            printf_warn("err header=0x%x, block size left:%ld\n", *(uint16_t *)ptr, XDMA_BLOCK_SIZE - offp);
+            //printf_warn("err header=0x%x, block size left:%ld\n", *(uint16_t *)ptr, XDMA_BLOCK_SIZE - offp);
             break;
         }
         payload = ptr + 8;
@@ -588,7 +626,7 @@ static ssize_t _xdma_of_match_pkgs(void *data, uint32_t len, void *args, size_t 
         reminder16 = frame_len % 16;
         if(reminder16 != 0){
             frame_len += reminder16;
-            //printf_note("[%d]not aglin 16,add %d, frame_len:%lu\n", pos, reminder16, frame_len);
+           // printf_note("[%d]not aglin 16,add %d, frame_len:%lu\n", pos, reminder16, frame_len);
         }
             
         if(pos == 0){
@@ -609,6 +647,30 @@ static ssize_t _xdma_of_match_pkgs(void *data, uint32_t len, void *args, size_t 
     return sum_len;
 } 
 
+static int _xdma_load_disp_buffer(void *data, ssize_t len, void *args, void *run)
+{
+    int hashid = 0, vec_cnt = 0;
+    struct net_sub_st *sub = args;
+    struct spm_run_parm *prun = run; 
+    
+    hashid = GET_HASHMAP_ID(sub->chip_id, sub->func_id);
+    printf_note("hashid:%d, %x, %x\n", hashid, sub->chip_id, sub->func_id);
+    
+    if(hashid > MAX_XDMA_DISP_TYPE_NUM || hashid < 0 || prun->xdma_disp.type[hashid] == NULL){
+        printf_err("hash id err[%d]\n", hashid);
+        return -1;
+    }
+    vec_cnt = prun->xdma_disp.type[hashid]->vec_cnt;
+    prun->xdma_disp.type[hashid]->subinfo.chip_id = sub->chip_id;
+    prun->xdma_disp.type[hashid]->subinfo.func_id = sub->func_id;
+    prun->xdma_disp.type[hashid]->vec[vec_cnt].iov_base = data;
+    prun->xdma_disp.type[hashid]->vec[vec_cnt].iov_len = len;
+    prun->xdma_disp.type_num++;
+    prun->xdma_disp.type[hashid]->vec_cnt++;
+    printf_note("vec_cnt:%d\n", prun->xdma_disp.type[hashid]->vec_cnt);
+    return 0;
+}
+
 static int xdma_data_dispatcher_buffer(int ch, void **data, uint32_t *len, ssize_t count, void *args)
 {
     struct net_sub_st sub;
@@ -619,15 +681,20 @@ static int xdma_data_dispatcher_buffer(int ch, void **data, uint32_t *len, ssize
         offset = 0;
         ptr = data[index];
         do{
+ #ifdef SPM_HEADER_CHECK
             nframe = _xdma_of_match_pkgs(ptr, len[index], &sub, offset);
+ #else
+            nframe = len[index];
+            offset = XDMA_BLOCK_SIZE;
+ #endif
             if(nframe <= 0){
-                printf_note("read block[%d] over, size[%ld]\n", index, offset);
+                printf_note(">>>>>read block[%d/%ld] over, size[%ld]\n", index, count, offset);
                 break;
             }
             ptr += nframe;
             offset += nframe;
             printf_note("offset：%ld, chip_id=0x%x, func_id=0x%x\n", offset, sub.chip_id, sub.func_id);
-           // _xdma_load_disp_buffer(data[index], nframe, &sub);
+            _xdma_load_disp_buffer(data[index], nframe, &sub, args);
         }while(offset <= XDMA_BLOCK_SIZE);
     }
 
@@ -678,7 +745,7 @@ g:命令表示
             printf_err("ptr is null\n");
             continue;
         }
-
+#ifdef SPM_HEADER_CHECK
         if(*(uint16_t *)ptr != 0x5751){  /* header */
             printf_warn("error header=0x%x\n", *(uint16_t *)ptr);
             return -1;
@@ -686,13 +753,19 @@ g:命令表示
         flen = *(uint16_t *)(ptr + 4);
         if(flen > len[index])
             printf_note("frame len: [0x%x]%d, %d[0x%x]\n", flen,flen, len[index],len[index]);
+#endif
         payload = ptr + 8;
+#ifdef SPM_HEADER_CHECK
         pdata = (struct data_frame_st *)payload;
         parg.chip_id = pdata->py_src_addr;
         parg.func_id = pdata->src_addr;
+#else
+        parg.chip_id = 0x0502;
+        parg.func_id = 0x0;
+#endif
         hashid = GET_HASHMAP_ID(parg.chip_id, parg.func_id);
        // hashid = find_hash_id(parg.chip_id, parg.func_id);
-        //printf_note("hashid:%d, vec_cnt=%d\n", hashid, vec_cnt);
+       // printf_note("hashid:%d, vec_cnt=%d\n", hashid, vec_cnt);
         if(hashid > MAX_XDMA_DISP_TYPE_NUM || hashid < 0 || arg->xdma_disp.type[hashid] == NULL){
             printf_err("hash id err[%d]\n", hashid);
             continue;
@@ -703,7 +776,7 @@ g:命令表示
         arg->xdma_disp.type[hashid]->vec[vec_cnt].iov_base = data[index];
         arg->xdma_disp.type[hashid]->vec[vec_cnt].iov_len = len[index];
         //printf_note("iov_base=%p, iov_len=%lu\n", 
-        //    arg->xdma_disp.type[hashid]->vec[offset].iov_base, arg->xdma_disp.type[hashid]->vec[offset].iov_len);
+        //    arg->xdma_disp.type[hashid]->vec[vec_cnt].iov_base, arg->xdma_disp.type[hashid]->vec[vec_cnt].iov_len);
         arg->xdma_disp.type_num++;
         arg->xdma_disp.type[hashid]->vec_cnt++;
         //printf_note("offset=%d, chip_id=0x%x, func_id=0x%x,hashid=%d, type_num=%d\n", offset, parg.chip_id, parg.func_id, hashid,  arg->xdma_disp.type_num);
@@ -722,8 +795,8 @@ static ssize_t xspm_read_xdma_data_dispatcher(int ch , void **data, uint32_t *le
         return -1;
 
    //count = xspm_stream_read(ch, index, data, NULL);
-    //count = xspm_stream_read(ch, index, data, len, args);
-    count = xspm_stream_read_test2(ch, index, data, len, args);
+    count = xspm_stream_read(ch, index, data, len, args);
+    //count = xspm_stream_read_test2(ch, index, data, len, args);
     //count = xspm_stream_read_test(ch, index, data, len, args);
     if(count > 0){
         if(xdma_data_dispatcher(ch, data, len, count, args) == -1){
@@ -768,7 +841,7 @@ static int xspm_send_data(int ch, char *buf[], uint32_t len[], int count, void *
     int section_id = *(int *)args;
     struct iovec iov[count];
 
-   // printf_note("count:%d\n", count);
+    //printf_note("count:%d, %p,%p, %u\n", count, buf[0],buf[0]+0xf01,  len[0]);
     for(int i = 0; i < count; i++){
         iov[i].iov_base = buf[i];
         iov[i].iov_len =  len[i];
@@ -862,6 +935,18 @@ static int _xspm_close(void *_ctx)
     return 0;
 }
 
+static int xspm_xdma_data_clear(int ch,  void *arg)
+{
+    struct spm_run_parm *run = arg;
+    xspm_read_stream_stop(0, 0, XDMA_STREAM);
+    xspm_read_stream_start(0, 0, 0, 0, XDMA_STREAM);
+    for(int i = 0; i < MAX_XDMA_DISP_TYPE_NUM; i++){
+        run->xdma_disp.type[i]->vec_cnt = 0;
+    }
+    return 0;
+}
+
+
 static int xspm_read_xdma_data_over(int ch,  void *arg)
 {
     int ret;
@@ -887,7 +972,7 @@ static int xspm_read_xdma_data_over(int ch,  void *arg)
     ring_trans.invalid_count = 1;
     #endif
     //struct xdma_ring_trans_ioctl *ring_trans = arg;
-    printf_info("*OVER index=%d block_size=%u,block_count=%u,ready_count=%u,rx_index=%u\n", index,
+    printf_debug("*OVER index=%d block_size=%u,block_count=%u,ready_count=%u,rx_index=%u\n", index,
         ring_trans->block_size, ring_trans->block_count, ring_trans->ready_count, ring_trans->rx_index);
     ring_trans->invalid_index = ring_trans->rx_index;
     ring_trans->invalid_count = ring_trans->ready_count;
@@ -920,7 +1005,7 @@ static const struct spm_backend_ops xspm_ops = {
     .read_xdma_data = xspm_read_xdma_data,
     .send_xdma_data = xspm_send_data,
 #endif
-    .read_xdma_over_deal = xspm_read_xdma_data_over,// xspm_read_xdma_data_over_test,//xspm_read_xdma_data_over,
+    .read_xdma_over_deal = xspm_read_xdma_data_over,
     .stream_start = xspm_read_stream_start,
     .stream_stop = xspm_read_stream_stop,
     .write_xdma_data = xspm_stram_write,

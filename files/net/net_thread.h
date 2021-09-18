@@ -28,14 +28,20 @@ struct net_thread_consume{
     int id;
 };
 
+struct net_thread_ops {
+    int (*close)(void *);
+};
+
+
 
 struct net_thread_context {
     struct net_thread_m thread;
  //   int t_index;
     void *args;
-    int thread_count;
+    //int thread_count;
     struct net_thread_consume consum[MAX_XDMA_DISP_TYPE_NUM];
     struct thread_consume_fin fin_con;
+    struct net_thread_ops *ops;
 };
 
 extern void  net_thread_con_broadcast(void *args);

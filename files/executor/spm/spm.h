@@ -40,9 +40,9 @@ enum stream_iq_type {
 
 #include "../../net/net_sub.h"
 struct xstream_dispatcher_type{
-    struct net_sub_st subinfo;
-    struct iovec *vec;
-    int vec_cnt;
+    volatile struct net_sub_st subinfo;
+    volatile struct iovec *vec;
+    volatile int vec_cnt;
 };
 
 struct xstream_dispatcher_info{

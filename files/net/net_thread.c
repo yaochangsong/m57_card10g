@@ -28,10 +28,10 @@ static void _net_thread_wait_init(struct net_thread_context *ctx)
 
 static void _net_thread_con_over(struct thread_con_wait *wait, struct net_thread_m *ptd)
 {
-    printf_note("thread consume over start\n");
+    printf_info("thread consume over start\n");
     pthread_mutex_lock(&wait->count_lock);
     wait->count++;
-    printf_note("thread[%s] consume over, %u\n", ptd->name, wait->count);
+    //printf_note("thread[%s] consume over, %u\n", ptd->name, wait->count);
     pthread_cond_signal(&wait->count_cond);
     pthread_mutex_unlock(&wait->count_lock);
 }
@@ -78,9 +78,9 @@ static void _net_thread_con_wait_timeout(struct thread_con_wait *wait, int num, 
     printf_info("Wait[%d] to finish consume %d\n", num, wait->count);
     pthread_mutex_lock(&wait->count_lock);
     while (wait->count < num){
-        printf_note("Wait[%d]!= %d\n", num, wait->count);
-        //pthread_cond_wait(&wait->count_cond, &wait->count_lock);
-        #if 1
+        printf_info("Wait[%d]!= %d\n", num, wait->count);
+        pthread_cond_wait(&wait->count_cond, &wait->count_lock);
+        #if 0
         gettimeofday(&now, NULL);
         outtime.tv_sec = now.tv_sec +  timeout_ms/1000;
         us = now.tv_usec + 1000 * (timeout_ms % 1000);
@@ -103,7 +103,7 @@ static int _net_thread_wait(void *args)
 {
     struct net_thread_context *ptr = args;
     struct net_thread_m *ptd = &ptr->thread;
-    printf_note(" thread is PAUSE\n");
+    printf_info(" thread is PAUSE\n");
 
     pthread_setcancelstate (PTHREAD_CANCEL_ENABLE , NULL);
     pthread_mutex_lock(&ptd->pwait.t_mutex);
@@ -131,7 +131,7 @@ static int _net_thread_con_nofity(struct net_tcp_client *cl)
     //printf_note("[%s]notify thread %s\n", ptd->name, ptd->pwait.is_wait == true ? "PAUSE" : "RUN");
     pthread_cond_signal(&ptd->pwait.t_cond);
     pthread_mutex_unlock(&ptd->pwait.t_mutex);
-    printf_note("[%s]notify thread %s[%d]\n", ptd->name,  "RUN", ptd->pwait.is_wait);
+    printf_info("[%s]notify thread %s\n", ptd->name,  "RUN");
     return 0;
 }
 
@@ -187,7 +187,7 @@ void  net_thread_con_broadcast(void *args)
      //   net_hash_for_each(cl0->section.hash, data_dispatcher, cl0->section.thread);
     
     if(notify_num > 0){
-        printf_note("broadcast clinet num: %d\n", notify_num);
+        printf_info("broadcast clinet num: %d\n", notify_num);
         _net_thread_con_wait_timeout(con_wait, notify_num, 10);
     }
     _net_thread_dispatcher_refresh(args);
@@ -204,7 +204,7 @@ static int _net_thread_main_loop(void *arg)
 
     /* thread wait until receive start data consume */
     _net_thread_wait(ctx);
-    printf_note("thread[%s] receive start consume\n", ptd->name);
+    printf_info("thread[%s] receive start consume\n", ptd->name);
     net_hash_for_each(cl->section.hash, data_dispatcher, arg);
     _net_thread_con_over(con_wait, ptd);
     return 0;
@@ -230,7 +230,7 @@ static int _net_thread_close(void *client)
     
     if(pthread_check_alive_by_tid(cl->section.thread->thread.tid) == true){
         pthread_cancel_by_tid(cl->section.thread->thread.tid);
-        printf_note("thread exit!\n");
+        printf_note("thread close!\n");
     }
     usleep(10);
     return 0;

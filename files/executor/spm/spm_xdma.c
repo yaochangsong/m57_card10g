@@ -304,7 +304,7 @@ static ssize_t xspm_stream_read(int ch, int type,  void **data, uint32_t *len, v
 
    int index;
 
-    printf_note("ready_count: %u\n", info->ready_count);
+    printf_info("ready_count: %u\n", info->ready_count);
     for(int i = 0; i < info->ready_count; i++){
         index = (info->rx_index + i) % info->block_count;
         data[i] = pstream[type].ptr[index];

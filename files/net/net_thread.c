@@ -1,12 +1,14 @@
 #include "config.h"
 #include "net_thread.h"
 
+static void *_net_thread_con_init(void);
 struct net_thread_context *net_thread_ctx = NULL;
 
 struct thread_con_wait {
     pthread_mutex_t count_lock;
     pthread_cond_t count_cond;
     volatile unsigned int count;
+    volatile unsigned int thread_count;
 }*con_wait;
 
 static char *_get_thread_name(int index)
@@ -25,6 +27,47 @@ static void _net_thread_wait_init(struct net_thread_context *ctx)
         ctx->thread.pwait.is_wait = true;
     }
 }
+
+static void _net_thread_count_add(void)
+{
+    struct thread_con_wait *wait;
+    if(con_wait == NULL)
+       con_wait = _net_thread_con_init();
+    wait = con_wait;
+
+    pthread_mutex_lock(&wait->count_lock);
+    wait->thread_count++;
+    pthread_mutex_unlock(&wait->count_lock);
+}
+
+static void _net_thread_count_sub(void)
+{
+    struct thread_con_wait *wait;
+    if(con_wait == NULL)
+       con_wait = _net_thread_con_init();
+    wait = con_wait;
+
+    pthread_mutex_lock(&wait->count_lock);
+    if(wait->thread_count > 0)
+        wait->thread_count--;
+    pthread_mutex_unlock(&wait->count_lock);
+}
+
+static uint32_t _net_thread_count_get(void)
+{
+    struct thread_con_wait *wait;
+    uint32_t count = 0;
+    if(con_wait == NULL)
+       con_wait = _net_thread_con_init();
+    wait = con_wait;
+
+    pthread_mutex_lock(&wait->count_lock);
+    count = wait->thread_count;
+    pthread_mutex_unlock(&wait->count_lock);
+    return count;
+}
+
+
 
 static void _net_thread_con_over(struct thread_con_wait *wait, struct net_thread_m *ptd)
 {
@@ -182,6 +225,7 @@ void  net_thread_con_broadcast(void *args)
     }
     
     int notify_num = tcp_client_do_for_each(_net_thread_con_nofity, (void **)&cl0);
+    notify_num = min(_net_thread_count_get(), notify_num);
    //printf_note("dispatcher: %s:%d\n", cl0->get_peer_addr(cl0), cl0->get_peer_port(cl0));
     //if(cl0)
      //   net_hash_for_each(cl0->section.hash, data_dispatcher, cl0->section.thread);
@@ -216,6 +260,7 @@ static int  _net_thread_exit(void *arg)
     struct net_tcp_client *cl = ctx->thread.client;
 
     printf_note("thread[%s] exit!\n", ctx->thread.name);
+    _net_thread_count_sub();
     safe_free(ctx->thread.name);
     if(cl){
         safe_free(cl->section.thread);
@@ -257,10 +302,11 @@ struct net_thread_context * net_thread_create_context(void *cl)
     ctx->args = get_spm_ctx();
     _net_thread_wait_init(ctx);
     printf_note("client: %s:%d create thread\n", client->get_peer_addr(client), client->get_peer_port(client));
-
+    _net_thread_count_add();
     ret =  pthread_create_detach (NULL,NULL, _net_thread_main_loop, _net_thread_exit,  ctx->thread.name , ctx, ctx, &tid);
     if(ret != 0){
         perror("pthread err");
+        _net_thread_count_sub();
         safe_free(ctx);
         return NULL;
     }

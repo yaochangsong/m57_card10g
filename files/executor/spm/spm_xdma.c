@@ -654,7 +654,7 @@ static int _xdma_load_disp_buffer(void *data, ssize_t len, void *args, void *run
     struct spm_run_parm *prun = run; 
     
     hashid = GET_HASHMAP_ID(sub->chip_id, sub->func_id);
-    printf_note("hashid:%d, %x, %x\n", hashid, sub->chip_id, sub->func_id);
+    printf_info("hashid:%d, %x, %x\n", hashid, sub->chip_id, sub->func_id);
     
     if(hashid > MAX_XDMA_DISP_TYPE_NUM || hashid < 0 || prun->xdma_disp.type[hashid] == NULL){
         printf_err("hash id err[%d]\n", hashid);
@@ -667,7 +667,7 @@ static int _xdma_load_disp_buffer(void *data, ssize_t len, void *args, void *run
     prun->xdma_disp.type[hashid]->vec[vec_cnt].iov_len = len;
     prun->xdma_disp.type_num++;
     prun->xdma_disp.type[hashid]->vec_cnt++;
-    printf_note("vec_cnt:%d\n", prun->xdma_disp.type[hashid]->vec_cnt);
+    printf_info("vec_cnt:%d\n", prun->xdma_disp.type[hashid]->vec_cnt);
     return 0;
 }
 
@@ -686,14 +686,16 @@ static int xdma_data_dispatcher_buffer(int ch, void **data, uint32_t *len, ssize
  #else
             nframe = len[index];
             offset = XDMA_BLOCK_SIZE;
+            sub.chip_id = 0x0502;
+            sub.func_id = 0x0;
  #endif
             if(nframe <= 0){
-                printf_note(">>>>>read block[%d/%ld] over, size[%ld]\n", index, count, offset);
+                printf_info(">>>>>read block[%d/%ld] over, size[%ld]\n", index, count, offset);
                 break;
             }
             ptr += nframe;
             offset += nframe;
-            printf_note("offset：%ld, chip_id=0x%x, func_id=0x%x\n", offset, sub.chip_id, sub.func_id);
+            printf_info("offset：%ld, chip_id=0x%x, func_id=0x%x\n", offset, sub.chip_id, sub.func_id);
             _xdma_load_disp_buffer(data[index], nframe, &sub, args);
         }while(offset <= XDMA_BLOCK_SIZE);
     }
@@ -799,7 +801,7 @@ static ssize_t xspm_read_xdma_data_dispatcher(int ch , void **data, uint32_t *le
     //count = xspm_stream_read_test2(ch, index, data, len, args);
     //count = xspm_stream_read_test(ch, index, data, len, args);
     if(count > 0){
-        if(xdma_data_dispatcher(ch, data, len, count, args) == -1){
+        if(xdma_data_dispatcher_buffer(ch, data, len, count, args) == -1){
             return -1;
         }
     }
@@ -986,12 +988,6 @@ static int xspm_read_xdma_data_over(int ch,  void *arg)
             return -1;
         }
     }
-    return 0;
-}
-
-static int xspm_read_xdma_data_over_test(int ch,  void *arg)
-{
-    printf_note("xdma read over!\n");
     return 0;
 }
 

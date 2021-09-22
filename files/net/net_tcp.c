@@ -444,7 +444,9 @@ static void tcp_accept_cb(struct uloop_fd *fd, unsigned int events)
 
     list_add(&cl->list, &srv->clients);
     cl->srv = srv;
+    pthread_mutex_lock(&srv->tcp_client_lock);
     cl->srv->nclients++;
+    pthread_mutex_unlock(&srv->tcp_client_lock);
 
     cl->free = tcp_free;
     cl->get_peer_addr = tcp_get_peer_addr;

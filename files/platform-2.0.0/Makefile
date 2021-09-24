@@ -98,7 +98,7 @@ VPATH		:= $(srctree)
 
 export srctree objtree VPATH
 
-LLIBS:=
+LLIBS = $(LINK_LIB)
 CROSS_COMPILE	?= $(CONFIG_CROSS_COMPILE:"%"=%)
 #LLIBS	    ?= $(CONFIG_LINK_LIB:"%"=%)
 BSP_NAME	= $(CONFIG_BSP_NAME:"%"=%)
@@ -219,7 +219,7 @@ endif
 ifeq ($(findstring y,$(LIBFFTW3)),)
 	LDFLAGS += -Llib/libfftw3/$(ARCH_STR)/lib
 	LINUXINCLUDE += -I lib/libfftw3/$(ARCH_STR)/include
-	LLIBS = -liio -lfftw3f
+	LLIBS += -lfftw3f
 endif
 #END TODO
 
@@ -375,7 +375,7 @@ myapp-all	:= $(myapp-objs) $(myapp-libs)
 # relevant sections renamed as per the linker script.
 quiet_cmd_myapp = LD      $@
 	cmd_myapp = $(CC) $(LDFLAGS) -o $@                          \
-	-Wl,--start-group  -lpthread -lrt -lm $(LLIBS) $(myapp-libs) $(myapp-objs) -Wl,--end-group
+	-Wl,--start-group -lpthread -lrt -lm $(LLIBS) $(myapp-libs) $(myapp-objs) -Wl,--end-group
 
 platform: $(myapp-all)
 	$(call if_changed,myapp)

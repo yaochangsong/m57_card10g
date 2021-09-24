@@ -16,8 +16,9 @@ S = "${WORKDIR}/platform-2.0.0"
 
 DEPENDS = "${@depend_str('CONFIG_DEPENDS_LIB',d)}"
 RDEPENDS_${PN} = "${@depend_str('CONFIG_DEPENDS_LIB',d)}"
+LINK_LIB = "${@depend_str('CONFIG_LINK_LIB',d)}"
 
-EXTRA_OEMAKE = "'CC=${CC}' PETAENV=1 -I${S}. "
+EXTRA_OEMAKE = "'CC=${CC}' PETAENV=1 -I${S}. LINK_LIB=${LINK_LIB}"
 
 
 def depend_str(b, d):
@@ -39,7 +40,7 @@ def depend_str(b, d):
 
 do_configure () {
 	# Specify any needed configure commands here
-	bbplain "DEPENDS=${DEPENDS}, RDEPENDS_${PN}=${RDEPENDS_${PN}}"
+	bbplain "DEPENDS=${DEPENDS}, RDEPENDS_${PN}=${RDEPENDS_${PN}} LINK_LIB=${LINK_LIB}"
 	:
 }
 
@@ -59,7 +60,7 @@ do_install () {
 	# NOTE: unable to determine what to put here - there is a Makefile but no
 	# target named "install", so you will need to define this yourself
 	oe_runmake install  D=${D} S=${S} TOPDIR=${TOPDIR}/.. BINDIR=${bindir} SBINDIR=${sbindir} \
-						MANDIR=${mandir} INCLUDEDIR=${includedir} 
+						MANDIR=${mandir} INCLUDEDIR=${includedir}
 }
 INSANE_SKIP_${PN} = "ldflags"
 INSANE_SKIP_${PN}-dev = "ldflags"

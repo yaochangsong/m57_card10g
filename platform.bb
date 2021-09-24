@@ -22,9 +22,10 @@ EXTRA_OEMAKE = "'CC=${CC}' PETAENV=1 -I${S}. "
 
 def depend_str(b, d):
     import os
-    config=d.getVar("S", True)+'/.config'
+    #config=d.getVar("S", True)+'/.config'
+    config=d.getVar("TOPDIR", True)+'/../project-spec/meta-user/recipes-apps/platform/files/platform-2.0.0/.config'
     if (not os.path.exists(config)):
-        #bb.plain("%s is not exist" % (config))
+        bb.plain("%s is not exist" % (config))
         return ''
     a=''
     with open(config, "r") as data:

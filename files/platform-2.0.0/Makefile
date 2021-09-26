@@ -100,10 +100,7 @@ export srctree objtree VPATH
 
 LLIBS = $(LINK_LIB)
 CROSS_COMPILE	?= $(CONFIG_CROSS_COMPILE:"%"=%)
-#LLIBS	    ?= $(CONFIG_LINK_LIB:"%"=%)
 BSP_NAME	= $(CONFIG_BSP_NAME:"%"=%)
-LIBFFTW3	= $(CONFIG_LIBFFTW3)
-ARM_ARCH	= $(CONFIG_ARCH_ARM)
 
 KCONFIG_CONFIG	?= .config
 export KCONFIG_CONFIG BSP_NAME CONFIG_SPM_FFT_WINDOWS CONFIG_LIBFFTW3
@@ -209,20 +206,6 @@ KBUILD_CFLAGS   := -Wall -Wundef -Wstrict-prototypes -Wno-trigraphs \
 KBUILD_AFLAGS_KERNEL :=
 KBUILD_CFLAGS_KERNEL :=
 KBUILD_AFLAGS   := -D__ASSEMBLY__
-
-#TODO 
-ifeq ($(findstring y,$(ARM_ARCH)),)
-	ARCH_STR:="arm"
-else
-	ARCH_STR:="x86"
-endif
-ifeq ($(findstring y,$(LIBFFTW3)),)
-	LDFLAGS += -Llib/libfftw3/$(ARCH_STR)/lib
-	LINUXINCLUDE += -I lib/libfftw3/$(ARCH_STR)/include
-	LLIBS += -lfftw3f
-endif
-#END TODO
-
 
 # Read KERNELRELEASE from include/config/kernel.release (if it exists)
 KERNELRELEASE = $(shell cat include/config/kernel.release 2> /dev/null)
@@ -351,6 +334,22 @@ else
 # Dummy target needed, because used as prerequisite
 include/config/auto.conf: ;
 endif # $(dot-config)
+
+
+#TODO 
+LIBFFTW3	:= $(CONFIG_LIBFFTW3)
+ARM_ARCH	:= $(CONFIG_ARCH_ARM)
+ifeq ($(findstring y,$(ARM_ARCH)),)
+	ARCH_STRING:="arm"
+else
+	ARCH_STRING:="x86"
+endif
+ifeq ($(LIBFFTW3), y)
+	LDFLAGS += -Llib/libfftw3/$(ARCH_STRING)/lib
+	LINUXINCLUDE += -I lib/libfftw3/$(ARCH_STRING)/include
+	LLIBS += -lfftw3f
+endif
+#END TODO
 
 # The all: target is the default when no target is given on the
 # command line.

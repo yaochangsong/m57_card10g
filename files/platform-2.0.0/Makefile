@@ -339,7 +339,7 @@ endif # $(dot-config)
 #TODO 
 LIBFFTW3	:= $(CONFIG_LIBFFTW3)
 ARM_ARCH	:= $(CONFIG_ARCH_ARM)
-ifeq ($(findstring y,$(ARM_ARCH)),)
+ifeq ($(ARM_ARCH), y)
 	ARCH_STRING:="arm"
 else
 	ARCH_STRING:="x86"

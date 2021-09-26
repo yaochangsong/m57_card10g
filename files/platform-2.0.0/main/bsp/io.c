@@ -372,16 +372,22 @@ int32_t io_set_dec_middle_freq(uint32_t ch, uint64_t dec_middle_freq, uint64_t m
     return ret;
 }
 
-
 uint64_t io_get_raw_sample_rate(uint32_t ch, uint64_t middle_freq, uint32_t bw)
 {
-    float side_rate = 1.28;
-    uint64_t sample_rate;
-    if(bw > 0){
-        config_read_by_cmd(EX_CTRL_CMD, EX_CTRL_SIDEBAND,ch, &side_rate, bw);
-        sample_rate = (uint64_t)bw * side_rate;
-    } else{
-        sample_rate = CLOCK_FREQ_HZ;
+   // #define _SAMPLE_RATE_ MHZ(512)
+    #define DEFAULT_SIDE_BAND_RATE  (1.28)
+    float side_rate = 0.0;
+    /* 根据带宽获取边带率 */
+    if(config_read_by_cmd(EX_CTRL_CMD, EX_CTRL_SIDEBAND,0, &side_rate, bw) == -1){
+        printf_info("!!!!!!!!!!!!!SideRate Is Not Set In Config File[bandwidth=%u]!!!!!!!!!!!!!\n", bw);
+        side_rate = DEFAULT_SIDE_BAND_RATE;
+    }
+    
+    uint64_t sample_rate = (uint64_t)bw * side_rate;
+    int reminder = sample_rate % MHZ(1.28);
+    sample_rate = (sample_rate / MHZ(1.28)) * MHZ(1.28);
+    if (reminder > 0 && (sample_rate % MHZ(1))) {
+        sample_rate = sample_rate + MHZ(1.28);
     }
     return sample_rate;
 }

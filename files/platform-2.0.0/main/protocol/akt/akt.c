@@ -24,6 +24,28 @@ int akt_get_device_id(void)
     return 0;
 }
 
+static inline bool str_to_int(char *str, int *ivalue, bool(*_check)(int))
+{
+    char *end;
+    int value;
+    
+    if(str == NULL || ivalue == NULL)
+        return false;
+    
+    value = (int) strtol(str, &end, 10);
+    if (str == end){
+        return false;
+    }
+    *ivalue = value;
+    if(*_check == NULL){
+         printf_note("null func\n");
+         return true;
+    }
+       
+    return ((*_check)(value));
+}
+
+
 static inline bool hxstr_to_int(char *str, int *ivalue, bool(*_check)(int))
 {
     char *end;
@@ -1231,16 +1253,18 @@ static int akt_execute_get_command(void *cl)
                 uint8_t btime[20];
                 uint8_t ver;
             }__attribute__ ((packed));
-            
+            struct poal_compile_Info *pinfo;
+            pinfo = (struct poal_compile_Info *)get_compile_info();
             struct _soft_info info;
-            memset(&info, 0, sizeof(info));
+             memset(&info, 0, sizeof(info));
             info.num = 1;
             printf_note("device sn=%s\n", poal_config->status_para.device_sn);
             memcpy(info.name, poal_config->status_para.device_sn, sizeof(info.name));
-            sprintf((char *)info.btime,"%s-%s",get_build_time(), __TIME__);
-            printf_note("compile time:%s\n", info.btime);
-            info.ver = 0x10;
-            
+            sprintf(info.btime,"%s-%s",get_build_time(), __TIME__);
+            if(str_to_int(pinfo->build_jenkins_id, &info.ver, NULL) == false){
+                info.ver = 0x10; //err,use default version v1.0
+            }
+            printf_note("compile time:%s, ver=0x%x\n", info.btime, info.ver);
             client->response.response_length = sizeof(info);
             client->response.data = calloc(1, client->response.response_length);
             if(client->response.data == NULL){

@@ -226,8 +226,4 @@ extern uint64_t executor_get_mid_freq(uint8_t ch);
 extern uint32_t executor_get_bandwidth(uint8_t ch);
 extern void executor_close(void);
 extern void udp_free(struct net_udp_client *cl);
-extern int8_t  executor_serial_points_scan(uint8_t ch, work_mode_type mode, int points, void *args);
-extern int8_t  executor_points_scan(uint8_t ch, work_mode_type mode, void *args);
-extern int8_t  executor_fragment_scan(uint32_t fregment_num,uint8_t ch, work_mode_type mode, void *args);
-
 #endif

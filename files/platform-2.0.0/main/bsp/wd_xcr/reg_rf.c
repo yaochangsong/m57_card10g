@@ -134,7 +134,7 @@ static void _reg_set_rf_bandwidth(int ch, int index, uint32_t bw_hz)
         }
     }
     if(found == 0){
-        printf("NOT found bandwidth %uHz in tables,use default[200Mhz]\n", bw_hz);
+        printf_warn("NOT found bandwidth %uHz in tables,use default[200Mhz]\n", bw_hz);
         set_val = 0x03; /* default 200MHz */
     }
     

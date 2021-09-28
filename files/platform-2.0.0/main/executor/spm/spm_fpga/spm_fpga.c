@@ -90,7 +90,7 @@ static inline void *zalloc(size_t size)
 	return calloc(1, size);
 }
 
-#define RUN_MAX_TIMER 2
+#define RUN_MAX_TIMER 3
 static struct timeval *runtimer[RUN_MAX_TIMER];
 static int32_t _init_run_timer(uint8_t ch)
 {
@@ -247,7 +247,13 @@ static ssize_t spm_stream_read(int ch, int type, void **data)
         }else if(info.status == READ_BUFFER_STATUS_OVERRUN){
             printf_warn("[%s]data is overrun\n", pstream[type].name);
         }
+        if(_get_run_timer(2, 0) > _STREAM_READ_TIMEOUT_US){
+            _reset_run_timer(2, 0);
+            printf_warn("Read TimeOut!\n");
+            return -1;
+        }
     }while(info.status == READ_BUFFER_STATUS_PENDING);
+    _reset_run_timer(2, 0);
     readn = info.blocks[0].length;
     *data = pstream[type].ptr + info.blocks[0].offset;
     printf_debug("[%p, %p, offset=0x%x]%s, readn:%lu\n", *data, pstream[type].ptr, info.blocks[0].offset,  pstream[type].name, readn);

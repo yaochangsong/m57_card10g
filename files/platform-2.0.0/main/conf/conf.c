@@ -367,7 +367,7 @@ static uint32_t config_get_fft_by_resolution(uint32_t resolution, uint32_t bw_hz
     }
     fftsize = fftsize/FFT_RESOLUTION_FACTOR;
 
-    printf_note("resolution=%uhz, fftsize=%u\n", resolution, fftsize);
+   // printf_note("resolution=%uhz, fftsize=%u\n", resolution, fftsize);
     return fftsize;
 }
 
@@ -383,6 +383,7 @@ int config_get_fft_resolution(int mode, int ch, int index, uint32_t bw_hz,uint32
         *fft_size = config_get_fft_by_resolution(point->points[index].freq_resolution, bw_hz);
 #else
         if(point->points[index].fft_size == 0){
+            printf_warn("fft Size is NULL, default: 2K\n");
             point->points[index].fft_size = 2048;
         }
         *fft_size = point->points[index].fft_size;
@@ -395,6 +396,10 @@ int config_get_fft_resolution(int mode, int ch, int index, uint32_t bw_hz,uint32
         *resolution = fregment->fregment[index].freq_resolution;
         *fft_size = config_get_fft_by_resolution(fregment->fregment[index].freq_resolution, bw_hz);
 #else
+        if(fregment->fregment[index].fft_size == 0){
+            printf_warn("fft Size is NULL, default: 2K\n");
+            fregment->fregment[index].fft_size = 2048;
+        }
         *fft_size = fregment->fregment[index].fft_size;
         *resolution = config_get_resolution_by_fft(fregment->fregment[index].fft_size, bw_hz);
 #endif
@@ -710,6 +715,7 @@ int8_t config_write_data(int cmd, uint8_t type, uint8_t ch, void *data, ...)
                     break;
                 case EX_FFT_SIZE:
                     poal_config->channel[ch].multi_freq_point_param.points[0].fft_size = *(int32_t *)data;
+                    poal_config->channel[ch].multi_freq_fregment_para.fregment[0].fft_size = *(int32_t *)data;
                     /* 根据FFT设置分辨率 */
                     //poal_config->channel[ch].multi_freq_point_param.points[0].freq_resolution = config_get_resolution_by_fft(*(int32_t *)data);
                     break;

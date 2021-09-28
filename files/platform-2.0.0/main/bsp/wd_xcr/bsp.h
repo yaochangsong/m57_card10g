@@ -13,6 +13,8 @@
 #define CLOCK_FREQ_HZ                   (256000000)/*时钟频率 */
 #define FFT_RESOLUTION_FACTOR            (1)       /* FFT 分辨率系数 */
 #define SAMPLING_FFT_TIMES                1        /* 采样FFT倍数 */
+#define SEGMENT_FREQ_NUM                (3)
+
 
 
 

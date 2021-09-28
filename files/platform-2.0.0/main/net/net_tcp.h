@@ -45,6 +45,7 @@ struct tcp_dispatch {
 struct tcp_section {
     bool type[32];
     int ch;
+    void *thread;
 };
 struct net_tcp_client {
     struct list_head list;

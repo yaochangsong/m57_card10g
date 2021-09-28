@@ -987,6 +987,7 @@ void uh_accept_client(struct uh_server *srv, bool ssl)
     cl->fsctx = fs_create_context();
     cl->fsctx->client = cl;
 #endif
+    cl->section.thread = get_executor_ctx();
     if (srv->on_accept)
         srv->on_accept(cl);
 

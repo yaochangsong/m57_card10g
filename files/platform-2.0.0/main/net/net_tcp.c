@@ -414,6 +414,7 @@ static void tcp_accept_cb(struct uloop_fd *fd, unsigned int events)
 #if defined(CONFIG_FS)
     cl->fsctx = fs_create_context();
 #endif
+    cl->section.thread = get_executor_ctx();
     printf_note("New connection from: %s:%d\n", cl->get_peer_addr(cl), cl->get_peer_port(cl));
 
     socklen_t serv_len = sizeof(cl->serv_addr); 

@@ -105,6 +105,7 @@
 
 #include "../main/executor/spm/spm.h"
 #include "../main/executor/spm/spm_fpga/spm_fpga.h"
+#include "../main/executor/executor_thread.h"
 #include "../main/executor/executor.h"
 #include "../main/executor/spm/bottom/bottom.h"
 #include "../main/executor/fft/fft.h"

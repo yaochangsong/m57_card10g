@@ -118,6 +118,11 @@ struct dispatch {
     char *body;
 };
 
+struct uh_section {
+    void *thread;
+};
+
+
 struct uh_client {
     struct list_head list;
 //    struct uloop_fd fd;
@@ -146,6 +151,7 @@ struct uh_client {
     struct sockaddr_in peer_addr;
     struct sockaddr_in serv_addr;
     struct dispatch dispatch;
+    struct uh_section section;
     bool connection_close;
     int response_length;
     int tcp_keepalive_probes;

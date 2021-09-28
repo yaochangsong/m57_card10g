@@ -106,7 +106,7 @@ static int8_t xw_decode_method_convert(uint8_t method)
         printf_err("decode method not support:%d, use iq\n",method);
         return IO_DQ_MODE_IQ;
     }
-    printf_note("method convert:%d ===> %d\n",method, d_method);
+    printf_debug("method convert:%d ===> %d\n",method, d_method);
     return d_method;
 }
 
@@ -697,7 +697,7 @@ int parse_json_demodulation(const char * const body,uint8_t cid,uint8_t subid )
     value = cJSON_GetObjectItem(root, "gainMode");
     if(value!=NULL&&cJSON_IsNumber(value)){
          sub_channel_array->sub_ch[subid].gain_mode=value->valueint;
-         printfn("gain_mode:%s,\n", sub_channel_array->sub_ch[subid].gain_mode == POAL_MGC_MODE ? "MGC" : "AGC");
+         printfd("gain_mode:%s,\n", sub_channel_array->sub_ch[subid].gain_mode == POAL_MGC_MODE ? "MGC" : "AGC");
          executor_set_command(EX_MID_FREQ_CMD, EX_SUB_CH_GAIN_MODE, subid,  &sub_channel_array->sub_ch[subid].gain_mode);
     }
     if(sub_channel_array->sub_ch[subid].gain_mode == POAL_MGC_MODE){

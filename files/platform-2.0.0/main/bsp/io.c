@@ -222,7 +222,7 @@ int32_t io_set_noise(uint32_t ch, uint32_t noise_en,int8_t noise_level_tmp){
     {
         noise_level = 0;
     }
-    printf_note("[**REGISTER**]ch:%d, Set noise_level:%u noise_en:%d noise_level_tmp:%d\n", ch,noise_level,noise_en,noise_level_tmp);
+    printf_info("[**REGISTER**]ch:%d, Set noise_level:%u noise_en:%d noise_level_tmp:%d\n", ch,noise_level,noise_en,noise_level_tmp);
 
 #if defined(SET_NARROW_NOISE_LEVEL)
     SET_NARROW_NOISE_LEVEL(get_fpga_reg(),ch,noise_level);
@@ -422,7 +422,7 @@ int32_t io_set_subch_dec_middle_freq(uint32_t ch, uint32_t subch, uint64_t dec_m
     SET_NARROW_SIGNAL_CARRIER(get_fpga_reg(),subch,reg);
 #endif
 
-    printf_note("[**REGISTER**]ch:%d, SubChannel Set MiddleFreq =%"PRIu64", Decode MiddleFreq:%"PRIu64", reg=0x%x, ret=%d\n", subch, middle_freq, dec_middle_freq, reg, ret);
+    printf_info("[**REGISTER**]ch:%d, SubChannel Set MiddleFreq =%"PRIu64", Decode MiddleFreq:%"PRIu64", reg=0x%x, ret=%d\n", subch, middle_freq, dec_middle_freq, reg, ret);
     return ret;
 }
 
@@ -505,7 +505,7 @@ int32_t io_set_subch_bandwidth(uint32_t subch, uint32_t bandwidth, uint8_t dec_m
 #ifdef SET_NARROW_FIR_COEFF2
     SET_NARROW_FIR_COEFF2(get_fpga_reg(),subch,filter_factor2);
 #endif
-    printf_note("[**REGISTER**]ch:%d, SubChannle Set Bandwidth=%u, factor=0x%x[%u], filter_factor=0x%x[%u],dec_method=%d,table_len=%d, ret=%d\n",
+    printf_info("[**REGISTER**]ch:%d, SubChannle Set Bandwidth=%u, factor=0x%x[%u], filter_factor=0x%x[%u],dec_method=%d,table_len=%d, ret=%d\n",
                 subch, bandwidth, band_factor, band_factor,filter_factor,filter_factor, dec_method,  table_len, ret);
 
     return ret;

@@ -440,23 +440,27 @@ static int _executor_thread_wait(struct executor_thread_m *thread, int *mode)
 }
 
 struct executor_mode_table mode_table[] = {
-    {
-        .mode = OAL_FIXED_FREQ_ANYS_MODE,
-        .name = "Fixed Mode",
-        .exec = _executor_points_scan_mode,
-    },{
+    [OAL_FAST_SCAN_MODE] = {
         .mode = OAL_FAST_SCAN_MODE,
         .name = "Fast Scan Mode",
         .exec = _executor_fragment_scan_mode,
-    },{
+    },
+    [OAL_FIXED_FREQ_ANYS_MODE] = {
+        .mode = OAL_FIXED_FREQ_ANYS_MODE,
+        .name = "Fixed Mode",
+        .exec = _executor_points_scan_mode,
+    },
+    [OAL_MULTI_ZONE_SCAN_MODE] = {
         .mode = OAL_MULTI_ZONE_SCAN_MODE,
         .name = "Multi Zone Mode",
         .exec = _executor_fragment_scan_mode,
-    },{
+    },
+    [OAL_MULTI_POINT_SCAN_MODE] = {
         .mode = OAL_MULTI_POINT_SCAN_MODE,
         .name = "Multi Points Mode",
         .exec = _executor_points_scan_mode,
-    },{
+    },
+    [OAL_FIXED_FREQ_ANYS_MODE2] = {
         .mode = OAL_FIXED_FREQ_ANYS_MODE2,
         .name = "Serial Scan Fixed Points Mode",
         .exec = _executor_points_scan_mode2,
@@ -554,6 +558,7 @@ static void _executor_thread_exit(void *arg)
     int ch = thread->ch;
     io_set_enable_command(PSD_MODE_DISABLE, ch, -1, 0);
     io_set_enable_command(AUDIO_MODE_DISABLE, ch, -1, 0);
+    safe_free(thread->name);
 }
 
 static void _wait_init(struct executor_thread_wait *wait)

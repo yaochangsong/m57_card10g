@@ -271,7 +271,7 @@ int cmd_demodulation(struct uh_client *cl, void **arg, void **content)
     
     s_ch = cl->get_restful_var(cl, "ch");
     s_subch = cl->get_restful_var(cl, "subch");
-    printf_note("ch = %s, subch=%s\n", s_ch, s_subch);
+    printf_debug("ch = %s, subch=%s\n", s_ch, s_subch);
     if(str_to_int(s_ch, &ch, check_valid_ch) == false){
         code = RESP_CODE_CHANNEL_ERR;
         goto error;
@@ -285,7 +285,7 @@ int cmd_demodulation(struct uh_client *cl, void **arg, void **content)
         code = RESP_CODE_CHANNEL_ERR;
         goto error;
     }
-    printf_note("%s\n", cl->dispatch.body);
+    printf_info("%s\n", cl->dispatch.body);
     code = parse_json_demodulation(cl->dispatch.body,ch,subch);
 error:
     *arg = get_resp_message(code);

@@ -260,7 +260,7 @@ static int8_t executor_set_kernel_command(uint8_t type, uint8_t ch, void *data, 
                 middle_freq = *(uint64_t *)data;
             }
             cid = va_arg(ap, int32_t);
-            printf_note("[ch:%d, sunch:%d]freq: %"PRIu64"Hz, data=%"PRIu64"Hz\n", cid, ch, middle_freq, *(uint64_t *)data);
+            printf_debug("[ch:%d, sunch:%d]freq: %"PRIu64"Hz, data=%"PRIu64"Hz\n", cid, ch, middle_freq, *(uint64_t *)data);
             io_set_subch_dec_middle_freq(cid, ch, *(uint64_t *)data, middle_freq);
             break;
         }

@@ -55,7 +55,7 @@ static pthread_mutex_t spm_xdma_cond_mutex[MAX_XDMA_NUM];
 
 struct sem_st work_sem;
 
-
+void  *spm_xdma_param_init(void);
 static struct spm_context *spmctx = NULL;
 
 static void spm_cond_init(void)
@@ -522,6 +522,7 @@ void spm_xdma_data_handle_thread_dispatcher(void *arg)
     uint32_t  len[256] = {0};
     int ch, section_id = 0;
     int count = 0;
+    struct spm_run_parm *run = NULL;
     
     ctx = spmctx;
     ch = *(int *)arg;
@@ -529,8 +530,10 @@ void spm_xdma_data_handle_thread_dispatcher(void *arg)
         pthread_exit(0);
     
     pthread_detach(pthread_self());
+    run = spm_xdma_param_init();
+    
 loop:
-    printf_note(">>>>>XDMA%d Wait!\n", ch);
+    printf_note(">>>>>Read XDMA%d Wait!\n", ch);
     pthread_mutex_lock(&spm_xdma_cond_mutex[ch]);
     while(socket_bitmap_weight() == 0)
         pthread_cond_wait(&spm_xdma_cond[ch], &spm_xdma_cond_mutex[ch]);
@@ -538,9 +541,9 @@ loop:
     printf_note(">>>>>XDMA%d read start\n", ch);
     do{
         if(ctx->ops->read_xdma_data)
-            count = ctx->ops->read_xdma_data(ch, (void **)ptr_data, len, ctx->run_args[ch]);
+            count = ctx->ops->read_xdma_data(ch, (void **)ptr_data, len, run);
         if(count > 0){
-            net_thread_con_broadcast(ctx->run_args[ch]);
+            net_thread_con_broadcast(run);
            //if(ctx->ops->send_xdma_data)
            //     ctx->ops->send_xdma_data(ch, ptr_data, len, count, ctx->run_args[ch]);
         }
@@ -577,7 +580,7 @@ void thread_attr_set(pthread_attr_t *attr, int policy, int prio)
     pthread_attr_setinheritsched(attr,PTHREAD_EXPLICIT_SCHED);
 }
 
-int spm_xdma_disp_init(struct spm_context *ctx, int ch)
+void  *spm_xdma_param_init(void)
 {
     struct spm_run_parm *param;
     unsigned int index = 0;
@@ -585,7 +588,7 @@ int spm_xdma_disp_init(struct spm_context *ctx, int ch)
 
     param = calloc(1, sizeof(*param));
     if (!param)
-        return -ENOMEM;
+        return NULL;
 
     memset(&param->xdma_disp, 0 ,sizeof(param->xdma_disp));
     param->xdma_disp.type_num = 0;
@@ -608,14 +611,14 @@ int spm_xdma_disp_init(struct spm_context *ctx, int ch)
         }
         param->xdma_disp.type[index]->vec_cnt = 0;
     }
-
-    ctx->run_args[ch] = param;
-    ctx->run_args[ch]->xdma_disp.type = param->xdma_disp.type;
+    
+    //ctx->run_args[ch] = param;
+    //ctx->run_args[ch]->xdma_disp.type = param->xdma_disp.type;
     
     //for(int i = 0; i < MAX_XDMA_DISP_TYPE_NUM; i++)
     //     printf_note("[%d]xdma_disp: %p, %d, %p\n", i, param->xdma_disp.type[i], sizeof(*param->xdma_disp.type[i]), ctx->run_args[ch]);
     
-    return 0;
+    return param;
 
 err_free2:
     for(index = 0; index < MAX_XDMA_DISP_TYPE_NUM; index++){
@@ -628,7 +631,7 @@ err_free1:
 err_free:
     safe_free(param);
     printf_err("malloc err\n");
-    return ret;
+    return NULL;
 }
 void *spm_init(void)
 {
@@ -654,70 +657,18 @@ void *spm_init(void)
         printf_warn("spm create failed\n");
         return NULL;
     }
-    spm_xdma_disp_init(spmctx, 1);
-    io_set_enable_command(XDMA_MODE_ENABLE, 1, 0, 0);
-#if 0
-    for(ch = 0; ch< MAX_RADIO_CHANNEL_NUM; ch++){
-        spmctx->run_args[ch] = calloc(1, sizeof(struct spm_run_parm));
-        spmctx->run_args[ch]->fft_ptr = calloc(1, MAX_FFT_SIZE*sizeof(fft_t));
-        if(spmctx->run_args[ch]->fft_ptr == NULL){
-            printf("malloc failed\n");
-            exit(1);
-        }
-        spmctx->run_args[ch]->fft_ptr_swap = calloc(1, MAX_FFT_SIZE*sizeof(fft_t));
-        if(spmctx->run_args[ch]->fft_ptr_swap == NULL){
-            printf("malloc failed\n");
-            exit(1);
-        }
-        for(type = 0; type < STREAM_NIQ_TYPE_MAX; type++){
-            spmctx->run_args[ch]->dis_iq.ptr[type] = calloc(1, DMA_IQ_TYPE_BUFFER_SIZE);
-            if(spmctx->run_args[ch]->dis_iq.ptr[type] == NULL){
-                printf("malloc failed\n");
-                exit(1);
-            }
-            printf_note("type=%d, ptr=%p\n", type, spmctx->run_args[ch]->dis_iq.ptr[type]);
-            spmctx->run_args[ch]->dis_iq.len[type] = 0;
-        }
+    spm_cond_init();
+    for(int ch = 0; ch <MAX_XDMA_NUM; ch++){
+        io_set_enable_command(XDMA_MODE_ENABLE, ch, 0, 0);
     }
 
-    
-
-#ifdef SUPPORT_SPECTRUM_SERIAL
-    /* 创建串行处理FFT线程 */
-    ret=pthread_create(&work_id, NULL, (void *)spm_fft_serial_thread, NULL);
-    if(ret!=0)
-        perror("pthread cread spm");
-#else
-    /* 创建并行处理FFT线程 */
-    for(int i = 0; i <MAX_RADIO_CHANNEL_NUM; i++){
-        sem_init(&(work_sem.notify_deal[i]), 0, 0);
-        s_ch[i] = i;
-        ret=pthread_create(&work_id, NULL, (void *)spm_fft_parallel_thread, &s_ch[i]);
-        if(ret!=0)
-            perror("pthread cread spm");
-    }
-#endif
-
-    /* 创建多通道并行宽带IQ线程 */
-    for(int i = 0; i < MAX_RADIO_CHANNEL_NUM; i++){
-        s_ch[i] = i;
-        ret=pthread_create(&work_id, NULL, (void *)spm_biq_handle_thread, &s_ch[i]);
-        if(ret!=0)
-            perror("pthread cread biq");
-    }
-
-    /* 创建多通道窄带IQ线程 */
-    ret=pthread_create(&recv_thread_id,NULL,(void *)spm_niq_handle_thread, spmctx);
-    if(ret!=0)
-        perror("pthread cread niq");
-#endif
-    for(int i = 0; i <1; i++){
-        xdma_ch[i] = 1;
+    for(int i = 0; i <MAX_XDMA_NUM; i++){
+        xdma_ch[i] = i;
         ret=pthread_create(&recv_thread_id,NULL,(void *)spm_xdma_data_handle_thread_dispatcher, &xdma_ch[i]);
         if(ret!=0)
             perror("pthread cread xdma");
     }
-    spm_cond_init();
+    
 
 
 //#endif /* SUPPORT_PLATFORM_ARCH_ARM */

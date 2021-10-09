@@ -4,7 +4,7 @@
 //#define XDMA_R_DEV0 "/dev/xdma0_c2h_0"
 #define XDMA_R_DEV0 "/dev/xdma0_h2c_0"  //下行
 #define XDMA_R_DEV1 "/dev/xdma0_c2h_0"  //上行
-#define XDMA_R_DEV2 "/dev/xdma0_c2h_2"
+#define XDMA_R_DEV2 "/dev/xdma0_c2h_1"
 #define XDMA_R_DEV3 "/dev/xdma0_c2h_3"
 
 
@@ -17,8 +17,8 @@
 #define DMA_BUFFER_1G_SIZE (0x40000000)
 #define DMA_BUFFER_256M_SIZE (0x10000000U)
 
-#define XDMA_BUFFER_SIZE DMA_BUFFER_256M_SIZE
-#define XDMA_BLOCK_SIZE (0x100000)//(0x400000)
+#define XDMA_BUFFER_SIZE DMA_BUFFER_128M_SIZE
+#define XDMA_BLOCK_SIZE (0x400000)//(0x400000)
 #define XDMA_TRANSFER_MAX_DESC (2048)
 
 

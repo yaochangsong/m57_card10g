@@ -37,7 +37,8 @@ int executor_net_disconnect_notify(struct sockaddr_in *addr)
     printf_note("cmd server:total client number: %d\n", clinets);
 
     if(clinets == 0){
-        executor_set_command(EX_XDMA_ENABLE_CMD, -1, 1, &enable, -1);
+        for(int ch = 0; ch < MAX_XDMA_NUM; ch++)
+            executor_set_command(EX_XDMA_ENABLE_CMD, -1, ch, &enable, -1);
     }
     return 0;
 }

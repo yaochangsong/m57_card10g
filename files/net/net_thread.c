@@ -3,6 +3,8 @@
 
 static void *_net_thread_con_init(void);
 struct net_thread_context *net_thread_ctx = NULL;
+volatile void *channel_param = NULL;
+
 
 struct thread_con_wait {
     pthread_mutex_t count_lock;
@@ -178,28 +180,42 @@ static int _net_thread_con_nofity(struct net_tcp_client *cl)
     return 0;
 }
 
+static void *_create_buffer(size_t len)
+{
+    void *buffer = NULL;
+    int pagesize = 0;
+    printf_note("Create buffer: %lu\n", len);
+    pagesize=getpagesize();
+    posix_memalign((void **)&buffer, pagesize /*alignment */ , len + pagesize);
+    if (!buffer) {
+        fprintf(stderr, "OOM %u.\n", pagesize);
+        return NULL;
+    }
+    return buffer;
+}
+
+
 static int  data_dispatcher(void *args, int hid)
 {
     struct net_thread_context *ctx = args;
     struct spm_context *spm_ctx = ctx->args;
-    struct spm_run_parm *arg = spm_ctx->run_args[1];
+    struct spm_run_parm *arg = channel_param;//spm_ctx->run_args[0];
     struct net_tcp_client *cl = ctx->thread.client;
+    struct iovec vec[4];
     
     int index = hid;
-    if(index > MAX_XDMA_DISP_TYPE_NUM)
+    if(index > MAX_XDMA_DISP_TYPE_NUM || arg == NULL)
         return -1;
     
     int vec_cnt = arg->xdma_disp.type[index]->vec_cnt;
 
-    //printf_note("vec_cnt=%d, hid=%d\n", vec_cnt, hid);
+    //printf_note("send vec_cnt=%d, hid=%d\n", vec_cnt, hid);
     if(arg->xdma_disp.type[index] == NULL || vec_cnt == 0)
         return -1;
 
     if(vec_cnt > 0){
-        //printf_note("tcp send hid:%d, %s\n", hid, ctx->thread.name);
         send_vec_data_to_client(cl, arg->xdma_disp.type[index]->vec, vec_cnt);
     }
-
     return 0;
 }
 
@@ -212,7 +228,6 @@ static inline void _net_thread_dispatcher_refresh(void *args)
         arg->xdma_disp.type[i]->vec_cnt = 0;
     }
 }
-
 
 void  net_thread_con_broadcast(void *args)
 {
@@ -229,7 +244,7 @@ void  net_thread_con_broadcast(void *args)
    //printf_note("dispatcher: %s:%d\n", cl0->get_peer_addr(cl0), cl0->get_peer_port(cl0));
     //if(cl0)
      //   net_hash_for_each(cl0->section.hash, data_dispatcher, cl0->section.thread);
-    
+    channel_param = args;
     if(notify_num > 0){
         printf_info("broadcast clinet num: %d\n", notify_num);
         _net_thread_con_wait_timeout(con_wait, notify_num, 10);

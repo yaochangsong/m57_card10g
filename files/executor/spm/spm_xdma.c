@@ -166,7 +166,8 @@ static int32_t _reset_run_timer(uint8_t index, uint8_t ch)
 
 static struct _spm_xstream spm_xstream[] = {
         {XDMA_R_DEV0,        -1, 0, XDMA_BUFFER_SIZE, XDMA_BLOCK_SIZE, "Write XDMA Stream", XDMA_WRITE, XDMA_STREAM, -1},
-        {XDMA_R_DEV1,        -1, 1, XDMA_BUFFER_SIZE, XDMA_BLOCK_SIZE, "Read XDMA Stream",  XDMA_READ,  XDMA_STREAM, -1},
+        {XDMA_R_DEV1,        -1, 0, XDMA_BUFFER_SIZE, XDMA_BLOCK_SIZE, "Read XDMA Stream0",  XDMA_READ,  XDMA_STREAM, -1},
+        {XDMA_R_DEV2,        -1, 1, XDMA_BUFFER_SIZE, XDMA_BLOCK_SIZE, "Read XDMA Stream1",  XDMA_READ,  XDMA_STREAM, -1},
 };
 
 int _WaitDeviceReady(int dev_fd)
@@ -273,7 +274,7 @@ static ssize_t xspm_stream_read(int ch, int type,  void **data, uint32_t *len, v
     do{
         rc =  ioctl(pstream[type].id, IOCTL_XDMA_TRANS_GET, info);
         if (rc) {
-            //printf_err("type=%d, id=%d ioctl(IOCTL_XDMA_TRANS_GET) failed %d, info=%p, %p, %p\n",type, pstream[type].id, rc, info, &xinfo[0], &xinfo[1]);
+            printf_err("type=%d, id=%d ioctl(IOCTL_XDMA_TRANS_GET) failed %d, info=%p, %p, %p\n",type, pstream[type].id, rc, info, &xinfo[0], &xinfo[1]);
             return -1;
         }
         if(info->status == RING_TRANS_OK){
@@ -297,22 +298,24 @@ static ssize_t xspm_stream_read(int ch, int type,  void **data, uint32_t *len, v
         }
            
         if(_get_run_timer(0, 0) > _STREAM_READ_TIMEOUT_US){
-            //printf_warn("Read TimeOut!\n");
-            //return -1;
+            printf_warn("Read TimeOut!\n");
+            return -1;
         }
     }while(info->status == RING_TRANS_PENDING);
 
    int index;
-
-    printf_info("ready_count: %u\n", info->ready_count);
+    uint8_t *ptr = NULL;
+    //printf_note("ready_count: %u\n", info->ready_count);
     for(int i = 0; i < info->ready_count; i++){
         index = (info->rx_index + i) % info->block_count;
         data[i] = pstream[type].ptr[index];
         len[i] = info->results[index].length;
+        //printf_note("data=%p, len=%u\n", data[i], len[i]);
 		#if 0
         if(i < 64){
             printf_note("[%d]len: %u\n", i, len[i]);
-            print_array(data[i], 32);
+            ptr = data[i];
+            print_array(ptr+len[i]-32, 32);
             //create_file_path(i);
             //write_file(data[i], i, len[i]);
             //write_over(i, len[i]);
@@ -353,7 +356,7 @@ static inline int xspm_find_index_by_rw(int ch, int subch, int rw)
 
     subch = subch;
     for(i = 0; i < ARRAY_SIZE(spm_xstream); i++){
-        if(rw == pstream[i].rd_wr){
+        if(rw == pstream[i].rd_wr && ch == pstream[i].ch){
             index = i;
             find = 1;
             break;
@@ -534,7 +537,7 @@ static ssize_t xspm_stream_read_test2(int ch, int type,  void **data, uint32_t *
         0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
         0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x55,0x55,0xaa,0xaa,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00 
     };
-    #define _read_cnt 3
+    #define _read_cnt 10
     static uint8_t **alloc_mem = NULL;
     if(alloc_mem == NULL){
         alloc_mem = calloc(_read_cnt, sizeof(*alloc_mem));
@@ -654,7 +657,7 @@ static int _xdma_load_disp_buffer(void *data, ssize_t len, void *args, void *run
     struct spm_run_parm *prun = run; 
     
     hashid = GET_HASHMAP_ID(sub->chip_id, sub->func_id);
-    printf_info("hashid:%d, %x, %x\n", hashid, sub->chip_id, sub->func_id);
+    //printf_note("hashid:%d, %x, %x\n", hashid, sub->chip_id, sub->func_id);
     
     if(hashid > MAX_XDMA_DISP_TYPE_NUM || hashid < 0 || prun->xdma_disp.type[hashid] == NULL){
         printf_err("hash id err[%d]\n", hashid);
@@ -667,8 +670,30 @@ static int _xdma_load_disp_buffer(void *data, ssize_t len, void *args, void *run
     prun->xdma_disp.type[hashid]->vec[vec_cnt].iov_len = len;
     prun->xdma_disp.type_num++;
     prun->xdma_disp.type[hashid]->vec_cnt++;
-    printf_info("vec_cnt:%d\n", prun->xdma_disp.type[hashid]->vec_cnt);
+    //printf_note("vec_cnt:%d\n", prun->xdma_disp.type[hashid]->vec_cnt);
     return 0;
+}
+
+static inline bool _data_check(const void *data, uint32_t len, int index)
+{
+    static uint32_t cnt = 0, k = 0;
+    uint32_t *ptr = data;
+    if(cnt == 0)
+        cnt = *ptr;
+    for(uint32_t i = 0; i < len; i+=4){
+        if(cnt != *ptr) {
+            printf("net eq, %u, 0x%x[%u], 0x%x[%u], index：%d, len=%u\n", i, cnt, cnt,  *ptr, *ptr, index, len);
+            //exit(1);
+            if(k ++ > 10)
+                exit(1);
+        } else{
+            //printf("%d, %x\n", i, cnt);
+        }
+        ptr++;
+        cnt += 4;
+    }
+    
+    return true;
 }
 
 static int xdma_data_dispatcher_buffer(int ch, void **data, uint32_t *len, ssize_t count, void *args)
@@ -680,6 +705,7 @@ static int xdma_data_dispatcher_buffer(int ch, void **data, uint32_t *len, ssize
     for(int index = 0; index < count; index++){
         offset = 0;
         ptr = data[index];
+        //printf_note("index=%d, %p\n", index, ptr);
         do{
  #ifdef SPM_HEADER_CHECK
             nframe = _xdma_of_match_pkgs(ptr, len[index], &sub, offset);
@@ -688,6 +714,7 @@ static int xdma_data_dispatcher_buffer(int ch, void **data, uint32_t *len, ssize
             offset = XDMA_BLOCK_SIZE;
             sub.chip_id = 0x0502;
             sub.func_id = 0x0;
+            _data_check(ptr, len[index], index);
  #endif
             if(nframe <= 0){
                 printf_info(">>>>>read block[%d/%ld] over, size[%ld]\n", index, count, offset);
@@ -695,11 +722,10 @@ static int xdma_data_dispatcher_buffer(int ch, void **data, uint32_t *len, ssize
             }
             ptr += nframe;
             offset += nframe;
-            printf_info("offset：%ld, chip_id=0x%x, func_id=0x%x\n", offset, sub.chip_id, sub.func_id);
+            //printf_note("offset：%ld, chip_id=0x%x, func_id=0x%x\n", offset, sub.chip_id, sub.func_id);
             _xdma_load_disp_buffer(data[index], nframe, &sub, args);
         }while(offset <= XDMA_BLOCK_SIZE);
     }
-
     return 0;
 }
 
@@ -791,7 +817,7 @@ static ssize_t xspm_read_xdma_data_dispatcher(int ch , void **data, uint32_t *le
 {
     int index;
     ssize_t count = 0;
-
+    
     index = xspm_find_index_by_rw(ch, -1, XDMA_READ);
     if(index < 0)
         return -1;

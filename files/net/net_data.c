@@ -316,7 +316,7 @@ static inline int tcp_send_vec_data_to_client(struct net_tcp_client *client, str
     return 0;
 }
 
-static int tcp_send_data_to_client(int fd, const char *buf, int buflen)
+static int _tcp_send_data_to_client(int fd, const char *buf, int buflen)
 {
     ssize_t ret = 0, len;
 
@@ -358,7 +358,7 @@ int tcp_send_data(void *data, int len, int type)
 #ifdef SUPPORT_CLIENT_DATA_DISTRIBUTE
             if (cl_list->section.type[type] == true)
 #endif
-                tcp_send_data_to_client(cl_list->sfd.fd.fd, data, len);
+                _tcp_send_data_to_client(cl_list->sfd.fd.fd, data, len);
         }
     }
     return 0;

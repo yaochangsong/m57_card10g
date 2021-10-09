@@ -179,7 +179,7 @@ void net_hash_find_type_set(hash_t *hash, int type, int (*callback) (int ))
     }
 }
 
-void net_hash_for_each(hash_t *hash, int (*callback) (void *, int), void *args)
+void net_hash_for_each(hash_t *hash, int (*callback) (void *, int, int), void *args)
 {
     const char *keys[HASH_NODE_MAX];
     void *vals[HASH_NODE_MAX];
@@ -187,6 +187,7 @@ void net_hash_for_each(hash_t *hash, int (*callback) (void *, int), void *args)
     short itype = 0, ival[HASH_NODE_MAX];
     short cid_ival[HASH_NODE_MAX] = {0}, *pcid = NULL, cid_num = 0;
     short fid_ival[HASH_NODE_MAX] = {0}, *fcid = NULL, fid_num = 0;
+    int prio = 0;
 
     if(hash_size(hash) > HASH_NODE_MAX){
         printf_err("hash_size %d is bigger than %d\n", hash_size(hash), HASH_NODE_MAX);
@@ -213,15 +214,17 @@ void net_hash_for_each(hash_t *hash, int (*callback) (void *, int), void *args)
         } else if(itype == RT_FUNCID){
             *fcid++ = ival[i];
             fid_num++;
+        } else if(itype == RT_PRIOID){
+            prio = ival[i];
         }
         //printf("itype=%d, k=%s, v=%s, %x\n", itype, keys[i], (char *)vals[i], ival[i]);
     }
     for(int j = 0; j < cid_num; j++){
         for(int k = 0; k < fid_num; k++){
-            hid = GET_HASHMAP_ID(cid_ival[j], fid_ival[k]);
-            //printf("cid:%x, fid:%x, hid:%d\n", cid_ival[j], fid_ival[k], hid);
+            hid = GET_HASHMAP_ID(cid_ival[j], fid_ival[k], prio);
+            //printf("cid:%x, fid:%x, hid:%d, prio:%d\n", cid_ival[j], fid_ival[k], hid, prio);
             if(callback)
-                callback(args, hid);
+                callback(args, hid, prio);
         }
     }
 }

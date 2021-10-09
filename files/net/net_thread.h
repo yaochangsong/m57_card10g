@@ -44,7 +44,7 @@ struct net_thread_context {
     struct net_thread_ops *ops;
 };
 
-extern void  net_thread_con_broadcast(void *args);
+extern void  net_thread_con_broadcast(int ch, void *args);
 extern struct net_thread_context * net_thread_create_context(void *cl);
 
 #endif

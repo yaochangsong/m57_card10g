@@ -525,7 +525,7 @@ void tcp_active_send_all_client(uint8_t *data, int len)
 }
 
 
-int tcp_client_do_for_each(int (*f)(struct net_tcp_client *), void **cl)
+int tcp_client_do_for_each(int (*f)(struct net_tcp_client *), void **cl, int prio)
 {
     struct net_tcp_client *cl_list, *list_tmp;
     union _cmd_srv *cmdsrv;
@@ -554,9 +554,14 @@ int tcp_client_do_for_each(int (*f)(struct net_tcp_client *), void **cl)
             }else
         #endif
             {
-                ret = f(cl_list);
-                if(ret == 0){
-                    client_num++;
+#ifdef PRIO_CHANNEL_EN
+                if(prio == cl_list->section.prio)
+#endif
+                {
+                    ret = f(cl_list);
+                    if(ret == 0){
+                        client_num++;
+                    }
                 }
             }
         }
@@ -566,7 +571,7 @@ int tcp_client_do_for_each(int (*f)(struct net_tcp_client *), void **cl)
 }
 
 
-static int tcp_send_data_to_client(int fd, const char *buf, int buflen)
+int tcp_send_data_to_client(int fd, const char *buf, int buflen)
 {
     ssize_t ret = 0, len;
 

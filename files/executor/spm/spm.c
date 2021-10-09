@@ -518,8 +518,8 @@ void spm_xdma_data_handle_thread_dispatcher(void *arg)
 {
     void *ptr = NULL;
     struct spm_context *ctx = NULL;
-    char *ptr_data[256] = {NULL};
-    uint32_t  len[256] = {0};
+    char *ptr_data[XDMA_TRANSFER_MAX_DESC] = {NULL};
+    uint32_t  len[XDMA_TRANSFER_MAX_DESC] = {0};
     int ch, section_id = 0;
     int count = 0;
     struct spm_run_parm *run = NULL;
@@ -530,6 +530,7 @@ void spm_xdma_data_handle_thread_dispatcher(void *arg)
         pthread_exit(0);
     
     pthread_detach(pthread_self());
+   // thread_bind_cpu(1);
     run = spm_xdma_param_init();
     
 loop:
@@ -542,10 +543,11 @@ loop:
     do{
         if(ctx->ops->read_xdma_data)
             count = ctx->ops->read_xdma_data(ch, (void **)ptr_data, len, run);
-        if(count > 0){
-            net_thread_con_broadcast(run);
+        
+        if(count > 0 && (count < sizeof(len))){
+            net_thread_con_broadcast(ch, run);
            //if(ctx->ops->send_xdma_data)
-           //     ctx->ops->send_xdma_data(ch, ptr_data, len, count, ctx->run_args[ch]);
+           //     ctx->ops->send_xdma_data(ch, ptr_data, len, count, run);
         }
         ctx->ops->read_xdma_over_deal(ch, NULL);
         if(socket_bitmap_weight() == 0){
@@ -585,7 +587,8 @@ void  *spm_xdma_param_init(void)
     struct spm_run_parm *param;
     unsigned int index = 0;
     int ret = -1;
-
+    
+    ret = ret;
     param = calloc(1, sizeof(*param));
     if (!param)
         return NULL;

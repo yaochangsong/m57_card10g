@@ -491,17 +491,19 @@ bool m57_execute_cmd(void *client, int *code)
             int enable = 1;
             m57_prio_type _type;
             memcpy(&_reg, payload, sizeof(_reg));
-            _type = (_reg.type == 1 ? M57_PRIO_LOW: M57_PRIO_URGENT);
-            printf_note("%s\n", _type == M57_PRIO_URGENT ? "Urgent" : "Normal");
+            _type = (_reg.type == 1 ? M57_PRIO_LOW: 1);
+            printf_note("%s[%d]\n", _type == 1 ? "Urgent" : "Normal", _type);
+            cl->section.prio = _type;
             net_hash_add(cl->section.hash, _type, RT_PRIOID);
             #if 0
-            net_hash_add(cl->section.hash, 0x0501, RT_CHIPID);
+            //net_hash_add(cl->section.hash, 0x0501, RT_CHIPID);
             net_hash_add(cl->section.hash, 0x0502, RT_CHIPID);
             net_hash_add(cl->section.hash, 0x0000, RT_FUNCID);
-            net_hash_add(cl->section.hash, 0x0001, RT_PORTID);
-            net_hash_dump(cl->section.hash);
+           // net_hash_add(cl->section.hash, 0x0001, RT_PORTID);
+            //net_hash_dump(cl->section.hash);
             #endif
-            executor_set_command(EX_XDMA_ENABLE_CMD, -1, 1, &enable, -1);
+            for(int ch = 0; ch < MAX_XDMA_NUM; ch++)
+                executor_set_command(EX_XDMA_ENABLE_CMD, -1, ch, &enable, -1);
             break;
         }
         case CCT_DATA_SUB:

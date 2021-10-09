@@ -3,8 +3,9 @@
 
 static void *_net_thread_con_init(void);
 struct net_thread_context *net_thread_ctx = NULL;
-volatile void *channel_param = NULL;
 
+#define _NOTIFY_MAX_NUM 2
+volatile void *channel_param[_NOTIFY_MAX_NUM] = {NULL};
 
 struct thread_con_wait {
     pthread_mutex_t count_lock;
@@ -189,33 +190,76 @@ static void *_create_buffer(size_t len)
     posix_memalign((void **)&buffer, pagesize /*alignment */ , len + pagesize);
     if (!buffer) {
         fprintf(stderr, "OOM %u.\n", pagesize);
-        return NULL;
+        exit(1);
     }
     return buffer;
 }
 
+static inline int _get_channel_by_prio(int prio)
+{
+    int ch = 0;
+#ifdef PRIO_CHANNEL_EN
+    ch = (prio == 0 ? 0 : 1);
+#endif
+    return ch;
+}
 
-static int  data_dispatcher(void *args, int hid)
+static inline int _get_prio_by_channel(int ch)
+{
+    int prio = 0;
+#ifdef PRIO_CHANNEL_EN
+    prio = (ch == 0 ? 0 : 1);
+#endif
+    return prio;
+}
+
+
+
+static int  data_dispatcher(void *args, int hid, int prio)
 {
     struct net_thread_context *ctx = args;
     struct spm_context *spm_ctx = ctx->args;
-    struct spm_run_parm *arg = channel_param;//spm_ctx->run_args[0];
+    struct spm_run_parm *arg = NULL;//spm_ctx->run_args[0];
     struct net_tcp_client *cl = ctx->thread.client;
-    struct iovec vec[4];
-    
+    int ch = 0;
+    ch = _get_channel_by_prio(prio);
+    arg = channel_param[ch];
     int index = hid;
-    if(index > MAX_XDMA_DISP_TYPE_NUM || arg == NULL)
+    if(index > MAX_XDMA_DISP_TYPE_NUM || arg == NULL){
+        printf_note("error!\n");
         return -1;
+    }
+        
     
     int vec_cnt = arg->xdma_disp.type[index]->vec_cnt;
 
-    //printf_note("send vec_cnt=%d, hid=%d\n", vec_cnt, hid);
-    if(arg->xdma_disp.type[index] == NULL || vec_cnt == 0)
+    //printf_note("send vec_cnt=%d, hid=%d, ch=%d, _prio=%d, [%ld, %ld]\n", vec_cnt, hid, ch, prio, 
+    //            arg->xdma_disp.type[index]->vec[0].iov_len, arg->xdma_disp.type[index]->vec[1].iov_len);
+    if(arg->xdma_disp.type[index] == NULL || vec_cnt == 0){
+        printf_note("index %d is null", index);
         return -1;
-
+    }
+        
+#if 1
     if(vec_cnt > 0){
         send_vec_data_to_client(cl, arg->xdma_disp.type[index]->vec, vec_cnt);
     }
+#else
+    char *buffer[16] = {NULL};
+    static struct iovec vec[16];
+    static int _first = 0;
+    if(_first == 0){
+        for(int i = 0; i < 16; i++){
+            buffer[i] = _create_buffer(0x400000);
+            vec[i].iov_base = buffer[i];
+            vec[i].iov_len = 0x400000;
+        }
+        _first = 1;
+    }
+    send_vec_data_to_client(cl, vec, 2);
+   //for(int i = 0; i < vec_cnt; i++)
+   //     tcp_send_data_to_client(cl->sfd.fd.fd,  vec[i].iov_base,  vec[i].iov_len);
+#endif
     return 0;
 }
 
@@ -226,27 +270,32 @@ static inline void _net_thread_dispatcher_refresh(void *args)
     arg->xdma_disp.type_num = 0;
     for(int i = 0; i < MAX_XDMA_DISP_TYPE_NUM; i++){
         arg->xdma_disp.type[i]->vec_cnt = 0;
+        arg->xdma_disp.type[i]->vec_cnt = 0;
     }
 }
 
-void  net_thread_con_broadcast(void *args)
+void  net_thread_con_broadcast(int ch, void *args)
 {
     static bool first = true;
     static struct thread_con_wait *wait;
     struct net_tcp_client *cl0 = NULL;
+    int prio = 0;
     if(first){
         con_wait = _net_thread_con_init();
         first = false;
     }
-    
-    int notify_num = tcp_client_do_for_each(_net_thread_con_nofity, (void **)&cl0);
+    prio = _get_prio_by_channel(ch);
+    int notify_num = tcp_client_do_for_each(_net_thread_con_nofity, (void **)&cl0, prio);
     notify_num = min(_net_thread_count_get(), notify_num);
    //printf_note("dispatcher: %s:%d\n", cl0->get_peer_addr(cl0), cl0->get_peer_port(cl0));
     //if(cl0)
      //   net_hash_for_each(cl0->section.hash, data_dispatcher, cl0->section.thread);
-    channel_param = args;
+    if(ch >= _NOTIFY_MAX_NUM)
+        ch = _NOTIFY_MAX_NUM-1;
+    channel_param[ch] = args;
+   
     if(notify_num > 0){
-        printf_info("broadcast clinet num: %d\n", notify_num);
+        //printf_note("broadcast clinet num: %d\n", notify_num);
         _net_thread_con_wait_timeout(con_wait, notify_num, 10);
     }
     _net_thread_dispatcher_refresh(args);
@@ -300,6 +349,17 @@ static const struct net_thread_ops nt_ops = {
     .close = _net_thread_close,
 };
 
+static int _thread_init(void *args)
+{
+    static int cpu_index = 0;
+    long cpunum = sysconf(_SC_NPROCESSORS_CONF);
+    printf_note("bind cpu: %d\n", cpu_index);
+    //thread_bind_cpu(cpu_index);
+    cpu_index++;
+    if(cpu_index >= cpunum)
+        cpu_index = 0;
+}
+
 
 struct net_thread_context * net_thread_create_context(void *cl)
 {
@@ -318,7 +378,7 @@ struct net_thread_context * net_thread_create_context(void *cl)
     _net_thread_wait_init(ctx);
     printf_note("client: %s:%d create thread\n", client->get_peer_addr(client), client->get_peer_port(client));
     _net_thread_count_add();
-    ret =  pthread_create_detach (NULL,NULL, _net_thread_main_loop, _net_thread_exit,  ctx->thread.name , ctx, ctx, &tid);
+    ret =  pthread_create_detach (NULL,_thread_init, _net_thread_main_loop, _net_thread_exit,  ctx->thread.name , ctx, ctx, &tid);
     if(ret != 0){
         perror("pthread err");
         _net_thread_count_sub();

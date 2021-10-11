@@ -38,6 +38,8 @@ typedef struct _SYSTEM_CONFG_REG_
     uint32_t system_reset;
     uint32_t reserve1[0x2];
     uint32_t fpga_status;
+    uint32_t reserve2[0x7];
+    uint32_t channel_sel;
 }SYSTEM_CONFG_REG;
 
 typedef struct _STATUS_REG_
@@ -63,9 +65,12 @@ typedef struct _FPGA_CONFIG_REG_
 #define GET_SYS_FPGA_VER(reg)				(reg->system->version)
 #define GET_SYS_FPGA_STATUS(reg)			(reg->system->fpga_status)
 #define GET_SYS_FPGA_BOARD_VI(reg)			
+#define GET_CHANNEL_SEL(reg)				(reg->system->channel_sel)
+
 /*SET*/
 #define SET_SYS_RESET(reg,v) 				(reg->system->system_reset=v)
 #define SET_SYS_IF_CH(reg,v) 				
+#define SET_CHANNEL_SEL(reg, v)				(reg->system->channel_sel = v)
 //#define SET_SYS_SSD_MODE(reg,v) 			(reg->system->ssd_mode=v)
 
 /*****broad band*****/
@@ -105,6 +110,18 @@ typedef struct _FPGA_CONFIG_REG_
 
 
 #define AUDIO_REG(reg)                      (void*)0
+
+static inline void _set_xdma_channel(FPGA_CONFIG_REG *reg, int ch,  int enable)
+{
+    uint32_t ch_map = GET_CHANNEL_SEL(reg);
+    if(enable){
+        ch_map |= (1 << ch);
+    } else {
+        ch_map &= ~(1 << ch);
+    }
+   // printf_note("ch:%d, ch_map:0x%x\n", ch, ch_map);
+    SET_CHANNEL_SEL(reg, ch_map);
+}
 
 
 static inline void _set_narrow_channel(FPGA_CONFIG_REG *reg, int ch, int subch, int enable)

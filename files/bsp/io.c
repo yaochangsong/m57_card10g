@@ -1542,20 +1542,18 @@ uint8_t  io_restart_app(void)
 
 void io_set_xdma_disable(int ch, int subch)
 {
-    printf_note("Xdma out disable\n");
-//#if defined(SUPPORT_PLATFORM_ARCH_ARM)
-
+    printf_note("ch:%d Xdma out disable\n", ch);
+    _set_xdma_channel(get_fpga_reg(), ch, 0);
     if((get_spm_ctx()!=NULL) && get_spm_ctx()->ops->stream_stop)
         get_spm_ctx()->ops->stream_stop(ch, subch, XDMA_STREAM);
-//#endif
 }
 
 void io_set_xdma_enable(int ch, int subch)
 {
-    printf_note("Xdma out enable\n");
+    printf_note("ch:%d Xdma out enable\n", ch);
+    _set_xdma_channel(get_fpga_reg(), ch, 1);
     if((get_spm_ctx()!=NULL) && get_spm_ctx()->ops->stream_start)
         get_spm_ctx()->ops->stream_start(ch, subch, 0, 0, XDMA_STREAM);
-//#endif
 }
 
 

@@ -532,13 +532,14 @@ void spm_xdma_data_handle_thread_dispatcher(void *arg)
     pthread_detach(pthread_self());
    // thread_bind_cpu(1);
     run = spm_xdma_param_init();
-    
+    io_set_enable_command(XDMA_MODE_DISABLE, ch, 0, 0);
 loop:
     printf_note(">>>>>Read XDMA%d Wait!\n", ch);
     pthread_mutex_lock(&spm_xdma_cond_mutex[ch]);
     while(socket_bitmap_weight() == 0)
         pthread_cond_wait(&spm_xdma_cond[ch], &spm_xdma_cond_mutex[ch]);
     pthread_mutex_unlock(&spm_xdma_cond_mutex[ch]);
+    io_set_enable_command(XDMA_MODE_ENABLE, ch, 0, 0);
     printf_note(">>>>>XDMA%d read start\n", ch);
     do{
         if(ctx->ops->read_xdma_data)
@@ -551,6 +552,7 @@ loop:
         }
         ctx->ops->read_xdma_over_deal(ch, NULL);
         if(socket_bitmap_weight() == 0){
+            io_set_enable_command(XDMA_MODE_DISABLE, ch, 0, 0);
             printf_note("all client offline\n");
             usleep(1000);
             goto loop;
@@ -661,9 +663,9 @@ void *spm_init(void)
         return NULL;
     }
     spm_cond_init();
-    for(int ch = 0; ch <MAX_XDMA_NUM; ch++){
-        io_set_enable_command(XDMA_MODE_ENABLE, ch, 0, 0);
-    }
+    //for(int ch = 0; ch <MAX_XDMA_NUM; ch++){
+    //    io_set_enable_command(XDMA_MODE_ENABLE, ch, 0, 0);
+    //}
 
     for(int i = 0; i <MAX_XDMA_NUM; i++){
         xdma_ch[i] = i;

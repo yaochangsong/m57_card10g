@@ -257,7 +257,7 @@ static int xspm_create(void)
 struct xdma_ring_trans_ioctl xinfo[4];
 static ssize_t xspm_stream_read(int ch, int type,  void **data, uint32_t *len, void *args)
 {
-    #define _STREAM_READ_TIMEOUT_US (500000000)
+    #define _STREAM_READ_TIMEOUT_US (500000)
     int rc, overrun = 0;
     struct _spm_xstream *pstream;
     pstream = spm_xstream;
@@ -299,7 +299,8 @@ static ssize_t xspm_stream_read(int ch, int type,  void **data, uint32_t *len, v
            
         if(_get_run_timer(0, 0) > _STREAM_READ_TIMEOUT_US){
             printf_warn("Read TimeOut!\n");
-            return -1;
+            break;
+            //return -1;
         }
     }while(info->status == RING_TRANS_PENDING);
 

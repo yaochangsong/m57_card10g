@@ -46,6 +46,10 @@ struct net_thread_context {
 
 extern void  net_thread_con_broadcast(int ch, void *args);
 extern struct net_thread_context * net_thread_create_context(void *cl);
+extern uint64_t get_in_statistics_byte(int ch);
+extern uint64_t get_out_statistics_byte(int ch);
+extern uint64_t get_read_statistics_byte(int ch);
+extern uint64_t get_ok_out_statistics_byte(int ch);
 
 #endif
 

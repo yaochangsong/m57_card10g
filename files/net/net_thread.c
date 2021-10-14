@@ -1,6 +1,7 @@
 #include "config.h"
 #include "net_thread.h"
 
+
 static void *_net_thread_con_init(void);
 struct net_thread_context *net_thread_ctx = NULL;
 
@@ -213,7 +214,112 @@ static inline int _get_prio_by_channel(int ch)
     return prio;
 }
 
+#ifdef CONFIG_NET_STATISTICS_ENABLE
+static struct hash_type {
+    int type;
+    int mask;
+    int num;
+    int offset;
+}_hash_type_table[] = {
+    {HASHMAP_TYPE_SLOT, CARD_SLOT_MASK, GET_HASHMAP_SLOT_ADD_OFFSET},
+    {HASHMAP_TYPE_CHIP, CARD_CHIP_MASK, GET_HASHMAP_CHIP_ADD_OFFSET},
+    {HASHMAP_TYPE_FUNC, CARD_FUNC_MASK, GET_HASHMAP_FUNC_ADD_OFFSET},
+    {HASHMAP_TYPE_PRIO, CARD_PRIO_MASK, GET_HASHMAP_PROI_ADD_OFFSET},
+};
 
+int get_valid_hashid(int ch, int type, int id, int (*f)(int))
+{
+    struct spm_run_parm *arg = NULL;
+     arg = channel_param[ch];
+    int hash_table[MAX_XDMA_DISP_TYPE_NUM] = {0}, count = 0;
+    for(int i = 0 ; i < MAX_XDMA_DISP_TYPE_NUM; i++){
+        if(arg->xdma_disp.type[i]->statistics.bytes != 0)
+            hash_table[count++] = i;
+    }
+    for(int i = 0; i < ARRAY_SIZE(_hash_type_table); i++){
+        if(type == _hash_type_table[i].type){
+            for(int j = 0; j < count; j++){
+                //if(hash_table[j] == 0)
+                if((_hash_type_table[i].mask & hash_table[j]) != 0){
+                    f(hash_table[j]);
+                }
+            }
+        }
+    }
+    return 0;
+}
+#endif
+
+
+uint64_t get_in_statistics_byte(int ch)
+{
+    struct spm_run_parm *arg = NULL;
+    arg = channel_param[ch];
+    if(arg == NULL)
+        return 0;
+    
+    return arg->xdma_disp.inout.in_bytes;
+}
+
+uint64_t get_out_statistics_byte(int ch)
+{
+    struct spm_run_parm *arg = NULL;
+    arg = channel_param[ch];
+    if(arg == NULL)
+        return 0;
+    
+    return arg->xdma_disp.inout.out_bytes;
+}
+
+uint64_t get_ok_out_statistics_byte(int ch)
+{
+    struct spm_run_parm *arg = NULL;
+    arg = channel_param[ch];
+    if(arg == NULL)
+        return 0;
+    
+    return arg->xdma_disp.inout.out_seccess_bytes;
+}
+
+
+
+
+
+uint64_t get_read_statistics_byte(int ch)
+{
+    struct spm_run_parm *arg = NULL;
+    arg = channel_param[ch];
+    if(arg == NULL)
+        return 0;
+
+    return arg->xdma_disp.inout.read_bytes;
+}
+
+
+static size_t _data_send(struct net_tcp_client *cl, void *data, size_t len)
+{
+    #define THREAD_SEND_MAX_BYTE 131072
+    int index = 0, r = 0;
+    size_t sbyte = 0, reminder = 0;
+    char *pdata = NULL;
+    size_t send_len = 0;   
+    
+    index = len / THREAD_SEND_MAX_BYTE;
+    sbyte = index * THREAD_SEND_MAX_BYTE;
+    reminder = len - sbyte;
+    pdata = (uint8_t *)data;
+
+    for(int i = 0; i<index; i++){
+        r = tcp_send_data_to_client(cl->sfd.fd.fd,   pdata,  THREAD_SEND_MAX_BYTE);
+        pdata += THREAD_SEND_MAX_BYTE;
+        if(r > 0)
+            send_len += r;
+    }
+    r = tcp_send_data_to_client(cl->sfd.fd.fd,   pdata,  reminder);
+    if(r > 0)
+        send_len += r;
+    return send_len;
+}
 
 static int  data_dispatcher(void *args, int hid, int prio)
 {
@@ -221,7 +327,7 @@ static int  data_dispatcher(void *args, int hid, int prio)
     struct spm_context *spm_ctx = ctx->args;
     struct spm_run_parm *arg = NULL;//spm_ctx->run_args[0];
     struct net_tcp_client *cl = ctx->thread.client;
-    int ch = 0;
+    int ch = 0, r = 0;
     ch = _get_channel_by_prio(prio);
     arg = channel_param[ch];
     int index = hid;
@@ -236,13 +342,30 @@ static int  data_dispatcher(void *args, int hid, int prio)
     //printf_note("send vec_cnt=%d, hid=%d, ch=%d, _prio=%d, [%ld, %ld]\n", vec_cnt, hid, ch, prio, 
     //            arg->xdma_disp.type[index]->vec[0].iov_len, arg->xdma_disp.type[index]->vec[1].iov_len);
     if(arg->xdma_disp.type[index] == NULL || vec_cnt == 0){
-        printf_note("index %d is null", index);
+        printf_info("hash id %d is null,vec_cnt=%d\n", index, vec_cnt);
         return -1;
     }
         
 #if 1
     if(vec_cnt > 0){
-        send_vec_data_to_client(cl, arg->xdma_disp.type[index]->vec, vec_cnt);
+        printf_note("[%d]send hash id: %d, vec_cnt=%d, prio:%d\n", cl->get_peer_port(cl), index, vec_cnt, prio);
+        //r = send_vec_data_to_client(cl, arg->xdma_disp.type[index]->vec, vec_cnt);
+#ifdef CONFIG_NET_STATISTICS_ENABLE
+        for(int i = 0; i < vec_cnt; i++){
+            arg->xdma_disp.type[index]->statistics.bytes += arg->xdma_disp.type[index]->vec[i].iov_len;
+            arg->xdma_disp.inout.out_bytes += arg->xdma_disp.type[index]->vec[i].iov_len;
+            printf_note("len:%lu\n", arg->xdma_disp.type[index]->vec[i].iov_len);
+            //r = tcp_send_data_to_client(cl->sfd.fd.fd,  
+            //                            arg->xdma_disp.type[index]->vec[i].iov_base,  
+            //                            arg->xdma_disp.type[index]->vec[i].iov_len);
+            r = _data_send(cl, arg->xdma_disp.type[index]->vec[i].iov_base, arg->xdma_disp.type[index]->vec[i].iov_len);
+            printf_note("send len:%lu\n", r);
+            if(r > 0)  
+                arg->xdma_disp.inout.out_seccess_bytes += r; 
+        }
+        //
+        
+#endif
     }
 #else
     char *buffer[16] = {NULL};
@@ -295,7 +418,7 @@ void  net_thread_con_broadcast(int ch, void *args)
     channel_param[ch] = args;
    
     if(notify_num > 0){
-        //printf_note("broadcast clinet num: %d\n", notify_num);
+        printf_info("broadcast clinet num: %d\n", notify_num);
         _net_thread_con_wait_timeout(con_wait, notify_num, 10);
     }
     _net_thread_dispatcher_refresh(args);
@@ -358,6 +481,7 @@ static int _thread_init(void *args)
     cpu_index++;
     if(cpu_index >= cpunum)
         cpu_index = 0;
+    return 0;
 }
 
 
@@ -390,5 +514,3 @@ struct net_thread_context * net_thread_create_context(void *cl)
     return ctx;
 
 }
-
-

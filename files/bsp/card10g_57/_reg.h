@@ -247,7 +247,8 @@ static inline int _reg_get_fpga_info(FPGA_CONFIG_REG *reg,int id, void **args)
 static inline int _reg_get_fpga_info_(FPGA_CONFIG_REG *reg, int id, void **args)
 {
     uint8_t *ptr, *pstatus;
-    //#define _MAX_CARD_SLOTS_NUM 16
+    #define VALID_MAX_CARD_SLOTS_NUM 4
+    #define START_CARD_SLOTS_NUM 2
     printf_note("_reg_get_fpga_info>\n");
     pstatus = calloc(1, MAX_FPGA_CARD_SLOT_NUM*2);
     if(pstatus == NULL){
@@ -255,14 +256,17 @@ static inline int _reg_get_fpga_info_(FPGA_CONFIG_REG *reg, int id, void **args)
         return -1;
     }
     ptr = pstatus;
-
-    for(int i = 0; i <MAX_FPGA_CARD_SLOT_NUM; i++){
+    ptr += START_CARD_SLOTS_NUM;
+    for(int i = START_CARD_SLOTS_NUM; i < START_CARD_SLOTS_NUM+VALID_MAX_CARD_SLOTS_NUM; i++){
+        
         *ptr++ = reg->status[i]->board_type;
     }
     ptr = pstatus;
     ptr += MAX_FPGA_CARD_SLOT_NUM;
-    for(int i = 0; i <MAX_FPGA_CARD_SLOT_NUM; i++){
+    ptr += START_CARD_SLOTS_NUM;
+    for(int i = START_CARD_SLOTS_NUM; i < START_CARD_SLOTS_NUM+VALID_MAX_CARD_SLOTS_NUM; i++){
         *ptr++ = reg->status[i]->board_status;
+        printfn("[%d]%p, %p, %x\n", i, reg->status[i], &reg->status[i]->board_status, reg->status[i]->board_status);
         if(reg->status[i]->board_status)
             cards_status_set(i);
     }

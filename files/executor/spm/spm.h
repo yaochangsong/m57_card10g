@@ -39,15 +39,30 @@ enum stream_iq_type {
 };
 
 #include "../../net/net_sub.h"
+struct xstream_statistics_type{
+    volatile uint64_t bytes;
+};
+
+struct xstream_statistics_inout{
+    volatile uint64_t in_bytes;
+    volatile uint64_t out_bytes;
+    volatile uint64_t out_seccess_bytes;
+    volatile uint64_t read_bytes;
+};
+
+
 struct xstream_dispatcher_type{
     volatile struct net_sub_st subinfo;
     volatile struct iovec *vec;
     volatile int vec_cnt;
+    struct xstream_statistics_type statistics;
 };
 
 struct xstream_dispatcher_info{
     struct xstream_dispatcher_type **type;
+    struct xstream_statistics_inout inout;
     int type_num;
+    
 };
 
 #define for_each_niq_type(type, run) \

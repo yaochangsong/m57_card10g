@@ -16,7 +16,7 @@
 #include "../../net/net_sub.h"
 
 #define  SPM_DISPATCHER_ON
-//#define  SPM_HEADER_CHECK
+#define  SPM_HEADER_CHECK
 
 static int xspm_read_stream_stop(int ch, int subch, enum stream_type type);
 static int xspm_read_xdma_data_over(int ch,  void *arg);
@@ -49,6 +49,19 @@ static inline void create_file_path(int index)
     printf_note("create file: %s\n", buffer);
 }
 
+static inline void create_tmp_file(int index, int chip_id, int func_id, int prio_id, int port)
+{
+    char buffer[64];
+    
+    if(_file_fd[index] > 0)
+        return;
+    
+    sprintf(buffer, "/tmp/c%x_f%x_prio%x_port%x", chip_id,func_id,prio_id,port);
+    init_write_file(buffer, index);
+    printf_note("create file: %s\n", buffer);
+}
+
+
 static inline void close_file(void)
 {
     for(int i = 0; i < 64; i++){
@@ -72,6 +85,13 @@ static inline int write_file(uint8_t *pdata, int index, int len)
 
     return 0;
 }
+
+static inline int write_file_nbyte(int8_t *pdata, int n, int index)
+{
+    fwrite((void *)pdata, sizeof(int8_t), n, _file_fd[index]);
+    return 0;
+}
+
 
 static inline int write_file_nfft(int16_t *pdata, int n, int index)
 {
@@ -257,7 +277,7 @@ static int xspm_create(void)
 struct xdma_ring_trans_ioctl xinfo[4];
 static ssize_t xspm_stream_read(int ch, int type,  void **data, uint32_t *len, void *args)
 {
-    #define _STREAM_READ_TIMEOUT_US (500000)
+    #define _STREAM_READ_TIMEOUT_US (1000000)
     int rc, overrun = 0;
     struct _spm_xstream *pstream;
     pstream = spm_xstream;
@@ -538,7 +558,7 @@ static ssize_t xspm_stream_read_test2(int ch, int type,  void **data, uint32_t *
         0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
         0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x55,0x55,0xaa,0xaa,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00 
     };
-    #define _read_cnt 10
+    #define _read_cnt 1
     static uint8_t **alloc_mem = NULL;
     if(alloc_mem == NULL){
         alloc_mem = calloc(_read_cnt, sizeof(*alloc_mem));
@@ -562,7 +582,7 @@ static ssize_t xspm_stream_read_test2(int ch, int type,  void **data, uint32_t *
         len[i] = 8192;
     }
     //usleep(500000);
-    //sleep(1);
+    sleep(1);
     return _read_cnt;
 }
 
@@ -609,6 +629,75 @@ static ssize_t _xdma_of_match_pkgs(void *data, uint32_t len, void *args, size_t 
         uint16_t len;
         uint16_t type;
         uint16_t src_addr;
+        uint16_t port;
+    }__attribute__ ((packed));
+    struct data_frame_st *pdata[4096];
+    struct net_sub_st *psub = args;
+    uint8_t *payload = NULL;
+    uint8_t *ptr = data;
+    uint16_t py_src_addr = 0, src_addr = 0, port = 0;
+    int pos = 0, reminder16 = 0;
+    size_t sum_len = 0, frame_len = 0, raw_len = 0;
+
+    do{
+        if(*(uint16_t *)ptr != 0x5751){  /* header */
+            if(sum_len != 0){
+                if(sum_len == (len - offp)){
+                    printf_note("read over block size: %lu, offp=%lu\n", sum_len, offp);
+                } else if(sum_len <  (len - offp)){
+                    printf_warn("err header=0x%x, block size left:%ld, offp=%lu\n", *(uint16_t *)ptr, len - offp - sum_len, offp);
+                } else{
+                    printf_warn("err!! comsume length [%lu] err!, %u, %lu\n", sum_len, len, offp);
+                }
+            }
+            break;
+        }
+        payload = ptr + 8;
+        pdata[pos] = (struct data_frame_st *)payload;
+        frame_len = *(uint16_t *)(ptr + 4); //aglin 16byte
+        reminder16 = frame_len % 16;
+        if(reminder16 != 0){
+            raw_len = frame_len;
+            frame_len += reminder16;
+            printf_note("[%d]not aglin 16,add %d, frame_len:%lu[0x%x], raw_len:%lu[0x%x]\n", pos, reminder16, frame_len, frame_len,raw_len,raw_len);
+        }
+            
+        if(pos == 0){
+            psub->chip_id = py_src_addr = pdata[pos]->py_src_addr;
+            psub->func_id = src_addr = pdata[pos]->src_addr;
+            psub->prio_id = ((*(uint8_t *)(ptr + 3) >> 4) & 0x0f) == 0 ? 0 :1;
+            psub->port = port = pdata[pos]->port;
+           // print_array(ptr, len); 
+            printf_info("0 frame_len：%lu, chip_id=0x%x, func_id=0x%x, prio_id=0x%x,port: 0x%x\n", frame_len, psub->chip_id, psub->func_id, psub->prio_id, psub->port);
+        } else if(py_src_addr != pdata[pos]->py_src_addr || src_addr != pdata[pos]->src_addr || port != pdata[pos]->port){
+            //printf_note("func_id not eq\n");
+            break;
+        } else{
+            //printf_note("same type: %d, py_src_addr=%x, src_addr=%x\n", pos,  pdata[pos]->py_src_addr, pdata[pos]->src_addr);
+        }
+        pos++;
+        if(pos >= 4096){
+            printf_warn(">>>>>>>>>>pos is overrun!\n");
+            break;
+        }
+            
+        
+        sum_len += frame_len;
+        ptr = ptr +frame_len ;
+    }while(sum_len < (XDMA_BLOCK_SIZE - offp));
+    printf_note("sum_len:%lu, pos:%d\n", sum_len, pos);
+    return sum_len;
+} 
+
+static ssize_t _xdma_of_match_pkgs_test(void *data, uint32_t len, void *args, size_t offp)
+{
+    struct data_frame_st{
+        uint16_t py_dist_addr;
+        uint16_t py_src_addr;
+        uint16_t dist_addr;
+        uint16_t len;
+        uint16_t type;
+        uint16_t src_addr;
         uint16_t cmd;
     }__attribute__ ((packed));
     struct data_frame_st *pdata[2048];
@@ -618,39 +707,42 @@ static ssize_t _xdma_of_match_pkgs(void *data, uint32_t len, void *args, size_t 
     uint16_t py_src_addr = 0, src_addr = 0;
     int pos = 0, reminder16 = 0;
     size_t sum_len = 0, frame_len = 0;
+    static int rev = 0;
 
     do{
         if(*(uint16_t *)ptr != 0x5751){  /* header */
             //printf_warn("err header=0x%x, block size left:%ld\n", *(uint16_t *)ptr, XDMA_BLOCK_SIZE - offp);
-            break;
+           // break;
         }
         payload = ptr + 8;
         pdata[pos] = (struct data_frame_st *)payload;
-        frame_len = *(uint16_t *)(ptr + 4); //aglin 8byte
-        reminder16 = frame_len % 16;
+        frame_len = 64*1024;//*(uint16_t *)(ptr + 4); //aglin 8byte
+        //reminder16 = frame_len % 16;
         if(reminder16 != 0){
             frame_len += reminder16;
            // printf_note("[%d]not aglin 16,add %d, frame_len:%lu\n", pos, reminder16, frame_len);
         }
             
         if(pos == 0){
-            psub->chip_id = py_src_addr = pdata[pos]->py_src_addr;
-            psub->func_id = src_addr = pdata[pos]->src_addr;
-            psub->prio_id = (*(uint8_t *)(ptr + 3) >> 4) & 0x0f;
-            printf_note("0 frame_len：%lu, chip_id=0x%x, func_id=0x%x, prio_id=0x%x\n", frame_len, psub->chip_id, psub->func_id, psub->prio_id);
-        } else if(py_src_addr != pdata[pos]->py_src_addr || src_addr != pdata[pos]->src_addr){
-            //printf_note("func_id not eq\n");
-            break;
-        } else{
-            //printf_note("same type: %d, py_src_addr=%x, src_addr=%x\n", pos,  pdata[pos]->py_src_addr, pdata[pos]->src_addr);
-        }
+            psub->chip_id = py_src_addr = 0x0502;//pdata[pos]->py_src_addr;
+            //if(rev == 0)
+                psub->func_id = src_addr = 3;//pdata[pos]->src_addr;
+            //else
+            //    psub->func_id = src_addr = 6;
+            rev = !rev;
+            psub->prio_id = 1;//(*(uint8_t *)(ptr + 3) >> 4) & 0x0f == 0 ? 0 :1;
+            psub->port = 1;
+            printf_info("0 frame_len：%lu, chip_id=0x%x, func_id=0x%x, prio_id=0x%x\n", frame_len, psub->chip_id, psub->func_id, psub->prio_id);
+        } //else
+          //  break;
         pos++;
         sum_len += frame_len;
         ptr = ptr +frame_len ;
-    }while(sum_len <= (XDMA_BLOCK_SIZE - offp));
-    printf_note("sum_len:%lu\n", sum_len);
+    }while(sum_len < (XDMA_BLOCK_SIZE - offp));
+    printf_info("sum_len:%lu, pos=%d, offp=%lu\n", sum_len, pos, offp);
     return sum_len;
 } 
+
 
 static int _xdma_load_disp_buffer(void *data, ssize_t len, void *args, void *run)
 {
@@ -658,8 +750,8 @@ static int _xdma_load_disp_buffer(void *data, ssize_t len, void *args, void *run
     struct net_sub_st *sub = args;
     struct spm_run_parm *prun = run; 
     
-    hashid = GET_HASHMAP_ID(sub->chip_id, sub->func_id, sub->prio_id);
-    //printf_note("hashid:%d, %x, %x\n", hashid, sub->chip_id, sub->func_id);
+    hashid = GET_HASHMAP_ID(sub->chip_id, sub->func_id, sub->prio_id, sub->port);
+    printf_note("hashid:%d, chip_id:%x, func_id:%x, prio_id:%x,port:%x\n", hashid, sub->chip_id, sub->func_id, sub->prio_id, sub->port);
     
     if(hashid > MAX_XDMA_DISP_TYPE_NUM || hashid < 0 || prun->xdma_disp.type[hashid] == NULL){
         printf_err("hash id err[%d]\n", hashid);
@@ -672,7 +764,15 @@ static int _xdma_load_disp_buffer(void *data, ssize_t len, void *args, void *run
     prun->xdma_disp.type[hashid]->vec[vec_cnt].iov_len = len;
     prun->xdma_disp.type_num++;
     prun->xdma_disp.type[hashid]->vec_cnt++;
+    prun->xdma_disp.inout.in_bytes += len;
     //printf_note("vec_cnt:%d\n", prun->xdma_disp.type[hashid]->vec_cnt);
+    #if 0
+    create_tmp_file(hashid%64, sub->chip_id, sub->func_id, sub->prio_id, sub->port);
+    printf_note("index:%d, %x, %x, %x, %x\n", hashid%64, sub->chip_id, sub->func_id, sub->prio_id, sub->port);
+    write_file_nbyte(data, len, hashid%64);
+    #endif
+    //write_file(data[i], i, len[i]);
+    //write_over(i, len[i]);
     return 0;
 }
 
@@ -703,14 +803,16 @@ static int xdma_data_dispatcher_buffer(int ch, void **data, uint32_t *len, ssize
     struct net_sub_st sub;
     ssize_t offset = 0, nframe = 0;
     uint8_t *ptr = NULL;
+    struct spm_run_parm *run = args; 
     
     for(int index = 0; index < count; index++){
         offset = 0;
         ptr = data[index];
-        //printf_note("index=%d, %p\n", index, ptr);
+        printf_note(">>>>>index=%d, %p, %ld\n", index, ptr, count);
         do{
  #ifdef SPM_HEADER_CHECK
             nframe = _xdma_of_match_pkgs(ptr, len[index], &sub, offset);
+            //nframe = _xdma_of_match_pkgs_test(ptr, len[index], &sub, offset);
  #else
             nframe = len[index];
             offset = XDMA_BLOCK_SIZE+1;
@@ -719,14 +821,15 @@ static int xdma_data_dispatcher_buffer(int ch, void **data, uint32_t *len, ssize
             _data_check(ptr, len[index], index);
  #endif
             if(nframe <= 0){
-                printf_info(">>>>>read block[%d/%ld] over, size[%ld]\n", index, count, offset);
+                printf_warn(">>>>>read block[%d/%ld] over, size[%ld]\n", index, count, offset);
                 break;
             }
             ptr += nframe;
             offset += nframe;
-            //printf_note("offset：%ld, chip_id=0x%x, func_id=0x%x\n", offset, sub.chip_id, sub.func_id);
+            printf_info("offset：%ld, chip_id=0x%x, func_id=0x%x\n", offset, sub.chip_id, sub.func_id);
             _xdma_load_disp_buffer(data[index], nframe, &sub, args);
-        }while(offset <= XDMA_BLOCK_SIZE);
+        }while(offset < XDMA_BLOCK_SIZE);
+        run->xdma_disp.inout.read_bytes += len[index];
     }
     return 0;
 }
@@ -793,9 +896,10 @@ g:命令表示
         parg.chip_id = 0x0502;
         parg.func_id = 0x0;
 #endif
-        hashid = GET_HASHMAP_ID(parg.chip_id, parg.func_id, parg.prio_id);
+        hashid = GET_HASHMAP_ID(parg.chip_id, parg.func_id, parg.prio_id, parg.port);
        // hashid = find_hash_id(parg.chip_id, parg.func_id);
-       // printf_note("hashid:%d, vec_cnt=%d\n", hashid, vec_cnt);
+        printf_note("hashid:%d, vec_cnt=%d,chip_id=%x, func_id=0x%x, prio_id=0x%x\n", hashid, vec_cnt,
+                    parg.chip_id, parg.func_id, parg.prio_id);
         if(hashid > MAX_XDMA_DISP_TYPE_NUM || hashid < 0 || arg->xdma_disp.type[hashid] == NULL){
             printf_err("hash id err[%d]\n", hashid);
             continue;
@@ -824,9 +928,8 @@ static ssize_t xspm_read_xdma_data_dispatcher(int ch , void **data, uint32_t *le
     if(index < 0)
         return -1;
 
-   //count = xspm_stream_read(ch, index, data, NULL);
     count = xspm_stream_read(ch, index, data, len, args);
-    //count = xspm_stream_read_test2(ch, index, data, len, args);
+   // count = xspm_stream_read_test2(ch, index, data, len, args);
     //count = xspm_stream_read_test(ch, index, data, len, args);
     if(count > 0 && count < XDMA_TRANSFER_MAX_DESC){
         if(xdma_data_dispatcher_buffer(ch, data, len, count, args) == -1){

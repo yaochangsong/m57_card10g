@@ -948,6 +948,22 @@ char *assemble_json_softversion(void)
     str_json = cJSON_PrintUnformatted(root);
     return str_json;
 }
+
+char *assemble_json_statistics(void)
+{
+    char *str_json = NULL;
+    cJSON *root = cJSON_CreateObject();
+
+    cJSON_AddNumberToObject(root, "read", get_read_statistics_byte(0));
+    cJSON_AddNumberToObject(root, "in", get_in_statistics_byte(0));
+    cJSON_AddNumberToObject(root, "out", get_out_statistics_byte(0));
+    cJSON_AddNumberToObject(root, "sendok", get_ok_out_statistics_byte(0));
+    
+    json_print(root, 1);
+    str_json = cJSON_PrintUnformatted(root);
+    return str_json;
+}
+
 char *assemble_json_fpag_info(void)
 {
     char *str_json = NULL;
@@ -1228,6 +1244,7 @@ char *assemble_json_all_info(void)
 #endif
     cJSON_AddItemToObject(root, "netInfo", cJSON_Parse(assemble_json_net_list_info()));
     cJSON_AddItemToObject(root, "buildInfo", cJSON_Parse(assemble_json_build_info()));
+    cJSON_AddItemToObject(root, "statisticsInfo", cJSON_Parse(assemble_json_statistics()));
     json_print(root, 1);
     str_json = cJSON_PrintUnformatted(root);
     return str_json;
@@ -1301,6 +1318,8 @@ char *assemble_json_data_response(int err_code, const char *message, const char 
     body = cJSON_PrintUnformatted(root);
     return body;
 }
+
+
 
 
 

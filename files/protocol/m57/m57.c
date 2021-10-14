@@ -492,7 +492,7 @@ bool m57_execute_cmd(void *client, int *code)
             m57_prio_type _type;
             memcpy(&_reg, payload, sizeof(_reg));
             _type = (_reg.type == 1 ? M57_PRIO_LOW: 1);
-            printf_note("%s[%d]\n", _type == 1 ? "Urgent" : "Normal", _type);
+            printf_note("=====>>>%s[%d], %p\n", _type == 1 ? "Urgent" : "Normal", _type, cl);
             cl->section.prio = _type;
             net_hash_add(cl->section.hash, _type, RT_PRIOID);
             #if 0
@@ -515,7 +515,7 @@ bool m57_execute_cmd(void *client, int *code)
             }__attribute__ ((packed));
             struct sub_st _sub;
             memcpy(&_sub,  payload, sizeof(_sub));
-            printf_note("[%d]sub chip_id:0x%x, func_id=0x%x, port=0x%x\n", cl->get_peer_port(cl), _sub.chip_id, _sub.func_id, _sub.port);
+            printf_note("[%d]sub chip_id:0x%x, func_id=0x%x, port=0x%x, prio=%d, cl=%p\n", cl->get_peer_port(cl), _sub.chip_id, _sub.func_id, _sub.port, cl->section.prio,cl);
             io_socket_set_sub(cl->section.section_id, _sub.chip_id, _sub.func_id, _sub.port);
             #if 1
             net_hash_add(cl->section.hash, _sub.chip_id, RT_CHIPID);
@@ -555,6 +555,7 @@ bool m57_execute_cmd(void *client, int *code)
         {
             uint8_t *info;
             int nbyte = 0;
+            nbyte = _reg_get_fpga_info_(get_fpga_reg(), 0, (void **)&info);
             nbyte = _reg_get_fpga_info(get_fpga_reg(), 0, (void **)&info);
             if(nbyte >= 0){
                 cl->response.data = info;
@@ -808,7 +809,7 @@ void m57_send_heatbeat(void *client)
     struct _beat_t beatheart;
     beatheart.beat_count = 0;//cl->section.beatheat ++;
     beatheart.beat_status = 0;
-    cl->section.prio = M57_PRIO_LOW;
+    //cl->section.prio = M57_PRIO_LOW;
     printf_debug("send beatheart to:[%s:%d],n=%d \n", cl->get_peer_addr(cl), cl->get_peer_port(cl), beatheart.beat_count);
     m57_send_cmd(client, CCT_BEAT_HART, &beatheart, sizeof(beatheart));
 }

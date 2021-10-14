@@ -582,7 +582,7 @@ int tcp_send_data_to_client(int fd, const char *buf, int buflen)
         len = send(fd, buf, buflen, 0);
 
         if (len < 0) {
-            printf_note("[fd:%d]-send len : %ld, %d[%s]\n", fd, len, errno, strerror(errno));
+            //printf_note("[fd:%d]-send len : %ld, %d[%s]\n", fd, len, errno, strerror(errno));
             if (errno == EINTR)
                 continue;
 
@@ -613,12 +613,13 @@ int send_vec_data_to_client(struct net_tcp_client *client, struct iovec *iov, in
     msgsent.msg_iov = iov;
     msgsent.msg_control = NULL;
     msgsent.msg_controllen = 0;
-   // printf_debug("send: %s:%d\n", client->get_peer_addr(client), client->get_peer_port(client));
+    printf_note("send: %s:%d\n", client->get_peer_addr(client), client->get_peer_port(client));
     r = sendmsg(client->sfd.fd.fd, &msgsent, 0);
     if(r < 0){
         perror("sendmsg");
     }
-    return 0;
+    printf_note("send ok:%u\n", r);
+    return r;
 }
 
 

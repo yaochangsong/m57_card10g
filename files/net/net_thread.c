@@ -298,7 +298,7 @@ uint64_t get_read_statistics_byte(int ch)
 
 static size_t _data_send(struct net_tcp_client *cl, void *data, size_t len)
 {
-    #define THREAD_SEND_MAX_BYTE 131072
+    #define THREAD_SEND_MAX_BYTE 8388608//262144//131072
     int index = 0, r = 0;
     size_t sbyte = 0, reminder = 0;
     char *pdata = NULL;
@@ -327,7 +327,7 @@ static int  data_dispatcher(void *args, int hid, int prio)
     struct spm_context *spm_ctx = ctx->args;
     struct spm_run_parm *arg = NULL;//spm_ctx->run_args[0];
     struct net_tcp_client *cl = ctx->thread.client;
-    int ch = 0, r = 0;
+    int ch = 0, r = 0, r0 = 0;
     ch = _get_channel_by_prio(prio);
     arg = channel_param[ch];
     int index = hid;
@@ -348,22 +348,26 @@ static int  data_dispatcher(void *args, int hid, int prio)
         
 #if 1
     if(vec_cnt > 0){
-        printf_note("[%d]send hash id: %d, vec_cnt=%d, prio:%d\n", cl->get_peer_port(cl), index, vec_cnt, prio);
+       
         //r = send_vec_data_to_client(cl, arg->xdma_disp.type[index]->vec, vec_cnt);
+        //if(r > 0)  
+        //        arg->xdma_disp.inout.out_seccess_bytes += r; 
 #ifdef CONFIG_NET_STATISTICS_ENABLE
         for(int i = 0; i < vec_cnt; i++){
             arg->xdma_disp.type[index]->statistics.bytes += arg->xdma_disp.type[index]->vec[i].iov_len;
             arg->xdma_disp.inout.out_bytes += arg->xdma_disp.type[index]->vec[i].iov_len;
-            printf_note("len:%lu\n", arg->xdma_disp.type[index]->vec[i].iov_len);
+            printf_info("len:%lu\n", arg->xdma_disp.type[index]->vec[i].iov_len);
             //r = tcp_send_data_to_client(cl->sfd.fd.fd,  
             //                            arg->xdma_disp.type[index]->vec[i].iov_base,  
             //                            arg->xdma_disp.type[index]->vec[i].iov_len);
             r = _data_send(cl, arg->xdma_disp.type[index]->vec[i].iov_base, arg->xdma_disp.type[index]->vec[i].iov_len);
-            printf_note("send len:%lu\n", r);
+            if(r != arg->xdma_disp.type[index]->vec[i].iov_len)
+                printf_warn("overun: send len:%d/%lu\n", r, arg->xdma_disp.type[index]->vec[i].iov_len);
             if(r > 0)  
                 arg->xdma_disp.inout.out_seccess_bytes += r; 
+            r0 += r;
         }
-        //
+         printf_note("[%d]send hash id: %d, vec_cnt=%d, bytes:%d\n", cl->get_peer_port(cl), index, vec_cnt, r0);
         
 #endif
     }

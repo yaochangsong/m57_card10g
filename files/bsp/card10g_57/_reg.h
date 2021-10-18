@@ -258,7 +258,7 @@ static inline int _reg_get_fpga_info_(FPGA_CONFIG_REG *reg, int id, void **args)
     ptr = pstatus;
     ptr += START_CARD_SLOTS_NUM;
     for(int i = START_CARD_SLOTS_NUM; i < START_CARD_SLOTS_NUM+VALID_MAX_CARD_SLOTS_NUM; i++){
-        
+        printfn("[%d]%p, %p, %x\n", i, reg->status[i], &reg->status[i]->board_type, reg->status[i]->board_type);
         *ptr++ = reg->status[i]->board_type;
     }
     ptr = pstatus;
@@ -298,17 +298,18 @@ static inline int _reg_get_load_result(FPGA_CONFIG_REG *reg, int id, void **args
         printf_err("slot id[%d] is bigger than max[%d]\n", slot_id, MAX_FPGA_CARD_SLOT_NUM);
         return ret;
     }
-    printf_note("id=0x%x, chip_id=0x%x, slot_id=0x%x\n", id, chip_id, slot_id);
+    printf_info("id=0x%x, chip_id=0x%x, slot_id=0x%x\n", id, chip_id, slot_id);
     do{
-        usleep(100);
+        usleep(100000);
         if(chip_id == 0){
             ret = reg->status[slot_id]->c0_load;
         } else {
             ret = reg->status[slot_id]->c1_load;
         }
-        printf_note("load result: %x[slot_id:0x%x, chip_id:0x%x], try_count:%d\n", ret, slot_id, chip_id, try_count);
-    }while(ret < 0 && try_count++ < 3);
-    
+        printf_note("result bit: %p, %p, %p\n", reg->status[slot_id], &reg->status[slot_id]->c0_load, &reg->status[slot_id]->c1_load);
+        printf_note("load result: 0x%x[slot_id:0x%x, chip_id:0x%x], try_count:%d\n", ret, slot_id, chip_id, try_count);
+    }while(ret != 1 && try_count++ < 8);
+    printf_warn(">>>>>>CARD[0x%04x] LOAD %s!!<<<<<\n", id, ret == 1 ? "OK" : "Faild");
     return (ret == 1 ? 0 : -1);
 }
 

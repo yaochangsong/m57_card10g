@@ -427,7 +427,7 @@ static int _m57_write_data_to_fpga(uint8_t *ptr, size_t len)
     memcpy(buffer, ptr, len);
     _ctx = get_spm_ctx();
     nwrite = _ctx->ops->write_xdma_data(0, buffer, len);
-    printfn("Write data %s![%ld]\n",  (nwrite == len) ? "OK" : "Faild", nwrite);
+    printfi("Write data %s![%ld]\n",  (nwrite == len) ? "OK" : "Faild", nwrite);
     
     free(buffer);
     buffer = NULL;
@@ -492,7 +492,7 @@ bool m57_execute_cmd(void *client, int *code)
             m57_prio_type _type;
             memcpy(&_reg, payload, sizeof(_reg));
             _type = (_reg.type == 1 ? M57_PRIO_LOW: 1);
-            printf_note("=====>>>%s[%d], %p\n", _type == 1 ? "Urgent" : "Normal", _type, cl);
+            printf_note("=====>>>%s[%d], port:%d\n", _type == 1 ? "Urgent" : "Normal", _type, cl->get_peer_port(cl));
             cl->section.prio = _type;
             net_hash_add(cl->section.hash, _type, RT_PRIOID);
             #if 0
@@ -541,13 +541,13 @@ bool m57_execute_cmd(void *client, int *code)
             }__attribute__ ((packed));
             struct sub_st _sub;
             memcpy(&_sub,  payload, sizeof(_sub));
-            printf_note("unsub chip_id:0x%x, func_id=0x%x, port=0x%x\n", _sub.chip_id, _sub.func_id, _sub.port);
+            printf_info("unsub chip_id:0x%x, func_id=0x%x, port=0x%x\n", _sub.chip_id, _sub.func_id, _sub.port);
             io_socket_set_unsub(cl->section.section_id, _sub.chip_id, _sub.func_id, _sub.port);
             #if 1
             net_hash_del(cl->section.hash, _sub.chip_id, RT_CHIPID);
             net_hash_del(cl->section.hash, _sub.func_id, RT_FUNCID);
             net_hash_del(cl->section.hash, _sub.port, RT_PORTID);
-            net_hash_dump(cl->section.hash);
+            // net_hash_dump(cl->section.hash);
             #endif
             break;
         }
@@ -556,7 +556,8 @@ bool m57_execute_cmd(void *client, int *code)
             uint8_t *info;
             int nbyte = 0;
             nbyte = _reg_get_fpga_info_(get_fpga_reg(), 0, (void **)&info);
-            nbyte = _reg_get_fpga_info(get_fpga_reg(), 0, (void **)&info);
+            nbyte = _reg_get_fpga_info_(get_fpga_reg(), 0, (void **)&info);
+            //nbyte = _reg_get_fpga_info(get_fpga_reg(), 0, (void **)&info);
             if(nbyte >= 0){
                 cl->response.data = info;
                 cl->response.response_length = nbyte;
@@ -722,12 +723,14 @@ load_file_exit:
                 r_resp->chipid = pinfo->chipid;
                 if(cl->section.is_loadfile_ok){
                     if(_m57_loading_bitfile_to_fpga(cl->section.file.path) == true){
-                          usleep(20000);
+                          usleep(40000);
                          _m57_stop_load_bitfile_to_fpga(cl->section.chip_id);
+                          //usleep(30000);
+                          sleep(3);
                     } else{
                         r_resp->ret = -1;
                     }
-                   // r_resp->ret = _reg_get_load_result(get_fpga_reg(), cl->section.chip_id, NULL);
+                    r_resp->ret = _reg_get_load_result(get_fpga_reg(), cl->section.chip_id, NULL);
                     r_resp->ret = 0; /* ok */
                     usleep(30000);
                 }

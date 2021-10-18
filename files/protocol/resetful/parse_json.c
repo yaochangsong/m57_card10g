@@ -954,10 +954,15 @@ char *assemble_json_statistics(void)
     char *str_json = NULL;
     cJSON *root = cJSON_CreateObject();
 
-    cJSON_AddNumberToObject(root, "read", get_read_statistics_byte(0));
-    cJSON_AddNumberToObject(root, "in", get_in_statistics_byte(0));
-    cJSON_AddNumberToObject(root, "out", get_out_statistics_byte(0));
-    cJSON_AddNumberToObject(root, "sendok", get_ok_out_statistics_byte(0));
+    char buffer[128] = {0};
+    snprintf(buffer, sizeof(buffer) - 1, "%llu", get_read_statistics_byte(0));
+    cJSON_AddStringToObject(root, "read", buffer);
+    snprintf(buffer, sizeof(buffer) - 1, "%llu", get_in_statistics_byte(0));
+    cJSON_AddStringToObject(root, "in", buffer);
+    snprintf(buffer, sizeof(buffer) - 1, "%llu", get_out_statistics_byte(0));
+    cJSON_AddStringToObject(root, "out", buffer);
+    snprintf(buffer, sizeof(buffer) - 1, "%llu", get_ok_out_statistics_byte(0));
+    cJSON_AddStringToObject(root, "sendok", buffer);
     
     json_print(root, 1);
     str_json = cJSON_PrintUnformatted(root);

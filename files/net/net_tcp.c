@@ -613,12 +613,13 @@ int send_vec_data_to_client(struct net_tcp_client *client, struct iovec *iov, in
     msgsent.msg_iov = iov;
     msgsent.msg_control = NULL;
     msgsent.msg_controllen = 0;
-    printf_note("send: %s:%d\n", client->get_peer_addr(client), client->get_peer_port(client));
+    //printf_note("send: %s:%d\n", client->get_peer_addr(client), client->get_peer_port(client));
     r = sendmsg(client->sfd.fd.fd, &msgsent, 0);
     if(r < 0){
         perror("sendmsg");
     }
-    printf_note("send ok:%u\n", r);
+    if(iov_len == 1 && r != iov->iov_len)
+        printf_note("send:%d/%lu\n", r,iov->iov_len);
     return r;
 }
 

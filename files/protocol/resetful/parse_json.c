@@ -23,6 +23,7 @@
 #include "parse_json.h"
 #include "../../dao/json/cJSON.h"
 #include "../../bsp/io.h"
+#include "../../net/net_thread.h"
 
 
 static inline bool str_to_int(char *str, int *ivalue, bool(*_check)(int))
@@ -955,13 +956,13 @@ char *assemble_json_statistics(void)
     cJSON *root = cJSON_CreateObject();
 
     char buffer[128] = {0};
-    snprintf(buffer, sizeof(buffer) - 1, "%llu", get_read_statistics_byte(0));
+    snprintf(buffer, sizeof(buffer) - 1, "%" PRIu64, get_read_statistics_byte(0));
     cJSON_AddStringToObject(root, "read", buffer);
-    snprintf(buffer, sizeof(buffer) - 1, "%llu", get_in_statistics_byte(0));
+    snprintf(buffer, sizeof(buffer) - 1, "%" PRIu64, get_in_statistics_byte(0));
     cJSON_AddStringToObject(root, "in", buffer);
-    snprintf(buffer, sizeof(buffer) - 1, "%llu", get_out_statistics_byte(0));
+    snprintf(buffer, sizeof(buffer) - 1, "%" PRIu64, get_out_statistics_byte(0));
     cJSON_AddStringToObject(root, "out", buffer);
-    snprintf(buffer, sizeof(buffer) - 1, "%llu", get_ok_out_statistics_byte(0));
+    snprintf(buffer, sizeof(buffer) - 1, "%" PRIu64, get_ok_out_statistics_byte(0));
     cJSON_AddStringToObject(root, "sendok", buffer);
     
     json_print(root, 1);

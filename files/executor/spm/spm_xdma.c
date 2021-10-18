@@ -278,7 +278,7 @@ struct xdma_ring_trans_ioctl xinfo[4];
 static ssize_t xspm_stream_read(int ch, int type,  void **data, uint32_t *len, void *args)
 {
     #define _STREAM_READ_TIMEOUT_US (1000000)
-    int rc, overrun = 0;
+    int rc = 0;
     struct _spm_xstream *pstream;
     pstream = spm_xstream;
     struct xdma_ring_trans_ioctl *info = &xinfo[type];
@@ -309,7 +309,6 @@ static ssize_t xspm_stream_read(int ch, int type,  void **data, uint32_t *len, v
         } else if(info->status == RING_TRANS_OVERRUN){
             printf_warn("*****status:RING_TRANS_OVERRUN.*****\n");
             xspm_xdma_data_clear(0, args);
-            overrun = 1;
         } else if(info->status == RING_TRANS_INITIALIZING){
             printf_warn("*****status:RING_TRANS_INITIALIZING.*****\n");
             usleep(10);
@@ -663,7 +662,7 @@ static ssize_t _xdma_of_match_pkgs(void *data, uint32_t len, void *args, size_t 
         if(reminder16 != 0){
             raw_len = frame_len;
             frame_len += reminder16;
-            printf_info("[%d]not aglin 16,add %d, frame_len:%lu[0x%x], raw_len:%lu[0x%x]\n", pos, reminder16, frame_len, frame_len,raw_len,raw_len);
+            printf_info("[%d]not aglin 16,add %d, frame_len:%lu[0x%lx], raw_len:%lu[0x%lx]\n", pos, reminder16, frame_len, frame_len,raw_len,raw_len);
         }
         if(frame_len > 2048){
             printf_warn("payload length error: %lu\n", frame_len);

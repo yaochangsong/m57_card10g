@@ -326,12 +326,12 @@ static ssize_t xspm_stream_read(int ch, int type,  void **data, uint32_t *len, v
 
    int index;
     uint8_t *ptr = NULL;
-    printf_debug("ready_count: %u\n", info->ready_count);
+    //printf_note("ready_count: %u\n", info->ready_count);
     for(int i = 0; i < info->ready_count; i++){
         index = (info->rx_index + i) % info->block_count;
         data[i] = pstream[type].ptr[index];
         len[i] = info->results[index].length;
-        printf_debug("data=%p, len=%u\n", data[i], len[i]);
+        //printf_note("data=%p, len=%u\n", data[i], len[i]);
         timer = 0;
 		#if 0
         if(i < 64){
@@ -675,9 +675,9 @@ static ssize_t _xdma_of_match_pkgs(void *data, uint32_t len, void *args, size_t 
             psub->prio_id = ((*(uint8_t *)(ptr + 3) >> 4) & 0x0f) == 0 ? 0 :1;
             psub->port = port = pdata[pos]->port;
            // print_array(ptr, len); 
-            printf_note("0 frame_len：%lu, chip_id=0x%x, func_id=0x%x, prio_id=0x%x,port: 0x%x\n", frame_len, psub->chip_id, psub->func_id, psub->prio_id, psub->port);
+           // printf_note("0 frame_len：%lu, chip_id=0x%x, func_id=0x%x, prio_id=0x%x,port: 0x%x\n", frame_len, psub->chip_id, psub->func_id, psub->prio_id, psub->port);
         } else if(py_src_addr != pdata[pos]->py_src_addr || src_addr != pdata[pos]->src_addr || port != pdata[pos]->port){
-            //printf_note("func_id not eq\n");
+            printf_note("pos:%d, chip_id:[0x%x]0x%x, func_id:[0x%x]0x%x,port:[0x%x]0x%x\n", pos,py_src_addr, pdata[pos]->py_src_addr, src_addr, pdata[pos]->src_addr, port, pdata[pos]->port);
             break;
         } else{
             //printf_note("same type: %d, py_src_addr=%x, src_addr=%x\n", pos,  pdata[pos]->py_src_addr, pdata[pos]->src_addr);
@@ -758,7 +758,7 @@ static int _xdma_load_disp_buffer(void *data, ssize_t len, void *args, void *run
     struct spm_run_parm *prun = run; 
     
     hashid = GET_HASHMAP_ID(sub->chip_id, sub->func_id, sub->prio_id, sub->port);
-    printf_info("hashid:%d, chip_id:%x, func_id:%x, prio_id:%x,port:%x\n", hashid, sub->chip_id, sub->func_id, sub->prio_id, sub->port);
+    printf_note("hashid:%d, chip_id:%x, func_id:%x, prio_id:%x,port:%x\n", hashid, sub->chip_id, sub->func_id, sub->prio_id, sub->port);
     
     if(hashid > MAX_XDMA_DISP_TYPE_NUM || hashid < 0 || prun->xdma_disp.type[hashid] == NULL){
         printf_err("hash id err[%d]\n", hashid);
@@ -772,7 +772,7 @@ static int _xdma_load_disp_buffer(void *data, ssize_t len, void *args, void *run
     prun->xdma_disp.type_num++;
     prun->xdma_disp.type[hashid]->vec_cnt++;
     prun->xdma_disp.inout.in_bytes += len;
-    //printf_note("vec_cnt:%d\n", prun->xdma_disp.type[hashid]->vec_cnt);
+    printf_note("vec_cnt:%d\n", prun->xdma_disp.type[hashid]->vec_cnt);
     #if 0
     create_tmp_file(hashid%64, sub->chip_id, sub->func_id, sub->prio_id, sub->port);
     printf_note("index:%d, %x, %x, %x, %x\n", hashid%64, sub->chip_id, sub->func_id, sub->prio_id, sub->port);
@@ -815,7 +815,7 @@ static int xdma_data_dispatcher_buffer(int ch, void **data, uint32_t *len, ssize
     for(int index = 0; index < count; index++){
         offset = 0;
         ptr = data[index];
-        printf_info(">>>>>index=%d, %p, %ld\n", index, ptr, count);
+        printf_debug(">>>>>index=%d, %p, %ld\n", index, ptr, count);
         do{
  #ifdef SPM_HEADER_CHECK
             nframe = _xdma_of_match_pkgs(ptr, len[index], &sub, offset);
@@ -828,13 +828,13 @@ static int xdma_data_dispatcher_buffer(int ch, void **data, uint32_t *len, ssize
             _data_check(ptr, len[index], index);
  #endif
             if(nframe <= 0){
-                printf_note(">>>>>read block[%d/%ld] over, size[%ld]\n", index+1, count, offset);
+                printf_note(">>>>>read block[%d/%ld] over, size[%ld], len[%d]=%u\n", index+1, count, offset, index, len[index]);
                 break;
             }
+            _xdma_load_disp_buffer(ptr, nframe, &sub, args);
             ptr += nframe;
             offset += nframe;
             printf_info("offset：%ld, chip_id=0x%x, func_id=0x%x\n", offset, sub.chip_id, sub.func_id);
-            _xdma_load_disp_buffer(data[index], nframe, &sub, args);
         }while(offset < XDMA_BLOCK_SIZE);
         run->xdma_disp.inout.read_bytes += len[index];
     }

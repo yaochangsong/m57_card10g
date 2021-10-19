@@ -1556,6 +1556,20 @@ void io_set_xdma_enable(int ch, int subch)
         get_spm_ctx()->ops->stream_start(ch, subch, 0, 0, XDMA_STREAM);
 }
 
+bool io_get_xdma_fpga_status(void)
+{
+    uint8_t *info, *ptr;
+    int nbyte = 0;
+    nbyte = _reg_get_fpga_info_(get_fpga_reg(), 0, (void **)&info);
+    ptr = info;
+    if(nbyte > 0){
+        for(int i = 0; i < nbyte; i++)
+            if(*ptr++ != 0)
+                return true;
+    }
+    return false;
+}
+
 
 void io_init(void)
 {

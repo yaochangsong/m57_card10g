@@ -298,7 +298,7 @@ uint64_t get_read_statistics_byte(int ch)
 
 static size_t _data_send(struct net_tcp_client *cl, void *data, size_t len)
 {
-    #define THREAD_SEND_MAX_BYTE 8388608//262144//131072
+    #define THREAD_SEND_MAX_BYTE 8196 //8388608//262144//131072
     int index = 0, r = 0;
     size_t sbyte = 0, reminder = 0;
     char *pdata = NULL;
@@ -315,11 +315,26 @@ static size_t _data_send(struct net_tcp_client *cl, void *data, size_t len)
         if(r > 0)
             send_len += r;
     }
-    r = tcp_send_data_to_client(cl->sfd.fd.fd,   pdata,  reminder);
-    if(r > 0)
-        send_len += r;
+    if(reminder > 0){
+        r = tcp_send_data_to_client(cl->sfd.fd.fd,   pdata,  reminder);
+        if(r > 0)
+            send_len += r;
+    }
+
     return send_len;
 }
+
+static void print_array(uint8_t *ptr, ssize_t len)
+{
+    if(ptr == NULL || len <= 0)
+        return;
+    
+    for(int i = 0; i< len; i++){
+        printf("%02x ", *ptr++);
+    }
+    printf("\n");
+}
+
 
 static int  data_dispatcher(void *args, int hid, int prio)
 {
@@ -339,10 +354,11 @@ static int  data_dispatcher(void *args, int hid, int prio)
     
     int vec_cnt = arg->xdma_disp.type[index]->vec_cnt;
 
-    //printf_note("send vec_cnt=%d, hid=%d, ch=%d, _prio=%d, [%ld, %ld]\n", vec_cnt, hid, ch, prio, 
-    //            arg->xdma_disp.type[index]->vec[0].iov_len, arg->xdma_disp.type[index]->vec[1].iov_len);
+    if(vec_cnt > 0)
+        printf_note("send index=%d, vec_cnt=%d, %d, hid=%d, ch=%d, _prio=%d, [%ld, %ld]\n", index, vec_cnt,arg->xdma_disp.type[index]->vec_cnt,  hid, ch, prio, 
+                arg->xdma_disp.type[index]->vec[0].iov_len, arg->xdma_disp.type[index]->vec[0].iov_len);
     if(arg->xdma_disp.type[index] == NULL || vec_cnt == 0){
-        printf_info("hash id %d is null,vec_cnt=%d\n", index, vec_cnt);
+        printf_debug("hash id %d is null,vec_cnt=%d\n", index, vec_cnt);
         return -1;
     }
         
@@ -351,8 +367,8 @@ static int  data_dispatcher(void *args, int hid, int prio)
        
         //r = send_vec_data_to_client(cl, arg->xdma_disp.type[index]->vec, vec_cnt);
         //if(r > 0)  
-        //        arg->xdma_disp.inout.out_seccess_bytes += r; 
-#ifdef CONFIG_NET_STATISTICS_ENABLE
+        //     arg->xdma_disp.inout.out_seccess_bytes += r; 
+#if   CONFIG_NET_STATISTICS_ENABLE
         for(int i = 0; i < vec_cnt; i++){
             arg->xdma_disp.type[index]->statistics.bytes += arg->xdma_disp.type[index]->vec[i].iov_len;
             arg->xdma_disp.inout.out_bytes += arg->xdma_disp.type[index]->vec[i].iov_len;
@@ -360,6 +376,8 @@ static int  data_dispatcher(void *args, int hid, int prio)
             //r = tcp_send_data_to_client(cl->sfd.fd.fd,  
             //                            arg->xdma_disp.type[index]->vec[i].iov_base,  
             //                            arg->xdma_disp.type[index]->vec[i].iov_len);
+            //if(index == 525)
+            //    print_array(arg->xdma_disp.type[index]->vec[i].iov_base, 32);
             r = _data_send(cl, arg->xdma_disp.type[index]->vec[i].iov_base, arg->xdma_disp.type[index]->vec[i].iov_len);
             if(r != arg->xdma_disp.type[index]->vec[i].iov_len)
                 printf_warn("overun: send len:%d/%lu\n", r, arg->xdma_disp.type[index]->vec[i].iov_len);
@@ -396,8 +414,10 @@ static inline void _net_thread_dispatcher_refresh(void *args)
     
     arg->xdma_disp.type_num = 0;
     for(int i = 0; i < MAX_XDMA_DISP_TYPE_NUM; i++){
+        //if(i == 41 || i == 45 || i == 681)
+        //    printf_note("%d, vec_cnt=%lu\n", i, arg->xdma_disp.type[i]->vec_cnt);
         arg->xdma_disp.type[i]->vec_cnt = 0;
-        arg->xdma_disp.type[i]->vec_cnt = 0;
+       // arg->xdma_disp.type[i]->vec_cnt = 0;
     }
 }
 
@@ -422,7 +442,7 @@ void  net_thread_con_broadcast(int ch, void *args)
     channel_param[ch] = args;
    
     if(notify_num > 0){
-        printf_info("broadcast clinet num: %d\n", notify_num);
+        printf_debug("broadcast clinet num: %d\n", notify_num);
         _net_thread_con_wait_timeout(con_wait, notify_num, 10);
     }
     _net_thread_dispatcher_refresh(args);
@@ -439,7 +459,7 @@ static int _net_thread_main_loop(void *arg)
 
     /* thread wait until receive start data consume */
     _net_thread_wait(ctx);
-    printf_info("thread[%s] receive start consume\n", ptd->name);
+    printf_debug("thread[%s] receive start consume\n", ptd->name);
     net_hash_for_each(cl->section.hash, data_dispatcher, arg);
     _net_thread_con_over(con_wait, ptd);
     return 0;

@@ -468,7 +468,7 @@ static void tcp_accept_cb(struct uloop_fd *fd, unsigned int events)
     getsockname(sfd, (struct sockaddr *)&cl->serv_addr, &serv_len); 
     cl->get_serv_addr = get_serv_addr;
     cl->get_serv_port = get_serv_port;
-    printf_note("New connection Serv: %s:%d\n", cl->get_serv_addr(cl), cl->get_serv_port(cl));
+    printf_note("New connection Serv: %s:%d, hash: %p\n", cl->get_serv_addr(cl), cl->get_serv_port(cl), cl->section.hash);
     return;
 err:
     close(sfd);
@@ -619,7 +619,7 @@ int send_vec_data_to_client(struct net_tcp_client *client, struct iovec *iov, in
         perror("sendmsg");
     }
     if(iov_len == 1 && r != iov->iov_len)
-        printf_note("send:%d/%lu\n", r,iov->iov_len);
+        printf_warn("err send:%d/%lu\n", r,iov->iov_len);
     return r;
 }
 

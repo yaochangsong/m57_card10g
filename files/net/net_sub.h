@@ -19,6 +19,8 @@ struct net_sub_st{
 extern void *net_hash_new(void);
 extern void net_hash_dump(hash_t *hash);
 extern void net_hash_add(hash_t *hash, short id, int type);
+extern void net_hash_add_ex(hash_t *hash, int id);
+extern void net_hash_del_ex(hash_t *hash, int id);
 extern void net_hash_del(hash_t *hash, short id, int type);
 extern bool net_hash_find(hash_t *hash, short id, int type);
 extern void net_hash_find_type_set(hash_t *hash, int type, int (*callback) (int ));

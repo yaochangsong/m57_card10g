@@ -860,8 +860,14 @@ void executor_init(void)
     static int ch[MAX_RADIO_CHANNEL_NUM];
     pthread_t work_id;
     void *spmctx;
+    bool is_check = false;
     struct poal_config *poal_config = &(config_get_config()->oal_config);
     io_init();
+    do{
+        sleep(1);
+        is_check = io_get_xdma_fpga_status();
+        printf_note(">>>>XDMA FPGA STATUS: %s!!\n", is_check == true ? "OK" : "False");
+    }while(is_check == false);
 //#if defined(SUPPORT_PLATFORM_ARCH_ARM)
 #if defined(SUPPORT_SPECTRUM_V2) 
     spmctx = spm_init();

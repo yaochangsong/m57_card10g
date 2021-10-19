@@ -20,7 +20,7 @@
 #define CONFIG_NET_STATISTICS_ENABLE              1
 
 //HASH MAP OFFSET
-#define CARD_SLOT_BITS (2)
+#define CARD_SLOT_BITS (3)
 #define CARD_CHIP_BITS (2)
 #define CARD_FUNC_BITS (4)
 #define CARD_PRIO_BITS (1)
@@ -44,8 +44,8 @@
 #define GET_HASHMAP_ID(cid, fid, prid, port)  (CARD_SLOT_NUM(cid) + \
                                     (CARD_CHIP_NUM(cid)<<CARD_SLOT_BITS) + \
                                     ((fid<<(CARD_SLOT_BITS+CARD_CHIP_BITS)) + \
-                                    (prid<<(CARD_SLOT_BITS+CARD_CHIP_BITS+CARD_PRIO_BITS))) + \
-                                    (port<<(CARD_SLOT_BITS+CARD_CHIP_BITS+CARD_PRIO_BITS+CARD_FUNC_BITS)));
+                                    (prid<<(CARD_SLOT_BITS+CARD_CHIP_BITS+CARD_FUNC_BITS))) + \
+                                    (port<<(CARD_SLOT_BITS+CARD_CHIP_BITS+CARD_PRIO_BITS+CARD_FUNC_BITS)))
 
 #define GET_HASHMAP_SLOT_NUM (1 << (CARD_SLOT_BITS))
 #define GET_HASHMAP_CHIP_NUM (1 << (CARD_CHIP_BITS+CARD_SLOT_BITS))

@@ -463,7 +463,7 @@ bool m57_execute_cmd(void *client, int *code)
     }
     
     if (header->cmd != CCT_FILE_TRANSFER) {
-        printf_note("recv cmd:  0x%04x\n", header->cmd);
+        printf_note("[%d]recv cmd:  0x%04x\n", cl->get_peer_port(cl), header->cmd);
     }
 
     switch (header->cmd)
@@ -492,14 +492,14 @@ bool m57_execute_cmd(void *client, int *code)
             m57_prio_type _type;
             memcpy(&_reg, payload, sizeof(_reg));
             _type = (_reg.type == 1 ? M57_PRIO_LOW: 1);
-            printf_note("=====>>>%s[%d], port:%d\n", _type == 1 ? "Urgent" : "Normal", _type, cl->get_peer_port(cl));
+            printf_warn("=====>>>%s[%d, %d], port:%d\n", _type == 1 ? "Urgent" : "Normal", _type, _reg.type, cl->get_peer_port(cl));
             cl->section.prio = _type;
-            net_hash_add(cl->section.hash, _type, RT_PRIOID);
+            //net_hash_add(cl->section.hash, _type, RT_PRIOID);
             #if 0
             //net_hash_add(cl->section.hash, 0x0501, RT_CHIPID);
             net_hash_add(cl->section.hash, 0x0502, RT_CHIPID);
             net_hash_add(cl->section.hash, 0x0000, RT_FUNCID);
-           // net_hash_add(cl->section.hash, 0x0001, RT_PORTID);
+            net_hash_add(cl->section.hash, 0x0001, RT_PORTID);
             //net_hash_dump(cl->section.hash);
             #endif
             for(int ch = 0; ch < MAX_XDMA_NUM; ch++)
@@ -515,12 +515,14 @@ bool m57_execute_cmd(void *client, int *code)
             }__attribute__ ((packed));
             struct sub_st _sub;
             memcpy(&_sub,  payload, sizeof(_sub));
-            printf_note("[%d]sub chip_id:0x%x, func_id=0x%x, port=0x%x, prio=%d, cl=%p\n", cl->get_peer_port(cl), _sub.chip_id, _sub.func_id, _sub.port, cl->section.prio,cl);
+            printf_warn("[%d]sub chip_id:0x%x, func_id=0x%x, port=0x%x, prio=%d\n", cl->get_peer_port(cl), _sub.chip_id, _sub.func_id, _sub.port, cl->section.prio);
             io_socket_set_sub(cl->section.section_id, _sub.chip_id, _sub.func_id, _sub.port);
             #if 1
-            net_hash_add(cl->section.hash, _sub.chip_id, RT_CHIPID);
-            net_hash_add(cl->section.hash, _sub.func_id, RT_FUNCID);
-            net_hash_add(cl->section.hash, _sub.port, RT_PORTID);
+            //net_hash_add(cl->section.hash, _sub.chip_id, RT_CHIPID);
+            //net_hash_add(cl->section.hash, _sub.func_id, RT_FUNCID);
+           // net_hash_add(cl->section.hash, _sub.port, RT_PORTID);
+            net_hash_add_ex(cl->section.hash, GET_HASHMAP_ID(_sub.chip_id, _sub.func_id, cl->section.prio, _sub.port));
+            printf_warn("[%d]hash id: %d\n", cl->get_peer_port(cl), GET_HASHMAP_ID(_sub.chip_id, _sub.func_id, cl->section.prio, _sub.port));
             //net_hash_dump(cl->section.hash);
             //net_hash_find_type_set(cl->section.hash, RT_CHIPID, NULL);
             //printf_warn("find chipId:%s\n", net_hash_find(cl->section.hash, _sub.chip_id, RT_CHIPID) == true ? "YES": "NO");
@@ -541,14 +543,15 @@ bool m57_execute_cmd(void *client, int *code)
             }__attribute__ ((packed));
             struct sub_st _sub;
             memcpy(&_sub,  payload, sizeof(_sub));
-            printf_info("unsub chip_id:0x%x, func_id=0x%x, port=0x%x\n", _sub.chip_id, _sub.func_id, _sub.port);
+            printf_note("[%d]unsub chip_id:0x%x, func_id=0x%x, port=0x%x, prio=%d\n", cl->get_peer_port(cl),_sub.chip_id, _sub.func_id, _sub.port, cl->section.prio);
             io_socket_set_unsub(cl->section.section_id, _sub.chip_id, _sub.func_id, _sub.port);
-            #if 1
+            #if 0
             net_hash_del(cl->section.hash, _sub.chip_id, RT_CHIPID);
             net_hash_del(cl->section.hash, _sub.func_id, RT_FUNCID);
             net_hash_del(cl->section.hash, _sub.port, RT_PORTID);
             // net_hash_dump(cl->section.hash);
             #endif
+            net_hash_del_ex(cl->section.hash, GET_HASHMAP_ID(_sub.chip_id, _sub.func_id, cl->section.prio, _sub.port));
             break;
         }
         case CCT_LIST_INFO:
@@ -556,7 +559,7 @@ bool m57_execute_cmd(void *client, int *code)
             uint8_t *info;
             int nbyte = 0;
             nbyte = _reg_get_fpga_info_(get_fpga_reg(), 0, (void **)&info);
-            nbyte = _reg_get_fpga_info_(get_fpga_reg(), 0, (void **)&info);
+            //nbyte = _reg_get_fpga_info_(get_fpga_reg(), 0, (void **)&info);
             //nbyte = _reg_get_fpga_info(get_fpga_reg(), 0, (void **)&info);
             if(nbyte >= 0){
                 cl->response.data = info;
@@ -726,12 +729,12 @@ load_file_exit:
                           usleep(40000);
                          _m57_stop_load_bitfile_to_fpga(cl->section.chip_id);
                           //usleep(30000);
-                          sleep(3);
+                          sleep(1);
                     } else{
                         r_resp->ret = -1;
                     }
                     r_resp->ret = _reg_get_load_result(get_fpga_reg(), cl->section.chip_id, NULL);
-                    r_resp->ret = 0; /* ok */
+                    //r_resp->ret = 0; /* ok */
                     usleep(30000);
                 }
                 else

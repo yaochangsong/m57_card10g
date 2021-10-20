@@ -232,7 +232,7 @@ static int xspm_create(void)
     pstream = spm_xstream;
     int i = 0, rc;
     int pagesize = getpagesize();
-    printf_note("SPM init.%ld\n", ARRAY_SIZE(spm_xstream));
+    printf_note("SPM init\n");
     
     /* create stream */
     for(i = 0; i< ARRAY_SIZE(spm_xstream) ; i++){
@@ -250,7 +250,7 @@ static int xspm_create(void)
         if(pstream[i].rd_wr == XDMA_READ){
         rc = ioctl(pstream[i].id, IOCTL_XDMA_INIT_BUFF, &ring_trans);  //close时释放
         if (rc == 0) {
-            printf("IOCTL_XDMA_INIT_BUFF succesful.\n");
+            printf_info("IOCTL_XDMA_INIT_BUFF succesful.\n");
         } 
         else {
             printf("ioctl(IOCTL_XDMA_INIT_BUFF) failed= %d\n", rc);
@@ -1048,7 +1048,7 @@ static int xspm_read_stream_stop(int ch, int subch, enum stream_type type)
     	printf_info("IOCTL_XDMA_PERF_STOP succesful.\n");
     } 
     else {
-    	printf_note("ioctl(IOCTL_XDMA_PERF_STOP) error:%d\n", ret);
+    	printf_info("ioctl(IOCTL_XDMA_PERF_STOP) error:%d\n", ret);
     }
     #endif
 

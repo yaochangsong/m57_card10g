@@ -646,7 +646,7 @@ void *spm_init(void)
     static int xdma_ch[MAX_XDMA_NUM];
     pthread_attr_t attr;
     pthread_t work_id;
-    printf_note("spm_init\n");
+
 //#if defined(SUPPORT_PLATFORM_ARCH_ARM)
 #if defined(SUPPORT_SPECTRUM_CHIP)
     spmctx = spm_create_chip_context();
@@ -663,9 +663,6 @@ void *spm_init(void)
         return NULL;
     }
     spm_cond_init();
-    //for(int ch = 0; ch <MAX_XDMA_NUM; ch++){
-    //    io_set_enable_command(XDMA_MODE_ENABLE, ch, 0, 0);
-    //}
 
     for(int i = 0; i <MAX_XDMA_NUM; i++){
         xdma_ch[i] = i;

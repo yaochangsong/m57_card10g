@@ -434,7 +434,20 @@ static int _m57_write_data_to_fpga(uint8_t *ptr, size_t len)
     return nwrite;
 }
 
-
+static void _assamble_resp_payload(struct net_tcp_client *cl, int16_t chipid, int ret)
+{
+    struct _resp{
+        int16_t chipid;
+        int32_t ret; 
+    }__attribute__ ((packed));
+    
+    /* auto free data when request down */
+    struct _resp *r_resp = safe_malloc(sizeof(struct _resp));
+    r_resp->chipid = chipid;
+    r_resp->ret = ret;
+    cl->response.data = r_resp;
+    cl->response.response_length = sizeof(struct _resp);
+}
 
 /*
 功能： 控制协议执行
@@ -492,7 +505,7 @@ bool m57_execute_cmd(void *client, int *code)
             m57_prio_type _type;
             memcpy(&_reg, payload, sizeof(_reg));
             _type = (_reg.type == 1 ? M57_PRIO_LOW: 1);
-            printf_warn("=====>>>%s[%d, %d], port:%d\n", _type == 1 ? "Urgent" : "Normal", _type, _reg.type, cl->get_peer_port(cl));
+            printf_note("=====>>>%s[%d, %d], port:%d\n", _type == 1 ? "Urgent" : "Normal", _type, _reg.type, cl->get_peer_port(cl));
             cl->section.prio = _type;
             //net_hash_add(cl->section.hash, _type, RT_PRIOID);
             #if 0
@@ -515,14 +528,17 @@ bool m57_execute_cmd(void *client, int *code)
             }__attribute__ ((packed));
             struct sub_st _sub;
             memcpy(&_sub,  payload, sizeof(_sub));
-            printf_warn("[%d]sub chip_id:0x%x, func_id=0x%x, port=0x%x, prio=%d\n", cl->get_peer_port(cl), _sub.chip_id, _sub.func_id, _sub.port, cl->section.prio);
+            if(io_xdma_is_valid_chipid(_sub.chip_id) == false){
+                break;
+            }
+            printf_note("[%d]sub chip_id:0x%x, func_id=0x%x, port=0x%x, prio=%d\n", cl->get_peer_port(cl), _sub.chip_id, _sub.func_id, _sub.port, cl->section.prio);
             io_socket_set_sub(cl->section.section_id, _sub.chip_id, _sub.func_id, _sub.port);
             #if 1
             //net_hash_add(cl->section.hash, _sub.chip_id, RT_CHIPID);
             //net_hash_add(cl->section.hash, _sub.func_id, RT_FUNCID);
            // net_hash_add(cl->section.hash, _sub.port, RT_PORTID);
             net_hash_add_ex(cl->section.hash, GET_HASHMAP_ID(_sub.chip_id, _sub.func_id, cl->section.prio, _sub.port));
-            printf_warn("[%d]hash id: %d\n", cl->get_peer_port(cl), GET_HASHMAP_ID(_sub.chip_id, _sub.func_id, cl->section.prio, _sub.port));
+            printf_note("[%d]hash id: %d\n", cl->get_peer_port(cl), GET_HASHMAP_ID(_sub.chip_id, _sub.func_id, cl->section.prio, _sub.port));
             //net_hash_dump(cl->section.hash);
             //net_hash_find_type_set(cl->section.hash, RT_CHIPID, NULL);
             //printf_warn("find chipId:%s\n", net_hash_find(cl->section.hash, _sub.chip_id, RT_CHIPID) == true ? "YES": "NO");
@@ -620,6 +636,11 @@ bool m57_execute_cmd(void *client, int *code)
               break;
             }
             id = *(uint16_t*)payload;
+            if(io_xdma_is_valid_chipid(id) == false){
+                _assamble_resp_payload(cl, id, -1);
+                _code = CCT_RSP_LOAD;
+                break;
+            }
             _m57_start_unload_bitfile_from_fpga(id);
             resp->chipid = id;
             resp->ret = 0;//_reg_get_unload_result(get_fpga_reg(), id, NULL);
@@ -640,6 +661,11 @@ bool m57_execute_cmd(void *client, int *code)
             cl->section.file.sn = 0;
             cl->section.is_run_loadfile = true;
             cl->section.is_loadfile_ok = false;
+            if(io_xdma_is_valid_chipid(pload->chipid) == false){
+                _assamble_resp_payload(cl, pload->chipid, -1);
+                _code = CCT_RSP_LOAD;
+                break;
+            }
             _create_tmp_path(cl);
             if(strlen(cl->section.file.path) > 0){
                 fd = open(cl->section.file.path, O_CREAT|O_RDWR|O_TRUNC, S_IWUSR|S_IRUSR);
@@ -718,29 +744,27 @@ bool m57_execute_cmd(void *client, int *code)
 load_file_exit:
             /* now file receive over! response to client*/
             if(cl->section.is_run_loadfile == false){
-                struct _resp{
-                    int16_t chipid;
-                    int32_t ret; 
-                }__attribute__ ((packed));
-                struct _resp *r_resp = safe_malloc(sizeof(struct _resp));
-                r_resp->chipid = pinfo->chipid;
-                if(cl->section.is_loadfile_ok){
+                ret = -1;
+                if(cl->section.is_loadfile_ok && (io_xdma_is_valid_chipid(cl->section.chip_id) == true)){
                     if(_m57_loading_bitfile_to_fpga(cl->section.file.path) == true){
                           usleep(40000);
-                         _m57_stop_load_bitfile_to_fpga(cl->section.chip_id);
-                          //usleep(30000);
-                          sleep(1);
-                    } else{
-                        r_resp->ret = -1;
+                         if(_m57_stop_load_bitfile_to_fpga(cl->section.chip_id) == true){
+                            sleep(1);
+                            /* 1st: check load result */
+                            ret = _reg_get_load_result(get_fpga_reg(), cl->section.chip_id, NULL);
+                            ret = (ret == 0 ? 0 : -5); // -5: load faild; 0: ok
+                            /* 2st: check link result,
+                                NOTE: link status noly valid for chip2 
+                            */
+                            if(ret == 0 && (CARD_CHIP_NUM(cl->section.chip_id) == 2)){
+                                //ret = _reg_get_link_result(get_fpga_reg(), cl->section.chip_id, NULL);
+                                //ret = (ret == 0 ? 0 : -7); // -7: link faild; 0: ok
+                            }
+                         }
                     }
-                    r_resp->ret = _reg_get_load_result(get_fpga_reg(), cl->section.chip_id, NULL);
-                    //r_resp->ret = 0; /* ok */
                     usleep(30000);
                 }
-                else
-                    r_resp->ret = -1;    /* faild */
-                cl->response.data = r_resp;
-                cl->response.response_length = sizeof(struct _resp);
+                _assamble_resp_payload(cl, cl->section.chip_id, ret);
                 _code = CCT_RSP_LOAD;
             }
             

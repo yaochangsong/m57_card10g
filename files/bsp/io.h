@@ -115,6 +115,7 @@ extern void socket_bitmap_set(int index);
 extern void io_set_xdma_enable(int ch, int subch);
 extern void io_set_xdma_disable(int ch, int subch);
 extern bool io_get_xdma_fpga_status(void);
+extern bool io_xdma_is_valid_chipid(int chipid);
 
 
 #endif

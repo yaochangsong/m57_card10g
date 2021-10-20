@@ -48,6 +48,7 @@ struct xstream_statistics_inout{
     volatile uint64_t out_bytes;
     volatile uint64_t out_seccess_bytes;
     volatile uint64_t read_bytes;
+    volatile uint64_t err_bytes;
 };
 
 

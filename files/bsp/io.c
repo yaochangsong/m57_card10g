@@ -1558,16 +1558,31 @@ void io_set_xdma_enable(int ch, int subch)
 
 bool io_get_xdma_fpga_status(void)
 {
-    uint8_t *info, *ptr;
+    uint8_t *info = NULL, *ptr;
     int nbyte = 0;
+    bool ret = false;
     nbyte = _reg_get_fpga_info_(get_fpga_reg(), 0, (void **)&info);
     ptr = info;
     if(nbyte > 0){
         for(int i = 0; i < nbyte; i++)
-            if(*ptr++ != 0)
-                return true;
+            if(*ptr++ != 0){
+                ret = true;
+                break;
+            }
     }
-    return false;
+    safe_free(info);
+    return ret;
+}
+
+/* 检测槽位是否有效 
+    @chipid: 芯片id
+    return true / false
+*/
+bool io_xdma_is_valid_chipid(int chipid)
+{
+    int id = 0;
+    id = CARD_SLOT_NUM(chipid);
+    return cards_status_test(id);
 }
 
 

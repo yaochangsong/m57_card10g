@@ -866,7 +866,7 @@ void executor_init(void)
     do{
         sleep(1);
         is_check = io_get_xdma_fpga_status();
-        printf_note(">>>>XDMA FPGA STATUS: %s!!\n", is_check == true ? "OK" : "False");
+        printf_note("XDMA FPGA Status: %s!!\n", is_check == true ? "OK" : "False");
     }while(is_check == false);
 //#if defined(SUPPORT_PLATFORM_ARCH_ARM)
 #if defined(SUPPORT_SPECTRUM_V2) 

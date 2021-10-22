@@ -40,7 +40,7 @@ enum stream_iq_type {
 
 #include "../../net/net_sub.h"
 struct xstream_statistics_type{
-    volatile uint64_t bytes;
+    volatile uint64_t send_bytes;
 };
 
 struct xstream_statistics_inout{
@@ -49,6 +49,7 @@ struct xstream_statistics_inout{
     volatile uint64_t out_seccess_bytes;
     volatile uint64_t read_bytes;
     volatile uint64_t err_bytes;
+    volatile uint64_t packags;
 };
 
 

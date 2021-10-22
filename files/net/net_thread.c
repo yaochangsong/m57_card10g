@@ -218,7 +218,6 @@ static inline int _get_prio_by_channel(int ch)
 static struct hash_type {
     int type;
     int mask;
-    int num;
     int offset;
 }_hash_type_table[] = {
     {HASHMAP_TYPE_SLOT, CARD_SLOT_MASK, GET_HASHMAP_SLOT_ADD_OFFSET},
@@ -227,27 +226,42 @@ static struct hash_type {
     {HASHMAP_TYPE_PRIO, CARD_PRIO_MASK, GET_HASHMAP_PROI_ADD_OFFSET},
 };
 
-int get_valid_hashid(int ch, int type, int id, int (*f)(int))
+static bool _of_match_type_id(int hash_id, int type_id, int offset, int mask)
+{
+    if((((hash_id & mask) >> offset) & (type_id != 0)) || 
+        (type_id == 0 && ((hash_id & mask) == 0)))
+        return true;
+    else
+        return false;
+}
+
+uint64_t  get_send_bytes_by_type(int ch, int type, int id)
 {
     struct spm_run_parm *arg = NULL;
      arg = channel_param[ch];
-    int hash_table[MAX_XDMA_DISP_TYPE_NUM] = {0}, count = 0;
+    int hash_index[MAX_XDMA_DISP_TYPE_NUM] = {0}, count = 0, _index = 0;
+    uint64_t sum_bytes = 0;
+
+    if(arg == NULL)
+        return 0;
+    
     for(int i = 0 ; i < MAX_XDMA_DISP_TYPE_NUM; i++){
-        if(arg->xdma_disp.type[i]->statistics.bytes != 0)
-            hash_table[count++] = i;
+        if(arg->xdma_disp.type[i]->statistics.send_bytes != 0)
+            hash_index[count++] = i;
     }
+    
     for(int i = 0; i < ARRAY_SIZE(_hash_type_table); i++){
         if(type == _hash_type_table[i].type){
             for(int j = 0; j < count; j++){
-                //if(hash_table[j] == 0)
-                if((_hash_type_table[i].mask & hash_table[j]) != 0){
-                    f(hash_table[j]);
-                }
+                _index = hash_index[j] ;
+                if(_of_match_type_id(_index,  id, _hash_type_table[i].offset, _hash_type_table[i].mask))
+                    sum_bytes += arg->xdma_disp.type[_index]->statistics.send_bytes;
             }
         }
     }
-    return 0;
+    return sum_bytes;
 }
+
 #endif
 
 
@@ -281,6 +295,18 @@ uint64_t get_ok_out_statistics_byte(int ch)
     return arg->xdma_disp.inout.out_seccess_bytes;
 }
 
+uint64_t get_send_faild_statistics_byte(int ch)
+{
+    struct spm_run_parm *arg = NULL;
+    arg = channel_param[ch];
+    if(arg == NULL)
+        return 0;
+    
+    if(arg->xdma_disp.inout.out_bytes - arg->xdma_disp.inout.out_seccess_bytes < 0)
+        return 0;
+        
+    return (arg->xdma_disp.inout.out_bytes - arg->xdma_disp.inout.out_seccess_bytes);
+}
 
 
 
@@ -350,61 +376,36 @@ static int  data_dispatcher(void *args, int hid, int prio)
         printf_note("error!\n");
         return -1;
     }
-        
-    
+
     int vec_cnt = arg->xdma_disp.type[index]->vec_cnt;
 
-    if(vec_cnt > 0)
-        printf_note("send index=%d, vec_cnt=%d, %d, hid=%d, ch=%d, _prio=%d, [%ld, %ld]\n", index, vec_cnt,arg->xdma_disp.type[index]->vec_cnt,  hid, ch, prio, 
-                arg->xdma_disp.type[index]->vec[0].iov_len, arg->xdma_disp.type[index]->vec[0].iov_len);
+    //if(vec_cnt > 0)
+    //    printf_note("send index=%d, vec_cnt=%d, %d, hid=%d, ch=%d, _prio=%d, [%ld, %ld]\n", index, vec_cnt,arg->xdma_disp.type[index]->vec_cnt,  hid, ch, prio, 
+    //            arg->xdma_disp.type[index]->vec[0].iov_len, arg->xdma_disp.type[index]->vec[0].iov_len);
     if(arg->xdma_disp.type[index] == NULL || vec_cnt == 0){
         printf_debug("hash id %d is null,vec_cnt=%d\n", index, vec_cnt);
         return -1;
     }
-        
-#if 1
+
     if(vec_cnt > 0){
        
         //r = send_vec_data_to_client(cl, arg->xdma_disp.type[index]->vec, vec_cnt);
         //if(r > 0)  
         //     arg->xdma_disp.inout.out_seccess_bytes += r; 
-#if   CONFIG_NET_STATISTICS_ENABLE
         for(int i = 0; i < vec_cnt; i++){
-            arg->xdma_disp.type[index]->statistics.bytes += arg->xdma_disp.type[index]->vec[i].iov_len;
             arg->xdma_disp.inout.out_bytes += arg->xdma_disp.type[index]->vec[i].iov_len;
-            printf_info("len:%lu\n", arg->xdma_disp.type[index]->vec[i].iov_len);
-            //r = tcp_send_data_to_client(cl->sfd.fd.fd,  
-            //                            arg->xdma_disp.type[index]->vec[i].iov_base,  
-            //                            arg->xdma_disp.type[index]->vec[i].iov_len);
-            //if(index == 525)
-            //    print_array(arg->xdma_disp.type[index]->vec[i].iov_base, 32);
             r = _data_send(cl, arg->xdma_disp.type[index]->vec[i].iov_base, arg->xdma_disp.type[index]->vec[i].iov_len);
+            arg->xdma_disp.type[index]->statistics.send_bytes += r;
             if(r != arg->xdma_disp.type[index]->vec[i].iov_len)
                 printf_warn("overun: send len:%d/%lu\n", r, arg->xdma_disp.type[index]->vec[i].iov_len);
+#if   CONFIG_NET_STATISTICS_ENABLE
             if(r > 0)  
                 arg->xdma_disp.inout.out_seccess_bytes += r; 
+#endif
             r0 += r;
         }
-         printf_note("[%d]send hash id: %d, vec_cnt=%d, bytes:%d\n", cl->get_peer_port(cl), index, vec_cnt, r0);
-        
-#endif
+        // printf_note("[%d]send hash id: %d, vec_cnt=%d, bytes:%d\n", cl->get_peer_port(cl), index, vec_cnt, r0);
     }
-#else
-    char *buffer[16] = {NULL};
-    static struct iovec vec[16];
-    static int _first = 0;
-    if(_first == 0){
-        for(int i = 0; i < 16; i++){
-            buffer[i] = _create_buffer(0x400000);
-            vec[i].iov_base = buffer[i];
-            vec[i].iov_len = 0x400000;
-        }
-        _first = 1;
-    }
-    send_vec_data_to_client(cl, vec, 2);
-   //for(int i = 0; i < vec_cnt; i++)
-   //     tcp_send_data_to_client(cl->sfd.fd.fd,  vec[i].iov_base,  vec[i].iov_len);
-#endif
     return 0;
 }
 

@@ -50,6 +50,7 @@ extern uint64_t get_in_statistics_byte(int ch);
 extern uint64_t get_out_statistics_byte(int ch);
 extern uint64_t get_read_statistics_byte(int ch);
 extern uint64_t get_ok_out_statistics_byte(int ch);
+extern uint64_t  get_send_bytes_by_type(int ch, int type, int id);
 
 #endif
 

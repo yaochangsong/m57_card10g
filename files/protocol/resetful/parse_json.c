@@ -24,6 +24,7 @@
 #include "../../dao/json/cJSON.h"
 #include "../../bsp/io.h"
 #include "../../net/net_thread.h"
+#include "../../utils/bitops.h"
 
 
 static inline bool str_to_int(char *str, int *ivalue, bool(*_check)(int))
@@ -950,7 +951,7 @@ char *assemble_json_softversion(void)
     return str_json;
 }
 
-char *assemble_json_statistics(void)
+char *assemble_json_net_statistics(void)
 {
     char *str_json = NULL;
     cJSON *root = cJSON_CreateObject();
@@ -964,11 +965,32 @@ char *assemble_json_statistics(void)
     cJSON_AddStringToObject(root, "out", buffer);
     snprintf(buffer, sizeof(buffer) - 1, "%" PRIu64, get_ok_out_statistics_byte(0));
     cJSON_AddStringToObject(root, "sendok", buffer);
-    
+
     json_print(root, 1);
     str_json = cJSON_PrintUnformatted(root);
     return str_json;
 }
+
+char *assemble_slot_info(void)
+{
+    char *str_json = NULL;
+    cJSON* item = NULL;
+    cJSON *array = cJSON_CreateArray();
+    int bit = 0;
+    char buffer[128] = {0};
+    
+    for_each_set_bit(bit, cards_status_get_bitmap(), MAX_FPGA_CARD_SLOT_NUM){
+        cJSON_AddItemToArray(array, item = cJSON_CreateObject());
+        cJSON_AddNumberToObject(item, "slot_id", bit);
+        cJSON_AddStringToObject(item, "status", "ok");
+        snprintf(buffer, sizeof(buffer) - 1, "%" PRIu64, get_send_bytes_by_type(0, HASHMAP_TYPE_SLOT, bit));
+        cJSON_AddStringToObject(item, "uplink_bytes", buffer);
+        cJSON_AddStringToObject(item, "version", "1.0");
+    }
+    str_json = cJSON_PrintUnformatted(array);
+    return str_json;
+}
+
 
 char *assemble_json_fpag_info(void)
 {
@@ -1250,7 +1272,8 @@ char *assemble_json_all_info(void)
 #endif
     cJSON_AddItemToObject(root, "netInfo", cJSON_Parse(assemble_json_net_list_info()));
     cJSON_AddItemToObject(root, "buildInfo", cJSON_Parse(assemble_json_build_info()));
-    cJSON_AddItemToObject(root, "statisticsInfo", cJSON_Parse(assemble_json_statistics()));
+    cJSON_AddItemToObject(root, "statisticsInfo", cJSON_Parse(assemble_json_net_statistics()));
+    cJSON_AddItemToObject(root, "slotInfo", cJSON_Parse(assemble_slot_info()));
     json_print(root, 1);
     str_json = cJSON_PrintUnformatted(root);
     return str_json;

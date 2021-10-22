@@ -118,6 +118,10 @@ uint32_t get_cards_status(void)
     return mask;
 }
 
+const unsigned long *cards_status_get_bitmap(void)
+{
+    return cards_status_bmp;
+}
 
 
 void socket_bitmap_init(void)

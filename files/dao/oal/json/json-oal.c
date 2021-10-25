@@ -272,8 +272,37 @@ static int json_write_config_param(cJSON* root, s_config *sconfig)
             }
         }
     }
+
+    cJSON *control_parm = NULL;
+    control_parm = cJSON_GetObjectItem(root, "control_parm");
+    if(control_parm == NULL){
+        printf_warn("not found json node[%s]\n","network");
+        return -1;
+    }
+    /* link switch */
+    cJSON *sid;
+    cJSON *linkSwitch = NULL;
+    linkSwitch = cJSON_GetObjectItem(control_parm, "linkSwitch");
+    if(linkSwitch != NULL){
+        printf_note("save linkSwitch:\n");
+        for(int i = 0; i < cJSON_GetArraySize(linkSwitch); i++){
+            printfn("index:%d ", i);
+            node = cJSON_GetArrayItem(linkSwitch, i);
+            sid = cJSON_GetObjectItem(node, "slotId");
+            if(sid->valueint >= MAX_FPGA_CARD_SLOT_NUM)
+                continue;
+            
+            printfn("node: %d, ", sid->valueint);
+            if(cJSON_IsNumber(sid))
+            {
+                if(config->ctrl_para.link_switch[sid->valueint].slod_id == sid->valueint)
+                    cJSON_GetObjectItem(node, "on")->valuedouble = (double)config->ctrl_para.link_switch[sid->valueint].onoff;
+            }
+             printfn("\n");
+        }
+    }
     
-     
+#if 0
     cJSON* if_parm, *rf_parm, *cjch;
     int ch;
     /*if_parm*/
@@ -313,7 +342,7 @@ static int json_write_config_param(cJSON* root, s_config *sconfig)
         json_write_array_double_param("spectrum_parm", "rf_parm", i, "middle_freq",config->channel[ch].rf_para.mid_freq);
         json_write_array_int_param("spectrum_parm", "rf_parm", i, "mid_bw",config->channel[ch].rf_para.mid_bw);
     }
-    
+#endif
 #if 0
     /*control_parm*/
      json_write_int_param(NULL, "control_parm", "spectrum_time_interval", config->ctrl_para.spectrum_time_interval);
@@ -566,6 +595,34 @@ static int json_parse_config_param(const cJSON* root, s_config *sconfig)
         config->ctrl_para.disk_file_notifier_timeout_ms = value->valueint;
         printf_debug("disk_file_notifier_timeout_ms:%dms, %ums, \n",value->valueint, config->ctrl_para.disk_file_notifier_timeout_ms);
     }
+    /* link switch */
+    cJSON *linkSwitch = NULL;
+    linkSwitch = cJSON_GetObjectItem(control_parm, "linkSwitch");
+    if(linkSwitch != NULL){
+        printf_note("linkSwitch:\n");
+        for(int i = 0; i < cJSON_GetArraySize(linkSwitch); i++){
+            printfn("index:%d ", i);
+            node = cJSON_GetArrayItem(linkSwitch, i);
+            value = cJSON_GetObjectItem(node, "slotId");
+            if(value->valueint >= MAX_FPGA_CARD_SLOT_NUM)
+                continue;
+            printfn("node: %d, ", value->valueint);
+            if(cJSON_IsNumber(value))
+            {
+                config->ctrl_para.link_switch[value->valueint].slod_id = value->valueint;
+                printfn("slotId:%d, ", config->ctrl_para.link_switch[value->valueint].slod_id);
+            }
+            
+            value = cJSON_GetObjectItem(node, "on");
+            if(cJSON_IsNumber(value)){
+                config->ctrl_para.link_switch[value->valueint].onoff = value->valueint;
+                printfn("onoff:%d, ", config->ctrl_para.link_switch[value->valueint].onoff);
+            }
+             printfn("\n");
+        }
+    }
+
+    
     
 /* calibration_parm */
     cJSON *calibration = NULL;

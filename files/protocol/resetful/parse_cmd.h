@@ -63,5 +63,13 @@ extern int cmd_rf_agcmode(struct uh_client *cl, void **arg, void **content);
 extern int cmd_timesource_set(struct uh_client *cl, void **arg, void **content);
 extern int cmd_netget(struct uh_client *cl, void **arg, void **content);
 extern int cmd_route_reload(struct uh_client *cl, void **arg, void **content);
+extern int cmd_get_device_status(struct uh_client *cl, void **arg, void **content);
+extern int cmd_get_temperature(struct uh_client *cl, void **arg, void **content);
+extern int cmd_get_status_slot_info(struct uh_client *cl, void **arg, void **content);
+extern int cmd_get_status_downlink_info(struct uh_client *cl, void **arg, void **content);
+extern int cmd_get_status_uplink_info(struct uh_client *cl, void **arg, void **content);
+extern int cmd_linkcheck_set(struct uh_client *cl, void **arg, void **content);
+extern int cmd_get_status_client_info(struct uh_client *cl, void **arg, void **content);
+extern int cmd_get_statistics_info(struct uh_client *cl, void **arg, void **content);
 
 #endif

@@ -12,6 +12,18 @@
 				"command":	5000,
 				"data":	[1235, 1236, 1237]
 			}
+		}, {
+			"ifname":	"enp10s0f1",
+			"port":	{
+				"command":	5000,
+				"data":	[1235, 1236, 1237]
+			}
+		}, {
+			"ifname":	"docker0",
+			"port":	{
+				"command":	5000,
+				"data":	[1235, 1236, 1237]
+			}
 		}],
 	"control_parm":	{
 		"spectrum_time_interval":	200,
@@ -22,11 +34,24 @@
 		"iq_data_length":	8192,
 		"disk_full_alert_threshold_MB":	0,
 		"disk_split_file_threshold_MB":	0,
-		"disk_file_notifier_timeout_ms":	2000
+		"disk_file_notifier_timeout_ms":	2000,
+		"linkSwitch":	[{
+				"slotId":	2,
+				"on":	1
+			}, {
+				"slotId":	3,
+				"on":	0
+			}, {
+				"slotId":	4,
+				"on":	0
+			}, {
+				"slotId":	5,
+				"on":	1
+			}]
 	},
 	"status_parm":	{
 		"soft_version":	{
-			"app":	"v1.1.111_debug(2021-08-13-13:42:35)-46d4c451757318b71d824ccee5828106daa6ce9a ",
+			"app":	"v1.1.111_debug(2021-10-25-18:20:22)-dfe010af258d41b356d9cc4125315aa36367a7cf ",
 			"fpga":	"202012",
 			"kernel":	""
 		},

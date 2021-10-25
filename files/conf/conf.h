@@ -79,6 +79,8 @@ extern uint32_t config_get_resolution_by_fft(uint32_t fftsize);
 extern uint32_t config_get_fft_by_resolution(uint32_t resolution);
 extern bool config_is_temperature_warning(int16_t temperature);
 extern uint16_t *config_get_fft_window_data(int type, size_t *fsize);
+extern int  config_get_link_switch(int id);
+extern int  config_set_link_switch(int id, int onoff);
 
 #endif
 

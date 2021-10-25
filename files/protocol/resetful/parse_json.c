@@ -951,27 +951,49 @@ char *assemble_json_softversion(void)
     return str_json;
 }
 
-char *assemble_json_net_statistics(void)
+char *assemble_json_net_uplink_info(int ch)
 {
     char *str_json = NULL;
     cJSON *root = cJSON_CreateObject();
 
     char buffer[128] = {0};
-    snprintf(buffer, sizeof(buffer) - 1, "%" PRIu64, get_read_statistics_byte(0));
-    cJSON_AddStringToObject(root, "read", buffer);
-    snprintf(buffer, sizeof(buffer) - 1, "%" PRIu64, get_in_statistics_byte(0));
-    cJSON_AddStringToObject(root, "in", buffer);
-    snprintf(buffer, sizeof(buffer) - 1, "%" PRIu64, get_out_statistics_byte(0));
-    cJSON_AddStringToObject(root, "out", buffer);
-    snprintf(buffer, sizeof(buffer) - 1, "%" PRIu64, get_ok_out_statistics_byte(0));
-    cJSON_AddStringToObject(root, "sendok", buffer);
+    snprintf(buffer, sizeof(buffer) - 1, "%" PRIu64, ns_uplink_get_read_bytes(ch));
+    cJSON_AddStringToObject(root, "readBytes", buffer);
+    snprintf(buffer, sizeof(buffer) - 1, "%" PRIu64, ns_uplink_get_route_bytes(ch));
+    cJSON_AddStringToObject(root, "routeBytes", buffer);
+    snprintf(buffer, sizeof(buffer) - 1, "%" PRIu64, statistics_get_all_client_send_ok());
+    cJSON_AddStringToObject(root, "sendBytes", buffer);
+    snprintf(buffer, sizeof(buffer) - 1, "%" PRIu64, statistics_get_all_client_send_err());
+    cJSON_AddStringToObject(root, "sendErrBytes", buffer);
+    snprintf(buffer, sizeof(buffer) - 1, "%" PRIu64, ns_uplink_get_forward_pkgs(ch));
+    cJSON_AddStringToObject(root, "forwardPackages", buffer);
+    snprintf(buffer, sizeof(buffer) - 1, "%" PRIu64, ns_downlink_get_route_err_pkgs(ch));
+    cJSON_AddStringToObject(root, "routeErrPackages", buffer);
 
     json_print(root, 1);
     str_json = cJSON_PrintUnformatted(root);
     return str_json;
 }
 
-char *assemble_slot_info(void)
+char *assemble_json_net_downlink_info(void)
+{
+    char *str_json = NULL;
+    cJSON *root = cJSON_CreateObject();
+
+    char buffer[128] = {0};
+    snprintf(buffer, sizeof(buffer) - 1, "%" PRIu64, ns_downlink_get_cmd_pkgs());
+    cJSON_AddStringToObject(root, "cmdPackages", buffer);
+    snprintf(buffer, sizeof(buffer) - 1, "%" PRIu64, ns_downlink_get_data_pkgs());
+    cJSON_AddStringToObject(root, "dataPackages", buffer);
+    snprintf(buffer, sizeof(buffer) - 1, "%" PRIu64, ns_downlink_get_err_pkgs());
+    cJSON_AddStringToObject(root, "errPackages", buffer);
+
+    json_print(root, 1);
+    str_json = cJSON_PrintUnformatted(root);
+    return str_json;
+}
+
+char *assemble_json_slot_info(void)
 {
     char *str_json = NULL;
     cJSON* item = NULL;
@@ -983,14 +1005,91 @@ char *assemble_slot_info(void)
         cJSON_AddItemToArray(array, item = cJSON_CreateObject());
         cJSON_AddNumberToObject(item, "slot_id", bit);
         cJSON_AddStringToObject(item, "status", "ok");
+        cJSON_AddNumberToObject(item, "type", 1);
+        cJSON_AddStringToObject(item, "loadStatus",  (ns_downlink_get_loadbit_result(bit) == 0 ? "OK":"False"));
         snprintf(buffer, sizeof(buffer) - 1, "%" PRIu64, get_send_bytes_by_type(0, HASHMAP_TYPE_SLOT, bit));
-        cJSON_AddStringToObject(item, "uplink_bytes", buffer);
-        cJSON_AddStringToObject(item, "version", "1.0");
+        cJSON_AddStringToObject(item, "uplinkBytes", buffer);
+        cJSON_AddStringToObject(item, "softVersion", "1.0");
+        cJSON_AddNumberToObject(item, "linkSwitch", config_get_link_switch(bit));
+        cJSON_AddStringToObject(item, "linkStatus", (ns_downlink_get_link_result(bit) == 0 ? "OK":"False"));
     }
     str_json = cJSON_PrintUnformatted(array);
     return str_json;
 }
 
+int _assemble_statistics_client_info(struct net_tcp_client *cl, void* array)
+{
+    cJSON* item = NULL;
+    short port;
+    char buffer[128];
+    cJSON* _array = array;
+
+    cJSON_AddItemToArray(_array, item = cJSON_CreateObject());
+    cJSON_AddStringToObject(item, "ipaddr", cl->get_peer_addr(cl));
+    cJSON_AddNumberToObject(item, "port",   cl->get_peer_port(cl));
+    snprintf(buffer, sizeof(buffer) - 1, "%" PRIu64, statistics_client_get_send_ok(cl));
+    cJSON_AddStringToObject(item, "sendOk", buffer);
+    snprintf(buffer, sizeof(buffer) - 1, "%" PRIu64, statistics_client_get_send_err(cl));
+    cJSON_AddStringToObject(item, "sendErr",buffer);
+    return 0;
+}
+
+char *assemble_json_statistics_client_info(void)
+{
+    char *str_json = NULL;
+    cJSON *array = cJSON_CreateArray();
+    tcp_client_do_for_each(_assemble_statistics_client_info, NULL, -1, array);
+    str_json = cJSON_PrintUnformatted(array);
+    return str_json;
+}
+
+char *assemble_json_statistics_all_info(void)
+{
+    char *str_json = NULL;
+    cJSON *root = cJSON_CreateObject();
+    cJSON_AddItemToObject(root, "uplink", cJSON_Parse(assemble_json_net_uplink_info(0)));
+    cJSON_AddItemToObject(root, "downlink", cJSON_Parse(assemble_json_net_downlink_info()));
+    cJSON_AddItemToObject(root, "softversion", cJSON_Parse(assemble_json_softversion()));
+    cJSON_AddItemToObject(root, "device", cJSON_Parse(assemble_json_device_status_info()));
+    cJSON_AddItemToObject(root, "temperature", cJSON_Parse(assemble_json_device_temperature_info()));
+    json_print(root, 1);
+    str_json = cJSON_PrintUnformatted(root);
+    return str_json;
+}
+
+
+char *assemble_json_device_status_info(void)
+{
+    char *str_json = NULL;
+    cJSON *root = cJSON_CreateObject();
+    char *info = NULL;
+    int code = 0;
+
+    code = config_get_device_status(&info);
+    cJSON_AddNumberToObject(root, "status", code);
+    if(info)
+        cJSON_AddStringToObject(root, "info", info);
+    else
+        cJSON_AddStringToObject(root, "info", "");
+    json_print(root, 1);
+    str_json = cJSON_PrintUnformatted(root);
+    return str_json;
+
+}
+
+char *assemble_json_device_temperature_info(void)
+{
+    char *str_json = NULL;
+    cJSON *root = cJSON_CreateObject();
+    int16_t temp = 0;
+    int ret = io_get_adc_temperature_ex(&temp);
+    if(ret == 0)
+        cJSON_AddNumberToObject(root, "boardTemperature", temp);
+
+    json_print(root, 1);
+    str_json = cJSON_PrintUnformatted(root);
+    return str_json;
+}
 
 char *assemble_json_fpag_info(void)
 {
@@ -1272,8 +1371,7 @@ char *assemble_json_all_info(void)
 #endif
     cJSON_AddItemToObject(root, "netInfo", cJSON_Parse(assemble_json_net_list_info()));
     cJSON_AddItemToObject(root, "buildInfo", cJSON_Parse(assemble_json_build_info()));
-    cJSON_AddItemToObject(root, "statisticsInfo", cJSON_Parse(assemble_json_net_statistics()));
-    cJSON_AddItemToObject(root, "slotInfo", cJSON_Parse(assemble_slot_info()));
+    cJSON_AddItemToObject(root, "slotInfo", cJSON_Parse(assemble_json_slot_info()));
     json_print(root, 1);
     str_json = cJSON_PrintUnformatted(root);
     return str_json;

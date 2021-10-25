@@ -1268,6 +1268,44 @@ int16_t io_get_adc_temperature(void)
 
     return (signed short)result;
 }
+
+int io_get_adc_temperature_ex(int16_t *temp)
+{
+    float result=0; 
+
+//#ifdef SUPPORT_PLATFORM_ARCH_ARM
+    FILE * fp = NULL;
+    int raw_data, raw_data2;
+
+        //fp = fopen ("/sys/bus/iio/devices/iio:device0/in_temp0_ps_temp_raw", "r");
+    fp = fopen ("/sys/devices/platform/PHYT0008:00/PHYT000D:00/hwmon/hwmon0/temp1_input", "r");
+    if(!fp){
+            printf("Open file error!\n");
+            return -1;
+    }
+    rewind(fp);
+    fscanf(fp, "%d", &raw_data);
+    fclose(fp);
+    
+    fp = fopen ("/sys/devices/platform/PHYT0008:00/PHYT000D:00/hwmon/hwmon0/temp2_input", "r");
+    if(!fp){
+            printf("Open file error!\n");
+            return -1;
+    }
+    rewind(fp);
+    fscanf(fp, "%d", &raw_data2);
+    fclose(fp);
+    printf_note("raw_data=%d, raw_data2=%d\n", raw_data, raw_data2);
+    raw_data = max(raw_data, raw_data2);
+    result = raw_data/1000.0;
+    printf_note("temp: %d, result: %f\n", raw_data, result);
+    *temp = (signed short)result;
+    //result = ((raw_data * 509.314)/65536.0) - 280.23;
+//#endif
+
+    return 0;
+}
+
 void io_get_fpga_status(void *args)
 {
     struct arg_s{

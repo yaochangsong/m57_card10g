@@ -143,7 +143,7 @@ extern void tcp_active_send_all_client(uint8_t *data, int len);
 extern void update_tcp_keepalive(void *client);
 extern int tcp_send_vec_data_uplink(struct iovec *iov, int iov_len, void *args);
 extern int tcp_send_data_uplink(char  *data, int len, void *args);
-extern int tcp_client_do_for_each(int (*f)(struct net_tcp_client *), void **cl, int prio);
+extern int tcp_client_do_for_each(int (*f)(struct net_tcp_client *, void *), void **cl, int prio, void *args);
 extern int send_vec_data_to_client(struct net_tcp_client *client, struct iovec *iov, int iov_len);
 extern int tcp_send_data_to_client(int fd, const char *buf, int buflen);
 

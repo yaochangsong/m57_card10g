@@ -57,6 +57,7 @@ extern float io_get_narrowband_iq_factor(uint32_t bindwidth);
 extern bool test_audio_on(void);
 extern int8_t io_set_enable_command(uint8_t type, int ch, int subch, uint32_t fftsize);
 extern int16_t io_get_adc_temperature(void);
+extern int io_get_adc_temperature_ex(int16_t *temp);
 extern int32_t io_get_agc_thresh_val(int ch);
 extern void io_set_dq_param(void *pdata);
 extern void io_set_window_type(uint32_t ch, int type);

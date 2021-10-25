@@ -181,9 +181,10 @@ bool m57_parse_header(void *client, const char *buf, int len, int *head_len, int
             cl->request.data_state = NET_TCP_DATA_ERR;
             goto exit;
         }
-        
+        ns_downlink_add_cmd_pkgs(1);
         _header_len = hlen;     //消费header
         cl->state = NET_TCP_CLIENT_STATE_DATA;
+        
     }else if(header->type == M57_DATA_TYPE){    /* 数据包 */
 
         if (len < header->len) {  //必须等到完整数据帧
@@ -197,6 +198,7 @@ bool m57_parse_header(void *client, const char *buf, int len, int *head_len, int
         cl->state = NET_TCP_CLIENT_STATE_HEADER;
         /* 数据包不处理透传 */
         _m57_write_data_to_fpga((uint8_t *)buf, _header_len);
+        ns_downlink_add_data_pkgs(1);
     } else{
         _header_len = len;
         _code = C_RET_CODE_HEADER_ERR;
@@ -206,6 +208,8 @@ bool m57_parse_header(void *client, const char *buf, int len, int *head_len, int
     }
     
 exit:
+    if(_code != C_RET_CODE_SUCCSESS)
+        ns_downlink_add_err_pkgs(1);
     *code = _code;
     *head_len = _header_len;
     return (_code == C_RET_CODE_SUCCSESS ? true : false);
@@ -638,7 +642,7 @@ bool m57_execute_cmd(void *client, int *code)
             id = *(uint16_t*)payload;
             if(io_xdma_is_valid_chipid(id) == false){
                 _assamble_resp_payload(cl, id, -1);
-                _code = CCT_RSP_LOAD;
+                _code = CCT_RSP_UNLOAD;
                 break;
             }
             _m57_start_unload_bitfile_from_fpga(id);
@@ -753,12 +757,21 @@ load_file_exit:
                             /* 1st: check load result */
                             ret = _reg_get_load_result(get_fpga_reg(), cl->section.chip_id, NULL);
                             ret = (ret == 0 ? 0 : -5); // -5: load faild; 0: ok
+                            ns_downlink_set_loadbit_result(CARD_SLOT_NUM(cl->section.chip_id), ret);
+                            if(ret != 0)
+                                config_set_device_status(-2, cl->section.chip_id);
                             /* 2st: check link result,
-                                NOTE: link status noly valid for chip2 
+                                NOTE:
+                                1) link switch is on;
+                                2) bit file load ok
+                                3) link status noly valid for chip2 
                             */
-                            if(ret == 0 && (CARD_CHIP_NUM(cl->section.chip_id) == 2)){
-                                //ret = _reg_get_link_result(get_fpga_reg(), cl->section.chip_id, NULL);
-                                //ret = (ret == 0 ? 0 : -7); // -7: link faild; 0: ok
+                            if(config_get_link_switch(CARD_SLOT_NUM(cl->section.chip_id)) && ret == 0 && (CARD_CHIP_NUM(cl->section.chip_id) == 2)){
+                                ret = _reg_get_link_result(get_fpga_reg(), cl->section.chip_id, NULL);
+                                ret = (ret == 0 ? 0 : -7); // -7: link faild; 0: ok
+                                ns_downlink_set_link_result(CARD_SLOT_NUM(cl->section.chip_id), ret);
+                                if(ret != 0)
+                                    config_set_device_status(-3, cl->section.chip_id);
                             }
                          }
                     }

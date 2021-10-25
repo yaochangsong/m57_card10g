@@ -71,15 +71,23 @@ static struct request_info http_req_cmd[] = {
     /* 心跳 */
     {"GET",     "/ping",                                -1,                cmd_ping},
     /* 状态 */
-    {"GET",     "/status/device/softversion",           -1,                cmd_get_softversion},
     {"GET",     "/status/device/fpgaInfo",              -1,                cmd_get_fpga_info},
     {"GET",     "/status/device/all",                   -1,                cmd_get_all_info},
     {"GET",     "/status/device/selfcheckInfo",         -1,                cmd_get_selfcheck_info},
+    {"GET",     "/status/uplink",                       -1,                cmd_get_status_uplink_info},
+    {"GET",     "/status/downlink",                     -1,                cmd_get_status_downlink_info},
+    {"GET",     "/status/slot",                         -1,                cmd_get_status_slot_info},
+    {"GET",     "/status/client",                       -1,                cmd_get_status_client_info},
+    {"GET",     "/statistics",                          -1,                cmd_get_statistics_info},
+    {"GET",     "/device/status",                       -1,                cmd_get_device_status},
+    {"GET",     "/device/softversion",                  -1,                cmd_get_softversion},
+    {"GET",     "/device/temperature",                  -1,                cmd_get_temperature},
     {"PUT",     "/timesource/@value",                   -1,                cmd_timesource_set},
     {"PUT",     "/rf/power/@value",                     -1,                cmd_rf_power_onoff},
     {"PUT",     "/rf/agcCtrlMode/@value",               -1,                cmd_rf_agcmode},
     /* 路由表加载 */
     {"GET",     "/route/reload",                        -1,                cmd_route_reload},
+    {"PUT",     "/link/@slotId/@enable",                -1,                cmd_linkcheck_set},
 };
 
 #define URL_SEPARATOR "/"

@@ -76,7 +76,10 @@ static const char *const if_types[] = {
     [EX_WINDOW_TYPE] = "windowType",
 };
 
-
+static inline bool check_valid_slot_id(int id)
+{
+    return ((id > 5 || id <2) ? false : true);
+}
 
 static inline bool check_valid_ch(int ch)
 {
@@ -848,6 +851,86 @@ int cmd_get_selfcheck_info(struct uh_client *cl, void **arg, void **content)
     return code;
 }
 
+int cmd_get_status_uplink_info(struct uh_client *cl, void **arg, void **content)
+{
+    int code = RESP_CODE_OK;
+    *content = assemble_json_net_uplink_info(0);
+    if(*content == NULL)
+        code = RESP_CODE_EXECMD_ERR;
+    
+    *arg = get_resp_message(code);
+    return code;
+}
+
+int cmd_get_status_downlink_info(struct uh_client *cl, void **arg, void **content)
+{
+    int code = RESP_CODE_OK;
+    *content = assemble_json_net_downlink_info();
+    if(*content == NULL)
+        code = RESP_CODE_EXECMD_ERR;
+    
+    *arg = get_resp_message(code);
+    return code;
+}
+
+int cmd_get_status_slot_info(struct uh_client *cl, void **arg, void **content)
+{
+    int code = RESP_CODE_OK;
+    *content = assemble_json_slot_info();
+    if(*content == NULL)
+        code = RESP_CODE_EXECMD_ERR;
+    
+    *arg = get_resp_message(code);
+    return code;
+}
+
+int cmd_get_status_client_info(struct uh_client *cl, void **arg, void **content)
+{
+    int code = RESP_CODE_OK;
+    *content = assemble_json_statistics_client_info();
+    if(*content == NULL)
+        code = RESP_CODE_EXECMD_ERR;
+    
+    *arg = get_resp_message(code);
+    return code;
+}
+
+int cmd_get_statistics_info(struct uh_client *cl, void **arg, void **content)
+{
+    int code = RESP_CODE_OK;
+    *content = assemble_json_statistics_all_info();
+    if(*content == NULL)
+        code = RESP_CODE_EXECMD_ERR;
+    
+    *arg = get_resp_message(code);
+    return code;
+}
+
+
+int cmd_get_device_status(struct uh_client *cl, void **arg, void **content)
+{
+    int code = RESP_CODE_OK;
+    *content = assemble_json_device_status_info();
+    if(*content == NULL)
+        code = RESP_CODE_EXECMD_ERR;
+    
+    *arg = get_resp_message(code);
+    return code;
+}
+
+
+int cmd_get_temperature(struct uh_client *cl, void **arg, void **content)
+{
+    int code = RESP_CODE_OK;
+    *content = assemble_json_device_temperature_info();
+    if(*content == NULL)
+        code = RESP_CODE_EXECMD_ERR;
+    
+    *arg = get_resp_message(code);
+    return code;
+}
+
+
 int cmd_netget(struct uh_client *cl, void **arg, void **content)
 {
     int code = RESP_CODE_OK;
@@ -930,4 +1013,26 @@ int cmd_route_reload(struct uh_client *cl, void **arg, void **content)
     return code;
 }
 
+int cmd_linkcheck_set(struct uh_client *cl, void **arg, void **content)
+{
+    int code = RESP_CODE_OK;
+    const char *slotid, *enable;
+    int _sid, _enable;
+
+    slotid = cl->get_restful_var(cl, "slotId");
+    enable = cl->get_restful_var(cl, "enable");
+    if(str_to_int(slotid, &_sid, check_valid_slot_id) == false){
+        code = RESP_CODE_CHANNEL_ERR;
+        goto error;
+    }
+    if(str_to_int(enable, &_enable, check_valid_enable) == false){
+        code = RESP_CODE_INVALID_PARAM;
+        goto error;
+    }
+    printf_note("link status set: slotid: %d, enable: %d\n", _sid, _enable);
+    config_set_link_switch(_sid, _enable);
+error:
+    *arg = get_resp_message(code);
+    return code;
+}
 

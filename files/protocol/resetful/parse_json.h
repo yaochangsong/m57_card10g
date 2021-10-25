@@ -51,6 +51,13 @@ extern char *assemble_json_disk_info(void);
 extern char *assemble_json_all_info(void);
 extern char *assemble_json_selfcheck_info(void);
 extern char *assemble_json_netlist_info(void);
+extern char *assemble_json_device_temperature_info(void);
+extern char *assemble_json_slot_info(void);
+extern char *assemble_json_net_downlink_info(void);
+extern char *assemble_json_net_uplink_info(int ch);
+extern char *assemble_json_device_status_info(void);
+extern char *assemble_json_statistics_client_info(void);
+extern char *assemble_json_statistics_all_info(void);
 
 #endif
 

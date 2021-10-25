@@ -145,6 +145,6 @@
 #ifdef SUPPORT_DAO_XML
 #include "dao/oal/xml/dao_conf.h"
 #endif
-
+#include "net/net_statistics.h"
 #include "version.h"
 

@@ -525,7 +525,7 @@ void tcp_active_send_all_client(uint8_t *data, int len)
 }
 
 
-int tcp_client_do_for_each(int (*f)(struct net_tcp_client *), void **cl, int prio)
+int tcp_client_do_for_each(int (*f)(struct net_tcp_client *, void *), void **cl, int prio, void *args)
 {
     struct net_tcp_client *cl_list, *list_tmp;
     union _cmd_srv *cmdsrv;
@@ -555,10 +555,10 @@ int tcp_client_do_for_each(int (*f)(struct net_tcp_client *), void **cl, int pri
         #endif
             {
 #ifdef PRIO_CHANNEL_EN
-                if(prio == cl_list->section.prio)
+                if(prio >= 0 && prio == cl_list->section.prio)
 #endif
                 {
-                    ret = f(cl_list);
+                    ret = f(cl_list, args);
                     if(ret == 0){
                         client_num++;
                     }
@@ -699,7 +699,6 @@ struct net_tcp_server *tcp_server_new(const char *host, int port)
     #define TCP_SEND_BUF 2*1024*1024
     struct net_tcp_server *srv;
     int sock, _err;
-    
     sock = usock(USOCK_TCP | USOCK_SERVER | USOCK_IPV4ONLY, host, usock_port(port));
     if (sock < 0) {
         uh_log_err("usock");

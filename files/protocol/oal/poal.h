@@ -229,6 +229,12 @@ struct calibration_singal_threshold_st{
     int32_t   threshold;    /* 有无信号门限值 */
 };
 
+struct link_switch_st{
+    int slod_id;
+    int onoff;
+};
+
+
 /* 控制/配置参数 */
 struct control_st{
     uint8_t remote_local;                                         /* 本控 or 远控 */
@@ -248,6 +254,7 @@ struct control_st{
     uint32_t disk_file_notifier_timeout_ms;
     volatile uint8_t agc_ctrl_mode;                                        /* AGC  控制模式 0: 分段AGC（默认） 1：整个频段AGC */
     int16_t temperature_warn_threshold;                           /* 板卡温度报警阀值 */
+    struct link_switch_st link_switch[MAX_FPGA_CARD_SLOT_NUM];
 };//__attribute__ ((packed));
 
 /*状态参数*/
@@ -433,7 +440,7 @@ struct channel_para{
 struct poal_config{
     uint8_t cid;                                                    /* 设置通道*/
     struct channel_para channel[MAX_RF_NUM];                        /* 通道参数 */
-    struct network_st network[2];                                   /* 网络参数 */
+    struct network_st network[4];                                   /* 网络参数 */
     struct control_st ctrl_para;                                    /* 控制配置参数 */
     struct poal_status_info status_para;                            /* 状态信息参数 */
     struct calibration_info_st cal_level;                           /* 校准参数 */

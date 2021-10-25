@@ -306,6 +306,37 @@ bool config_is_temperature_warning(int16_t temperature)
 }
 
 
+int  config_get_link_switch(int id)
+{
+    int onoff = 0;
+    
+    struct poal_config *poal_config = &(config_get_config()->oal_config);
+    if(id >= MAX_FPGA_CARD_SLOT_NUM)
+        return -1;
+    
+    if(poal_config->ctrl_para.link_switch[id].slod_id == id){
+        onoff =  poal_config->ctrl_para.link_switch[id].onoff;
+        onoff = (onoff == 0 ? 0 : 1);
+    }
+
+    return onoff;
+}
+
+int  config_set_link_switch(int id, int onoff)
+{
+    struct poal_config *poal_config = &(config_get_config()->oal_config);
+    if(id >= MAX_FPGA_CARD_SLOT_NUM)
+        return -1;
+    
+    if(poal_config->ctrl_para.link_switch[id].slod_id == id){
+        poal_config->ctrl_para.link_switch[id].onoff = (onoff == 0 ? 0 : 1);
+    }
+    config_save_all();
+
+    return 0;
+}
+
+
 uint32_t  config_get_fft_size(uint8_t ch)
 {
     uint32_t fftsize = 0;

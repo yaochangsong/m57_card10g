@@ -2,7 +2,7 @@
 #define _NSR1800_H_H
 
 #define NSR1800_I2C_SLAVE_10BIT_ADDR   0x1F
-#define NSR1800_I2C_SLAVE_7BIT_ADDR   0x1F
+#define NSR1800_I2C_SLAVE_7BIT_ADDR   0x1
 
 /* Software Reset */
 #define NSR1800CMD_RESET         0xFE

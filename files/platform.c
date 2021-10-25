@@ -182,6 +182,7 @@ int main(int argc, char **argv)
 #if defined(SUPPORT_FS)
     fs_init();
 #endif
+    net_statistics_init();
     if(server_init() == -1){
         printf_err("server init fail!\n");
         goto done;

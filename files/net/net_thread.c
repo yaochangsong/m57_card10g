@@ -163,7 +163,7 @@ static int _net_thread_wait(void *args)
     return 0;
 }
 
-static int _net_thread_con_nofity(struct net_tcp_client *cl)
+static int _net_thread_con_nofity(struct net_tcp_client *cl, void *args)
 {
     struct net_thread_m *ptd = &cl->section.thread->thread;
     if(ptd == NULL)
@@ -264,64 +264,6 @@ uint64_t  get_send_bytes_by_type(int ch, int type, int id)
 
 #endif
 
-
-uint64_t get_in_statistics_byte(int ch)
-{
-    struct spm_run_parm *arg = NULL;
-    arg = channel_param[ch];
-    if(arg == NULL)
-        return 0;
-    
-    return arg->xdma_disp.inout.in_bytes;
-}
-
-uint64_t get_out_statistics_byte(int ch)
-{
-    struct spm_run_parm *arg = NULL;
-    arg = channel_param[ch];
-    if(arg == NULL)
-        return 0;
-    
-    return arg->xdma_disp.inout.out_bytes;
-}
-
-uint64_t get_ok_out_statistics_byte(int ch)
-{
-    struct spm_run_parm *arg = NULL;
-    arg = channel_param[ch];
-    if(arg == NULL)
-        return 0;
-    
-    return arg->xdma_disp.inout.out_seccess_bytes;
-}
-
-uint64_t get_send_faild_statistics_byte(int ch)
-{
-    struct spm_run_parm *arg = NULL;
-    arg = channel_param[ch];
-    if(arg == NULL)
-        return 0;
-    
-    if(arg->xdma_disp.inout.out_bytes - arg->xdma_disp.inout.out_seccess_bytes < 0)
-        return 0;
-        
-    return (arg->xdma_disp.inout.out_bytes - arg->xdma_disp.inout.out_seccess_bytes);
-}
-
-
-
-
-uint64_t get_read_statistics_byte(int ch)
-{
-    struct spm_run_parm *arg = NULL;
-    arg = channel_param[ch];
-    if(arg == NULL)
-        return 0;
-
-    return arg->xdma_disp.inout.read_bytes;
-}
-
-
 static size_t _data_send(struct net_tcp_client *cl, void *data, size_t len)
 {
     #define THREAD_SEND_MAX_BYTE 8196 //8388608//262144//131072
@@ -395,12 +337,16 @@ static int  data_dispatcher(void *args, int hid, int prio)
         for(int i = 0; i < vec_cnt; i++){
             arg->xdma_disp.inout.out_bytes += arg->xdma_disp.type[index]->vec[i].iov_len;
             r = _data_send(cl, arg->xdma_disp.type[index]->vec[i].iov_base, arg->xdma_disp.type[index]->vec[i].iov_len);
-            arg->xdma_disp.type[index]->statistics.send_bytes += r;
+            /* 统计需要发送字节 */
+            if(r > 0)
+                statistics_client_send_add(ctx->thread.statistics, r);
+            
             if(r != arg->xdma_disp.type[index]->vec[i].iov_len)
                 printf_warn("overun: send len:%d/%lu\n", r, arg->xdma_disp.type[index]->vec[i].iov_len);
 #if   CONFIG_NET_STATISTICS_ENABLE
-            if(r > 0)  
-                arg->xdma_disp.inout.out_seccess_bytes += r; 
+            /* 统计发送失败字节 */
+            if(arg->xdma_disp.type[index]->vec[i].iov_len - r > 0 && r >= 0)  
+                statistics_client_send_err_add(ctx->thread.statistics, arg->xdma_disp.type[index]->vec[i].iov_len - r);
 #endif
             r0 += r;
         }
@@ -415,10 +361,7 @@ static inline void _net_thread_dispatcher_refresh(void *args)
     
     arg->xdma_disp.type_num = 0;
     for(int i = 0; i < MAX_XDMA_DISP_TYPE_NUM; i++){
-        //if(i == 41 || i == 45 || i == 681)
-        //    printf_note("%d, vec_cnt=%lu\n", i, arg->xdma_disp.type[i]->vec_cnt);
         arg->xdma_disp.type[i]->vec_cnt = 0;
-       // arg->xdma_disp.type[i]->vec_cnt = 0;
     }
 }
 
@@ -433,7 +376,7 @@ void  net_thread_con_broadcast(int ch, void *args)
         first = false;
     }
     prio = _get_prio_by_channel(ch);
-    int notify_num = tcp_client_do_for_each(_net_thread_con_nofity, (void **)&cl0, prio);
+    int notify_num = tcp_client_do_for_each(_net_thread_con_nofity, (void **)&cl0, prio, NULL);
     notify_num = min(_net_thread_count_get(), notify_num);
    //printf_note("dispatcher: %s:%d\n", cl0->get_peer_addr(cl0), cl0->get_peer_port(cl0));
     //if(cl0)
@@ -474,6 +417,7 @@ static int  _net_thread_exit(void *arg)
     printf_note("thread[%s] exit!\n", ctx->thread.name);
     _net_thread_count_sub();
     safe_free(ctx->thread.name);
+    safe_free(ctx->thread.statistics);
     if(cl){
         safe_free(cl->section.thread);
         printf_note("thread free\n");
@@ -499,6 +443,8 @@ static const struct net_thread_ops nt_ops = {
 
 static int _thread_init(void *args)
 {
+    struct net_thread_context *ctx = args;
+    struct net_tcp_client *client = ctx->thread.client;
     static int cpu_index = 0;
     long cpunum = sysconf(_SC_NPROCESSORS_CONF);
     printf_note("bind cpu: %d\n", cpu_index);
@@ -506,6 +452,8 @@ static int _thread_init(void *args)
     cpu_index++;
     if(cpu_index >= cpunum)
         cpu_index = 0;
+
+    ctx->thread.statistics = net_statistics_client_create_context(client->get_peer_port(client));
     return 0;
 }
 

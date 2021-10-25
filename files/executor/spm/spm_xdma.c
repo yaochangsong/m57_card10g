@@ -621,7 +621,7 @@ static inline void xdma_data_dispatcher_refresh(int ch, void *args)
     }
 }
 
-static ssize_t _xdma_of_match_pkgs(void *data, uint32_t len, void *args, size_t offp)
+static ssize_t _xdma_of_match_pkgs(int ch, void *data, uint32_t len, void *args, size_t offp)
 {
     struct data_frame_st{
         uint16_t py_dist_addr;
@@ -665,6 +665,7 @@ static ssize_t _xdma_of_match_pkgs(void *data, uint32_t len, void *args, size_t 
             printf_info("[%d]not aglin 16,add %d, frame_len:%lu[0x%lx], raw_len:%lu[0x%lx]\n", pos, reminder16, frame_len, frame_len,raw_len,raw_len);
         }
         if(frame_len > 2048){
+            ns_uplink_add_route_err_pkgs(ch, 1);
             printf_warn("payload length error: %lu\n", frame_len);
             break;
         }
@@ -676,6 +677,7 @@ static ssize_t _xdma_of_match_pkgs(void *data, uint32_t len, void *args, size_t 
             psub->port = port = pdata[pos]->port;
            // print_array(ptr, len); 
            // printf_note("0 frame_len：%lu, chip_id=0x%x, func_id=0x%x, prio_id=0x%x,port: 0x%x\n", frame_len, psub->chip_id, psub->func_id, psub->prio_id, psub->port);
+            ns_uplink_add_forward_pkgs(ch, 1);
         } else if(py_src_addr != pdata[pos]->py_src_addr || src_addr != pdata[pos]->src_addr || port != pdata[pos]->port){
             printf_note("pos:%d, chip_id:[0x%x]0x%x, func_id:[0x%x]0x%x,port:[0x%x]0x%x\n", pos,py_src_addr, pdata[pos]->py_src_addr, src_addr, pdata[pos]->src_addr, port, pdata[pos]->port);
             break;
@@ -751,7 +753,7 @@ static ssize_t _xdma_of_match_pkgs_test(void *data, uint32_t len, void *args, si
 } 
 
 
-static int _xdma_load_disp_buffer(void *data, ssize_t len, void *args, void *run)
+static int _xdma_load_disp_buffer(int ch, void *data, ssize_t len, void *args, void *run)
 {
     int hashid = 0, vec_cnt = 0;
     struct net_sub_st *sub = args;
@@ -771,8 +773,9 @@ static int _xdma_load_disp_buffer(void *data, ssize_t len, void *args, void *run
     prun->xdma_disp.type[hashid]->vec[vec_cnt].iov_len = len;
     prun->xdma_disp.type_num++;
     prun->xdma_disp.type[hashid]->vec_cnt++;
-    prun->xdma_disp.inout.in_bytes += len;
-    printf_note("vec_cnt:%d\n", prun->xdma_disp.type[hashid]->vec_cnt);
+    //prun->xdma_disp.inout.in_bytes += len;
+    ns_uplink_add_route_bytes(ch, len);
+    //printf_note("vec_cnt:%d\n", prun->xdma_disp.type[hashid]->vec_cnt);
     #if 0
     create_tmp_file(hashid%64, sub->chip_id, sub->func_id, sub->prio_id, sub->port);
     printf_note("index:%d, %x, %x, %x, %x\n", hashid%64, sub->chip_id, sub->func_id, sub->prio_id, sub->port);
@@ -818,7 +821,7 @@ static int xdma_data_dispatcher_buffer(int ch, void **data, uint32_t *len, ssize
         printf_debug(">>>>>index=%d, %p, %ld\n", index, ptr, count);
         do{
  #ifdef SPM_HEADER_CHECK
-            nframe = _xdma_of_match_pkgs(ptr, len[index], &sub, offset);
+            nframe = _xdma_of_match_pkgs(ch, ptr, len[index], &sub, offset);
             //nframe = _xdma_of_match_pkgs_test(ptr, len[index], &sub, offset);
  #else
             nframe = len[index];
@@ -831,12 +834,18 @@ static int xdma_data_dispatcher_buffer(int ch, void **data, uint32_t *len, ssize
                 printf_note(">>>>>read block[%d/%ld] over, size[%ld], len[%d]=%u\n", index+1, count, offset, index, len[index]);
                 break;
             }
-            _xdma_load_disp_buffer(ptr, nframe, &sub, args);
+            if(nframe > len[index] || nframe > XDMA_BLOCK_SIZE){
+                printf_err("read err length: %ld\n", nframe);
+                nframe = 0;
+                break;
+            }
+            _xdma_load_disp_buffer(ch, ptr, nframe, &sub, args);
             ptr += nframe;
             offset += nframe;
             printf_info("offset：%ld, chip_id=0x%x, func_id=0x%x\n", offset, sub.chip_id, sub.func_id);
         }while(offset < XDMA_BLOCK_SIZE);
-        run->xdma_disp.inout.read_bytes += len[index];
+        //run->xdma_disp.inout.read_bytes += len[index];
+        ns_uplink_add_read_bytes(ch, len[index]);
     }
     return 0;
 }

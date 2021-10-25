@@ -14,6 +14,7 @@ struct net_thread_m{
     char *name;
     void *args;
     void *client;
+    void *statistics;
     struct net_thread_wait pwait;
 };
 

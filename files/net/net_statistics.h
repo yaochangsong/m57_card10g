@@ -52,8 +52,10 @@ static inline  char *_get_device_status_info(int errCode)
         int code;
         char *message;
     } _msg[] ={
+        {3,            "Load ok"},
+        {2,            "Loading"},
         {1,            "Ok"},
-        {0,            "Starting"},
+        {0,            "Check FPGA Card"},
         {-1,           "Not Find FPGA Card"},
         {-2,           "Bit File Load Error"},
         {-3,           "Link Error"},
@@ -75,6 +77,8 @@ static inline int config_get_device_status(char **info)
 
 
 /*
+3: 加载成功
+2: 加载中
 1：成功,
 0: 启动中,
 -1：未检测到子卡,
@@ -90,7 +94,7 @@ static inline  int config_set_device_status(int status, int id)
     net_statistics.device_status.code = status;
     if(id >= 0)
         snprintf(buffer, sizeof(buffer) - 1, "[0x%x], %s", id, _get_device_status_info(status));
-    printf_note("%s\n", buffer);
+    //printf_note("%s\n", buffer);
     net_statistics.device_status.info = buffer;
     return 0;
 }

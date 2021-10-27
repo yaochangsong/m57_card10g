@@ -335,7 +335,7 @@ static int  data_dispatcher(void *args, int hid, int prio)
         //if(r > 0)  
         //     arg->xdma_disp.inout.out_seccess_bytes += r; 
         for(int i = 0; i < vec_cnt; i++){
-            arg->xdma_disp.inout.out_bytes += arg->xdma_disp.type[index]->vec[i].iov_len;
+            arg->xdma_disp.type[index]->statistics.send_bytes += arg->xdma_disp.type[index]->vec[i].iov_len;
             r = _data_send(cl, arg->xdma_disp.type[index]->vec[i].iov_base, arg->xdma_disp.type[index]->vec[i].iov_len);
             /* 统计需要发送字节 */
             if(r > 0)

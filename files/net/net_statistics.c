@@ -103,15 +103,24 @@ struct net_statistics_client *net_statistics_client_create_context(int port)
 void *device_status_check_thread(void *s)
 {
     bool is_check = false;
+    int try_count = 0;
+    //device start check FPGA Card
     config_set_device_status(0, 0);
-    sleep(10);
+    sleep(2);
     while(1){
         is_check = io_get_xdma_fpga_status();
         printf_note("XDMA FPGA Status: %s!!\n", is_check == true ? "OK" : "False");
-        if(is_check == false)
-            config_set_device_status(-1, 0);
-        else if(config_get_device_status(NULL) == 0)
-            config_set_device_status(1, -1);
+        if(is_check == false){
+            if(try_count++ > 10){
+                try_count = 0;
+                //device Not Find FPGA Card
+                config_set_device_status(-1, 0);
+            }
+        } else if((config_get_device_status(NULL) == 0) || 
+                    (config_get_device_status(NULL) == 3) || 
+                    (config_get_device_status(NULL) == -1))
+            //if the device   is in checking  or load ok or not find card status, then set the device is ok status
+            config_set_device_status(1, 0);
         sleep(3);
     }
 }

@@ -621,7 +621,25 @@ static inline void xdma_data_dispatcher_refresh(int ch, void *args)
     }
 }
 
-static ssize_t _xdma_of_match_pkgs(int ch, void *data, uint32_t len, void *args, size_t offp)
+static int _xdma_find_next_header(uint8_t *ptr, size_t len)
+{
+    size_t offset = 0;
+    do{
+        if(*(uint16_t *)ptr != 0x5751){
+            ptr += 8;
+            offset += 8;
+        }else{
+            break;
+        }
+    }while(offset < len);
+
+    if(offset >= len)
+        return -1;
+
+    return offset;
+}
+
+static ssize_t _xdma_of_match_pkgs(int ch, void *data, uint32_t len, void *args, size_t offp, int *err_code)
 {
     struct data_frame_st{
         uint16_t py_dist_addr;
@@ -639,18 +657,42 @@ static ssize_t _xdma_of_match_pkgs(int ch, void *data, uint32_t len, void *args,
     uint16_t py_src_addr = 0, src_addr = 0, port = 0;
     int pos = 0, reminder16 = 0;
     size_t sum_len = 0, frame_len = 0, raw_len = 0;
+    int err = 0, err_size_len = 0; 
+    uint8_t is_print = 0;
+    *err_code = 0;
 
     do{
         if(*(uint16_t *)ptr != 0x5751){  /* header */
             if(sum_len != 0){
                 if(len < offp)
                     printf_warn("maybe payload len err, offset err: %lu, len:%u\n", offp, len);
+                    err = 1;
                 if(sum_len == (len - offp)){
                     printf_info("read over block size: %lu, offp=%lu\n", sum_len, offp);
                 } else if(sum_len <  (len - offp)){
-                    printf_warn("err header=0x%x, block size left:%ld, offp=%lu\n", *(uint16_t *)ptr, len - offp - sum_len, offp);
+                    //err = 1;
+                    printf_info("err header=0x%x, block size left:%ld, offp=%lu, err_size_len=%d\n", *(uint16_t *)ptr, len - offp - sum_len, offp, err_size_len);
                 } else{
+                    err = 1;
                     printf_warn("err!! comsume length [%lu] err!, %u, %lu\n", sum_len, len, offp);
+                }
+                if(err != 0 && psub->func_id == 0x39){
+                    printf_warn("error byte: \n");
+                    print_array(ptr, 32);
+                    ns_uplink_add_route_err_pkgs(ch, 1);
+                }
+            }else{ // sum_len = 0  and header error
+                if(len <= offp){ //read over, no need to read data
+                    //printf_note("read over, len=%u, offp=%lu\n", len , offp);
+                    break;
+                } 
+                err_size_len = _xdma_find_next_header(ptr, len - offp);
+                if(err_size_len > 0){
+                    *err_code = 1; //avoid to read error data and continue to read next pkgs
+                    sum_len = err_size_len;
+                    printf_note("error data len  = %d, remain len= %ld\n", err_size_len, len - offp - err_size_len);
+                }else{
+                    printf_err("find data faild: %d\n", err_size_len);
                 }
             }
             break;
@@ -662,7 +704,13 @@ static ssize_t _xdma_of_match_pkgs(int ch, void *data, uint32_t len, void *args,
         if(reminder16 != 0){
             raw_len = frame_len;
             frame_len += reminder16;
-            printf_info("[%d]not aglin 16,add %d, frame_len:%lu[0x%lx], raw_len:%lu[0x%lx]\n", pos, reminder16, frame_len, frame_len,raw_len,raw_len);
+            if(pos > 0 && psub->func_id == 0x39 && is_print == 0){
+                printf_warn("aglin byte: \n");
+                print_array(ptr + frame_len - reminder16, 16);
+               // printf_note("[%d]not aglin 16,add %d, frame_len:%lu[0x%lx], raw_len:%lu[0x%lx]\n", pos, reminder16, frame_len, frame_len,raw_len,raw_len);
+            }
+            if(is_print++ > 50)
+                is_print = 0;
         }
         if(frame_len > 2048){
             ns_uplink_add_route_err_pkgs(ch, 1);
@@ -689,8 +737,6 @@ static ssize_t _xdma_of_match_pkgs(int ch, void *data, uint32_t len, void *args,
             printf_warn(">>>>>>>>>>pos is overrun!\n");
             break;
         }
-            
-        
         sum_len += frame_len;
         ptr = ptr +frame_len ;
     }while(sum_len < (XDMA_BLOCK_SIZE - offp));
@@ -814,6 +860,7 @@ static int xdma_data_dispatcher_buffer(int ch, void **data, uint32_t *len, ssize
     ssize_t offset = 0, nframe = 0;
     uint8_t *ptr = NULL;
     struct spm_run_parm *run = args; 
+    int err_code = 0;
     
     for(int index = 0; index < count; index++){
         offset = 0;
@@ -821,7 +868,7 @@ static int xdma_data_dispatcher_buffer(int ch, void **data, uint32_t *len, ssize
         printf_debug(">>>>>index=%d, %p, %ld\n", index, ptr, count);
         do{
  #ifdef SPM_HEADER_CHECK
-            nframe = _xdma_of_match_pkgs(ch, ptr, len[index], &sub, offset);
+            nframe = _xdma_of_match_pkgs(ch, ptr, len[index], &sub, offset, &err_code);
             //nframe = _xdma_of_match_pkgs_test(ptr, len[index], &sub, offset);
  #else
             nframe = len[index];
@@ -839,7 +886,8 @@ static int xdma_data_dispatcher_buffer(int ch, void **data, uint32_t *len, ssize
                 nframe = 0;
                 break;
             }
-            _xdma_load_disp_buffer(ch, ptr, nframe, &sub, args);
+            if(err_code == 0)
+                _xdma_load_disp_buffer(ch, ptr, nframe, &sub, args);
             ptr += nframe;
             offset += nframe;
             printf_info("offset：%ld, chip_id=0x%x, func_id=0x%x\n", offset, sub.chip_id, sub.func_id);

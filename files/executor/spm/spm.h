@@ -43,15 +43,6 @@ struct xstream_statistics_type{
     volatile uint64_t send_bytes;
 };
 
-struct xstream_statistics_inout{
-    volatile uint64_t in_bytes;
-    volatile uint64_t out_bytes;
-    volatile uint64_t out_seccess_bytes;
-    volatile uint64_t read_bytes;
-    volatile uint64_t err_bytes;
-    volatile uint64_t packags;
-};
-
 
 struct xstream_dispatcher_type{
     volatile struct net_sub_st subinfo;
@@ -62,7 +53,6 @@ struct xstream_dispatcher_type{
 
 struct xstream_dispatcher_info{
     struct xstream_dispatcher_type **type;
-    struct xstream_statistics_inout inout;
     int type_num;
     
 };

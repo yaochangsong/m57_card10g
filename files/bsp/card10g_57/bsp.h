@@ -22,7 +22,7 @@
 //HASH MAP OFFSET
 #define CARD_SLOT_BITS (3)
 #define CARD_CHIP_BITS (2)
-#define CARD_FUNC_BITS (4)
+#define CARD_FUNC_BITS (8)
 #define CARD_PRIO_BITS (1)
 #define CARD_PORT_BITS (2)
 
@@ -33,19 +33,25 @@
 #define CARD_PRIO_MASK (((1 << CARD_PRIO_BITS) - 1) << (CARD_CHIP_BITS +CARD_SLOT_BITS+CARD_FUNC_BITS))
 #define CARD_PORT_MASK (((1 << CARD_PORT_BITS) - 1) << (CARD_CHIP_BITS +CARD_SLOT_BITS+CARD_FUNC_BITS+CARD_PRIO_BITS))
 
+#define CARD_SLOT_MODE (1 << CARD_SLOT_BITS)
+#define CARD_CHIP_MODE (1 << CARD_CHIP_BITS)
+#define CARD_FUNC_MODE (1 << CARD_FUNC_BITS)
+#define CARD_PRIO_MODE (1 << CARD_PRIO_BITS)
+#define CARD_PORT_MODE (1 << CARD_PORT_BITS)
 
 
-#define CARD_SLOT_NUM(x) (((x)>>8) & 0xff)    //05
-#define CARD_CHIP_NUM(x) ((x)& 0xff)    //02
+
+#define CARD_SLOT_NUM(x) ((((x)>>8) & 0x0ff) % CARD_SLOT_MODE)    //05
+#define CARD_CHIP_NUM(x) (((x) & 0xff) % CARD_CHIP_MODE)    //02
 
 /* XDMA分发类型数 */
 ////HASH ID: funcId |chip |slot
 #define MAX_XDMA_DISP_TYPE_NUM  (1 << (CARD_SLOT_BITS + CARD_CHIP_BITS + CARD_FUNC_BITS +CARD_PORT_BITS + CARD_PRIO_BITS))
 #define GET_HASHMAP_ID(cid, fid, prid, port)  (CARD_SLOT_NUM(cid) + \
                                     (CARD_CHIP_NUM(cid)<<CARD_SLOT_BITS) + \
-                                    ((fid<<(CARD_SLOT_BITS+CARD_CHIP_BITS)) + \
-                                    (prid<<(CARD_SLOT_BITS+CARD_CHIP_BITS+CARD_FUNC_BITS))) + \
-                                    (port<<(CARD_SLOT_BITS+CARD_CHIP_BITS+CARD_PRIO_BITS+CARD_FUNC_BITS)))
+                                    (((fid) % CARD_FUNC_MODE) <<(CARD_SLOT_BITS+CARD_CHIP_BITS)) + \
+                                    (((prid) % CARD_PRIO_MODE) <<(CARD_SLOT_BITS+CARD_CHIP_BITS+CARD_FUNC_BITS)) + \
+                                    (((port) % CARD_PORT_MODE)<<(CARD_SLOT_BITS+CARD_CHIP_BITS+CARD_PRIO_BITS+CARD_FUNC_BITS)))
 
 #define GET_HASHMAP_SLOT_NUM (1 << (CARD_SLOT_BITS))
 #define GET_HASHMAP_CHIP_NUM (1 << (CARD_CHIP_BITS+CARD_SLOT_BITS))

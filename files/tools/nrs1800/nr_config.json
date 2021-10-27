@@ -1,31 +1,26 @@
 {
 	"version":	"1.0",
-	"route" : [{
-			"port_num" : 4,  "dest_id" : 72, "dest_port" : 10
-		},{
-			"port_num" : 5, "dest_id" : 72, "dest_port" : 10
-		},{
-			"port_num" : 7,  "dest_id" :72,   "dest_port" : 10
-		},{
-			"port_num" : 9,  "dest_id" : 72, "dest_port" : 10
-		},{
-			"port_num" : 12, "dest_id" : 30, "dest_port" : 10
-		},{
-			"port_num" : 13,  "dest_id" :30,   "dest_port" : 10
-		},{
-			"port_num" : 16,  "dest_id" : 30, "dest_port" : 10
-		},{
-			"port_num" : 17, "dest_id" : 30, "dest_port" : 10
-		},{
-			"port_num" : 10,  "dest_id" :26,   "dest_port" : 12
-		},{
-			"port_num" : 10,  "dest_id" : 28, "dest_port" : 13
-		},{
-			"port_num" : 10, "dest_id" : 27, "dest_port" : 16
-		},{
-			"port_num" : 10,  "dest_id" :29,   "dest_port" : 17
-		},{
-			"port_num" : 10,  "dest_id" : 64, "dest_port" : 5
+	"route" : [		
+		{
+			"port_num" : -1,  "dest_id" :26,   "dest_port" : 12
+		},
+		{
+			"port_num" : -1,  "dest_id" : 28, "dest_port" : 13
+		},
+		{
+			"port_num" : -1, "dest_id" : 27, "dest_port" : 16
+		},
+		{
+			"port_num" : -1,  "dest_id" :29,   "dest_port" : 17
+		},
+		{
+			"port_num" : -1,  "dest_id" : 64, "dest_port" : 5
+		},
+		{
+			"port_num" : -1,  "dest_id" : 30, "dest_port" : 10
+		},		
+		{
+			"port_num" : -1,  "dest_id" : 72, "dest_port" : 10
 		}
 	]
 }

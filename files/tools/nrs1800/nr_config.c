@@ -95,7 +95,7 @@ static int nr_json_parse_config_param(const cJSON* root, struct nr_config *confi
     }
     int len = cJSON_GetArraySize(route);
     if(len <= 0){
-        printf("route table len is %d\n", len);
+        printf_debug("route table len is %d\n", len);
         config->rtable_len = 0;
         config->rtable = NULL;
         return -1;
@@ -106,24 +106,24 @@ static int nr_json_parse_config_param(const cJSON* root, struct nr_config *confi
     }
     config->rtable_len = len;
     for(int i = 0; i < len; i++){
-        printf("index:%d ", i);
+        printf_debug("index:%d ", i);
         node = cJSON_GetArrayItem(route, i);
         val = cJSON_GetObjectItem(node, "port_num");
         if(cJSON_IsNumber(val)){
             config->rtable[i]->port_num = val->valueint;
-            printf("port_num:%d, ",  config->rtable[i]->port_num);
+            printf_debug("port_num:%d, ",  config->rtable[i]->port_num);
         }
         val = cJSON_GetObjectItem(node, "dest_id");
         if(cJSON_IsNumber(val)){
             config->rtable[i]->dest_id = val->valueint;
-            printf("dest_id:%d, ", config->rtable[i]->dest_id);
+            printf_debug("dest_id:%d, ", config->rtable[i]->dest_id);
         }
         val = cJSON_GetObjectItem(node, "dest_port");
         if(cJSON_IsNumber(val)){
             config->rtable[i]->dest_port = val->valueint;
-            printf("dest_port:%d, ", config->rtable[i]->dest_port);
+            printf_debug("dest_port:%d, ", config->rtable[i]->dest_port);
         }
-        printf("\n");
+        printf_debug("\n");
     }
     return 0;
 }
@@ -165,13 +165,13 @@ void nr_config_init(void)
 {
     char *path;
     #define NR_CONFIG_PATH "nr_config.json"
-    printf("nr_config_init.\n");
+    printf_debug("nr_config_init.\n");
     path = get_config_path();
     if( path != NULL && strlen(path) > 0)
         nrconfig.path = path;
     else
         nrconfig.path = strdup(NR_CONFIG_PATH);
-    printf("config file path: %s\n", nrconfig.path);
+    printf_debug("config file path: %s\n", nrconfig.path);
     nr_json_read_config_file(&nrconfig);
 }
 

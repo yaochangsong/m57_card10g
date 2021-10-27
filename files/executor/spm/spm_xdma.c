@@ -16,7 +16,11 @@
 #include "../../net/net_sub.h"
 
 #define  SPM_DISPATCHER_ON
+
+#ifdef DEBUG_TEST
+#else
 #define  SPM_HEADER_CHECK
+#endif
 
 static int xspm_read_stream_stop(int ch, int subch, enum stream_type type);
 static int xspm_read_xdma_data_over(int ch,  void *arg);
@@ -875,6 +879,7 @@ static int xdma_data_dispatcher_buffer(int ch, void **data, uint32_t *len, ssize
             offset = XDMA_BLOCK_SIZE+1;
             sub.chip_id = 0x0502;
             sub.func_id = 0x0;
+            sub.port = 0x1;
             _data_check(ptr, len[index], index);
  #endif
             if(nframe <= 0){

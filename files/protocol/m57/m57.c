@@ -512,12 +512,17 @@ bool m57_execute_cmd(void *client, int *code)
             printf_note("=====>>>%s[%d, %d], port:%d\n", _type == 1 ? "Urgent" : "Normal", _type, _reg.type, cl->get_peer_port(cl));
             cl->section.prio = _type;
             //net_hash_add(cl->section.hash, _type, RT_PRIOID);
-            #if 0
-            //net_hash_add(cl->section.hash, 0x0501, RT_CHIPID);
-            net_hash_add(cl->section.hash, 0x0502, RT_CHIPID);
-            net_hash_add(cl->section.hash, 0x0000, RT_FUNCID);
-            net_hash_add(cl->section.hash, 0x0001, RT_PORTID);
-            //net_hash_dump(cl->section.hash);
+            #ifdef DEBUG_TEST
+             struct sub_st{
+                uint16_t chip_id;
+                uint16_t func_id;
+                uint16_t port;
+            }__attribute__ ((packed));
+            struct sub_st _sub;
+            _sub.chip_id = 0x0502;
+            _sub.func_id = 0;
+            _sub.port = 0x0001;
+            net_hash_add_ex(cl->section.hash, GET_HASHMAP_ID(_sub.chip_id, _sub.func_id, cl->section.prio, _sub.port));
             #endif
             for(int ch = 0; ch < MAX_XDMA_NUM; ch++)
                 executor_set_command(EX_XDMA_ENABLE_CMD, -1, ch, &enable, -1);

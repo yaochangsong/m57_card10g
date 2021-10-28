@@ -1,0 +1,72 @@
+@charset "utf-8";
+/* 你自己的样式 */
+
+.bg_white {
+	background-color: #ffffff;
+	text-align: left;
+}
+
+.bg_title {
+	background-color: #C0C0C0;
+	text-align: center;
+}
+
+.table th, .table td {
+    font-size: 14px;
+}
+
+input{
+	box-sizing: border-box;
+	border:1px solid #999 !important;
+}
+
+input[type="text"] {
+	padding-left: 2px;
+	line-height: inherit;
+	border-radius: 3px;
+}
+
+input:focus {
+    outline-offset: 0px;
+	outline:none;
+	border:1px solid #2bb0f5 !important;
+}
+
+input[type="file"] {
+    border-radius: 3px;
+}
+
+.p_btn_save {
+	padding-top: 30px;	
+	text-align: center;
+}
+
+.highlight-error{
+	border:1px solid red !important;
+}
+
+/*进度条*/
+.dprogress { 
+	position:relative; 
+	width:80%;       
+	border: 1px solid #999; 
+	padding: 1px; 
+	border-radius: 3px; 
+}
+
+.dbar { 
+	background-color: #B4F5B4; 
+	width:0%;         
+	height:20px; 
+	border-radius: 3px; 
+}
+.dpercent {
+	position:absolute; 
+	display:inline-block; 
+	top:3px; 
+	left:48%; 
+}
+.dmsg {
+	position:relative; 
+	float:left;
+}

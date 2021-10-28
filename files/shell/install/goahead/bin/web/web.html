@@ -1,0 +1,178 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="author" content="order by dede58.com"/>
+<meta name="renderer" content="webkit|ie-comp|ie-stand">
+<meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+<meta name="viewport" content="width=device-width,initial-scale=1,minimum-scale=1.0,maximum-scale=1.0,user-scalable=no" />
+<!--<meta http-equiv="Cache-Control" content="no-siteapp" />-->
+<meta http-equiv="Pragma" content="no-cache" />
+<meta http-equiv="Cache-Control" content="no-cache" />
+<meta http-equiv="Cache" content="no-cache" />
+<!--[if lt IE 9]>
+<script type="text/javascript" src="lib/html5.js"></script>
+<script type="text/javascript" src="lib/respond.min.js"></script>
+<script type="text/javascript" src="lib/PIE_IE678.js"></script>
+<![endif]-->
+<link href="css/H-ui.min.css" rel="stylesheet" type="text/css" />
+<link href="css/H-ui.admin.css" rel="stylesheet" type="text/css" />
+
+<link href="lib/Hui-iconfont/1.0.1/iconfont.css" rel="stylesheet" type="text/css" />
+<link href="css/style.css" rel="stylesheet" type="text/css" />
+<!--[if IE 6]>
+<script type="text/javascript" src="lib/DD_belatedPNG_0.0.8a-min.js" ></script>
+<script>DD_belatedPNG.fix('*');</script>
+<![endif]-->
+<script src="js/AppConfig.js"></script>
+<script type="text/javascript" src="lib/jquery/1.9.1/jquery.min.js">
+<script type="text/javascript" src="js/H-ui.js"></script>
+<script src="js/jquery.form.min.js"></script>
+<script src="js/xw.validator.js"></script>
+<script src="js/ajax.js"></script>
+<title>万兆网卡</title>
+
+<script language="JavaScript" type="text/javascript">
+var msg = ["<font color='green'>上传中...</font>", 
+			"<font color='blue'>成功更新, 请重启网页</font>", 
+			"<font color='red'>上传文件失败!</font>", 
+			"<font color='red'>不支持的包格式!</font>",
+			"<font color='green'>上传完毕，解压中...</font>",
+			"<font color='red'>更新失败!</font>",
+			"<font color='red'>状态不支持!更新中，请等待...</font>"];
+				
+ $(function () {  
+	var bar = $('.dbar');
+	var percent = $('.dpercent');
+	var status = $('#msg');
+
+	$('form').ajaxForm({
+		beforeSend: function () {
+			//status.empty();
+			var percentVal = '0%';
+			bar.width(percentVal)
+			percent.html(percentVal);
+		},
+		uploadProgress: function (event, position, total, percentComplete) {
+		    $("#btn_upgrade").attr("disabled", true);
+			var percentVal = percentComplete + '%';
+			bar.width(percentVal)
+			percent.html(percentVal);
+			status.html(msg[0]);
+			if(percentComplete >= 100){
+				status.html(msg[4]);
+				$('#loading').css('display', 'block');
+			}
+		},
+		success: function () {
+			var percentVal = '100%';
+			bar.width(percentVal)
+			percent.html(percentVal);
+			status.html(msg[4]);
+		},
+		complete: function (xhr) {
+		    $("#btn_upgrade").attr("disabled", false);
+			var result = xhr.responseText.split("|");
+			status.html(msg[parseInt(result[1])]);
+			$('#loading').css('display', 'none');
+            //setTimeout(preExit(), 1000);
+            preExit();
+		},
+		
+		error: function() {
+			$("#btn_upgrade").attr("disabled", false);		
+			status.html(msg[2]); 
+		} 
+	});
+});
+
+function Import() 
+{
+	var oFile = document.getElementById("file");
+	if (oFile.value == "") {
+		alert('请选择升级包。');
+		return false;
+	}
+
+    if (!confirm("确定进行升级？升级过程中请不要断电或刷新网页！")) {
+        return false;
+    }
+     
+	if (oFile.files) {
+		var oFileSize = oFile.files[0].size;
+		console.log("filesize:"+oFileSize+" bytes");
+		if (oFileSize > 1024 * 1024 * 30) {
+			alert('文件过大，文件应在30M以内。');
+			return false;
+		}
+	} else {
+	    console.log("unsupport get file size!");
+		$('#msg').html(msg[6]); 
+		$('#loading').css('display', 'block');
+	}
+	
+	return true;
+}
+
+function before_export()
+{
+    $("#backup").attr("disabled", true);
+    $("#backup").removeClass("btn-danger").addClass("btn-warning");
+    $("#backup").val("打包中...");
+}
+
+$(document).ready(function () {
+}); 
+</script> 
+</head>
+<body>
+<nav class="breadcrumb">
+	<i class="Hui-iconfont">&#xe67f;</i> 首页 
+	<span class="c-gray en">&gt;</span> 升级管理 
+	<span class="c-gray en">&gt;</span> web升级 
+	<a class="btn btn-success radius r mr-20" style="line-height:1.6em;margin-top:3px" href="javascript:location.replace(location.href);" title="刷新" >
+	<i class="Hui-iconfont">&#xe68f;</i>
+	</a>
+</nav>
+<div class="pd-20" style="padding-top:20px;text-align:-webkit-center;">
+<form name="web" id="web" method="post" action="/ajax/go_import_web" enctype="multipart/form-data">
+	<table class="table table-border table-bordered table-bg mt-20" style="width:80%">
+    <thead>
+      <tr>
+        <th colspan="3" scope="col" class="bg_title">web升级</th>
+      </tr>
+    </thead>
+    <tbody>
+    	<tr class="bg_white" onMouseOver="mouseoverd(this)" onMouseOut="mouseoutd(this)">
+            <td>网页备份</td>
+            <td colspan="2"><input type="button" id="backup" class="btn btn-danger radius" onClick="before_export();go_export_web()" value="备份"></td>
+        </tr>
+        
+		<tr class="bg_white" onMouseOver="mouseoverd(this)" onMouseOut="mouseoutd(this)">
+        	<td width="15%">web升级</td>
+            <td width="60%"><input type="file" name="file" id="file"></td>
+            <td width="25%"><input type="submit" id="btn_upgrade" class="btn btn-danger radius" onClick="return Import();" value="导入/升级"></td>
+        </tr>
+        <tr class="bg_white" onMouseOver="mouseoverd(this)" onMouseOut="mouseoutd(this)">
+        	<td>上传状态</td>
+            <td>
+            	<div class="dprogress">
+                    <div class="dbar"></div>
+                    <div class="dpercent">0%</div>
+                </div>
+            </td> 
+            <td>
+				<div style="display:none; float:left" id="loading"><img src="img/loading.gif"></div>
+				<div style="float:left" class="dmsg" id="msg"></div> 
+            </td>
+        </tr>
+        <tr class="bg_white" onMouseOver="mouseoverd(this)" onMouseOut="mouseoutd(this)">
+        	<td>升级说明</td>
+        	<td colspan="2">升级支持格式: .tar.gz, 升级后请清除浏览器缓存，重启网页</td>
+        </tr>
+    </tbody>
+  </table>
+</form>
+</div>
+</body>
+</html>

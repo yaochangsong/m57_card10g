@@ -1394,10 +1394,11 @@ char *assemble_json_selfcheck_info(void)
 char *assemble_json_netlist_info(void)
 {
     char *str_json = NULL;
-    cJSON *root = cJSON_CreateObject();
-    cJSON_AddItemToObject(root, "netInfo", cJSON_Parse(assemble_json_net_list_info()));
-    json_print(root, 1);
-    str_json = cJSON_PrintUnformatted(root);
+    //cJSON *root = cJSON_CreateObject();
+    //cJSON_AddItemToObject(root, "netInfo", cJSON_Parse(assemble_json_net_list_info()));
+    //json_print(root, 1);
+    //str_json = cJSON_PrintUnformatted(root);
+    str_json = assemble_json_net_list_info();
     return str_json;
 }
 char *assemble_json_temp_info(void)

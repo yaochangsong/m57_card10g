@@ -522,6 +522,7 @@ bool m57_execute_cmd(void *client, int *code)
             _sub.chip_id = 0x0502;
             _sub.func_id = 0;
             _sub.port = 0x0001;
+            cl->section.prio = 0;
             net_hash_add_ex(cl->section.hash, GET_HASHMAP_ID(_sub.chip_id, _sub.func_id, cl->section.prio, _sub.port));
             #endif
             for(int ch = 0; ch < MAX_XDMA_NUM; ch++)

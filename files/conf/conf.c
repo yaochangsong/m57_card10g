@@ -87,6 +87,23 @@ char *config_get_if_indextoname(int index)
     return NULL;
 }
 
+int config_get_if_cmd_port(const char *ifname, short *port)
+{
+    if(ifname == NULL || strlen(ifname) == 0)
+        return -1;
+    
+    for(int i = 0; i < ARRAY_SIZE(config.oal_config.network); i++){
+        if(config.oal_config.network[i].ifname){
+            if(!strcmp(config.oal_config.network[i].ifname, ifname)){
+                *port = config.oal_config.network[i].port;
+                return 0;
+            }
+        }
+    }
+    
+    return -1;
+}
+
 
 /** Accessor for the current configuration
 @return:  A pointer to the current config.

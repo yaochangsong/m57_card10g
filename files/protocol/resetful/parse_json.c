@@ -254,6 +254,10 @@ int parse_json_net(const char * const body)
     cJSON *port, *data_port;
     uint32_t allport[4]={0};
     port = cJSON_GetObjectItem(root, "port");
+    if(port!=NULL&&cJSON_IsNumber(port)){
+        printf_note("port: %s\n", port->valuestring);
+    }
+    #if 0
     if(port != NULL){
         allport[0] = cJSON_GetObjectItem(port, "command")->valueint;
         value = cJSON_GetObjectItem(port, "data");
@@ -276,7 +280,7 @@ int parse_json_net(const char * const body)
         }else
             return RESP_CODE_EXECMD_ERR;
     }
-    
+    #endif
     return RESP_CODE_OK;
 }
 
@@ -1000,10 +1004,21 @@ char *assemble_json_slot_info(void)
     cJSON *array = cJSON_CreateArray();
     int bit = 0;
     char buffer[128] = {0};
-    
+
+#ifdef DEBUG_TEST
+       cJSON_AddItemToArray(array, item = cJSON_CreateObject());
+       cJSON_AddNumberToObject(item, "id", 5);
+       cJSON_AddStringToObject(item, "status", "ok");
+       cJSON_AddNumberToObject(item, "type", 1);
+       cJSON_AddStringToObject(item, "loadStatus",   "OK");
+       cJSON_AddStringToObject(item, "uplinkBytes", "0");
+       cJSON_AddStringToObject(item, "softVersion", "1.0");
+       cJSON_AddNumberToObject(item, "linkSwitch", 1);
+       cJSON_AddStringToObject(item, "linkStatus", "OK");
+#else
     for_each_set_bit(bit, cards_status_get_bitmap(), MAX_FPGA_CARD_SLOT_NUM){
         cJSON_AddItemToArray(array, item = cJSON_CreateObject());
-        cJSON_AddNumberToObject(item, "slot_id", bit);
+        cJSON_AddNumberToObject(item, "id", bit);
         cJSON_AddStringToObject(item, "status", "ok");
         cJSON_AddNumberToObject(item, "type", 1);
         cJSON_AddStringToObject(item, "loadStatus",  (ns_downlink_get_loadbit_result(bit) == 0 ? "OK":"False"));
@@ -1013,6 +1028,8 @@ char *assemble_json_slot_info(void)
         cJSON_AddNumberToObject(item, "linkSwitch", config_get_link_switch(bit));
         cJSON_AddStringToObject(item, "linkStatus", (ns_downlink_get_link_result(bit) == 0 ? "OK":"False"));
     }
+#endif
+    json_print(array, 1);
     str_json = cJSON_PrintUnformatted(array);
     return str_json;
 }
@@ -1245,12 +1262,16 @@ char *assemble_json_net_list_info(void)
     int32_t link, speed;
     struct in_addr ipaddr;
     int num = get_ifname_number();
+    short port = 0;
     cJSON *array = cJSON_CreateArray();
     cJSON* item = NULL;
     for(int index = 1; index <= num; index++){
         name = if_indextoname(index, if_name);
         if(name == NULL)
             continue;
+        if(!strcmp(if_name, "lo") || !strcmp(if_name, "docker0")){
+            continue;
+        }
         link = get_netlink_status(if_name);
         if(link >= 0)
             s_link = (link == 0 ? "down" : "up");
@@ -1275,14 +1296,25 @@ char *assemble_json_net_list_info(void)
         cJSON_AddStringToObject(item, "speed", s_speed);
         if(get_ipaddress(if_name, &ipaddr) != -1){
             cJSON_AddStringToObject(item, "ipaddr", inet_ntoa(ipaddr));
+        }else{
+            cJSON_AddStringToObject(item, "ipaddr", "0.0.0.0");
         }
         memset(&ipaddr, 0, sizeof(struct in_addr));
         if(get_netmask(if_name, &ipaddr) != -1){
             cJSON_AddStringToObject(item, "netmask", inet_ntoa(ipaddr));
+        }else{
+            cJSON_AddStringToObject(item, "netmask", "0.0.0.0");
         }
         memset(&ipaddr, 0, sizeof(struct in_addr));
         if(get_gateway(if_name, &ipaddr) != -1){
             cJSON_AddStringToObject(item, "gateway", inet_ntoa(ipaddr));
+        }else{
+            cJSON_AddStringToObject(item, "gateway", "0.0.0.0");
+        }
+        if(config_get_if_cmd_port(if_name, &port) != -1){
+            cJSON_AddNumberToObject(item, "port", port);
+        }else{
+            cJSON_AddNumberToObject(item, "port", 0);
         }
     }
     
@@ -1394,11 +1426,11 @@ char *assemble_json_selfcheck_info(void)
 char *assemble_json_netlist_info(void)
 {
     char *str_json = NULL;
-    cJSON *root = cJSON_CreateObject();
-    cJSON_AddItemToObject(root, "netInfo", cJSON_Parse(assemble_json_net_list_info()));
-    json_print(root, 1);
-    str_json = cJSON_PrintUnformatted(root);
-    //str_json = assemble_json_net_list_info();
+    //cJSON *root = cJSON_CreateObject();
+    //cJSON_AddItemToObject(root, "netInfo", cJSON_Parse(assemble_json_net_list_info()));
+    //json_print(root, 1);
+    //str_json = cJSON_PrintUnformatted(root);
+    str_json = assemble_json_net_list_info();
     return str_json;
 }
 char *assemble_json_temp_info(void)

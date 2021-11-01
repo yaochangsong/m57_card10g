@@ -120,7 +120,7 @@ int get_gateway(char *ifname, struct in_addr * gw)
     FILE * file;
     int ret = -1;
     struct sockaddr_in sin;
-   // char *temp_gw = NULL;
+    //char *temp_gw = NULL;
     
     if(ifname == NULL || gw == NULL)
         return -1;
@@ -133,17 +133,24 @@ int get_gateway(char *ifname, struct in_addr * gw)
 
     while (fgets(buf, sizeof(buf), file)) {
         if (sscanf(buf, "%s %lx %lx", iface, &destination, &gateway) == 3) {
-            if (destination == 0) { /* default */
+            //if (destination == 0) { /* default */
                 if(!strcmp(ifname, iface)){
-                    sin.sin_addr.s_addr = gateway;
-                    //temp_gw = inet_ntoa(sin.sin_addr);
-                    //*gw = sin.sin_addr;
-                    memcpy(gw, &sin.sin_addr, sizeof(struct in_addr));
-                    //fprintf(stdout, "gateway: %s\n", temp_gw);
-                    ret = 0;
-                    goto exit;
+                    if (destination == 0) { /* default */
+                        sin.sin_addr.s_addr = gateway;
+                        //temp_gw = inet_ntoa(sin.sin_addr);
+                        //*gw = sin.sin_addr;
+                        memcpy(gw, &sin.sin_addr, sizeof(struct in_addr));
+                        //fprintf(stdout, "gateway: %s\n", temp_gw);
+                        ret = 0;
+                        goto exit;
+                    } else{
+                        sin.sin_addr.s_addr = gateway;
+                        memcpy(gw, &sin.sin_addr, sizeof(struct in_addr));
+                        ret = 0;
+                        goto exit;
+                    }
                 }
-            }
+            //}
         }
     }
 

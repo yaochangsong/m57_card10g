@@ -85,7 +85,7 @@ static inline int write_file(uint8_t *pdata, int index, int len)
         sprintf(_file_buffer, "0x%02x ", *ptr++);
         fwrite((void *)_file_buffer,1, strlen(_file_buffer), _file_fd[index]);
     }
-
+    sync();
 
     return 0;
 }
@@ -654,52 +654,54 @@ static ssize_t _xdma_of_match_pkgs(int ch, void *data, uint32_t len, void *args,
         uint16_t src_addr;
         uint16_t port;
     }__attribute__ ((packed));
-    struct data_frame_st *pdata[4096];
+    #define _MAX_PACKAGES_NUM 16384
+    struct data_frame_st *pdata[_MAX_PACKAGES_NUM];
     struct net_sub_st *psub = args;
     uint8_t *payload = NULL;
     uint8_t *ptr = data;
     uint16_t py_src_addr = 0, src_addr = 0, port = 0;
     int pos = 0, reminder16 = 0;
-    size_t sum_len = 0, frame_len = 0, raw_len = 0;
-    int err = 0, err_size_len = 0; 
+    size_t sum_len = 0, frame_len = 0, raw_len = 0,reminder_all = 0;
+    int over = 0, err_size_len = 0, err = 0; 
     uint8_t is_print = 0;
     *err_code = 0;
 
     do{
         if(*(uint16_t *)ptr != 0x5751){  /* header */
+            over = 1;
+            err = 0;
             if(sum_len != 0){
-                if(len < offp)
+                if(len < offp){
                     printf_warn("maybe payload len err, offset err: %lu, len:%u\n", offp, len);
                     err = 1;
+                }
                 if(sum_len == (len - offp)){
-                    printf_info("read over block size: %lu, offp=%lu\n", sum_len, offp);
+                    printf_note("read over block size: %lu, offp=%lu\n", sum_len, offp);
                 } else if(sum_len <  (len - offp)){
-                    //err = 1;
-                    printf_info("err header=0x%x, block size left:%ld, offp=%lu, err_size_len=%d\n", *(uint16_t *)ptr, len - offp - sum_len, offp, err_size_len);
+                #if 1
+                    err_size_len = _xdma_find_next_header(ptr, len - offp);
+                    if(err_size_len != -1) {
+                        if(sum_len + err_size_len + offp > len){
+                            printf_warn("err size len too long:%d, sum_len:%lu\n", err_size_len, sum_len);
+                        }else{
+                            over = 0;
+                            sum_len += err_size_len;
+                            ptr  += err_size_len;
+                            //printf_note("shift size len :%d, consume len:%lu,reminder_all=%lu\n", err_size_len, sum_len, reminder_all);
+                        }
+                    }
+                #endif
+                    //printf_info("err header=0x%x, block size left:%ld, offp=%lu, err_size_len=%d\n", *(uint16_t *)ptr, len - offp - sum_len, offp, err_size_len);
                 } else{
                     err = 1;
                     printf_warn("err!! comsume length [%lu] err!, %u, %lu\n", sum_len, len, offp);
                 }
-                if(err != 0 && psub->func_id == 0x39){
-                    printf_warn("error byte: \n");
-                    print_array(ptr, 32);
+                if(err != 0){
                     ns_uplink_add_route_err_pkgs(ch, 1);
                 }
-            }else{ // sum_len = 0  and header error
-                if(len <= offp){ //read over, no need to read data
-                    //printf_note("read over, len=%u, offp=%lu\n", len , offp);
-                    break;
-                } 
-                err_size_len = _xdma_find_next_header(ptr, len - offp);
-                if(err_size_len > 0){
-                    *err_code = 1; //avoid to read error data and continue to read next pkgs
-                    sum_len = err_size_len;
-                    printf_note("error data len  = %d, remain len= %ld\n", err_size_len, len - offp - err_size_len);
-                }else{
-                    printf_err("find data faild: %d\n", err_size_len);
-                }
             }
-            break;
+            if(over == 1)
+                break;
         }
         payload = ptr + 8;
         pdata[pos] = (struct data_frame_st *)payload;
@@ -708,13 +710,7 @@ static ssize_t _xdma_of_match_pkgs(int ch, void *data, uint32_t len, void *args,
         if(reminder16 != 0){
             raw_len = frame_len;
             frame_len += reminder16;
-            if(pos > 0 && psub->func_id == 0x39 && is_print == 0){
-                printf_warn("aglin byte: \n");
-                print_array(ptr + frame_len - reminder16, 16);
-               // printf_note("[%d]not aglin 16,add %d, frame_len:%lu[0x%lx], raw_len:%lu[0x%lx]\n", pos, reminder16, frame_len, frame_len,raw_len,raw_len);
-            }
-            if(is_print++ > 50)
-                is_print = 0;
+            //printf_note("[%d]not aglin 16,add %d, frame_len:%lu[0x%lx], raw_len:%lu[0x%lx]\n", pos, reminder16, frame_len, frame_len,raw_len,raw_len);
         }
         if(frame_len > 2048){
             ns_uplink_add_route_err_pkgs(ch, 1);
@@ -727,7 +723,6 @@ static ssize_t _xdma_of_match_pkgs(int ch, void *data, uint32_t len, void *args,
             psub->func_id = src_addr = pdata[pos]->src_addr;
             psub->prio_id = ((*(uint8_t *)(ptr + 3) >> 4) & 0x0f) == 0 ? 0 :1;
             psub->port = port = pdata[pos]->port;
-           // print_array(ptr, len); 
            // printf_note("0 frame_len：%lu, chip_id=0x%x, func_id=0x%x, prio_id=0x%x,port: 0x%x\n", frame_len, psub->chip_id, psub->func_id, psub->prio_id, psub->port);
             ns_uplink_add_forward_pkgs(ch, 1);
         } else if(py_src_addr != pdata[pos]->py_src_addr || src_addr != pdata[pos]->src_addr || port != pdata[pos]->port){
@@ -737,7 +732,7 @@ static ssize_t _xdma_of_match_pkgs(int ch, void *data, uint32_t len, void *args,
             //printf_note("same type: %d, py_src_addr=%x, src_addr=%x\n", pos,  pdata[pos]->py_src_addr, pdata[pos]->src_addr);
         }
         pos++;
-        if(pos >= 4096){
+        if(pos >= _MAX_PACKAGES_NUM){
             printf_warn(">>>>>>>>>>pos is overrun!\n");
             break;
         }
@@ -872,7 +867,9 @@ static int xdma_data_dispatcher_buffer(int ch, void **data, uint32_t *len, ssize
         printf_debug(">>>>>index=%d, %p, %ld\n", index, ptr, count);
         do{
  #ifdef SPM_HEADER_CHECK
+            memset(&sub, 0, sizeof(struct net_sub_st));
             nframe = _xdma_of_match_pkgs(ch, ptr, len[index], &sub, offset, &err_code);
+            printf_note("nframe=%ld, err_code=%d, %ld/%u\n", nframe, err_code,offset, len[index]);
             //nframe = _xdma_of_match_pkgs_test(ptr, len[index], &sub, offset);
  #else
             nframe = len[index];

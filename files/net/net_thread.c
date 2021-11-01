@@ -266,7 +266,7 @@ uint64_t  get_send_bytes_by_type(int ch, int type, int id)
 
 static size_t _data_send(struct net_tcp_client *cl, void *data, size_t len)
 {
-    #define THREAD_SEND_MAX_BYTE 8196 //8388608//262144//131072
+    #define THREAD_SEND_MAX_BYTE  131072 //8388608//262144//131072
     int index = 0, r = 0;
     size_t sbyte = 0, reminder = 0;
     char *pdata = NULL;
@@ -310,7 +310,7 @@ static int  data_dispatcher(void *args, int hid, int prio)
     struct spm_context *spm_ctx = ctx->args;
     struct spm_run_parm *arg = NULL;//spm_ctx->run_args[0];
     struct net_tcp_client *cl = ctx->thread.client;
-    int ch = 0, r = 0, r0 = 0;
+    int ch = 0, r = 0;
     ch = _get_channel_by_prio(prio);
     arg = channel_param[ch];
     int index = hid;
@@ -330,12 +330,13 @@ static int  data_dispatcher(void *args, int hid, int prio)
     }
 
     if(vec_cnt > 0){
-       
         //r = send_vec_data_to_client(cl, arg->xdma_disp.type[index]->vec, vec_cnt);
         //if(r > 0)  
         //     arg->xdma_disp.inout.out_seccess_bytes += r; 
         for(int i = 0; i < vec_cnt; i++){
             arg->xdma_disp.type[index]->statistics.send_bytes += arg->xdma_disp.type[index]->vec[i].iov_len;
+            //printf_note("sendlen:%lu\n", arg->xdma_disp.type[index]->vec[i].iov_len);
+            //print_array(arg->xdma_disp.type[index]->vec[i].iov_base, 32);
             r = _data_send(cl, arg->xdma_disp.type[index]->vec[i].iov_base, arg->xdma_disp.type[index]->vec[i].iov_len);
             /* 统计需要发送字节 */
             if(r > 0)
@@ -348,7 +349,6 @@ static int  data_dispatcher(void *args, int hid, int prio)
             if(arg->xdma_disp.type[index]->vec[i].iov_len - r > 0 && r >= 0)  
                 statistics_client_send_err_add(ctx->thread.statistics, arg->xdma_disp.type[index]->vec[i].iov_len - r);
 #endif
-            r0 += r;
         }
         // printf_note("[%d]send hash id: %d, vec_cnt=%d, bytes:%d\n", cl->get_peer_port(cl), index, vec_cnt, r0);
     }

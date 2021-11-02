@@ -597,6 +597,7 @@ static int json_parse_config_param(const cJSON* root, s_config *sconfig)
     }
     /* link switch */
     cJSON *linkSwitch = NULL;
+    int islot_id = 0;
     linkSwitch = cJSON_GetObjectItem(control_parm, "linkSwitch");
     if(linkSwitch != NULL){
         printf_note("linkSwitch:\n");
@@ -606,17 +607,18 @@ static int json_parse_config_param(const cJSON* root, s_config *sconfig)
             value = cJSON_GetObjectItem(node, "slotId");
             if(value->valueint >= MAX_FPGA_CARD_SLOT_NUM)
                 continue;
-            printfn("node: %d, ", value->valueint);
+            islot_id = value->valueint;
+            printfn("node: %d, ", islot_id);
             if(cJSON_IsNumber(value))
             {
-                config->ctrl_para.link_switch[value->valueint].slod_id = value->valueint;
-                printfn("slotId:%d, ", config->ctrl_para.link_switch[value->valueint].slod_id);
+                config->ctrl_para.link_switch[islot_id].slod_id = value->valueint;
+                printfn("slotId:%d, ", config->ctrl_para.link_switch[islot_id].slod_id);
             }
             
             value = cJSON_GetObjectItem(node, "on");
             if(cJSON_IsNumber(value)){
-                config->ctrl_para.link_switch[value->valueint].onoff = value->valueint;
-                printfn("onoff:%d, ", config->ctrl_para.link_switch[value->valueint].onoff);
+                config->ctrl_para.link_switch[islot_id].onoff = value->valueint;
+                printfn("onoff:%d, ", config->ctrl_para.link_switch[islot_id].onoff);
             }
              printfn("\n");
         }

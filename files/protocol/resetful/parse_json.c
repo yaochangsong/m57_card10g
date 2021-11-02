@@ -255,7 +255,9 @@ int parse_json_net(const char * const body)
     uint32_t allport[4]={0};
     port = cJSON_GetObjectItem(root, "port");
     if(port!=NULL&&cJSON_IsNumber(port)){
-        printf_note("port: %s\n", port->valuestring);
+        printf_note("set port: %d\n", port->valueint);
+        config_set_if_cmd_port(ifname, (uint16_t)port->valueint);
+        //return RESP_CODE_EXECMD_REBOOT;
     }
     #if 0
     if(port != NULL){
@@ -1262,7 +1264,7 @@ char *assemble_json_net_list_info(void)
     int32_t link, speed;
     struct in_addr ipaddr;
     int num = get_ifname_number();
-    short port = 0;
+    uint16_t port = 0;
     cJSON *array = cJSON_CreateArray();
     cJSON* item = NULL;
     for(int index = 1; index <= num; index++){
@@ -1426,10 +1428,12 @@ char *assemble_json_selfcheck_info(void)
 char *assemble_json_netlist_info(void)
 {
     char *str_json = NULL;
-    //cJSON *root = cJSON_CreateObject();
-    //cJSON_AddItemToObject(root, "netInfo", cJSON_Parse(assemble_json_net_list_info()));
-    //json_print(root, 1);
-    //str_json = cJSON_PrintUnformatted(root);
+    #if 0
+    cJSON *root = cJSON_CreateObject();
+    cJSON_AddItemToObject(root, "netInfo", cJSON_Parse(assemble_json_net_list_info()));
+    json_print(root, 1);
+    str_json = cJSON_PrintUnformatted(root);
+    #endif
     str_json = assemble_json_net_list_info();
     return str_json;
 }

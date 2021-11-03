@@ -58,6 +58,7 @@ extern char *assemble_json_net_uplink_info(int ch);
 extern char *assemble_json_device_status_info(void);
 extern char *assemble_json_statistics_client_info(void);
 extern char *assemble_json_statistics_all_info(void);
+extern char *assemble_json_sys_info(void);
 
 #endif
 

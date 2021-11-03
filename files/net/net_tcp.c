@@ -442,33 +442,35 @@ static void tcp_accept_cb(struct uloop_fd *fd, unsigned int events)
     cl->timeout.cb = tcp_keepalive_cb;
     uloop_timeout_set(&cl->timeout, TCP_CONNECTION_TIMEOUT * 1000);
 
-    list_add(&cl->list, &srv->clients);
-    cl->srv = srv;
-    pthread_mutex_lock(&srv->tcp_client_lock);
-    cl->srv->nclients++;
-    pthread_mutex_unlock(&srv->tcp_client_lock);
-
     cl->free = tcp_free;
     cl->get_peer_addr = tcp_get_peer_addr;
     cl->get_peer_port = tcp_get_peer_port;
     cl->send = tcp_send;
     cl->request_done = tcp_client_request_done;
     printf_note("New connection from: %s:%d\n", cl->get_peer_addr(cl), cl->get_peer_port(cl));
-    cl->section.thread = net_thread_create_context(cl);
-    cl->section.hash = net_hash_new();
-    cl->section.section_id = socket_bitmap_find_index();
-    if(cl->section.section_id >= MAX_CLINET_SOCKET_NUM)
-        printf_warn("client: %s:%d. socket section id[%d] is use over[%d]!!\n", 
-                cl->get_peer_addr(cl), cl->get_peer_port(cl), cl->section.section_id, MAX_CLINET_SOCKET_NUM);
-    else
-        socket_bitmap_set(cl->section.section_id);
-    printf_note("section id=%d\n",cl->section.section_id);
-    
+
     socklen_t serv_len = sizeof(cl->serv_addr); 
     getsockname(sfd, (struct sockaddr *)&cl->serv_addr, &serv_len); 
     cl->get_serv_addr = get_serv_addr;
     cl->get_serv_port = get_serv_port;
     printf_note("New connection Serv: %s:%d, hash: %p\n", cl->get_serv_addr(cl), cl->get_serv_port(cl), cl->section.hash);
+
+    cl->section.hash = net_hash_new();
+    cl->section.thread = net_thread_create_context(cl);
+    cl->section.section_id = socket_bitmap_find_index();
+    if(cl->section.section_id >= MAX_CLINET_SOCKET_NUM)
+        printf_warn("client: %s:%d. socket section id[%d] is use over[%d]!!\n", 
+            cl->get_peer_addr(cl), cl->get_peer_port(cl), cl->section.section_id, MAX_CLINET_SOCKET_NUM);
+    else
+        socket_bitmap_set(cl->section.section_id);
+    printf_note("section id=%d\n",cl->section.section_id);
+
+    list_add(&cl->list, &srv->clients);
+    cl->srv = srv;
+    pthread_mutex_lock(&srv->tcp_client_lock);
+    cl->srv->nclients++;
+    pthread_mutex_unlock(&srv->tcp_client_lock);
+
     return;
 err:
     close(sfd);

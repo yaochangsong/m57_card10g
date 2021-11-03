@@ -13,6 +13,7 @@
 *  Initial revision.
 ******************************************************************************/
 #include <sys/types.h>
+#include <sys/sysinfo.h>
 #include <dirent.h>
 #include <unistd.h>
 #include <sys/stat.h>
@@ -216,9 +217,11 @@ int parse_json_net(const char * const body)
             return RESP_CODE_PARSE_ERR;
         }
         ipaddr = addr.s_addr;
-        printf_info("set ipaddr: %s, 0x%x\n", value->valuestring, ipaddr);
-        if(config_set_ip(ifname, ipaddr) != 0){
-            return RESP_CODE_EXECMD_ERR;
+        if(config_match_ipaddr_addr(ifname, ipaddr)== false){
+            printf_info("set ipaddr: %s, 0x%x\n", value->valuestring, ipaddr);
+            if(config_set_ip(ifname, ipaddr) != 0){
+                return RESP_CODE_EXECMD_ERR;
+            }
         }
     }
 
@@ -231,9 +234,11 @@ int parse_json_net(const char * const body)
             return RESP_CODE_PARSE_ERR;
         }
         netmask = addr.s_addr;
-        printf_info("set netmask: %s, 0x%x\n", value->valuestring, netmask);
-        if(config_set_netmask(ifname, netmask) != 0){
-            return RESP_CODE_EXECMD_ERR;
+        if(config_match_netmask_addr(ifname, netmask)== false){
+            printf_info("set netmask: %s, 0x%x\n", value->valuestring, netmask);
+            if(config_set_netmask(ifname, netmask) != 0){
+                return RESP_CODE_EXECMD_ERR;
+            }
         }
     }
     value = cJSON_GetObjectItem(root, "gateway");
@@ -246,43 +251,20 @@ int parse_json_net(const char * const body)
             return RESP_CODE_PARSE_ERR;
         }
         gw = addr.s_addr;
-        printf_info("set gateway: %s, 0x%x\n", value->valuestring, gw);
-        if(config_set_gateway(ifname, gw) != 0){
-            return RESP_CODE_EXECMD_ERR;
+        if(config_match_gateway_addr(ifname, gw)== false){
+            printf_info("set gateway: %s, 0x%x\n", value->valuestring, gw);
+            if(config_set_gateway(ifname, gw) != 0){
+                return RESP_CODE_EXECMD_ERR;
+            }
         }
     }
-    cJSON *port, *data_port;
-    uint32_t allport[4]={0};
+    cJSON *port;
     port = cJSON_GetObjectItem(root, "port");
     if(port!=NULL&&cJSON_IsNumber(port)){
-        printf_note("set port: %d\n", port->valueint);
-        config_set_if_cmd_port(ifname, (uint16_t)port->valueint);
-        //return RESP_CODE_EXECMD_REBOOT;
-    }
-    #if 0
-    if(port != NULL){
-        allport[0] = cJSON_GetObjectItem(port, "command")->valueint;
-        value = cJSON_GetObjectItem(port, "data");
-        if(value!=NULL){
-            for(int i = 0; i < cJSON_GetArraySize(value); i++){
-                allport[i+1] = cJSON_GetArrayItem(value, i)->valueint;
-                printf_debug("data_port[%d]=%d\n",i,allport[i+1]);
-            }
-        }
-        struct poal_config *config = &(config_get_config()->oal_config);
-        if(_check_element_has_equal(allport,sizeof(allport)/sizeof(uint32_t)) != -1){
-            int index = config_get_if_nametoindex(ifname);
-            config->network[index].port = allport[0];
-            for(int i=1;i<sizeof(allport)/sizeof(uint32_t);i++) {
-                 config->network[index].data_port[i-1] = allport[i];
-                 printf_debug("data port: %d. index=%d\n", config->network[index].data_port[i-1], index);
-            }
-            config_save_all();
+        if(config_set_if_cmd_port(ifname, (uint16_t)port->valueint) == 0)
             return RESP_CODE_EXECMD_REBOOT;
-        }else
-            return RESP_CODE_EXECMD_ERR;
     }
-    #endif
+
     return RESP_CODE_OK;
 }
 
@@ -1053,15 +1035,6 @@ int _assemble_statistics_client_info(struct net_tcp_client *cl, void* array)
     return 0;
 }
 
-char *assemble_json_statistics_client_info(void)
-{
-    char *str_json = NULL;
-    cJSON *array = cJSON_CreateArray();
-    tcp_client_do_for_each(_assemble_statistics_client_info, NULL, -1, array);
-    str_json = cJSON_PrintUnformatted(array);
-    return str_json;
-}
-
 char *assemble_json_statistics_all_info(void)
 {
     char *str_json = NULL;
@@ -1071,10 +1044,55 @@ char *assemble_json_statistics_all_info(void)
     cJSON_AddItemToObject(root, "softversion", cJSON_Parse(assemble_json_softversion()));
     cJSON_AddItemToObject(root, "device", cJSON_Parse(assemble_json_device_status_info()));
     cJSON_AddItemToObject(root, "temperature", cJSON_Parse(assemble_json_device_temperature_info()));
+    cJSON_AddItemToObject(root, "sysinfo", cJSON_Parse(assemble_json_sys_info()));
     json_print(root, 1);
     str_json = cJSON_PrintUnformatted(root);
     return str_json;
 }
+
+char *assemble_json_statistics_client_info(void)
+{
+    char *str_json = NULL;
+    cJSON *array = cJSON_CreateArray();
+    tcp_client_do_for_each(_assemble_statistics_client_info, NULL, -1, array);
+    str_json = cJSON_PrintUnformatted(array);
+    return str_json;
+}
+
+
+char *assemble_json_sys_info(void)
+{
+    char *str_json = NULL;
+    cJSON *root = cJSON_CreateObject();
+
+    struct sysinfo info;
+    if(sysinfo(&info)){
+        fprintf(stderr, "Failed to get sysinfo, errno: %u[%s]\n", errno, strerror(errno));
+        return NULL;
+    }
+
+    char buffer[128] = {0};
+    snprintf(buffer, sizeof(buffer) - 1, "%" PRIu64, info.uptime);
+    cJSON_AddStringToObject(root, "uptime", buffer);
+    snprintf(buffer, sizeof(buffer) - 1, "1min:%lu,5min:%lu,15min:%lu", info.loads[0], info.loads[1], info.loads[2]);
+    cJSON_AddStringToObject(root, "loads", buffer);
+    snprintf(buffer, sizeof(buffer) - 1, "%" PRIu64, info.totalram);
+    cJSON_AddStringToObject(root, "totalram", buffer);
+    snprintf(buffer, sizeof(buffer) - 1, "%" PRIu64, info.freeram);
+    cJSON_AddStringToObject(root, "freeram", buffer);
+    snprintf(buffer, sizeof(buffer) - 1, "%" PRIu64, info.totalswap);
+    cJSON_AddStringToObject(root, "totalswap", buffer);
+    snprintf(buffer, sizeof(buffer) - 1, "%" PRIu64, info.freeswap);
+    cJSON_AddStringToObject(root, "freeswap", buffer);
+    snprintf(buffer, sizeof(buffer) - 1, "%u", info.procs);
+    cJSON_AddStringToObject(root, "procs", buffer);
+
+    json_print(root, 1);
+    str_json = cJSON_PrintUnformatted(root);
+    return str_json;
+
+}
+
 
 
 char *assemble_json_device_status_info(void)

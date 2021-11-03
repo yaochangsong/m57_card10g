@@ -15,7 +15,7 @@ restart_process_if_die()
     if [ $is_running -eq 0 ];
     then
         echo "$(get_timestamp) $1 is down, now I will restart it" |tee -a $log_file
-        echo "run start cmd： $proc_start_cmd "
+        echo "run start cmd: $proc_start_cmd"
         $proc_start_cmd
     fi
 }

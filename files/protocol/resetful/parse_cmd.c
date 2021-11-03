@@ -39,7 +39,7 @@ static struct response_err_code {
     {RESP_CODE_DISK_DETECTED_ERR,           "disk not detected"},
     {RESP_CODE_PATH_PARAM_ERR,              "path parameter error"},
     {RESP_CODE_EXECMD_ERR,                  "execute command error"},
-    {RESP_CODE_EXECMD_REBOOT,               "reboot,waiting..."},
+    {RESP_CODE_EXECMD_REBOOT,               "platform restart, please wait..."},
 };
 
 /* 射频参数类型 */
@@ -895,6 +895,7 @@ int cmd_get_status_client_info(struct uh_client *cl, void **arg, void **content)
     return code;
 }
 
+
 int cmd_get_statistics_info(struct uh_client *cl, void **arg, void **content)
 {
     int code = RESP_CODE_OK;
@@ -902,6 +903,17 @@ int cmd_get_statistics_info(struct uh_client *cl, void **arg, void **content)
     if(*content == NULL)
         code = RESP_CODE_EXECMD_ERR;
     
+    *arg = get_resp_message(code);
+    return code;
+}
+
+int cmd_get_sys_info(struct uh_client *cl, void **arg, void **content)
+{
+    int code = RESP_CODE_OK;
+    *content = assemble_json_sys_info();
+    if(*content == NULL)
+        code = RESP_CODE_EXECMD_ERR;
+
     *arg = get_resp_message(code);
     return code;
 }

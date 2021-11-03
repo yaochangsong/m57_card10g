@@ -83,6 +83,9 @@ extern bool config_is_temperature_warning(int16_t temperature);
 extern uint16_t *config_get_fft_window_data(int type, size_t *fsize);
 extern int  config_get_link_switch(int id);
 extern int  config_set_link_switch(int id, int onoff);
+extern bool config_match_gateway_addr(const char *ifname, uint32_t gateway);
+extern bool config_match_ipaddr_addr(const char *ifname, uint32_t ipaddr);
+extern bool config_match_netmask_addr(const char *ifname, uint32_t netmask);
 
 #endif
 

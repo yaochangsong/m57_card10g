@@ -5,31 +5,9 @@ DAEMON=/usr/bin/platform
 start()
 {
     echo " Start FlatForm."
-    str=$(cat /etc/profile | grep 'export TZ')
-    if [ -z "$str" ]; then
-		echo "TZ=UTC-08:00" >> /etc/profile
-		echo "export TZ" >> /etc/profile
-    fi
-    /etc/config.sh
-    #LED
-    /etc/led.sh init	>/dev/null 2>&1
-    /etc/led.sh power on >/dev/null 2>&1
-    /etc/led.sh check on >/dev/null 2>&1
-    #network
-    /etc/network.sh >/dev/null 2>&1
-    /etc/led.sh work on	>/dev/null 2>&1
-    #udp send buffer 8m
-    echo 8388608 > /proc/sys/net/core/wmem_max
-    #disk
-    /etc/disk.sh mount >/dev/null 2>&1
-    #status check
-    /etc/check.sh stop >/dev/null 2>&1
-    /etc/check.sh start
-    #reset
-    /etc/reset-button.sh stop >/dev/null 2>&1
-    /etc/reset-button.sh start
     #printk
     echo 3 4 1 3 > /proc/sys/kernel/printk
+    sh -c "echo 8388608 > /proc/sys/net/core/wmem_max"
     sleep 1
     start-stop-daemon -S -o --background -x $DAEMON
     sleep 1
@@ -62,13 +40,11 @@ stop()
     if start-stop-daemon -K -x $DAEMON >/dev/null 2>&1; then
     	echo "Stop FlatForm..."
     fi
-    /etc/led.sh work off >/dev/null 2>&1
 }
 
 case $1 in
         start)
-                factory_setting
-	    	    start
+	    	start
                 ;;
         stop)
                 stop

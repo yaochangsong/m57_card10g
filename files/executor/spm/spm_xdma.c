@@ -715,6 +715,7 @@ static ssize_t _xdma_of_match_pkgs(int ch, void *data, uint32_t len, void *args,
         if(frame_len > 2048){
             ns_uplink_add_route_err_pkgs(ch, 1);
             printf_warn("payload length error: %lu\n", frame_len);
+            sum_len = 0;
             break;
         }
         

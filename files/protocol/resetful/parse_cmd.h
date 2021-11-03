@@ -17,6 +17,7 @@
 #define _CMD_HTTP_RESTFUL_
 
 #define RESP_CODE_OK                     0
+#define RESP_CODE_EXECMD_REBOOT          1
 #define RESP_CODE_UNKNOWN_OPS_MODE      -1
 #define RESP_CODE_PARSE_ERR             -2
 #define RESP_CODE_INTERNAL_ERR          -3
@@ -29,7 +30,6 @@
 #define RESP_CODE_DISK_DETECTED_ERR     -10
 #define RESP_CODE_PATH_PARAM_ERR        -11
 #define RESP_CODE_EXECMD_ERR            -12
-#define RESP_CODE_EXECMD_REBOOT         -13
 
 
 extern int cmd_muti_point(struct uh_client *cl, void **arg, void **content);
@@ -71,5 +71,6 @@ extern int cmd_get_status_uplink_info(struct uh_client *cl, void **arg, void **c
 extern int cmd_linkcheck_set(struct uh_client *cl, void **arg, void **content);
 extern int cmd_get_status_client_info(struct uh_client *cl, void **arg, void **content);
 extern int cmd_get_statistics_info(struct uh_client *cl, void **arg, void **content);
+extern int cmd_get_sys_info(struct uh_client *cl, void **arg, void **content);
 
 #endif

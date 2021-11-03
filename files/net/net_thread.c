@@ -474,14 +474,13 @@ struct net_thread_context * net_thread_create_context(void *cl)
     ctx->args = get_spm_ctx();
     _net_thread_wait_init(ctx);
     printf_note("client: %s:%d create thread\n", client->get_peer_addr(client), client->get_peer_port(client));
-    _net_thread_count_add();
     ret =  pthread_create_detach (NULL,_thread_init, _net_thread_main_loop, _net_thread_exit,  ctx->thread.name , ctx, ctx, &tid);
     if(ret != 0){
         perror("pthread err");
-        _net_thread_count_sub();
         safe_free(ctx);
         return NULL;
     }
+    _net_thread_count_add();
     ctx->thread.tid = tid;
     ctx->ops = &nt_ops;
     return ctx;

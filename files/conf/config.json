@@ -19,7 +19,7 @@
 				"data":	[1235, 1236, 1237]
 			}
 		}, {
-			"ifname":	"docker0",
+			"ifname":	"enaphyt4i1",
 			"port":	{
 				"command":	5000,
 				"data":	[1235, 1236, 1237]

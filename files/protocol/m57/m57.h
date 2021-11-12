@@ -125,6 +125,10 @@ typedef enum {
     CCT_MASTER_NODE_REGISTER = 0x0018,
 }card_cmd_type;
 
+#define M57_CARD_STATUS_LOAD_FAILD   -5
+#define M57_CARD_STATUS_LINK_FAILD   -7
+#define M57_CARD_STATUS_OK            0
+
 extern bool m57_parse_header(void *client, const char *buf, int len, int *head_len, int *code);
 extern bool m57_execute(void *client, int *code);
 extern void m57_send_error(void *client, int code, void *args);

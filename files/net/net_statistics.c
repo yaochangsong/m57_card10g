@@ -2,54 +2,7 @@
 #include "net_statistics.h"
 
 struct net_statistics_info net_statistics;
-#if 0
-static struct hash_type {
-    int type;
-    int mask;
-    int offset;
-}_hash_type_table[] = {
-    {HASHMAP_TYPE_SLOT, CARD_SLOT_MASK, GET_HASHMAP_SLOT_ADD_OFFSET},
-    {HASHMAP_TYPE_CHIP, CARD_CHIP_MASK, GET_HASHMAP_CHIP_ADD_OFFSET},
-    {HASHMAP_TYPE_FUNC, CARD_FUNC_MASK, GET_HASHMAP_FUNC_ADD_OFFSET},
-    {HASHMAP_TYPE_PRIO, CARD_PRIO_MASK, GET_HASHMAP_PROI_ADD_OFFSET},
-};
 
-static bool _of_match_type_id(int hash_id, int type_id, int offset, int mask)
-{
-    if((((hash_id & mask) >> offset) & (type_id != 0)) || 
-        (type_id == 0 && ((hash_id & mask) == 0)))
-        return true;
-    else
-        return false;
-}
-
-uint64_t  get_send_bytes_by_type(int ch, int type, int id)
-{
-    struct spm_run_parm *arg = NULL;
-     arg = channel_param[ch];
-    int hash_index[MAX_XDMA_DISP_TYPE_NUM] = {0}, count = 0, _index = 0;
-    uint64_t sum_bytes = 0;
-
-    if(arg == NULL)
-        return 0;
-    
-    for(int i = 0 ; i < MAX_XDMA_DISP_TYPE_NUM; i++){
-        if(arg->xdma_disp.type[i]->statistics.send_bytes != 0)
-            hash_index[count++] = i;
-    }
-    
-    for(int i = 0; i < ARRAY_SIZE(_hash_type_table); i++){
-        if(type == _hash_type_table[i].type){
-            for(int j = 0; j < count; j++){
-                _index = hash_index[j] ;
-                if(_of_match_type_id(_index,  id, _hash_type_table[i].offset, _hash_type_table[i].mask))
-                    sum_bytes += arg->xdma_disp.type[_index]->statistics.send_bytes;
-            }
-        }
-    }
-    return sum_bytes;
-}
-#endif
 
 static int _statistics_client_send_ok(struct net_tcp_client *cl, void* bytes)
 {
@@ -105,7 +58,7 @@ void *device_status_check_thread(void *s)
     bool is_check = false;
     int try_count = 0;
     //device start check FPGA Card
-    config_set_device_status(0, 0);
+    config_set_device_status(DEVICE_STATUS_CHECK_CARD, 0);
     sleep(2);
     while(1){
         is_check = io_get_xdma_fpga_status();
@@ -114,13 +67,13 @@ void *device_status_check_thread(void *s)
             if(try_count++ > 10){
                 try_count = 0;
                 //device Not Find FPGA Card
-                config_set_device_status(-1, 0);
+                config_set_device_status(DEVICE_STATUS_NO_CARD, 0);
             }
-        } else if((config_get_device_status(NULL) == 0) || 
-                    (config_get_device_status(NULL) == 3) || 
-                    (config_get_device_status(NULL) == -1))
+        } else if((config_get_device_status(NULL) == DEVICE_STATUS_CHECK_CARD) || 
+                    (config_get_device_status(NULL) == DEVICE_STATUS_LOAD_OK) || 
+                    (config_get_device_status(NULL) == DEVICE_STATUS_NO_CARD))
             //if the device   is in checking  or load ok or not find card status, then set the device is ok status
-            config_set_device_status(1, 0);
+            config_set_device_status(DEVICE_STATUS_OK, 0);
         sleep(3);
     }
 }
@@ -141,5 +94,9 @@ int device_status_loop(void)
 void net_statistics_init(void)
 {
     memset(&net_statistics, 0, sizeof(net_statistics));
+    for(int i = 0; i < MAX_FPGA_CARD_SLOT_NUM; i++){
+        net_statistics.chip[i].load_status = DEVICE_STATUS_WAIT_LOAD;
+        net_statistics.chip[i].link_status = DEVICE_STATUS_WAIT_LINK;
+    }
     device_status_loop();
 }

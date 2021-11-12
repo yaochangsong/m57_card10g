@@ -45,6 +45,18 @@ struct net_statistics_info{
 };
 extern struct net_statistics_info net_statistics;
 
+#define DEVICE_STATUS_WAIT_LINK     6
+#define DEVICE_STATUS_LINK_OK       5
+#define DEVICE_STATUS_WAIT_LOAD     4
+#define DEVICE_STATUS_LOAD_OK       3
+#define DEVICE_STATUS_LOADING       2
+#define DEVICE_STATUS_OK            1
+#define DEVICE_STATUS_CHECK_CARD    0
+#define DEVICE_STATUS_NO_CARD      -1
+#define DEVICE_STATUS_LOAD_ERR     -2
+#define DEVICE_STATUS_LINK_ERR     -3
+#define DEVICE_STATUS_UNKOWN_ERR   -255
+
 
 static inline  char *_get_device_status_info(int errCode)
 {
@@ -52,14 +64,17 @@ static inline  char *_get_device_status_info(int errCode)
         int code;
         char *message;
     } _msg[] ={
-        {3,            "Load ok"},
-        {2,            "Loading"},
-        {1,            "Ok"},
-        {0,            "Check FPGA Card"},
-        {-1,           "Not Find FPGA Card"},
-        {-2,           "Bit File Load Error"},
-        {-3,           "Link Error"},
-        {-255,         "Unkonw Error"},
+        {DEVICE_STATUS_WAIT_LINK,           "Wait"},
+        {DEVICE_STATUS_LINK_OK,             "OK"},
+        {DEVICE_STATUS_WAIT_LOAD,           "Wait"},
+        {DEVICE_STATUS_LOAD_OK,             "OK"},
+        {DEVICE_STATUS_LOADING,             "Loading"},
+        {DEVICE_STATUS_OK,                  "Ok"},
+        {DEVICE_STATUS_CHECK_CARD,          "Check FPGA Card"},
+        {DEVICE_STATUS_NO_CARD,             "Not Find FPGA Card"},
+        {DEVICE_STATUS_LOAD_ERR,            "Load Error"},
+        {DEVICE_STATUS_LINK_ERR,            "Link Error"},
+        {DEVICE_STATUS_UNKOWN_ERR,          "Unkonw Error"},
     };
     for (int i = 0; i < ARRAY_SIZE(_msg); i++){
         if(_msg[i].code == errCode)
@@ -74,7 +89,6 @@ static inline int config_get_device_status(char **info)
         *info = net_statistics.device_status.info;
     return net_statistics.device_status.code;
 }
-
 
 /*
 3: 加载成功
@@ -152,43 +166,6 @@ static inline uint64_t ns_uplink_get_route_bytes(int ch)
 }
 
 
-#if 0
-/* 上行发送字节数 */
-static inline void _ns_uplink_add_send_bytes(int ch,uint32_t bytes)
-{
-    net_statistics.uplink[ch].send_bytes += bytes;
-}
-static inline uint64_t _ns_uplink_get_send_bytes(int ch)
-{
-    return net_statistics.uplink[ch].send_bytes;
-}
-
-static inline void ns_uplink_add_send_ok_bytes(int ch,uint32_t bytes)
-{
-    net_statistics.uplink[ch].send_ok_bytes += bytes;
-}
-static inline uint64_t ns_uplink_get_send_ok_bytes(int ch)
-{
-    return net_statistics.uplink[ch].send_ok_bytes;
-}
-
-static inline void ns_uplink_add_send_bytes(int ch,uint32_t pre_bytes, uint32_t ok_bytes)
-{
-    net_statistics.uplink[ch].send_bytes    += pre_bytes;
-    net_statistics.uplink[ch].send_ok_bytes    += ok_bytes;
-}
-
-
-/* 上行发送错误字节数 */
-static inline uint64_t ns_uplink_get_send_err_bytes(int ch)
-{
-    if(net_statistics.uplink[ch].send_bytes - net_statistics.uplink[ch].send_ok_bytes < 0)
-        return 0;
-    return net_statistics.uplink[ch].send_bytes - net_statistics.uplink[ch].send_ok_bytes;
-}
-#endif
-
-
 /* 上行路由转发报文 */
 static inline void ns_uplink_add_forward_pkgs(int ch, uint32_t pkgs)
 {
@@ -244,7 +221,7 @@ static inline uint64_t ns_downlink_get_err_pkgs(void)
     return net_statistics.downlink.err_pkgs;
 }
 
-/* 获取芯片加载状态 */
+/* 获取芯片加载状态*/
 static inline int ns_downlink_get_loadbit_result(int slotid)
 {
     if(slotid > MAX_FPGA_CARD_SLOT_NUM)
@@ -252,6 +229,15 @@ static inline int ns_downlink_get_loadbit_result(int slotid)
 
     return net_statistics.chip[slotid].load_status;
 }
+
+static inline char *ns_downlink_get_loadbit_str_result(int slotid)
+{
+    if(slotid > MAX_FPGA_CARD_SLOT_NUM)
+        return "null";
+    
+    return _get_device_status_info(net_statistics.chip[slotid].load_status);
+}
+
 
 /* 设置芯片加载状态 */
 static inline void ns_downlink_set_loadbit_result(int slotid, int status)
@@ -270,6 +256,15 @@ static inline int ns_downlink_get_link_result(int slotid)
     
     return net_statistics.chip[slotid].link_status;
 }
+
+static inline char *ns_downlink_get_link_str_result(int slotid)
+{
+    if(slotid > MAX_FPGA_CARD_SLOT_NUM)
+        return "null";
+    
+    return _get_device_status_info(net_statistics.chip[slotid].link_status);
+}
+
 
 /* 设置芯片link状态 */
 static inline void ns_downlink_set_link_result(int slotid, int status)

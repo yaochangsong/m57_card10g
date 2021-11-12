@@ -1003,14 +1003,14 @@ char *assemble_json_slot_info(void)
     for_each_set_bit(bit, cards_status_get_bitmap(), MAX_FPGA_CARD_SLOT_NUM){
         cJSON_AddItemToArray(array, item = cJSON_CreateObject());
         cJSON_AddNumberToObject(item, "id", bit);
-        cJSON_AddStringToObject(item, "status", "ok");
+        cJSON_AddStringToObject(item, "status", "OK");
         cJSON_AddNumberToObject(item, "type", 1);
-        cJSON_AddStringToObject(item, "loadStatus",  (ns_downlink_get_loadbit_result(bit) == 0 ? "OK":"False"));
+        cJSON_AddStringToObject(item, "loadStatus",  ns_downlink_get_loadbit_str_result(bit));
         snprintf(buffer, sizeof(buffer) - 1, "%" PRIu64, get_send_bytes_by_type(0, HASHMAP_TYPE_SLOT, bit));
         cJSON_AddStringToObject(item, "uplinkBytes", buffer);
         cJSON_AddStringToObject(item, "softVersion", "1.0");
         cJSON_AddNumberToObject(item, "linkSwitch", config_get_link_switch(bit));
-        cJSON_AddStringToObject(item, "linkStatus", (ns_downlink_get_link_result(bit) == 0 ? "OK":"False"));
+        cJSON_AddStringToObject(item, "linkStatus", ns_downlink_get_link_str_result(bit));
     }
 #endif
     json_print(array, 1);

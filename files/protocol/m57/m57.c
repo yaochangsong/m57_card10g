@@ -763,11 +763,12 @@ load_file_exit:
                             sleep(1);
                             /* 1st: check load result */
                             ret = _reg_get_load_result(get_fpga_reg(), cl->section.chip_id, NULL);
-                            ret = (ret == 0 ? 0 : -5); // -5: load faild; 0: ok
-                            ns_downlink_set_loadbit_result(CARD_SLOT_NUM(cl->section.chip_id), ret);
+                            ret = (ret == 0 ? M57_CARD_STATUS_OK : M57_CARD_STATUS_LOAD_FAILD); // -5: load faild; 0: ok
                             //device load faild
-                            if(ret != 0)
-                                config_set_device_status(-2, cl->section.chip_id);
+                            if(ret != M57_CARD_STATUS_OK){
+                                ns_downlink_set_loadbit_result(CARD_SLOT_NUM(cl->section.chip_id), DEVICE_STATUS_LOAD_ERR);
+                                config_set_device_status(DEVICE_STATUS_LOAD_ERR, cl->section.chip_id);
+                            }
                             /* 2st: check link result,
                                 NOTE:
                                 1) link switch is on;
@@ -776,27 +777,34 @@ load_file_exit:
                             */
                             if(config_get_link_switch(CARD_SLOT_NUM(cl->section.chip_id)) && ret == 0 && (CARD_CHIP_NUM(cl->section.chip_id) == 2)){
                                 ret = _reg_get_link_result(get_fpga_reg(), cl->section.chip_id, NULL);
-                                ret = (ret == 0 ? 0 : -7); // -7: link faild; 0: ok
-                                ns_downlink_set_link_result(CARD_SLOT_NUM(cl->section.chip_id), ret);
+                                ret = (ret == 0 ? M57_CARD_STATUS_OK : M57_CARD_STATUS_LINK_FAILD); // -7: link faild; 0: ok
+                                
                                 //device link faild
-                                if(ret != 0)
-                                    config_set_device_status(-3, cl->section.chip_id);
+                                if(ret != M57_CARD_STATUS_OK){
+                                    ns_downlink_set_link_result(CARD_SLOT_NUM(cl->section.chip_id), DEVICE_STATUS_LINK_ERR);
+                                    config_set_device_status(DEVICE_STATUS_LINK_ERR, cl->section.chip_id);
+                                }else{
+                                    ns_downlink_set_link_result(CARD_SLOT_NUM(cl->section.chip_id), DEVICE_STATUS_LINK_OK);
+                                }
                             }
-                            if(ret == 0){
+                            if(ret == M57_CARD_STATUS_OK){
                                 //device load ok
-                                config_set_device_status(3, cl->section.chip_id);
+                                ns_downlink_set_loadbit_result(CARD_SLOT_NUM(cl->section.chip_id), DEVICE_STATUS_LOAD_OK);
+                                config_set_device_status(DEVICE_STATUS_LOAD_OK, cl->section.chip_id);
                             }
                          }
                     }
                     usleep(30000);
                 }else{
-                    config_set_device_status(-2, cl->section.chip_id);
+                    ns_downlink_set_loadbit_result(CARD_SLOT_NUM(cl->section.chip_id), DEVICE_STATUS_LOAD_ERR);
+                    config_set_device_status(DEVICE_STATUS_LOAD_ERR, cl->section.chip_id);
                 }
                 _assamble_resp_payload(cl, cl->section.chip_id, ret);
                 _code = CCT_RSP_LOAD;
             }else{
                 //set loading status
-                config_set_device_status(2, cl->section.chip_id);
+                ns_downlink_set_loadbit_result(CARD_SLOT_NUM(cl->section.chip_id), DEVICE_STATUS_LOADING);
+                config_set_device_status(DEVICE_STATUS_LOADING, cl->section.chip_id);
             }
             
             break;

@@ -264,7 +264,7 @@ int http_on_request(struct uh_client *cl)
                     if(err_msg){
                         cl->send_json(cl, ret, err_msg, content);
                         if(RESP_CODE_EXECMD_REBOOT == ret){
-                            printf_warn("Platform Exit, Wait Reboot For Watchdog!\n");
+                            printf_warn("exit! Need reboot to take effect!\n");
                             exit(0);
                         }
                     }

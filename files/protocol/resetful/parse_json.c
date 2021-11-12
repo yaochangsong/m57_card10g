@@ -191,7 +191,7 @@ int parse_json_net(const char * const body)
     char ifname[IFNAMSIZ];
     uint32_t ipaddr, netmask, gw;
     struct in_addr addr;
-    int r;
+    int r, is_reboot = 0;
     if (root == NULL)
     {
         const char *error_ptr = cJSON_GetErrorPtr();
@@ -222,6 +222,7 @@ int parse_json_net(const char * const body)
             if(config_set_ip(ifname, ipaddr) != 0){
                 return RESP_CODE_EXECMD_ERR;
             }
+            is_reboot = 1;
         }
     }
 
@@ -262,9 +263,12 @@ int parse_json_net(const char * const body)
     port = cJSON_GetObjectItem(root, "port");
     if(port!=NULL&&cJSON_IsNumber(port)){
         if(config_set_if_cmd_port(ifname, (uint16_t)port->valueint) == 0)
-            return RESP_CODE_EXECMD_REBOOT;
+            is_reboot = 1;
     }
-
+    
+    if(is_reboot == 1)
+        return RESP_CODE_EXECMD_REBOOT;
+    
     return RESP_CODE_OK;
 }
 

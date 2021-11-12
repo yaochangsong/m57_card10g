@@ -39,7 +39,7 @@ static struct response_err_code {
     {RESP_CODE_DISK_DETECTED_ERR,           "disk not detected"},
     {RESP_CODE_PATH_PARAM_ERR,              "path parameter error"},
     {RESP_CODE_EXECMD_ERR,                  "execute command error"},
-    {RESP_CODE_EXECMD_REBOOT,               "platform restart, please wait..."},
+    {RESP_CODE_EXECMD_REBOOT,               "wait! reboot application to take effect!"},
 };
 
 /* 射频参数类型 */

@@ -8,16 +8,26 @@ interface=/etc/network/interfaces
 
 MOUNT_DIR="/mnt"
 #配置是否有独立分区
-is_mount=$(mount |grep $MOUNT_DIR|grep -v grep|wc -l)
-if [ $is_mount -ne 0 ];
-then
-	interface=/$MOUNT_DIR/network/interfaces 
-fi
+#is_mount=$(mount |grep $MOUNT_DIR|grep -v grep|wc -l)
+#if [ $is_mount -ne 0 ];
+#then
+#	interface=/$MOUNT_DIR/network/interfaces 
+#fi
+
 isValidIp() 
 {
 	local ip=$1
 	local ret=1
-	
+        
+	if [[ $ip =~ ^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$ ]]; then
+                ip=(${ip//\./ })
+                [[ ${ip[0]} -le 255 && ${ip[1]} -le 255 && ${ip[2]} -le 255 && ${ip[3]} -le 255 ]]
+                ret=$?
+        fi
+        if [ $ret -ne 0 ]; then
+                echo "$1 is not valid address"
+                exit 1
+        fi	
 }
 
 isValidMac()
@@ -75,10 +85,12 @@ set_gw()
     ifname=$1
     new_gw=$2
     gateway=$(grep -A 50  $ifname $interface|grep 'gateway'|sed -n '1p'|awk '{print $2}')
-    isValidIp $gateway
+    if [ -n "$gateway" ]; then
+    	isValidIp $gateway
 	route del default gw $gateway
-    #sed -i '/iface '"$ifname"'/,/gateway/s/'$gateway'/'$new_gw'/g' $
+    	#sed -i '/iface '"$ifname"'/,/gateway/s/'$gateway'/'$new_gw'/g' $
 	sed -i '/iface '"$ifname"'/,/gateway/s/\<'${gateway}'\>/'$new_gw'/g' $interface
+    fi
 	route add default gw $new_gw
 	#ip route add default via $new_gw dev $ifname
 }

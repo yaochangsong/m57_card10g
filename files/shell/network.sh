@@ -39,8 +39,13 @@ load_default_route()
     for((i=0;i<${#ifname[@]};i++))
     do
         gw=`/etc/netset.sh  get_gw ${ifname[i]}`
-        isValidIp $gw
-        route add default gw $gw 
+	if [ -z "$gw" ] || [ "${ifname[i]}" == "lo" ] || [ "${ifname[i]}" == "docker0" ]; then
+                continue #echo "$gw is null or ${ifname[i]} is not allowed"
+        else
+                echo "set gateway ${ifname[i]}: $gw"
+                isValidIp $gw
+                route add default gw $gw
+        fi
     done
 }
 

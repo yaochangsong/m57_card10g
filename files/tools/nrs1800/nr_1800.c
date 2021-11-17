@@ -633,6 +633,7 @@ char *get_config_path(void)
 	return config_path;
 }
 
+#if 1
 int main(int argc, char *argv[])
 {
 	int cmd_opt;
@@ -652,4 +653,101 @@ int main(int argc, char *argv[])
     nr_config_init();
     nsr1800_init();
 }
+#else
+int main(int argc, char *argv[])
+{
+	int cmd_opt;
+	int i2c_fd = 0;
+	uint32_t addr = 0;
+	uint32_t value = 0;
+	int isWrite = 0;
+	int retry = 3;
+	int timeout = 100;
+	int init = 0;
+	int reset = 0;
+	
+    printf("nsr1800 I2C init\n");  
+    i2c_fd = open("/dev/i2c-1", O_RDWR);
+    if(i2c_fd < 0){  
+        printf("####i2c device open failed####\n");  
+        return (-1);  
+    }
+
+	while ((cmd_opt = getopt_long(argc, argv, "a:d:ir", NULL, NULL)) != -1)
+	{
+		switch (cmd_opt)
+		{
+		  case 'i':
+		    init = 1;
+		    break;		
+		  case 'r':
+		    reset = 1;
+		    break;	
+		  case 'a':
+		    addr = getopt_integer(optarg);
+		    break;
+		  case 'd':
+		  	isWrite = 1;
+		    value = getopt_integer(optarg);
+		    break;
+		  default:
+		    exit(0);
+		    break;
+		}
+	}
+#if 1
+    if(ioctl(i2c_fd, I2C_RETRIES, 5) < 0) {  
+        perror("Unable to set I2C_RETRIES\n");  
+    }  
+
+    if(ioctl(i2c_fd, I2C_TIMEOUT, 10) < 0) {  
+        perror("Unable to set I2C_TIMEOUT\n");  
+    }  
+#endif
+
+#if 0
+	if(init)
+	{
+		if(nsr1800_init(i2c_fd))
+		{
+    		printf("error nsr1800 init failed\n");
+		}
+		close(i2c_fd);
+    	return 0;
+	}
+#endif
+	if(reset)
+	{
+		if(nsr1800_soft_reset(i2c_fd))
+		{
+    		printf("error nsr1800 reset port failed\n");
+		}
+		close(i2c_fd);
+    	return 0;
+	}
+	
+	if(isWrite)
+	{
+    	if(!nsr1800_7bit_write_i2c_register(i2c_fd, NSR1800_I2C_SLAVE_7BIT_ADDR, addr, &value, sizeof(value)))
+    	{
+			printf("write addr:0x%x value:0x%08x\n", addr, value);
+    	}
+    	else
+    		printf("error write addr:0x%x value:0x%x\n", addr, value);
+    }
+    else
+    {
+		if(!nsr1800_7bit_read_i2c_register(i2c_fd, NSR1800_I2C_SLAVE_7BIT_ADDR, addr, &value, sizeof(value)))
+		{
+			printf("read addr:0x%x value:0x%08x\n", addr, value);
+		}
+		else
+			printf("error read addr:0x%x\n", addr);
+	}
+	
+    close(i2c_fd);
+    return 0;
+}
+#endif
+
 

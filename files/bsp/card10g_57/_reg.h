@@ -250,7 +250,7 @@ static inline int _reg_get_fpga_info_(FPGA_CONFIG_REG *reg, int id, void **args)
     uint8_t *ptr, *pstatus;
     #define VALID_MAX_CARD_SLOTS_NUM 4
     #define START_CARD_SLOTS_NUM 2
-    printf_note("_reg_get_fpga_info>\n");
+
     pstatus = calloc(1, MAX_FPGA_CARD_SLOT_NUM*2);
     if(pstatus == NULL){
         printf_err("malloc err\n");

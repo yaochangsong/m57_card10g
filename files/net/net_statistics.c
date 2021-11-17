@@ -62,7 +62,8 @@ void *device_status_check_thread(void *s)
     sleep(2);
     while(1){
         is_check = io_get_xdma_fpga_status();
-        printf_note("XDMA FPGA Status: %s!!\n", is_check == true ? "OK" : "False");
+        if(is_check == false)
+            printf_warn("XDMA FPGA Status: %s!!\n", is_check == true ? "OK" : "False");
         if(is_check == false){
             if(try_count++ > 10){
                 try_count = 0;

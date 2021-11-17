@@ -347,7 +347,7 @@ static ssize_t xspm_stream_read(int ch, int type,  void **data, uint32_t *len, v
             //write_over(i, len[i]);
         }
 		#endif
-        printf_info("[%d,index:%d][%p, %p, len:%u, offset=0x%x]%s\n", 
+        printf_debug("[%d,index:%d][%p, %p, len:%u, offset=0x%x]%s\n", 
                 i, index, data[i], pstream[type].ptr[index], len[i], info->rx_index,  pstream[type].name);
     }
     return info->ready_count;
@@ -643,7 +643,37 @@ static int _xdma_find_next_header(uint8_t *ptr, size_t len)
     return offset;
 }
 
-static ssize_t _xdma_of_match_pkgs(int ch, void *data, uint32_t len, void *args, size_t offp, int *err_code)
+/* 数据包帧匹配分析：
+    从XDMA块(长度XDMA_BLOCK_SIZE)中读取数据(data,len),分析一块数据中包含的相同订阅参数且内存地址连续数据长度,一直读
+    取直到不同帧或者帧错误；若是不同帧，下次传入帧头(data)再继续分析(offp表示上次分析完成的数据长度)；若帧错误或在
+    读取数据解析完毕，表示该块数据分析完毕（read_over=1）；继续下一块（若存在）分析；
+
+    入参：
+        @ch: channel
+        @data: 数据头指针
+        @len: 读取数据长度
+        @args： 参数指针
+        @offp: 上次调用已正确读取数据长度
+        @err_code: 1： 有错误 0：正确 ，返回解析完改包是否有错误，注：表示正在分析的数据帧是否存在错误,已分析的数据帧可以返回使用 。
+        @read_over: 本数据块分析完毕 1：完成     ，0：未完成 [完成     :若帧错误或在读取数据解析完毕]
+
+    返回参数：
+    解析相同订阅参数内存地址连续数据长度
+*/
+/*
+    帧格式说明
+    51 57 0f 30 18 01 00 00 00 00 02 05 00 00 08 01 02 02 00 00 00 00 00 00 aa aa 55 55 63 02 00 00 2f 05 74 09 36 05 c5 09 00 00（上行）
+    |---------------------|  | a|  | b|  | c|  | d|  | e|  | f|  | g|
+
+    a:物理目的地址
+    b:物理源地址
+    c:目的地址(目的组件/连接器地址)
+    d:载荷长度
+    e:分段表示，消息类型，请求表示
+    f:源组件地址
+    g:命令表示
+*/
+static ssize_t _xdma_of_match_pkgs(int ch, void *data, uint32_t len, void *args, size_t offp, int *err_code, int *read_over)
 {
     struct data_frame_st{
         uint16_t py_dist_addr;
@@ -661,72 +691,93 @@ static ssize_t _xdma_of_match_pkgs(int ch, void *data, uint32_t len, void *args,
     uint8_t *ptr = data;
     uint16_t py_src_addr = 0, src_addr = 0, port = 0;
     int pos = 0, reminder16 = 0;
+    /* sum_len 该次调用分析完后的数据总长度 
+       frame_len 一次分析帧长度
+    */
     size_t sum_len = 0, frame_len = 0, raw_len = 0,reminder_all = 0;
     int over = 0, err_size_len = 0, err = 0; 
-    uint8_t is_print = 0;
     *err_code = 0;
-
+    *read_over = 0;
+    
+    if(len <= offp || len > XDMA_BLOCK_SIZE){/* 读取数据总长度<=上次分析成功数据长度 */
+        return 0;
+    }
     do{
-        if(*(uint16_t *)ptr != 0x5751){  /* header */
-            over = 1;
-            err = 0;
-            if(sum_len != 0){
-                if(len < offp){
+        if(*(uint16_t *)ptr != 0x5751){  /* 数据header错误 */
+            over = 1;   /* 数据分析默认完成 */
+            err = 0;    /* 数据分析存在错误 */
+            if(sum_len != 0){   /* 存在已经分析成功数据 */
+                if(len < offp){ /* 错误，上次分析成功数据长度>读取总数据长度 */
                     printf_warn("maybe payload len err, offset err: %lu, len:%u\n", offp, len);
                     err = 1;
-                }
-                if(sum_len == (len - offp)){
-                    printf_note("read over block size: %lu, offp=%lu\n", sum_len, offp);
-                } else if(sum_len <  (len - offp)){
-                #if 1
-                    err_size_len = _xdma_find_next_header(ptr, len - offp);
-                    if(err_size_len != -1) {
-                        if(sum_len + err_size_len + offp > len){
-                            printf_warn("err size len too long:%d, sum_len:%lu\n", err_size_len, sum_len);
-                        }else{
-                            over = 0;
-                            sum_len += err_size_len;
-                            ptr  += err_size_len;
-                            //printf_note("shift size len :%d, consume len:%lu,reminder_all=%lu\n", err_size_len, sum_len, reminder_all);
-                        }
-                    }
-                #endif
-                    //printf_info("err header=0x%x, block size left:%ld, offp=%lu, err_size_len=%d\n", *(uint16_t *)ptr, len - offp - sum_len, offp, err_size_len);
                 } else{
-                    err = 1;
-                    printf_warn("err!! comsume length [%lu] err!, %u, %lu\n", sum_len, len, offp);
+                    if(sum_len == (len - offp)){    /* 分析完后的数据长度=剩余分析长度;说明该次数据块分析完毕 */
+                        printf_note("read over block size: %lu, offp=%lu\n", sum_len, offp);
+                        *read_over = 1;
+                    } else if(sum_len <  (len - offp)){ /* 分析完后的数据长度<剩余分析长度;说明还有数据待分析 */
+                        err_size_len = _xdma_find_next_header(ptr, len - offp - sum_len); /* 在剩余的数据中继续找下一个头 */
+                        if(err_size_len != -1) {    /* 找到数据头 */
+                            if(sum_len + err_size_len + offp > len){ /* 错误，找到数据头，但是偏移长度>读取数据总长度 */
+                                printf_warn("err size len too long[%d]+sum_len[%lu]+offp[%lu] > len[%u]\n", err_size_len, sum_len, offp, len);
+                                err = 1;
+                            }else{
+                                over = 0;   /* 找到数据头，偏移到头位置，继续数据分析 */
+                                sum_len += err_size_len;
+                                ptr  += err_size_len;
+                                //printf_note("shift size len :%d, consume len:%lu,reminder_all=%lu\n", err_size_len, sum_len, reminder_all);
+                            }
+                        }
+                        //printf_info("err header=0x%x, block size left:%ld, offp=%lu, err_size_len=%d\n", *(uint16_t *)ptr, len - offp - sum_len, offp, err_size_len);
+                    } else{ /* 分析完后的数据长度>剩余分析长度;说明长度有问题 */
+                        err = 1;
+                        sum_len = 0; /* 分析完后的数据长度置0，不能使用 */
+                        printf_warn("err!! comsume length [%lu] err!, %u, %lu\n", sum_len, len, offp);
+                    }
                 }
-                if(err != 0){
-                    ns_uplink_add_route_err_pkgs(ch, 1);
+                if(err != 0){   /* 数据分析存在错误，err_code=1,表示结束本块数据分析 */
+                    *err_code = 1;
+                    break;
                 }
             }
             if(over == 1)
                 break;
         }
-        payload = ptr + 8;
+        payload = ptr + 8;  /* 获取帧有效数据 */
         pdata[pos] = (struct data_frame_st *)payload;
-        frame_len = *(uint16_t *)(ptr + 4); //aglin 16byte
-        reminder16 = frame_len % 16;
+        frame_len = *(uint16_t *)(ptr + 4); /* 获取帧长度 */
+        reminder16 = frame_len % 16;    /* 帧长度16字节对齐，获取的帧长度不一定是实际的帧长度 */
         if(reminder16 != 0){
             raw_len = frame_len;
             frame_len += reminder16;
             //printf_note("[%d]not aglin 16,add %d, frame_len:%lu[0x%lx], raw_len:%lu[0x%lx]\n", pos, reminder16, frame_len, frame_len,raw_len,raw_len);
         }
-        if(frame_len > 2048){
-            ns_uplink_add_route_err_pkgs(ch, 1);
+        if(frame_len > 2048){   /* 帧长度必须<=2048，否则认为是错误帧 */
             printf_warn("payload length error: %lu\n", frame_len);
+            *err_code = 1;
             sum_len = 0;
             break;
         }
-        
+        /* 第一帧数据 */
         if(pos == 0){
+            /* 分析帧头芯片id和槽位id是否正确，错误直接退出分析该块数据帧 */
+            if(io_xdma_is_valid_chipid(pdata[pos]->py_src_addr) == false){
+                printf_warn("chipid err:0x%x\n", pdata[pos]->py_src_addr);
+                *err_code = 1;
+                break;
+            }
             psub->chip_id = py_src_addr = pdata[pos]->py_src_addr;
             psub->func_id = src_addr = pdata[pos]->src_addr;
             psub->prio_id = ((*(uint8_t *)(ptr + 3) >> 4) & 0x0f) == 0 ? 0 :1;
             psub->port = port = pdata[pos]->port;
            // printf_note("0 frame_len：%lu, chip_id=0x%x, func_id=0x%x, prio_id=0x%x,port: 0x%x\n", frame_len, psub->chip_id, psub->func_id, psub->prio_id, psub->port);
-            ns_uplink_add_forward_pkgs(ch, 1);
+            //ns_uplink_add_forward_pkgs(ch, 1);
+           /* 比较其它帧和第一帧订阅参数是否相等，不相等，则该次分析完成，下次继续获取相同的订阅参数数据 */
         } else if(py_src_addr != pdata[pos]->py_src_addr || src_addr != pdata[pos]->src_addr || port != pdata[pos]->port){
+            if(io_xdma_is_valid_chipid(pdata[pos]->py_src_addr) == false){
+                printf_warn("chipid err:0x%x\n", pdata[pos]->py_src_addr);
+                *err_code = 1;
+                break;
+            }
             printf_note("pos:%d, chip_id:[0x%x]0x%x, func_id:[0x%x]0x%x,port:[0x%x]0x%x\n", pos,py_src_addr, pdata[pos]->py_src_addr, src_addr, pdata[pos]->src_addr, port, pdata[pos]->port);
             break;
         } else{
@@ -735,12 +786,24 @@ static ssize_t _xdma_of_match_pkgs(int ch, void *data, uint32_t len, void *args,
         pos++;
         if(pos >= _MAX_PACKAGES_NUM){
             printf_warn(">>>>>>>>>>pos is overrun!\n");
+            *err_code = 1;
+            sum_len = 0;
             break;
         }
         sum_len += frame_len;
-        ptr = ptr +frame_len ;
-    }while(sum_len < (XDMA_BLOCK_SIZE - offp));
-    //printf_note("sum_len:%lu, pos:%d\n", sum_len, pos);
+        ptr += frame_len ;
+    }while(sum_len < (len - offp));/* 循环检测剩余长度的数据 */
+
+    /* 分析数据帧存在错误，表示该块分析完毕 */
+    if(*err_code == 1){
+        ns_uplink_add_route_err_pkgs(ch, 1);    /* 统计错误数据 */
+        *read_over = 1;                         /* 本数据块分析完毕 */
+    }
+    if(pos > 0 && pos < _MAX_PACKAGES_NUM){
+        ns_uplink_add_forward_pkgs(ch, pos);    /* 统计转发数据包个数 */
+    }
+        
+    /* 分析完成返回分析的数据帧长度，可能为0，表示该块分析完毕 */
     return sum_len;
 } 
 
@@ -806,13 +869,19 @@ static int _xdma_load_disp_buffer(int ch, void *data, ssize_t len, void *args, v
     struct spm_run_parm *prun = run; 
     
     hashid = GET_HASHMAP_ID(sub->chip_id, sub->func_id, sub->prio_id, sub->port);
-    printf_note("hashid:%d, chip_id:%x, func_id:%x, prio_id:%x,port:%x\n", hashid, sub->chip_id, sub->func_id, sub->prio_id, sub->port);
+    printf_info("hashid:%d, chip_id:%x, func_id:%x, prio_id:%x,port:%x\n", hashid, sub->chip_id, sub->func_id, sub->prio_id, sub->port);
     
     if(hashid > MAX_XDMA_DISP_TYPE_NUM || hashid < 0 || prun->xdma_disp.type[hashid] == NULL){
         printf_err("hash id err[%d]\n", hashid);
         return -1;
     }
     vec_cnt = prun->xdma_disp.type[hashid]->vec_cnt;
+    if(vec_cnt >= XDMA_TRANSFER_MAX_DESC){
+        prun->xdma_disp.type[hashid]->vec_cnt = 0;
+        printf_warn("vec_cnt is too big:%d\n", vec_cnt);
+        return -1;
+    }
+        
     prun->xdma_disp.type[hashid]->subinfo.chip_id = sub->chip_id;
     prun->xdma_disp.type[hashid]->subinfo.func_id = sub->func_id;
     prun->xdma_disp.type[hashid]->vec[vec_cnt].iov_base = data;
@@ -858,19 +927,20 @@ static int xdma_data_dispatcher_buffer(int ch, void **data, uint32_t *len, ssize
 {
     struct net_sub_st sub;
     ssize_t offset = 0, nframe = 0;
-    uint8_t *ptr = NULL;
+    uint8_t *ptr = NULL, *header = NULL;
     struct spm_run_parm *run = args; 
-    int err_code = 0;
-    
+    int err_code = 0, counter = 0, read_over_block = 0;
     for(int index = 0; index < count; index++){
         offset = 0;
-        ptr = data[index];
-        printf_debug(">>>>>index=%d, %p, %ld\n", index, ptr, count);
+        counter = 0;
+        header = ptr = data[index];
+        //printf_note(">>>>>index=%d, %p, %ld\n", index, ptr, count);
         do{
  #ifdef SPM_HEADER_CHECK
             memset(&sub, 0, sizeof(struct net_sub_st));
-            nframe = _xdma_of_match_pkgs(ch, ptr, len[index], &sub, offset, &err_code);
-            printf_note("nframe=%ld, err_code=%d, %ld/%u\n", nframe, err_code,offset, len[index]);
+            nframe = _xdma_of_match_pkgs(ch, ptr, len[index], &sub, offset, &err_code, &read_over_block);
+            if(err_code != 0)
+                printf_warn("nframe=%ld, err_code=%d, %ld/%u, count=%ld/%d\n", nframe, err_code,offset, len[index], count, index);
             //nframe = _xdma_of_match_pkgs_test(ptr, len[index], &sub, offset);
  #else
             nframe = len[index];
@@ -880,24 +950,36 @@ static int xdma_data_dispatcher_buffer(int ch, void **data, uint32_t *len, ssize
             sub.port = 0x1;
             _data_check(ptr, len[index], index);
  #endif
-            if(nframe <= 0){
-                printf_note(">>>>>read block[%d/%ld] over, size[%ld], len[%d]=%u\n", index+1, count, offset, index, len[index]);
-                break;
-            }
-            if(nframe > len[index] || nframe > XDMA_BLOCK_SIZE){
-                printf_err("read err length: %ld\n", nframe);
+            if(nframe > len[index] || nframe > XDMA_BLOCK_SIZE || nframe < 0){
+                printf_err("read err length: %ld/%lu\n", nframe, len[index]);
                 nframe = 0;
                 break;
             }
-            if(err_code == 0)
+            if(nframe > 0)
                 _xdma_load_disp_buffer(ch, ptr, nframe, &sub, args);
+
             ptr += nframe;
+            if(ptr - header > len[index]){
+                printf_warn(">>>>PTR is over run\n");
+                break;
+            }
             offset += nframe;
-            printf_info("offset：%ld, chip_id=0x%x, func_id=0x%x\n", offset, sub.chip_id, sub.func_id);
+            if(read_over_block == 1 || nframe == 0){
+                printf_note(">>>>>read block[%d/%ld] over, size[%ld], len[%d]=%u\n", index+1, count, offset, index, len[index]);
+                break;
+            }
+            
+            if(++counter >= XDMA_TRANSFER_MAX_DESC){
+                printf_warn(">>>>>>read too many count!\n");
+                break;
+            }
+                
+            printf_debug("offset：%ld, chip_id=0x%x, func_id=0x%x\n", offset, sub.chip_id, sub.func_id);
         }while(offset < XDMA_BLOCK_SIZE);
-        //run->xdma_disp.inout.read_bytes += len[index];
         ns_uplink_add_read_bytes(ch, len[index]);
     }
+    if(err_code != 0)
+        printf_warn("dispathcher over, err\n");
     return 0;
 }
 
@@ -1124,7 +1206,7 @@ static int _xspm_close(void *_ctx)
 
     for(i = 0; i< ARRAY_SIZE(spm_xstream) ; i++){
             if(pstream[i].rd_wr == XDMA_READ)
-                xspm_read_stream_stop(-1, -1, XDMA_STREAM);
+                xspm_read_stream_stop(pstream[i].ch, -1, XDMA_STREAM);
         close(pstream[i].id);
     }
     for(ch = 0; ch< MAX_RADIO_CHANNEL_NUM; ch++){
@@ -1182,7 +1264,7 @@ static int xspm_read_xdma_data_over(int ch,  void *arg)
     if(pstream){
         ret = ioctl(pstream[index].id, IOCTL_XDMA_TRANS_SET, ring_trans);
         if (ret){
-           // printf("ioctl(IOCTL_XDMA_TRANS_SET) failed:%d\n", ret);
+            //printf("ioctl(IOCTL_XDMA_TRANS_SET) failed:%d\n", ret);
             return -1;
         }
     }

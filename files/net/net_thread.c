@@ -355,6 +355,7 @@ static int  data_dispatcher(void *args, int hid, int prio)
     return 0;
 }
 
+#if 0
 static inline void _net_thread_dispatcher_refresh(void *args)
 {
     struct spm_run_parm *arg = args;
@@ -364,6 +365,7 @@ static inline void _net_thread_dispatcher_refresh(void *args)
         arg->xdma_disp.type[i]->vec_cnt = 0;
     }
 }
+#endif
 
 void  net_thread_con_broadcast(int ch, void *args)
 {
@@ -389,7 +391,7 @@ void  net_thread_con_broadcast(int ch, void *args)
         printf_debug("broadcast clinet num: %d\n", notify_num);
         _net_thread_con_wait_timeout(con_wait, notify_num, 10);
     }
-    _net_thread_dispatcher_refresh(args);
+   // _net_thread_dispatcher_refresh(args);
 }
 
 

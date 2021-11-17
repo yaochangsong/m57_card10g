@@ -514,6 +514,17 @@ loop:
     }while(1);
     
 }
+
+static inline void _net_thread_dispatcher_refresh(void *args)
+{
+    struct spm_run_parm *arg = args;
+    
+    arg->xdma_disp.type_num = 0;
+    for(int i = 0; i < MAX_XDMA_DISP_TYPE_NUM; i++){
+        arg->xdma_disp.type[i]->vec_cnt = 0;
+    }
+}
+
 void spm_xdma_data_handle_thread_dispatcher(void *arg)
 {
     void *ptr = NULL;
@@ -544,12 +555,12 @@ loop:
     do{
         if(ctx->ops->read_xdma_data)
             count = ctx->ops->read_xdma_data(ch, (void **)ptr_data, len, run);
-        
         if(count > 0 && (count < sizeof(len))){
             net_thread_con_broadcast(ch, run);
            //if(ctx->ops->send_xdma_data)
            //     ctx->ops->send_xdma_data(ch, ptr_data, len, count, run);
         }
+         _net_thread_dispatcher_refresh(run);
         ctx->ops->read_xdma_over_deal(ch, NULL);
         if(socket_bitmap_weight() == 0){
             io_set_enable_command(XDMA_MODE_DISABLE, ch, 0, 0);

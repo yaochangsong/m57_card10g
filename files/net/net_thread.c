@@ -228,7 +228,7 @@ static struct hash_type {
 
 static bool _of_match_type_id(int hash_id, int type_id, int offset, int mask)
 {
-    if((((hash_id & mask) >> offset) & (type_id != 0)) || 
+    if((((hash_id & mask) >> offset) && (type_id != 0)) || 
         (type_id == 0 && ((hash_id & mask) == 0)))
         return true;
     else
@@ -254,8 +254,9 @@ uint64_t  get_send_bytes_by_type(int ch, int type, int id)
         if(type == _hash_type_table[i].type){
             for(int j = 0; j < count; j++){
                 _index = hash_index[j] ;
-                if(_of_match_type_id(_index,  id, _hash_type_table[i].offset, _hash_type_table[i].mask))
+                if(_of_match_type_id(_index,  id, _hash_type_table[i].offset, _hash_type_table[i].mask)){
                     sum_bytes += arg->xdma_disp.type[_index]->statistics.send_bytes;
+                }
             }
         }
     }
@@ -335,7 +336,6 @@ static int  data_dispatcher(void *args, int hid, int prio)
         //     arg->xdma_disp.inout.out_seccess_bytes += r; 
         for(int i = 0; i < vec_cnt; i++){
             arg->xdma_disp.type[index]->statistics.send_bytes += arg->xdma_disp.type[index]->vec[i].iov_len;
-            //printf_note("sendlen:%lu\n", arg->xdma_disp.type[index]->vec[i].iov_len);
             //print_array(arg->xdma_disp.type[index]->vec[i].iov_base, 32);
             r = _data_send(cl, arg->xdma_disp.type[index]->vec[i].iov_base, arg->xdma_disp.type[index]->vec[i].iov_len);
             /* 统计需要发送字节 */

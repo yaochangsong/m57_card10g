@@ -700,6 +700,7 @@ static ssize_t _xdma_of_match_pkgs(int ch, void *data, uint32_t len, void *args,
     *read_over = 0;
     
     if(len <= offp || len > XDMA_BLOCK_SIZE){/* 读取数据总长度<=上次分析成功数据长度 */
+        *read_over = 1;
         return 0;
     }
     do{
@@ -778,7 +779,7 @@ static ssize_t _xdma_of_match_pkgs(int ch, void *data, uint32_t len, void *args,
                 *err_code = 1;
                 break;
             }
-            printf_note("pos:%d, chip_id:[0x%x]0x%x, func_id:[0x%x]0x%x,port:[0x%x]0x%x\n", pos,py_src_addr, pdata[pos]->py_src_addr, src_addr, pdata[pos]->src_addr, port, pdata[pos]->port);
+            //printf_info("pos:%d, chip_id:[0x%x]0x%x, func_id:[0x%x]0x%x,port:[0x%x]0x%x\n", pos,py_src_addr, pdata[pos]->py_src_addr, src_addr, pdata[pos]->src_addr, port, pdata[pos]->port);
             break;
         } else{
             //printf_note("same type: %d, py_src_addr=%x, src_addr=%x\n", pos,  pdata[pos]->py_src_addr, pdata[pos]->src_addr);
@@ -798,6 +799,8 @@ static ssize_t _xdma_of_match_pkgs(int ch, void *data, uint32_t len, void *args,
     if(*err_code == 1){
         ns_uplink_add_route_err_pkgs(ch, 1);    /* 统计错误数据 */
         *read_over = 1;                         /* 本数据块分析完毕 */
+    }else if(sum_len >= len - offp){
+        *read_over = 1;
     }
     if(pos > 0 && pos < _MAX_PACKAGES_NUM){
         ns_uplink_add_forward_pkgs(ch, pos);    /* 统计转发数据包个数 */
@@ -940,15 +943,16 @@ static int xdma_data_dispatcher_buffer(int ch, void **data, uint32_t *len, ssize
             memset(&sub, 0, sizeof(struct net_sub_st));
             nframe = _xdma_of_match_pkgs(ch, ptr, len[index], &sub, offset, &err_code, &read_over_block);
             if(err_code != 0)
-                printf_warn("nframe=%ld, err_code=%d, %ld/%u, count=%ld/%d\n", nframe, err_code,offset, len[index], count, index);
+                printf_warn("nframe=%ld, err_code=%d, %ld/%u, count=%ld/%d, read_over_block=%d\n", nframe, err_code,offset, len[index], count, index, read_over_block);
             //nframe = _xdma_of_match_pkgs_test(ptr, len[index], &sub, offset);
  #else
             nframe = len[index];
-            offset = XDMA_BLOCK_SIZE+1;
+            //offset = XDMA_BLOCK_SIZE+1;
             sub.chip_id = 0x0502;
             sub.func_id = 0x0;
             sub.port = 0x1;
-            _data_check(ptr, len[index], index);
+            read_over_block = 1;
+            //_data_check(ptr, len[index], index);
  #endif
             if(nframe > len[index] || nframe > XDMA_BLOCK_SIZE || nframe < 0){
                 printf_err("read err length: %ld/%lu\n", nframe, len[index]);
@@ -973,9 +977,8 @@ static int xdma_data_dispatcher_buffer(int ch, void **data, uint32_t *len, ssize
                 printf_warn(">>>>>>read too many count!\n");
                 break;
             }
-                
-            printf_debug("offset：%ld, chip_id=0x%x, func_id=0x%x\n", offset, sub.chip_id, sub.func_id);
-        }while(offset < XDMA_BLOCK_SIZE);
+            //printf_debug("offset：%ld, chip_id=0x%x, func_id=0x%x\n", offset, sub.chip_id, sub.func_id);
+        }while(offset < len[index]);
         ns_uplink_add_read_bytes(ch, len[index]);
     }
     if(err_code != 0)

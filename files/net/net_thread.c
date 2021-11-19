@@ -75,7 +75,7 @@ static uint32_t _net_thread_count_get(void)
 
 static void _net_thread_con_over(struct thread_con_wait *wait, struct net_thread_m *ptd)
 {
-    printf_info("thread consume over start\n");
+    printf_debug("thread consume over start\n");
     pthread_mutex_lock(&wait->count_lock);
     wait->count++;
     //printf_note("thread[%s] consume over, %u\n", ptd->name, wait->count);
@@ -122,10 +122,10 @@ static void _net_thread_con_wait_timeout(struct thread_con_wait *wait, int num, 
     int ret = 0;
     uint64_t us;
 
-    printf_info("Wait[%d] to finish consume %d\n", num, wait->count);
+    printf_debug("Wait[%d] to finish consume %d\n", num, wait->count);
     pthread_mutex_lock(&wait->count_lock);
     while (wait->count < num){
-        printf_info("Wait[%d]!= %d\n", num, wait->count);
+        printf_debug("Wait[%d]!= %d\n", num, wait->count);
         pthread_cond_wait(&wait->count_cond, &wait->count_lock);
         #if 0
         gettimeofday(&now, NULL);
@@ -139,7 +139,7 @@ static void _net_thread_con_wait_timeout(struct thread_con_wait *wait, int num, 
         }
         #endif
     }
-    printf_info("Wait[%d] consume over>>> %d\n", num, wait->count);
+    printf_debug("Wait[%d] consume over>>> %d\n", num, wait->count);
     wait->count = 0;
     pthread_mutex_unlock(&wait->count_lock);
     //_net_thread_con_stopped(wait);
@@ -150,7 +150,7 @@ static int _net_thread_wait(void *args)
 {
     struct net_thread_context *ptr = args;
     struct net_thread_m *ptd = &ptr->thread;
-    printf_info(" thread is PAUSE\n");
+    printf_debug(" thread is PAUSE\n");
 
     pthread_setcancelstate (PTHREAD_CANCEL_ENABLE , NULL);
     pthread_mutex_lock(&ptd->pwait.t_mutex);
@@ -178,7 +178,7 @@ static int _net_thread_con_nofity(struct net_tcp_client *cl, void *args)
     //printf_note("[%s]notify thread %s\n", ptd->name, ptd->pwait.is_wait == true ? "PAUSE" : "RUN");
     pthread_cond_signal(&ptd->pwait.t_cond);
     pthread_mutex_unlock(&ptd->pwait.t_mutex);
-    printf_info("[%s]notify thread %s\n", ptd->name,  "RUN");
+    printf_debug("[%s]notify thread %s\n", ptd->name,  "RUN");
     return 0;
 }
 
@@ -186,7 +186,7 @@ static void *_create_buffer(size_t len)
 {
     void *buffer = NULL;
     int pagesize = 0;
-    printf_note("Create buffer: %lu\n", len);
+    printf_debug("Create buffer: %lu\n", len);
     pagesize=getpagesize();
     posix_memalign((void **)&buffer, pagesize /*alignment */ , len + pagesize);
     if (!buffer) {
@@ -416,13 +416,13 @@ static int  _net_thread_exit(void *arg)
     struct net_thread_context *ctx = arg;
     struct net_tcp_client *cl = ctx->thread.client;
 
-    printf_note("thread[%s] exit!\n", ctx->thread.name);
+    printf_debug("thread[%s] exit!\n", ctx->thread.name);
     _net_thread_count_sub();
     safe_free(ctx->thread.name);
     safe_free(ctx->thread.statistics);
     if(cl){
         safe_free(cl->section.thread);
-        printf_note("thread free\n");
+        printf_debug("thread free\n");
     }
     return 0;
 }
@@ -433,7 +433,7 @@ static int _net_thread_close(void *client)
     
     if(pthread_check_alive_by_tid(cl->section.thread->thread.tid) == true){
         pthread_cancel_by_tid(cl->section.thread->thread.tid);
-        printf_note("thread close!\n");
+        printf_debug("thread close!\n");
     }
     usleep(10);
     return 0;
@@ -449,7 +449,7 @@ static int _thread_init(void *args)
     struct net_tcp_client *client = ctx->thread.client;
     static int cpu_index = 0;
     long cpunum = sysconf(_SC_NPROCESSORS_CONF);
-    printf_note("bind cpu: %d\n", cpu_index);
+    printf_debug("bind cpu: %d\n", cpu_index);
     //thread_bind_cpu(cpu_index);
     cpu_index++;
     if(cpu_index >= cpunum)
@@ -475,7 +475,7 @@ struct net_thread_context * net_thread_create_context(void *cl)
     ctx->thread.client = cl;
     ctx->args = get_spm_ctx();
     _net_thread_wait_init(ctx);
-    printf_note("client: %s:%d create thread\n", client->get_peer_addr(client), client->get_peer_port(client));
+    printf_debug("client: %s:%d create thread\n", client->get_peer_addr(client), client->get_peer_port(client));
     ret =  pthread_create_detach (NULL,_thread_init, _net_thread_main_loop, _net_thread_exit,  ctx->thread.name , ctx, ctx, &tid);
     if(ret != 0){
         perror("pthread err");

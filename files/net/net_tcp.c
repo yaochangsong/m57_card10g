@@ -453,7 +453,7 @@ static void tcp_accept_cb(struct uloop_fd *fd, unsigned int events)
     getsockname(sfd, (struct sockaddr *)&cl->serv_addr, &serv_len); 
     cl->get_serv_addr = get_serv_addr;
     cl->get_serv_port = get_serv_port;
-    printf_note("New connection Serv: %s:%d, hash: %p\n", cl->get_serv_addr(cl), cl->get_serv_port(cl), cl->section.hash);
+    printf_note("New connection Serv: %s:%d\n", cl->get_serv_addr(cl), cl->get_serv_port(cl));
 
     cl->section.hash = net_hash_new();
     cl->section.thread = net_thread_create_context(cl);

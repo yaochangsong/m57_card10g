@@ -432,7 +432,6 @@ static int _m57_write_data_to_fpga(uint8_t *ptr, size_t len)
     _ctx = get_spm_ctx();
     nwrite = _ctx->ops->write_xdma_data(0, buffer, len);
     printfi("Write data %s![%ld]\n",  (nwrite == len) ? "OK" : "Faild", nwrite);
-    
     free(buffer);
     buffer = NULL;
     return nwrite;
@@ -760,7 +759,7 @@ load_file_exit:
                     if(_m57_loading_bitfile_to_fpga(cl->section.file.path) == true){
                           usleep(40000);
                          if(_m57_stop_load_bitfile_to_fpga(cl->section.chip_id) == true){
-                            sleep(1);
+                            sleep(5);
                             /* 1st: check load result */
                             ret = _reg_get_load_result(get_fpga_reg(), cl->section.chip_id, NULL);
                             ret = (ret == 0 ? M57_CARD_STATUS_OK : M57_CARD_STATUS_LOAD_FAILD); // -5: load faild; 0: ok
@@ -769,6 +768,7 @@ load_file_exit:
                                 ns_downlink_set_loadbit_result(CARD_SLOT_NUM(cl->section.chip_id), DEVICE_STATUS_LOAD_ERR);
                                 config_set_device_status(DEVICE_STATUS_LOAD_ERR, cl->section.chip_id);
                             }
+                            sleep(3);
                             /* 2st: check link result,
                                 NOTE:
                                 1) link switch is on;
@@ -846,6 +846,7 @@ void m57_send_cmd(void *client, int code, void *args, uint32_t len)
     header.number = sn++;
     header.len = hlen  + exhlen + len;
     _m57_swap_send_header_element(&header);
+    memset(&ex_header, 0, sizeof(ex_header));
     ex_header.cmd = code;
     ex_header.len = exhlen + len;
 
@@ -858,7 +859,6 @@ void m57_send_cmd(void *client, int code, void *args, uint32_t len)
     memcpy(psend + hlen, &ex_header, exhlen);
     if(len > 0 && args)
         memcpy(psend + hlen + exhlen, args, len);
-    
     cl->send(cl, psend, header.len);
 #if 0
     for(int i = 0; i < header.len; i++)

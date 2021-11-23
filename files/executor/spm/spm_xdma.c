@@ -725,7 +725,7 @@ static ssize_t _xdma_of_match_pkgs(int ch, void *data, uint32_t len, void *args,
                                 over = 0;   /* 找到数据头，偏移到头位置，继续数据分析 */
                                 sum_len += err_size_len;
                                 ptr  += err_size_len;
-                                //printf_note("shift size len :%d, consume len:%lu,reminder_all=%lu\n", err_size_len, sum_len, reminder_all);
+                                //printf_note("shift size len :%d, consume len:%lu,reminder_all=%lu, pos=%d, header:0x%x\n", err_size_len, sum_len, reminder_all, pos, *(uint16_t *)ptr);
                             }
                         }
                         //printf_info("err header=0x%x, block size left:%ld, offp=%lu, err_size_len=%d\n", *(uint16_t *)ptr, len - offp - sum_len, offp, err_size_len);
@@ -782,7 +782,7 @@ static ssize_t _xdma_of_match_pkgs(int ch, void *data, uint32_t len, void *args,
             //printf_info("pos:%d, chip_id:[0x%x]0x%x, func_id:[0x%x]0x%x,port:[0x%x]0x%x\n", pos,py_src_addr, pdata[pos]->py_src_addr, src_addr, pdata[pos]->src_addr, port, pdata[pos]->port);
             break;
         } else{
-            //printf_note("same type: %d, py_src_addr=%x, src_addr=%x\n", pos,  pdata[pos]->py_src_addr, pdata[pos]->src_addr);
+            //printf_note("same type: pos:%d, frame_len=%lu, py_src_addr=%x, src_addr=%x\n", pos, frame_len, pdata[pos]->py_src_addr, pdata[pos]->src_addr);
         }
         pos++;
         if(pos >= _MAX_PACKAGES_NUM){
@@ -955,7 +955,7 @@ static int xdma_data_dispatcher_buffer(int ch, void **data, uint32_t *len, ssize
             //_data_check(ptr, len[index], index);
  #endif
             if(nframe > len[index] || nframe > XDMA_BLOCK_SIZE || nframe < 0){
-                printf_err("read err length: %ld/%lu\n", nframe, len[index]);
+                printf_err("read err length: %ld/%u\n", nframe, len[index]);
                 nframe = 0;
                 break;
             }

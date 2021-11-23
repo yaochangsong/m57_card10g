@@ -228,7 +228,7 @@ static struct hash_type {
 
 static bool _of_match_type_id(int hash_id, int type_id, int offset, int mask)
 {
-    if((((hash_id & mask) >> offset) && (type_id != 0)) || 
+    if(((type_id != 0) && (((hash_id & mask) >> offset) & type_id) ) || 
         (type_id == 0 && ((hash_id & mask) == 0)))
         return true;
     else
@@ -317,6 +317,7 @@ static int  data_dispatcher(void *args, int hid, int prio)
     int index = hid;
     if(index > MAX_XDMA_DISP_TYPE_NUM || arg == NULL){
         printf_note("error!\n");
+        printf_note("index: %d, arg=%p\n", index, arg);
         return -1;
     }
 

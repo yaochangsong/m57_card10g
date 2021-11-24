@@ -879,7 +879,7 @@ static int _xdma_load_disp_buffer(int ch, void *data, ssize_t len, void *args, v
         return -1;
     }
     vec_cnt = prun->xdma_disp.type[hashid]->vec_cnt;
-    if(vec_cnt >= XDMA_TRANSFER_MAX_DESC){
+    if(vec_cnt >= XDMA_DATA_TYPE_MAX_PKGS){
         prun->xdma_disp.type[hashid]->vec_cnt = 0;
         printf_warn("vec_cnt is too big:%d\n", vec_cnt);
         return -1;
@@ -973,7 +973,7 @@ static int xdma_data_dispatcher_buffer(int ch, void **data, uint32_t *len, ssize
                 break;
             }
             
-            if(++counter >= XDMA_TRANSFER_MAX_DESC){
+            if(++counter >= XDMA_DATA_TYPE_MAX_PKGS){
                 printf_warn(">>>>>>read too many count!\n");
                 break;
             }
@@ -1087,6 +1087,9 @@ static ssize_t xspm_read_xdma_data_dispatcher(int ch , void **data, uint32_t *le
         if(xdma_data_dispatcher_buffer(ch, data, len, count, args) == -1){
             return -1;
         }
+    }else {
+        if(count >= XDMA_TRANSFER_MAX_DESC)
+            printf_err("count: %ld is too big\n", count);
     }
     return count;
 }

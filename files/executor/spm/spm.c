@@ -620,7 +620,7 @@ void  *spm_xdma_param_init(void)
             ret = -ENOMEM;
             goto err_free1;
         }
-        param->xdma_disp.type[index]->vec = calloc(XDMA_TRANSFER_MAX_DESC, sizeof(*param->xdma_disp.type[index]->vec));
+        param->xdma_disp.type[index]->vec = calloc(XDMA_DATA_TYPE_MAX_PKGS, sizeof(*param->xdma_disp.type[index]->vec));
         if (!param->xdma_disp.type[index]->vec) {
             ret = -ENOMEM;
             goto err_free2;

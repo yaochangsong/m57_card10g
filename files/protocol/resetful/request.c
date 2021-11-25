@@ -89,6 +89,8 @@ static struct request_info http_req_cmd[] = {
     /* 路由表加载 */
     {"GET",     "/route/reload",                        -1,                cmd_route_reload},
     {"PUT",     "/link/@slotId/@enable",                -1,                cmd_linkcheck_set},
+    /* 控制 */
+    {"GET",     "/unload/@fpga_id",                     -1,                cmd_unload_fpga_bit},
 };
 
 #define URL_SEPARATOR "/"

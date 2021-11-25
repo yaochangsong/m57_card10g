@@ -403,6 +403,15 @@ static int _m57_start_unload_bitfile_from_fpga(uint16_t chip_id)
     return nwrite;
 }
 
+int m57_unload_bitfile_from_fpga(uint16_t chip_id)
+{
+    if(io_xdma_is_valid_chipid(chip_id) == false){
+        return -1;
+    }
+    return _m57_start_unload_bitfile_from_fpga(chip_id);
+}
+
+
 static void print_array(uint8_t *ptr, ssize_t len)
 {
     if(ptr == NULL || len <= 0)

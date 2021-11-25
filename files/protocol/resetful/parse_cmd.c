@@ -146,6 +146,26 @@ static inline bool str_to_int(char *str, int *ivalue, bool(*_check)(int))
     return ((*_check)(value));
 }
 
+static inline bool str_to_hex(char *str, int *ivalue, bool(*_check)(int))
+{
+    char *end;
+    int value;
+    
+    if(str == NULL || ivalue == NULL)
+        return false;
+    
+    value = (int) strtol(str, &end, 16);
+    if (str == end){
+        return false;
+    }
+    *ivalue = value;
+    if(*_check == NULL){
+         return true;
+    }
+       
+    return ((*_check)(value));
+}
+
 static inline bool str_to_uint(char *str, uint32_t *ivalue, bool(*_check)(int))
 {
     char *end;
@@ -1047,4 +1067,28 @@ error:
     *arg = get_resp_message(code);
     return code;
 }
+
+int cmd_unload_fpga_bit(struct uh_client *cl, void **arg, void **content)
+{
+    int code = RESP_CODE_OK;
+    const char *fpga_id;
+    int  _fpga_id;
+
+    fpga_id = cl->get_restful_var(cl, "fpga_id");
+    if(str_to_hex(fpga_id, &_fpga_id, NULL) == false){
+        code = RESP_CODE_PARSE_ERR;
+        goto error;
+    }
+
+    printf_note("unload fpga bit set: fpga_id: 0x%x\n", _fpga_id);
+    if(m57_unload_bitfile_from_fpga(_fpga_id) == -1){
+        code = RESP_CODE_INVALID_PARAM;
+        goto error;
+    }
+error:
+    *arg = get_resp_message(code);
+    return code;
+}
+
+
 

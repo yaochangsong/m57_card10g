@@ -73,5 +73,6 @@ extern int cmd_get_status_client_info(struct uh_client *cl, void **arg, void **c
 extern int cmd_get_statistics_info(struct uh_client *cl, void **arg, void **content);
 extern int cmd_get_sys_info(struct uh_client *cl, void **arg, void **content);
 extern int cmd_unload_fpga_bit(struct uh_client *cl, void **arg, void **content);
+extern int cmd_get_status_client_sub_info(struct uh_client *cl, void **arg, void **content);
 
 #endif

@@ -1039,6 +1039,35 @@ int _assemble_statistics_client_info(struct net_tcp_client *cl, void* array)
     return 0;
 }
 
+static int  _client_sub_info(void *args, int hid, int prio)
+{
+    cJSON* item = args;
+    char buffer[256] = {0};
+    if(item == NULL)
+        return -1;
+    
+    snprintf(buffer, sizeof(buffer) - 1, "hid:0x%x, SlotId:0x%x, ChipId:0x%x, FuncId:0x%x, PortId:0x%x, ProiId:0x%x",hid,
+                GET_SLOTID_BY_HASHID(hid), GET_CHIPID_BY_HASHID(hid), GET_FUNCID_BY_HASHID(hid),
+                GET_PORTID_BY_HASHID(hid),GET_PROIID_BY_HASHID(hid));
+    cJSON_AddStringToObject(item, "hashId", buffer);
+
+    return 0;
+}
+
+
+int _assemble_client_sub_info(struct net_tcp_client *cl, void* array)
+{
+    cJSON* item = NULL;
+    short port;
+    cJSON* _array = array;
+
+    cJSON_AddItemToArray(_array, item = cJSON_CreateObject());
+    cJSON_AddStringToObject(item, "ipaddr", cl->get_peer_addr(cl));
+    cJSON_AddNumberToObject(item, "port",   cl->get_peer_port(cl));
+    net_hash_for_each(cl->section.hash, _client_sub_info, item);
+    return 0;
+}
+
 char *assemble_json_statistics_all_info(void)
 {
     char *str_json = NULL;
@@ -1063,6 +1092,14 @@ char *assemble_json_statistics_client_info(void)
     return str_json;
 }
 
+char *assemble_json_client_sub_info(void)
+{
+    char *str_json = NULL;
+    cJSON *array = cJSON_CreateArray();
+    tcp_client_do_for_each(_assemble_client_sub_info, NULL, -1, array);
+    str_json = cJSON_PrintUnformatted(array);
+    return str_json;
+}
 
 char *assemble_json_sys_info(void)
 {

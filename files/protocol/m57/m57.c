@@ -556,7 +556,7 @@ bool m57_execute_cmd(void *client, int *code)
             //net_hash_add(cl->section.hash, _sub.func_id, RT_FUNCID);
            // net_hash_add(cl->section.hash, _sub.port, RT_PORTID);
             net_hash_add_ex(cl->section.hash, GET_HASHMAP_ID(_sub.chip_id, _sub.func_id, cl->section.prio, _sub.port));
-            printf_note("[%d]hash id: %d\n", cl->get_peer_port(cl), GET_HASHMAP_ID(_sub.chip_id, _sub.func_id, cl->section.prio, _sub.port));
+            printf_note("[%d]hash id: 0x%x\n", cl->get_peer_port(cl), GET_HASHMAP_ID(_sub.chip_id, _sub.func_id, cl->section.prio, _sub.port));
             //net_hash_dump(cl->section.hash);
             //net_hash_find_type_set(cl->section.hash, RT_CHIPID, NULL);
             //printf_warn("find chipId:%s\n", net_hash_find(cl->section.hash, _sub.chip_id, RT_CHIPID) == true ? "YES": "NO");

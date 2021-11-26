@@ -371,28 +371,22 @@ static inline void _net_thread_dispatcher_refresh(void *args)
 void  net_thread_con_broadcast(int ch, void *args)
 {
     static bool first = true;
-    static struct thread_con_wait *wait;
-    struct net_tcp_client *cl0 = NULL;
     int prio = 0;
+    channel_param[ch] = args;
     if(first){
         con_wait = _net_thread_con_init();
         first = false;
     }
     prio = _get_prio_by_channel(ch);
-    int notify_num = tcp_client_do_for_each(_net_thread_con_nofity, (void **)&cl0, prio, NULL);
+    int notify_num = tcp_client_do_for_each(_net_thread_con_nofity, NULL, prio, NULL);
     notify_num = min(_net_thread_count_get(), notify_num);
-   //printf_note("dispatcher: %s:%d\n", cl0->get_peer_addr(cl0), cl0->get_peer_port(cl0));
-    //if(cl0)
-     //   net_hash_for_each(cl0->section.hash, data_dispatcher, cl0->section.thread);
     if(ch >= _NOTIFY_MAX_NUM)
         ch = _NOTIFY_MAX_NUM-1;
-    channel_param[ch] = args;
-   
+
     if(notify_num > 0){
         printf_debug("broadcast clinet num: %d\n", notify_num);
         _net_thread_con_wait_timeout(con_wait, notify_num, 10);
     }
-   // _net_thread_dispatcher_refresh(args);
 }
 
 

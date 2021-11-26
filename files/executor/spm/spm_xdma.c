@@ -881,6 +881,7 @@ static int _xdma_load_disp_buffer(int ch, void *data, ssize_t len, void *args, v
     vec_cnt = prun->xdma_disp.type[hashid]->vec_cnt;
     if(vec_cnt >= XDMA_DATA_TYPE_MAX_PKGS){
         prun->xdma_disp.type[hashid]->vec_cnt = 0;
+        ns_uplink_add_route_err_pkgs(ch, vec_cnt);    /* 统计错误数据 */
         printf_warn("vec_cnt is too big:%d\n", vec_cnt);
         return -1;
     }

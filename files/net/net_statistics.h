@@ -23,6 +23,7 @@ struct net_statistics_downlink_info{
 struct net_statistics_chip_status{
     volatile int link_status;
     volatile int load_status;
+    volatile uint64_t load_count;
 };
 
 struct net_statistics_client{
@@ -57,6 +58,8 @@ extern struct net_statistics_info net_statistics;
 #define DEVICE_STATUS_LINK_ERR     -3
 #define DEVICE_STATUS_UNKOWN_ERR   -255
 
+static inline uint64_t ns_downlink_get_loadok_count(int slotid);
+static inline void ns_downlink_set_loadok_count(int slotid, int count);
 
 static inline  char *_get_device_status_info(int errCode)
 {
@@ -230,12 +233,24 @@ static inline int ns_downlink_get_loadbit_result(int slotid)
     return net_statistics.chip[slotid].load_status;
 }
 
+
+/* 获取加载结果字符串
+    OK(2): 成功(成功次数)
+ */
 static inline char *ns_downlink_get_loadbit_str_result(int slotid)
 {
+    static char buffer[64];
     if(slotid > MAX_FPGA_CARD_SLOT_NUM)
         return "null";
     
-    return _get_device_status_info(net_statistics.chip[slotid].load_status);
+    if(DEVICE_STATUS_LINK_OK == net_statistics.chip[slotid].load_status){
+        snprintf(buffer, sizeof(buffer)-1, "%s(%"PRIu64")",
+                _get_device_status_info(net_statistics.chip[slotid].load_status), 
+                ns_downlink_get_loadok_count(slotid));
+        return buffer;
+    }else{
+        return _get_device_status_info(net_statistics.chip[slotid].load_status);
+    }
 }
 
 
@@ -246,6 +261,8 @@ static inline void ns_downlink_set_loadbit_result(int slotid, int status)
         return;
 
     net_statistics.chip[slotid].load_status = status;
+    if(status == DEVICE_STATUS_LOAD_OK)
+        ns_downlink_set_loadok_count(slotid, 1);
 }
 
 /* 获取芯片link状态, 0: 0k,  !=0 false */
@@ -256,6 +273,23 @@ static inline int ns_downlink_get_link_result(int slotid)
     
     return net_statistics.chip[slotid].link_status;
 }
+
+/* 设置芯片成功加载次数 */
+static inline void ns_downlink_set_loadok_count(int slotid, int count)
+{
+    if(slotid > MAX_FPGA_CARD_SLOT_NUM)
+        return;
+    if(count > 0)
+        net_statistics.chip[slotid].load_count += count;
+}
+static inline uint64_t ns_downlink_get_loadok_count(int slotid)
+{
+    if(slotid > MAX_FPGA_CARD_SLOT_NUM)
+        return 0;
+
+    return net_statistics.chip[slotid].load_count;
+}
+
 
 static inline char *ns_downlink_get_link_str_result(int slotid)
 {

@@ -863,11 +863,7 @@ next:
 
 void *get_compile_info(void)
 {
-#ifdef SUPPORT_PLATFORM_ARCH_ARM
     #define C_FILE_NAME "/etc/compile.info"
-#else
-    #define C_FILE_NAME "conf/compile.info"
-#endif
 
     static struct poal_compile_Info *pinfo = NULL;
     if(pinfo == NULL)
@@ -877,11 +873,7 @@ void *get_compile_info(void)
 
 char *get_jenkins_version(void)
 {
-#ifdef SUPPORT_PLATFORM_ARCH_ARM
     #define J_FILE_NAME "/etc/JENKINS_VERSION"
-#else
-    #define J_FILE_NAME "conf/JENKINS_VERSION"
-#endif
     static char version[16] = {"0"};
     if(access(J_FILE_NAME, 0)){
         sprintf(version, "debug");
@@ -898,11 +890,7 @@ char *get_jenkins_version(void)
 
 char *get_version(void)
 {
-#ifdef SUPPORT_PLATFORM_ARCH_ARM
     #define PL_VER_NAME "/etc/platform_version"
-#else
-    #define PL_VER_NAME "conf/platform_version"
-#endif
     static char version[16] = {"0"};
     if(access(PL_VER_NAME, 0)){
         sprintf(version, "v1.0.0");

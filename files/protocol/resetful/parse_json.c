@@ -1014,7 +1014,7 @@ char *assemble_json_slot_info(void)
         cJSON_AddStringToObject(item, "uplinkBytes", buffer);
         cJSON_AddStringToObject(item, "softVersion", "1.0");
         cJSON_AddNumberToObject(item, "linkSwitch", config_get_link_switch(bit));
-        cJSON_AddStringToObject(item, "linkStatus", ns_downlink_get_link_str_result(bit));
+        cJSON_AddStringToObject(item, "linkStatus", config_get_link_switch(bit) == 0 ? "OFF" : ns_downlink_get_link_str_result(bit));
     }
 #endif
     json_print(array, 1);

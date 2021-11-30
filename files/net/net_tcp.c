@@ -25,6 +25,7 @@
 #include <unistd.h>
 #include <string.h>
 #include <linux/if_link.h>
+#include <netinet/tcp.h>
 #include "../protocol/http/file.h"
 #include "net_sub.h"
 #include "../bsp/io.h"
@@ -732,6 +733,19 @@ struct net_tcp_server *tcp_server_new(const char *host, int port)
         return NULL;
     }
     printf_info("Now set tcp send buffer size to:%dByte\n",defrcvbufsize);
+    /* keepalive */
+    #if 0
+    int keepalive = 1; //开启keepalive属性
+    int keepidle = 5;
+    int keepinterval = 5;
+    int keepcount = 3;
+    printf_note("KEEP Alive SET\n");
+    setsockopt(sock, SOL_SOCKET, SO_KEEPALIVE, (void*)&keepalive,sizeof(keepalive));
+    setsockopt(sock, SOL_TCP, TCP_KEEPIDLE, (void*)&keepidle,sizeof(keepidle));
+    setsockopt(sock, SOL_TCP, TCP_KEEPINTVL, (void*)&keepinterval,sizeof(keepinterval));
+    setsockopt(sock, SOL_TCP, TCP_KEEPCNT, (void*)&keepcount,sizeof(keepcount));
+    #endif
+    /* end keepalive */
     srv = calloc(1, sizeof(struct net_tcp_server));
     if (!srv) {
         uh_log_err("calloc");

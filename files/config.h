@@ -110,8 +110,8 @@
 #include "device/uart/uart.h"
 #include "device/rf/rf.h"
 #include "device/clk_adc/clk_adc.h"
-#if defined (SUPPORT_RF_SPI)
-#include "device/rf/spi/rf_spi.h"
+#if defined (SUPPORT_RF_SPI_M57)
+#include "device/rf/spi/m57/rf_driver.h"
 #endif
 #if defined (SUPPORT_GPS)
 #include "device/gps/gps_com.h"

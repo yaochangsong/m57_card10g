@@ -57,7 +57,7 @@ static int fpga_memmap(int fd_dev, FPGA_CONFIG_REG *fpga_reg)
         printf("mmap failed, NULL pointer!\n");
         return -1;
     }
-    printf_info("virtual address:%p, physical address:0x%x, %p, %p\n", fpga_reg->system, FPGA_SYSETM_BASE, &fpga_reg->system->fpga_status, &fpga_reg->system->channel_sel);
+    printf_debug("virtual address:%p, physical address:0x%x, %p, %p\n", fpga_reg->system, FPGA_SYSETM_BASE, &fpga_reg->system->fpga_status, &fpga_reg->system->channel_sel);
 
     for(i = 0; i < MAX_FPGA_CARD_SLOT_NUM; i++){
         fpga_reg->status[i] = (STATUS_REG *)((uint8_t *)fpga_reg->system + FPGA_STAUS_OFFSET + CONFG_REG_LEN * i);
@@ -66,7 +66,7 @@ static int fpga_memmap(int fd_dev, FPGA_CONFIG_REG *fpga_reg)
             printf("mmap failed, NULL pointer!\n");
             return -1;
         }
-        printf_info("virtual address:%p \n", fpga_reg->status[i]);
+        printf_debug("virtual address:%p \n", fpga_reg->status[i]);
     }
 
     return 0;

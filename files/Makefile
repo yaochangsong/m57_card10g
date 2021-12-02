@@ -146,6 +146,11 @@ ifneq ($(findstring y,$(SUPPORT_RF_SPI)),)
 	SOURCE_DIR += device/rf/spi
 	C_VAR += -DSUPPORT_RF_SPI
 endif
+
+ifneq ($(findstring y,$(SUPPORT_RF_SPI_M57)),)
+	SOURCE_DIR += device/rf/spi/m57
+	C_VAR += -DSUPPORT_RF_SPI_M57
+endif
 #rf fpga
 ifneq ($(findstring y,$(SUPPORT_RF_FPGA)),)
 	C_VAR += -DSUPPORT_RF_FPGA

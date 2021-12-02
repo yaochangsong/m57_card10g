@@ -126,8 +126,8 @@ static void _net_thread_con_wait_timeout(struct thread_con_wait *wait, int num, 
     pthread_mutex_lock(&wait->count_lock);
     while (wait->count < num){
         printf_debug("Wait[%d]!= %d\n", num, wait->count);
-        pthread_cond_wait(&wait->count_cond, &wait->count_lock);
-        #if 0
+        //pthread_cond_wait(&wait->count_cond, &wait->count_lock);
+        #if 1
         gettimeofday(&now, NULL);
         outtime.tv_sec = now.tv_sec +  timeout_ms/1000;
         us = now.tv_usec + 1000 * (timeout_ms % 1000);
@@ -136,6 +136,7 @@ static void _net_thread_con_wait_timeout(struct thread_con_wait *wait, int num, 
         ret = pthread_cond_timedwait(&wait->count_cond, &wait->count_lock, &outtime);
         if(ret != 0){
             printf_warn(">>>>>>wait thread timeout!!\n");
+            break;
         }
         #endif
     }
@@ -382,10 +383,9 @@ void  net_thread_con_broadcast(int ch, void *args)
     notify_num = min(_net_thread_count_get(), notify_num);
     if(ch >= _NOTIFY_MAX_NUM)
         ch = _NOTIFY_MAX_NUM-1;
-
     if(notify_num > 0){
         printf_debug("broadcast clinet num: %d\n", notify_num);
-        _net_thread_con_wait_timeout(con_wait, notify_num, 10);
+        _net_thread_con_wait_timeout(con_wait, notify_num, 2000);
     }
 }
 

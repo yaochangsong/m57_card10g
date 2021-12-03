@@ -411,6 +411,25 @@ int m57_unload_bitfile_from_fpga(uint16_t chip_id)
     return _m57_start_unload_bitfile_from_fpga(chip_id);
 }
 
+static int  _unload_bitfile_by_hashid(void *args, int hid, int prio)
+{
+    uint16_t chip_id;
+    chip_id =  GET_SLOT_CHIP_ID_BY_HASHID(hid),
+    //printf_note("chip_id:0x%x, hid:0x%x, 0x%x, 0x%x\n", chip_id, hid, GET_SLOTID_BY_HASHID(hid)<<8, GET_CHIPID_BY_HASHID(hid));
+    m57_unload_bitfile_from_fpga(chip_id);
+    return 0;
+}
+
+int m57_unload_bitfile_by_client(struct sockaddr_in *addr)
+{
+    struct net_tcp_client *cl = container_of(addr, struct net_tcp_client, peer_addr);
+
+    if(cl == NULL || cl->section.hash == NULL)
+        return -1;
+
+    net_hash_for_each(cl->section.hash, _unload_bitfile_by_hashid, cl->section.hash);
+    return 0;
+}
 
 static void print_array(uint8_t *ptr, ssize_t len)
 {

@@ -312,6 +312,7 @@ static ssize_t xspm_stream_read(int ch, int type,  void **data, uint32_t *len, v
             return -1;
         } else if(info->status == RING_TRANS_OVERRUN){
             printf_warn("*****status:RING_TRANS_OVERRUN.*****\n");
+            ns_uplink_add_over_run_cnt(ch, 1);
             xspm_xdma_data_clear(0, args);
         } else if(info->status == RING_TRANS_INITIALIZING){
             printf_warn("*****status:RING_TRANS_INITIALIZING.*****\n");

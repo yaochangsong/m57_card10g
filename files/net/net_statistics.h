@@ -12,6 +12,7 @@ struct net_statistics_uplink_info{
     volatile uint64_t send_err_bytes;
     volatile uint64_t forward_pkgs;
     volatile uint64_t route_err_pkgs;
+    volatile uint64_t over_run_count;
 };
 
 struct net_statistics_downlink_info{
@@ -183,11 +184,29 @@ static inline uint64_t ns_uplink_get_forward_pkgs(int ch)
 /* 上行路由错误报文 */
 static inline void ns_uplink_add_route_err_pkgs(int ch,uint32_t pkgs)
 {
+    if(ch >= MAX_XDMA_NUM)
+        return;
     net_statistics.uplink[ch].route_err_pkgs += pkgs;
 }
 static inline uint64_t ns_downlink_get_route_err_pkgs(int ch)
 {
+    if(ch >= MAX_XDMA_NUM)
+        return 0;
     return net_statistics.uplink[ch].route_err_pkgs;
+}
+
+/* 上行数据溢出次数 */
+static inline void ns_uplink_add_over_run_cnt(int ch,uint32_t cnt)
+{
+    if(ch >= MAX_XDMA_NUM)
+        return;
+    net_statistics.uplink[ch].over_run_count += cnt;
+}
+static inline uint64_t ns_downlink_get_over_run_cnt(int ch)
+{
+    if(ch >= MAX_XDMA_NUM)
+        return 0;
+    return net_statistics.uplink[ch].over_run_count;
 }
 
 

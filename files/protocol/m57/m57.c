@@ -280,6 +280,18 @@ static int _m57_start_load_bitfile_to_fpga(uint16_t chip_id)
     return nwrite;
 }
 
+static inline int _align_4byte(int *rc)
+{
+    int _rc = *rc;
+    int reminder = _rc % 4;
+    if(reminder != 0){
+        _rc += (4 - reminder);
+        *rc = _rc;
+        return (4 - reminder);
+    }
+    return 0;
+}
+
 static void* _m57_loading_bitfile_to_fpga_thread(void   *args)
 {
     #define LOAD_BITFILE_SIZE	4096
@@ -290,6 +302,7 @@ static void* _m57_loading_bitfile_to_fpga_thread(void   *args)
     ssize_t nwrite, total_write = 0;;
     FILE *file;
     char *filename = strdup(args);
+    int reminder = 0;
     //char *filename = "test.bin";
     posix_memalign((void **)&buffer, 4096 /*alignment */ , LOAD_BITFILE_SIZE + 4096);
     if (!buffer) {
@@ -297,7 +310,7 @@ static void* _m57_loading_bitfile_to_fpga_thread(void   *args)
         rc = -ENOMEM;
         goto exit2;
     }
-    
+    memset(buffer, 0, LOAD_BITFILE_SIZE);
     _ctx = get_spm_ctx();
     result = stat(filename, &fstat);
     if(result != 0){
@@ -314,15 +327,20 @@ static void* _m57_loading_bitfile_to_fpga_thread(void   *args)
         goto exit;
     }
     rc = fread(buffer, 1, LOAD_BITFILE_SIZE, file);
+    reminder = _align_4byte(&rc);
     printfn("Load Bitfile:[%s]\n", filename);
     printfn("Loading.......................................[%ld, %ld]%ld%%\r",  total_write,fstat.st_size, (total_write*100)/fstat.st_size);
     while(rc){
         nwrite = _ctx->ops->write_xdma_data(0, buffer, rc);
+        if(nwrite <= 0)
+            break;
         total_write += nwrite;
+        memset(buffer, 0, LOAD_BITFILE_SIZE + 4096);
         rc = fread(buffer, 1, LOAD_BITFILE_SIZE, file);
+        reminder += _align_4byte(&rc);
         printfn("Loading.......................................[%ld, %ld]%ld%%\r",  total_write,fstat.st_size, (total_write*100)/fstat.st_size);
     }
-    printfn("\nLoad Bitfile %s!\n",  (total_write == fstat.st_size) ? "OK" : "Faild");
+    printfn("\nLoad Bitfile %s,align 4byte reminder=%d,%ld,%ld\n",  (total_write == fstat.st_size+reminder) ? "OK" : "Faild", reminder, total_write,fstat.st_size+reminder);
     fclose(file);
 exit:
     free(buffer);
@@ -406,6 +424,7 @@ static int _m57_start_unload_bitfile_from_fpga(uint16_t chip_id)
 int m57_unload_bitfile_from_fpga(uint16_t chip_id)
 {
     if(io_xdma_is_valid_chipid(chip_id) == false){
+        printf_err("0x%x is not valid chipid\n", chip_id);
         return -1;
     }
     return _m57_start_unload_bitfile_from_fpga(chip_id);
@@ -431,6 +450,18 @@ int m57_unload_bitfile_by_client(struct sockaddr_in *addr)
     return 0;
 }
 
+static int _unload_bit_callback(struct net_tcp_client *cl, void *args)
+{
+    return m57_unload_bitfile_by_client(&cl->peer_addr);
+}
+
+int m57_unload_bitfile_all(void)
+{
+    tcp_client_do_for_each(_unload_bit_callback, NULL, 0, NULL);
+    return 0;
+}
+
+
 static void print_array(uint8_t *ptr, ssize_t len)
 {
     if(ptr == NULL || len <= 0)
@@ -448,7 +479,7 @@ static int _m57_write_data_to_fpga(uint8_t *ptr, size_t len)
     struct spm_context *_ctx;
     ssize_t nwrite;
     void *buffer = NULL;
-    int pagesize = 0;
+    int pagesize = 0,reminder = 0, _len = 0;
 
     pagesize=getpagesize();
     posix_memalign((void **)&buffer, pagesize /*alignment */ , len + pagesize);
@@ -456,10 +487,13 @@ static int _m57_write_data_to_fpga(uint8_t *ptr, size_t len)
         fprintf(stderr, "OOM %u.\n", pagesize);
         return -1;
     }
+    memset(buffer, 0 , len + pagesize);
     memcpy(buffer, ptr, len);
     _ctx = get_spm_ctx();
-    nwrite = _ctx->ops->write_xdma_data(0, buffer, len);
-    printfi("Write data %s![%ld]\n",  (nwrite == len) ? "OK" : "Faild", nwrite);
+    _len = len;
+    reminder = _align_4byte((int *)&_len);
+    nwrite = _ctx->ops->write_xdma_data(0, buffer, _len);
+    printfi("Write data %s![%ld],align 4byte reminder=%d[raw len: %lu]\n",  (nwrite == _len) ? "OK" : "Faild", nwrite, reminder, len);
     free(buffer);
     buffer = NULL;
     return nwrite;
@@ -566,6 +600,7 @@ bool m57_execute_cmd(void *client, int *code)
             struct sub_st _sub;
             memcpy(&_sub,  payload, sizeof(_sub));
             if(io_xdma_is_valid_chipid(_sub.chip_id) == false){
+                printf_err("0x%x is not valid chipid\n", _sub.chip_id);
                 break;
             }
             printf_note("[%d]sub chip_id:0x%x, func_id=0x%x, port=0x%x, prio=%d\n", cl->get_peer_port(cl), _sub.chip_id, _sub.func_id, _sub.port, cl->section.prio);
@@ -674,6 +709,7 @@ bool m57_execute_cmd(void *client, int *code)
             }
             id = *(uint16_t*)payload;
             if(io_xdma_is_valid_chipid(id) == false){
+                printf_err("0x%x is not valid chipid\n", id);
                 _assamble_resp_payload(cl, id, -1);
                 _code = CCT_RSP_UNLOAD;
                 break;
@@ -699,6 +735,7 @@ bool m57_execute_cmd(void *client, int *code)
             cl->section.is_run_loadfile = true;
             cl->section.is_loadfile_ok = false;
             if(io_xdma_is_valid_chipid(pload->chipid) == false){
+                printf_err("0x%x is not valid chipid\n", pload->chipid);
                 _assamble_resp_payload(cl, pload->chipid, -1);
                 _code = CCT_RSP_LOAD;
                 break;

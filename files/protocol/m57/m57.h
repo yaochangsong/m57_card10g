@@ -136,6 +136,7 @@ extern void m57_send_resp(void *client, int code, void *args);
 extern void m57_send_heatbeat(void *client);
 extern int m57_unload_bitfile_from_fpga(uint16_t chip_id);
 extern int m57_unload_bitfile_by_client(struct sockaddr_in *addr);
+extern int m57_unload_bitfile_all(void);
 
 #endif
 

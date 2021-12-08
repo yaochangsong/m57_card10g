@@ -903,6 +903,7 @@ void executor_init(void)
 void executor_close(void)
 {
 #ifdef SUPPORT_SPECTRUM_V2
+    m57_unload_bitfile_all();
     spm_close();
 #if defined(SUPPORT_SPECTRUM_FPGA)
     fpga_io_close();

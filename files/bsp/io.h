@@ -117,7 +117,12 @@ extern void io_set_xdma_enable(int ch, int subch);
 extern void io_set_xdma_disable(int ch, int subch);
 extern bool io_get_xdma_fpga_status(void);
 extern bool io_xdma_is_valid_chipid(int chipid);
+extern bool io_xdma_is_valid_addr(int slot_id);
+extern uint32_t io_xdma_get_slot_version(int slot_id);
 extern const unsigned long *cards_status_get_bitmap(void);
-
+extern void io_reg_rf_set_ndata(uint8_t *ptr, int len);
+extern void io_reg_rf_start_tranfer(uint32_t len);
+extern bool io_reg_rf_is_busy(void);
+extern void io_reg_rf_get_data(uint8_t *buffer, int len);
 
 #endif

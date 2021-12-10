@@ -16,6 +16,8 @@
 #define MODE_CODE_IF            0x9a //b10011010  中频模块
 #define MODE_CODE_CLK           0x94 //b10010100  时钟卡
 #define MODE_CODE_RF            0xdd //b11011101  射频中频模块
+#define MODE_CODE_FULL          0xe0 //b11100000  全交换矩阵
+
 
 //指令码
 #define INS_CODE_FREQ           0x0  //模块调谐频率控制指令
@@ -42,7 +44,7 @@ struct rf_identity_info_t{
     uint8_t check_sum;
     uint8_t addr_ch;
     uint32_t serial_num: 24;
-    uint32_t type_code: 8;
+    uint32_t module_code: 8;
     uint8_t vender;
     uint8_t max_clk_mhz;
     uint8_t fw_version;
@@ -50,6 +52,26 @@ struct rf_identity_info_t{
     uint8_t protocol_version;
     uint8_t resv;
 }__attribute__ ((packed));
+
+
+struct module_info_t{
+    int index;
+    int code;
+    char *name;
+};
+
+struct rf_info_t{
+    uint32_t serial_num;
+    uint8_t addr;
+    uint8_t ch;
+    uint8_t vender;
+    uint8_t max_clk_mhz;
+    int8_t module;
+    char *fw_version;
+    char *father_version;
+    char *protocol_version;
+    bool is_load_info;
+};
 
 
 #define RF_CMD_CODE_FREQUENCY 	0x01  //调节频率

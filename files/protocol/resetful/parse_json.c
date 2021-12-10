@@ -1007,12 +1007,14 @@ char *assemble_json_slot_info(void)
     for_each_set_bit(bit, cards_status_get_bitmap(), MAX_FPGA_CARD_SLOT_NUM){
         cJSON_AddItemToArray(array, item = cJSON_CreateObject());
         cJSON_AddNumberToObject(item, "id", bit);
-        cJSON_AddStringToObject(item, "status", "OK");
+        snprintf(buffer, sizeof(buffer) - 1, "%s", (io_xdma_is_valid_addr(bit) == true ? "OK" : "False"));
+        cJSON_AddStringToObject(item, "status", buffer);
         cJSON_AddNumberToObject(item, "type", 1);
         cJSON_AddStringToObject(item, "loadStatus",  ns_downlink_get_loadbit_str_result(bit));
         snprintf(buffer, sizeof(buffer) - 1, "%" PRIu64, get_send_bytes_by_type(0, HASHMAP_TYPE_SLOT, bit));
         cJSON_AddStringToObject(item, "uplinkBytes", buffer);
-        cJSON_AddStringToObject(item, "softVersion", "1.0");
+        snprintf(buffer, sizeof(buffer) - 1, "%x", io_xdma_get_slot_version(bit));
+        cJSON_AddStringToObject(item, "softVersion", buffer);
         cJSON_AddNumberToObject(item, "linkSwitch", config_get_link_switch(bit));
         cJSON_AddStringToObject(item, "linkStatus", config_get_link_switch(bit) == 0 ? "OFF" : ns_downlink_get_link_str_result(bit));
     }
@@ -1380,6 +1382,37 @@ char *assemble_json_net_list_info(void)
     }
     
     str_json = cJSON_PrintUnformatted(array);
+    return str_json;
+}
+
+char *assemble_json_rf_identify_info(void)
+{
+    char *str_json = NULL;
+#ifdef SUPPORT_RF_SPI_M57
+    if(get_rfctx() == NULL || get_rfctx()->ops->get_info == NULL){
+        return NULL;
+    }
+
+    struct rf_info_t *info;
+    int i = 0, j = 0;
+    cJSON *array = cJSON_CreateArray();
+    cJSON* item = NULL;
+    info = get_rfctx()->ops->get_info();
+    for(i = 0; i < MAX_XDMA_RF_CARD_NUM; i++){
+        if(info[i].is_load_info == false)
+            continue;
+        cJSON_AddItemToArray(array, item = cJSON_CreateObject());
+        cJSON_AddNumberToObject(item, "addr", info[i].addr);
+        cJSON_AddNumberToObject(item, "serial_num", info[i].serial_num);
+        cJSON_AddNumberToObject(item, "vender", info[i].vender);
+        cJSON_AddNumberToObject(item, "max_clk_mhz", info[i].max_clk_mhz);
+        cJSON_AddNumberToObject(item, "module", info[i].module);
+        cJSON_AddStringToObject(item, "fw_version", info[i].fw_version);
+        cJSON_AddStringToObject(item, "father_version", info[i].father_version);
+        cJSON_AddStringToObject(item, "protocol_version", info[i].protocol_version);
+    }
+    str_json = cJSON_PrintUnformatted(array);
+#endif
     return str_json;
 }
 

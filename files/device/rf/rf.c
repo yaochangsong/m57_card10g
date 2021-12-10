@@ -166,7 +166,7 @@ int8_t rf_read_interface(uint8_t cmd,uint8_t ch,void *data, va_list ap)
         case EX_RF_IDENTITY_INFO:
         {
             if(rfctx && rfctx->ops->get_rf_identify_info)
-                ret = rfctx->ops->get_rf_identify_info(ch, 0, data);
+                ret = rfctx->ops->get_rf_identify_info(ch, data);
             break;
         }
         case EX_RF_MODE_CODE :

@@ -26,7 +26,8 @@ struct rf_ops {
     int (*get_temperature)(uint8_t, int16_t*);  /* 获取射频温度 */
     bool(*get_status)(uint8_t);                 /* 获取射频工作状态 */
     int (*get_rf_mid_freq)(uint8_t, uint64_t*);   /*获取射频中频频率*/
-    int (*get_rf_identify_info)(uint8_t, uint8_t, void *);     /*获取射频身份信息*/
+    int (*get_rf_identify_info)(uint8_t, void *);     /*获取射频身份信息*/
+    void *(*get_info)(void);
 };
 
 struct rf_ctx {

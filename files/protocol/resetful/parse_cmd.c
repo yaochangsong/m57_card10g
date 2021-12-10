@@ -948,6 +948,16 @@ int cmd_get_sys_info(struct uh_client *cl, void **arg, void **content)
     return code;
 }
 
+int cmd_get_rf_identify_info(struct uh_client *cl, void **arg, void **content)
+{
+    int code = RESP_CODE_OK;
+    *content = assemble_json_rf_identify_info();
+    if(*content == NULL)
+        code = RESP_CODE_EXECMD_ERR;
+
+    *arg = get_resp_message(code);
+    return code;
+}
 
 int cmd_get_device_status(struct uh_client *cl, void **arg, void **content)
 {

@@ -1616,6 +1616,45 @@ bool io_get_xdma_fpga_status(void)
     return ret;
 }
 
+
+void io_reg_rf_set_ndata(uint8_t *ptr, int len)
+{
+    if(ptr == NULL)
+        return;
+#ifdef SUPPORT_RF_SPI_M57
+    for(int i = 0; i< len; i++)
+        SET_RF_BYTE_DATA(get_fpga_reg(), *ptr++);
+#endif
+}
+
+void io_reg_rf_start_tranfer(uint32_t len)
+{
+#ifdef SUPPORT_RF_SPI_M57
+    SET_RF_BYTE_CMD(get_fpga_reg(), (uint16_t)len);
+#endif
+}
+
+bool io_reg_rf_is_busy(void)
+{
+    bool busy = false;
+#ifdef SUPPORT_RF_SPI_M57
+    busy = ((GET_RF_STATUS(get_fpga_reg()) & 0x01) == 0 ? false : true);
+#endif
+    return busy;
+}
+
+void io_reg_rf_get_data(uint8_t *buffer, int len)
+{
+#ifdef SUPPORT_RF_SPI_M57
+    uint8_t *ptr = buffer;
+    if(buffer == NULL)
+        return;
+    for(int i = 0; i < len; i++)
+        *ptr++ = GET_RF_BYTE_READ(get_fpga_reg());
+#endif
+}
+
+
 /* 检测槽位是否有效 
     @chipid: 芯片id
     return true / false
@@ -1625,6 +1664,16 @@ bool io_xdma_is_valid_chipid(int chipid)
     int id = 0;
     id = CARD_SLOT_NUM(chipid);
     return cards_status_test(id);
+}
+
+bool io_xdma_is_valid_addr(int slot_id)
+{
+    return _reg_is_fpga_addr_ok(get_fpga_reg(), slot_id,  NULL);
+}
+
+uint32_t io_xdma_get_slot_version(int slot_id)
+{
+    return _reg_get_fpga_version(get_fpga_reg(), slot_id, NULL);
 }
 
 

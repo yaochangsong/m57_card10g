@@ -22,6 +22,10 @@
 #define FPGA_REG_BASE           0x00000000
 #define FPGA_SYSETM_BASE        FPGA_REG_BASE
 #define FPGA_STAUS_OFFSET 	    (0x1000)
+#define FPGA_SPI_REG_OFFSET 	(0x3010)
+
+#define VALID_MAX_CARD_SLOTS_NUM 4
+#define START_CARD_SLOTS_NUM 2
 
 #define CONFG_REG_LEN 0x100
 
@@ -49,15 +53,29 @@ typedef struct _STATUS_REG_
     uint32_t c1_load;       /* 芯片1加载结果  ，0 = 成功，其他 = 错误代码 */
     uint32_t c1_unload;     /* 芯片1卸载结果，0 = 成功，其他 = 错误代码 */
     uint32_t board_type;    /* 0:未知, 1: 威风，2：非威风*/
-    uint32_t board_status;  /* 0 = 故障，1 = 正常 */
+    uint32_t board_status;  /* 0 = 故障 1 = 正常 */
     uint32_t link_status;   /* link状态   0 = 故障，1 = 正常 */
+    uint32_t recv;
+    uint32_t version;       /* 版本号 */
+    uint32_t fmc_status;    /* FMC子卡状态 */
+    uint32_t board_addr_status;    /* 0: 拨码开关错误 1：拨码开关正确 */
 }STATUS_REG;
+
+typedef struct _SPI_REG_
+{
+    uint32_t data;          /* 数据寄存器 */
+    uint32_t cmd;           /* 执行寄存器 */
+    uint32_t read;          /* 回读寄存器 */
+    uint32_t status;        /* SPI状态寄存器 */
+}SPI_REG;
+
 
 
 typedef struct _FPGA_CONFIG_REG_
 {
     SYSTEM_CONFG_REG *system;
     STATUS_REG *status[MAX_FPGA_CARD_SLOT_NUM];
+    SPI_REG *rf_reg;
 }FPGA_CONFIG_REG;
 
 
@@ -73,6 +91,13 @@ typedef struct _FPGA_CONFIG_REG_
 #define SET_SYS_IF_CH(reg,v) 				
 #define SET_CHANNEL_SEL(reg, v)				(reg->system->channel_sel = v)
 //#define SET_SYS_SSD_MODE(reg,v) 			(reg->system->ssd_mode=v)
+
+/* RF */
+#define SET_RF_BYTE_DATA(reg, v)             (reg->rf_reg->data=v)
+#define SET_RF_BYTE_CMD(reg, v)              (reg->rf_reg->cmd=v)
+#define GET_RF_STATUS(reg)                   (reg->rf_reg->status)
+#define GET_RF_BYTE_READ(reg)                (reg->rf_reg->read)
+
 
 /*****broad band*****/
 /*GET*/
@@ -245,11 +270,29 @@ static inline int _reg_get_fpga_info(FPGA_CONFIG_REG *reg,int id, void **args)
     return sizeof(data);
 }
 
+/* 获取处理卡版本 */
+static inline uint32_t _reg_get_fpga_version(FPGA_CONFIG_REG *reg, int slot_id, void **args)
+{
+    if(slot_id < START_CARD_SLOTS_NUM || slot_id > START_CARD_SLOTS_NUM+VALID_MAX_CARD_SLOTS_NUM)
+        return false;
+
+    return reg->status[slot_id]->version;
+}
+
+
+/* 获取处理卡拨码开关状态 */
+static inline bool _reg_is_fpga_addr_ok(FPGA_CONFIG_REG *reg, int slot_id, void **args)
+{
+    if(slot_id < START_CARD_SLOTS_NUM || slot_id > START_CARD_SLOTS_NUM+VALID_MAX_CARD_SLOTS_NUM)
+        return false;
+
+    return (reg->status[slot_id]->board_addr_status == 0 ? false : true);
+}
+
+/* 获取处理卡类型和槽位状态 */
 static inline int _reg_get_fpga_info_(FPGA_CONFIG_REG *reg, int id, void **args)
 {
     uint8_t *ptr, *pstatus;
-    #define VALID_MAX_CARD_SLOTS_NUM 4
-    #define START_CARD_SLOTS_NUM 2
 
     pstatus = calloc(1, MAX_FPGA_CARD_SLOT_NUM*2);
     if(pstatus == NULL){

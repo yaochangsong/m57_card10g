@@ -255,6 +255,7 @@ static inline int ns_downlink_get_loadbit_result(int slotid)
 
 /* 获取加载结果字符串
     OK(2): 成功(成功次数)
+    WAIT
  */
 static inline char *ns_downlink_get_loadbit_str_result(int slotid)
 {
@@ -262,7 +263,7 @@ static inline char *ns_downlink_get_loadbit_str_result(int slotid)
     if(slotid > MAX_FPGA_CARD_SLOT_NUM)
         return "null";
     
-    if(DEVICE_STATUS_LINK_OK == net_statistics.chip[slotid].load_status){
+    if((DEVICE_STATUS_LOAD_OK == net_statistics.chip[slotid].load_status) && (ns_downlink_get_loadok_count(slotid) > 0)){
         snprintf(buffer, sizeof(buffer)-1, "%s(%"PRIu64")",
                 _get_device_status_info(net_statistics.chip[slotid].load_status), 
                 ns_downlink_get_loadok_count(slotid));
@@ -282,6 +283,8 @@ static inline void ns_downlink_set_loadbit_result(int slotid, int status)
     net_statistics.chip[slotid].load_status = status;
     if(status == DEVICE_STATUS_LOAD_OK)
         ns_downlink_set_loadok_count(slotid, 1);
+    else  if(status == DEVICE_STATUS_WAIT_LOAD)
+        ns_downlink_set_loadok_count(slotid, -1);
 }
 
 /* 获取芯片link状态, 0: 0k,  !=0 false */
@@ -298,8 +301,10 @@ static inline void ns_downlink_set_loadok_count(int slotid, int count)
 {
     if(slotid > MAX_FPGA_CARD_SLOT_NUM)
         return;
-    if(count > 0)
-        net_statistics.chip[slotid].load_count += count;
+    if(count < 0 && net_statistics.chip[slotid].load_count == 0)
+        return;
+        
+    net_statistics.chip[slotid].load_count += count;
 }
 static inline uint64_t ns_downlink_get_loadok_count(int slotid)
 {

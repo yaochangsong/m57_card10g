@@ -417,6 +417,7 @@ static int _m57_start_unload_bitfile_from_fpga(uint16_t chip_id)
     _m57_assamble_loadfile_cmd(chip_id, 0x02, buffer);
     nwrite = _ctx->ops->write_xdma_data(0, buffer, sizeof(buffer));
     printfn("Unload %s![%ld]\n",  (nwrite == sizeof(buffer)) ? "OK" : "Faild", nwrite);
+    ns_downlink_set_loadbit_result(CARD_SLOT_NUM(chip_id), DEVICE_STATUS_WAIT_LOAD);
     
     return nwrite;
 }
@@ -740,6 +741,15 @@ bool m57_execute_cmd(void *client, int *code)
                 _code = CCT_RSP_LOAD;
                 break;
             }
+            //拨码开关地址检测
+            #if 0
+            if(io_xdma_is_valid_addr(CARD_SLOT_NUM(cl->section.chip_id))){
+                printf_err("maybe Dial switch addr not correct\n", pload->chipid);
+                _assamble_resp_payload(cl, pload->chipid, -1);
+                _code = CCT_RSP_LOAD;
+                break;
+            }
+            #endif
             _create_tmp_path(cl);
             if(strlen(cl->section.file.path) > 0){
                 fd = open(cl->section.file.path, O_CREAT|O_RDWR|O_TRUNC, S_IWUSR|S_IRUSR);

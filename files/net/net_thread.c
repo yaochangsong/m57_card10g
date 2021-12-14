@@ -425,7 +425,7 @@ static int  _net_thread_exit(void *arg)
 static int _net_thread_close(void *client)
 {
     struct net_tcp_client *cl = client;
-    
+    m57_stop_load((void *)cl);
     if(pthread_check_alive_by_tid(cl->section.thread->thread.tid) == true){
         pthread_cancel_by_tid(cl->section.thread->thread.tid);
         printf_debug("thread close!\n");

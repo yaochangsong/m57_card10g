@@ -18,6 +18,10 @@
 #include "../../bsp/io.h"
 
 static int _m57_write_data_to_fpga(uint8_t *ptr, size_t len);
+static bool  _m57_stop_load_bitfile_to_fpga(uint16_t chip_id);
+static void _assamble_resp_payload(struct net_tcp_client *cl, int16_t chipid, int ret);
+static int _m57_load_bit_over(void *client, bool result);
+static int _m57_stop_load(void *client);
 
 
 void _m57_swap_header_element(struct m57_header_st *header)
@@ -350,6 +354,248 @@ exit2:
     pthread_exit((void *)ret);
 }
 
+static int _m57_loading_bitfile_to_fpga_thread_asyn(void   *args)
+{
+    #define LOAD_BITFILE_SIZE	4096
+    
+    int rc = 0, ret = 0;
+    struct asyn_load_ctx_t *_args = args;
+    unsigned char *buffer = _args->buffer;
+    struct spm_backend_ops *ops = _args->ops;
+    FILE *file = _args->file;
+    char *filename = _args->filename;
+    struct stat *fstat = _args->fstat;
+    int reminder = _args->reminder;
+    ssize_t nwrite;
+
+    memset(buffer, 0, LOAD_BITFILE_SIZE + 4096);
+    rc = fread(buffer, 1, LOAD_BITFILE_SIZE, file);
+    reminder += _align_4byte(&rc);
+#ifdef DEBUG_TEST
+    _args->total_load += rc;
+    usleep(1000);
+#else
+    nwrite = ops->write_xdma_data(0, buffer, rc);
+    if(nwrite > 0)
+        _args->total_load += nwrite;
+#endif
+    printfn("Loading.......................................[%ld, %ld]%ld%%\r",  _args->total_load,fstat->st_size,(_args->total_load*100)/(fstat->st_size+reminder));
+    _args->reminder = reminder;
+    if(rc <= 0){
+        _args->result = (_args->total_load == fstat->st_size+reminder ? true : false);
+        printfn("\nLoad Bitfile %s,align 4byte reminder=%d,%ld,%ld\n",  _args->result == true ? "OK" : "Faild", reminder, _args->total_load,fstat->st_size+reminder);
+        pthread_exit_by_name(_args->filename);
+    }
+
+    return 0;
+}
+
+static int _m57_load_bit_over(void *client, bool result)
+{
+    int ret = M57_CARD_STATUS_OK;
+    struct net_tcp_client *cl = client;
+    int chip_id = cl->section.chip_id;
+    if(cl->section.is_exitting == true){
+        printf_note("client is exitting\n");
+        return -1;
+    }
+#ifdef DEBUG_TEST
+    sleep(3);
+    goto exit;
+#endif
+    //load faild
+    if(result == false){
+        ret = M57_CARD_STATUS_LOAD_FAILD;
+        ns_downlink_set_loadbit_result(CARD_SLOT_NUM(chip_id), DEVICE_STATUS_LOAD_ERR);
+        config_set_device_status(DEVICE_STATUS_LOAD_ERR, chip_id);
+        goto exit;
+    }
+    //load ok
+    usleep(50000);
+    if(_m57_stop_load_bitfile_to_fpga(chip_id) == true){
+        sleep(1);
+        /* 1st: check load result */
+        ret = _reg_get_load_result(get_fpga_reg(), chip_id, NULL);
+        ret = (ret == 0 ? M57_CARD_STATUS_OK : M57_CARD_STATUS_LOAD_FAILD); // -5: load faild; 0: ok
+        //device load faild
+        if(ret != M57_CARD_STATUS_OK){
+            ns_downlink_set_loadbit_result(CARD_SLOT_NUM(chip_id), DEVICE_STATUS_LOAD_ERR);
+            config_set_device_status(DEVICE_STATUS_LOAD_ERR, chip_id);
+        }
+        /* 2st: check link result,
+            NOTE:
+            1) link switch is on;
+            2) bit file load ok
+            3) link status noly valid for chip2 
+        */
+        if(config_get_link_switch(CARD_SLOT_NUM(chip_id)) && ret == 0 && (CARD_CHIP_NUM(chip_id) == 2)){
+            ret = _reg_get_link_result(get_fpga_reg(), chip_id, NULL);
+            ret = (ret == 0 ? M57_CARD_STATUS_OK : M57_CARD_STATUS_LINK_FAILD); // -7: link faild; 0: ok
+            
+            //device link faild
+            if(ret != M57_CARD_STATUS_OK){
+                ns_downlink_set_link_result(CARD_SLOT_NUM(chip_id), DEVICE_STATUS_LINK_ERR);
+                config_set_device_status(DEVICE_STATUS_LINK_ERR, chip_id);
+            }else{
+                ns_downlink_set_link_result(CARD_SLOT_NUM(chip_id), DEVICE_STATUS_LINK_OK);
+            }
+        }
+        printf_note("RET:%d>>>>>>>>>>>>>>>>>>>>>>\n", ret);
+        if(ret == M57_CARD_STATUS_OK){
+            //device load ok
+            ns_downlink_set_loadbit_result(CARD_SLOT_NUM(chip_id), DEVICE_STATUS_LOAD_OK);
+            config_set_device_status(DEVICE_STATUS_LOAD_OK, chip_id);
+        }
+    }
+exit:
+    pthread_mutex_lock(&cl->section.free_lock);
+    if(cl->section.is_exitting == false){
+        _assamble_resp_payload(cl, chip_id, ret);
+        cl->srv->send_error(cl, CCT_RSP_LOAD, NULL);
+        printf_note("Send Over#\n");
+    }
+    pthread_mutex_unlock(&cl->section.free_lock);
+    
+    return 0;
+}
+
+static int _m57_asyn_load_exit(void *args)
+{
+    struct asyn_load_ctx_t *_args = args;
+    printf_note("result = %s\n", _args->result == true ? "OK" : "False");
+    uloop_timeout_cancel(&_args->timeout);
+    printf_note("cancel timer OK\n");
+    if(_args->client)
+        _m57_load_bit_over(_args->client, _args->result);
+    if(_args->file){
+        fclose(_args->file);
+        _args->file = NULL;
+    }
+    _safe_free_(_args->buffer);
+    _safe_free_(_args->fstat);
+    _safe_free_(_args->filename);
+    _safe_free_(_args);
+    printf_note("FREE & Exit OK!!\n");
+    return 0;
+}
+static void _loadbit_timeout_cb(struct uloop_timeout *timeout)
+{
+    struct asyn_load_ctx_t *load = container_of(timeout, struct asyn_load_ctx_t, timeout);
+    printf_warn("\nLoadBit Timeout...\n");
+    _m57_stop_load(load->client);
+}
+
+
+static int _m57_asyn_loadbit_init(void *args)
+{
+     #define LOAD_BITFILE_SIZE	4096
+    struct asyn_load_ctx_t *_args = args;
+    struct stat *fstat = safe_malloc(sizeof(*fstat));
+    int result = 0, ret = 0;
+    unsigned char *buffer = _args->buffer;
+    struct spm_context *_ctx;
+    ssize_t nwrite, total_write = 0;;
+    FILE *file;
+    char *filename = _args->filename;
+    int reminder = 0;
+    //char *filename = "test.bin";
+    posix_memalign((void **)&buffer, 4096 /*alignment */ , LOAD_BITFILE_SIZE + 4096);
+    if (!buffer) {
+        fprintf(stderr, "OOM %u.\n", LOAD_BITFILE_SIZE + 4096);
+        //rc = -ENOMEM;
+        goto exit;
+    }
+    memset(buffer, 0, LOAD_BITFILE_SIZE);
+    
+    result = stat(filename, fstat);
+    if(result != 0){
+        perror("Faild!");
+        ret = -1;
+        goto exit;
+    }
+    printf_info("loading file:%s, size = %ld\n", filename, fstat->st_size);
+    
+    file = fopen(filename, "r");
+    if(!file){
+        printf("Open file error!\n");
+        ret = -1;
+        goto exit;
+    }
+    _args->file = file;
+    _args->ops = get_spm_ctx()->ops;
+    _args->fstat = fstat;
+    _args->buffer = buffer;
+    _args->total_load = 0;
+    _args->timeout.cb = _loadbit_timeout_cb;
+    uloop_timeout_set(&_args->timeout, LOAD_BITFILE_TIMEOUT * 1000);
+    usleep(10);
+    printfn("Load Bitfile:[%s]\n", filename);
+    printfn("Loading.......................................[%ld, %ld]%ld%%\r",  total_write,fstat->st_size, (total_write*100)/fstat->st_size);
+    return ret;
+exit:
+    _args->result = false;
+    pthread_exit_by_name(_args->filename);
+    return ret;
+}
+
+
+static int   _m57_loading_bitfile_to_fpga_asyn(void *client, char *filename)
+{
+    int ret;
+    pthread_t tid = 0;
+    struct asyn_load_ctx_t *args = safe_malloc(sizeof(*args));
+    memset(args, 0 , sizeof(*args));
+    args->filename = safe_strdup(filename);
+    args->client = client;
+    args->result = false;
+    struct net_tcp_client *cl = args->client;
+    cl->section.load_bit_thread = args;
+
+    ret =  pthread_create_detach (NULL,_m57_asyn_loadbit_init, 
+                                 _m57_loading_bitfile_to_fpga_thread_asyn, 
+                                 _m57_asyn_load_exit,  
+                                args->filename, args, args, &tid);
+    if(ret != 0){
+        perror("pthread loadbit thread!!");
+        safe_free(args->filename);
+        safe_free(args);
+        return -1;
+    }
+    printf_note(">>>>>>>tid:%lu\n", tid);
+    args->tid = tid;
+    
+    return 0;
+}
+
+int _m57_stop_load(void *client)
+{
+    struct net_tcp_client *cl = client;
+
+    if(cl == NULL || cl->section.load_bit_thread == NULL)
+        return -1;
+        
+    printf_note("cl->section.load_bit_thread tid: %ld\n", cl->section.load_bit_thread->tid);
+    if(pthread_check_alive_by_tid(cl->section.load_bit_thread->tid) == true){
+        pthread_cancel_by_tid(cl->section.load_bit_thread->tid);
+        printf_note(">>>>>>>>>>STOP LoadBit: %s\n", cl->section.load_bit_thread->filename);
+    }
+    usleep(10);
+    return 0;
+}
+
+
+int m57_stop_load(void *client)
+{
+    _m57_stop_load(client);
+    return 0;
+}
+
+int   m57_loading_bitfile_to_fpga_asyn(void *client, char *filename)
+{
+    return  _m57_loading_bitfile_to_fpga_asyn(client, filename);
+}
+
+
 static bool   _m57_loading_bitfile_to_fpga(char *filename)
 {
     int ret;
@@ -453,6 +699,7 @@ int m57_unload_bitfile_by_client(struct sockaddr_in *addr)
 
 static int _unload_bit_callback(struct net_tcp_client *cl, void *args)
 {
+    m57_stop_load((void *)cl);
     return m57_unload_bitfile_by_client(&cl->peer_addr);
 }
 
@@ -829,52 +1076,19 @@ bool m57_execute_cmd(void *client, int *code)
 load_file_exit:
             /* now file receive over! response to client*/
             if(cl->section.is_run_loadfile == false){
-                ret = -1;
+                ret = M57_CARD_STATUS_LOAD_FAILD;
                 if(cl->section.is_loadfile_ok && (io_xdma_is_valid_chipid(cl->section.chip_id) == true)){
-                    if(_m57_loading_bitfile_to_fpga(cl->section.file.path) == true){
-                          usleep(40000);
-                         if(_m57_stop_load_bitfile_to_fpga(cl->section.chip_id) == true){
-                            sleep(1);
-                            /* 1st: check load result */
-                            ret = _reg_get_load_result(get_fpga_reg(), cl->section.chip_id, NULL);
-                            ret = (ret == 0 ? M57_CARD_STATUS_OK : M57_CARD_STATUS_LOAD_FAILD); // -5: load faild; 0: ok
-                            //device load faild
-                            if(ret != M57_CARD_STATUS_OK){
-                                ns_downlink_set_loadbit_result(CARD_SLOT_NUM(cl->section.chip_id), DEVICE_STATUS_LOAD_ERR);
-                                config_set_device_status(DEVICE_STATUS_LOAD_ERR, cl->section.chip_id);
-                            }
-                            /* 2st: check link result,
-                                NOTE:
-                                1) link switch is on;
-                                2) bit file load ok
-                                3) link status noly valid for chip2 
-                            */
-                            if(config_get_link_switch(CARD_SLOT_NUM(cl->section.chip_id)) && ret == 0 && (CARD_CHIP_NUM(cl->section.chip_id) == 2)){
-                                ret = _reg_get_link_result(get_fpga_reg(), cl->section.chip_id, NULL);
-                                ret = (ret == 0 ? M57_CARD_STATUS_OK : M57_CARD_STATUS_LINK_FAILD); // -7: link faild; 0: ok
-                                
-                                //device link faild
-                                if(ret != M57_CARD_STATUS_OK){
-                                    ns_downlink_set_link_result(CARD_SLOT_NUM(cl->section.chip_id), DEVICE_STATUS_LINK_ERR);
-                                    config_set_device_status(DEVICE_STATUS_LINK_ERR, cl->section.chip_id);
-                                }else{
-                                    ns_downlink_set_link_result(CARD_SLOT_NUM(cl->section.chip_id), DEVICE_STATUS_LINK_OK);
-                                }
-                            }
-                            if(ret == M57_CARD_STATUS_OK){
-                                //device load ok
-                                ns_downlink_set_loadbit_result(CARD_SLOT_NUM(cl->section.chip_id), DEVICE_STATUS_LOAD_OK);
-                                config_set_device_status(DEVICE_STATUS_LOAD_OK, cl->section.chip_id);
-                            }
-                         }
+                    //异步加载
+                    if(m57_loading_bitfile_to_fpga_asyn(cl, cl->section.file.path) == 0){
+                        ret = M57_CARD_STATUS_OK;
                     }
-                    usleep(30000);
-                }else{
+                }
+                if(ret != M57_CARD_STATUS_OK){
                     ns_downlink_set_loadbit_result(CARD_SLOT_NUM(cl->section.chip_id), DEVICE_STATUS_LOAD_ERR);
                     config_set_device_status(DEVICE_STATUS_LOAD_ERR, cl->section.chip_id);
+                    _assamble_resp_payload(cl, cl->section.chip_id, ret);
+                    _code = CCT_RSP_LOAD;
                 }
-                _assamble_resp_payload(cl, cl->section.chip_id, ret);
-                _code = CCT_RSP_LOAD;
             }else{
                 //set loading status
                 ns_downlink_set_loadbit_result(CARD_SLOT_NUM(cl->section.chip_id), DEVICE_STATUS_LOADING);

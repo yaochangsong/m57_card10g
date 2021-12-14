@@ -41,16 +41,16 @@
 
 
 struct rf_identity_info_t{
-    uint8_t check_sum;
-    uint8_t addr_ch;
-    uint32_t serial_num: 24;
-    uint32_t module_code: 8;
-    uint8_t vender;
-    uint8_t max_clk_mhz;
-    uint8_t fw_version;
-    uint8_t father_version;
-    uint8_t protocol_version;
     uint8_t resv;
+    uint8_t protocol_version;
+    uint8_t father_version;
+    uint8_t fw_version;
+    uint8_t max_clk_mhz;
+    uint8_t vender;
+    uint32_t module_code: 8;
+    uint32_t serial_num: 24;
+    uint8_t addr_ch;
+    uint8_t check_sum;
 }__attribute__ ((packed));
 
 
@@ -58,6 +58,7 @@ struct module_info_t{
     int index;
     int code;
     char *name;
+    int excmd;
 };
 
 struct rf_info_t{

@@ -56,12 +56,12 @@
 
 struct rf_info_t rf_info[MAX_XDMA_RF_CARD_NUM];
 static struct module_info_t module_info[] = {
-        {0, MODE_CODE_CDB,  "CDB Module"},
-        {1, MODE_CODE_LF,   "LF Module"},
-        {2, MODE_CODE_IF,   "IF Module"},
-        {3, MODE_CODE_CLK,  "Clk Module"},
-        {4, MODE_CODE_RF,   "RF Module"},
-        {5, MODE_CODE_FULL, "Full fabric"},
+        {0, MODE_CODE_CDB,  "CDB Module", EX_ICMD_NO_RESP},
+        {1, MODE_CODE_LF,   "LF Module", EX_ICMD_NEED_RESP},
+        {2, MODE_CODE_IF,   "IF Module", EX_ICMD_NEED_RESP},
+        {3, MODE_CODE_CLK,  "Clk Module", EX_ICMD_NEED_RESP},
+        {4, MODE_CODE_RF,   "RF Module", EX_ICMD_NEED_RESP},
+        {5, MODE_CODE_FULL, "Full fabric", EX_ICMD_NEED_RESP},
 };
 
 
@@ -77,6 +77,7 @@ static const char *const vendor_code_str[] = {
     [8] = "Telecom 5#", 
     [9] = "chengdu xinghang", 
     [10] = "Tongfang Electronic",
+    [11] = "Shanghai weixun Electronic",
 };
 
 static void _print_array(uint8_t *ptr, ssize_t len)
@@ -85,25 +86,31 @@ static void _print_array(uint8_t *ptr, ssize_t len)
         return;
     
     for(int i = 0; i< len; i++){
-        printfn("%02x ", *ptr++);
+        printfd("%02x ", *ptr++);
     }
-    printfn("\n");
+    printfd("\n");
 }
 
 static uint8_t _spi_checksum(uint8_t *buffer,uint8_t len){
     uint8_t check_sum = 0;
     uint8_t i, *ptr = buffer;
     
-    check_sum = *ptr++;
-    for(i = 1; i < 4+len; i++){
+    check_sum = *ptr++; 
+    for(i = 1; i < len; i++){
         check_sum ^= *ptr++;
     }
     return check_sum;
 }
 
-static bool _spi_data_check(uint8_t *buffer, int len)
+static bool _spi_data_check(uint8_t *send_buffer, uint8_t *recv_buffer, int len)
 {
-    return true;
+    struct rf_identity_info_t *_recv_buffer = (struct rf_identity_info_t *)recv_buffer;
+    //send_buffer: dd 70 81 00 0c fd 
+    //0xdd is module_code
+    if(_recv_buffer->module_code == *send_buffer && len == 12)
+        return true;
+
+    return false;
 }
 
 static int _spi_send_data_by_reg(uint8_t *send_buffer, size_t send_len, uint8_t *recv_buffer,  size_t recv_len)
@@ -111,11 +118,11 @@ static int _spi_send_data_by_reg(uint8_t *send_buffer, size_t send_len, uint8_t 
     uint32_t tran_len = 0, wait_timeout_10us = 5, timeout_cnt = 0;
     bool busy = false;
     
-    printf_note("send: ");
+    printf_debug("send: ");
     _print_array(send_buffer, send_len);
     io_reg_rf_set_ndata(send_buffer, send_len);
     tran_len = (send_len&0xff)|((recv_len << 8)&0xff00);
-    printf_note("start transfer len:0x%x\n", tran_len);
+    printf_debug("start transfer len:0x%x\n", tran_len);
     io_reg_rf_start_tranfer(tran_len);
     do{
         usleep(10);
@@ -130,11 +137,11 @@ static int _spi_send_data_by_reg(uint8_t *send_buffer, size_t send_len, uint8_t 
     }
     /* GET SPI data */
     io_reg_rf_get_data(recv_buffer, recv_len);
-    printf_note("recv: ");
+    printf_debug("recv: ");
     _print_array(recv_buffer, recv_len);
     
-    if(_spi_data_check(recv_buffer, recv_len) == false){
-        printf_warn("recv spi data is not valid\n");
+    if(_spi_data_check(send_buffer, recv_buffer, recv_len) == false){
+        printf_debug("recv spi data is not valid\n");
         return -1;
     }
     
@@ -185,10 +192,10 @@ static void _spi_info_load(void *info, void *recv_buffer, int recv_size)
     RF_FW_VERSION_TO_STR(buffer, _recv_buffer->fw_version);
     _info->fw_version = safe_strdup(buffer);
 
-    RF_FW_VERSION_TO_STR(buffer, _recv_buffer->father_version);
+    RF_FATHER_VERSION_TO_STR(buffer, _recv_buffer->father_version);
     _info->father_version = safe_strdup(buffer);
 
-    RF_FW_VERSION_TO_STR(buffer, _recv_buffer->protocol_version);
+    RF_PROTOCOL_VERSION_TO_STR(buffer, _recv_buffer->protocol_version);
     _info->protocol_version = safe_strdup(buffer);
 
     _info->is_load_info = true;
@@ -229,8 +236,8 @@ static int _spi_assemble_send_data(uint8_t *buffer, uint8_t mcode, uint8_t addr,
     if(pdata){
         memcpy(ptr, pdata, data_len);
     }
-    ptr += data_len;
-    *ptr++ = _spi_checksum(pcheck, data_len);
+    ptr += 0;;
+    *ptr++ = _spi_checksum(pcheck, 4);
 
     return (ptr - buffer);/* RETURN: total frame byte count */
 }
@@ -260,11 +267,11 @@ static int _get_rf_identify_info(uint8_t ch, void *info)
 {
     uint8_t frame_buffer[128], recv_buffer[128];
     int frame_size,recv_size =12, ret = 0;
-    
+    int addr = 0;
     for(int index = 0; index < MAX_XDMA_RF_CARD_NUM; index++){
-        for(int module = 0; module < ARRAY_SIZE(module_info); module ++){
+        for(int module = 0; module < ARRAY_SIZE(module_info); module++){
             frame_size = _spi_assemble_send_data(frame_buffer, module_info[module].code, index, ch, INS_CODE_IDENTITY, 
-                            EX_ICMD_NO_RESP, NULL, 0);
+                            module_info[module].excmd, NULL, recv_size);
             if(_spi_send_data_by_reg(frame_buffer, frame_size, recv_buffer, recv_size) == 0){
                 _spi_info_load(&rf_info[index], recv_buffer, recv_size);
                 ret++;

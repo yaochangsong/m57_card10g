@@ -75,5 +75,6 @@ extern int cmd_get_sys_info(struct uh_client *cl, void **arg, void **content);
 extern int cmd_unload_fpga_bit(struct uh_client *cl, void **arg, void **content);
 extern int cmd_get_status_client_sub_info(struct uh_client *cl, void **arg, void **content);
 extern int cmd_get_rf_identify_info(struct uh_client *cl, void **arg, void **content);
+extern int cmd_unload_fpga_bit_by_id(struct uh_client *cl, void **arg, void **content);
 
 #endif

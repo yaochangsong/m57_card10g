@@ -280,6 +280,16 @@ static inline uint32_t _reg_get_fpga_version(FPGA_CONFIG_REG *reg, int slot_id, 
 }
 
 
+/* 获取FMC子卡状态 */
+static inline int _reg_get_fpga_fmc_status(FPGA_CONFIG_REG *reg, int slot_id, void **args)
+{
+    if(slot_id < START_CARD_SLOTS_NUM || slot_id > START_CARD_SLOTS_NUM+VALID_MAX_CARD_SLOTS_NUM)
+        return false;
+
+    return (reg->status[slot_id]->fmc_status);
+}
+
+
 /* 获取处理卡拨码开关状态 */
 static inline bool _reg_is_fpga_addr_ok(FPGA_CONFIG_REG *reg, int slot_id, void **args)
 {

@@ -1017,6 +1017,7 @@ char *assemble_json_slot_info(void)
         cJSON_AddStringToObject(item, "softVersion", buffer);
         cJSON_AddNumberToObject(item, "linkSwitch", config_get_link_switch(bit));
         cJSON_AddStringToObject(item, "linkStatus", config_get_link_switch(bit) == 0 ? "OFF" : ns_downlink_get_link_str_result(bit));
+        cJSON_AddNumberToObject(item, "fmcStatus", io_xdma_get_fmc_status(bit));
     }
 #endif
     json_print(array, 1);

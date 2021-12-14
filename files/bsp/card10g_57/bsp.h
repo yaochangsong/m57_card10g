@@ -14,7 +14,7 @@
 #define MAX_FPGA_CHIPID_NUM             2   /* FPGA芯片数 */
 #define MAX_CLINET_SOCKET_NUM           32   /* 客户端socket数 */
 #define MAX_XDMA_NUM                    1   /* XDMA数 */
-#define MAX_XDMA_RF_CARD_NUM            3   /* 射频卡数 */
+#define MAX_XDMA_RF_CARD_NUM            8   /* 射频卡数 */
 
 #if MAX_XDMA_NUM > 1 
 #define PRIO_CHANNEL_EN

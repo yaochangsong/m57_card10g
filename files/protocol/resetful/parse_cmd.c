@@ -1110,5 +1110,31 @@ error:
     return code;
 }
 
+int cmd_unload_fpga_bit_by_id(struct uh_client *cl, void **arg, void **content)
+{
+    int code = RESP_CODE_OK;
+    const char *slotid, *cardid;
+    int  _slotid, _cardid;
+    uint16_t fpga_id;
 
+    slotid = cl->get_restful_var(cl, "slotid");
+    if(str_to_hex(slotid, &_slotid, NULL) == false){
+        code = RESP_CODE_PARSE_ERR;
+        goto error;
+    }
 
+    cardid = cl->get_restful_var(cl, "chipid");
+    if(str_to_hex(cardid, &_cardid, NULL) == false){
+        code = RESP_CODE_PARSE_ERR;
+        goto error;
+    }
+    fpga_id = ((_slotid << 8)&0xff00) | (_cardid &0xff);
+    printf_note("unload fpga bit set: slotid: 0x%x, cardid: 0x%x, fpga_id:  0x%x\n", _slotid, _cardid, fpga_id);
+    if(m57_unload_bitfile_from_fpga(fpga_id) == -1){
+        code = RESP_CODE_INVALID_PARAM;
+        goto error;
+    }
+error:
+    *arg = get_resp_message(code);
+    return code;
+}

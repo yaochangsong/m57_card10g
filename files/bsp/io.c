@@ -1676,6 +1676,10 @@ uint32_t io_xdma_get_slot_version(int slot_id)
     return _reg_get_fpga_version(get_fpga_reg(), slot_id, NULL);
 }
 
+uint32_t io_xdma_get_fmc_status(int slot_id)
+{
+    return _reg_get_fpga_fmc_status(get_fpga_reg(), slot_id, NULL);
+}
 
 void io_init(void)
 {

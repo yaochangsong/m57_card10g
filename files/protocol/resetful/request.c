@@ -93,6 +93,7 @@ static struct request_info http_req_cmd[] = {
     {"PUT",     "/link/@slotId/@enable",                -1,                cmd_linkcheck_set},
     /* 控制 */
     {"GET",     "/unload/@fpga_id",                     -1,                cmd_unload_fpga_bit},
+    {"GET",     "/unload/@slotid/@chipid",              -1,                cmd_unload_fpga_bit_by_id},
 };
 
 #define URL_SEPARATOR "/"

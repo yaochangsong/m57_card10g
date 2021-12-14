@@ -884,7 +884,8 @@ load_file_exit:
             break;
         }
     }
-    
+    if(code >= 0)
+        cl->response.need_resp = true;
     *code = _code;
     return true;
 }
@@ -939,7 +940,7 @@ void m57_send_cmd(void *client, int code, void *args, uint32_t len)
         printfn("%02x ", psend[i]);
     printfn("\n");
 #endif
-    safe_free(psend);
+    _safe_free_(psend);
 }
 
 void m57_send_heatbeat(void *client)
@@ -959,17 +960,16 @@ void m57_send_heatbeat(void *client)
 
 void m57_send_resp(void *client, int code, void *args)
 {
-    if(code == -1)
-            return;
-
-    static uint8_t sn = 0;
     struct net_tcp_client *cl = client;
+    static uint8_t sn = 0;
     struct m57_header_st header;
     struct m57_ex_header_cmd_st ex_header;
     int hlen = sizeof(struct m57_header_st);
     int exhlen = sizeof(struct m57_ex_header_cmd_st);
     uint8_t *psend;
-
+    if(code <= 0)
+        return;
+    
     printf_debug("code = [0x%x, %d]\n", code, code);
     memset(&header, 0, sizeof(header));
     header.header = M57_SYNC_HEADER;

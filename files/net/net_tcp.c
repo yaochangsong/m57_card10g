@@ -136,9 +136,9 @@ static void tcp_post_done(struct net_tcp_client *cl)
     if(cl->srv->on_execute){
         cl->srv->on_execute(cl, &code);
     }
-    
-    cl->srv->send_error(cl, code, NULL);
-    
+    if(cl->response.need_resp == true)
+        cl->srv->send_error(cl, code, NULL);
+
     if(cl->request_done)
         cl->request_done(cl);
 }
@@ -308,12 +308,15 @@ static void tcp_ustream_write_cb(struct ustream *s, int bytes)
 
 void tcp_free(struct net_tcp_client *cl)
 {
-    printf_note("tcp_free:");
-    printf_note(": %s:%d\n", cl->get_peer_addr(cl), cl->get_peer_port(cl));
+    printfn("\nSTART tcp_free:");
+    printfn(": %s:%d\n", cl->get_peer_addr(cl), cl->get_peer_port(cl));
     struct net_tcp_server *srv;
     srv = cl->srv;
     pthread_mutex_lock(&srv->tcp_client_lock);
     if (cl) {
+        pthread_mutex_lock(&cl->section.free_lock);
+        cl->section.is_exitting = true;
+        pthread_mutex_unlock(&cl->section.free_lock);
         uloop_timeout_cancel(&cl->timeout);
         ustream_free(&cl->sfd.stream);
         shutdown(cl->sfd.fd.fd, SHUT_RDWR);
@@ -325,7 +328,7 @@ void tcp_free(struct net_tcp_client *cl)
             cl->section.thread->ops->close(cl);
         socket_bitmap_clear(cl->section.section_id);
         executor_net_disconnect_notify(&cl->peer_addr);
-        free(cl);
+        _safe_free_(cl);
     }
     pthread_mutex_unlock(&srv->tcp_client_lock);
 }
@@ -448,6 +451,8 @@ static void tcp_accept_cb(struct uloop_fd *fd, unsigned int events)
     cl->get_peer_port = tcp_get_peer_port;
     cl->send = tcp_send;
     cl->request_done = tcp_client_request_done;
+    
+    pthread_mutex_init(&cl->section.free_lock, NULL);
     printf_note("New connection from: %s:%d\n", cl->get_peer_addr(cl), cl->get_peer_port(cl));
 
     socklen_t serv_len = sizeof(cl->serv_addr); 

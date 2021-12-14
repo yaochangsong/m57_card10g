@@ -8,6 +8,13 @@
 #define EVEN(x) (((x)%2== 0) ? 1 : 0)
 #define alignment_down(a, size) (((uint32_t)a/(uint32_t)size)*(uint32_t)size) //((uint32_t)a & (~((uint32_t)size-1)))
 #define alignment_up(a, size)   (size +((a-1)/size)*size)
+#define _safe_free_(p)  do{     \
+        if((p) != NULL){    \
+            free((p));       \
+            (p)=NULL;       \
+        }                 \
+    }while(0)
+
 
 /*
 单精度浮点比较

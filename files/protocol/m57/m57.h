@@ -52,6 +52,22 @@ struct load_info{
     uint32_t file_len;
 }__attribute__ ((packed));
 
+/* 异步加载文件定义 */
+struct asyn_load_ctx_t{
+    char *filename;     //加载文件名
+    FILE *file;         //文件句柄
+    void *buffer;       //加载缓冲区
+    void *ops;         //操作制作
+    void *client;       //加载客户端
+    pthread_t tid;      //线程id
+    struct stat *fstat; //文件属性
+    char *thread_name;
+    bool result;        //加载结果
+    uint64_t total_load;
+    int reminder;
+    #define LOAD_BITFILE_TIMEOUT (60)
+    struct uloop_timeout timeout;
+};
 
 #define M57_SYNC_HEADER 0x5751
 //#define CARD_SLOT_NUM(x) (((x)>>8) & 0xff)    //05

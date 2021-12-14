@@ -39,6 +39,7 @@ struct net_tcp_response {
     int   response_length; /*  payload len */
     int   prio;
     int ch;
+    bool need_resp;
 };
 
 struct tcp_dispatch {
@@ -73,6 +74,9 @@ struct tcp_section {
 	bool type[32];
     int section_id;
     struct net_thread_context *thread;
+    struct asyn_load_ctx_t *load_bit_thread;
+    volatile bool is_exitting;
+    pthread_mutex_t free_lock;
 };
 
 

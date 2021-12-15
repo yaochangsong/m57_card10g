@@ -440,7 +440,6 @@ static int _m57_load_bit_over(void *client, bool result)
                 ns_downlink_set_link_result(CARD_SLOT_NUM(chip_id), DEVICE_STATUS_LINK_OK);
             }
         }
-        printf_note("RET:%d>>>>>>>>>>>>>>>>>>>>>>\n", ret);
         if(ret == M57_CARD_STATUS_OK){
             //device load ok
             ns_downlink_set_loadbit_result(CARD_SLOT_NUM(chip_id), DEVICE_STATUS_LOAD_OK);
@@ -586,7 +585,9 @@ int _m57_stop_load(void *client)
 
 int m57_stop_load(void *client)
 {
+#if LOAD_FILE_ASYN
     _m57_stop_load(client);
+#endif
     return 0;
 }
 
@@ -1078,10 +1079,19 @@ load_file_exit:
             if(cl->section.is_run_loadfile == false){
                 ret = M57_CARD_STATUS_LOAD_FAILD;
                 if(cl->section.is_loadfile_ok && (io_xdma_is_valid_chipid(cl->section.chip_id) == true)){
+#if LOAD_FILE_ASYN
                     //异步加载
                     if(m57_loading_bitfile_to_fpga_asyn(cl, cl->section.file.path) == 0){
                         ret = M57_CARD_STATUS_OK;
                     }
+#else
+                    if(_m57_loading_bitfile_to_fpga(cl->section.file.path)){
+                        _m57_load_bit_over(cl, true);
+                        ret = M57_CARD_STATUS_OK;
+                    }else{
+                        _m57_load_bit_over(cl, false);
+                    }
+#endif
                 }
                 if(ret != M57_CARD_STATUS_OK){
                     ns_downlink_set_loadbit_result(CARD_SLOT_NUM(cl->section.chip_id), DEVICE_STATUS_LOAD_ERR);

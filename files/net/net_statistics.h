@@ -68,17 +68,17 @@ static inline  char *_get_device_status_info(int errCode)
         int code;
         char *message;
     } _msg[] ={
-        {DEVICE_STATUS_WAIT_LINK,           "Wait"},
-        {DEVICE_STATUS_LINK_OK,             "OK"},
-        {DEVICE_STATUS_WAIT_LOAD,           "Wait"},
-        {DEVICE_STATUS_LOAD_OK,             "OK"},
-        {DEVICE_STATUS_LOADING,             "Loading"},
+        {DEVICE_STATUS_WAIT_LINK,           "未链接"},
+        {DEVICE_STATUS_LINK_OK,             "链接成功"},
+        {DEVICE_STATUS_WAIT_LOAD,           "未加载"},
+        {DEVICE_STATUS_LOAD_OK,             "加载成功"},
+        {DEVICE_STATUS_LOADING,             "加载中"},
         {DEVICE_STATUS_OK,                  "Ok"},
-        {DEVICE_STATUS_CHECK_CARD,          "Check FPGA Card"},
-        {DEVICE_STATUS_NO_CARD,             "Not Find FPGA Card"},
-        {DEVICE_STATUS_LOAD_ERR,            "Load Error"},
-        {DEVICE_STATUS_LINK_ERR,            "Link Error"},
-        {DEVICE_STATUS_UNKOWN_ERR,          "Unkonw Error"},
+        {DEVICE_STATUS_CHECK_CARD,          "处理卡检测中"},
+        {DEVICE_STATUS_NO_CARD,             "未发现处理卡"},
+        {DEVICE_STATUS_LOAD_ERR,            "加载错误"},
+        {DEVICE_STATUS_LINK_ERR,            "链接错误"},
+        {DEVICE_STATUS_UNKOWN_ERR,          "未知错误"},
     };
     for (int i = 0; i < ARRAY_SIZE(_msg); i++){
         if(_msg[i].code == errCode)
@@ -280,11 +280,17 @@ static inline void ns_downlink_set_loadbit_result(int slotid, int status)
     if(slotid > MAX_FPGA_CARD_SLOT_NUM)
         return;
 
-    net_statistics.chip[slotid].load_status = status;
-    if(status == DEVICE_STATUS_LOAD_OK)
+    if(status == DEVICE_STATUS_LOAD_OK){
         ns_downlink_set_loadok_count(slotid, 1);
-    else  if(status == DEVICE_STATUS_WAIT_LOAD)
+        net_statistics.chip[slotid].load_status = status;
+    }
+    else  if(status == DEVICE_STATUS_WAIT_LOAD){
         ns_downlink_set_loadok_count(slotid, -1);
+        if(ns_downlink_get_loadok_count(slotid) == 0)
+            net_statistics.chip[slotid].load_status = status;
+    } else{
+        net_statistics.chip[slotid].load_status = status;
+    }
 }
 
 /* 获取芯片link状态, 0: 0k,  !=0 false */

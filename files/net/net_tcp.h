@@ -8,7 +8,7 @@ struct net_tcp_client;
 
 #define MAX_SEND_DATA_LEN  1024
 #define TCP_CONNECTION_TIMEOUT 2//60
-#define TCP_MAX_KEEPALIVE_PROBES 3
+#define TCP_MAX_KEEPALIVE_PROBES 60
 
 enum net_tcp_state {
     NET_TCP_CLIENT_STATE_HEADER,

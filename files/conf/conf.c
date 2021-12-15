@@ -155,6 +155,16 @@ int config_set_if_cmd_port(const char *ifname, uint16_t port)
     return -1;
 }
 
+char *config_get_ifname_by_addr(struct sockaddr_in *addr)
+{
+    for(int i = 0; i < ARRAY_SIZE(config.oal_config.network); i++){
+        //printf_note("addr: %x, %x\n", addr->sin_addr.s_addr,  config.oal_config.network[i].addr.ipaddress);
+        if(addr->sin_addr.s_addr == config.oal_config.network[i].addr.ipaddress)
+            return config.oal_config.network[i].ifname;
+    }
+    return NULL;
+}
+
 
 /** Accessor for the current configuration
 @return:  A pointer to the current config.

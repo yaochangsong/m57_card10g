@@ -337,7 +337,6 @@ void tcp_free(struct net_tcp_client *cl)
 void tcp_client_notify_state(struct net_tcp_client *cl)
 {
     struct ustream *us = cl->us;
-
     if (!us->write_error) {
         if (!us->eof || us->w.data_bytes)
             return;
@@ -380,13 +379,26 @@ static inline void tcp_keepalive_cb(struct uloop_timeout *timeout)
     
     struct net_tcp_client *cl = container_of(timeout, struct net_tcp_client, timeout);
     uloop_timeout_set(&cl->timeout, TCP_CONNECTION_TIMEOUT * 1000);
-    printf_info("tcp_keepalive_probes = %d\n", cl->tcp_keepalive_probes);
+    printf_debug("tcp_keepalive_probes = %d\n", cl->tcp_keepalive_probes);
 #ifdef  SUPPORT_PROTOCAL_M57
     m57_send_heatbeat((void *)cl);
 #endif
-    if(++cl->tcp_keepalive_probes >= TCP_MAX_KEEPALIVE_PROBES){
-        //printf_note("keepalive: find %s:%d disconnect; free\n", cl->get_peer_addr(cl), cl->get_peer_port(cl));
-       // tcp_free(cl);
+#if 1
+    char *ifname = config_get_ifname_by_addr(&cl->serv_addr);
+    if(ifname != NULL){
+        int32_t link = get_netlink_status(ifname);
+            if(link == 0){
+                printf_note("%s: down\n", ifname);
+                cl->tcp_keepalive_probes++;
+            } else{
+                printf_debug("%s: up\n", ifname);
+                cl->tcp_keepalive_probes = 0;
+            }
+    }
+#endif
+    if(cl->tcp_keepalive_probes > TCP_MAX_KEEPALIVE_PROBES){
+        printf_note("keepalive: find %s:%d disconnect; free\n", cl->get_peer_addr(cl), cl->get_peer_port(cl));
+        tcp_free(cl);
     }
 }
 
@@ -702,6 +714,46 @@ bool tcp_get_peer_addr_port(void *cl, struct sockaddr_in *_peer_addr)
     return true;
 }
 
+int _set_socket_keepalive(int listenfd)
+{
+        int optval;
+    socklen_t optlen = sizeof(optval);
+
+        /* Check the status for the keepalive option */
+    if(getsockopt(listenfd, SOL_SOCKET, SO_KEEPALIVE, &optval, &optlen) < 0) {
+        perror("getsockopt()");
+        close(listenfd);
+        //exit(EXIT_FAILURE);
+    }
+    printf("SO_KEEPALIVE is %s\n", (optval ? "ON" : "OFF"));
+
+    /* Set the option active */
+    optval = 1;
+    optlen = sizeof(optval);
+    if(setsockopt(listenfd, SOL_SOCKET, SO_KEEPALIVE, &optval, optlen) < 0) {
+        perror("setsockopt()");
+        close(listenfd);
+        //exit(EXIT_FAILURE);
+    }
+
+    int keepIdle = 5;     //30秒没有数据上来，则发送探测包
+    int keepInterval = 10;  //每隔10发数一个探测包
+    int keepCount = 3;      //发送3个探测包，未收到反馈则主动断开连接
+    setsockopt(listenfd, SOL_SOCKET, TCP_KEEPIDLE, (void *)&keepIdle, sizeof(keepIdle));
+    setsockopt(listenfd, SOL_SOCKET,TCP_KEEPINTVL, (void *)&keepInterval, sizeof(keepInterval));
+    setsockopt(listenfd, SOL_SOCKET, TCP_KEEPCNT, (void *)&keepCount, sizeof(keepCount));
+
+    printf("SO_KEEPALIVE set on socket\n");
+
+    /* Check the status again */
+    if(getsockopt(listenfd, SOL_SOCKET, SO_KEEPALIVE, &optval, &optlen) < 0) {
+        perror("getsockopt()");
+        close(listenfd);
+        //exit(EXIT_FAILURE);
+    }
+    printf("SO_KEEPALIVE is %s\n", (optval ? "ON" : "OFF"));
+}
+
 struct net_tcp_server *tcp_server_new(const char *host, int port)
 {
     #define TCP_SEND_BUF 2*1024*1024
@@ -739,6 +791,7 @@ struct net_tcp_server *tcp_server_new(const char *host, int port)
     }
     printf_info("Now set tcp send buffer size to:%dByte\n",defrcvbufsize);
     /* keepalive */
+    //_set_socket_keepalive(sock);
     #if 0
     int keepalive = 1; //开启keepalive属性
     int keepidle = 5;

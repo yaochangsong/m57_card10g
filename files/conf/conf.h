@@ -86,6 +86,7 @@ extern int  config_set_link_switch(int id, int onoff);
 extern bool config_match_gateway_addr(const char *ifname, uint32_t gateway);
 extern bool config_match_ipaddr_addr(const char *ifname, uint32_t ipaddr);
 extern bool config_match_netmask_addr(const char *ifname, uint32_t netmask);
+extern char *config_get_ifname_by_addr(struct sockaddr_in *addr);
 
 #endif
 

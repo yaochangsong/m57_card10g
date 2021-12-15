@@ -961,6 +961,8 @@ char *assemble_json_net_uplink_info(int ch)
     cJSON_AddStringToObject(root, "forwardPackages", buffer);
     snprintf(buffer, sizeof(buffer) - 1, "%" PRIu64, ns_downlink_get_route_err_pkgs(ch));
     cJSON_AddStringToObject(root, "routeErrPackages", buffer);
+    snprintf(buffer, sizeof(buffer) - 1, "%" PRIu64, ns_downlink_get_over_run_cnt(ch));
+    cJSON_AddStringToObject(root, "overrun", buffer);
 
     json_print(root, 1);
     str_json = cJSON_PrintUnformatted(root);

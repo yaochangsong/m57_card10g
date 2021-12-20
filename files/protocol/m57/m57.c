@@ -280,7 +280,7 @@ static int _m57_start_load_bitfile_to_fpga(uint16_t chip_id)
     printfn("Start Load %s![%ld]\n",  (nwrite == _LOAD_FILE_CMD_LEN) ? "OK" : "Faild", nwrite);
     free(buffer);
     buffer = NULL;
-    
+    usleep(50000);
     return nwrite;
 }
 

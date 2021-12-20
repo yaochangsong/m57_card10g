@@ -30,22 +30,26 @@ static int on_request(struct uh_client *cl)
 }
 
 
-struct net_server *nserver;
+struct net_server *nserver = NULL;
 
 int get_use_ifname_num(void)
 {
+    if(nserver == NULL)
+        return -1;
+    
     return nserver->number;
 }
 void *get_cmd_server(int index)
 {
-    //if(index >= nserver->number)
-    //    return NULL;
+    if(nserver == NULL)
+        return NULL;
+
     return (void*)&nserver->cmd[index];
 }
 
 static void *_get_data_server(int index)
 {
-    if(index >= nserver->number)
+    if(nserver == NULL || index >= nserver->number)
         return NULL;
 
     return (void*)&nserver->data[index];
@@ -107,6 +111,9 @@ void *get_data_server(int index, int type)
 }
 void *get_http_server(int index)
 {
+    if(nserver == NULL)
+        return NULL;
+
     return (void*)nserver->http_server;
 }
 

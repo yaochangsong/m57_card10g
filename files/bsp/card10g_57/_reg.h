@@ -367,6 +367,39 @@ static inline int _reg_get_load_result(FPGA_CONFIG_REG *reg, int id, void **args
     return (ret == 1 ? 0 : -1);
 }
 
+static inline int _reg_get_unload_result(FPGA_CONFIG_REG *reg, int id, void **args)
+{
+    int slot_id = 0, chip_id = 0;
+    int ret = -1, try_count = 0;
+    
+    chip_id = id & 0x0ff;
+    slot_id = (id >> 8) & 0x0f;
+    if(chip_id > 0)
+        chip_id -= 1;
+    
+    if(chip_id >= MAX_FPGA_CHIPID_NUM){
+        printf_err("chip id[%d] is bigger than max[%d]\n", chip_id, MAX_FPGA_CHIPID_NUM);
+        return ret;
+    }
+    if(slot_id >= MAX_FPGA_CARD_SLOT_NUM){
+        printf_err("slot id[%d] is bigger than max[%d]\n", slot_id, MAX_FPGA_CARD_SLOT_NUM);
+        return ret;
+    }
+    printf_info("id=0x%x, chip_id=0x%x, slot_id=0x%x\n", id, chip_id, slot_id);
+    do{
+        usleep(100000);
+        if(chip_id == 0){
+            ret = reg->status[slot_id]->c0_load;
+        } else {
+            ret = reg->status[slot_id]->c1_load;
+        }
+        printf_note("result bit: %p, %p, %p\n", reg->status[slot_id], &reg->status[slot_id]->c0_load, &reg->status[slot_id]->c1_load);
+        printf_note("unload result: 0x%x[slot_id:0x%x, chip_id:0x%x], try_count:%d\n", ret, slot_id, chip_id, try_count);
+    }while(ret == 1 && try_count++ < 8);
+    printf_warn(">>>>>>CARD[0x%04x] UNLOAD %s!!<<<<<\n", id, ret != 1 ? "OK" : "Faild");
+    return (ret != 1 ? 0 : -1);
+}
+
 //link状态查询
 static inline int _reg_get_link_result(FPGA_CONFIG_REG *reg, int id, void **args)
 {
@@ -397,7 +430,7 @@ static inline int _reg_get_link_result(FPGA_CONFIG_REG *reg, int id, void **args
 
 
 //卸载命令结果查询回复
-static inline int _reg_get_unload_result(FPGA_CONFIG_REG *reg, int id, void **args)
+static inline int _reg_get_unload_result_(FPGA_CONFIG_REG *reg, int id, void **args)
 {
     int slot_id = 0, chip_id = 0;
     int ret = -1, try_count = 0;

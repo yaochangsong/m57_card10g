@@ -725,15 +725,20 @@ static int _m57_start_unload_bitfile_from_fpga(uint16_t chip_id)
 {
     uint8_t buffer[16];
     struct spm_context *_ctx;
-    ssize_t nwrite;
+    ssize_t nwrite, ret = 0;
     
     _ctx = get_spm_ctx();
     memset(buffer, 0, sizeof(buffer));
     printfn("Unload BitFile [fpga id:0x%x]\n", chip_id);
     _m57_assamble_loadfile_cmd(chip_id, 0x02, buffer);
     nwrite = _ctx->ops->write_xdma_data(0, buffer, sizeof(buffer));
-    printfn("Unload %s![%ld]\n",  (nwrite == sizeof(buffer)) ? "OK" : "Faild", nwrite);
-    ns_downlink_set_loadbit_result(CARD_SLOT_NUM(chip_id), DEVICE_STATUS_WAIT_LOAD);
+    ret = _reg_get_unload_result(get_fpga_reg(), chip_id, NULL);
+    if(ret == 0 && (nwrite == sizeof(buffer))){
+        printfn("Unload[fpgaId:0x%x] OK!\n",  chip_id);
+        ns_downlink_set_loadbit_result(CARD_SLOT_NUM(chip_id), DEVICE_STATUS_WAIT_LOAD);
+    } else{
+        printfn("Unload[fpgaId:0x%x] Faild!\n",  chip_id);
+    }
     
     return nwrite;
 }

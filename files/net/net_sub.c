@@ -145,8 +145,8 @@ void net_hash_del_ex(hash_t *hash, int id)
         }
     }
     hash_del(hash, tmp);
-    safe_free(key_tmp);
-    safe_free(val_tmp);
+    _safe_free_(key_tmp);
+    _safe_free_(val_tmp);
     UNLOCK_HASH_TABLE();
 }
 
@@ -192,8 +192,8 @@ void net_hash_del(hash_t *hash, short id, int type)
         }
     }
     hash_del(hash, tmp);
-    safe_free(key_tmp);
-    safe_free(val_tmp);
+    _safe_free_(key_tmp);
+    _safe_free_(val_tmp);
     UNLOCK_HASH_TABLE();
 }
 
@@ -256,7 +256,7 @@ void net_hash_for_each(hash_t *hash, int (*callback) (void *, int, int), void *a
     void *vals[HASH_NODE_MAX];
     int n = 0;
     int ival[HASH_NODE_MAX];
-    int prio = 0;
+    int prio = 0, hashsize = 0;
 
     if(hash_size(hash) > HASH_NODE_MAX){
         printf_err("hash_size %d is bigger than %d\n", hash_size(hash), HASH_NODE_MAX);
@@ -270,14 +270,14 @@ void net_hash_for_each(hash_t *hash, int (*callback) (void *, int, int), void *a
       n++;
     });
     keys[0] = keys[0];  /* for warning */
-    //printf("hash size: %u, %p\n", hash_size(hash), hash);
-    for(int i = 0; i < hash_size(hash); i++){
+    hashsize = hash_size(hash);
+    UNLOCK_HASH_TABLE();
+    for(int i = 0; i < hashsize; i++){
         if(hxstr_to_int(vals[i], (int *)&ival[i], NULL) == false)
             continue;
        // printf("hash val: %d\n", ival[i]);
         if(callback)
             callback(args, ival[i], prio);
     }
-    UNLOCK_HASH_TABLE();
 }
 

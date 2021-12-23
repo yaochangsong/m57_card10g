@@ -133,6 +133,7 @@ static void tcp_data_free(struct net_tcp_client *cl)
 static void tcp_post_done(struct net_tcp_client *cl)
 {
     int code = 0;
+
     if(cl->srv->on_execute){
         cl->srv->on_execute(cl, &code);
     }
@@ -312,25 +313,27 @@ void tcp_free(struct net_tcp_client *cl)
     printfn(": %s:%d\n", cl->get_peer_addr(cl), cl->get_peer_port(cl));
     struct net_tcp_server *srv;
     srv = cl->srv;
-    pthread_mutex_lock(&srv->tcp_client_lock);
+    
     if (cl) {
         pthread_mutex_lock(&cl->section.free_lock);
         cl->section.is_exitting = true;
         pthread_mutex_unlock(&cl->section.free_lock);
+        pthread_mutex_lock(&srv->tcp_client_lock);
+        /* close clinet dispatcher thread */
+        if(cl->section.thread && cl->section.thread->ops->close)
+            cl->section.thread->ops->close(cl);
+        executor_net_disconnect_notify(&cl->peer_addr);
         uloop_timeout_cancel(&cl->timeout);
         ustream_free(&cl->sfd.stream);
         shutdown(cl->sfd.fd.fd, SHUT_RDWR);
         close(cl->sfd.fd.fd);
         list_del(&cl->list);
         cl->srv->nclients--;
-        /* close clinet dispatcher thread */
-        if(cl->section.thread && cl->section.thread->ops->close)
-            cl->section.thread->ops->close(cl);
         socket_bitmap_clear(cl->section.section_id);
-        executor_net_disconnect_notify(&cl->peer_addr);
         _safe_free_(cl);
+        pthread_mutex_unlock(&srv->tcp_client_lock);
     }
-    pthread_mutex_unlock(&srv->tcp_client_lock);
+    printfn("End tcp_free\n");
 }
 
 
@@ -563,7 +566,6 @@ int tcp_client_do_for_each(int (*f)(struct net_tcp_client *, void *), void **cl,
             printf_note("tcp server is null\n");
             return client_num;
         }
-
         pthread_mutex_lock(&srv->tcp_client_lock);
         //list_for_each_entry_safe(cl_list, list_tmp, &srv->clients, list){
         list_for_each_entry_reverse(cl_list, &srv->clients, list){
@@ -602,7 +604,7 @@ int tcp_send_data_to_client(int fd, const char *buf, int buflen)
         len = send(fd, buf, buflen, 0);
 
         if (len < 0) {
-            //printf_note("[fd:%d]-send len : %ld, %d[%s]\n", fd, len, errno, strerror(errno));
+            //printf_note("[fd:%d]-send len : %ld, %d[%s], %d, %d, %d, %d\n", fd, len, errno, strerror(errno), EAGAIN, EWOULDBLOCK, ENOTCONN, EINTR);
             if (errno == EINTR || errno == EAGAIN || errno == EWOULDBLOCK)
                 continue;
 

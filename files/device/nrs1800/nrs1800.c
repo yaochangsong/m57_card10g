@@ -11,7 +11,7 @@
 #include "nrs1800.h" 
 #include "../../log/log.h"
 
-
+static int i2c_fd = 0;
 #define NSR1800_PORT_NUM 18
 #define NSR1800_LANE_NUM 48
 
@@ -361,6 +361,54 @@ w, 0xFF8030 + 0x100[48],0x45400090
 ##复位所有端�?
 w, 0xF20300,0xbfffffff
 */
+int nr1800_reset_port_by_slot(int slot)
+{
+    struct _nr_1800_mapport_s{
+        int slot;
+        int port;
+    }mapport[]={
+        {5, 5},
+        {4, 9},
+        {3, 4},
+        {2, 7}
+    };
+    uint32_t value = 0;
+    uint32_t addr = 0xf20300;
+//addr 0xf20300 -d 0x8000xxxx
+    int port = -1;
+    for(int i = 0; i < (sizeof(mapport)/sizeof(mapport[0])); i++){
+        if(slot == mapport[i].slot){
+            port = mapport[i].port;
+            break;
+        }
+    }
+    if(port == -1)
+        return -1;
+    value = 0x80000000|(1<<port);
+    //printf_note("addr:0x%x, Write value:0x%x\n", addr, value);
+    
+    if(i2c_fd <= 0){
+        i2c_fd = open("/dev/i2c-1", O_RDWR);
+        if(i2c_fd < 0){  
+            printf("####i2c device open failed####\n");  
+            return (-1);  
+        }
+        if(ioctl(i2c_fd, I2C_RETRIES, 5) < 0) {  
+            perror("Unable to set I2C_RETRIES\n");  
+        }  
+
+        if(ioctl(i2c_fd, I2C_TIMEOUT, 10) < 0) {  
+            perror("Unable to set I2C_TIMEOUT\n");  
+        }  
+    }
+
+    if(!nsr1800_7bit_write_i2c_register(i2c_fd, NSR1800_I2C_SLAVE_7BIT_ADDR, addr, &value, sizeof(value))){
+        printf("write addr:0x%x value:0x%08x\n", addr, value);
+    }
+    else
+        printf("error write addr:0x%x value:0x%x\n", addr, value);
+    return 0;
+}
 
 int nsr1800_init(void)
 {
@@ -372,7 +420,7 @@ int nsr1800_init(void)
 	printf("/usr/bin/sroute -c /etc/nr_config.json &");
 	system("/usr/bin/sroute -c /etc/nr_config.json &");
 	return 0;
-	
+#if 0
 	printf_note("nsr1800 I2C init\n");
 
 	file = open("/dev/i2c-1", O_RDWR);
@@ -625,6 +673,7 @@ int nsr1800_init(void)
 		return -1;
 	}
 	close(file);
+#endif
 	return 0;
 }
 

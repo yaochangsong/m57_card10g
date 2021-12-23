@@ -51,6 +51,7 @@ typedef struct _srio_route_rule_{
 }srio_route_rule;
 
 extern int nsr1800_init(void);
+extern int nr1800_reset_port_by_slot(int slot);
 
 #endif
 

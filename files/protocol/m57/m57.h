@@ -52,6 +52,18 @@ struct load_info{
     uint32_t file_len;
 }__attribute__ ((packed));
 
+/* 数据协议定义 */
+struct data_frame_t{
+    uint16_t py_dist_addr;
+    uint16_t py_src_addr;
+    uint16_t dist_addr;
+    uint16_t len;
+    uint16_t type;
+    uint16_t src_addr;
+    uint16_t port;
+}__attribute__ ((packed));
+
+
 /* 异步加载文件定义 */
 struct asyn_load_ctx_t{
     char *filename;     //加载文件名
@@ -139,13 +151,17 @@ typedef enum {
     CCT_RSP_LIST_INFO        = 0x0017,
     /* 主控节点注册命令包 */
     CCT_MASTER_NODE_REGISTER = 0x0018,
+    /* 密钥读取E2PROM命令,自定义 */
+    CCT_KEY_READ_E2PROM = 0x0019,
+    /* 密钥读取E2PROM命令,自定义 */
+    CCT_KEY_WRITE_E2PROM = 0x001a,
 }card_cmd_type;
 
 #define M57_CARD_STATUS_LOAD_FAILD   -5
 #define M57_CARD_STATUS_LINK_FAILD   -7
 #define M57_CARD_STATUS_OK            0
 
-extern bool m57_parse_header(void *client, const char *buf, int len, int *head_len, int *code);
+extern bool m57_parse_header(void *client, char *buf, int len, int *head_len, int *code);
 extern bool m57_execute(void *client, int *code);
 extern void m57_send_error(void *client, int code, void *args);
 extern void m57_send_resp(void *client, int code, void *args);

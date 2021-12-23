@@ -1387,6 +1387,70 @@ void io_set_rf_status(bool is_ok)
     fwrite((void *)status, 1,  strlen(status), fp);
     fclose(fp);
 }
+
+#define _KEY_TOOL_FILE_DIR "/etc/e2prom"
+void io_keytool_write_e2prom_file(char *filename, void *data, size_t len)
+{
+    FILE * fp = NULL;
+    char path[256];
+    
+    if(filename == NULL || strlen(filename) == 0 || data == NULL || len == 0)
+        return;
+
+   if(access(_KEY_TOOL_FILE_DIR, F_OK)){
+        printf("mkdir %s\n", _KEY_TOOL_FILE_DIR);
+        mkdir(_KEY_TOOL_FILE_DIR, 0755);
+    }
+    snprintf(path, sizeof(path) - 1, "%s/%s", _KEY_TOOL_FILE_DIR, filename);
+   
+    fp = fopen (path, "w+");
+    if(!fp){
+        printf_err("Open file[%s] error!\n", path);
+        return;
+    }
+    rewind(fp);
+    fwrite((void *)data, 1,  len, fp);
+    fclose(fp);
+}
+
+ssize_t io_keytool_read_e2prom_file(int id, void **args)
+{
+    FILE * fp = NULL;
+    char path[256];
+    void *data;
+    struct stat fstat;
+    int result, rc = 0;
+
+    snprintf(path, sizeof(path) - 1, "%s/%x", _KEY_TOOL_FILE_DIR, id);
+    result = stat(path, &fstat);
+    if(result != 0){
+        perror("Faild!");
+        printf_warn("open faild: file:%s\n", path);
+        return -1;
+    }
+    printf_note("file:%s, size = %ld\n", path, fstat.st_size);
+    
+    data = safe_malloc(fstat.st_size);
+    if(!data)
+        return -1;
+    
+    fp = fopen (path, "r");
+    if(!fp){
+        printf_err("Open file[%s] error!\n", path);
+        _safe_free_(data);
+        return -1;
+    }
+    
+    rewind(fp);
+    rc = fread(data, 1, fstat.st_size, fp);
+    fclose(fp);
+    
+    *args = (void *)data;
+    
+    return rc;
+}
+
+
 bool io_get_adc_status(void *args)
 {
     bool ret = false;

@@ -576,10 +576,13 @@ loop:
 struct spm_context *get_spm_ctx(void)
 {
     if(spmctx == NULL){
+#ifdef DEBUG_TEST
+        spmctx = spm_create_xdma_context();
+#else
         printf_err("Spectrum Creat Failed!!\n");
         exit(1);
+#endif
     }
-        
     return spmctx;
 }
 

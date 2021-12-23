@@ -77,6 +77,7 @@ struct tcp_section {
     struct asyn_load_ctx_t *load_bit_thread;
     volatile bool is_exitting;
     pthread_mutex_t free_lock;
+    bool is_keytool_cmd;
 };
 
 
@@ -130,7 +131,7 @@ struct net_tcp_server {
     void (*free)(struct net_tcp_server *srv);
     void (*on_accept)(struct net_tcp_client *cl);
     int (*on_request)(struct net_tcp_client *cl);
-    bool (*on_header)(void *cl,const char *buf, int len, int *head_len, int *code);
+    bool (*on_header)(void *cl, char *buf, int len, int *head_len, int *code);
     bool (*on_execute)(void *cl, int *code);
     int (*on_end)(void *cl, char *buf, int len);
     void (*send)(struct net_tcp_client *cl, const void *data, int len, int code);

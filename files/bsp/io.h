@@ -125,5 +125,7 @@ extern void io_reg_rf_set_ndata(uint8_t *ptr, int len);
 extern void io_reg_rf_start_tranfer(uint32_t len);
 extern bool io_reg_rf_is_busy(void);
 extern void io_reg_rf_get_data(uint8_t *buffer, int len);
+extern void io_keytool_write_e2prom_file(char *filename, void *data, size_t len);
+extern ssize_t io_keytool_read_e2prom_file(int id, void **args);
 
 #endif

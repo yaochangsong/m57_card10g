@@ -22,6 +22,7 @@ static bool  _m57_stop_load_bitfile_to_fpga(uint16_t chip_id);
 static void _assamble_resp_payload(struct net_tcp_client *cl, int16_t chipid, int ret);
 static int _m57_load_bit_over(void *client, bool result);
 static int _m57_stop_load(void *client);
+static void print_array(uint8_t *ptr, ssize_t len);
 
 
 void _m57_swap_header_element(struct m57_header_st *header)
@@ -114,7 +115,47 @@ char *_create_tmp_path(struct net_tcp_client *cl)
     return cl->section.file.path;
 }
 
+/* 为了对密钥软件回复数据，需要分析数据包 */
+static bool _m57_parse_keytool_data(void *ptr, size_t len, int *code)
+{
+        #define _KEYTOOL_ADDR_ID 0x00
+        #define _KEYTOOL_READ_TYPE_ID 0x0102
+        #define _KEYTOOL_WRITE_TYPE_ID 0x0202
+//51 57 00 10 1a 00 00 00 00 02 00 00 01 00 0a 00 02 01 01 00 07 00 00 00 00 00
+//51 57 02 10 5a 01 00 00 00 03 00 00 01 00 4a 01 02 02 01 00 02 00 00 00  00 00
+    uint8_t *_ptr = ptr;
+    uint8_t *payload = NULL;
+    struct data_frame_t *pdata;
+    struct net_sub_st parg;
+    bool ret = false;
+    
+    if(*(uint16_t *)_ptr != 0x5751){  /* header */
+        printf_warn("error header=0x%x\n", *(uint16_t *)_ptr);
+        return false;
+    }
+    payload = _ptr + 8;
+    pdata = (struct data_frame_t *)payload;
+    parg.chip_id = pdata->py_src_addr;
+    parg.func_id = pdata->src_addr;
+    parg.prio_id = (*(uint8_t *)(_ptr + 3) >> 4) & 0x0f;
+    parg.port = pdata->port;
+    printf_note("type:0x%x, py_src_addr: 0x%x, chip_id:0x%x, port: 0x%x, prio_id:0x%x, func_id:0x%x, len:%ld\n", pdata->type, pdata->py_src_addr, parg.chip_id, parg.port, parg.prio_id, parg.func_id, len);
+    if(pdata->py_src_addr  == _KEYTOOL_ADDR_ID && (pdata->type == _KEYTOOL_WRITE_TYPE_ID || pdata->type == _KEYTOOL_READ_TYPE_ID)){
+        if(pdata->type == _KEYTOOL_READ_TYPE_ID){
+            *code = CCT_KEY_READ_E2PROM;
+             printf_note("Read EEPROM Cmd\n");
+            ret = true;
+        } else if(pdata->type == _KEYTOOL_WRITE_TYPE_ID){
+            *code = CCT_KEY_WRITE_E2PROM;
+             printf_note("Write EEPROM Cmd\n");
+             ret = true;
+        } else{
+            printf_warn("Unknown EEPROM Cmd\n");
+        }
+    }
 
+    return ret;
+}
 /*
 功能： 控制/数据协议头解析
 输入参数
@@ -128,7 +169,7 @@ char *_create_tmp_path(struct net_tcp_client *cl)
         false:解析错误
         true： 解析成功
 */
-bool m57_parse_header(void *client, const char *buf, int len, int *head_len, int *code)
+bool m57_parse_header(void *client, char *buf, int len, int *head_len, int *code)
 {
     struct net_tcp_client *cl = client;
     struct m57_header_st  hbuffer, *header;
@@ -190,7 +231,7 @@ bool m57_parse_header(void *client, const char *buf, int len, int *head_len, int
         cl->state = NET_TCP_CLIENT_STATE_DATA;
         
     }else if(header->type == M57_DATA_TYPE){    /* 数据包 */
-
+        int code = 0;
         if (len < header->len) {  //必须等到完整数据帧
              cl->request.data_state = NET_TCP_DATA_WAIT;
             printf_warn("recv data packet len too short: %d， %d\n", len, header->len);
@@ -199,6 +240,30 @@ bool m57_parse_header(void *client, const char *buf, int len, int *head_len, int
         
         cl->request.header = NULL;
         _header_len = header->len;//消费帧长
+        //print_array((void *)buf, len);
+        //_m57_parse_keytool_data((void *)buf, _header_len, &code);
+        /* 密钥软件下发数据，使用命令函数解析 */
+#ifdef KEY_TOOL_ENABLE
+        if(_m57_parse_keytool_data((void *)buf, _header_len, &code)){
+            cl->state = NET_TCP_CLIENT_STATE_DATA;
+            header->resv = code; //使用协议头保留字段承载命令
+            *(uint16_t*)(buf + 6) = code;
+            _header_len = hlen - sizeof(header->resv);//消费帧长 - 保留字段长度
+            cl->request.content_length = data_len;
+            cl->section.is_keytool_cmd = true;
+            cl->request.data_type = M57_CMD_TYPE;
+            data_len = header->len - _header_len;
+            //printf_note("_header_len: %x, data_len: %d, cl=%p\n", _header_len, data_len, cl);
+            if(data_len >= 0){
+                cl->request.content_length = data_len;
+            }else{
+                printf_err("%d,data_len error\n",data_len);
+                _code = C_RET_CODE_HEADER_ERR;
+                cl->request.data_state = NET_TCP_DATA_ERR;
+            }
+            goto exit;
+        }
+ #endif
         cl->state = NET_TCP_CLIENT_STATE_HEADER;
         /* 数据包不处理透传 */
         _m57_write_data_to_fpga((uint8_t *)buf, _header_len);
@@ -386,7 +451,6 @@ static int _m57_loading_bitfile_to_fpga_thread_asyn(void   *args)
         printfn("\nLoad Bitfile %s,align 4byte reminder=%d,%ld,%ld\n",  _args->result == true ? "OK" : "Faild", reminder, _args->total_load,fstat->st_size+reminder);
         pthread_exit_by_name(_args->filename);
     }
-
     return 0;
 }
 
@@ -413,7 +477,7 @@ static int _m57_load_bit_over(void *client, bool result)
     //load ok
     usleep(50000);
     if(_m57_stop_load_bitfile_to_fpga(chip_id) == true){
-        sleep(1);
+        sleep(2);
         /* 1st: check load result */
         ret = _reg_get_load_result(get_fpga_reg(), chip_id, NULL);
         ret = (ret == 0 ? M57_CARD_STATUS_OK : M57_CARD_STATUS_LOAD_FAILD); // -5: load faild; 0: ok
@@ -742,7 +806,7 @@ static int _m57_write_data_to_fpga(uint8_t *ptr, size_t len)
     _len = len;
     reminder = _align_4byte((int *)&_len);
     nwrite = _ctx->ops->write_xdma_data(0, buffer, _len);
-    printfi("Write data %s![%ld],align 4byte reminder=%d[raw len: %lu]\n",  (nwrite == _len) ? "OK" : "Faild", nwrite, reminder, len);
+    //printfi("Write data %s![%ld],align 4byte reminder=%d[raw len: %lu]\n",  (nwrite == _len) ? "OK" : "Faild", nwrite, reminder, len);
     free(buffer);
     buffer = NULL;
     return nwrite;
@@ -762,6 +826,132 @@ static void _assamble_resp_payload(struct net_tcp_client *cl, int16_t chipid, in
     cl->response.data = r_resp;
     cl->response.response_length = sizeof(struct _resp);
 }
+
+static bool _assamble_keytool_resp(struct net_tcp_client *cl, void *header)
+{
+    uint8_t *info;
+    int nbyte = 0, h_nbyte;
+    void*resp;
+    uint8_t *ptr;
+
+    struct data_frame_t data_header, *pheader = NULL;
+    uint8_t data_ex_header[] = {0x00, 0x00, 0x07, 0x00, 0x00, 0x00, 0x40, 0x01};
+    uint8_t data_end[] = {0xff, 0xff};
+
+    pheader = (uint8_t *)header + 2;
+    nbyte = io_keytool_read_e2prom_file(pheader->py_dist_addr, (void **)&info);
+    if(nbyte <= 0){
+        nbyte = _reg_get_board_info(0, (void **)&info);
+    }
+    h_nbyte = nbyte + sizeof(data_header) + sizeof(data_ex_header) + sizeof(data_end);
+    if ((resp = safe_malloc(h_nbyte)) == NULL){
+      printf_err("Unable to malloc response buffer  %d bytes!", h_nbyte);
+      return false;
+    }
+    ptr = resp;
+    memset(ptr, 0, h_nbyte);
+    memset(&data_header, 0, sizeof(data_header));
+    
+    data_header.py_dist_addr = pheader->py_src_addr;
+    data_header.py_src_addr = pheader->py_dist_addr;
+    data_header.dist_addr = pheader->dist_addr;
+    data_header.type = 0x0202;
+    data_header.src_addr = pheader->src_addr;
+   // printf_note("data_header.src_addr:0x%x\n", data_header.src_addr);
+    data_header.port = 0x01;//pheader->port;
+   // printf_note("data_header.port:0x%x\n", data_header.port);
+    data_header.len = h_nbyte - sizeof(data_ex_header);
+    
+    memcpy(ptr, &data_header, sizeof(data_header));
+    ptr += sizeof(data_header);
+    
+    memcpy(ptr, &data_ex_header[0], sizeof(data_ex_header));
+    ptr += sizeof(data_ex_header);
+
+    memcpy(ptr, info, nbyte);
+    ptr += nbyte;
+
+    memcpy(ptr, data_end, sizeof(data_end));
+    //printf_note("====%d, 0x%x\n", h_nbyte, h_nbyte);
+    //print_array(resp, h_nbyte);
+
+    cl->response.data = resp;
+    cl->response.response_length = h_nbyte;
+    cl->response.prio = 1;
+    
+    safe_free(info);
+    return true;
+}
+
+
+static void _assamble_keytool_resp_(struct net_tcp_client *cl, void *header)
+{
+    uint8_t *info;
+    int nbyte = 0, h_nbyte;
+    void*resp;
+    uint8_t *ptr;
+
+    struct data_frame_t data_header, *pheader = NULL;
+    uint8_t data_ex_header[] = {0x00, 0x00, 0x07, 0x00, 0x00, 0x00, 0x40, 0x01};
+    uint8_t data_end[] = {0xff, 0xff};
+
+    nbyte = _reg_get_board_info(0, (void **)&info);
+    
+    h_nbyte = nbyte + sizeof(data_header) + sizeof(data_ex_header) + sizeof(data_end);
+    if ((resp = safe_malloc(h_nbyte)) == NULL){
+      printf_err("Unable to malloc response buffer  %d bytes!", h_nbyte);
+      return;
+    }
+    ptr = resp;
+    memset(ptr, 0, h_nbyte);
+    memset(&data_header, 0, sizeof(data_header));
+    pheader = (uint8_t *)header + 2;
+    data_header.py_dist_addr = pheader->py_src_addr;
+    data_header.py_src_addr = pheader->py_dist_addr;
+    data_header.dist_addr = pheader->dist_addr;
+    data_header.type = 0x0202;
+    data_header.src_addr = pheader->src_addr;
+   // printf_note("data_header.src_addr:0x%x\n", data_header.src_addr);
+    data_header.port = 0x01;//pheader->port;
+   // printf_note("data_header.port:0x%x\n", data_header.port);
+    data_header.len = h_nbyte - sizeof(data_ex_header);
+    
+    memcpy(ptr, &data_header, sizeof(data_header));
+    ptr += sizeof(data_header);
+    
+    memcpy(ptr, &data_ex_header[0], sizeof(data_ex_header));
+    ptr += sizeof(data_ex_header);
+
+    memcpy(ptr, info, nbyte);
+    ptr += nbyte;
+
+    memcpy(ptr, data_end, sizeof(data_end));
+    //printf_note("====%d, 0x%x\n", h_nbyte, h_nbyte);
+    //print_array(resp, h_nbyte);
+
+    cl->response.data = resp;
+    cl->response.response_length = h_nbyte;
+    cl->response.prio = 1;
+    
+    safe_free(info);
+    return;
+}
+
+static void _write_keytool_handle(struct net_tcp_client *cl, void *header)
+{
+    struct data_frame_t *pheader = NULL;
+    uint8_t *payload;
+    char filename[128];
+    size_t payload_len = 0;
+    pheader = (struct data_frame_t*)((uint8_t *)header + 2);
+    payload = (uint8_t *)pheader + sizeof(struct data_frame_t) + 4;
+    payload_len = pheader->len - 10;
+    snprintf(filename, sizeof(filename) -1, "%x", pheader->py_dist_addr);
+    printf_note("filename:%s, py_dist_addr:0x%x, py_src_addr:0x%x, payload_len:0x%lx[%lu]\n",filename, pheader->py_dist_addr, pheader->py_src_addr, payload_len, payload_len);
+    io_keytool_write_e2prom_file(filename, payload, payload_len);
+    return;
+}
+
 
 /*
 功能： 控制协议执行
@@ -795,6 +985,19 @@ bool m57_execute_cmd(void *client, int *code)
 
     switch (header->cmd)
     {
+        case CCT_KEY_READ_E2PROM:
+        {
+            printf_info("Parse READ Key info CMD\n");
+            if(_assamble_keytool_resp(cl,  (void*)header))
+                _code = 1;
+            break;
+        }
+        case CCT_KEY_WRITE_E2PROM:
+        {
+            printf_info("Write Key info CMD\n");
+            _write_keytool_handle(cl,  (void*)header);
+            break;
+        }
         case CCT_BEAT_HART:
         {
             uint16_t beat_count = 0;
@@ -802,7 +1005,7 @@ bool m57_execute_cmd(void *client, int *code)
             beat_count = *(uint16_t *)payload;
             beat_status = *((uint16_t *)payload + 1);
             printf_note("keepalive beat_count=%d, beat_status=%d\n", beat_count, beat_status);
-            //update_tcp_keepalive(cl);
+            update_tcp_keepalive(cl);
             break;
         }
         case CCT_REGISTER:
@@ -1187,33 +1390,48 @@ void m57_send_resp(void *client, int code, void *args)
     struct net_tcp_client *cl = client;
     static uint8_t sn = 0;
     struct m57_header_st header;
-    struct m57_ex_header_cmd_st ex_header;
+    void *ex_header = NULL;
+    int type;
     int hlen = sizeof(struct m57_header_st);
-    int exhlen = sizeof(struct m57_ex_header_cmd_st);
+    struct m57_ex_header_cmd_st _ex_header;
+    int exhlen = 0;
     uint8_t *psend;
+    
     if(code <= 0)
         return;
-    
-    printf_debug("code = [0x%x, %d]\n", code, code);
+
+    printf_debug("code = [0x%x, %d], keytool:%d\n", code, code, cl->section.is_keytool_cmd);
     memset(&header, 0, sizeof(header));
     header.header = M57_SYNC_HEADER;
-    header.type = M57_CMD_TYPE;
+    if(cl->section.is_keytool_cmd){
+        header.type = M57_DATA_TYPE;
+        cl->section.is_keytool_cmd = false;
+    }
+    else
+        header.type = M57_CMD_TYPE;
     header.prio = cl->response.prio;
     header.number = sn++;
-    header.len = hlen  + exhlen + cl->response.response_length;
+
+    if(header.type == M57_DATA_TYPE){
+        exhlen = 0;
+    } else {
+        exhlen = sizeof(struct m57_ex_header_cmd_st);
+        memset(&_ex_header, 0, sizeof(_ex_header));
+        _ex_header.cmd = code;
+        _ex_header.len = exhlen + cl->response.response_length;
+        ex_header = &_ex_header;
+    }
     _m57_swap_send_header_element(&header);
 
-    memset(&ex_header, 0, sizeof(ex_header));
-    ex_header.cmd = code;
-    ex_header.len = exhlen + cl->response.response_length;
-
+    header.len = hlen  + exhlen + cl->response.response_length;
     psend = calloc(1, header.len);
     if (!psend) {
             printf_err("calloc\n");
             return;
         }
     memcpy(psend, &header, hlen);
-    memcpy(psend + hlen, &ex_header, exhlen);
+    if(exhlen > 0 && ex_header)
+        memcpy(psend + hlen, ex_header, exhlen);
 
     if(cl->response.response_length > 0 && cl->response.data)
         memcpy(psend + hlen + exhlen, cl->response.data, cl->response.response_length);
@@ -1229,6 +1447,7 @@ void m57_send_resp(void *client, int code, void *args)
 
     safe_free(psend);
 }
+
 
 
 void m57_send_error(void *client, int code, void *args)

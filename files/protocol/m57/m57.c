@@ -120,13 +120,20 @@ static bool _m57_parse_keytool_data(void *ptr, size_t len, int *code)
 {
         #define _KEYTOOL_ADDR_ID 0x00
         #define _KEYTOOL_READ_TYPE_ID 0x0102
+        #define _KEYTOOL_READ_PORT_ID 0x07
+        #define _KEYTOOL_READ_FUNC_ID 0x01
+        #define _KEYTOOL_READ_LEN 26
         #define _KEYTOOL_WRITE_TYPE_ID 0x0202
+        #define _KEYTOOL_WRITE_PORT_ID 0x02
+        #define _KEYTOOL_WRITE_FUNC_ID 0x01
+        #define _KEYTOOL_WRITE_MIN_LEN 300
 //51 57 00 10 1a 00 00 00 00 02 00 00 01 00 0a 00 02 01 01 00 07 00 00 00 00 00
 //51 57 02 10 5a 01 00 00 00 03 00 00 01 00 4a 01 02 02 01 00 02 00 00 00  00 00
+//write type:0x202, py_src_addr: 0x0, chip_id:0x0, port: 0x2, prio_id:0x1, func_id:0x1, len:346
     uint8_t *_ptr = ptr;
     uint8_t *payload = NULL;
     struct data_frame_t *pdata;
-    struct net_sub_st parg;
+    //struct net_sub_st parg;
     bool ret = false;
     
     if(*(uint16_t *)_ptr != 0x5751){  /* header */
@@ -135,22 +142,20 @@ static bool _m57_parse_keytool_data(void *ptr, size_t len, int *code)
     }
     payload = _ptr + 8;
     pdata = (struct data_frame_t *)payload;
-    parg.chip_id = pdata->py_src_addr;
-    parg.func_id = pdata->src_addr;
-    parg.prio_id = (*(uint8_t *)(_ptr + 3) >> 4) & 0x0f;
-    parg.port = pdata->port;
-    printf_note("type:0x%x, py_src_addr: 0x%x, chip_id:0x%x, port: 0x%x, prio_id:0x%x, func_id:0x%x, len:%ld\n", pdata->type, pdata->py_src_addr, parg.chip_id, parg.port, parg.prio_id, parg.func_id, len);
+    //parg.chip_id = pdata->py_src_addr;
+    //parg.func_id = pdata->src_addr;
+    //parg.prio_id = (*(uint8_t *)(_ptr + 3) >> 4) & 0x0f;
+    //parg.port = pdata->port;
+    //printf_note("type:0x%x, py_src_addr: 0x%x, chip_id:0x%x, port: 0x%x, prio_id:0x%x, func_id:0x%x, len:%ld\n", pdata->type, pdata->py_src_addr, parg.chip_id, parg.port, parg.prio_id, parg.func_id, len);
     if(pdata->py_src_addr  == _KEYTOOL_ADDR_ID && (pdata->type == _KEYTOOL_WRITE_TYPE_ID || pdata->type == _KEYTOOL_READ_TYPE_ID)){
-        if(pdata->type == _KEYTOOL_READ_TYPE_ID){
+        if(len ==_KEYTOOL_READ_LEN && pdata->type == _KEYTOOL_READ_TYPE_ID && pdata->port == _KEYTOOL_READ_PORT_ID && pdata->src_addr == _KEYTOOL_READ_FUNC_ID){
             *code = CCT_KEY_READ_E2PROM;
              printf_note("Read EEPROM Cmd\n");
             ret = true;
-        } else if(pdata->type == _KEYTOOL_WRITE_TYPE_ID){
+        } else if(len >= _KEYTOOL_WRITE_MIN_LEN && pdata->type == _KEYTOOL_WRITE_TYPE_ID && pdata->port ==  _KEYTOOL_WRITE_PORT_ID && pdata->src_addr == _KEYTOOL_WRITE_FUNC_ID){
             *code = CCT_KEY_WRITE_E2PROM;
              printf_note("Write EEPROM Cmd\n");
              ret = true;
-        } else{
-            printf_warn("Unknown EEPROM Cmd\n");
         }
     }
 

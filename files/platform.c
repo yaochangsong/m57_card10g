@@ -148,7 +148,7 @@ int main(int argc, char **argv)
     gpio_raw_init();
 #endif
 #ifdef SUPPORT_NRS1800
-    nsr1800_init();
+    //nsr1800_init();
 #endif
 #ifdef SUPPORT_AUDIO
     audio_init();

@@ -78,6 +78,7 @@ struct tcp_section {
     volatile bool is_exitting;
     pthread_mutex_t free_lock;
     bool is_keytool_cmd;
+    volatile bool is_unloading;
 };
 
 

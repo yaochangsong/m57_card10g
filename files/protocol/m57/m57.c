@@ -768,7 +768,12 @@ int m57_unload_bitfile_by_client(struct sockaddr_in *addr)
     if(cl == NULL || cl->section.hash == NULL)
         return -1;
 
-    net_hash_for_each(cl->section.hash, _unload_bitfile_by_hashid, cl->section.hash);
+    if(cl->section.is_unloading == false){
+        cl->section.is_unloading = true;
+        net_hash_for_each(cl->section.hash, _unload_bitfile_by_hashid, cl->section.hash);
+    }
+    cl->section.is_unloading = false;
+
     return 0;
 }
 
@@ -1014,7 +1019,7 @@ bool m57_execute_cmd(void *client, int *code)
             uint16_t beat_status = 0;
             beat_count = *(uint16_t *)payload;
             beat_status = *((uint16_t *)payload + 1);
-            printf_note("keepalive beat_count=%d, beat_status=%d\n", beat_count, beat_status);
+            //printf_note("keepalive beat_count=%d, beat_status=%d\n", beat_count, beat_status);
             update_tcp_keepalive(cl);
             break;
         }

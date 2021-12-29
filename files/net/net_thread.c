@@ -352,7 +352,7 @@ static int  data_dispatcher(void *args, int hid, int prio)
                 statistics_client_send_err_add(ctx->thread.statistics, arg->xdma_disp.type[index]->vec[i].iov_len - r);
 #endif
         }
-        // printf_note("[%d]send hash id: %d, vec_cnt=%d, bytes:%d\n", cl->get_peer_port(cl), index, vec_cnt, r0);
+        //printf_note("[%d]send hash id: 0x%x, vec_cnt=%d, bytes:%d\n", cl->get_peer_port(cl), index, vec_cnt, r);
     }
     return 0;
 }

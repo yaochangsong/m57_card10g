@@ -187,6 +187,22 @@ static int32_t _reset_run_timer(uint8_t index, uint8_t ch)
     return 0;
 }
 
+static void _spm_gettime(struct timeval *tv)
+{
+    struct timespec ts;
+
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    tv->tv_sec = ts.tv_sec;
+    tv->tv_usec = ts.tv_nsec / 1000;
+}
+
+static int _spm_tv_diff(struct timeval *t1, struct timeval *t2)
+{
+    return
+        (t1->tv_sec - t2->tv_sec) * 1000 +
+        (t1->tv_usec - t2->tv_usec) / 1000;
+}
+
 
 static struct _spm_xstream spm_xstream[] = {
         {XDMA_R_DEV0,        -1, 0, XDMA_BUFFER_SIZE, XDMA_BLOCK_SIZE, "Write XDMA Stream", XDMA_WRITE, XDMA_STREAM, -1},
@@ -281,21 +297,21 @@ static int xspm_create(void)
 struct xdma_ring_trans_ioctl xinfo[4];
 static ssize_t xspm_stream_read(int ch, int type,  void **data, uint32_t *len, void *args)
 {
-    #define _STREAM_READ_TIMEOUT_US (1000000)
+    #define _STREAM_READ_TIMEOUT_MS (1000)
     int rc = 0;
     struct _spm_xstream *pstream;
     pstream = spm_xstream;
     struct xdma_ring_trans_ioctl *info = &xinfo[type];
     size_t readn = 0;
     static uint32_t timer = 0;
+    struct timeval start, now;
     
     memset(info, 0, sizeof(struct xdma_ring_trans_ioctl));
-    
     if(pstream[type].id < 0){
         printf_debug("%d stream node:%s not found\n",type, pstream[type].name);
         return -1;
     }
-    _reset_run_timer(0, 0);
+     _spm_gettime(&start);
     do{
         rc =  ioctl(pstream[type].id, IOCTL_XDMA_TRANS_GET, info);
         if (rc) {
@@ -321,11 +337,10 @@ static ssize_t xspm_stream_read(int ch, int type,  void **data, uint32_t *len, v
             //printf_warn("*****status:RING_TRANS_PENDING\n");
             usleep(1);
         }
-           
-        if(_get_run_timer(0, 0) > _STREAM_READ_TIMEOUT_US){
+        _spm_gettime(&now);
+        if(_spm_tv_diff(&now, &start) > _STREAM_READ_TIMEOUT_MS){
             printfn("Read TimeOut![%u]\r",timer++);
             break;
-            //return -1;
         }
     }while(info->status == RING_TRANS_PENDING);
 
@@ -763,7 +778,7 @@ static ssize_t _xdma_of_match_pkgs(int ch, void *data, uint32_t len, void *args,
         if(pos == 0){
             /* 分析帧头芯片id和槽位id是否正确，错误直接退出分析该块数据帧 */
             if(io_xdma_is_valid_chipid(pdata[pos]->py_src_addr) == false){
-                printf_warn("chipid err:0x%x\n", pdata[pos]->py_src_addr);
+                printf_warn("pos=%d,chipid err:0x%x\n", pos, pdata[pos]->py_src_addr);
                 *err_code = 1;
                 break;
             }
@@ -776,7 +791,7 @@ static ssize_t _xdma_of_match_pkgs(int ch, void *data, uint32_t len, void *args,
            /* 比较其它帧和第一帧订阅参数是否相等，不相等，则该次分析完成，下次继续获取相同的订阅参数数据 */
         } else if(py_src_addr != pdata[pos]->py_src_addr || src_addr != pdata[pos]->src_addr || port != pdata[pos]->port){
             if(io_xdma_is_valid_chipid(pdata[pos]->py_src_addr) == false){
-                printf_warn("chipid err:0x%x\n", pdata[pos]->py_src_addr);
+                printf_warn("pos=%d,chipid err:0x%x\n", pos, pdata[pos]->py_src_addr);
                 *err_code = 1;
                 break;
             }
@@ -873,7 +888,7 @@ static int _xdma_load_disp_buffer(int ch, void *data, ssize_t len, void *args, v
     struct spm_run_parm *prun = run; 
     
     hashid = GET_HASHMAP_ID(sub->chip_id, sub->func_id, sub->prio_id, sub->port);
-    printf_info("hashid:%d, chip_id:%x, func_id:%x, prio_id:%x,port:%x\n", hashid, sub->chip_id, sub->func_id, sub->prio_id, sub->port);
+    printf_info("hashid:0x%x, chip_id:%x, func_id:%x, prio_id:%x,port:%x\n", hashid, sub->chip_id, sub->func_id, sub->prio_id, sub->port);
     
     if(hashid > MAX_XDMA_DISP_TYPE_NUM || hashid < 0 || prun->xdma_disp.type[hashid] == NULL){
         printf_err("hash id err[%d]\n", hashid);

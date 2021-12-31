@@ -482,7 +482,7 @@ static int json_parse_config_param(const cJSON* root, s_config *sconfig)
     if(version!= NULL && cJSON_IsString(version)){
         cJSON *port;
         sconfig->version = strdup(version->valuestring);
-        printf_note("json config version: %s\n", sconfig->version);
+        printf_debug("json config version: %s\n", sconfig->version);
         network = cJSON_GetObjectItem(root, "network");
         if(!strcmp("1.0", version->valuestring)){
             int index = 0;
@@ -600,27 +600,27 @@ static int json_parse_config_param(const cJSON* root, s_config *sconfig)
     int islot_id = 0;
     linkSwitch = cJSON_GetObjectItem(control_parm, "linkSwitch");
     if(linkSwitch != NULL){
-        printf_note("linkSwitch:\n");
+        printf_debug("linkSwitch:\n");
         for(int i = 0; i < cJSON_GetArraySize(linkSwitch); i++){
-            printfn("index:%d ", i);
+            printfd("index:%d ", i);
             node = cJSON_GetArrayItem(linkSwitch, i);
             value = cJSON_GetObjectItem(node, "slotId");
             if(value->valueint >= MAX_FPGA_CARD_SLOT_NUM)
                 continue;
             islot_id = value->valueint;
-            printfn("node: %d, ", islot_id);
+            printfd("node: %d, ", islot_id);
             if(cJSON_IsNumber(value))
             {
                 config->ctrl_para.link_switch[islot_id].slod_id = value->valueint;
-                printfn("slotId:%d, ", config->ctrl_para.link_switch[islot_id].slod_id);
+                printfd("slotId:%d, ", config->ctrl_para.link_switch[islot_id].slod_id);
             }
             
             value = cJSON_GetObjectItem(node, "on");
             if(cJSON_IsNumber(value)){
                 config->ctrl_para.link_switch[islot_id].onoff = value->valueint;
-                printfn("onoff:%d, ", config->ctrl_para.link_switch[islot_id].onoff);
+                printfd("onoff:%d, ", config->ctrl_para.link_switch[islot_id].onoff);
             }
-             printfn("\n");
+             printfd("\n");
         }
     }
 

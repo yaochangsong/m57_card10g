@@ -33,11 +33,11 @@ int executor_net_disconnect_notify(struct sockaddr_in *addr)
     }
 #endif
     int enable = 0;
-    int clinets = get_cmd_server_clients();
-    printf_note("cmd server:total client number: %d\n", clinets);
+    int clients = get_cmd_server_clients();
+    printf_note("cmd server:total client number: %d\n", clients);
 
     m57_unload_bitfile_by_client(addr);
-    if(clinets == 0){
+    if(clients == 0){
         for(int ch = 0; ch < MAX_XDMA_NUM; ch++)
             executor_set_command(EX_XDMA_ENABLE_CMD, -1, ch, &enable, -1);
     }

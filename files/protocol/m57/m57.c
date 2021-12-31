@@ -1114,7 +1114,11 @@ bool m57_execute_cmd(void *client, int *code)
         {
             uint8_t *info;
             int nbyte = 0;
+            #ifdef DEBUG_TEST
+            nbyte = _reg_get_fpga_info(NULL, 0, (void **)&info);
+            #else
             nbyte = _reg_get_fpga_info_(get_fpga_reg(), 0, (void **)&info);
+            #endif
             //nbyte = _reg_get_fpga_info_(get_fpga_reg(), 0, (void **)&info);
             //nbyte = _reg_get_fpga_info(get_fpga_reg(), 0, (void **)&info);
             if(nbyte >= 0){

@@ -142,29 +142,12 @@ int main(int argc, char **argv)
     signal(SIGKILL, pl_handle_sig);
     config_init();
     uloop_init();
-#if defined(SUPPORT_PROJECT_SSA) || defined(SUPPORT_PROJECT_SSA_MONITOR)
-    gpio_init_control();
-#else
-    gpio_raw_init();
-#endif
+#ifndef DEBUG_TEST
 #ifdef SUPPORT_NRS1800
     //nsr1800_init();
 #endif
-#ifdef SUPPORT_AUDIO
-    audio_init();
-#endif
-#ifdef SUPPORT_AMBIENT_TEMP_HUMIDITY
-    temp_humidity_init();
-#endif 
-#ifdef  SUPPORT_CLOCK_ADC
-    clock_adc_init();
-#endif
 #if defined(SUPPORT_SPECTRUM_FPGA)
     fpga_io_init();
-#endif
-#ifdef SUPPORT_UART
-    /*NOTE: PL uart depends on clock */
-    uart_init();
 #endif
  if(spectrum_aditool_debug == false){
 #ifdef SUPPORT_RF
@@ -172,17 +155,8 @@ int main(int argc, char **argv)
 #endif
     }
     executor_init();
-#ifdef SUPPORT_LCD
-    init_lcd();
-#endif
-#if defined(SUPPORT_XWFS)
-    xwfs_init();
-    http_requset_init();
-#endif
-#if defined(SUPPORT_FS)
-    fs_init();
-#endif
     net_statistics_init();
+#endif /* End define DEBUG_TEST*/
     if(server_init() == -1){
         printf_err("server init fail!\n");
         goto done;

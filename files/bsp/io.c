@@ -1398,7 +1398,11 @@ void io_set_rf_status(bool is_ok)
     fclose(fp);
 }
 
+#ifdef DEBUG_TEST
+#define _KEY_TOOL_FILE_DIR "e2prom"
+#else
 #define _KEY_TOOL_FILE_DIR "/etc/e2prom"
+#endif
 void io_keytool_write_e2prom_file(char *filename, void *data, size_t len)
 {
     FILE * fp = NULL;

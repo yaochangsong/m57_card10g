@@ -168,6 +168,16 @@ void io_socket_set_sub(int id, uint16_t chip_id, uint16_t func_id, uint16_t port
     chip_id = chip_id;
     func_id = func_id;
     port = port;
+
+    if(func_id > CARD_FUNC_MODE -1){
+        printf_warn("The funcId[0x%x] is bigger than max port: 0x%x\n", func_id, CARD_FUNC_MODE -1);
+        io_write_abnormal_file(func_id, "funcId");
+    }
+
+    if(port > CARD_PORT_MODE -1){
+        printf_warn("The port[0x%x] is bigger than max port: 0x%x\n", port, CARD_PORT_MODE -1);
+        io_write_abnormal_file(port, "port");
+    }
 }
 
 
@@ -1448,6 +1458,34 @@ ssize_t io_keytool_read_e2prom_file(int id, void **args)
     *args = (void *)data;
     
     return rc;
+}
+
+
+void io_write_abnormal_file(uint16_t data, char *filename)
+{
+    #define _ABNORMAL_FILE_PATH "/tmp/abnormal"
+    FILE * fp = NULL;
+    char path[256], str_data[32];
+
+    if(filename == NULL)
+        return;
+    
+    if(access(_ABNORMAL_FILE_PATH, F_OK)){
+         printf("mkdir %s\n", _ABNORMAL_FILE_PATH);
+         mkdir(_ABNORMAL_FILE_PATH, 0755);
+     }
+
+    snprintf(path, sizeof(path) - 1, "%s/%s", _ABNORMAL_FILE_PATH, filename);
+    snprintf(str_data, sizeof(str_data) - 1, " 0x%x", data);
+   
+    fp = fopen (path, "aw+");
+    if(!fp){
+        printf_err("Open file[%s] error!\n", path);
+        return;
+    }
+    rewind(fp);
+    fwrite((void *)str_data, 1,  strlen(str_data), fp);
+    fclose(fp);
 }
 
 

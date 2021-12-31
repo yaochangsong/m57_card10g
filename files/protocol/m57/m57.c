@@ -514,6 +514,7 @@ static int _m57_load_bit_over(void *client, bool result)
             ns_downlink_set_loadbit_result(CARD_SLOT_NUM(chip_id), DEVICE_STATUS_LOAD_OK);
             config_set_device_status(DEVICE_STATUS_LOAD_OK, chip_id);
         }
+        sleep(2);
     }
 exit:
     pthread_mutex_lock(&cl->section.free_lock);
@@ -1322,7 +1323,6 @@ load_file_exit:
                 ns_downlink_set_loadbit_result(CARD_SLOT_NUM(cl->section.chip_id), DEVICE_STATUS_LOADING);
                 config_set_device_status(DEVICE_STATUS_LOADING, cl->section.chip_id);
             }
-            
             break;
         }
     }

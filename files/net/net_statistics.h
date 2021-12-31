@@ -13,6 +13,7 @@ struct net_statistics_uplink_info{
     volatile uint64_t forward_pkgs;
     volatile uint64_t route_err_pkgs;
     volatile uint64_t over_run_count;
+    volatile uint64_t read_speed_bps;
 };
 
 struct net_statistics_downlink_info{
@@ -145,6 +146,17 @@ static inline uint64_t statistics_client_get_send_err(struct net_tcp_client *cl)
         return stat->send_err;
     else
         return 0;
+}
+
+/* 上行读取速度设置 */
+static inline void ns_uplink_set_speed(int ch, uint64_t speed)
+{
+    net_statistics.uplink[ch].read_speed_bps = speed;
+}
+
+static inline uint64_t ns_uplink_get_speed(int ch)
+{
+    return net_statistics.uplink[ch].read_speed_bps;
 }
 
 

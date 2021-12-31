@@ -968,13 +968,14 @@ static int xdma_data_dispatcher_buffer(int ch, void **data, uint32_t *len, ssize
     uint8_t *ptr = NULL, *header = NULL;
     struct spm_run_parm *run = args; 
     int err_code = 0, counter = 0, read_over_block = 0;
+
     for(int index = 0; index < count; index++){
         offset = 0;
         counter = 0;
         header = ptr = data[index];
         //printf_note(">>>>>index=%d, %p, %ld\n", index, ptr, count);
         do{
- #ifdef SPM_HEADER_CHECK
+#ifdef SPM_HEADER_CHECK
             memset(&sub, 0, sizeof(struct net_sub_st));
             nframe = _xdma_of_match_pkgs(ch, ptr, len[index], &sub, offset, &err_code, &read_over_block);
             if(err_code != 0)

@@ -69,6 +69,22 @@ static int _tv_diff(struct timeval *t1, struct timeval *t2)
         (t1->tv_usec - t2->tv_usec) / 1000;
 }
 
+static uint64_t _get_uplink_speed(int ch, int time_sec)
+{
+    if(ch >= MAX_XDMA_NUM || time_sec <= 0)
+        return 0;
+    
+    uint64_t newdata = ns_uplink_get_read_bytes(ch);
+    static uint64_t olddata = 0;
+    uint64_t speed = 0;
+
+    if(newdata > olddata){
+        speed = (newdata - olddata) / time_sec;
+    }
+    olddata = newdata;
+    
+    return speed;
+}
 
 static bool _check_fpga_status(int timeout_ms)
 {
@@ -105,6 +121,7 @@ static bool _check_fpga_status(int timeout_ms)
             }
         }else{
             sleep(3);
+            ns_uplink_set_speed(0, _get_uplink_speed(0, 3));
         }
     }
 

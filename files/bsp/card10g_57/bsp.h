@@ -21,7 +21,6 @@
 #if MAX_XDMA_NUM > 1 
 #define PRIO_CHANNEL_EN
 #endif
-#define CONFIG_NET_STATISTICS_ENABLE              1
 
 //HASH MAP OFFSET
 #define CARD_SLOT_BITS (3)

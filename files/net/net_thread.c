@@ -215,7 +215,6 @@ static inline int _get_prio_by_channel(int ch)
     return prio;
 }
 
-#ifdef CONFIG_NET_STATISTICS_ENABLE
 static struct hash_type {
     int type;
     int mask;
@@ -263,8 +262,6 @@ uint64_t  get_send_bytes_by_type(int ch, int type, int id)
     }
     return sum_bytes;
 }
-
-#endif
 
 static size_t _data_send(struct net_tcp_client *cl, void *data, size_t len)
 {
@@ -346,11 +343,9 @@ static int  data_dispatcher(void *args, int hid, int prio)
             
             if(r != arg->xdma_disp.type[index]->vec[i].iov_len)
                 printf_warn("overun: send len:%d/%lu\n", r, arg->xdma_disp.type[index]->vec[i].iov_len);
-#if   CONFIG_NET_STATISTICS_ENABLE
             /* 统计发送失败字节 */
             if(arg->xdma_disp.type[index]->vec[i].iov_len - r > 0 && r >= 0)  
                 statistics_client_send_err_add(ctx->thread.statistics, arg->xdma_disp.type[index]->vec[i].iov_len - r);
-#endif
         }
         //printf_note("[%d]send hash id: 0x%x, vec_cnt=%d, bytes:%d\n", cl->get_peer_port(cl), index, vec_cnt, r);
     }

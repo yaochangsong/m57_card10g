@@ -225,11 +225,11 @@ int _WaitDeviceReady(int dev_fd)
 		ret = ioctl(dev_fd, IOCTL_XDMA_STATUS, &status);
 		if (ret) 
 		{
-			printf("ioctl(IOCTL_XDMA_STATUS) failed %d\n", ret);
+			printf("ioctl(IOCTL_XDMA_STATUS) failed %d, status:%d\n", ret, status);
 			return -1;	  
 		}	
 
-		printf("IOCTL_XDMA_STATUS:%d\n", status);
+		printf_debug("IOCTL_XDMA_STATUS:%d\n", status);
 		if(status == XDMA_STATUS_BUSY)
 		{
 			isReady = 1;
@@ -659,6 +659,22 @@ static int _xdma_find_next_header(uint8_t *ptr, size_t len)
     return offset;
 }
 
+static inline int _align_nbyte(int *rc, int n)
+{
+    int _rc = *rc;
+    if(n <= 0)
+        return 0;
+    
+    int reminder = _rc % n;
+    if(reminder != 0){
+        _rc += (n - reminder);
+        *rc = _rc;
+        return (n - reminder);
+    }
+    return 0;
+}
+
+
 /* 数据包帧匹配分析：
     从XDMA块(长度XDMA_BLOCK_SIZE)中读取数据(data,len),分析一块数据中包含的相同订阅参数且内存地址连续数据长度,一直读
     取直到不同帧或者帧错误；若是不同帧，下次传入帧头(data)再继续分析(offp表示上次分析完成的数据长度)；若帧错误或在
@@ -762,12 +778,15 @@ static ssize_t _xdma_of_match_pkgs(int ch, void *data, uint32_t len, void *args,
         payload = ptr + 8;  /* 获取帧有效数据 */
         pdata[pos] = (struct data_frame_st *)payload;
         frame_len = *(uint16_t *)(ptr + 4); /* 获取帧长度 */
+        #if 0
         reminder16 = frame_len % 16;    /* 帧长度16字节对齐，获取的帧长度不一定是实际的帧长度 */
         if(reminder16 != 0){
             raw_len = frame_len;
             frame_len += reminder16;
             //printf_note("[%d]not aglin 16,add %d, frame_len:%lu[0x%lx], raw_len:%lu[0x%lx]\n", pos, reminder16, frame_len, frame_len,raw_len,raw_len);
         }
+        #endif
+        _align_nbyte(&frame_len, 16);
         if(frame_len > 2048){   /* 帧长度必须<=2048，否则认为是错误帧 */
             printf_warn("payload length error: %lu\n", frame_len);
             *err_code = 1;
@@ -787,7 +806,6 @@ static ssize_t _xdma_of_match_pkgs(int ch, void *data, uint32_t len, void *args,
             psub->prio_id = ((*(uint8_t *)(ptr + 3) >> 4) & 0x0f) == 0 ? 0 :1;
             psub->port = port = pdata[pos]->port;
            // printf_note("0 frame_len：%lu, chip_id=0x%x, func_id=0x%x, prio_id=0x%x,port: 0x%x\n", frame_len, psub->chip_id, psub->func_id, psub->prio_id, psub->port);
-            //ns_uplink_add_forward_pkgs(ch, 1);
            /* 比较其它帧和第一帧订阅参数是否相等，不相等，则该次分析完成，下次继续获取相同的订阅参数数据 */
         } else if(py_src_addr != pdata[pos]->py_src_addr || src_addr != pdata[pos]->src_addr || port != pdata[pos]->port){
             if(io_xdma_is_valid_chipid(pdata[pos]->py_src_addr) == false){

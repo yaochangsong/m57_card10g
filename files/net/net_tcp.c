@@ -547,6 +547,48 @@ void tcp_active_send_all_client(uint8_t *data, int len)
     }
 }
 
+static inline bool _is_idata_in_range(int indata, int dstdata, int range)
+{
+    if((indata - range <= dstdata) && (indata + range >= dstdata)){
+        return true;
+    }
+    return false;
+}
+
+struct net_tcp_client *tcp_find_prio_client(void *client, int prio)
+{
+    struct net_tcp_client *cl = client;
+    struct net_tcp_client *cl_list, *list_tmp;
+    
+    if(unlikely(cl == NULL))
+        return NULL;
+    
+    pthread_mutex_lock(&cl->section.free_lock);
+    if(cl->section.is_exitting == true){
+        pthread_mutex_lock(&cl->section.free_lock);
+        return NULL;
+    }
+    pthread_mutex_lock(&cl->section.free_lock);
+
+    struct net_tcp_server *srv = cl->srv;
+    list_for_each_entry_safe(cl_list, list_tmp, &srv->clients, list){
+        printf_note("prio:%d, %d, %s:%d\n", cl_list->section.prio, prio, cl_list->get_peer_addr(cl_list), cl_list->get_peer_port(cl_list));
+        if(cl->peer_addr.sin_addr.s_addr == cl_list->peer_addr.sin_addr.s_addr && 
+            prio == cl_list->section.prio && 
+            _is_idata_in_range(cl_list->get_peer_port(cl_list), cl->get_peer_port(cl), 1)){
+            return cl_list;
+        }
+    }
+    /* Not Find client */
+    printf_warn("NOT find client, try again\n");
+    list_for_each_entry_safe(cl_list, list_tmp, &srv->clients, list){
+        if(cl->peer_addr.sin_addr.s_addr == cl_list->peer_addr.sin_addr.s_addr && prio == cl_list->section.prio){
+            return cl_list;
+        }
+    }
+    return NULL;
+}
+
 
 int tcp_client_do_for_each(int (*f)(struct net_tcp_client *, void *), void **cl, int prio, void *args)
 {

@@ -822,7 +822,7 @@ static int _m57_write_data_to_fpga(uint8_t *ptr, size_t len)
     _len = len;
     reminder = _align_4byte((int *)&_len);
     nwrite = _ctx->ops->write_xdma_data(0, buffer, _len);
-    //printfi("Write data %s![%ld],align 4byte reminder=%d[raw len: %lu]\n",  (nwrite == _len) ? "OK" : "Faild", nwrite, reminder, len);
+    printfd("Write data %s![%ld],align 4byte reminder=%d[raw len: %lu]\n",  (nwrite == _len) ? "OK" : "Faild", nwrite, reminder, len);
     free(buffer);
     buffer = NULL;
     return nwrite;
@@ -854,7 +854,7 @@ static bool _assamble_keytool_resp(struct net_tcp_client *cl, void *header)
     uint8_t data_ex_header[] = {0x00, 0x00, 0x07, 0x00, 0x00, 0x00, 0x40, 0x01};
     uint8_t data_end[] = {0xff, 0xff};
 
-    pheader = (uint8_t *)header + 2;
+    pheader = (struct data_frame_t *)((uint8_t *)header + 2);
     nbyte = io_keytool_read_e2prom_file(pheader->py_dist_addr, (void **)&info);
     if(nbyte <= 0){
         nbyte = _reg_get_board_info(0, (void **)&info);
@@ -921,7 +921,7 @@ static void _assamble_keytool_resp_(struct net_tcp_client *cl, void *header)
     ptr = resp;
     memset(ptr, 0, h_nbyte);
     memset(&data_header, 0, sizeof(data_header));
-    pheader = (uint8_t *)header + 2;
+    pheader = (struct data_frame_t*)((uint8_t *)header + 2);
     data_header.py_dist_addr = pheader->py_src_addr;
     data_header.py_src_addr = pheader->py_dist_addr;
     data_header.dist_addr = pheader->dist_addr;
@@ -1020,7 +1020,7 @@ bool m57_execute_cmd(void *client, int *code)
             uint16_t beat_status = 0;
             beat_count = *(uint16_t *)payload;
             beat_status = *((uint16_t *)payload + 1);
-            //printf_note("keepalive beat_count=%d, beat_status=%d\n", beat_count, beat_status);
+            printf_debug("keepalive beat_count=%d, beat_status=%d\n", beat_count, beat_status);
             update_tcp_keepalive(cl);
             break;
         }
@@ -1074,7 +1074,21 @@ bool m57_execute_cmd(void *client, int *code)
             printf_note("[%d]sub chip_id:0x%x, func_id=0x%x, port=0x%x, prio=%d\n", cl->get_peer_port(cl), _sub.chip_id, _sub.func_id, _sub.port, cl->section.prio);
             io_socket_set_sub(cl->section.section_id, _sub.chip_id, _sub.func_id, _sub.port);
             net_hash_add_ex(cl->section.hash, GET_HASHMAP_ID(_sub.chip_id, _sub.func_id, cl->section.prio, _sub.port));
-            printf_note("[%d]hash id: 0x%x\n", cl->get_peer_port(cl), GET_HASHMAP_ID(_sub.chip_id, _sub.func_id, cl->section.prio, _sub.port));
+            printf_note("[%d,prio:%s]hash id: 0x%x\n", cl->get_peer_port(cl), (cl->section.prio==0?"low":"high"), GET_HASHMAP_ID(_sub.chip_id, _sub.func_id, cl->section.prio, _sub.port));
+            /* 
+                客户端默认命令都从高优先级socket发送到设备，这里设备程序对高低优先级socket都做了订阅，具体往哪里发，取决读取数据优先级 
+                0： 低优先级    1:高优先级
+            */
+            struct net_tcp_client *cl_prio;
+            int _prio = 0;
+            if(cl->section.prio == 0){
+                _prio = 1;
+            }
+            cl_prio = tcp_find_prio_client(cl, _prio);
+            if(cl_prio != NULL){
+                net_hash_add_ex(cl_prio->section.hash, GET_HASHMAP_ID(_sub.chip_id, _sub.func_id, cl_prio->section.prio, _sub.port));
+                printf_note("[%d,prio:%s]hash id: 0x%x\n", cl_prio->get_peer_port(cl_prio), (cl_prio->section.prio==0?"low":"high"), GET_HASHMAP_ID(_sub.chip_id, _sub.func_id, cl_prio->section.prio, _sub.port));
+            }
             break;
         }
         case CCT_DATA_UNSUB:

@@ -15,7 +15,7 @@
 #include "config.h"
 #include "net_sub.h"
 
-#define HASH_NODE_MAX 4096
+#define HASH_NODE_MAX 8192
 
 pthread_mutex_t hash_table_mutex = PTHREAD_MUTEX_INITIALIZER;
 

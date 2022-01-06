@@ -803,7 +803,9 @@ static ssize_t _xdma_of_match_pkgs(int ch, void *data, uint32_t len, void *args,
             }
             psub->chip_id = py_src_addr = pdata[pos]->py_src_addr;
             psub->func_id = src_addr = pdata[pos]->src_addr;
-            psub->prio_id = ((*(uint8_t *)(ptr + 3) >> 4) & 0x0f) == 0 ? 0 :1;
+            //psub->prio_id = ((*(uint8_t *)(ptr + 3) >> 4) & 0x0f) == 0 ? 0 :1;
+            //上报数据优先级为3时，为紧急通道；其它为非紧急
+            psub->prio_id = ((*(uint8_t *)(ptr + 3) >> 4) & 0x0f) == 3 ? 1 :0;
             psub->port = port = pdata[pos]->port;
            // printf_note("0 frame_len：%lu, chip_id=0x%x, func_id=0x%x, prio_id=0x%x,port: 0x%x\n", frame_len, psub->chip_id, psub->func_id, psub->prio_id, psub->port);
            /* 比较其它帧和第一帧订阅参数是否相等，不相等，则该次分析完成，下次继续获取相同的订阅参数数据 */

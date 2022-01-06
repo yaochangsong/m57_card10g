@@ -75,13 +75,13 @@ static uint64_t _get_uplink_speed(int ch, int time_sec)
         return 0;
     
     uint64_t newdata = ns_uplink_get_read_bytes(ch);
-    static uint64_t olddata = 0;
+    static uint64_t olddata[MAX_XDMA_NUM] = {[0 ... MAX_XDMA_NUM-1] = 0};
     uint64_t speed = 0;
 
-    if(newdata > olddata){
-        speed = (newdata - olddata) / time_sec;
+    if(newdata > olddata[ch]){
+        speed = (newdata - olddata[ch]) / time_sec;
     }
-    olddata = newdata;
+    olddata[ch] = newdata;
     
     return speed;
 }

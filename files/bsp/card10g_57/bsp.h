@@ -1,7 +1,7 @@
 #ifndef _BSP_H
 #define _BSP_H
 
-//#define DEBUG_TEST
+#define DEBUG_TEST
 //#define LOAD_FILE_ASYN 1
 #define KEY_TOOL_ENABLE 1
 #define MAX_RADIO_CHANNEL_NUM 1         /* 最大射频通道数 */
@@ -15,12 +15,14 @@
 #define MAX_FPGA_CARD_SLOT_NUM          (16) /* FPGA槽位 */
 #define MAX_FPGA_CHIPID_NUM             2   /* FPGA芯片数 */
 #define MAX_CLINET_SOCKET_NUM           32   /* 客户端socket数 */
-#define MAX_XDMA_NUM                    1   /* XDMA数 */
+#define MAX_XDMA_NUM                    2   /* XDMA数 */
 #define MAX_XDMA_RF_CARD_NUM            8   /* 射频卡数 */
 
 #if MAX_XDMA_NUM > 1 
 #define PRIO_CHANNEL_EN
 #endif
+#define MAX_PRIO_LEVEL   MAX_XDMA_NUM
+
 
 //HASH MAP OFFSET
 #define CARD_SLOT_BITS (3)

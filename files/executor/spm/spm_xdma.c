@@ -1262,8 +1262,8 @@ static int _xspm_close(void *_ctx)
 static int xspm_xdma_data_clear(int ch,  void *arg)
 {
     struct spm_run_parm *run = arg;
-    xspm_read_stream_stop(0, 0, XDMA_STREAM);
-    xspm_read_stream_start(0, 0, 0, 0, XDMA_STREAM);
+    xspm_read_stream_stop(ch, 0, XDMA_STREAM);
+    xspm_read_stream_start(ch, 0, 0, 0, XDMA_STREAM);
     for(int i = 0; i < MAX_XDMA_DISP_TYPE_NUM; i++){
         run->xdma_disp.type[i]->vec_cnt = 0;
     }

@@ -2,10 +2,9 @@
 #include "net_thread.h"
 
 
-static void *_net_thread_con_init(void);
 struct net_thread_context *net_thread_ctx = NULL;
 
-#define _NOTIFY_MAX_NUM 2
+#define _NOTIFY_MAX_NUM MAX_PRIO_LEVEL
 volatile void *channel_param[_NOTIFY_MAX_NUM] = {NULL};
 
 struct thread_con_wait {
@@ -13,7 +12,8 @@ struct thread_con_wait {
     pthread_cond_t count_cond;
     volatile unsigned int count;
     volatile unsigned int thread_count;
-}*con_wait;
+    int prio;   /* 0: low, 1: high */
+}*con_wait[MAX_PRIO_LEVEL];
 
 static char *_get_thread_name(int index)
 {
@@ -32,24 +32,24 @@ static void _net_thread_wait_init(struct net_thread_context *ctx)
     }
 }
 
-static void _net_thread_count_add(void)
+static void _net_thread_count_add(int level)
 {
-    struct thread_con_wait *wait;
-    if(con_wait == NULL)
-       con_wait = _net_thread_con_init();
-    wait = con_wait;
+    if(unlikely(level >= MAX_PRIO_LEVEL) || con_wait[level] == NULL)
+        return;
+    
+    struct thread_con_wait *wait = con_wait[level];
 
     pthread_mutex_lock(&wait->count_lock);
     wait->thread_count++;
     pthread_mutex_unlock(&wait->count_lock);
 }
 
-static void _net_thread_count_sub(void)
+static void _net_thread_count_sub(int level)
 {
-    struct thread_con_wait *wait;
-    if(con_wait == NULL)
-       con_wait = _net_thread_con_init();
-    wait = con_wait;
+    if(unlikely(level >= MAX_PRIO_LEVEL) || con_wait[level] == NULL)
+        return;
+    
+    struct thread_con_wait *wait = con_wait[level];
 
     pthread_mutex_lock(&wait->count_lock);
     if(wait->thread_count > 0)
@@ -57,13 +57,13 @@ static void _net_thread_count_sub(void)
     pthread_mutex_unlock(&wait->count_lock);
 }
 
-static uint32_t _net_thread_count_get(void)
+static uint32_t _net_thread_count_get(int level)
 {
-    struct thread_con_wait *wait;
     uint32_t count = 0;
-    if(con_wait == NULL)
-       con_wait = _net_thread_con_init();
-    wait = con_wait;
+    if(unlikely(level >= MAX_PRIO_LEVEL) || con_wait[level] == NULL)
+        return -1;
+    
+    struct thread_con_wait *wait = con_wait[level];
 
     pthread_mutex_lock(&wait->count_lock);
     count = wait->thread_count;
@@ -91,14 +91,10 @@ static void _net_thread_con_stopped(struct thread_con_wait *wait)
 }
 
 
-static void *_net_thread_con_init(void)
+static void *_net_thread_con_init(int level)
 {
-    static int has_init = 0;
-    static struct thread_con_wait *wait = NULL;
-    
-    if(has_init)
-        return wait;
-    
+    struct thread_con_wait *wait = NULL;
+
     wait = calloc(1, sizeof(*wait));
     if (!wait){
         printf_err("zalloc error!!\n");
@@ -107,7 +103,7 @@ static void *_net_thread_con_init(void)
     pthread_mutex_init(&wait->count_lock, NULL);
     pthread_cond_init(&wait->count_cond, NULL);
     wait->count = 0;
-    has_init = 1;
+    wait->prio = level;
     
     return wait;
 }
@@ -166,8 +162,11 @@ static int _net_thread_wait(void *args)
 
 static int _net_thread_con_nofity(struct net_tcp_client *cl, void *args)
 {
+    if(unlikely(cl->section.thread == NULL))
+        return -1;
+
     struct net_thread_m *ptd = &cl->section.thread->thread;
-    if(ptd == NULL)
+    if(unlikely(ptd == NULL))
         return -1;
     
    // if(pthread_check_alive_by_tid(ptd->tid) == false){
@@ -366,21 +365,17 @@ static inline void _net_thread_dispatcher_refresh(void *args)
 
 void  net_thread_con_broadcast(int ch, void *args)
 {
-    static bool first = true;
     int prio = 0;
     channel_param[ch] = args;
-    if(first){
-        con_wait = _net_thread_con_init();
-        first = false;
-    }
+
     prio = _get_prio_by_channel(ch);
     int notify_num = tcp_client_do_for_each(_net_thread_con_nofity, NULL, prio, NULL);
-    notify_num = min(_net_thread_count_get(), notify_num);
+    notify_num = min(_net_thread_count_get(prio), notify_num);
     if(ch >= _NOTIFY_MAX_NUM)
         ch = _NOTIFY_MAX_NUM-1;
     if(notify_num > 0){
-        printf_debug("broadcast clinet num: %d\n", notify_num);
-        _net_thread_con_wait_timeout(con_wait, notify_num, 2000);
+        printf_debug("broadcast client num: %d, prio:%d\n", notify_num, prio);
+        _net_thread_con_wait_timeout(con_wait[prio], notify_num, 2000);
     }
 }
 
@@ -397,7 +392,7 @@ static int _net_thread_main_loop(void *arg)
     _net_thread_wait(ctx);
     printf_debug("thread[%s] receive start consume\n", ptd->name);
     net_hash_for_each(cl->section.hash, data_dispatcher, arg);
-    _net_thread_con_over(con_wait, ptd);
+    _net_thread_con_over(con_wait[ctx->thread.prio], ptd);
     return 0;
 }
 
@@ -407,7 +402,7 @@ static int  _net_thread_exit(void *arg)
     struct net_tcp_client *cl = ctx->thread.client;
 
     printf_debug("thread[%s] exit!\n", ctx->thread.name);
-    _net_thread_count_sub();
+    _net_thread_count_sub(ctx->thread.prio);
     safe_free(ctx->thread.name);
     safe_free(ctx->thread.statistics);
     if(cl){
@@ -444,7 +439,8 @@ static int _thread_init(void *args)
     cpu_index++;
     if(cpu_index >= cpunum)
         cpu_index = 0;
-
+    for(int i = 0; i < MAX_PRIO_LEVEL; i++)
+        con_wait[i] = _net_thread_con_init(i);
     ctx->thread.statistics = net_statistics_client_create_context(client->get_peer_port(client));
     return 0;
 }
@@ -463,16 +459,21 @@ struct net_thread_context * net_thread_create_context(void *cl)
 
     ctx->thread.name = strdup(_get_thread_name(client->get_peer_port(client)));
     ctx->thread.client = cl;
+    if(likely(client->section.prio < MAX_PRIO_LEVEL))
+        ctx->thread.prio = client->section.prio;
+    else
+        ctx->thread.prio = 0;
+    
     ctx->args = get_spm_ctx();
     _net_thread_wait_init(ctx);
-    printf_note("client: %s:%d create thread\n", client->get_peer_addr(client), client->get_peer_port(client));
+    printf_note("client: %s:%d create thread[prio:%s]\n", client->get_peer_addr(client), client->get_peer_port(client), ctx->thread.prio == 1 ? "Urgent" : "Normal");
     ret =  pthread_create_detach (NULL,_thread_init, _net_thread_main_loop, _net_thread_exit,  ctx->thread.name , ctx, ctx, &tid);
     if(ret != 0){
         perror("pthread err");
         safe_free(ctx);
         return NULL;
     }
-    _net_thread_count_add();
+    _net_thread_count_add(ctx->thread.prio);
     ctx->thread.tid = tid;
     ctx->ops = &nt_ops;
     return ctx;

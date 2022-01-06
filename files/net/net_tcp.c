@@ -754,6 +754,7 @@ int _set_socket_keepalive(int listenfd)
         //exit(EXIT_FAILURE);
     }
     printf("SO_KEEPALIVE is %s\n", (optval ? "ON" : "OFF"));
+    return 0;
 }
 
 struct net_tcp_server *tcp_server_new(const char *host, int port)

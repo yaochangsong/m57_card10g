@@ -1038,7 +1038,7 @@ bool m57_execute_cmd(void *client, int *code)
             m57_prio_type _type;
             memcpy(&_reg, payload, sizeof(_reg));
             _type = (_reg.type == 1 ? M57_PRIO_LOW: 1);
-            printf_note("=====>>>%s[%d, %d], port:%d\n", _type == 1 ? "Urgent" : "Normal", _type, _reg.type, cl->get_peer_port(cl));
+            printf_note("=====>>>%s[%d, %d]mode:%d, port:%d\n", _type == 1 ? "Urgent" : "Normal", _type, _reg.type,_reg.type_mode, cl->get_peer_port(cl));
             cl->section.prio = _type;
             //net_hash_add(cl->section.hash, _type, RT_PRIOID);
             #ifdef DEBUG_TEST
@@ -1073,21 +1073,8 @@ bool m57_execute_cmd(void *client, int *code)
             }
             printf_note("[%d]sub chip_id:0x%x, func_id=0x%x, port=0x%x, prio=%d\n", cl->get_peer_port(cl), _sub.chip_id, _sub.func_id, _sub.port, cl->section.prio);
             io_socket_set_sub(cl->section.section_id, _sub.chip_id, _sub.func_id, _sub.port);
-            #if 1
-            //net_hash_add(cl->section.hash, _sub.chip_id, RT_CHIPID);
-            //net_hash_add(cl->section.hash, _sub.func_id, RT_FUNCID);
-           // net_hash_add(cl->section.hash, _sub.port, RT_PORTID);
             net_hash_add_ex(cl->section.hash, GET_HASHMAP_ID(_sub.chip_id, _sub.func_id, cl->section.prio, _sub.port));
             printf_note("[%d]hash id: 0x%x\n", cl->get_peer_port(cl), GET_HASHMAP_ID(_sub.chip_id, _sub.func_id, cl->section.prio, _sub.port));
-            //net_hash_dump(cl->section.hash);
-            //net_hash_find_type_set(cl->section.hash, RT_CHIPID, NULL);
-            //printf_warn("find chipId:%s\n", net_hash_find(cl->section.hash, _sub.chip_id, RT_CHIPID) == true ? "YES": "NO");
-            //printf_warn("find func_id:%s\n", net_hash_find(cl->section.hash, _sub.func_id, RT_FUNCID) == true ? "YES": "NO");
-            //printf_warn("find port:%s\n", net_hash_find(cl->section.hash, _sub.port, RT_PORTID) == true ? "YES": "NO");
-            #endif
-            int enable = 1;
-            //if(_sub.chip_id == 0x0502 && _sub.func_id == 0x03)
-            //    executor_set_command(EX_XDMA_ENABLE_CMD, -1, 1, &enable, -1);
             break;
         }
         case CCT_DATA_UNSUB:
@@ -1101,12 +1088,6 @@ bool m57_execute_cmd(void *client, int *code)
             memcpy(&_sub,  payload, sizeof(_sub));
             printf_note("[%d]unsub chip_id:0x%x, func_id=0x%x, port=0x%x, prio=%d\n", cl->get_peer_port(cl),_sub.chip_id, _sub.func_id, _sub.port, cl->section.prio);
             io_socket_set_unsub(cl->section.section_id, _sub.chip_id, _sub.func_id, _sub.port);
-            #if 0
-            net_hash_del(cl->section.hash, _sub.chip_id, RT_CHIPID);
-            net_hash_del(cl->section.hash, _sub.func_id, RT_FUNCID);
-            net_hash_del(cl->section.hash, _sub.port, RT_PORTID);
-            // net_hash_dump(cl->section.hash);
-            #endif
             net_hash_del_ex(cl->section.hash, GET_HASHMAP_ID(_sub.chip_id, _sub.func_id, cl->section.prio, _sub.port));
             break;
         }
@@ -1119,8 +1100,6 @@ bool m57_execute_cmd(void *client, int *code)
             #else
             nbyte = _reg_get_fpga_info_(get_fpga_reg(), 0, (void **)&info);
             #endif
-            //nbyte = _reg_get_fpga_info_(get_fpga_reg(), 0, (void **)&info);
-            //nbyte = _reg_get_fpga_info(get_fpga_reg(), 0, (void **)&info);
             if(nbyte >= 0){
                 cl->response.data = info;
                 cl->response.response_length = nbyte;

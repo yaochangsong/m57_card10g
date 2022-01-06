@@ -271,8 +271,9 @@ static size_t _data_send(struct net_tcp_client *cl, void *data, size_t len)
     size_t send_len = 0;   
     
     index = len / THREAD_SEND_MAX_BYTE;
-    sbyte = index * THREAD_SEND_MAX_BYTE;
-    reminder = len - sbyte;
+    //sbyte = index * THREAD_SEND_MAX_BYTE;
+    //reminder = len - sbyte;
+    reminder = len % THREAD_SEND_MAX_BYTE;
     pdata = (char *)data;
 
     for(int i = 0; i<index; i++){

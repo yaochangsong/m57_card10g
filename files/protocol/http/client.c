@@ -370,13 +370,12 @@ static inline const char *client_get_body(struct uh_client *cl, int *len)
 static int post_post_data(struct uh_client *cl, const char *data, int len)
 {
     struct dispatch *d = &cl->dispatch;
-    d->post_len += len;
-    //printf_warn("d->post_len=%d\n", d->post_len);
+    int offset = d->post_len + len;
 
-    if (d->post_len > UH_POST_MAX_POST_SIZE)
+    if (offset > UH_POST_MAX_POST_SIZE)
         goto err;
 
-    if (d->post_len > UH_POST_DATA_BUF_SIZE) {
+    if (offset > UH_POST_DATA_BUF_SIZE) {
         d->body = realloc(d->body, UH_POST_MAX_POST_SIZE);
         if (!d->body) {
             cl->send_error(cl, 500, "Internal Server Error", "No memory");
@@ -384,7 +383,8 @@ static int post_post_data(struct uh_client *cl, const char *data, int len)
         }
     }
 
-    memcpy(d->body, data, len);
+    memcpy(d->body + d->post_len, data, len);
+    d->post_len += len;
     return len;
 err:
     cl->send_error(cl, 413, "Request Entity Too Large", NULL);
@@ -742,9 +742,14 @@ static void client_poll_post_data(struct uh_client *cl)
         if (cur_len) {
             if (d->post_data)
                 cur_len = d->post_data(cl, buf, cur_len);
-
+            if (!cur_len)
+                printf_warn("data post error!\n");
+            
             r->content_length -= cur_len;
             ustream_consume(cl->us, cur_len);
+            if (r->content_length <= 0)
+                break;
+            
             continue;
         }
     }

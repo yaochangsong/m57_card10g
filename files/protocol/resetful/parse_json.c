@@ -27,6 +27,11 @@
 #include "../../net/net_thread.h"
 #include "../../utils/bitops.h"
 
+void safe_cJson_AddItemToObject(cJSON *object, const char *string, char *assemble_info)
+{
+    cJSON_AddItemToObject(object, string, cJSON_Parse(assemble_info));
+    _safe_free_(assemble_info);
+}
 
 static inline bool str_to_int(char *str, int *ivalue, bool(*_check)(int))
 {
@@ -162,7 +167,7 @@ int parse_json_client_net(int ch, const char * const body, char *type)
             }
         }
     }
-    
+    cJSON_Delete(root);
     return RESP_CODE_OK;
 }
 
@@ -206,6 +211,7 @@ int parse_json_net(const char * const body)
         strcpy(ifname, value->valuestring);
         printf_info("ifname: %s, %ld\n", ifname, strlen(value->valuestring));
     }else{
+        cJSON_Delete(root);
         return RESP_CODE_PARSE_ERR;
     }
     value = cJSON_GetObjectItem(root, "ipaddr");
@@ -214,13 +220,15 @@ int parse_json_net(const char * const body)
         r = inet_pton(AF_INET, value->valuestring, &addr);
         if(r <= 0){
             printf_warn("invalid addr: %s\n", value->valuestring);
+            cJSON_Delete(root);
             return RESP_CODE_PARSE_ERR;
         }
         ipaddr = addr.s_addr;
         if(config_match_ipaddr_addr(ifname, ipaddr)== false){
             printf_info("set ipaddr: %s, 0x%x\n", value->valuestring, ipaddr);
             if(config_set_ip(ifname, ipaddr) != 0){
-                return RESP_CODE_EXECMD_ERR;
+            cJSON_Delete(root);
+            return RESP_CODE_EXECMD_ERR;
             }
             is_reboot = 1;
         }
@@ -232,13 +240,15 @@ int parse_json_net(const char * const body)
         r = inet_pton(AF_INET, value->valuestring, &addr);
         if(r <= 0){
             printf_warn("invalid netmask: %s\n", value->valuestring);
+            cJSON_Delete(root);
             return RESP_CODE_PARSE_ERR;
         }
         netmask = addr.s_addr;
         if(config_match_netmask_addr(ifname, netmask)== false){
             printf_info("set netmask: %s, 0x%x\n", value->valuestring, netmask);
             if(config_set_netmask(ifname, netmask) != 0){
-                return RESP_CODE_EXECMD_ERR;
+            	cJSON_Delete(root);
+            	return RESP_CODE_EXECMD_ERR;
             }
         }
     }
@@ -255,7 +265,8 @@ int parse_json_net(const char * const body)
         if(config_match_gateway_addr(ifname, gw)== false){
             printf_info("set gateway: %s, 0x%x\n", value->valuestring, gw);
             if(config_set_gateway(ifname, gw) != 0){
-                return RESP_CODE_EXECMD_ERR;
+	            cJSON_Delete(root);
+	            return RESP_CODE_EXECMD_ERR;
             }
         }
     }
@@ -266,9 +277,10 @@ int parse_json_net(const char * const body)
             is_reboot = 1;
     }
     
+    cJSON_Delete(root);
     if(is_reboot == 1)
         return RESP_CODE_EXECMD_REBOOT;
-    
+
     return RESP_CODE_OK;
 }
 
@@ -333,7 +345,7 @@ int parse_json_rf_multi_value(const char * const body, uint8_t cid)
          printfd("rf mid_bw:%d,\n", config->channel[cid].rf_para.mid_bw);
     }
     printfd("\n");
-    
+    cJSON_Delete(root);
     return RESP_CODE_OK;
 
 }
@@ -436,7 +448,7 @@ int parse_json_multi_band(const char * const body,uint8_t cid)
     }else{
         config->channel[cid].work_mode = OAL_MULTI_ZONE_SCAN_MODE;
     }
-    
+    cJSON_Delete(root);
     return code;
 }
 
@@ -576,6 +588,7 @@ int parse_json_muti_point(const char * const body,uint8_t cid)
         }
          
     }  
+    cJSON_Delete(root);
     if(config->channel[cid].multi_freq_point_param.freq_point_cnt == 0){
         config->channel[cid].work_mode = OAL_NULL_MODE;
         printf_warn("Unknown Work Mode\n");
@@ -618,6 +631,7 @@ int parse_json_bddc(const char * const body,uint8_t ch)
     executor_set_command(EX_MID_FREQ_CMD, EX_DEC_BW, ch, &config->channel[ch].multi_freq_point_param.ddc.bandwidth);
     executor_set_command(EX_MID_FREQ_CMD, EX_DEC_MID_FREQ, ch,&config->channel[ch].multi_freq_point_param.ddc.middle_freq,
                     _get_middle_freq(ch,config->channel[ch].multi_freq_point_param.ddc.middle_freq, &config->channel[ch].multi_freq_point_param.points[0].center_freq));
+    cJSON_Delete(root);
     return code;
 }
 
@@ -715,6 +729,7 @@ int parse_json_demodulation(const char * const body,uint8_t cid,uint8_t subid )
     executor_set_command(EX_MID_FREQ_CMD, EX_SUB_CH_DEC_METHOD, subid, 
         &sub_channel_array->sub_ch[subid].d_method);
 
+    cJSON_Delete(root);
     return code;
 }
 
@@ -756,6 +771,7 @@ int parse_json_file_backtrace(const char * const body, uint8_t ch,  uint8_t enab
     else
         ret = fs_ctx->ops->fs_stop_read_raw_file(ch, filename);
 #endif
+    cJSON_Delete(root);
     if(ret != 0)
         return RESP_CODE_EXECMD_ERR;
     else
@@ -799,6 +815,7 @@ int parse_json_file_store(const char * const body, uint8_t ch,  uint8_t enable, 
         else
             fs_ctx->ops->fs_stop_save_file(ch, filename);
 #endif
+    cJSON_Delete(root);
     if(ret != 0)
         return RESP_CODE_EXECMD_ERR;
     else
@@ -851,7 +868,7 @@ char *assemble_json_file_list(void)
     cJSON_AddItemToObject(root, "list", array);
     json_print(root, 1);
     str_json = cJSON_PrintUnformatted(root);
-    
+    cJSON_Delete(root);
     return str_json;
 }
 
@@ -893,6 +910,7 @@ char *assemble_json_find_file(char *filename)
 #endif
     json_print(root, 1);
     str_json = cJSON_PrintUnformatted(root);
+    cJSON_Delete(root);
     
     return str_json;
 }
@@ -926,6 +944,7 @@ char *assemble_json_build_info(void)
     }
     json_print(root, 1);
     str_json = cJSON_PrintUnformatted(root);
+    cJSON_Delete(root);
     return str_json;
 }
 char *assemble_json_softversion(void)
@@ -940,6 +959,7 @@ char *assemble_json_softversion(void)
     cJSON_AddStringToObject(root, "fpgaversion", version);
     json_print(root, 1);
     str_json = cJSON_PrintUnformatted(root);
+    cJSON_Delete(root);
     return str_json;
 }
 
@@ -968,6 +988,7 @@ char *assemble_json_net_uplink_info(int ch)
 
     json_print(root, 1);
     str_json = cJSON_PrintUnformatted(root);
+    cJSON_Delete(root);
     return str_json;
 }
 
@@ -986,6 +1007,7 @@ char *assemble_json_net_downlink_info(void)
 
     json_print(root, 1);
     str_json = cJSON_PrintUnformatted(root);
+    cJSON_Delete(root);
     return str_json;
 }
 
@@ -1026,6 +1048,7 @@ char *assemble_json_slot_info(void)
 #endif
     json_print(array, 1);
     str_json = cJSON_PrintUnformatted(array);
+    cJSON_Delete(array);
     return str_json;
 }
 
@@ -1079,14 +1102,15 @@ char *assemble_json_statistics_all_info(void)
 {
     char *str_json = NULL;
     cJSON *root = cJSON_CreateObject();
-    cJSON_AddItemToObject(root, "uplink", cJSON_Parse(assemble_json_net_uplink_info(0)));
-    cJSON_AddItemToObject(root, "downlink", cJSON_Parse(assemble_json_net_downlink_info()));
-    cJSON_AddItemToObject(root, "softversion", cJSON_Parse(assemble_json_softversion()));
-    cJSON_AddItemToObject(root, "device", cJSON_Parse(assemble_json_device_status_info()));
-    cJSON_AddItemToObject(root, "temperature", cJSON_Parse(assemble_json_device_temperature_info()));
-    cJSON_AddItemToObject(root, "sysinfo", cJSON_Parse(assemble_json_sys_info()));
+    safe_cJson_AddItemToObject(root, "uplink", assemble_json_net_uplink_info(0));
+    safe_cJson_AddItemToObject(root, "downlink", assemble_json_net_downlink_info());
+    safe_cJson_AddItemToObject(root, "softversion", assemble_json_softversion());
+    safe_cJson_AddItemToObject(root, "device", assemble_json_device_status_info());
+    safe_cJson_AddItemToObject(root, "temperature", assemble_json_device_temperature_info());
+    safe_cJson_AddItemToObject(root, "sysinfo", assemble_json_sys_info());
     json_print(root, 1);
     str_json = cJSON_PrintUnformatted(root);
+    cJSON_Delete(root);
     return str_json;
 }
 
@@ -1096,6 +1120,7 @@ char *assemble_json_statistics_client_info(void)
     cJSON *array = cJSON_CreateArray();
     tcp_client_do_for_each(_assemble_statistics_client_info, NULL, -1, array);
     str_json = cJSON_PrintUnformatted(array);
+    cJSON_Delete(array);
     return str_json;
 }
 
@@ -1105,6 +1130,7 @@ char *assemble_json_client_sub_info(void)
     cJSON *array = cJSON_CreateArray();
     tcp_client_do_for_each(_assemble_client_sub_info, NULL, -1, array);
     str_json = cJSON_PrintUnformatted(array);
+    cJSON_Delete(array);
     return str_json;
 }
 
@@ -1137,6 +1163,7 @@ char *assemble_json_sys_info(void)
 
     json_print(root, 1);
     str_json = cJSON_PrintUnformatted(root);
+    cJSON_Delete(root);
     return str_json;
 
 }
@@ -1158,6 +1185,7 @@ char *assemble_json_device_status_info(void)
         cJSON_AddStringToObject(root, "info", "");
     json_print(root, 1);
     str_json = cJSON_PrintUnformatted(root);
+    cJSON_Delete(root);
     return str_json;
 
 }
@@ -1173,6 +1201,7 @@ char *assemble_json_device_temperature_info(void)
 
     json_print(root, 1);
     str_json = cJSON_PrintUnformatted(root);
+    cJSON_Delete(root);
     return str_json;
 }
 
@@ -1200,6 +1229,7 @@ char *assemble_json_fpag_info(void)
     cJSON_AddStringToObject(root, "status", _status);
     json_print(root, 1);
     str_json = cJSON_PrintUnformatted(root);
+    cJSON_Delete(root);
     return str_json;
 }
 
@@ -1235,6 +1265,7 @@ char *assemble_json_gps_info(void)
     cJSON_AddNumberToObject(root, "code", get_gps_status_code(is_ok));
     json_print(root, 1);
     str_json = cJSON_PrintUnformatted(root);
+    cJSON_Delete(root);
     return str_json;
 }
 #endif
@@ -1252,6 +1283,7 @@ char *assemble_json_clock_info(void)
     cJSON_AddNumberToObject(root, "frequency", get_clock_frequency());
     json_print(root, 1);
     str_json = cJSON_PrintUnformatted(root);
+    cJSON_Delete(root);
     return str_json;
 }
 char *assemble_json_board_info(void)
@@ -1273,6 +1305,7 @@ char *assemble_json_board_info(void)
     cJSON_AddNumberToObject(root, "current", power.i);
     json_print(root, 1);
     str_json = cJSON_PrintUnformatted(root);
+    cJSON_Delete(root);
     return str_json;
 }
 char *assemble_json_net_info(void)
@@ -1307,6 +1340,7 @@ char *assemble_json_net_info(void)
     cJSON_AddStringToObject(root, "speed", s_speed);
     json_print(root, 1);
     str_json = cJSON_PrintUnformatted(root);
+    cJSON_Delete(root);
     return str_json;
 }
 
@@ -1387,6 +1421,7 @@ char *assemble_json_net_list_info(void)
     }
     
     str_json = cJSON_PrintUnformatted(array);
+    cJSON_Delete(array);
     return str_json;
 }
 
@@ -1417,6 +1452,7 @@ char *assemble_json_rf_identify_info(void)
         cJSON_AddStringToObject(item, "protocol_version", info[i].protocol_version);
     }
     str_json = cJSON_PrintUnformatted(array);
+    cJSON_Delete(array);
 #endif
     return str_json;
 }
@@ -1457,6 +1493,7 @@ char *assemble_json_rf_info(void)
         }
     }
    str_json = cJSON_PrintUnformatted(array);
+   cJSON_Delete(array);
    return str_json;
 }
 char *assemble_json_disk_info(void)
@@ -1485,52 +1522,49 @@ char *assemble_json_disk_info(void)
         }
     }
    str_json = cJSON_PrintUnformatted(array);
+   cJSON_Delete(array);
    return str_json;
 }
 char *assemble_json_all_info(void)
 {
     char *str_json = NULL;
     cJSON *root = cJSON_CreateObject();
-    cJSON_AddItemToObject(root, "versionInfo", cJSON_Parse(assemble_json_softversion()));
-    cJSON_AddItemToObject(root, "diskInfo", cJSON_Parse(assemble_json_disk_info()));
-    cJSON_AddItemToObject(root, "clockInfo", cJSON_Parse(assemble_json_clock_info()));
-    //cJSON_AddItemToObject(root, "rfInfo", cJSON_Parse(assemble_json_rf_info()));
-    cJSON_AddItemToObject(root, "boardInfo", cJSON_Parse(assemble_json_board_info()));
-    cJSON_AddItemToObject(root, "fpgaInfo", cJSON_Parse(assemble_json_fpag_info()));
+    safe_cJson_AddItemToObject(root, "versionInfo", assemble_json_softversion());
+    safe_cJson_AddItemToObject(root, "diskInfo", assemble_json_disk_info());
+    safe_cJson_AddItemToObject(root, "clockInfo", assemble_json_clock_info());
+    //safe_cJson_AddItemToObject(root, "rfInfo", assemble_json_rf_info());
+    safe_cJson_AddItemToObject(root, "boardInfo", assemble_json_board_info());
+    safe_cJson_AddItemToObject(root, "fpgaInfo", assemble_json_fpag_info());
 #if defined (SUPPORT_GPS)
-    cJSON_AddItemToObject(root, "gpsInfo", cJSON_Parse(assemble_json_gps_info()));
+    safe_cJson_AddItemToObject(root, "gpsInfo", assemble_json_gps_info());
 #endif
-    cJSON_AddItemToObject(root, "netInfo", cJSON_Parse(assemble_json_net_list_info()));
-    cJSON_AddItemToObject(root, "buildInfo", cJSON_Parse(assemble_json_build_info()));
-    cJSON_AddItemToObject(root, "slotInfo", cJSON_Parse(assemble_json_slot_info()));
+    safe_cJson_AddItemToObject(root, "netInfo", assemble_json_net_list_info());
+    safe_cJson_AddItemToObject(root, "buildInfo", assemble_json_build_info());
+    safe_cJson_AddItemToObject(root, "slotInfo", assemble_json_slot_info());
     json_print(root, 1);
     str_json = cJSON_PrintUnformatted(root);
+    cJSON_Delete(root);
     return str_json;
 }
 char *assemble_json_selfcheck_info(void)
 {
     char *str_json = NULL;
     cJSON *root = cJSON_CreateObject();
-    cJSON_AddItemToObject(root, "diskInfo", cJSON_Parse(assemble_json_disk_info()));
-    cJSON_AddItemToObject(root, "clockInfo", cJSON_Parse(assemble_json_clock_info()));
-    cJSON_AddItemToObject(root, "boardInfo", cJSON_Parse(assemble_json_board_info()));
-    cJSON_AddItemToObject(root, "fpgaInfo", cJSON_Parse(assemble_json_fpag_info()));
+    safe_cJson_AddItemToObject(root, "diskInfo", assemble_json_disk_info());
+    safe_cJson_AddItemToObject(root, "clockInfo", assemble_json_clock_info());
+    safe_cJson_AddItemToObject(root, "boardInfo", assemble_json_board_info());
+    safe_cJson_AddItemToObject(root, "fpgaInfo", assemble_json_fpag_info());
 #if defined (SUPPORT_GPS)
-    cJSON_AddItemToObject(root, "gpsInfo", cJSON_Parse(assemble_json_gps_info()));
+    safe_cJson_AddItemToObject(root, "gpsInfo", assemble_json_gps_info());
 #endif
     json_print(root, 1);
     str_json = cJSON_PrintUnformatted(root);
+    cJSON_Delete(root);
     return str_json;
 }
 char *assemble_json_netlist_info(void)
 {
     char *str_json = NULL;
-    #if 0
-    cJSON *root = cJSON_CreateObject();
-    cJSON_AddItemToObject(root, "netInfo", cJSON_Parse(assemble_json_net_list_info()));
-    json_print(root, 1);
-    str_json = cJSON_PrintUnformatted(root);
-    #endif
     str_json = assemble_json_net_list_info();
     return str_json;
 }
@@ -1546,6 +1580,7 @@ char *assemble_json_temp_info(void)
         cJSON_AddNumberToObject(root, "rfTemp", rf_temp);
     json_print(root, 1);
     str_json = cJSON_PrintUnformatted(root);
+    cJSON_Delete(root);
     return str_json;
 }
 
@@ -1560,12 +1595,13 @@ char *assemble_json_response(int err_code, const char *message)
     cJSON_AddStringToObject(root, "message", message);
     
     str_json = cJSON_PrintUnformatted(root);
+    cJSON_Delete(root);
     return str_json;
 }
 
 
 /* NOTE: 调用该函数后，需要free返回指针 */
-char *assemble_json_data_response(int err_code, const char *message, const char * const data)
+char *assemble_json_data_response(int err_code, const char *message,const char * data)
 {
     char *str_json = NULL, *body = NULL;
     cJSON *root, *node;
@@ -1573,15 +1609,13 @@ char *assemble_json_data_response(int err_code, const char *message, const char 
     str_json = assemble_json_response(err_code, message);
     root = cJSON_Parse(str_json);
     node = cJSON_Parse(data);
+    _safe_free_(str_json);
+    _safe_free_(data);
     if (root != NULL){
         cJSON_AddItemToObject(root, "data", node);
     }
     body = cJSON_PrintUnformatted(root);
+    cJSON_Delete(root);
     return body;
 }
-
-
-
-
-
 

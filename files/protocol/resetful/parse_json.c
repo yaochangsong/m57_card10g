@@ -1118,7 +1118,8 @@ char *assemble_json_statistics_client_info(void)
 {
     char *str_json = NULL;
     cJSON *array = cJSON_CreateArray();
-    tcp_client_do_for_each(_assemble_statistics_client_info, NULL, -1, array);
+    for(int i = 0; i < MAX_XDMA_NUM; i++)
+        tcp_client_do_for_each(_assemble_statistics_client_info, NULL, i, array);
     str_json = cJSON_PrintUnformatted(array);
     cJSON_Delete(array);
     return str_json;
@@ -1128,7 +1129,8 @@ char *assemble_json_client_sub_info(void)
 {
     char *str_json = NULL;
     cJSON *array = cJSON_CreateArray();
-    tcp_client_do_for_each(_assemble_client_sub_info, NULL, -1, array);
+    for(int i = 0; i < MAX_XDMA_NUM; i++)
+        tcp_client_do_for_each(_assemble_client_sub_info, NULL, i, array);
     str_json = cJSON_PrintUnformatted(array);
     cJSON_Delete(array);
     return str_json;

@@ -346,7 +346,7 @@ static ssize_t xspm_stream_read(int ch, int type,  void **data, uint32_t *len, v
 
    int index;
     uint8_t *ptr = NULL;
-    //printf_note("ready_count: %u\n", info->ready_count);
+    //printf_note("ready_count: %u, type:%d\n", info->ready_count, type);
     for(int i = 0; i < info->ready_count; i++){
         index = (info->rx_index + i) % info->block_count;
         data[i] = pstream[type].ptr[index];
@@ -357,7 +357,7 @@ static ssize_t xspm_stream_read(int ch, int type,  void **data, uint32_t *len, v
         if(i < 64){
             printf_note("[%d]len: %u\n", i, len[i]);
             ptr = data[i];
-            print_array(ptr+len[i]-32, 32);
+            //print_array(ptr+len[i]-32, 32);
             //create_file_path(i);
             //write_file(data[i], i, len[i]);
             //write_over(i, len[i]);
@@ -634,11 +634,9 @@ static ssize_t xspm_read_xdma_data(int ch , void **data, uint32_t *len, void *ar
 static inline void xdma_data_dispatcher_refresh(int ch, void *args)
 {
     struct spm_run_parm *arg = args;
-    
+    int prio = _get_prio_by_channel(ch);
+    refresh_vec_by_prio(ch, prio);
     arg->xdma_disp.type_num = 0;
-    for(int i = 0; i < MAX_XDMA_DISP_TYPE_NUM; i++){
-        arg->xdma_disp.type[i]->vec_cnt = 0;
-    }
 }
 
 static int _xdma_find_next_header(uint8_t *ptr, size_t len)
@@ -807,7 +805,7 @@ static ssize_t _xdma_of_match_pkgs(int ch, void *data, uint32_t len, void *args,
             //上报数据优先级为3时，为紧急通道；其它为非紧急
             psub->prio_id = ((*(uint8_t *)(ptr + 3) >> 4) & 0x0f) == 3 ? 1 :0;
             psub->port = port = pdata[pos]->port;
-           // printf_note("0 frame_len：%lu, chip_id=0x%x, func_id=0x%x, prio_id=0x%x,port: 0x%x\n", frame_len, psub->chip_id, psub->func_id, psub->prio_id, psub->port);
+            //printf_debug("0 frame_len：%lu, chip_id=0x%x, func_id=0x%x, prio_id=0x%x,port: 0x%x\n", frame_len, psub->chip_id, psub->func_id, psub->prio_id, psub->port);
            /* 比较其它帧和第一帧订阅参数是否相等，不相等，则该次分析完成，下次继续获取相同的订阅参数数据 */
         } else if(py_src_addr != pdata[pos]->py_src_addr || src_addr != pdata[pos]->src_addr || port != pdata[pos]->port){
             if(io_xdma_is_valid_chipid(pdata[pos]->py_src_addr) == false){
@@ -908,7 +906,7 @@ static int _xdma_load_disp_buffer(int ch, void *data, ssize_t len, void *args, v
     struct spm_run_parm *prun = run; 
     
     hashid = GET_HASHMAP_ID(sub->chip_id, sub->func_id, sub->prio_id, sub->port);
-    printf_info("hashid:0x%x, chip_id:%x, func_id:%x, prio_id:%x,port:%x\n", hashid, sub->chip_id, sub->func_id, sub->prio_id, sub->port);
+    printf_debug("hashid:0x%x, chip_id:%x, func_id:%x, prio_id:%x,port:%x\n", hashid, sub->chip_id, sub->func_id, sub->prio_id, sub->port);
     
     if(hashid > MAX_XDMA_DISP_TYPE_NUM || hashid < 0 || prun->xdma_disp.type[hashid] == NULL){
         printf_err("hash id err[%d]\n", hashid);

@@ -196,24 +196,6 @@ static void *_create_buffer(size_t len)
     return buffer;
 }
 
-static inline int _get_channel_by_prio(int prio)
-{
-    int ch = 0;
-#ifdef PRIO_CHANNEL_EN
-    ch = (prio == 0 ? 0 : 1);
-#endif
-    return ch;
-}
-
-static inline int _get_prio_by_channel(int ch)
-{
-    int prio = 0;
-#ifdef PRIO_CHANNEL_EN
-    prio = (ch == 0 ? 0 : 1);
-#endif
-    return prio;
-}
-
 static struct hash_type {
     int type;
     int mask;
@@ -225,6 +207,8 @@ static struct hash_type {
     {HASHMAP_TYPE_PRIO, CARD_PRIO_MASK, GET_HASHMAP_PROI_ADD_OFFSET},
 };
 
+
+/* 判断HASHID值（hash_id）中和对应位（type_id）是否为1（匹配） */
 static bool _of_match_type_id(int hash_id, int type_id, int offset, int mask)
 {
     if(((type_id != 0) && (((hash_id & mask) >> offset) & type_id) ) || 
@@ -261,6 +245,30 @@ uint64_t  get_send_bytes_by_type(int ch, int type, int id)
     }
     return sum_bytes;
 }
+
+int  refresh_vec_by_prio(int ch, int prio)
+{
+    struct spm_run_parm *arg = NULL;
+    arg = channel_param[ch];
+    int hash_index[MAX_XDMA_DISP_TYPE_NUM] = {0}, count = 0, _index = 0;
+
+    if(arg == NULL)
+        return -1;
+    
+    for(int i = 0 ; i < MAX_XDMA_DISP_TYPE_NUM; i++){
+        if(arg->xdma_disp.type[i]->vec_cnt != 0)
+            hash_index[count++] = i;
+    }
+
+    for(int j = 0; j < count; j++){
+        _index = hash_index[j] ;
+        if(GET_PROIID_BY_HASHID(_index) == prio){
+            arg->xdma_disp.type[_index]->vec_cnt = 0;
+        }
+    }
+    return 0;
+}
+
 
 static size_t _data_send(struct net_tcp_client *cl, void *data, size_t len)
 {
@@ -310,20 +318,16 @@ static int  data_dispatcher(void *args, int hid, int prio)
     struct spm_run_parm *arg = NULL;//spm_ctx->run_args[0];
     struct net_tcp_client *cl = ctx->thread.client;
     int ch = 0, r = 0;
+    prio = ctx->thread.prio;
     ch = _get_channel_by_prio(prio);
     arg = channel_param[ch];
     int index = hid;
     if(index > MAX_XDMA_DISP_TYPE_NUM || arg == NULL){
         printf_note("error!\n");
-        printf_note("index: %d, arg=%p\n", index, arg);
+        printf_note("ch: %d, index: %d, arg=%p\n", ch, index, arg);
         return -1;
     }
-
     int vec_cnt = arg->xdma_disp.type[index]->vec_cnt;
-
-    //if(vec_cnt > 0)
-    //    printf_note("send index=%d, vec_cnt=%d, %d, hid=%d, ch=%d, _prio=%d, [%ld, %ld]\n", index, vec_cnt,arg->xdma_disp.type[index]->vec_cnt,  hid, ch, prio, 
-    //            arg->xdma_disp.type[index]->vec[0].iov_len, arg->xdma_disp.type[index]->vec[0].iov_len);
     if(arg->xdma_disp.type[index] == NULL || vec_cnt == 0){
         printf_debug("hash id %d is null,vec_cnt=%d\n", index, vec_cnt);
         return -1;
@@ -371,6 +375,7 @@ void  net_thread_con_broadcast(int ch, void *args)
 
     prio = _get_prio_by_channel(ch);
     int notify_num = tcp_client_do_for_each(_net_thread_con_nofity, NULL, prio, NULL);
+    //printf_note("ch:%d, notify_num=%d, prio=%d, %d\n", ch, notify_num, prio, _net_thread_count_get(prio));
     notify_num = min(_net_thread_count_get(prio), notify_num);
     if(ch >= _NOTIFY_MAX_NUM)
         ch = _NOTIFY_MAX_NUM-1;
@@ -391,7 +396,7 @@ static int _net_thread_main_loop(void *arg)
 
     /* thread wait until receive start data consume */
     _net_thread_wait(ctx);
-    printf_debug("thread[%s] receive start consume\n", ptd->name);
+    printf_debug("thread[%s] receive start consume, prio=%d\n", ptd->name, ctx->thread.prio);
     net_hash_for_each(cl->section.hash, data_dispatcher, arg);
     _net_thread_con_over(con_wait[ctx->thread.prio], ptd);
     return 0;
@@ -425,8 +430,19 @@ static int _net_thread_close(void *client)
     return 0;
 }
 
+static int _net_thread_set_prio(struct net_tcp_client *client, int prio)
+{
+    if(likely(client->section.prio < MAX_PRIO_LEVEL))
+        client->section.thread->thread.prio = prio;
+    else
+        client->section.thread->thread.prio = 0;
+    printf_debug("set prio: %s\n", client->section.thread->thread.prio == 1 ? "Urgent" : "Normal");
+    _net_thread_count_add(client->section.thread->thread.prio);
+}
+
 static const struct net_thread_ops nt_ops = {
     .close = _net_thread_close,
+     .set_prio = _net_thread_set_prio,
 };
 
 static int _thread_init(void *args)
@@ -467,14 +483,14 @@ struct net_thread_context * net_thread_create_context(void *cl)
     
     ctx->args = get_spm_ctx();
     _net_thread_wait_init(ctx);
-    printf_note("client: %s:%d create thread[prio:%s]\n", client->get_peer_addr(client), client->get_peer_port(client), ctx->thread.prio == 1 ? "Urgent" : "Normal");
+    printf_note("client: %s:%d create thread\n", client->get_peer_addr(client), client->get_peer_port(client));
     ret =  pthread_create_detach (NULL,_thread_init, _net_thread_main_loop, _net_thread_exit,  ctx->thread.name , ctx, ctx, &tid);
     if(ret != 0){
         perror("pthread err");
         safe_free(ctx);
         return NULL;
     }
-    _net_thread_count_add(ctx->thread.prio);
+    //_net_thread_count_add(ctx->thread.prio);
     ctx->thread.tid = tid;
     ctx->ops = &nt_ops;
     return ctx;

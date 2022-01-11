@@ -515,14 +515,12 @@ loop:
     
 }
 
-static inline void _net_thread_dispatcher_refresh(void *args)
+static inline void _net_thread_dispatcher_refresh(void *args, int ch)
 {
     struct spm_run_parm *arg = args;
-    
+    int prio = _get_prio_by_channel(ch);
+    refresh_vec_by_prio(ch, prio);
     arg->xdma_disp.type_num = 0;
-    for(int i = 0; i < MAX_XDMA_DISP_TYPE_NUM; i++){
-        arg->xdma_disp.type[i]->vec_cnt = 0;
-    }
 }
 
 void spm_xdma_data_handle_thread_dispatcher(void *arg)
@@ -560,7 +558,7 @@ loop:
            //if(ctx->ops->send_xdma_data)
            //     ctx->ops->send_xdma_data(ch, ptr_data, len, count, run);
         }
-         _net_thread_dispatcher_refresh(run);
+         _net_thread_dispatcher_refresh(run, ch);
         ctx->ops->read_xdma_over_deal(ch, NULL);
         if(socket_bitmap_weight() == 0){
             io_set_enable_command(XDMA_MODE_DISABLE, ch, 0, 0);
@@ -616,7 +614,7 @@ void  *spm_xdma_param_init(void)
         ret = -ENOMEM;
         goto err_free;
     }
-
+    printf_note("Malloc Memery: %ld[size: %ld]\n", MAX_XDMA_DISP_TYPE_NUM * sizeof(*param->xdma_disp.type),sizeof(*param->xdma_disp.type));
     for(index = 0; index < MAX_XDMA_DISP_TYPE_NUM; index++){
         param->xdma_disp.type[index] = calloc(1, sizeof(*param->xdma_disp.type[index]));
         if (!param->xdma_disp.type[index]) {
@@ -630,6 +628,7 @@ void  *spm_xdma_param_init(void)
         }
         param->xdma_disp.type[index]->vec_cnt = 0;
     }
+    printf_note("times:%d, Malloc Memery: type=%ld maxpkg=%ld, size:%ld\n",MAX_XDMA_DISP_TYPE_NUM, sizeof(*param->xdma_disp.type[0]), XDMA_DATA_TYPE_MAX_PKGS*sizeof(*param->xdma_disp.type[0]->vec), sizeof(struct iovec));
     
     //ctx->run_args[ch] = param;
     //ctx->run_args[ch]->xdma_disp.type = param->xdma_disp.type;

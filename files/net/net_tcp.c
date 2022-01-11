@@ -559,16 +559,15 @@ struct net_tcp_client *tcp_find_prio_client(void *client, int prio)
 {
     struct net_tcp_client *cl = client;
     struct net_tcp_client *cl_list, *list_tmp;
-    
+
     if(unlikely(cl == NULL))
         return NULL;
-    
-    pthread_mutex_lock(&cl->section.free_lock);
-    if(cl->section.is_exitting == true){
-        pthread_mutex_lock(&cl->section.free_lock);
-        return NULL;
-    }
-    pthread_mutex_lock(&cl->section.free_lock);
+   // pthread_mutex_lock(&cl->section.free_lock);
+   // if(cl->section.is_exitting == true){
+   //     pthread_mutex_lock(&cl->section.free_lock);
+   //     return NULL;
+    //}
+    //pthread_mutex_lock(&cl->section.free_lock);
 
     struct net_tcp_server *srv = cl->srv;
     list_for_each_entry_safe(cl_list, list_tmp, &srv->clients, list){

@@ -1,7 +1,7 @@
 #ifndef _BSP_H
 #define _BSP_H
 
-#define DEBUG_TEST
+//#define DEBUG_TEST
 //#define LOAD_FILE_ASYN 1
 #define KEY_TOOL_ENABLE 1
 #define MAX_RADIO_CHANNEL_NUM 1         /* 最大射频通道数 */
@@ -87,7 +87,22 @@ enum hashmap_type {
     HASHMAP_TYPE_PORT,
 };
 
+static inline int _get_channel_by_prio(int prio)
+{
+    int ch = 0;
+#ifdef PRIO_CHANNEL_EN
+    ch = (prio == 0 ? 1 : 0);
+#endif
+    return ch;
+}
 
-
+static inline int _get_prio_by_channel(int ch)
+{
+    int prio = 0;
+#ifdef PRIO_CHANNEL_EN
+    prio = (ch == 0 ? 1 : 0);
+#endif
+    return prio;
+}
 
 #endif

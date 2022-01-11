@@ -17,7 +17,8 @@ static int _statistics_client_send_ok(struct net_tcp_client *cl, void* bytes)
 uint64_t statistics_get_all_client_send_ok(void)
 {
     uint64_t bytes = 0;
-    tcp_client_do_for_each(_statistics_client_send_ok, NULL, -1, &bytes);
+    for(int i = 0; i < MAX_XDMA_NUM; i++)
+        tcp_client_do_for_each(_statistics_client_send_ok, NULL, i, &bytes);
     
     return bytes;
 }
@@ -35,7 +36,8 @@ static int _statistics_client_send_err(struct net_tcp_client *cl, void* bytes)
 uint64_t statistics_get_all_client_send_err(void)
 {
     uint64_t bytes = 0;
-    tcp_client_do_for_each(_statistics_client_send_err, NULL, -1, &bytes);
+    for(int i = 0; i < MAX_XDMA_NUM; i++)
+        tcp_client_do_for_each(_statistics_client_send_err, NULL, i, &bytes);
     
     return bytes;
 }

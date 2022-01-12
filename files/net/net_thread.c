@@ -41,7 +41,6 @@ static void _net_thread_count_add(int level)
 
     pthread_mutex_lock(&wait->count_lock);
     wait->thread_count++;
-    printf_note(">>>>>>>>>>>>>>>>>>%d, %u\n", level, wait->thread_count);
     pthread_mutex_unlock(&wait->count_lock);
 }
 
@@ -376,8 +375,8 @@ void  net_thread_con_broadcast(int ch, void *args)
 
     prio = _get_prio_by_channel(ch);
     int notify_num = tcp_client_do_for_each(_net_thread_con_nofity, NULL, prio, NULL);
-    printf_debug("ch:%d, notify_num=%d, prio=%d, %d\n", ch, notify_num, prio, _net_thread_count_get(prio));
-    //notify_num = min(_net_thread_count_get(prio), notify_num);
+    //printf_debug("ch:%d, notify_num=%d, prio=%d, %d\n", ch, notify_num, prio, _net_thread_count_get(prio));
+    notify_num = min(_net_thread_count_get(prio), notify_num);
     if(ch >= _NOTIFY_MAX_NUM)
         ch = _NOTIFY_MAX_NUM-1;
     if(notify_num > 0){
@@ -450,15 +449,19 @@ static int _thread_init(void *args)
 {
     struct net_thread_context *ctx = args;
     struct net_tcp_client *client = ctx->thread.client;
-    static int cpu_index = 0;
+    static int cpu_index = 0, have_inited = 0;
     long cpunum = sysconf(_SC_NPROCESSORS_CONF);
     printf_debug("bind cpu: %d\n", cpu_index);
     //thread_bind_cpu(cpu_index);
     cpu_index++;
     if(cpu_index >= cpunum)
         cpu_index = 0;
-    for(int i = 0; i < MAX_PRIO_LEVEL; i++)
-        con_wait[i] = _net_thread_con_init(i);
+    if(have_inited == 0){
+        for(int i = 0; i < MAX_PRIO_LEVEL; i++){
+            con_wait[i] = _net_thread_con_init(i);
+        }
+        have_inited = 1;
+    }
     ctx->thread.statistics = net_statistics_client_create_context(client->get_peer_port(client));
     return 0;
 }

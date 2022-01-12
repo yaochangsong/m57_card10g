@@ -41,6 +41,7 @@ static void _net_thread_count_add(int level)
 
     pthread_mutex_lock(&wait->count_lock);
     wait->thread_count++;
+    printf_note(">>>>>>>>>>>>>>>>>>%d, %u\n", level, wait->thread_count);
     pthread_mutex_unlock(&wait->count_lock);
 }
 
@@ -375,8 +376,8 @@ void  net_thread_con_broadcast(int ch, void *args)
 
     prio = _get_prio_by_channel(ch);
     int notify_num = tcp_client_do_for_each(_net_thread_con_nofity, NULL, prio, NULL);
-    //printf_note("ch:%d, notify_num=%d, prio=%d, %d\n", ch, notify_num, prio, _net_thread_count_get(prio));
-    notify_num = min(_net_thread_count_get(prio), notify_num);
+    printf_debug("ch:%d, notify_num=%d, prio=%d, %d\n", ch, notify_num, prio, _net_thread_count_get(prio));
+    //notify_num = min(_net_thread_count_get(prio), notify_num);
     if(ch >= _NOTIFY_MAX_NUM)
         ch = _NOTIFY_MAX_NUM-1;
     if(notify_num > 0){
@@ -407,7 +408,7 @@ static int  _net_thread_exit(void *arg)
     struct net_thread_context *ctx = arg;
     struct net_tcp_client *cl = ctx->thread.client;
 
-    printf_debug("thread[%s] exit!\n", ctx->thread.name);
+    printf_note("thread[%s] exit!\n", ctx->thread.name);
     _net_thread_count_sub(ctx->thread.prio);
     safe_free(ctx->thread.name);
     safe_free(ctx->thread.statistics);
@@ -436,7 +437,7 @@ static int _net_thread_set_prio(struct net_tcp_client *client, int prio)
         client->section.thread->thread.prio = prio;
     else
         client->section.thread->thread.prio = 0;
-    printf_debug("set prio: %s\n", client->section.thread->thread.prio == 1 ? "Urgent" : "Normal");
+    printf_note("set prio: %s\n", client->section.thread->thread.prio == 1 ? "Urgent" : "Normal");
     _net_thread_count_add(client->section.thread->thread.prio);
 }
 

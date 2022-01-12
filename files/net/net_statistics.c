@@ -123,7 +123,8 @@ static bool _check_fpga_status(int timeout_ms)
             }
         }else{
             sleep(3);
-            ns_uplink_set_speed(0, _get_uplink_speed(0, 3));
+            for(int i = 0; i < MAX_XDMA_NUM; i++)
+                ns_uplink_set_speed(i, _get_uplink_speed(i, 3));
         }
     }
 

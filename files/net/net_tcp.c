@@ -588,6 +588,40 @@ struct net_tcp_client *tcp_find_prio_client(void *client, int prio)
     return NULL;
 }
 
+struct net_tcp_client *tcp_find_rss_client(void *client, int id)
+{
+    struct net_tcp_client *cl = client;
+    struct net_tcp_client *cl_list, *list_tmp;
+
+    if(cl == NULL)
+        return NULL;
+   // pthread_mutex_lock(&cl->section.free_lock);
+   // if(cl->section.is_exitting == true){
+   //     pthread_mutex_lock(&cl->section.free_lock);
+   //     return NULL;
+    //}
+    //pthread_mutex_lock(&cl->section.free_lock);
+
+    struct net_tcp_server *srv = cl->srv;
+    int port;
+    list_for_each_entry_safe(cl_list, list_tmp, &srv->clients, list){
+         port = cl_list->get_peer_port(cl_list);
+        printf_note("%s:%d\n", cl_list->get_peer_addr(cl_list), port);
+        if(cl->peer_addr.sin_addr.s_addr == cl_list->peer_addr.sin_addr.s_addr && (port % 4)  == (id % 4)){
+            return cl_list;
+        }
+    }
+    /* Not Find client */
+    printf_warn("NOT find client, try again\n");
+    list_for_each_entry_safe(cl_list, list_tmp, &srv->clients, list){
+        if(cl->peer_addr.sin_addr.s_addr == cl_list->peer_addr.sin_addr.s_addr){
+            return cl_list;
+        }
+    }
+    return NULL;
+}
+
+
 
 int tcp_client_do_for_each(int (*f)(struct net_tcp_client *, void *), void **cl, int prio, void *args)
 {

@@ -1074,12 +1074,14 @@ bool m57_execute_cmd(void *client, int *code)
             }
             printf_note("[%d]sub chip_id:0x%x, func_id=0x%x, port=0x%x, prio=%d\n", cl->get_peer_port(cl), _sub.chip_id, _sub.func_id, _sub.port, cl->section.prio);
             io_socket_set_sub(cl->section.section_id, _sub.chip_id, _sub.func_id, _sub.port);
+            
             net_hash_add_ex(cl->section.hash, GET_HASHMAP_ID(_sub.chip_id, _sub.func_id, cl->section.prio, _sub.port));
             printf_note("[%d,prio:%s]hash id: 0x%x\n", cl->get_peer_port(cl), (cl->section.prio==0?"low":"high"), GET_HASHMAP_ID(_sub.chip_id, _sub.func_id, cl->section.prio, _sub.port));
             /* 
                 客户端默认命令都从高优先级socket发送到设备，这里设备程序对高低优先级socket都做了订阅，具体往哪里发，取决读取数据优先级 
                 0： 低优先级    1:高优先级
             */
+            #if 1
             struct net_tcp_client *cl_prio;
             int _prio = 0;
             if(cl->section.prio == 0){
@@ -1090,6 +1092,16 @@ bool m57_execute_cmd(void *client, int *code)
                 net_hash_add_ex(cl_prio->section.hash, GET_HASHMAP_ID(_sub.chip_id, _sub.func_id, cl_prio->section.prio, _sub.port));
                 printf_note("[%d,prio:%s]hash id: 0x%x\n", cl_prio->get_peer_port(cl_prio), (cl_prio->section.prio==0?"low":"high"), GET_HASHMAP_ID(_sub.chip_id, _sub.func_id, cl_prio->section.prio, _sub.port));
             }
+            #else
+            struct net_tcp_client *_cl;
+            uint32_t hash_id = GET_HASHMAP_ID(_sub.chip_id, _sub.func_id, cl->section.prio, _sub.port);
+            _cl = tcp_find_rss_client(cl, hash_id);
+            if(_cl == NULL)
+                break;
+            net_hash_add_ex(_cl->section.hash, hash_id);
+            //net_hash_add_ex(cl->section.hash, GET_HASHMAP_ID(_sub.chip_id, _sub.func_id, cl->section.prio, _sub.port));
+            printf_note("recv port[%d], sub port[%d]hash id: 0x%x[%u,%d]\n", cl->get_peer_port(cl), _cl->get_peer_port(_cl),hash_id,hash_id,hash_id%4);
+            #endif
             break;
         }
         case CCT_DATA_UNSUB:
@@ -1104,6 +1116,18 @@ bool m57_execute_cmd(void *client, int *code)
             printf_note("[%d]unsub chip_id:0x%x, func_id=0x%x, port=0x%x, prio=%d\n", cl->get_peer_port(cl),_sub.chip_id, _sub.func_id, _sub.port, cl->section.prio);
             io_socket_set_unsub(cl->section.section_id, _sub.chip_id, _sub.func_id, _sub.port);
             net_hash_del_ex(cl->section.hash, GET_HASHMAP_ID(_sub.chip_id, _sub.func_id, cl->section.prio, _sub.port));
+            #if 1
+            struct net_tcp_client *cl_prio;
+            int _prio = 0;
+            if(cl->section.prio == 0){
+                _prio = 1;
+            }
+            cl_prio = tcp_find_prio_client(cl, _prio);
+            if(cl_prio != NULL){
+                net_hash_del_ex(cl_prio->section.hash, GET_HASHMAP_ID(_sub.chip_id, _sub.func_id, cl_prio->section.prio, _sub.port));
+                printf_note("[%d,prio:%s]hash id: 0x%x\n", cl_prio->get_peer_port(cl_prio), (cl_prio->section.prio==0?"low":"high"), GET_HASHMAP_ID(_sub.chip_id, _sub.func_id, cl_prio->section.prio, _sub.port));
+            }
+            #endif
             break;
         }
         case CCT_LIST_INFO:

@@ -967,23 +967,47 @@ char *assemble_json_net_uplink_info(int ch)
 {
     char *str_json = NULL;
     cJSON *root = cJSON_CreateObject();
-
+    uint64_t bytes = 0;
     char buffer[128] = {0};
-    snprintf(buffer, sizeof(buffer) - 1, "%" PRIu64, ns_uplink_get_read_bytes(ch));
+
+    for(int i = 0; i < MAX_XDMA_NUM; i++)
+        bytes += ns_uplink_get_read_bytes(i);
+    snprintf(buffer, sizeof(buffer) - 1, "%" PRIu64, bytes);
     cJSON_AddStringToObject(root, "readBytes", buffer);
-    snprintf(buffer, sizeof(buffer) - 1, "%" PRIu64, ns_uplink_get_route_bytes(ch));
+
+    bytes = 0;
+    for(int i = 0; i < MAX_XDMA_NUM; i++)
+        bytes += ns_uplink_get_route_bytes(i);
+    snprintf(buffer, sizeof(buffer) - 1, "%" PRIu64, bytes);
     cJSON_AddStringToObject(root, "routeBytes", buffer);
+
     snprintf(buffer, sizeof(buffer) - 1, "%" PRIu64, statistics_get_all_client_send_ok());
     cJSON_AddStringToObject(root, "sendBytes", buffer);
     snprintf(buffer, sizeof(buffer) - 1, "%" PRIu64, statistics_get_all_client_send_err());
     cJSON_AddStringToObject(root, "sendErrBytes", buffer);
-    snprintf(buffer, sizeof(buffer) - 1, "%" PRIu64, ns_uplink_get_forward_pkgs(ch));
+
+    bytes = 0;
+    for(int i = 0; i < MAX_XDMA_NUM; i++)
+        bytes += ns_uplink_get_forward_pkgs(i);
+    snprintf(buffer, sizeof(buffer) - 1, "%" PRIu64, bytes);
     cJSON_AddStringToObject(root, "forwardPackages", buffer);
-    snprintf(buffer, sizeof(buffer) - 1, "%" PRIu64, ns_downlink_get_route_err_pkgs(ch));
+
+    bytes = 0;
+    for(int i = 0; i < MAX_XDMA_NUM; i++)
+        bytes += ns_downlink_get_route_err_pkgs(i);
+    snprintf(buffer, sizeof(buffer) - 1, "%" PRIu64, bytes);
     cJSON_AddStringToObject(root, "routeErrPackages", buffer);
-    snprintf(buffer, sizeof(buffer) - 1, "%" PRIu64, ns_downlink_get_over_run_cnt(ch));
+
+    bytes = 0;
+    for(int i = 0; i < MAX_XDMA_NUM; i++)
+        bytes += ns_downlink_get_over_run_cnt(i);
+    snprintf(buffer, sizeof(buffer) - 1, "%" PRIu64, bytes);
     cJSON_AddStringToObject(root, "overrun", buffer);
-    snprintf(buffer, sizeof(buffer) - 1, "%" PRIu64, ns_uplink_get_speed(ch));
+
+    bytes = 0;
+    for(int i = 0; i < MAX_XDMA_NUM; i++)
+        bytes += ns_uplink_get_speed(i);
+    snprintf(buffer, sizeof(buffer) - 1, "%" PRIu64, bytes);
     cJSON_AddStringToObject(root, "readSpeed", buffer);
 
     json_print(root, 1);

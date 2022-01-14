@@ -68,7 +68,11 @@ static int fpga_memmap(int fd_dev, FPGA_CONFIG_REG *fpga_reg)
         }
         printf_debug("virtual address:%p \n", fpga_reg->status[i]);
     }
-    
+    fpga_reg->ctrl_reg = (SPI_REG *)((uint8_t *)fpga_reg->system + FPGA_CTRL_REG_OFFSET);
+    if (!fpga_reg->ctrl_reg)
+    {
+        printf("mmap failed, NULL pointer!\n");
+    }
     fpga_reg->rf_reg = (SPI_REG *)((uint8_t *)fpga_reg->system + FPGA_SPI_REG_OFFSET);
     if (!fpga_reg->rf_reg)
     {

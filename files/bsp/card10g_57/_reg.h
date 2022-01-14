@@ -23,6 +23,8 @@
 #define FPGA_SYSETM_BASE        FPGA_REG_BASE
 #define FPGA_STAUS_OFFSET 	    (0x1000)
 #define FPGA_SPI_REG_OFFSET 	(0x3010)
+#define FPGA_CTRL_REG_OFFSET 	(0x3108)
+
 
 #define VALID_MAX_CARD_SLOTS_NUM 4
 #define START_CARD_SLOTS_NUM 2
@@ -69,6 +71,11 @@ typedef struct _SPI_REG_
     uint32_t status;        /* SPI状态寄存器 */
 }SPI_REG;
 
+typedef struct _CTRL_REG_
+{
+    uint32_t up_timeout;          /* 上行发送超时时间寄存器 */
+}CTRL_REG;
+
 
 
 typedef struct _FPGA_CONFIG_REG_
@@ -76,6 +83,7 @@ typedef struct _FPGA_CONFIG_REG_
     SYSTEM_CONFG_REG *system;
     STATUS_REG *status[MAX_FPGA_CARD_SLOT_NUM];
     SPI_REG *rf_reg;
+    CTRL_REG *ctrl_reg;
 }FPGA_CONFIG_REG;
 
 
@@ -250,6 +258,22 @@ static inline void _reg_set_rf_direct_sample_ctrl(int ch, int index, uint8_t val
 
 static inline void _reg_set_rf_cali_source_choise(int ch, int index, uint8_t val, FPGA_CONFIG_REG *reg)
 {}
+
+static inline void _reg_set_uplink_timeout(FPGA_CONFIG_REG *reg, uint32_t time_ms, void *args)
+{
+    uint64_t time_ns;
+    uint32_t reg_val;
+    time_ns = time_ms * 1000000;
+    time_ns = time_ns / 4;
+    if(time_ns > 0x0ffffffff){
+        printf_warn("time[%uMs] is too big\n", time_ms);
+        return;
+    }
+    reg_val = (uint32_t)time_ns;
+    printf_note("Set Uplink timeout[%uMs,reg:0x%x] OK\n", time_ms, reg_val);
+    reg->ctrl_reg->up_timeout = reg_val;
+}
+
 
 //#平台信息查询回复命令(0x17)
 static inline int _reg_get_fpga_info(FPGA_CONFIG_REG *reg,int id, void **args)

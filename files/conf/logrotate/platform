@@ -1,0 +1,9 @@
+/var/log/platform.log {
+        dateext
+        size 10M
+        rotate 12
+        compress
+        delaycompress
+        missingok
+        notifempty
+}

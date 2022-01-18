@@ -3,7 +3,9 @@
 INS_PLATFOR_DIR="/usr/bin/"
 INS_SRC_DIR="/tmp/app_update"
 LOG_DIR=/etc/rsyslog.d
+LOGROTATE_DIR=/etc/logrotate.d
 LOG_FILE=$LOG_DIR/platform.conf
+LOGROTATE_FILE=$LOGROTATE_DIR/platform
 install_platform()
 {
 	echo "install platform!"
@@ -15,6 +17,9 @@ install_platform()
 	if [ ! -f "$LOG_FILE" ]; then
 		install -m 0755 ${INS_SRC_DIR}/app/rsyslog.d/platform.conf $LOG_FILE
 		service rsyslog restart
+	fi
+	if [ ! -f "$LOGROTATE_FILE" ]; then
+		install -m 0755 ${INS_SRC_DIR}/app/rsyslog.d/platform $LOGROTATE_FILE 
 	fi
 	#echo "install router table!"
 	#install -m 0755 app/nr_config.json /etc/

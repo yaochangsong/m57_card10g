@@ -90,9 +90,9 @@ static void pl_handle_sig(int sig)
 
 int main(int argc, char **argv)
 {
-    int debug_level = -1;
+    int debug_level = -1, is_syslog = 0;
     int opt;
-    while ((opt = getopt(argc, argv, "d:tm:cfi:")) != -1) {
+    while ((opt = getopt(argc, argv, "d:tm:c:fs")) != -1) {
         switch (opt)
         {
         case 'd':
@@ -113,30 +113,33 @@ int main(int argc, char **argv)
             printf("power level=%s\n", optarg);
             power_level_threshold = atoi(optarg);
             break;
-        case 'c':
-            printf("spectrum continuous_mode true\n");
-            spectrum_continuous_mode = true;
-            break;
         case 'f':
             printf("format disk once; when start\n");
             disk_format = true;
             break;
-        case 'i':
+        case 'c':
             printf("config path: %s\n", optarg);
             config_path = strdup(optarg);
+            break;
+        case 's':
+            printf("write log to: /var/log/platform.log\n");
+            is_syslog = 1;
             break;
         default: /* '?' */
             usage(argv[0]);
         }
     }
-    log_init(debug_level);
-    printf("Platform Start...\n");
+    if(is_syslog)
+        log_init(ULOG_SYSLOG, debug_level);
+    else
+        log_init(ULOG_STDIO, debug_level);
+    printf_note("Platform Start...\n");
 #if (defined SUPPORT_DATA_PROTOCAL_AKT)
-    printf("ACT Protocal\n");
+    printf_note("ACT Protocal\n");
 #elif defined(SUPPORT_DATA_PROTOCAL_XW)
-    printf("XW Protocal\n");
+    printf_note("XW Protocal\n");
 #endif
-    printf("VERSION:%s\n",get_version_string());
+    printf_note("VERSION:%s\n",get_version_string());
     // Listen to ctrl+c and ASSERT
     signal(SIGINT, pl_handle_sig);
     signal(SIGKILL, pl_handle_sig);

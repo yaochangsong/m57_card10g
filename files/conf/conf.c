@@ -32,7 +32,7 @@ pthread_mutex_t config_mutex = PTHREAD_MUTEX_INITIALIZER;
 void config_init(void)
 {  
     char *path;
-    printf_debug("config init\n");
+
     memset(&config, 0, sizeof(config));
     printf_debug("config init\n");
     path = get_config_path();

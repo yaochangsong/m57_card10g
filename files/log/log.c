@@ -40,10 +40,12 @@ void __uh_log(const char *filename, int line, int priority, const char *fmt, ...
     ulog(priority, "%s\n", buf);
 }
 
-void log_init(int threshold)
+void log_init(int channels,int threshold)
 {
     //ulog_open(ULOG_SYSLOG, LOG_DAEMON, NULL);
-    ulog_open(ULOG_STDIO, LOG_USER, NULL);
+    //ulog_open(ULOG_STDIO, LOG_USER, NULL);
+    //ulog_open(ULOG_SYSLOG, LOG_LOCAL0, NULL);
+    ulog_open(channels, LOG_LOCAL0, NULL);
     ulog_threshold(threshold);
 }
 

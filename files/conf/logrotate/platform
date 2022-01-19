@@ -1,8 +1,7 @@
 /var/log/platform.log {
-        dateext
         size 10M
         rotate 12
-	su root root
+        su root root
         compress
         delaycompress
         missingok

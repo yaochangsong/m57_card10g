@@ -50,7 +50,7 @@ static inline void create_file_path(int index)
     
     sprintf(buffer, "/tmp/ch_%d", index);
     init_write_file(buffer, index);
-    printf_note("create file: %s\n", buffer);
+    printf_info("create file: %s\n", buffer);
 }
 
 static inline void create_tmp_file(int index, int chip_id, int func_id, int prio_id, int port)
@@ -62,7 +62,7 @@ static inline void create_tmp_file(int index, int chip_id, int func_id, int prio
     
     sprintf(buffer, "/tmp/c%x_f%x_prio%x_port%x", chip_id,func_id,prio_id,port);
     init_write_file(buffer, index);
-    printf_note("create file: %s\n", buffer);
+    printf_info("create file: %s\n", buffer);
 }
 
 
@@ -252,7 +252,7 @@ static int xspm_create(void)
     pstream = spm_xstream;
     int i = 0, rc;
     int pagesize = getpagesize();
-    printf_note("SPM init\n");
+    printf_info("SPM init\n");
     
     /* create stream */
     for(i = 0; i< ARRAY_SIZE(spm_xstream) ; i++){
@@ -743,7 +743,7 @@ static ssize_t _xdma_of_match_pkgs(int ch, void *data, uint32_t len, void *args,
                     err = 1;
                 } else{
                     if(sum_len == (len - offp)){    /* 分析完后的数据长度=剩余分析长度;说明该次数据块分析完毕 */
-                        printf_note("read over block size: %lu, offp=%lu\n", sum_len, offp);
+                        printf_debug("read over block size: %lu, offp=%lu\n", sum_len, offp);
                         *read_over = 1;
                     } else if(sum_len <  (len - offp)){ /* 分析完后的数据长度<剩余分析长度;说明还有数据待分析 */
                         err_size_len = _xdma_find_next_header(ptr, len - offp - sum_len); /* 在剩余的数据中继续找下一个头 */
@@ -1005,7 +1005,7 @@ static int xdma_data_dispatcher_buffer(int ch, void **data, uint32_t *len, ssize
             }
             offset += nframe;
             if(read_over_block == 1 || nframe == 0){
-                printf_note(">>>>>read block[%d/%ld] over, size[%ld], len[%d]=%u\n", index+1, count, offset, index, len[index]);
+                printf_info(">>>>>read block[%d/%ld] over, size[%ld], len[%d]=%u\n", index+1, count, offset, index, len[index]);
                 break;
             }
             
@@ -1341,7 +1341,7 @@ struct spm_context * spm_create_xdma_context(void)
     ctx->ops = &xspm_ops;
     ctx->pdata = &config_get_config()->oal_config;
     _init_run_timer(MAX_XDMA_NUM);
-    printf_note("create xdma ctx\n");
+    printf_info("create xdma ctx\n");
 err_set_errno:
     errno = -ret;
     return ctx;

@@ -254,7 +254,7 @@ int http_on_request(struct uh_client *cl)
     if(path ==NULL)
         return UH_REQUEST_DONE;
 
-    printf_note("accept path: %s\n", path);
+    printf_debug("accept path: %s\n", path);
     
     /* Check the request path  */
     for(int i = 0; i<sizeof(http_req_cmd)/sizeof(struct request_info); i++){

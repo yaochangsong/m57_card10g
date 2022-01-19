@@ -552,7 +552,7 @@ static void client_request_done(struct uh_client *cl)
 
 static void client_free(struct uh_client *cl)
 {
-    printf_note("free: %s:%d\n", cl->get_peer_addr(cl), cl->get_peer_port(cl));
+    printf_debug("free: %s:%d\n", cl->get_peer_addr(cl), cl->get_peer_port(cl));
     if (cl) {
         dispatch_done(cl);
         uloop_timeout_cancel(&cl->timeout);

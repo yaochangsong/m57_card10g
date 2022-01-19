@@ -1305,10 +1305,10 @@ int io_get_adc_temperature_ex(int16_t *temp)
     rewind(fp);
     fscanf(fp, "%d", &raw_data2);
     fclose(fp);
-    printf_note("raw_data=%d, raw_data2=%d\n", raw_data, raw_data2);
+    printf_debug("raw_data=%d, raw_data2=%d\n", raw_data, raw_data2);
     raw_data = max(raw_data, raw_data2);
     result = raw_data/1000.0;
-    printf_note("temp: %d, result: %f\n", raw_data, result);
+    printf_debug("temp: %d, result: %f\n", raw_data, result);
     *temp = (signed short)result;
     //result = ((raw_data * 509.314)/65536.0) - 280.23;
 //#endif

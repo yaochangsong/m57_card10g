@@ -21,7 +21,7 @@
 
 static void on_accept(struct uh_client *cl)
 {
-    printf_note("New connection from: %s:%d\n", cl->get_peer_addr(cl), cl->get_peer_port(cl));
+    printf_info("New connection from: %s:%d\n", cl->get_peer_addr(cl), cl->get_peer_port(cl));
 }
 
 static int on_request(struct uh_client *cl)

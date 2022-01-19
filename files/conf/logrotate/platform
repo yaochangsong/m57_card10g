@@ -2,6 +2,7 @@
         dateext
         size 10M
         rotate 12
+	su root root
         compress
         delaycompress
         missingok

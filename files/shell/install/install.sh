@@ -15,11 +15,11 @@ install_platform()
 	install -m 0755 ${INS_SRC_DIR}/app/platform_version /etc/
 	
 	if [ ! -f "$LOG_FILE" ]; then
-		install -m 0755 ${INS_SRC_DIR}/app/rsyslog.d/platform.conf $LOG_FILE
+		install -m 0644 ${INS_SRC_DIR}/app/rsyslog.d/platform.conf $LOG_FILE
 		service rsyslog restart
 	fi
 	if [ ! -f "$LOGROTATE_FILE" ]; then
-		install -m 0755 ${INS_SRC_DIR}/app/rsyslog.d/platform $LOGROTATE_FILE 
+		install -m 0644 ${INS_SRC_DIR}/app/rsyslog.d/platform $LOGROTATE_FILE 
 	fi
 	#echo "install router table!"
 	#install -m 0755 app/nr_config.json /etc/

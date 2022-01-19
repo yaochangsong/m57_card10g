@@ -10,7 +10,7 @@ start()
     sh -c "echo 8388608 > /proc/sys/net/core/wmem_max"
     /etc/network.sh &
     sleep 1
-    start-stop-daemon -S -o --background -x $DAEMON
+    start-stop-daemon -S -o --background -x $DAEMON -- -s -d 5 #notice log write to syslog
     sleep 1
     #daemon check
     is_running=$(ps -ef|grep "checkproc.sh"|grep -v grep|wc -l)

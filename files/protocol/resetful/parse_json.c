@@ -1004,6 +1004,13 @@ char *assemble_json_net_uplink_info(int ch)
     snprintf(buffer, sizeof(buffer) - 1, "%" PRIu64, bytes);
     cJSON_AddStringToObject(root, "overrun", buffer);
 
+    
+    bytes = 0;
+    for(int i = 0; i < MAX_XDMA_NUM; i++)
+        bytes += io_xdma_get_overflow(i);
+    snprintf(buffer, sizeof(buffer) - 1, "%" PRIu64, bytes);
+    cJSON_AddStringToObject(root, "FpgaOverrun", buffer);
+
     bytes = 0;
     for(int i = 0; i < MAX_XDMA_NUM; i++)
         bytes += ns_uplink_get_speed(i);

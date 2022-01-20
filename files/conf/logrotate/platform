@@ -1,5 +1,5 @@
 /var/log/platform.log {
-        size 10M
+        size 100k
         rotate 12
         su root root
         compress

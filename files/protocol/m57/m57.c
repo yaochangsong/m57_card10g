@@ -1114,7 +1114,7 @@ bool m57_execute_cmd(void *client, int *code)
             struct sub_st _sub;
             memcpy(&_sub,  payload, sizeof(_sub));
             printf_note("[%d]unsub chip_id:0x%x, func_id=0x%x, port=0x%x, prio=%d\n", cl->get_peer_port(cl),_sub.chip_id, _sub.func_id, _sub.port, cl->section.prio);
-            io_socket_set_unsub(cl->section.section_id, _sub.chip_id, _sub.func_id, _sub.port);
+            //io_socket_set_unsub(cl->section.section_id, _sub.chip_id, _sub.func_id, _sub.port);
             net_hash_del_ex(cl->section.hash, GET_HASHMAP_ID(_sub.chip_id, _sub.func_id, cl->section.prio, _sub.port));
             #if 1
             struct net_tcp_client *cl_prio;

@@ -170,13 +170,13 @@ void io_socket_set_sub(int id, uint16_t chip_id, uint16_t func_id, uint16_t port
     port = port;
 
     if(func_id > CARD_FUNC_MODE -1){
-        printf_warn("The funcId[0x%x] is bigger than max port: 0x%x\n", func_id, CARD_FUNC_MODE -1);
-        io_write_abnormal_file(func_id, "funcId");
+        printf_warn("The funcId[0x%x] is bigger than max funcId: 0x%x\n", func_id, CARD_FUNC_MODE -1);
+        //io_write_abnormal_file(func_id, "funcId");
     }
 
     if(port > CARD_PORT_MODE -1){
         printf_warn("The port[0x%x] is bigger than max port: 0x%x\n", port, CARD_PORT_MODE -1);
-        io_write_abnormal_file(port, "port");
+        //io_write_abnormal_file(port, "port");
     }
 }
 

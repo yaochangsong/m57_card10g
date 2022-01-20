@@ -10,7 +10,7 @@ install_platform()
 {
 	echo "install platform!"
 	install -m 0755 ${INS_SRC_DIR}/app/platform ${INS_PLATFOR_DIR}
-	#install -m 0755 app/shell/platform.sh /etc/init.d/
+	install -m 0755 ${INS_SRC_DIR}/app/shell/platform.sh /etc/init.d/
 	install -m 0755 ${INS_SRC_DIR}/app/compile.info /etc/
 	install -m 0755 ${INS_SRC_DIR}/app/platform_version /etc/
 	
@@ -22,12 +22,12 @@ install_platform()
 		install -m 0644 ${INS_SRC_DIR}/app/rsyslog.d/platform $LOGROTATE_FILE 
 	fi
 	#echo "install router table!"
-	#install -m 0755 app/nr_config.json /etc/
-	#install -m 0755 app/sroute ${INS_PLATFOR_DIR}
+	#install -m 0755 ${INS_SRC_DIR}/app/nr_config.json /etc/
+	#install -m 0755 ${INS_SRC_DIR}/app/sroute ${INS_PLATFOR_DIR}
 	
-	install -m 0755 app/shell/platform.sh /etc/init.d/
+	#install -m 0755 ${INS_SRC_DIR}/app/shell/platform.sh /etc/init.d/
 	#echo "install shell!"
-	#install -m 0755 app/shell/*.sh /etc/
+	#install -m 0755 ${INS_SRC_DIR}/app/shell/*.sh /etc/
 }
 
 restart_platform()

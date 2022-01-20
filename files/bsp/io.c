@@ -1398,6 +1398,27 @@ void io_set_rf_status(bool is_ok)
     fclose(fp);
 }
 
+void io_set_PCIe_status(bool is_ok)
+{
+    FILE * fp = NULL;
+    char *status = (is_ok == true ? "ok" : "false");
+    bool ret;
+    char *dirname = "/run/status";
+    if(access(dirname, F_OK)){
+        printf("mkdir %s\n", dirname);
+        mkdir(dirname, 0755);
+    }
+    fp = fopen ("/run/status/PCIe", "w");
+    if(!fp){
+        printf_err("Open file error!\n");
+        return;
+    }
+    rewind(fp);
+    fwrite((void *)status, 1,  strlen(status), fp);
+    fclose(fp);
+}
+
+
 #ifdef DEBUG_TEST
 #define _KEY_TOOL_FILE_DIR "e2prom"
 #else
@@ -1787,11 +1808,41 @@ uint32_t io_xdma_get_fmc_status(int slot_id)
     return _reg_get_fpga_fmc_status(get_fpga_reg(), slot_id, NULL);
 }
 
+uint64_t io_xdma_get_overflow(int ch)
+{
+    return _reg_get_overflow(get_fpga_reg(), ch);
+}
+
+bool io_check_PCIe_FPGA(void)
+{
+    uint32_t buffer[32], cnt = 0, idata;
+    //1:生成32个整型递增数
+    //2:写入FPGA fifo
+    for(int i = 0; i < 32; i++){
+        buffer[i] = cnt++;
+        _reg_write_fifo(get_fpga_reg(), buffer[i]);
+    }
+    //3:读出FPGA fifo， 比较
+    for(int i = 0; i < 32; i++){
+        idata = _reg_read_fifo(get_fpga_reg());
+        if(idata != buffer[i]){
+            printf_note("PCIe check Faild\n");
+            io_set_PCIe_status(false);
+            return false;
+        }
+    }
+    printf_note("PCIe check OK\n");
+    io_set_PCIe_status(true);
+
+    return true;
+}
+
 void io_init(void)
 {
     printf_info("io init!\n");
     socket_bitmap_init();
     cards_status_bitmap_init();
+    io_check_PCIe_FPGA();
     //ch_bitmap_init();
     //subch_bitmap_init();
 }

@@ -128,5 +128,7 @@ extern void io_reg_rf_get_data(uint8_t *buffer, int len);
 extern void io_keytool_write_e2prom_file(char *filename, void *data, size_t len);
 extern ssize_t io_keytool_read_e2prom_file(int id, void **args);
 extern void io_write_abnormal_file(uint16_t data, char *filename);
+extern bool io_check_PCIe_FPGA(void);
+extern uint64_t io_xdma_get_overflow(int ch);
 
 #endif

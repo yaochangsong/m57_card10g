@@ -23,7 +23,7 @@
 #define FPGA_SYSETM_BASE        FPGA_REG_BASE
 #define FPGA_STAUS_OFFSET 	    (0x1000)
 #define FPGA_SPI_REG_OFFSET 	(0x3010)
-#define FPGA_CTRL_REG_OFFSET 	(0x3108)
+#define FPGA_CTRL_REG_OFFSET 	(0x3100)
 
 
 #define VALID_MAX_CARD_SLOTS_NUM 4
@@ -73,7 +73,12 @@ typedef struct _SPI_REG_
 
 typedef struct _CTRL_REG_
 {
-    uint32_t up_timeout;          /* 上行发送超时时间寄存器 */
+    uint32_t overflow_ch0; 
+    uint32_t overflow_ch1;
+    uint32_t up_timeout_ch0;          /* 上行发送超时时间寄存器 */
+    uint32_t up_timeout_ch1;
+    uint32_t rw_fifo;
+    uint32_t ddr_ready;
 }CTRL_REG;
 
 
@@ -259,7 +264,7 @@ static inline void _reg_set_rf_direct_sample_ctrl(int ch, int index, uint8_t val
 static inline void _reg_set_rf_cali_source_choise(int ch, int index, uint8_t val, FPGA_CONFIG_REG *reg)
 {}
 
-static inline void _reg_set_uplink_timeout(FPGA_CONFIG_REG *reg, uint32_t time_ms, void *args)
+static inline void _reg_set_uplink_timeout(FPGA_CONFIG_REG *reg, int ch, uint32_t time_ms, void *args)
 {
     uint64_t time_ns;
     uint32_t reg_val;
@@ -270,8 +275,36 @@ static inline void _reg_set_uplink_timeout(FPGA_CONFIG_REG *reg, uint32_t time_m
         return;
     }
     reg_val = (uint32_t)time_ns;
-    printf_note("Set Uplink timeout[%uMs,reg:0x%x] OK\n", time_ms, reg_val);
-    reg->ctrl_reg->up_timeout = reg_val;
+    printf_note("ch:%d,Set Uplink timeout[%uMs,reg:0x%x] OK\n",ch, time_ms, reg_val);
+    if(ch == 0)
+        reg->ctrl_reg->up_timeout_ch0 = reg_val;
+    else
+        reg->ctrl_reg->up_timeout_ch1 = reg_val;
+}
+
+
+static inline uint64_t _reg_get_overflow(FPGA_CONFIG_REG *reg, int ch)
+{
+    if(ch == 0)
+        return reg->ctrl_reg->overflow_ch0;
+    else
+        return reg->ctrl_reg->overflow_ch1;
+}
+
+
+static inline void _reg_write_fifo(FPGA_CONFIG_REG *reg, uint32_t data)
+{
+    reg->ctrl_reg->rw_fifo = data;
+}
+
+static inline uint32_t _reg_read_fifo(FPGA_CONFIG_REG *reg)
+{
+    return reg->ctrl_reg->rw_fifo;
+}
+
+static inline bool _reg_ddr_ready(FPGA_CONFIG_REG *reg)
+{
+    return (reg->ctrl_reg->ddr_ready == 1 ? true : false);
 }
 
 

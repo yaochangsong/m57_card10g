@@ -189,7 +189,7 @@ bool m57_parse_header(void *client, char *buf, int len, int *head_len, int *code
     
     if(len < hlen){
         cl->request.data_state = NET_TCP_DATA_WAIT;
-        printf_warn("recv data len too short: %d\n", len);
+        printf_note("recv data len too short: %d\n", len);
         goto exit;
     }
     
@@ -321,8 +321,8 @@ static void _m57_assamble_loadfile_cmd(uint16_t chip_id, uint8_t cmd, uint8_t *b
     *ptr++ = 0xaa;
     *ptr++ = 0x55;
     for(int i = 0; i < ptr - ptr2; i++)
-        printfi("%02x ", buffer[i]);
-    printfi("\n");
+        printfd("%02x ", buffer[i]);
+    printfd("\n");
 }
 
 
@@ -403,7 +403,7 @@ static void* _m57_loading_bitfile_to_fpga_thread(void   *args)
     rc = fread(buffer, 1, LOAD_BITFILE_SIZE, file);
     reminder = _align_4byte(&rc);
     printfn("Load Bitfile:[%s]\n", filename);
-    printfn("Loading.......................................[%ld, %ld]%ld%%\r",  total_write,fstat.st_size, (total_write*100)/fstat.st_size);
+    printfi("Loading.......................................[%ld, %ld]%ld%%\r",  total_write,fstat.st_size, (total_write*100)/fstat.st_size);
     while(rc){
         nwrite = _ctx->ops->write_xdma_data(0, buffer, rc);
         if(nwrite <= 0)
@@ -412,7 +412,7 @@ static void* _m57_loading_bitfile_to_fpga_thread(void   *args)
         memset(buffer, 0, LOAD_BITFILE_SIZE + 4096);
         rc = fread(buffer, 1, LOAD_BITFILE_SIZE, file);
         reminder += _align_4byte(&rc);
-        printfn("Loading.......................................[%ld, %ld]%ld%%\r",  total_write,fstat.st_size, (total_write*100)/fstat.st_size);
+        printfi("Loading.......................................[%ld, %ld]%ld%%\r",  total_write,fstat.st_size, (total_write*100)/fstat.st_size);
     }
     printfn("\nLoad Bitfile %s,align 4byte reminder=%d,%ld,%ld\n",  (total_write == fstat.st_size+reminder) ? "OK" : "Faild", reminder, total_write,fstat.st_size+reminder);
     fclose(file);
@@ -449,11 +449,11 @@ static int _m57_loading_bitfile_to_fpga_thread_asyn(void   *args)
     if(nwrite > 0)
         _args->total_load += nwrite;
 #endif
-    printfn("Loading.......................................[%ld, %ld]%ld%%\r",  _args->total_load,fstat->st_size,(_args->total_load*100)/(fstat->st_size+reminder));
+    printfi("Loading.......................................[%ld, %ld]%ld%%\r",  _args->total_load,fstat->st_size,(_args->total_load*100)/(fstat->st_size+reminder));
     _args->reminder = reminder;
     if(rc <= 0){
         _args->result = (_args->total_load == fstat->st_size+reminder ? true : false);
-        printfn("\nLoad Bitfile %s,align 4byte reminder=%d,%ld,%ld\n",  _args->result == true ? "OK" : "Faild", reminder, _args->total_load,fstat->st_size+reminder);
+        printfi("\nLoad Bitfile %s,align 4byte reminder=%d,%ld,%ld\n",  _args->result == true ? "OK" : "Faild", reminder, _args->total_load,fstat->st_size+reminder);
         pthread_exit_by_name(_args->filename);
     }
     return 0;
@@ -521,7 +521,6 @@ exit:
     if(cl->section.is_exitting == false){
         _assamble_resp_payload(cl, chip_id, ret);
         cl->srv->send_error(cl, CCT_RSP_LOAD, NULL);
-        printf_note("Send Over#\n");
     }
     pthread_mutex_unlock(&cl->section.free_lock);
     
@@ -531,9 +530,9 @@ exit:
 static int _m57_asyn_load_exit(void *args)
 {
     struct asyn_load_ctx_t *_args = args;
-    printf_note("result = %s\n", _args->result == true ? "OK" : "False");
+    printf_debug("result = %s\n", _args->result == true ? "OK" : "False");
     uloop_timeout_cancel(&_args->timeout);
-    printf_note("cancel timer OK\n");
+    printf_debug("cancel timer OK\n");
     if(_args->client)
         _m57_load_bit_over(_args->client, _args->result);
     if(_args->file){
@@ -544,13 +543,13 @@ static int _m57_asyn_load_exit(void *args)
     _safe_free_(_args->fstat);
     _safe_free_(_args->filename);
     _safe_free_(_args);
-    printf_note("FREE & Exit OK!!\n");
+    printf_debug("FREE & Exit OK!!\n");
     return 0;
 }
 static void _loadbit_timeout_cb(struct uloop_timeout *timeout)
 {
     struct asyn_load_ctx_t *load = container_of(timeout, struct asyn_load_ctx_t, timeout);
-    printf_warn("\nLoadBit Timeout...\n");
+    printf_info("\nLoadBit Timeout...\n");
     _m57_stop_load(load->client);
 }
 
@@ -598,8 +597,8 @@ static int _m57_asyn_loadbit_init(void *args)
     _args->timeout.cb = _loadbit_timeout_cb;
     uloop_timeout_set(&_args->timeout, LOAD_BITFILE_TIMEOUT * 1000);
     usleep(10);
-    printfn("Load Bitfile:[%s]\n", filename);
-    printfn("Loading.......................................[%ld, %ld]%ld%%\r",  total_write,fstat->st_size, (total_write*100)/fstat->st_size);
+    printfi("Load Bitfile:[%s]\n", filename);
+    printfi("Loading.......................................[%ld, %ld]%ld%%\r",  total_write,fstat->st_size, (total_write*100)/fstat->st_size);
     return ret;
 exit:
     _args->result = false;
@@ -643,10 +642,10 @@ int _m57_stop_load(void *client)
     if(cl == NULL || cl->section.load_bit_thread == NULL)
         return -1;
         
-    printf_note("cl->section.load_bit_thread tid: %ld\n", cl->section.load_bit_thread->tid);
+    printf_debug("cl->section.load_bit_thread tid: %ld\n", cl->section.load_bit_thread->tid);
     if(pthread_check_alive_by_tid(cl->section.load_bit_thread->tid) == true){
         pthread_cancel_by_tid(cl->section.load_bit_thread->tid);
-        printf_note(">>>>>>>>>>STOP LoadBit: %s\n", cl->section.load_bit_thread->filename);
+        printf_info(">>>>>>>>>>STOP LoadBit: %s\n", cl->section.load_bit_thread->filename);
     }
     usleep(10);
     return 0;
@@ -730,12 +729,12 @@ static int _m57_start_unload_bitfile_from_fpga(uint16_t chip_id)
     
     _ctx = get_spm_ctx();
     memset(buffer, 0, sizeof(buffer));
-    printfn("Unload BitFile [fpga id:0x%x]\n", chip_id);
+    printfi("Unload BitFile [fpga id:0x%x]\n", chip_id);
     _m57_assamble_loadfile_cmd(chip_id, 0x02, buffer);
     nwrite = _ctx->ops->write_xdma_data(0, buffer, sizeof(buffer));
     ret = _reg_get_unload_result(get_fpga_reg(), chip_id, NULL);
     if(ret == 0 && (nwrite == sizeof(buffer))){
-        printfn("Unload[fpgaId:0x%x] OK!\n",  chip_id);
+        printfi("Unload[fpgaId:0x%x] OK!\n",  chip_id);
         ns_downlink_set_loadbit_result(CARD_SLOT_NUM(chip_id), DEVICE_STATUS_WAIT_LOAD);
     } else{
         printfn("Unload[fpgaId:0x%x] Faild!\n",  chip_id);

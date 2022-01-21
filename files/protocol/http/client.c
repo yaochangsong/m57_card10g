@@ -213,7 +213,7 @@ static int client_srv_send_request(struct uh_client *cl)
                     goto exit;
                 }
             }
-            printf_note("http_headers:%s\n", http_headers);
+            printf_debug("http_headers:%s\n", http_headers);
             if(data)
                 sprintf(http_headers+j, "%s", data);
             break;
@@ -495,10 +495,10 @@ static inline void connection_close(struct uh_client *cl)
 static inline void keepalive_cb(struct uloop_timeout *timeout)
 {
     struct uh_client *cl = container_of(timeout, struct uh_client, timeout);
-    printf_note("keepalive_cb###\n");
+    printf_debug("keepalive_cb###\n");
     uloop_timeout_set(&cl->timeout, UHTTPD_CONNECTION_TIMEOUT * 1000);
     if(++cl->tcp_keepalive_probes >= UHTTPD_MAX_KEEPALIVE_PROBES){
-        printf_warn("client %s:%d keep alive timeout, close connection!!!\n", cl->get_peer_addr(cl), cl->get_peer_port(cl));
+        printf_note("client %s:%d keep alive timeout, close connection!!!\n", cl->get_peer_addr(cl), cl->get_peer_port(cl));
     connection_close(cl);
     }
 }
@@ -675,10 +675,10 @@ static int client_srv_parse_response(struct uh_client *cl, const char *data)
     p = strstr(code, "200");
     if(p){
         cl->srv_request.result_code = 1;
-        printf_note(" response ok: %s\n", status);
+        printf_debug(" response ok: %s\n", status);
     }else{
         cl->srv_request.result_code = 0;
-        printf_note("response false: %s\n", status);
+        printf_debug("response false: %s\n", status);
     }
     
     if(data_copy_tmp)

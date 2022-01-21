@@ -429,7 +429,7 @@ uint32_t  config_get_fft_size(uint8_t ch)
     if(fftsize == 0){
         printf_warn("fftsize %u not set!!!\n",fftsize);
     }
-    printf_note("fftsize:%u\n",fftsize);
+
     return fftsize;
 }
 

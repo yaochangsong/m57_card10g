@@ -1073,7 +1073,7 @@ g:命令表示
         }
         flen = *(uint16_t *)(ptr + 4);
         if(flen > len[index])
-            printf_note("frame len: [0x%x]%d, %d[0x%x]\n", flen,flen, len[index],len[index]);
+            printf_debug("frame len: [0x%x]%d, %d[0x%x]\n", flen,flen, len[index],len[index]);
 #endif
         payload = ptr + 8;
 #ifdef SPM_HEADER_CHECK

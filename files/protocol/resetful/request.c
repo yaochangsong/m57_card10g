@@ -295,7 +295,7 @@ void http_request_action(struct uh_client *cl)
     for(int i = 0; i<ARRAY_SIZE(http_req_cmd); i++){
         if(cl->dispatch.cmd == http_req_cmd[i].dispatch_cmd){
             ret = http_req_cmd[i].action(cl, (void **)&err_msg, (void **)NULL);
-            printf_note("action result: %d, %s\n", ret, err_msg);
+            printf_info("action result: %d, %s\n", ret, err_msg);
             found = 1;
             break;
         }

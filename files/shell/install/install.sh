@@ -9,6 +9,7 @@ LOGROTATE_FILE=$LOGROTATE_DIR/platform
 LOG_CONF_SRC_FILE=${INS_SRC_DIR}/app/rsyslog.d/platform.conf
 LOGROTATE_SRC_FILE=${INS_SRC_DIR}/app/rsyslog.d/platform
 CRON_SRC_FILE=${INS_SRC_DIR}/app/rsyslog.d/platform.cron
+GOAHEAD_SHELL=${INS_SRC_DIR}/app/shell/goahead.sh
 install_platform()
 {
 	echo "install platform!"
@@ -28,6 +29,9 @@ install_platform()
 		crontab $CRON_SRC_FILE
 	fi
 	
+	if [ -f "$GOAHEAD_SHELL" ]; then
+		install -m 0755 $GOAHEAD_SHELL /etc/init.d/
+	fi	
 	#echo "install router table!"
 	#install -m 0755 ${INS_SRC_DIR}/app/nr_config.json /etc/
 	#install -m 0755 ${INS_SRC_DIR}/app/sroute ${INS_PLATFOR_DIR}

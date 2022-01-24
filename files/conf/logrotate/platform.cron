@@ -1,1 +1,1 @@
-*/1 * * * * /usr/sbin/logrotate /etc/logrotate.d/platform && logger -i -t "crontab" -p local0.notice "logrotate /etc/logrotate.d/platform"
+*/1 * * * * /usr/sbin/logrotate /etc/logrotate.d/platform"

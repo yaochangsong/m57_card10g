@@ -39,6 +39,7 @@ install_platform()
 	#install -m 0755 ${INS_SRC_DIR}/app/shell/platform.sh /etc/init.d/
 	#echo "install shell!"
 	#install -m 0755 ${INS_SRC_DIR}/app/shell/*.sh /etc/
+	sync
 }
 
 restart_platform()

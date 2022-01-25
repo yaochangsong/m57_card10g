@@ -208,6 +208,9 @@ typedef enum _DQ_MODE_CODE{
     DQ_MODE_CW = 0x03,
     DQ_MODE_LSB = 0x04,
     DQ_MODE_USB = 0x05,
+    DQ_MODE_ISB = 0x06,
+    DQ_MODE_PM = 0x07,
+    DQ_MODE_WFM = 0x08,
 }DQ_MODE_CODE;
 
 

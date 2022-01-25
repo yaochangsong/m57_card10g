@@ -24,7 +24,7 @@ struct if_reg_ops {
     void (*set_narrow_audio_sample_rate)(int ch, int subch, int rate);           /* 设置中频窄带音频采样率 */
     void (*set_narrow_audio_gain)(int ch, int subch, float gain);                /* 设置中频窄带音频增益 */
     void (*set_narrow_audio_gain_mode)(int ch, int subch, int mode);             /* 设置中频窄带音频增益模式 */
-	void (*set_narrow_agc_time)(int ch, int subch, int mode);                    /* 设置中频窄带AGC时间 */
+    void (*set_narrow_agc_time)(int ch, int subch, int mode);                    /* 设置中频窄带AGC时间 */
     void (*set_niq_channel)(int ch, int subch, void *args, int enable);          /* 设置中频窄带IQ通道 */
     void (*set_fft_channel)(int ch, void *args);                                 /* 设置中频FFT通道 */
     void (*set_biq_channel)(int ch, void *args);                                 /* 设置中频宽带IQ通道 */

@@ -304,17 +304,17 @@ void *spm_init(void)
     spm_cond_init();
 
     /* 创建多通道并行宽带IQ线程 */
-    for(int i = 0; i < MAX_BIQ_NUM; i++){
-        s_ch[i] = i;
-        ret=pthread_create(&work_id, NULL, (void *)spm_biq_handle_thread, &s_ch[i]);
-        if(ret!=0)
-            perror("pthread cread biq");
-    }
+    //for(int i = 0; i < MAX_BIQ_NUM; i++){
+    //    s_ch[i] = i;
+    //    ret=pthread_create(&work_id, NULL, (void *)spm_biq_handle_thread, &s_ch[i]);
+    //    if(ret!=0)
+    //        perror("pthread cread biq");
+    //}
 
     /* 创建多通道窄带IQ线程 */
-    ret=pthread_create(&recv_thread_id,NULL,(void *)spm_niq_handle_thread, spmctx);
-    if(ret!=0)
-        perror("pthread cread niq");
+    //ret=pthread_create(&recv_thread_id,NULL,(void *)spm_niq_handle_thread, spmctx);
+    //if(ret!=0)
+    //    perror("pthread cread niq");
     
     return (void *)spmctx;
 }

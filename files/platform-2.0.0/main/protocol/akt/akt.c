@@ -73,12 +73,14 @@ int8_t akt_decode_method_convert(uint8_t method)
     
     if(method == DQ_MODE_AM){
         d_method = IO_DQ_MODE_AM;
-    }else if(method == DQ_MODE_FM) {
+    }else if(method == DQ_MODE_FM || method == DQ_MODE_WFM) {
         d_method = IO_DQ_MODE_FM;
-    }else if(method == DQ_MODE_LSB || method == DQ_MODE_USB) {
+    }else if(method == DQ_MODE_LSB || method == DQ_MODE_USB || method == DQ_MODE_ISB ) {
         d_method = IO_DQ_MODE_LSB;
     }else if(method == DQ_MODE_CW) {
         d_method = IO_DQ_MODE_CW;
+    }else if(method == DQ_MODE_PM) {
+        d_method = IO_DQ_MODE_PM;
     }else if(method == DQ_MODE_IQ) {
         d_method = IO_DQ_MODE_IQ;
     }else{

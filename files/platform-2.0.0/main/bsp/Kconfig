@@ -33,11 +33,14 @@ menuconfig BSP
 				
 			config BSP_YF21015
 				bool "yf21015"
+				
+			config BSP_YF21025
+				bool "yf21025"
 		endchoice                         #结束选择配置项
 		
 	config BSP_NAME
 		string "Bsp Name"
-		default "wd_xcr"
+		default "yf21025"
 	
 	config FPGA_REGISTER
 		bool "Fpga Register"

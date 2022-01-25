@@ -72,7 +72,12 @@ extern size_t config_get_niq_send_size(void);
 extern char *config_get_devicecode(void);
 extern bool config_set_file_auto_save_mode(bool is_auto);
 extern bool config_get_file_auto_save_mode(void);
-
+extern bool config_match_gateway_addr(const char *ifname, uint32_t gateway);
+extern bool config_match_ipaddr_addr(const char *ifname, uint32_t ipaddr);
+extern bool config_match_netmask_addr(const char *ifname, uint32_t netmask);
+extern char *config_get_ifname_by_addr(struct sockaddr_in *addr);
+extern int config_get_if_cmd_port(const char *ifname, uint16_t *port);
+extern int config_set_if_cmd_port(const char *ifname, uint16_t port);
 #endif
 
 

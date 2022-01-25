@@ -80,6 +80,79 @@ char *config_get_if_indextoname(int index)
     }
     return NULL;
 }
+bool config_match_gateway_addr(const char *ifname, uint32_t gateway)
+{
+    for(int i = 0; i < ARRAY_SIZE(config.oal_config.network); i++){
+        if(config.oal_config.network[i].ifname){
+            if(config.oal_config.network[i].addr.gateway == gateway)
+                return true;
+        }
+    }
+    return false;
+}
+
+bool config_match_ipaddr_addr(const char *ifname, uint32_t ipaddr)
+{
+    for(int i = 0; i < ARRAY_SIZE(config.oal_config.network); i++){
+        if(config.oal_config.network[i].ifname && !strcmp(config.oal_config.network[i].ifname, ifname)){
+            if(config.oal_config.network[i].addr.ipaddress == ipaddr)
+                return true;
+        }
+    }
+    return false;
+}
+
+bool config_match_netmask_addr(const char *ifname, uint32_t netmask)
+{
+    for(int i = 0; i < ARRAY_SIZE(config.oal_config.network); i++){
+        if(config.oal_config.network[i].ifname && !strcmp(ifname, config.oal_config.network[i].ifname)){
+            if(config.oal_config.network[i].addr.netmask == netmask)
+                return true;
+        }
+    }
+    return false;
+}
+int config_get_if_cmd_port(const char *ifname, uint16_t *port)
+{
+    if(ifname == NULL || strlen(ifname) == 0)
+        return -1;
+    for(int i = 0; i < ARRAY_SIZE(config.oal_config.network); i++){
+            if(config.oal_config.network[i].ifname && !strcmp(config.oal_config.network[i].ifname, ifname)){
+                *port = config.oal_config.network[i].port;
+                return 0;
+            }
+    }
+    
+    return -1;
+}
+int config_set_if_cmd_port(const char *ifname, uint16_t port)
+{
+    if(ifname == NULL || strlen(ifname) == 0)
+        return -1;
+    
+    for(int i = 0; i < ARRAY_SIZE(config.oal_config.network); i++){
+        if(config.oal_config.network[i].ifname){
+            if(!strcmp(config.oal_config.network[i].ifname, ifname)){
+                if(config.oal_config.network[i].port  == port)
+                    break;
+                config.oal_config.network[i].port  = port;
+                config_save_all();
+                return 0;
+            }
+        }
+    }
+    
+    return -1;
+}
+char *config_get_ifname_by_addr(struct sockaddr_in *addr)
+{
+    for(int i = 0; i < ARRAY_SIZE(config.oal_config.network); i++){
+        //printf_note("addr: %x, %x\n", addr->sin_addr.s_addr,  config.oal_config.network[i].addr.ipaddress);
+        if(addr->sin_addr.s_addr == config.oal_config.network[i].addr.ipaddress)
+            return config.oal_config.network[i].ifname;
+    }
+    return NULL;
+}
 
 /** Accessor for the current configuration
 @return:  A pointer to the current config.
@@ -96,7 +169,7 @@ int config_load_network(char *ifname)
     uint8_t  mac[6];
     int index;
 
-    if(strlen(ifname) == 0)
+    if(ifname == NULL || strlen(ifname) == 0)
         return -1;
 
     index = config_get_if_nametoindex(ifname);
@@ -133,7 +206,7 @@ int config_set_network(char *ifname, uint32_t ipaddr, uint32_t netmask, uint32_t
     char s_ip[32], s_mask[32], s_gw[32];
     int ret = 0;
     
-    if(if_nametoindex(ifname) == 0){
+    if(ifname == NULL || if_nametoindex(ifname) == 0){
         printf_note("ifname: %s not found in device\n", ifname);
         return -1;
     }
@@ -159,7 +232,7 @@ static int config_set_netaddr(char *ifname, uint32_t netaddr, char *script)
     char s_netaddr[32];
     int ret = 0;
     
-    if(if_nametoindex(ifname) == 0){
+    if(ifname == NULL || if_nametoindex(ifname) == 0){
         printf_note("ifname: %s not found in device\n", ifname);
         return -1;
     }

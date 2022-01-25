@@ -24,6 +24,11 @@
 #include "../../dao/json/cJSON.h"
 #include "../../bsp/io.h"
 
+void safe_cJson_AddItemToObject(cJSON *object, const char *string, char *assemble_info)
+{
+    cJSON_AddItemToObject(object, string, cJSON_Parse(assemble_info));
+    _safe_free_(assemble_info);
+}
 
 static inline bool str_to_int(char *str, int *ivalue, bool(*_check)(int))
 {
@@ -159,7 +164,7 @@ int parse_json_client_net(int ch, char *body, const char *type)
             }
         }
     }
-    
+    cJSON_Delete(root);
     return RESP_CODE_OK;
 }
 
@@ -187,7 +192,7 @@ int parse_json_net(const char * const body)
     char ifname[IFNAMSIZ];
     uint32_t ipaddr, netmask, gw;
     struct in_addr addr;
-    int r;
+    int r, is_reboot = 0;
     if (root == NULL)
     {
         const char *error_ptr = cJSON_GetErrorPtr();
@@ -202,6 +207,7 @@ int parse_json_net(const char * const body)
         strcpy(ifname, value->valuestring);
         printf_info("ifname: %s, %zd\n", ifname, strlen(value->valuestring));
     }else{
+        cJSON_Delete(root);
         return RESP_CODE_PARSE_ERR;
     }
     value = cJSON_GetObjectItem(root, "ipaddr");
@@ -210,12 +216,17 @@ int parse_json_net(const char * const body)
         r = inet_pton(AF_INET, value->valuestring, &addr);
         if(r <= 0){
             printf_warn("invalid addr: %s\n", value->valuestring);
+            cJSON_Delete(root);
             return RESP_CODE_PARSE_ERR;
         }
         ipaddr = addr.s_addr;
-        printf_info("set ipaddr: %s, 0x%x\n", value->valuestring, ipaddr);
-        if(config_set_ip(ifname, ipaddr) != 0){
+        if(config_match_ipaddr_addr(ifname, ipaddr)== false){
+            printf_info("set ipaddr: %s, 0x%x\n", value->valuestring, ipaddr);
+            if(config_set_ip(ifname, ipaddr) != 0){
+            cJSON_Delete(root);
             return RESP_CODE_EXECMD_ERR;
+            }
+            is_reboot = 1;
         }
     }
 
@@ -225,17 +236,21 @@ int parse_json_net(const char * const body)
         r = inet_pton(AF_INET, value->valuestring, &addr);
         if(r <= 0){
             printf_warn("invalid netmask: %s\n", value->valuestring);
+            cJSON_Delete(root);
             return RESP_CODE_PARSE_ERR;
         }
         netmask = addr.s_addr;
-        printf_info("set netmask: %s, 0x%x\n", value->valuestring, netmask);
-        if(config_set_netmask(ifname, netmask) != 0){
-            return RESP_CODE_EXECMD_ERR;
+        if(config_match_netmask_addr(ifname, netmask)== false){
+            printf_info("set netmask: %s, 0x%x\n", value->valuestring, netmask);
+            if(config_set_netmask(ifname, netmask) != 0){
+            	cJSON_Delete(root);
+            	return RESP_CODE_EXECMD_ERR;
+            }
         }
     }
-    
     value = cJSON_GetObjectItem(root, "gateway");
     if(value!=NULL&&cJSON_IsString(value)){
+        
         //gw = inet_addr(value->valuestring);
         r = inet_pton(AF_INET, value->valuestring, &addr);
         if(r <= 0){
@@ -243,38 +258,25 @@ int parse_json_net(const char * const body)
             return RESP_CODE_PARSE_ERR;
         }
         gw = addr.s_addr;
-        printf_info("set gateway: %s, 0x%x\n", value->valuestring, gw);
-        if(config_set_gateway(ifname, gw) != 0){
-            return RESP_CODE_EXECMD_ERR;
-        }
-    }
-    cJSON *port, *data_port;
-    uint32_t allport[4]={0};
-    port = cJSON_GetObjectItem(root, "port");
-    if(port != NULL){
-        allport[0] = cJSON_GetObjectItem(port, "command")->valueint;
-        value = cJSON_GetObjectItem(port, "data");
-        if(value!=NULL){
-            for(int i = 0; i < cJSON_GetArraySize(value); i++){
-                allport[i+1] = cJSON_GetArrayItem(value, i)->valueint;
-                printf_debug("data_port[%d]=%d\n",i,allport[i+1]);
+        if(config_match_gateway_addr(ifname, gw)== false){
+            printf_info("set gateway: %s, 0x%x\n", value->valuestring, gw);
+            if(config_set_gateway(ifname, gw) != 0){
+	            cJSON_Delete(root);
+	            return RESP_CODE_EXECMD_ERR;
             }
         }
-    //if(config_set_network(ifname, ipaddr, netmask, gw) == -1){
-    struct poal_config *config = &(config_get_config()->oal_config);
-        if(_check_element_has_equal(allport,sizeof(allport)/sizeof(uint32_t)) != -1){
-        int index = config_get_if_nametoindex(ifname);
-        config->network[index].port = allport[0];
-            for(int i=1;i<sizeof(allport)/sizeof(uint32_t);i++) {
-             config->network[index].data_port[i-1] = allport[i];
-                 printf_debug("data port: %d. index=%d\n", config->network[index].data_port[i-1], index);
-        }
-        config_save_all();
-            return RESP_CODE_EXECMD_REBOOT;
-    }else
-        return RESP_CODE_EXECMD_ERR;
+    }
+    cJSON *port;
+    port = cJSON_GetObjectItem(root, "port");
+    if(port!=NULL&&cJSON_IsNumber(port)){
+        if(config_set_if_cmd_port(ifname, (uint16_t)port->valueint) == 0)
+            is_reboot = 1;
     }
     
+    cJSON_Delete(root);
+    if(is_reboot == 1)
+        return RESP_CODE_EXECMD_REBOOT;
+
     return RESP_CODE_OK;
 }
 
@@ -341,7 +343,7 @@ int parse_json_rf_multi_value(const char * const body, uint8_t cid)
          executor_set_command(EX_RF_FREQ_CMD, EX_RF_MID_BW, cid, &config->channel[cid].rf_para.mid_bw);
     }
     printfd("\n");
-    
+    cJSON_Delete(root);
     return RESP_CODE_OK;
 
 }
@@ -444,7 +446,7 @@ int parse_json_multi_band(const char * const body,uint8_t cid)
     }else{
         config->channel[cid].work_mode = OAL_MULTI_ZONE_SCAN_MODE;
     }
-    
+    cJSON_Delete(root);
     return code;
 }
 
@@ -584,6 +586,7 @@ int parse_json_muti_point(const char * const body,uint8_t cid)
         }
          
     }  
+    cJSON_Delete(root);
     if(config->channel[cid].multi_freq_point_param.freq_point_cnt == 0){
         config->channel[cid].work_mode = OAL_NULL_MODE;
         printf_warn("Unknown Work Mode\n");
@@ -626,6 +629,7 @@ int parse_json_bddc(const char * const body,uint8_t ch)
     executor_set_command(EX_MID_FREQ_CMD, EX_DEC_BW, ch, &config->channel[ch].multi_freq_point_param.ddc.bandwidth);
     executor_set_command(EX_MID_FREQ_CMD, EX_DEC_MID_FREQ, ch,&config->channel[ch].multi_freq_point_param.ddc.middle_freq,
                    config->channel[ch].multi_freq_point_param.points[0].center_freq);
+    cJSON_Delete(root);
     return code;
 }
 
@@ -726,6 +730,7 @@ int parse_json_demodulation(const char * const body,uint8_t cid,uint8_t subid )
     executor_set_command(EX_MID_FREQ_CMD, EX_SUB_CH_DEC_METHOD, subid, 
         &sub_channel_array->sub_ch[subid].d_method);
 
+    cJSON_Delete(root);
     return code;
 }
 
@@ -753,13 +758,14 @@ int parse_json_batch_delete(const char * const body)
                 if(fs_ctx && fs_ctx->ops->fs_delete)
                     ret = fs_ctx->ops->fs_delete(value->valuestring);
                 else
-                    return RESP_CODE_DISK_DETECTED_ERR;
+                    code = RESP_CODE_DISK_DETECTED_ERR;
                 if(ret != 0)
                     code = RESP_CODE_EXECMD_ERR;
 #endif
             }
         }
     }
+    cJSON_Delete(root);
     return code;
 }
 
@@ -897,7 +903,7 @@ char *assemble_json_file_list(void)
     cJSON_AddItemToObject(root, "list", array);
     json_print(root, 1);
     str_json = cJSON_PrintUnformatted(root);
-    
+    cJSON_Delete(root);
     return str_json;
 }
 
@@ -918,7 +924,7 @@ char *assemble_json_file_dir(const char *dirpath)
     cJSON_AddItemToObject(root, "data", array);
     json_print(root, 1);
     str_json = cJSON_PrintUnformatted(root);
-    
+    cJSON_Delete(root);
     return str_json;
 }
 
@@ -940,6 +946,7 @@ char *assemble_json_file_size(const char *path)
     cJSON_AddNumberToObject(root, "size", size);
     json_print(root, 1);
     str_json = cJSON_PrintUnformatted(root);
+    cJSON_Delete(root);
 
     return str_json;
 }
@@ -960,6 +967,7 @@ char *assemble_json_find_file(const char *path, const char *filename)
 #endif
     json_print(root, 1);
     str_json = cJSON_PrintUnformatted(root);
+    cJSON_Delete(root);
     
     return str_json;
 }
@@ -979,6 +987,7 @@ char *assemble_json_find_rec_file(const char *path, const char *filename)
 #endif
     json_print(root, 1);
     str_json = cJSON_PrintUnformatted(root);
+    cJSON_Delete(root);
     
     return str_json;
 }
@@ -1012,6 +1021,8 @@ char *assemble_json_build_info(void)
     }
     json_print(root, 1);
     str_json = cJSON_PrintUnformatted(root);
+    cJSON_Delete(root);
+    
     return str_json;
 }
 char *assemble_json_softversion(void)
@@ -1026,6 +1037,7 @@ char *assemble_json_softversion(void)
     cJSON_AddStringToObject(root, "fpgaversion", version);
     json_print(root, 1);
     str_json = cJSON_PrintUnformatted(root);
+    cJSON_Delete(root);
     return str_json;
 }
 char *assemble_json_fpag_info(void)
@@ -1052,6 +1064,7 @@ char *assemble_json_fpag_info(void)
     }
     json_print(root, 1);
     str_json = cJSON_PrintUnformatted(root);
+    cJSON_Delete(root);
     return str_json;
 }
 #if defined (CONFIG_DEVICE_GPS)
@@ -1086,6 +1099,7 @@ char *assemble_json_gps_info(void)
     cJSON_AddNumberToObject(root, "code", get_gps_status_code(is_ok));
     json_print(root, 1);
     str_json = cJSON_PrintUnformatted(root);
+    cJSON_Delete(root);
     return str_json;
 }
 #endif
@@ -1104,6 +1118,7 @@ char *assemble_json_clock_info(void)
     }
     json_print(root, 1);
     str_json = cJSON_PrintUnformatted(root);
+    cJSON_Delete(root);
     return str_json;
 }
 char *assemble_json_board_info(void)
@@ -1127,6 +1142,7 @@ char *assemble_json_board_info(void)
     }
     json_print(root, 1);
     str_json = cJSON_PrintUnformatted(root);
+    cJSON_Delete(root);
     return str_json;
 }
 char *assemble_json_net_info(void)
@@ -1161,6 +1177,7 @@ char *assemble_json_net_info(void)
     cJSON_AddStringToObject(root, "speed", s_speed);
     json_print(root, 1);
     str_json = cJSON_PrintUnformatted(root);
+    cJSON_Delete(root);
     return str_json;
 }
 
@@ -1184,12 +1201,16 @@ char *assemble_json_net_list_info(void)
     int32_t link, speed;
     struct in_addr ipaddr;
     int num = get_ifname_number();
+    uint16_t port = 0;
     cJSON *array = cJSON_CreateArray();
     cJSON* item = NULL;
     for(int index = 1; index <= num; index++){
         name = if_indextoname(index, if_name);
         if(name == NULL)
             continue;
+        if(!strcmp(if_name, "lo") || !strcmp(if_name, "docker0")){
+            continue;
+        }
         link = get_netlink_status(if_name);
         if(link >= 0)
             s_link = (link == 0 ? "down" : "up");
@@ -1216,18 +1237,30 @@ char *assemble_json_net_list_info(void)
         cJSON_AddStringToObject(item, "speed", s_speed);
         if(get_ipaddress(if_name, &ipaddr) != -1){
             cJSON_AddStringToObject(item, "ipaddr", inet_ntoa(ipaddr));
+        }else{
+            cJSON_AddStringToObject(item, "ipaddr", "0.0.0.0");
         }
         memset(&ipaddr, 0, sizeof(struct in_addr));
         if(get_netmask(if_name, &ipaddr) != -1){
             cJSON_AddStringToObject(item, "netmask", inet_ntoa(ipaddr));
+        }else{
+            cJSON_AddStringToObject(item, "netmask", "0.0.0.0");
         }
         memset(&ipaddr, 0, sizeof(struct in_addr));
         if(get_gateway(if_name, &ipaddr) != -1){
             cJSON_AddStringToObject(item, "gateway", inet_ntoa(ipaddr));
+        }else{
+            cJSON_AddStringToObject(item, "gateway", "0.0.0.0");
+        }
+        if(config_get_if_cmd_port(if_name, &port) != -1){
+            cJSON_AddNumberToObject(item, "port", port);
+        }else{
+            cJSON_AddNumberToObject(item, "port", 0);
         }
     }
     
     str_json = cJSON_PrintUnformatted(array);
+    cJSON_Delete(array);
     return str_json;
 }
 
@@ -1270,6 +1303,7 @@ char *assemble_json_rf_info(void)
         }
     }
    str_json = cJSON_PrintUnformatted(array);
+   cJSON_Delete(array);
    return str_json;
 }
 char *assemble_json_disk_info(void)
@@ -1298,52 +1332,54 @@ char *assemble_json_disk_info(void)
         }
     }
    str_json = cJSON_PrintUnformatted(array);
+    cJSON_Delete(array);
+    
    return str_json;
 }
 char *assemble_json_all_info(void)
 {
     char *str_json = NULL;
     cJSON *root = cJSON_CreateObject();
-    cJSON_AddItemToObject(root, "versionInfo", cJSON_Parse(assemble_json_softversion()));
-    cJSON_AddItemToObject(root, "diskInfo", cJSON_Parse(assemble_json_disk_info()));
-    cJSON_AddItemToObject(root, "clockInfo", cJSON_Parse(assemble_json_clock_info()));
-    //cJSON_AddItemToObject(root, "rfInfo", cJSON_Parse(assemble_json_rf_info()));
-    cJSON_AddItemToObject(root, "boardInfo", cJSON_Parse(assemble_json_board_info()));
-    cJSON_AddItemToObject(root, "fpgaInfo", cJSON_Parse(assemble_json_fpag_info()));
+    safe_cJson_AddItemToObject(root, "versionInfo", assemble_json_softversion());
+    safe_cJson_AddItemToObject(root, "diskInfo", assemble_json_disk_info());
+    safe_cJson_AddItemToObject(root, "clockInfo", assemble_json_clock_info());
+    //safe_cJson_AddItemToObject(root, "rfInfo", assemble_json_rf_info());
+    safe_cJson_AddItemToObject(root, "boardInfo", assemble_json_board_info());
+    safe_cJson_AddItemToObject(root, "fpgaInfo", assemble_json_fpag_info());
 #if defined (CONFIG_DEVICE_GPS)
-    cJSON_AddItemToObject(root, "gpsInfo", cJSON_Parse(assemble_json_gps_info()));
+    safe_cJson_AddItemToObject(root, "gpsInfo", assemble_json_gps_info());
 #endif
-    cJSON_AddItemToObject(root, "netInfo", cJSON_Parse(assemble_json_net_list_info()));
-    cJSON_AddItemToObject(root, "buildInfo", cJSON_Parse(assemble_json_build_info()));
+    safe_cJson_AddItemToObject(root, "netInfo", assemble_json_net_list_info());
+    safe_cJson_AddItemToObject(root, "buildInfo", assemble_json_build_info());
     json_print(root, 1);
     str_json = cJSON_PrintUnformatted(root);
+    cJSON_Delete(root);
     return str_json;
 }
 char *assemble_json_selfcheck_info(void)
 {
     char *str_json = NULL;
     cJSON *root = cJSON_CreateObject();
-    cJSON_AddItemToObject(root, "diskInfo", cJSON_Parse(assemble_json_disk_info()));
-    cJSON_AddItemToObject(root, "clockInfo", cJSON_Parse(assemble_json_clock_info()));
-    //cJSON_AddItemToObject(root, "rfInfo", cJSON_Parse(assemble_json_rf_info()));
-    cJSON_AddItemToObject(root, "boardInfo", cJSON_Parse(assemble_json_board_info()));
-    cJSON_AddItemToObject(root, "fpgaInfo", cJSON_Parse(assemble_json_fpag_info()));
+    safe_cJson_AddItemToObject(root, "diskInfo", assemble_json_disk_info());
+    safe_cJson_AddItemToObject(root, "clockInfo", assemble_json_clock_info());
+    safe_cJson_AddItemToObject(root, "boardInfo", assemble_json_board_info());
+    safe_cJson_AddItemToObject(root, "fpgaInfo", assemble_json_fpag_info());
 #if defined (CONFIG_DEVICE_GPS)
-    cJSON_AddItemToObject(root, "gpsInfo", cJSON_Parse(assemble_json_gps_info()));
+    safe_cJson_AddItemToObject(root, "gpsInfo", assemble_json_gps_info());
 #endif
     json_print(root, 1);
     str_json = cJSON_PrintUnformatted(root);
+    cJSON_Delete(root);
     return str_json;
 }
+
 char *assemble_json_netlist_info(void)
 {
     char *str_json = NULL;
-    cJSON *root = cJSON_CreateObject();
-    cJSON_AddItemToObject(root, "netInfo", cJSON_Parse(assemble_json_net_list_info()));
-    json_print(root, 1);
-    str_json = cJSON_PrintUnformatted(root);
+    str_json = assemble_json_net_list_info();
     return str_json;
 }
+
 char *assemble_json_temp_info(void)
 {
     char *str_json = NULL;
@@ -1356,6 +1392,7 @@ char *assemble_json_temp_info(void)
         cJSON_AddNumberToObject(root, "rfTemp", rf_temp);
     json_print(root, 1);
     str_json = cJSON_PrintUnformatted(root);
+    cJSON_Delete(root);
     return str_json;
 }
 
@@ -1370,12 +1407,13 @@ char *assemble_json_response(int err_code, const char *message)
     cJSON_AddStringToObject(root, "message", message);
     
     str_json = cJSON_PrintUnformatted(root);
+    cJSON_Delete(root);
     return str_json;
 }
 
 
 /* NOTE: 调用该函数后，需要free返回指针 */
-char *assemble_json_data_response(int err_code, const char *message, const char * const data)
+char *assemble_json_data_response(int err_code, const char *message,const char * data)
 {
     char *str_json = NULL, *body = NULL;
     cJSON *root, *node;
@@ -1383,10 +1421,13 @@ char *assemble_json_data_response(int err_code, const char *message, const char 
     str_json = assemble_json_response(err_code, message);
     root = cJSON_Parse(str_json);
     node = cJSON_Parse(data);
+    _safe_free_(str_json);
+    _safe_free_(data);
     if (root != NULL){
         cJSON_AddItemToObject(root, "data", node);
     }
     body = cJSON_PrintUnformatted(root);
+    cJSON_Delete(root);
     return body;
 }
 

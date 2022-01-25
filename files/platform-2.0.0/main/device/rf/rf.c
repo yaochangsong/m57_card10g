@@ -180,7 +180,7 @@ int8_t rf_read_interface(uint8_t cmd,uint8_t ch,void *data, va_list ap)
             if(rfctx && rfctx->ops->get_temperature)
                 ret = rfctx->ops->get_temperature(ch, &temperature);
             if(ret != -1)
-                *(int16_t *)data = temperature;
+                *(int16_t *)data = htons(temperature);
             break;
         }
         case EX_RF_STATUS:

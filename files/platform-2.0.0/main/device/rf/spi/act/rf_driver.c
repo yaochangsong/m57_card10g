@@ -55,14 +55,28 @@
 #define ARRAY_SIZE(arr) (sizeof(arr) / sizeof((arr)[0]))
 #endif
 
+#if defined(SUPPORT_PROJECT_AKT_4CH)
 #define MAX_SPI_CH_NUM  4
+#elif defined(SUPPORT_PROJECT_YF21025)
+#define MAX_SPI_CH_NUM  1
+#else
+#define MAX_SPI_CH_NUM  0
+#endif
+
 int _fd[MAX_SPI_CH_NUM];
 
 static const char *spi_dev_name[] = {
-    "/dev/spidev32765.0",
-    "/dev/spidev32765.1",
-    "/dev/spidev32765.2",
-    "/dev/spidev32765.3",
+#if defined(SUPPORT_PROJECT_AKT_4CH)	
+    "/dev/spidev1.0",
+    "/dev/spidev1.1",
+    "/dev/spidev1.2",
+    "/dev/spidev1.3",
+#elif defined(SUPPORT_PROJECT_YF21025)
+    "/dev/spidev1.1",  //spi rf
+    "/dev/spidev1.0",
+#else
+    NULL,
+#endif
 };
 
 static uint8_t spi_checksum(uint8_t *buffer,uint8_t len){
@@ -76,7 +90,7 @@ static uint8_t spi_checksum(uint8_t *buffer,uint8_t len){
 
 static int  spi_dev_init(char *dev_name)
 {
-    uint8_t mode = 0;
+    uint8_t mode = SPI_CPOL|SPI_CPHA;  //3
     uint32_t speed = 1000000;
 	int spidevfd = -1;
 	
@@ -206,6 +220,107 @@ static int rf_get_temperature(uint8_t ch, int16_t *temperatue)
     return 0;
 }
 
+static int rf_get_mid_freq(uint8_t ch, uint8_t *freq)
+{
+    if (ch >= MAX_SPI_CH_NUM) {
+        return -1;
+    }
+    int ret = -1;
+    uint8_t frame_buffer[64], recv_buffer[64];
+    int frame_size = -1, recv_size = 0, data_len = 0;
+
+    data_len = 2;
+    recv_size = data_len + 5; //5 is frame header & tail length
+    frame_size = spi_assemble_send_data(frame_buffer, RF_QUERY_CMD_CODE_MID_FREQ, NULL, 0);
+    
+    ret = spi_send_data(_fd[ch], frame_buffer, frame_size, recv_buffer, recv_size);
+    if (ret < 0) {
+        return -1;
+    }
+
+    printf_debug("receive data buffer[%d]:", recv_size);
+    for(int i = 0; i< recv_size; i++)
+        printfd("0x%x ", recv_buffer[i]);
+    printfd("\n");
+    ret = prase_recv_data(RF_QUERY_CMD_CODE_MID_FREQ, recv_buffer, data_len, freq);
+    if(ret != 0)
+        return -1;
+    return 0;
+}
+
+static int _rf_get_mid_freq(uint8_t ch, uint64_t *freq)
+{
+    uint8_t freq_flag = 0;
+    int ret = rf_get_mid_freq(ch, &freq_flag);
+    if (ret == 0) {
+        if (freq_flag == 1) {
+            *freq = MHZ(70);
+        } else if (freq_flag == 2) {
+            *freq = MHZ(21.4);
+        } else if (freq_flag == 3) {
+            *freq = MHZ(140);
+        } else {
+            printf_warn("get unsupport rf mid freq data:%d\n", freq_flag);
+            return -1;
+        }
+    }
+    return ret;
+}
+
+static int rf_get_bw(uint8_t ch, uint8_t *bw)
+{
+    if (ch >= MAX_SPI_CH_NUM) {
+        return -1;
+    }
+    int ret = -1;
+    uint8_t frame_buffer[64], recv_buffer[64];
+    int frame_size = -1, recv_size = 0, data_len = 0;
+
+    data_len = 2;
+    recv_size = data_len + 5; //5 is frame header & tail length
+    frame_size = spi_assemble_send_data(frame_buffer, RF_QUERY_CMD_CODE_BW, NULL, 0);
+    
+    ret = spi_send_data(_fd[ch], frame_buffer, frame_size, recv_buffer, recv_size);
+    if (ret < 0) {
+        return -1;
+    }
+
+    printf_debug("receive data buffer[%d]:", recv_size);
+    for(int i = 0; i< recv_size; i++)
+        printfd("0x%x ", recv_buffer[i]);
+    printfd("\n");
+    ret = prase_recv_data(RF_QUERY_CMD_CODE_BW, recv_buffer, data_len, bw);
+    if(ret != 0)
+        return -1;
+    return 0;
+}
+
+static int _rf_get_bw(uint8_t ch, uint32_t *bw)
+{
+	uint8_t bw_tmp;
+	int ret = rf_get_bw(ch, &bw_tmp);
+	if (ret == 0) {
+		if(bw_tmp == 5)
+	        *bw = MHZ(20);
+	    else if(bw_tmp == 4)
+	        *bw = MHZ(10);
+	    else if(bw_tmp == 3)
+	        *bw = MHZ(5);
+	    else if(bw_tmp == 2)
+	        *bw = MHZ(2);
+	    else if(bw_tmp == 1)
+	        *bw = MHZ(1);
+        else if(bw_tmp == 6)
+	        *bw = MHZ(0.5);
+        else if(bw_tmp == 7)
+	        *bw = MHZ(40);
+        else if(bw_tmp == 8)
+	        *bw = MHZ(80);
+	    else
+	        return -1;
+	}
+	return ret;
+}
 
 static int rf_get_work_mode(uint8_t ch, uint8_t *mode)
 {
@@ -233,6 +348,16 @@ static int rf_get_work_mode(uint8_t ch, uint8_t *mode)
     if(ret != 0)
         return -1;
     return 0;
+}
+
+static int _rf_get_work_mode(uint8_t ch, uint8_t *mode)
+{
+	uint8_t mode_tmp;
+	int ret = rf_get_work_mode(ch, &mode_tmp);
+	if (ret == 0) {
+		*mode = mode_tmp - 1;
+	}
+	return ret;
 }
 
 static int rf_get_mgc_gain(uint8_t ch, uint8_t *gain)
@@ -319,6 +444,15 @@ static int rf_get_frequency(uint8_t ch, uint64_t *freq)
     return 0;
 }
 
+static int _rf_get_frequency(uint8_t ch, uint64_t *freq)
+{
+	uint64_t freq_tmp;
+	int ret = rf_get_frequency(ch, &freq_tmp);
+	if (ret == 0) {
+		*freq = (htobe64(freq_tmp) >> 24);
+	}
+	return ret;
+}
 
 static int rf_set_bw(uint8_t channel, uint8_t bw)
 {
@@ -326,14 +460,14 @@ static int rf_set_bw(uint8_t channel, uint8_t bw)
         return -1;
     }
     int ret = -1;
-    uint8_t frame_buffer[64];
+    uint8_t frame_buffer[64], recv_buffer[64];
     ssize_t frame_size = -1;
 
     uint8_t data = bw;
     size_t data_len = 1;
     frame_size = spi_assemble_send_data(frame_buffer, RF_CMD_CODE_BW, &data, data_len);
-    
-    ret = spi_send_data(_fd[channel], frame_buffer, frame_size, NULL, 0);
+    int recv_size = 2+5;
+    ret = spi_send_data(_fd[channel], frame_buffer, frame_size, recv_buffer, recv_size);
     if (ret < 0) {
         return -1;
     }
@@ -353,8 +487,14 @@ static int _rf_set_bw(uint8_t channel, uint32_t bw_hz)
         mbw = 2;
     else if(bw_hz == MHZ(1))
         mbw = 1;
+    else if(bw_hz == MHZ(0.5))
+        mbw = 6;
+    else if(bw_hz == MHZ(40))
+        mbw = 7;
+    else if(bw_hz == MHZ(80))
+        mbw = 8;
     else
-        mbw = 5;
+        mbw = 7;
             
     return rf_set_bw(channel, mbw);
 }
@@ -366,14 +506,14 @@ static int rf_set_mode(uint8_t channel, uint8_t mode)
         return -1;
     }
     int ret = -1;
-    uint8_t frame_buffer[64];
+    uint8_t frame_buffer[64],recv_buffer[64];
     ssize_t frame_size = -1;
 
     uint8_t data = mode;
     size_t data_len = 1;
     frame_size = spi_assemble_send_data(frame_buffer, RF_CMD_CODE_MODE, &data, data_len);
-    
-    ret = spi_send_data(_fd[channel], frame_buffer, frame_size, NULL, 0);
+    int recv_size = 2+5;
+    ret = spi_send_data(_fd[channel], frame_buffer, frame_size, recv_buffer, recv_size);
     if (ret < 0) {
         return -1;
     }
@@ -387,6 +527,42 @@ static int _rf_set_mode(uint8_t channel, uint8_t mode)
     return rf_set_mode(channel, mode_bsp);
 }
 
+static int rf_set_mid_freq(uint8_t channel, uint8_t freq)
+{
+    if (channel >= MAX_SPI_CH_NUM) {
+        return -1;
+    }
+    int ret = -1;
+    uint8_t frame_buffer[64],recv_buffer[64];
+    ssize_t frame_size = -1;
+
+    uint8_t data = freq;
+    size_t data_len = 1;
+    frame_size = spi_assemble_send_data(frame_buffer, RF_CMD_CODE_MID_FREQ, &data, data_len);
+    int recv_size = 2+5;
+    ret = spi_send_data(_fd[channel], frame_buffer, frame_size, recv_buffer, recv_size);
+    if (ret < 0) {
+        return -1;
+    }
+    return 0;
+}
+
+//射频中频频率设置
+static int _rf_set_mid_freq(uint8_t channel, uint64_t freq)
+{
+    uint8_t freq_flag = 0;
+    if (freq == MHZ(70)) {
+        freq_flag = 1;
+    } else if (freq == MHZ(21.4)) {
+        freq_flag = 2;
+    } else if (freq == MHZ(140)) {
+        freq_flag = 3;
+    }else {
+        printf_warn("unsupport rf mid freq %lu hz\n", freq);
+        return -1;
+    }
+    return rf_set_mid_freq(channel, freq_flag);
+}
 
 static int rf_set_mf_gain(uint8_t channel, uint8_t gain)
 {
@@ -394,14 +570,14 @@ static int rf_set_mf_gain(uint8_t channel, uint8_t gain)
         return -1;
     }
     int ret = -1;
-    uint8_t frame_buffer[64];
+    uint8_t frame_buffer[64],recv_buffer[64];
     ssize_t frame_size = -1;
 
     uint8_t data = gain;
     size_t data_len = 1;
     frame_size = spi_assemble_send_data(frame_buffer, RF_CMD_CODE_MF_GAIN, &data, data_len);
-    
-    ret = spi_send_data(_fd[channel], frame_buffer, frame_size, NULL, 0);
+    int recv_size = 2+5;
+    ret = spi_send_data(_fd[channel], frame_buffer, frame_size, recv_buffer, recv_size);
     if (ret < 0) {
         return -1;
     }
@@ -414,14 +590,14 @@ static int rf_set_rf_gain(uint8_t channel, uint8_t gain)
         return -1;
     }
     int ret = -1;
-    uint8_t frame_buffer[64];
+    uint8_t frame_buffer[64],recv_buffer[64];
     ssize_t frame_size = -1;
 
     uint8_t data = gain;
     size_t data_len = 1;
     frame_size = spi_assemble_send_data(frame_buffer, RF_CMD_CODE_RF_GAIN, &data, data_len);
-    
-    ret = spi_send_data(_fd[channel], frame_buffer, frame_size, NULL, 0);
+    int recv_size = 2+5;
+    ret = spi_send_data(_fd[channel], frame_buffer, frame_size, recv_buffer, recv_size);
     if (ret < 0) {
         return -1;
     }
@@ -434,14 +610,16 @@ static int rf_set_frequency(uint8_t channel, uint64_t freq)
         return -1;
     }
     int ret = -1;
-    uint8_t frame_buffer[64];
+    uint8_t frame_buffer[64], recv_buffer[64];
     ssize_t frame_size = -1;
-
+    int recv_size;
+    
     uint64_t data = freq;
     size_t data_len = 5;
+    recv_size = 7 + 5;
     frame_size = spi_assemble_send_data(frame_buffer, RF_CMD_CODE_FREQUENCY, &data, data_len);
     
-    ret = spi_send_data(_fd[channel], frame_buffer, frame_size, NULL, 0);
+    ret = spi_send_data(_fd[channel], frame_buffer, frame_size, recv_buffer, recv_size);
     if (ret < 0) {
         return -1;
     }
@@ -481,7 +659,10 @@ static int check_rf_handshake(uint8_t ch)
 
 static bool check_rf_status(uint8_t ch)
 {
-   return true;
+    int ret = 0;
+    int16_t temperature;
+    ret = rf_get_temperature(ch, &temperature);
+    return (ret == 0 ? true : false);
 }
 
 static int _rf_init(void)
@@ -504,15 +685,20 @@ static int _rf_init(void)
 static const struct rf_ops _rf_ops = {
     .init = _rf_init,
     .set_mid_freq   = _rf_set_frequency,
+    .set_rf_mid_freq = _rf_set_mid_freq,
     .set_bindwidth  = _rf_set_bw,
     .set_work_mode  = _rf_set_mode,
     .set_mgc_gain   = rf_set_mf_gain,
     .set_rf_gain    = rf_set_rf_gain,
+
+	.get_mid_freq = _rf_get_frequency,
     .get_status     = check_rf_status,
     .get_temperature = rf_get_temperature,
-    .get_work_mode  = rf_get_work_mode,
+    .get_work_mode  = _rf_get_work_mode,
     .get_mgc_gain   = rf_get_mgc_gain,
     .get_rf_gain    = rf_get_rf_gain,
+    .get_rf_mid_freq = _rf_get_mid_freq,
+    .get_bindwidth = _rf_get_bw,
 };
 
 

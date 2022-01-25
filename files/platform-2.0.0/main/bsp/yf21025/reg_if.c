@@ -27,7 +27,7 @@ static  bool _get_adc_status(void)
     #ifdef GET_ADC_STATUS
         _reg = GET_ADC_STATUS(reg);
     #endif
-    if ((_reg & 0x0f) == 0x0f) {
+    if ((_reg & 0x03) == 0x03) {
         return true;
     } else {
         return false;

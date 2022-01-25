@@ -7,7 +7,9 @@ typedef enum _io_dq_method_code{
     IO_DQ_MODE_WFM = 0x01,
     IO_DQ_MODE_LSB = 0x02,
     IO_DQ_MODE_USB = 0x02,
+    IO_DQ_MODE_ISB = 0x02,
     IO_DQ_MODE_CW = 0x03,
+    IO_DQ_MODE_PM = 0x05,
     IO_DQ_MODE_IQ = 0x07,
 }io_dq_method_code;
 

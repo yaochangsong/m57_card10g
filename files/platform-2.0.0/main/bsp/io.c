@@ -291,8 +291,12 @@ int32_t io_set_dec_method(uint32_t ch, uint8_t dec_method){
         d_method = 0x0000002;
     }else if(dec_method == IO_DQ_MODE_USB) {
         d_method = 0x0000002;
+    }else if(dec_method == IO_DQ_MODE_ISB) {
+        d_method = 0x0000002;
     }else if(dec_method == IO_DQ_MODE_CW) {
         d_method = 0x0000003;
+    }else if(dec_method == IO_DQ_MODE_PM) {
+        d_method = 0x0000005;
     }else if(dec_method == IO_DQ_MODE_IQ) {
         d_method = 0x0000007;
     }else{
@@ -325,11 +329,19 @@ static uint32_t io_set_dec_middle_freq_reg(uint8_t ch, uint64_t dec_middle_freq,
         uint32_t reg;
         int32_t ret = 0;
 
+#if defined(CONFIG_BSP_YF21025)
+        uint64_t board_mid_freq;
+        //config_read_by_cmd(EX_RF_FREQ_CMD, EX_RF_MID_FREQ_FILTER, ch, &board_mid_freq);
+        board_mid_freq = MHZ(140);
+        printf_note("ch%d set subch mid freq, board freq:%"PRIu64"\n", ch, board_mid_freq);
+        delta_freq = board_mid_freq +  dec_middle_freq - middle_freq ; 
+#else
         if(middle_freq > dec_middle_freq){
             delta_freq = FREQ_MAGIC1 +  dec_middle_freq - middle_freq ;
         }else{
             delta_freq = dec_middle_freq -middle_freq;
         }
+#endif
 
 #if defined(CONFIG_BSP_TF713_2CH)
         if(executor_get_bandwidth(ch) == MHZ(20))

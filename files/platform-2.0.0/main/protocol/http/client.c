@@ -530,6 +530,11 @@ static void client_request_done(struct uh_client *cl)
 
     cl->state = CLIENT_STATE_INIT;
 
+    kvlist_free(&cl->request.url);
+    kvlist_free(&cl->request.var);
+    kvlist_free(&cl->request.header);
+    kvlist_free(&cl->request.resetful_var);
+
     memset(&cl->request, 0, sizeof(cl->request));
     memset(&cl->dispatch, 0, sizeof(cl->dispatch));
     memset(&cl->srv_request, 0, sizeof(cl->srv_request));

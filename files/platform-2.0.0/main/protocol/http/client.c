@@ -214,7 +214,7 @@ static int client_srv_send_request(struct uh_client *cl)
                     goto exit;
                 }
             }
-            printf_note("http_headers:%s\n", http_headers);
+            printf_debug("http_headers:%s\n", http_headers);
             if(data)
                 sprintf(http_headers+j, "%s", data);
             break;
@@ -360,13 +360,12 @@ static inline const char *client_get_body(struct uh_client *cl, int *len)
 static int post_post_data(struct uh_client *cl, const char *data, int len)
 {
     struct dispatch *d = &cl->dispatch;
-    d->post_len += len;
-    //printf_warn("d->post_len=%d\n", d->post_len);
+    int offset = d->post_len + len;
 
-    if (d->post_len > UH_POST_MAX_POST_SIZE)
+    if (offset > UH_POST_MAX_POST_SIZE)
         goto err;
 
-    if (d->post_len > UH_POST_DATA_BUF_SIZE) {
+    if (offset > UH_POST_DATA_BUF_SIZE) {
         d->body = realloc(d->body, UH_POST_MAX_POST_SIZE);
         if (!d->body) {
             cl->send_error(cl, 500, "Internal Server Error", "No memory");
@@ -374,7 +373,8 @@ static int post_post_data(struct uh_client *cl, const char *data, int len)
         }
     }
 
-    memcpy(d->body, data, len);
+    memcpy(d->body + d->post_len, data, len);
+    d->post_len += len;
     return len;
 err:
     cl->send_error(cl, 413, "Request Entity Too Large", NULL);
@@ -485,11 +485,11 @@ static inline void connection_close(struct uh_client *cl)
 static inline void keepalive_cb(struct uloop_timeout *timeout)
 {
     struct uh_client *cl = container_of(timeout, struct uh_client, timeout);
-    printf_note("keepalive_cb###\n");
+    printf_debug("keepalive_cb###\n");
     uloop_timeout_set(&cl->timeout, UHTTPD_CONNECTION_TIMEOUT * 1000);
     if(++cl->tcp_keepalive_probes >= UHTTPD_MAX_KEEPALIVE_PROBES){
-        printf_warn("client %s:%d keep alive timeout, close connection!!!\n", cl->get_peer_addr(cl), cl->get_peer_port(cl));
-        connection_close(cl);
+        printf_note("client %s:%d keep alive timeout, close connection!!!\n", cl->get_peer_addr(cl), cl->get_peer_port(cl));
+    connection_close(cl);
     }
 }
 static void client_update_keepalive(struct uh_client *cl)
@@ -677,10 +677,10 @@ static int client_srv_parse_response(struct uh_client *cl, const char *data)
     p = strstr(code, "200");
     if(p){
         cl->srv_request.result_code = 1;
-        printf_note(" response ok: %s\n", status);
+        printf_debug(" response ok: %s\n", status);
     }else{
         cl->srv_request.result_code = 0;
-        printf_note("response false: %s\n", status);
+        printf_debug("response false: %s\n", status);
     }
     
     if(data_copy_tmp)
@@ -744,9 +744,14 @@ static void client_poll_post_data(struct uh_client *cl)
         if (cur_len) {
             if (d->post_data)
                 cur_len = d->post_data(cl, buf, cur_len);
-
+            if (!cur_len)
+                printf_warn("data post error!\n");
+            
             r->content_length -= cur_len;
             ustream_consume(cl->us, cur_len);
+            if (r->content_length <= 0)
+                break;
+            
             continue;
         }
     }

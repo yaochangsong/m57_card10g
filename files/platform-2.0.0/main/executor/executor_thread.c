@@ -384,6 +384,52 @@ static bool  _executor_points_scan_mode2(uint8_t ch, int mode, void *args)
     return true;
 }
 
+static bool  _executor_niq_thread_loop(uint8_t ch, int mode, void *args)
+{
+    printf_note("NIQ \n");
+    #if 0
+    iq_t *ptr_iq = NULL;
+    struct executor_thread_m *arg = args;
+    struct spm_context *ctx = (struct spm_context *)arg->args;
+    struct spm_run_parm  run;
+    int len = 0;
+
+    len = ctx->ops->read_niq_data((void **)&ptr_iq);
+    if(len > 0){
+        ctx->ops->send_niq_data(ptr_iq, len, &run);
+    }
+    if(subch_bitmap_weight(CH_TYPE_IQ) == 0){
+        printf_debug("iq disabled\n");
+        usleep(1000);
+        return false;
+    }
+    #endif
+    return true;
+}
+
+static bool  _executor_biq_thread_loop(uint8_t ch, int mode, void *args)
+{
+    printf_note("BIQ \n");
+    iq_t *ptr_iq = NULL;
+    struct executor_thread_m *arg = args;
+    struct spm_context *ctx = (struct spm_context *)arg->args;
+    struct spm_run_parm  run;
+    int len = 0;
+    
+    if(ctx->ops->read_biq_data)
+    len = ctx->ops->read_biq_data(ch, (void **)&ptr_iq);
+    if(len > 0){
+        if(ctx->ops->send_biq_data)
+            ctx->ops->send_biq_data(ch, ptr_iq, len, &run);
+    }
+    if(test_ch_iq_on(ch) == false){
+        usleep(1000);
+        return false;
+    }
+    return true;
+}
+
+
 
 static bool  _executor_fragment_scan_mode(uint8_t ch, int mode, void *args)
 {
@@ -439,71 +485,97 @@ static int _executor_thread_wait(struct executor_thread_m *thread, int *mode)
     return 0;
 }
 
-struct executor_mode_table mode_table[] = {
-    [OAL_FAST_SCAN_MODE] = {
+struct executor_mode_table mode_table[EXEC_THREAD_TYPE_MAX][OAL_MAX_MODE] = {
+    [EXEC_THREAD_TYPE_FFT][OAL_FAST_SCAN_MODE] = {
         .mode = OAL_FAST_SCAN_MODE,
         .name = "Fast Scan Mode",
         .exec = _executor_fragment_scan_mode,
     },
-    [OAL_FIXED_FREQ_ANYS_MODE] = {
+    [EXEC_THREAD_TYPE_FFT][OAL_FIXED_FREQ_ANYS_MODE] = {
         .mode = OAL_FIXED_FREQ_ANYS_MODE,
         .name = "Fixed Mode",
         .exec = _executor_points_scan_mode,
     },
-    [OAL_MULTI_ZONE_SCAN_MODE] = {
+    [EXEC_THREAD_TYPE_FFT][OAL_MULTI_ZONE_SCAN_MODE] = {
         .mode = OAL_MULTI_ZONE_SCAN_MODE,
         .name = "Multi Zone Mode",
         .exec = _executor_fragment_scan_mode,
     },
-    [OAL_MULTI_POINT_SCAN_MODE] = {
+    [EXEC_THREAD_TYPE_FFT][OAL_MULTI_POINT_SCAN_MODE] = {
         .mode = OAL_MULTI_POINT_SCAN_MODE,
         .name = "Multi Points Mode",
         .exec = _executor_points_scan_mode,
     },
-    [OAL_FIXED_FREQ_ANYS_MODE2] = {
+    [EXEC_THREAD_TYPE_FFT][OAL_FIXED_FREQ_ANYS_MODE2] = {
         .mode = OAL_FIXED_FREQ_ANYS_MODE2,
         .name = "Serial Scan Fixed Points Mode",
         .exec = _executor_points_scan_mode2,
+    },
+    [EXEC_THREAD_TYPE_NIQ][0] = {
+        .mode = -1,
+        .name = "NIQ",
+        .exec = _executor_niq_thread_loop,
+    },
+    [EXEC_THREAD_TYPE_BIQ][0] = {
+        .mode = -1,
+        .name = "BIQ",
+        .exec = _executor_biq_thread_loop,
     }
     
 };
 
+static const char *const thread_type_string[] = {
+    [EXEC_THREAD_TYPE_FFT] = "FFT",
+    [EXEC_THREAD_TYPE_NIQ] = "NIQ",
+    [EXEC_THREAD_TYPE_BIQ] = "BIQ",
+};
+
+
 static int _executor_thread_main_loop(void *args)
 {
-    int ch = 0, mode = 0;
+    int mode = 0;
     struct executor_thread_m *thread = args;
-    static bool p_note[_EXEC_THREAD_NUM] = {[0 ... _EXEC_THREAD_NUM-1] = true};
+    static bool p_note[EXEC_THREAD_NUM] = {[0 ... EXEC_THREAD_NUM-1] = true};
+    int type = thread->type;
+    int index = thread->index;
+    int ch = thread->ch;
 
-    ch = thread->ch;
-    if(ch >= _EXEC_THREAD_NUM){
-        printf_note("ch: %d is bigger than thread num:%d\n", ch, _EXEC_THREAD_NUM);
-        return -1;
-    }
+    printf_note("%d[%s]\n", thread->type, thread_type_string[type]);
+    
+    
+    //if(ch >= EXEC_THREAD_NUM){
+    //    printf_note("ch: %d is bigger than thread num:%d\n", ch, EXEC_THREAD_NUM);
+    //    return -1;
+    //}
     printf_info("-------------------------------------\n");
-    printf_info("Thread Wait [name:%s, ch:%d] \n", thread->name, ch);
+    printf_info("Thread Wait [name:%s, index:%d] \n", thread->name, index);
     printf_info("-------------------------------------\n");
     _executor_thread_wait(thread, &mode);
     
-    if (mode >= ARRAY_SIZE(mode_table) || !mode_table[mode].exec){
+    if(unlikely(mode >= OAL_MAX_MODE)){
+        return -1;
+    }
+    //ARRAY_SIZE(mode_table[type]) ||
+    if (!mode_table[type][mode].exec){
         _executor_thread_stop(thread);
         return -1;
     }
-    if(p_note[ch]){
+    if(p_note[index]){
         _printf_nchar('-', 60);
-        printf("Thread \e[32mRUN\e[0m ==> ch:%2d, name:%-14s, mode: %-32s\n", ch, thread->name, mode_table[mode].name);
+        printf("Thread \e[32mRUN\e[0m ==> ch:%2d, name:%-14s, mode: %-32s\n", ch, thread->name, mode_table[type][mode].name);
         _printf_nchar('-', 60);
         printf("\n");
-        p_note[ch] = false;
+        p_note[index] = false;
     }
     
-    if (!mode_table[mode].exec(ch, mode, args)) {
-        io_set_enable_command(PSD_MODE_DISABLE, ch, -1, 0);
-        io_set_enable_command(AUDIO_MODE_DISABLE, ch, -1, 0);
+    if (!mode_table[type][mode].exec(ch, mode, args)) {
+        //io_set_enable_command(PSD_MODE_DISABLE, ch, -1, 0);
+        //io_set_enable_command(AUDIO_MODE_DISABLE, ch, -1, 0);
          _printf_nchar('-', 60);
-         printf("Thread \e[33mSTOP\e[0m <== ch:%2d, name:%-14s, mode: %-32s\n", ch, thread->name, mode_table[mode].name);
+         printf("Thread \e[33mSTOP\e[0m <== ch:%2d, name:%-14s, mode: %-32s\n", ch, thread->name, mode_table[type][mode].name);
          _printf_nchar('-', 60);
          printf("\n");
-         p_note[ch] = true;
+         p_note[index] = true;
     }
     return 0;
 }
@@ -520,6 +592,7 @@ static void *_get_client_thread(void *cl)
     return NULL;
 }
 
+/* FFT工作使能 */
 int executor_fft_work_nofity(void *cl, int ch, int mode, bool enable)
 {
     struct executor_context  *pctx;
@@ -528,14 +601,25 @@ int executor_fft_work_nofity(void *cl, int ch, int mode, bool enable)
     } else{
         pctx = exec_ctx;
     }
-    printf_note("ch=%d, mode=%d, enable=%d\n", ch, mode, enable);
+    
+    if(unlikely(ch >= EXEC_THREAD_FFT_NUM)){
+        printf_note("ch:%d > %d\n", ch, EXEC_THREAD_FFT_NUM);
+        return -1;
+    }
+    
+    if(unlikely(mode >= OAL_MAX_MODE)){
+        printf_warn("mode=%d is too err\n", mode);
+        return -1;
+    }
+
+    printf_debug("ch=%d, mode=%d, enable=%d\n", ch, mode, enable);
     
     if(enable)
         ch_bitmap_set(ch, CH_TYPE_FFT);
     else{
         ch_bitmap_clear(ch, CH_TYPE_FFT);
     }
-    struct executor_thread_m *thread = &pctx->thread[ch];
+    struct executor_thread_m *thread = &pctx->thread[EXEC_THREAD_TYPE_FFT][ch];
     
     if(thread == NULL)
         return -1;
@@ -550,6 +634,47 @@ int executor_fft_work_nofity(void *cl, int ch, int mode, bool enable)
     //("[%s]notify thread %s\n", ptd->name,  enable == true ? "RUN" : "PAUSE");
     return 0;
 }
+
+/* 窄带IQ工作使能 */
+int executor_niq_work_nofity(void *cl, int ch, int subch, bool enable)
+{
+    struct executor_context  *pctx;
+    int mode = 0;
+    if(cl){
+        pctx = _get_client_thread(cl);
+    } else{
+        pctx = exec_ctx;
+    }
+
+    io_set_enable_command(IQ_MODE_ENABLE, ch, subch, 0);
+    
+    if(unlikely(ch >= EXEC_THREAD_FFT_NUM)){
+        printf_note("ch:%d > %d\n", ch, EXEC_THREAD_FFT_NUM);
+        return -1;
+    }
+
+    printf_debug("ch=%d, mode=%d, enable=%d\n", ch, mode, enable);
+    
+    if(enable)
+        ch_bitmap_set(ch, CH_TYPE_FFT);
+    else{
+        ch_bitmap_clear(ch, CH_TYPE_FFT);
+    }
+    struct executor_thread_m *thread = &pctx->thread[EXEC_THREAD_TYPE_NIQ][0];
+    
+    if(thread == NULL)
+        return -1;
+
+    pthread_mutex_lock(&thread->pwait.t_mutex);
+    thread->pwait.is_wait = !enable;
+    thread->mode->mode = mode;
+    thread->reset = true;
+    printf_note("[%s]notify thread %s\n", thread->name, thread->pwait.is_wait == true ? "PAUSE" : "RUN");
+    pthread_cond_signal(&thread->pwait.t_cond);
+    pthread_mutex_unlock(&thread->pwait.t_mutex);
+    return 0;
+}
+
 
 
 static void _executor_thread_exit(void *arg)
@@ -570,6 +695,37 @@ static void _wait_init(struct executor_thread_wait *wait)
     }
 }
 
+/* 创建频谱线程：包括FFT，窄带IQ(NIQ)，宽带IQ(BIQ) */
+static int _executor_thread_create(int ch, int index, int type, struct executor_thread_m *thread)
+{
+    int ret = -1;
+    pthread_t tid = 0;
+    char thread_name[64];
+
+    if(thread == NULL || type >= EXEC_THREAD_TYPE_MAX)
+        return -1;
+    
+    snprintf(thread_name, sizeof(thread_name) -1, "thread_%d_%s", index, thread_type_string[type]);
+    thread->name = strdup(thread_name);
+    thread->ch = ch;
+    thread->mode = mode_table[type];
+    thread->type = type;
+    thread->index = index;
+    thread->mode->mode = OAL_NULL_MODE;
+    thread->reset = false;
+    thread->args = (void *)get_spm_ctx();
+    _wait_init(&thread->pwait);
+    ret =  pthread_create_detach (NULL,NULL, _executor_thread_main_loop, _executor_thread_exit,  
+                                    thread->name ,&thread, &thread, &tid);
+    if(ret != 0){
+        perror("pthread err");
+        exit(1);
+    }
+    
+    thread->tid = tid;
+    return 0;
+}
+
 struct executor_context * _executor_thread_create_context(void)
 {
     struct executor_context *ctx = calloc(1, sizeof(*ctx));
@@ -578,27 +734,28 @@ struct executor_context * _executor_thread_create_context(void)
         exit(1);
     }
     
-    int ret = -1;
-    pthread_t tid = 0;
-    char thread_name[64];
+    int i = 0, ch = 0;
+    int thread_count = 0;
+    
     ctx->args = get_spm_ctx();
     ctx->ops = &exec_ops;
+
+    for(i = 0; i < EXEC_THREAD_FFT_NUM; i++){
+        ch = i;
+        _executor_thread_create(ch, thread_count, EXEC_THREAD_TYPE_FFT,  &ctx->thread[EXEC_THREAD_TYPE_FFT][i]);
+        thread_count ++;
+    }
     
-    for(int ch = 0; ch < _EXEC_THREAD_NUM; ch++){
-        snprintf(thread_name, sizeof(thread_name) -1, "FFT_thread_%d", ch);
-        ctx->thread[ch].name = strdup(thread_name);
-        ctx->thread[ch].ch = ch;
-        ctx->thread[ch].mode = mode_table;
-        ctx->thread[ch].mode->mode = OAL_NULL_MODE;
-        ctx->thread[ch].reset = false;
-        ctx->thread[ch].args = (void *)get_spm_ctx();
-        _wait_init(&ctx->thread[ch].pwait);
-        ret =  pthread_create_detach (NULL,NULL, _executor_thread_main_loop, _executor_thread_exit,  ctx->thread[ch].name ,&ctx->thread[ch], &ctx->thread[ch], &tid);
-        if(ret != 0){
-            perror("pthread err");
-            exit(1);
-        }
-        ctx->thread[ch].tid = tid;
+    for(i = 0; i < EXEC_THREAD_NIQ_NUM; i++){
+        ch = i;
+        _executor_thread_create(ch, thread_count, EXEC_THREAD_TYPE_NIQ,  &ctx->thread[EXEC_THREAD_TYPE_NIQ][i]);
+        thread_count ++;
+    }
+
+    for(i = 0; i < EXEC_THREAD_BIQ_NUM; i++){
+        ch = i;
+        _executor_thread_create(ch, thread_count, EXEC_THREAD_TYPE_BIQ,  &ctx->thread[EXEC_THREAD_TYPE_BIQ][i]);
+        thread_count ++;
     }
     
     return ctx;

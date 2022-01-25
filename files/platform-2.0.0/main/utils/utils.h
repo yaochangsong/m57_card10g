@@ -11,6 +11,10 @@
 #define alignment_down(a, size) (((uint32_t)a/(uint32_t)size)*(uint32_t)size) //((uint32_t)a & (~((uint32_t)size-1)))
 #define alignment_up(a, size)   (size +((a-1)/size)*size)
 
+/* Required compiler attributes */
+#define likely(x)	__builtin_expect(!!(x), 1)
+#define unlikely(x)	__builtin_expect(!!(x), 0)
+
 /*
 单精度浮点比较
 a == b                  a != b              a < b                     a > b

@@ -93,19 +93,6 @@ void spm_niq_deal_notify(void *arg)
     pthread_cond_signal(&spm_niq_cond);
 }
 
-void spm_fft_deal_notify(void *arg)
-{
-#ifdef CONFIG_SPM_FFT_SERIAL
-    pthread_cond_signal(&spm_fft_cond);
-#else
-    int ch;
-    if(arg == NULL)
-        return;
-    
-    ch = *(uint8_t *)arg;
-    sem_post(&work_sem.notify_deal[ch]);
-#endif
-}
 
 static void spm_niq_dispatcher_buffer_clear(void)
 {

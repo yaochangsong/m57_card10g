@@ -13,6 +13,7 @@ typedef enum _work_mode_type {
     OAL_MULTI_ZONE_SCAN_MODE    = 0x02,
     OAL_MULTI_POINT_SCAN_MODE   = 0x03,
     OAL_FIXED_FREQ_ANYS_MODE2   = 0x04,
+    OAL_MAX_MODE                = 0x05,
 }work_mode_type;
 
 /* bit_en：内部使能位定义 */

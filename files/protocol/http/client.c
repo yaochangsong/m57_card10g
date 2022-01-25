@@ -539,6 +539,11 @@ static void client_request_done(struct uh_client *cl)
     }
 
     cl->state = CLIENT_STATE_INIT;
+    
+    kvlist_free(&cl->request.url);
+    kvlist_free(&cl->request.var);
+    kvlist_free(&cl->request.header);
+    kvlist_free(&cl->request.resetful_var);
 
     memset(&cl->request, 0, sizeof(cl->request));
     memset(&cl->dispatch, 0, sizeof(cl->dispatch));
@@ -568,6 +573,7 @@ static void client_free(struct uh_client *cl)
         kvlist_free(&cl->request.url);
         kvlist_free(&cl->request.var);
         kvlist_free(&cl->request.header);
+        kvlist_free(&cl->request.resetful_var);
 
         if (cl->srv->on_client_free)
             cl->srv->on_client_free(cl);

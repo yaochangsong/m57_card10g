@@ -540,7 +540,7 @@ static int _executor_thread_main_loop(void *args)
     int index = thread->index;
     int ch = thread->ch;
 
-    printf_note("%d[%s]\n", thread->type, thread_type_string[type]);
+    printf_debug("%d[%s]\n", thread->type, thread_type_string[type]);
     
     
     //if(ch >= EXEC_THREAD_NUM){
@@ -716,7 +716,7 @@ static int _executor_thread_create(int ch, int index, int type, struct executor_
     thread->args = (void *)get_spm_ctx();
     _wait_init(&thread->pwait);
     ret =  pthread_create_detach (NULL,NULL, _executor_thread_main_loop, _executor_thread_exit,  
-                                    thread->name ,&thread, &thread, &tid);
+                                    thread->name ,thread, thread, &tid);
     if(ret != 0){
         perror("pthread err");
         exit(1);
@@ -736,7 +736,6 @@ struct executor_context * _executor_thread_create_context(void)
     
     int i = 0, ch = 0;
     int thread_count = 0;
-    
     ctx->args = get_spm_ctx();
     ctx->ops = &exec_ops;
 
@@ -751,7 +750,7 @@ struct executor_context * _executor_thread_create_context(void)
         _executor_thread_create(ch, thread_count, EXEC_THREAD_TYPE_NIQ,  &ctx->thread[EXEC_THREAD_TYPE_NIQ][i]);
         thread_count ++;
     }
-
+    
     for(i = 0; i < EXEC_THREAD_BIQ_NUM; i++){
         ch = i;
         _executor_thread_create(ch, thread_count, EXEC_THREAD_TYPE_BIQ,  &ctx->thread[EXEC_THREAD_TYPE_BIQ][i]);
@@ -774,14 +773,14 @@ void executor_thread_init(void)
 {
     printf_note("Executor thread Init.\n");
     exec_ctx = _executor_thread_create_context();
-  
+    
     for(int i = 0; i<MAX_RADIO_CHANNEL_NUM ; i++){
         executor_set_command(EX_RF_FREQ_CMD, EX_RF_MID_BW, i, NULL);
         io_set_enable_command(PSD_MODE_DISABLE, i, -1, 0);
         io_set_enable_command(AUDIO_MODE_DISABLE, i, -1, 0);
         io_stop_backtrace_file(&i);
     }
-    
+
     uint8_t enable =0;
     uint8_t default_method = IO_DQ_MODE_IQ;
 

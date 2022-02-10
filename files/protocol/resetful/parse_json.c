@@ -1125,7 +1125,7 @@ int _assemble_client_sub_info(struct net_tcp_client *cl, void* array)
     cJSON_AddItemToArray(_array, item = cJSON_CreateObject());
     cJSON_AddStringToObject(item, "ipaddr", cl->get_peer_addr(cl));
     cJSON_AddNumberToObject(item, "port",   cl->get_peer_port(cl));
-    net_hash_for_each(cl->section.hash, _client_sub_info, item);
+    hash_do_for_each(cl->section.hash, _client_sub_info, item);
     return 0;
 }
 

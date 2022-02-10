@@ -145,6 +145,7 @@ int main(int argc, char **argv)
     signal(SIGKILL, pl_handle_sig);
     config_init();
     uloop_init();
+    spm_test_main();
 #ifndef DEBUG_TEST
 #ifdef SUPPORT_NRS1800
     //nsr1800_init();

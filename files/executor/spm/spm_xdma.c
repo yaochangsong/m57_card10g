@@ -904,10 +904,15 @@ static int _xdma_load_disp_buffer(int ch, void *data, ssize_t len, void *args, v
     int hashid = 0, vec_cnt = 0;
     struct net_sub_st *sub = args;
     struct spm_run_parm *prun = run; 
+    struct iovec vdata;
     
     hashid = GET_HASHMAP_ID(sub->chip_id, sub->func_id, sub->prio_id, sub->port);
     printf_debug("hashid:0x%x, chip_id:%x, func_id:%x, prio_id:%x,port:%x\n", hashid, sub->chip_id, sub->func_id, sub->prio_id, sub->port);
-    
+
+    vdata.iov_base = data;
+    vdata.iov_len = len;
+    ///spm_hash_renew(hash, hashid, &vdata);
+    //ns_uplink_add_route_err_pkgs(ch, vec_cnt);    /* 统计错误数据 */
     if(hashid > MAX_XDMA_DISP_TYPE_NUM || hashid < 0 || prun->xdma_disp.type[hashid] == NULL){
         printf_err("hash id err[%d]\n", hashid);
         return -1;

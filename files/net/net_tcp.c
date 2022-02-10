@@ -476,7 +476,7 @@ static void tcp_accept_cb(struct uloop_fd *fd, unsigned int events)
     cl->get_serv_port = get_serv_port;
     printf_note("New connection Serv: %s:%d\n", cl->get_serv_addr(cl), cl->get_serv_port(cl));
 
-    cl->section.hash = net_hash_new();
+    client_hash_create(cl);
     cl->section.thread = net_thread_create_context(cl);
     cl->section.section_id = socket_bitmap_find_index();
     if(cl->section.section_id >= MAX_CLINET_SOCKET_NUM)
@@ -747,36 +747,6 @@ int tcp_send_vec_data_uplink(struct iovec *iov, int iov_len, void *args)
                     send_vec_data_to_client(cl_list, iov, iov_len);
             //    }
                 
-        }
-    }
-    return 0;
-}
-
-int tcp_send_data_uplink(char  *data, int len, void *args)
-{
-    struct net_tcp_server *srv ;
-    struct net_tcp_client *cl_list, *list_tmp;
-    int ret = 0;
-    union _cmd_srv *cmdsrv;
-    char *ifname;
-
-    struct net_sub_st *parg = args;
-    if(parg == NULL)
-        return -1;
-    for(int i = 0; i < get_use_ifname_num()+1; i++){
-        ifname = config_get_if_indextoname(i);
-        if(!ifname || get_netlink_status(ifname) == -1)
-            continue;
-        cmdsrv = (union _cmd_srv *)get_cmd_server(i);
-        srv = (struct net_tcp_server *)cmdsrv->tcpsvr;
-        if(srv == NULL)
-            continue;
-        list_for_each_entry_safe(cl_list, list_tmp, &srv->clients, list){
-            if(net_hash_find(cl_list->section.hash, parg->chip_id, RT_CHIPID) && 
-                net_hash_find(cl_list->section.hash, parg->func_id, RT_FUNCID)){
-                    //printf_note("send to port: %d, 0x%x, 0x%x\n", cl_list->get_peer_port(cl_list), parg->chip_id, parg->func_id);
-                    tcp_send_data_to_client(cl_list->sfd.fd.fd, data, len);
-                }
         }
     }
     return 0;

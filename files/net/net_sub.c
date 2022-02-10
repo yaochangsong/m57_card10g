@@ -15,269 +15,127 @@
 #include "config.h"
 #include "net_sub.h"
 
-#define HASH_NODE_MAX 8192
 
-pthread_mutex_t hash_table_mutex = PTHREAD_MUTEX_INITIALIZER;
-
-#define LOCK_HASH_TABLE() do { \
-    pthread_mutex_lock(&hash_table_mutex); \
-} while (0)
-
-#define UNLOCK_HASH_TABLE() do { \
-    pthread_mutex_unlock(&hash_table_mutex); \
-} while (0)
-
-
-static inline bool hxstr_to_int(char *str, int *ivalue, bool(*_check)(int))
+static void free_entry(void *entry)
 {
-    char *end;
-    int value;
-    
-    if(str == NULL || ivalue == NULL)
-        return false;
-    
-    value = (int) strtol(str, &end, 16);
-    if (str == end){
-        return false;
-    }
-    *ivalue = value;
-    if(*_check == NULL){
-         return true;
-    }
-       
-    return ((*_check)(value));
-}
-
-void *net_hash_new(void)
-{
-    hash_t *hash = hash_new();
-    return (void *)hash;
-}
-
-void net_hash_dump(hash_t *hash)
-{
-    int size = hash_size(hash);
-    const char *keys[HASH_NODE_MAX];
-    void *vals[HASH_NODE_MAX];
-    int n = 0;
-
-    LOCK_HASH_TABLE();
-    hash_each(hash, {
-      keys[n] = key;
-      vals[n] = val;
-      n++;
-      if(HASH_NODE_MAX <= n){
-        break;
-      }
-    });
-
-    size = min(size , HASH_NODE_MAX);
-    
-    printf("dump:[%d]:\n", size);
-    for(int i = 0; i< size; i++)
-        printf("%s, %s\n", (char *)keys[i],(char *)vals[i]);
-    UNLOCK_HASH_TABLE();
-}
-
-
-void net_hash_add(hash_t *hash, short id, int type)
-{
-    int h_id = id | (type << 16);
-    char key[128], *keydup, val[128], *valdup;
-    
-    memset(key, 0, sizeof(key));
-    memset(val, 0, sizeof(val));
-    
-    snprintf(key, sizeof(key) - 1, "%x", h_id);
-    snprintf(val, sizeof(val) - 1, "%x", id);
-    keydup = strdup(key);
-    valdup = strdup(val);
-    LOCK_HASH_TABLE();
-    hash_set(hash, keydup, valdup);
-    UNLOCK_HASH_TABLE();
-}
-
-void net_hash_add_ex(hash_t *hash, int id)
-{
-    int h_id = id;
-    char key[128], *keydup, val[128], *valdup;
-    
-    memset(key, 0, sizeof(key));
-    memset(val, 0, sizeof(val));
-    
-    snprintf(key, sizeof(key) - 1, "%x", h_id);
-    snprintf(val, sizeof(val) - 1, "%x", id);
-    keydup = strdup(key);
-    valdup = strdup(val);
-    LOCK_HASH_TABLE();
-    hash_set(hash, keydup, valdup);
-    UNLOCK_HASH_TABLE();
-}
-
-
-void net_hash_del_ex(hash_t *hash, int id)
-{
-    int h_id = id;
-    const char *keys[HASH_NODE_MAX];
-    void *vals[HASH_NODE_MAX];
-    int n = 0;
-    char tmp[128], *key_tmp = NULL, *val_tmp = NULL;
-
-    memset(tmp, 0 ,sizeof(tmp));
-    snprintf(tmp, sizeof(tmp) - 1, "%x", h_id);
-
-    if(hash_size(hash) > HASH_NODE_MAX){
-        printf_err("hash_size %d is bigger than %d\n", hash_size(hash), HASH_NODE_MAX);
+    struct ikey_record *record = entry;
+    if (!record)
         return;
-    }
-    LOCK_HASH_TABLE();
-    hash_each(hash, {
-      keys[n] = key;
-      vals[n] = val;
-      n++;
-    });
-
-    for(int i = 0; i < hash_size(hash); i++){
-        if(!strcmp(keys[i], tmp)){
-            key_tmp = keys[i];
-            val_tmp = vals[i];
-            break;
-        }
-    }
-    hash_del(hash, tmp);
-    _safe_free_(key_tmp);
-    _safe_free_(val_tmp);
-    UNLOCK_HASH_TABLE();
+    
+    if (record->value)
+        free(record->value);
+    free(record);
+    record = NULL;
 }
 
 
-static inline int _get_type_by_key(char *key)
+int client_hash_create(struct net_tcp_client *cl)
 {
-    int type = 0, ikey = 0;
-    
-    if(hxstr_to_int(key, &ikey, NULL) == false)
+    if(unlikely(cl == NULL))
         return -1;
     
-    type = (ikey >> 16)& 0x0ff;
+    return hash_create((struct cache_hash **)&cl->section.hash, MAX_RANDOM_ENTRIES, free_entry);
+}
+
+int client_hash_delete(struct net_tcp_client *cl)
+{
+    if(unlikely(cl == NULL))
+        return -1;
+
+    return hash_delete((struct cache_hash *)cl->section.hash, 0);
+}
+
+int client_hash_delete_item(struct net_tcp_client *cl, int key)
+{
+    if(unlikely(cl == NULL))
+        return -1;
+    printf_note("key:0x%x[%d]\n", key, key);
+    return hash_delete_item((struct cache_hash *)cl->section.hash, key);
+}
+
+
+
+int _client_hash_insert(struct net_tcp_client *cl, struct ikey_record *entry)
+{
+    if(unlikely(cl == NULL))
+        return -1;
+
+    hash_insert((struct cache_hash *)cl->section.hash, entry->key, entry);
+    return 0;
+}
+
+
+int client_hash_insert(struct net_tcp_client *cl, int key)
+{
+    struct ikey_record *entry = NULL;
+    struct net_sub_st *new;
     
-    return type;
-}
-void net_hash_del(hash_t *hash, short id, int type)
-{
-    int h_id = id | (type << 16);
-    const char *keys[HASH_NODE_MAX];
-    void *vals[HASH_NODE_MAX];
-    int n = 0;
-    char tmp[128], *key_tmp = NULL, *val_tmp = NULL;
+    if(unlikely(cl == NULL))
+        return -1;
 
-    memset(tmp, 0 ,sizeof(tmp));
-    snprintf(tmp, sizeof(tmp) - 1, "%x", h_id);
-
-    if(hash_size(hash) > HASH_NODE_MAX){
-        printf_err("hash_size %d is bigger than %d\n", hash_size(hash), HASH_NODE_MAX);
-        return;
+    if ((entry = malloc(sizeof(*entry))) == NULL) {
+        return ENOMEM;
     }
-    LOCK_HASH_TABLE();
-    hash_each(hash, {
-      keys[n] = key;
-      vals[n] = val;
-      n++;
-    });
+    memset(entry, 0, sizeof(*entry));
 
-    for(int i = 0; i < hash_size(hash); i++){
-        if(!strcmp(keys[i], tmp)){
-            key_tmp = keys[i];
-            val_tmp = vals[i];
-            break;
-        }
+    if ((new = malloc(sizeof(*new))) == NULL) {
+        free(entry);
+        entry = NULL;
+        return ENOMEM;
     }
-    hash_del(hash, tmp);
-    _safe_free_(key_tmp);
-    _safe_free_(val_tmp);
-    UNLOCK_HASH_TABLE();
+    memset(new, 0, sizeof(*new));
+
+    new->chip_id = GET_SLOT_CHIP_ID_BY_HASHID(key);
+    new->func_id = GET_FUNCID_BY_HASHID(key);
+    new->port = GET_PORTID_BY_HASHID(key);
+    new->prio_id = GET_PROIID_BY_HASHID(key);
+
+    entry->key = key;
+    entry->value = new;
+    _client_hash_insert(cl, entry);
+    return 0;
 }
 
 
-bool net_hash_find(hash_t *hash, short id, int type)
+
+static int dump_entry(void *args, int key)
 {
-    void *value = NULL;
-    int h_id = id | (type << 16);
-    char key[128], val[128];
-    snprintf(key, sizeof(key) - 1, "%x", h_id);
-    snprintf(val, sizeof(val) - 1, "%x", id);
-
-    value = hash_get(hash, key);
-    if(value == NULL){
-       // printf_note("not find id:%x in hash table\n", id);
-        return false;
-    }
-    if(value && !strcmp(value, val)){
-       // printf_note("YES find id:%x, %x\n", id, type);
-        return true;
-    }
-
-    return false;
-}
-
-
-void net_hash_find_type_set(hash_t *hash, int type, int (*callback) (int ))
-{
-    const char *keys[HASH_NODE_MAX];
-    void *vals[HASH_NODE_MAX];
-    int n = 0;
-    int ival = 0;
-
-    if(hash_size(hash) > HASH_NODE_MAX){
-        printf_err("hash_size %d is bigger than %d\n", hash_size(hash), HASH_NODE_MAX);
-        return;
-    }
+    struct hash_entry *entry = args;
+    struct ikey_record *r = entry->data;
+    struct net_sub_st *d = (struct net_sub_st *)r->value;
     
-    hash_each(hash, {
-      keys[n] = key;
-      vals[n] = val;
-      n++;
-    });
-    vals[0] = vals[0];  /*  warn */
-    for(int i = 0; i < hash_size(hash); i++){
-        if(hxstr_to_int(keys[i], &ival, NULL) == false)
-            continue;
-        printf_note("ival = 0x%x, type=0x%x, %x, %x, %x\n", ival, type, ival&0x0f0000 & (type << 16), ival&0x0f0000 , (type << 16));
-        if((ival&0x0f0000) & (type << 16)){
-            if(callback)
-                callback(ival);
-        }
-    }
+    printf("key: 0x%x[%d]\n", r->key, r->key);
+    printf("chipid:%x, funcid:%x,port:%x,prio:%x\n", d->chip_id, d->func_id, d->port, d->prio_id);
+    return 0;
+}
+
+int client_hash_dump(struct net_tcp_client *cl)
+{
+    if(unlikely(cl == NULL))
+        return -1;
+
+    return hash_dump((struct cache_hash *)cl->section.hash, dump_entry);
 }
 
 
-void net_hash_for_each(hash_t *hash, int (*callback) (void *, int, int), void *args)
+
+void sub_test_main(void)
 {
-    const char *keys[HASH_NODE_MAX];
-    void *vals[HASH_NODE_MAX];
-    int n = 0;
-    int ival[HASH_NODE_MAX];
-    int prio = 0, hashsize = 0;
+    struct net_tcp_client cl;
+    int key;
 
-    if(hash_size(hash) > HASH_NODE_MAX){
-        printf_err("hash_size %d is bigger than %d\n", hash_size(hash), HASH_NODE_MAX);
-        return;
-    }
-
-    LOCK_HASH_TABLE();
-    hash_each(hash, {
-      keys[n] = key;
-      vals[n] = val;
-      n++;
-    });
-    keys[0] = keys[0];  /* for warning */
-    hashsize = hash_size(hash);
-    UNLOCK_HASH_TABLE();
-    for(int i = 0; i < hashsize; i++){
-        if(hxstr_to_int(vals[i], (int *)&ival[i], NULL) == false)
-            continue;
-       // printf("hash val: %d\n", ival[i]);
-        if(callback)
-            callback(args, ival[i], prio);
-    }
+    client_hash_create(&cl);
+    key = GET_HASHMAP_ID(0x0502, 0x32, 1, 1);
+    client_hash_insert(&cl, key);
+    key = GET_HASHMAP_ID(0x0501, 0x32, 1, 1);
+    client_hash_insert(&cl, key);
+    key = GET_HASHMAP_ID(0x0502, 0x3, 1, 1);
+    client_hash_insert(&cl, key);
+    client_hash_dump(&cl);
+    key = GET_HASHMAP_ID(0x0501, 0x32, 1, 1);
+    client_hash_delete_item(&cl, key);
+    client_hash_dump(&cl);
+    client_hash_delete(&cl);
+    exit(0);
 }
 

@@ -770,7 +770,7 @@ int m57_unload_bitfile_by_client(struct sockaddr_in *addr)
 
     if(cl->section.is_unloading == false){
         cl->section.is_unloading = true;
-        net_hash_for_each(cl->section.hash, _unload_bitfile_by_hashid, cl->section.hash);
+        hash_do_for_each(cl->section.hash, _unload_bitfile_by_hashid, cl->section.hash);
     }
     cl->section.is_unloading = false;
 
@@ -1052,7 +1052,8 @@ bool m57_execute_cmd(void *client, int *code)
             _sub.func_id = 0;
             _sub.port = 0x0001;
             cl->section.prio = 0;
-            net_hash_add_ex(cl->section.hash, GET_HASHMAP_ID(_sub.chip_id, _sub.func_id, cl->section.prio, _sub.port));
+            client_hash_insert(cl, GET_HASHMAP_ID(_sub.chip_id, _sub.func_id, cl->section.prio, _sub.port));
+            //net_hash_add_ex(cl->section.hash, GET_HASHMAP_ID(_sub.chip_id, _sub.func_id, cl->section.prio, _sub.port));
             #endif
             for(int ch = 0; ch < MAX_XDMA_NUM; ch++)
                 executor_set_command(EX_XDMA_ENABLE_CMD, -1, ch, &enable, -1);
@@ -1073,8 +1074,8 @@ bool m57_execute_cmd(void *client, int *code)
             }
             printf_note("[%d]sub chip_id:0x%x, func_id=0x%x, port=0x%x, prio=%d\n", cl->get_peer_port(cl), _sub.chip_id, _sub.func_id, _sub.port, cl->section.prio);
             io_socket_set_sub(cl->section.section_id, _sub.chip_id, _sub.func_id, _sub.port);
-            
-            net_hash_add_ex(cl->section.hash, GET_HASHMAP_ID(_sub.chip_id, _sub.func_id, cl->section.prio, _sub.port));
+            client_hash_insert(cl, GET_HASHMAP_ID(_sub.chip_id, _sub.func_id, cl->section.prio, _sub.port));
+            //net_hash_add_ex(cl->section.hash, GET_HASHMAP_ID(_sub.chip_id, _sub.func_id, cl->section.prio, _sub.port));
             printf_note("[%d,prio:%s]hash id: 0x%x\n", cl->get_peer_port(cl), (cl->section.prio==0?"low":"high"), GET_HASHMAP_ID(_sub.chip_id, _sub.func_id, cl->section.prio, _sub.port));
             /* 
                 客户端默认命令都从高优先级socket发送到设备，这里设备程序对高低优先级socket都做了订阅，具体往哪里发，取决读取数据优先级 
@@ -1088,7 +1089,8 @@ bool m57_execute_cmd(void *client, int *code)
             }
             cl_prio = tcp_find_prio_client(cl, _prio);
             if(cl_prio != NULL){
-                net_hash_add_ex(cl_prio->section.hash, GET_HASHMAP_ID(_sub.chip_id, _sub.func_id, cl_prio->section.prio, _sub.port));
+                client_hash_insert(cl_prio, GET_HASHMAP_ID(_sub.chip_id, _sub.func_id, cl_prio->section.prio, _sub.port));
+                //net_hash_add_ex(cl_prio->section.hash, GET_HASHMAP_ID(_sub.chip_id, _sub.func_id, cl_prio->section.prio, _sub.port));
                 printf_note("[%d,prio:%s]hash id: 0x%x\n", cl_prio->get_peer_port(cl_prio), (cl_prio->section.prio==0?"low":"high"), GET_HASHMAP_ID(_sub.chip_id, _sub.func_id, cl_prio->section.prio, _sub.port));
             }
             #else
@@ -1114,7 +1116,8 @@ bool m57_execute_cmd(void *client, int *code)
             memcpy(&_sub,  payload, sizeof(_sub));
             printf_note("[%d]unsub chip_id:0x%x, func_id=0x%x, port=0x%x, prio=%d\n", cl->get_peer_port(cl),_sub.chip_id, _sub.func_id, _sub.port, cl->section.prio);
             //io_socket_set_unsub(cl->section.section_id, _sub.chip_id, _sub.func_id, _sub.port);
-            net_hash_del_ex(cl->section.hash, GET_HASHMAP_ID(_sub.chip_id, _sub.func_id, cl->section.prio, _sub.port));
+            //net_hash_del_ex(cl->section.hash, GET_HASHMAP_ID(_sub.chip_id, _sub.func_id, cl->section.prio, _sub.port));
+            client_hash_delete_item(cl, GET_HASHMAP_ID(_sub.chip_id, _sub.func_id, cl->section.prio, _sub.port));
             #if 1
             struct net_tcp_client *cl_prio;
             int _prio = 0;
@@ -1123,7 +1126,8 @@ bool m57_execute_cmd(void *client, int *code)
             }
             cl_prio = tcp_find_prio_client(cl, _prio);
             if(cl_prio != NULL){
-                net_hash_del_ex(cl_prio->section.hash, GET_HASHMAP_ID(_sub.chip_id, _sub.func_id, cl_prio->section.prio, _sub.port));
+                client_hash_delete_item(cl_prio, GET_HASHMAP_ID(_sub.chip_id, _sub.func_id, cl_prio->section.prio, _sub.port));
+                //net_hash_del_ex(cl_prio->section.hash, GET_HASHMAP_ID(_sub.chip_id, _sub.func_id, cl_prio->section.prio, _sub.port));
                 printf_note("[%d,prio:%s]hash id: 0x%x\n", cl_prio->get_peer_port(cl_prio), (cl_prio->section.prio==0?"low":"high"), GET_HASHMAP_ID(_sub.chip_id, _sub.func_id, cl_prio->section.prio, _sub.port));
             }
             #endif

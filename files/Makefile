@@ -312,7 +312,8 @@ else
 	endif
 endif
 
-INCLUDE_DIR = -I. -I./ ${includedir_so} 
+HASHDIR = lib/uthash/src
+INCLUDE_DIR = -I. -I./ ${includedir_so} -I$(HASHDIR)
 
 LDFLAGS = $(SUB_LIBS)  ${libdir_so}  -lpthread  -lm -lrt
 

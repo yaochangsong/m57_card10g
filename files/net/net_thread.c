@@ -397,7 +397,7 @@ static int _net_thread_main_loop(void *arg)
     /* thread wait until receive start data consume */
     _net_thread_wait(ctx);
     printf_debug("thread[%s] receive start consume, prio=%d\n", ptd->name, ctx->thread.prio);
-    net_hash_for_each(cl->section.hash, data_dispatcher, arg);
+    hash_do_for_each(cl->section.hash, data_dispatcher, arg);
     _net_thread_con_over(con_wait[ctx->thread.prio], ptd);
     return 0;
 }
@@ -438,6 +438,7 @@ static int _net_thread_set_prio(struct net_tcp_client *client, int prio)
         client->section.thread->thread.prio = 0;
     printf_note("set prio: %s\n", client->section.thread->thread.prio == 1 ? "Urgent" : "Normal");
     _net_thread_count_add(client->section.thread->thread.prio);
+    return 0;
 }
 
 static const struct net_thread_ops nt_ops = {

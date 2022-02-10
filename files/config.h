@@ -96,6 +96,7 @@
 #include "utils/utils.h"
 #include "utils/thread.h"
 #include "utils/mempool.h"
+#include "utils/hash.h"
 #include "executor/executor.h"
 
 

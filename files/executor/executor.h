@@ -207,6 +207,7 @@ struct spm_run_parm{
     void *fft_pool;             /* fft数据内存池，用作数据处理 */
     struct spm_dispatcher_iq dis_iq;
     struct xstream_dispatcher_info xdma_disp;
+    void *hash;
 };
 
 

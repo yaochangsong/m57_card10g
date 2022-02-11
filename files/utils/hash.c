@@ -34,13 +34,13 @@ int hash_create(struct cache_hash **dst, const size_t capacity,
                 void (*free_cb) (void *element))
 {
     struct cache_hash *new = NULL;
-    int rv;
+    int rv = 0;
 
     if (!dst)
-        return EINVAL;
+        return -EINVAL;
 
     if ((new = malloc(sizeof(*new))) == NULL)
-        return ENOMEM;
+        return -ENOMEM;
 
     memset(new, 0, sizeof(*new));
 
@@ -72,10 +72,10 @@ err_out:
 int hash_delete(struct cache_hash *cache, int keep_data)
 {
     struct hash_entry *entry, *tmp;
-    int rv;
+    int rv = 0;
 
     if (!cache)
-        return EINVAL;
+        return -EINVAL;
 
     rv = pthread_rwlock_wrlock(&(cache->cache_lock));
     if (rv)
@@ -98,13 +98,41 @@ int hash_delete(struct cache_hash *cache, int keep_data)
     return 0;
 }
 
+int hash_delete_key(struct cache_hash *cache, int keep_data)
+{
+    struct hash_entry *entry, *tmp;
+    int rv = 0;
+
+    if (!cache)
+        return -EINVAL;
+
+    rv = pthread_rwlock_wrlock(&(cache->cache_lock));
+    if (rv)
+        return rv;
+
+    if (keep_data) {
+        HASH_CLEAR(hh, cache->entries);
+    } else {
+        HASH_ITER(hh, cache->entries, entry, tmp) {
+            HASH_DEL(cache->entries, entry);
+            if (cache->free_cb)
+                cache->free_cb(entry->data);
+            free(entry);
+        }
+    }
+    (void)pthread_rwlock_unlock(&(cache->cache_lock));
+
+    return 0;
+}
+
+
 int hash_delete_item(struct cache_hash *cache, int key)
 {
     struct hash_entry *entry, *tmp;
-    int rv;
+    int rv = 0;
 
     if (!cache)
-        return EINVAL;
+        return -EINVAL;
 
     rv = pthread_rwlock_wrlock(&(cache->cache_lock));
     if (rv)
@@ -141,12 +169,12 @@ int hash_delete_item(struct cache_hash *cache, int key)
 */
 int hash_lookup(struct cache_hash *cache, int key, void *result)
 {
-    int rv;
+    int rv = 0;
     struct hash_entry *tmp = NULL;
     void **dirty_hack = result;
 
     if (!cache || !key)
-        return EINVAL;
+        return -EINVAL;
 
     rv = pthread_rwlock_wrlock(&(cache->cache_lock));
     if (rv)
@@ -203,6 +231,7 @@ int hash_insert(struct cache_hash *cache, int key, void *data)
         HASH_ADD_INT(cache->entries, key, entry);  /* id is the key field */
     }else{
         printf("key:%d has already in hash table\n", key);
+        rv = -1;
     }
 
 err_out:
@@ -214,10 +243,10 @@ int hash_do_for_each(struct cache_hash *cache,int (*callback) (void *, int, int)
 {
     struct hash_entry *entry;
     struct hash_entry *tmp;
-    int rv;
+    int rv = 0;
 
     if (!cache)
-        return EINVAL;
+        return -EINVAL;
 
     rv = pthread_rwlock_wrlock(&(cache->cache_lock));
     if (rv)
@@ -237,10 +266,10 @@ int hash_dump(struct cache_hash *hash, int (*callback) (void *, int))
 {
     struct hash_entry *entry;
     struct hash_entry *tmp;
-    int rv;
+    int rv = 0;
 
     if (!hash)
-        return EINVAL;
+        return -EINVAL;
 
     rv = pthread_rwlock_wrlock(&(hash->cache_lock));
     if (rv)

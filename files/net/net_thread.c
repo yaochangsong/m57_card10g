@@ -246,31 +246,30 @@ uint64_t  get_send_bytes_by_type(int ch, int type, int id)
     return sum_bytes;
 }
 
+static int clear_vec_entry(void *args, int key, int prio)
+{
+    struct spm_run_parm *arg = args;
+    if(unlikely(arg == NULL)){
+        return -1;
+    }
+    spm_hash_clear_vec_data(arg->hash);
+    return 0;
+}
+
 int  refresh_vec_by_prio(int ch, int prio)
 {
     struct spm_run_parm *arg = NULL;
     arg = channel_param[ch];
-    int hash_index[MAX_XDMA_DISP_TYPE_NUM] = {0}, count = 0, _index = 0;
 
     if(arg == NULL)
         return -1;
-    
-    for(int i = 0 ; i < MAX_XDMA_DISP_TYPE_NUM; i++){
-        if(arg->xdma_disp.type[i]->vec_cnt != 0)
-            hash_index[count++] = i;
-    }
 
-    for(int j = 0; j < count; j++){
-        _index = hash_index[j] ;
-        if(GET_PROIID_BY_HASHID(_index) == prio){
-            arg->xdma_disp.type[_index]->vec_cnt = 0;
-        }
-    }
+    hash_do_for_each(arg->hash, clear_vec_entry, arg);
     return 0;
 }
 
 
-static size_t _data_send(struct net_tcp_client *cl, void *data, size_t len)
+static ssize_t _data_send(struct net_tcp_client *cl, void *data, size_t len)
 {
     #define THREAD_SEND_MAX_BYTE  131072 //8388608//262144//131072
     int index = 0, r = 0;
@@ -310,6 +309,27 @@ static void print_array(uint8_t *ptr, ssize_t len)
     printf("\n");
 }
 
+static ssize_t send_vec_entry(void *ptr, void *args)
+{
+    struct net_thread_context *ctx = args;
+    struct net_tcp_client *cl = ctx->thread.client;
+    struct iovec *vec = (struct iovec *)ptr;
+    ssize_t r = 0;
+    
+    r = _data_send((struct net_tcp_client *)cl, vec->iov_base, vec->iov_len);
+    if(r > 0)
+        statistics_client_send_add(ctx->thread.statistics, r);
+    if(r != vec->iov_len){
+        printf_warn("overun: send len:%ld/%zu\n", r, vec->iov_len);
+    }
+    /* 统计发送失败字节 */
+    if(vec->iov_len - r > 0 && r >= 0){
+        statistics_client_send_err_add(ctx->thread.statistics, vec->iov_len - r);
+    }
+
+    return r;
+}
+
 
 static int  data_dispatcher(void *args, int hid, int prio)
 {
@@ -322,51 +342,17 @@ static int  data_dispatcher(void *args, int hid, int prio)
     ch = _get_channel_by_prio(prio);
     arg = channel_param[ch];
     int index = hid;
-    if(index > MAX_XDMA_DISP_TYPE_NUM || arg == NULL){
+
+    if(arg == NULL){
         printf_note("error!\n");
         printf_note("ch: %d, index: %d, arg=%p\n", ch, index, arg);
         return -1;
     }
-    int vec_cnt = arg->xdma_disp.type[index]->vec_cnt;
-    if(arg->xdma_disp.type[index] == NULL || vec_cnt == 0){
-        printf_debug("hash id %d is null,vec_cnt=%d\n", index, vec_cnt);
-        return -1;
-    }
 
-    if(vec_cnt > 0){
-        //r = send_vec_data_to_client(cl, arg->xdma_disp.type[index]->vec, vec_cnt);
-        //if(r > 0)  
-        //     arg->xdma_disp.inout.out_seccess_bytes += r; 
-        for(int i = 0; i < vec_cnt; i++){
-            arg->xdma_disp.type[index]->statistics.send_bytes += arg->xdma_disp.type[index]->vec[i].iov_len;
-            //print_array(arg->xdma_disp.type[index]->vec[i].iov_base, 32);
-            r = _data_send(cl, arg->xdma_disp.type[index]->vec[i].iov_base, arg->xdma_disp.type[index]->vec[i].iov_len);
-            /* 统计需要发送字节 */
-            if(r > 0)
-                statistics_client_send_add(ctx->thread.statistics, r);
-            
-            if(r != arg->xdma_disp.type[index]->vec[i].iov_len)
-                printf_warn("overun: send len:%d/%lu\n", r, arg->xdma_disp.type[index]->vec[i].iov_len);
-            /* 统计发送失败字节 */
-            if(arg->xdma_disp.type[index]->vec[i].iov_len - r > 0 && r >= 0)  
-                statistics_client_send_err_add(ctx->thread.statistics, arg->xdma_disp.type[index]->vec[i].iov_len - r);
-        }
-        //printf_note("[%d]send hash id: 0x%x, vec_cnt=%d, bytes:%d\n", cl->get_peer_port(cl), index, vec_cnt, r);
-    }
-    return 0;
+    r = spm_hash_do_for_each_vec(arg->hash, hid,send_vec_entry, ctx);
+    return r;
 }
 
-#if 0
-static inline void _net_thread_dispatcher_refresh(void *args)
-{
-    struct spm_run_parm *arg = args;
-    
-    arg->xdma_disp.type_num = 0;
-    for(int i = 0; i < MAX_XDMA_DISP_TYPE_NUM; i++){
-        arg->xdma_disp.type[i]->vec_cnt = 0;
-    }
-}
-#endif
 
 void  net_thread_con_broadcast(int ch, void *args)
 {

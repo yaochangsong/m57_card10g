@@ -549,6 +549,7 @@ loop:
         pthread_cond_wait(&spm_xdma_cond[ch], &spm_xdma_cond_mutex[ch]);
     pthread_mutex_unlock(&spm_xdma_cond_mutex[ch]);
     io_set_enable_command(XDMA_MODE_ENABLE, ch, 0, 0);
+    spm_hash_delete(run->hash);/* clear hash table */
     printf_note(">>>>>XDMA%d read start\n", ch);
     do{
         if(ctx->ops->read_xdma_data)
@@ -599,57 +600,15 @@ void thread_attr_set(pthread_attr_t *attr, int policy, int prio)
 void  *spm_xdma_param_init(void)
 {
     struct spm_run_parm *param;
-    unsigned int index = 0;
-    int ret = -1;
-    
-    ret = ret;
+
     param = calloc(1, sizeof(*param));
     if (!param)
         return NULL;
 
-    memset(&param->xdma_disp, 0 ,sizeof(param->xdma_disp));
-    param->xdma_disp.type_num = 0;
-    param->xdma_disp.type = calloc(MAX_XDMA_DISP_TYPE_NUM, sizeof(*param->xdma_disp.type));
-    if (!param->xdma_disp.type) {
-        ret = -ENOMEM;
-        goto err_free;
-    }
-    printf_note("Malloc Memery: %ld[size: %ld]\n", MAX_XDMA_DISP_TYPE_NUM * sizeof(*param->xdma_disp.type),sizeof(*param->xdma_disp.type));
-    for(index = 0; index < MAX_XDMA_DISP_TYPE_NUM; index++){
-        param->xdma_disp.type[index] = calloc(1, sizeof(*param->xdma_disp.type[index]));
-        if (!param->xdma_disp.type[index]) {
-            ret = -ENOMEM;
-            goto err_free1;
-        }
-        param->xdma_disp.type[index]->vec = calloc(XDMA_DATA_TYPE_MAX_PKGS, sizeof(*param->xdma_disp.type[index]->vec));
-        if (!param->xdma_disp.type[index]->vec) {
-            ret = -ENOMEM;
-            goto err_free2;
-        }
-        param->xdma_disp.type[index]->vec_cnt = 0;
-    }
-    printf_note("times:%d, Malloc Memery: type=%ld maxpkg=%ld, size:%ld\n",MAX_XDMA_DISP_TYPE_NUM, sizeof(*param->xdma_disp.type[0]), XDMA_DATA_TYPE_MAX_PKGS*sizeof(*param->xdma_disp.type[0]->vec), sizeof(struct iovec));
-    
-    //ctx->run_args[ch] = param;
-    //ctx->run_args[ch]->xdma_disp.type = param->xdma_disp.type;
-    
-    //for(int i = 0; i < MAX_XDMA_DISP_TYPE_NUM; i++)
-    //     printf_note("[%d]xdma_disp: %p, %d, %p\n", i, param->xdma_disp.type[i], sizeof(*param->xdma_disp.type[i]), ctx->run_args[ch]);
-    
-    return param;
+    printf_note("SPM Hash create!\n");
+    spm_hash_create(&(param->hash));
 
-err_free2:
-    for(index = 0; index < MAX_XDMA_DISP_TYPE_NUM; index++){
-        safe_free(param->xdma_disp.type[index]->vec);
-    }
-err_free1:
-    for(index = 0; index < MAX_XDMA_DISP_TYPE_NUM; index++){
-        safe_free(param->xdma_disp.type[index]);
-    }
-err_free:
-    safe_free(param);
-    printf_err("malloc err\n");
-    return NULL;
+    return param;
 }
 void *spm_init(void)
 {

@@ -28,6 +28,7 @@ struct ikey_record {
 extern int hash_create(struct cache_hash **dst, const size_t capacity, void (*free_cb) (void *element));
 extern int hash_delete(struct cache_hash *cache, int keep_data);
 extern int hash_delete_item(struct cache_hash *cache, int key);
+extern int hash_delete_key(struct cache_hash *cache, int keep_data);
 extern int hash_lookup(struct cache_hash *cache, int key, void *result);
 extern int hash_insert(struct cache_hash *cache, int key, void *data);
 extern int hash_do_for_each(struct cache_hash *cache,int (*callback) (void *, int, int), void *args);

@@ -176,7 +176,7 @@ int hash_lookup(struct cache_hash *cache, int key, void *result)
     if (!cache || !key)
         return -EINVAL;
 
-    rv = pthread_rwlock_wrlock(&(cache->cache_lock));
+    rv = pthread_rwlock_rdlock(&(cache->cache_lock));
     if (rv)
         return rv;
 
@@ -271,7 +271,7 @@ int hash_dump(struct cache_hash *hash, int (*callback) (void *, int))
     if (!hash)
         return -EINVAL;
 
-    rv = pthread_rwlock_wrlock(&(hash->cache_lock));
+    rv = pthread_rwlock_rdlock(&(hash->cache_lock));
     if (rv)
         return rv;
 

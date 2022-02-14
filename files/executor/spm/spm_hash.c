@@ -16,9 +16,10 @@
 #include "spm_hash.h"
 
 struct _hash_data {
-    struct iovec data[MAX_SPM_HASH_DATA];
-    int cnt;
     int max_cnt;
+    volatile struct iovec data[MAX_SPM_HASH_DATA];
+    volatile int cnt;
+    volatile uint64_t send_bytes;
 };
 
 static void free_entry(void *entry)
@@ -131,11 +132,11 @@ int spm_hash_renew(void *hash, int key, struct iovec *data)
     return d->cnt;
 }
 
-ssize_t spm_hash_do_for_each_vec(void *hash, int key, ssize_t (*callback) (void *, void *), void *args)
+ssize_t spm_hash_do_for_each_vec(void *hash, int key, ssize_t (*callback) (void *, void *, void *), void *args)
 {
     struct ikey_record *r = NULL;
     struct _hash_data *d;
-    ssize_t rv = 0;
+    ssize_t rv = 0, ret = 0;
     
     if(unlikely(hash == NULL)){
         return -1;
@@ -151,7 +152,9 @@ ssize_t spm_hash_do_for_each_vec(void *hash, int key, ssize_t (*callback) (void 
     d = (struct _hash_data *)r->value;
     for(int i = 0; i < d->cnt; i++){
         if(callback){
-            rv += callback(args, &d->data[i]);
+            ret = callback(args, &d->data[i], d);
+            if(ret >= 0)
+                rv += ret;
         }
     }
     return rv;
@@ -216,6 +219,32 @@ int  spm_clear_all_hash(void *hash)
     return 0;
 }
 
+
+void spm_hash_set_sendbytes(void *data, size_t bytes)
+{
+    if(unlikely(data == NULL)){
+        return;
+    }
+
+    struct _hash_data *_data = data;
+
+    _data->send_bytes += bytes;
+}
+
+
+uint64_t spm_hash_get_sendbytes(void *record)
+{
+    struct ikey_record *r = record;
+    struct _hash_data *d;
+    
+    if(unlikely(r == NULL)){
+        return 0;
+    }
+    d = r->value;
+    return d->send_bytes;
+}
+
+
 /* TEST  */
 sem_t   consume_start;
 sem_t   consume_over;
@@ -236,7 +265,7 @@ static void *_producer(void *arg)
                 data.iov_base = (void *)base ++;
                 data.iov_len = 10+len;
                 spm_hash_renew(hash, key, &data);
-                printf_note("iov_base:%p, len:%zu\n", data.iov_base, data.iov_len);
+                printf_debug("iov_base:%p, len:%zu\n", data.iov_base, data.iov_len);
             }
         }
         key = GET_HASHMAP_ID(0x0501, 0x32, 1, 1);
@@ -249,16 +278,16 @@ static void *_producer(void *arg)
         printf_note("Wait consume over...\n");
         sem_wait(&consume_over);
         spm_clear_all_hash(hash);
-        if(++count >= 1)
-            break;
+        //if(++count >= 1)
+        //    break;
     }
     pthread_exit(NULL);
 }
 
-static ssize_t _do_consumer(void *ptr, void *args)
+static ssize_t _do_consumer(void *ptr, void *args, void *data)
 {
     struct iovec *vec = (struct iovec *)args;
-    printf_note("<<>>iov_base=%p, iov_len=%zu\n", vec->iov_base, vec->iov_len);
+    printf_debug("<<>>iov_base=%p, iov_len=%zu\n", vec->iov_base, vec->iov_len);
     return vec->iov_len;
 }
 
@@ -266,7 +295,7 @@ static int  do_consumer(void *args, int hid, int prio)
 {
     ssize_t r = 0;
     r = spm_hash_do_for_each_vec(args, hid, _do_consumer, NULL);
-    printf_note("hid[%d,0x%x] total consume %ld\n", hid,hid, r);
+    printf_debug("hid[%d,0x%x] total consume %ld\n", hid,hid, r);
     return r;
 }
 
@@ -286,6 +315,8 @@ static void *_consumer(void *arg)
         sem_wait(&consume_start);
         printf_note("Start consume...\n");
         hash_do_for_each(cl.section.hash, do_consumer, arg);
+        spm_hash_delete(arg);
+        printf_note("spm hash delete\n");
         printf_note("Consume Over\n");
         sem_post(&consume_over);
     }
@@ -314,11 +345,18 @@ void spm_test_main(void)
     int key;
     struct iovec data;
     int r = 0;
-    spm_thread_test();
-    return;
+    //spm_thread_test();
+    //return;
 
     spm_hash_create(&hash);
-
+    key = GET_HASHMAP_ID(0x0502, 0x32, 1, 1);
+    data.iov_base = (void *)0xf000;
+    data.iov_len = 102;
+    r= spm_hash_renew(hash, key, &data);
+    printf_note("send bytes: %"PRIu64"\n", get_send_bytes_by_type_ex(hash, HASHMAP_TYPE_SLOT, 1));
+    return;
+  
+    
     key = GET_HASHMAP_ID(0x0502, 0x32, 1, 1);
     data.iov_base = (void *)0xf000;
     data.iov_len = 102;

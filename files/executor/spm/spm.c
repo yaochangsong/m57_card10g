@@ -547,7 +547,7 @@ loop:
         pthread_cond_wait(&spm_xdma_cond[ch], &spm_xdma_cond_mutex[ch]);
     pthread_mutex_unlock(&spm_xdma_cond_mutex[ch]);
     io_set_enable_command(XDMA_MODE_ENABLE, ch, 0, 0);
-    spm_hash_delete(run->hash);/* clear hash table */
+    //spm_hash_delete(run->hash);/* clear hash table */
     printf_note(">>>>>XDMA%d read start\n", ch);
     do{
         if(ctx->ops->read_xdma_data)

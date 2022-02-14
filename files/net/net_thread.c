@@ -221,30 +221,68 @@ static bool _of_match_type_id(int hash_id, int type_id, int offset, int mask)
 uint64_t  get_send_bytes_by_type(int ch, int type, int id)
 {
     struct spm_run_parm *arg = NULL;
-     arg = channel_param[ch];
-    int hash_index[MAX_XDMA_DISP_TYPE_NUM] = {0}, count = 0, _index = 0;
+     
     uint64_t sum_bytes = 0;
-
+    struct hash_entry *entry;
+    struct hash_entry *tmp;
+    struct cache_hash *hash = arg->hash;
+    struct ikey_record *r;
+    int key, rv;
+    
+    arg = channel_param[ch];
     if(arg == NULL)
         return 0;
-    
-    for(int i = 0 ; i < MAX_XDMA_DISP_TYPE_NUM; i++){
-        if(arg->xdma_disp.type[i]->statistics.send_bytes != 0)
-            hash_index[count++] = i;
-    }
-    
-    for(int i = 0; i < ARRAY_SIZE(_hash_type_table); i++){
-        if(type == _hash_type_table[i].type){
-            for(int j = 0; j < count; j++){
-                _index = hash_index[j] ;
-                if(_of_match_type_id(_index,  id, _hash_type_table[i].offset, _hash_type_table[i].mask)){
-                    sum_bytes += arg->xdma_disp.type[_index]->statistics.send_bytes;
-                }
+
+    rv = pthread_rwlock_rdlock(&(hash->cache_lock));
+    if (rv)
+        return 0;
+
+    HASH_ITER(hh, hash->entries, entry, tmp) {
+        for(int i = 0; i < ARRAY_SIZE(_hash_type_table); i++){
+            if(type != _hash_type_table[i].type)
+                continue;
+            if(_of_match_type_id(entry->key, id, _hash_type_table[i].offset, _hash_type_table[i].mask)){
+                r = entry->data;
+                sum_bytes += spm_hash_get_sendbytes((void *)r);
             }
         }
     }
+
+    pthread_rwlock_unlock(&(hash->cache_lock));
+
     return sum_bytes;
 }
+
+uint64_t  get_send_bytes_by_type_ex(void *args,  int type, int id)
+{
+    struct spm_run_parm *arg = NULL;
+     
+    uint64_t sum_bytes = 0;
+    struct hash_entry *entry;
+    struct hash_entry *tmp;
+    struct cache_hash *hash = args;
+    struct ikey_record *r;
+    int key, rv;
+    rv = pthread_rwlock_rdlock(&(hash->cache_lock));
+    if (rv)
+        return 0;
+
+    HASH_ITER(hh, hash->entries, entry, tmp) {
+        for(int i = 0; i < ARRAY_SIZE(_hash_type_table); i++){
+            if(type != _hash_type_table[i].type)
+                continue;
+            if(_of_match_type_id(entry->key, id, _hash_type_table[i].offset, _hash_type_table[i].mask)){
+                r = entry->data;
+                sum_bytes += spm_hash_get_sendbytes((void *)r);
+            }
+        }
+    }
+    pthread_rwlock_unlock(&(hash->cache_lock));
+
+    return sum_bytes;
+}
+
+
 
 static ssize_t _data_send(struct net_tcp_client *cl, void *data, size_t len)
 {
@@ -286,14 +324,17 @@ static void print_array(uint8_t *ptr, ssize_t len)
     printf("\n");
 }
 
-static ssize_t send_vec_entry(void *ptr, void *args)
+static ssize_t send_vec_entry(void *ptr, void *args, void *data)
 {
     struct net_thread_context *ctx = args;
     struct net_tcp_client *cl = ctx->thread.client;
     struct iovec *vec = (struct iovec *)ptr;
     ssize_t r = 0;
-    
+
+    //统计每个hash key发送字节
+    spm_hash_set_sendbytes(data, vec->iov_len);
     r = _data_send((struct net_tcp_client *)cl, vec->iov_base, vec->iov_len);
+    //统计每个客户端线程发送成功字节
     if(r > 0)
         statistics_client_send_add(ctx->thread.statistics, r);
     if(r != vec->iov_len){

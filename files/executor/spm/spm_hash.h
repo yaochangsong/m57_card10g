@@ -16,6 +16,7 @@ extern int spm_hash_delete_item(void *hash, int key);
 extern int spm_hash_insert(void *hash, int key, struct iovec *data);
 extern int spm_hash_renew(void *hash, int key, struct iovec *data);
 extern int spm_hash_dump(void *hash);
+extern int  spm_clear_all_hash(void *hash);
 extern void spm_hash_clear_vec_data(void *hash);
 extern ssize_t spm_hash_do_for_each_vec(void *hash, int key, ssize_t (*callback) (void *, void *), void *args);
 

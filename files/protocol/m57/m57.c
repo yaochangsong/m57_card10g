@@ -1351,7 +1351,7 @@ load_file_exit:
             break;
         }
     }
-    if(code >= 0)
+    if(_code >= 0)
         cl->response.need_resp = true;
     *code = _code;
     return true;

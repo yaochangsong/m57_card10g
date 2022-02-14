@@ -110,7 +110,7 @@ int spm_hash_renew(void *hash, int key, struct iovec *data)
 
     hash_lookup((struct cache_hash *)hash, key, (void *)&r);
     if(r != NULL){
-        printf_note("Find it\n");
+        printf_debug("Find it\n");
     } else{
         printf_note("Not find key: %x[%d], insert\n", key, key);
         if(spm_hash_insert(hash, key, data) == 0)   //insert OK
@@ -142,7 +142,7 @@ ssize_t spm_hash_do_for_each_vec(void *hash, int key, ssize_t (*callback) (void 
     }
     hash_lookup((struct cache_hash *)hash, key, (void *)&r);
     if(r != NULL){
-        printf_note("Find it\n");
+        printf_debug("Find it\n");
     } else{
         printf_note("Not find key: %x[%d]\n", key, key);
         return -1;
@@ -150,29 +150,11 @@ ssize_t spm_hash_do_for_each_vec(void *hash, int key, ssize_t (*callback) (void 
     
     d = (struct _hash_data *)r->value;
     for(int i = 0; i < d->cnt; i++){
-        if(callback)
+        if(callback){
             rv += callback(args, &d->data[i]);
+        }
     }
     return rv;
-}
-
-void spm_hash_clear_vec_data(void *hash)
-{
-    if(unlikely(hash == NULL)){
-        return;
-    }
-
-    struct cache_hash *_hash = (struct cache_hash *)hash;
-    struct ikey_record *r = NULL;
-    struct _hash_data *d;
-    struct hash_entry *entry = _hash->entries;
-    r = entry->data;
-    d = r->value;
-    printf_note("key: %d, vec cnt: %d\n", entry->key, d->cnt);
-    for(int i = 0; i < d->cnt; i++){
-        memset(&d->data[i], 0, sizeof(struct iovec));
-    }
-    d->cnt = 0;
 }
 
 static int dump_entry(void *args, int key)
@@ -187,6 +169,7 @@ static int dump_entry(void *args, int key)
     return 0;
 }
 
+
 int spm_hash_dump(void *hash)
 {
     if(unlikely(hash == NULL))
@@ -196,30 +179,79 @@ int spm_hash_dump(void *hash)
 }
 
 
-volatile bool notify_over =false;
+void _spm_hash_clear_vec_data(void *hash, int key)
+{
+    if(unlikely(hash == NULL)){
+        return;
+    }
+    struct hash_entry *tmp = NULL;
+    HASH_FIND_INT(((struct cache_hash *)hash)->entries, &key, tmp);  /* s: output pointer */
+    if (tmp) {
+        struct ikey_record *r = tmp->data;
+        struct _hash_data *d;
+        d = r->value;
+        printf_note("key: %d, vec cnt: %d\n", r->key, d->cnt);
+        for(int i = 0; i < d->cnt; i++){
+            memset(&d->data[i], 0, sizeof(struct iovec));
+        }
+        d->cnt = 0;
+    }
+}
+
+
+static int _clear_vec_entry(void *args, int key, int prio)
+{
+    if(unlikely(args == NULL)){
+        return -1;
+    }
+
+    _spm_hash_clear_vec_data(args, key);
+    return 0;
+}
+
+
+int  spm_clear_all_hash(void *hash)
+{
+    hash_do_for_each(hash, _clear_vec_entry, hash);
+    return 0;
+}
+
+/* TEST  */
+sem_t   consume_start;
+sem_t   consume_over;
+
 static void *_producer(void *arg)
 {
     struct cache_hash *hash = arg;
     struct iovec data;
-    int key;
+    int key, count = 0;
     intptr_t base = 0x1000;
     size_t len = 0;
 
-
-    for(int i = 0; i < 1; i++){
-        for(len = 0; len < 1; len++){
-            key = GET_HASHMAP_ID(0x0502, 0x32, 1, 1);
-            data.iov_base = (void *)base ++;
-            data.iov_len = len;
-            spm_hash_renew(hash, key, &data);
-            printf_note("------spm hash dump-----------\n");
-            spm_hash_dump(hash);
-            usleep(1000);
+    while(1){
+         for(int i = 0; i < 1; i++){
+            for(len = 0; len < 10; len++){
+                printf_note("Start Produce...\n");
+                key = GET_HASHMAP_ID(0x0502, 0x32, 1, 1);
+                data.iov_base = (void *)base ++;
+                data.iov_len = 10+len;
+                spm_hash_renew(hash, key, &data);
+                printf_note("iov_base:%p, len:%zu\n", data.iov_base, data.iov_len);
+            }
         }
-        notify_over = true;
-        usleep(10000);
+        key = GET_HASHMAP_ID(0x0501, 0x32, 1, 1);
+        data.iov_base = (void *)base ++;
+        data.iov_len = 10;
+        spm_hash_renew(hash, key, &data);
+        
+        printf_note("Start send\n");
+        sem_post(&consume_start);
+        printf_note("Wait consume over...\n");
+        sem_wait(&consume_over);
+        spm_clear_all_hash(hash);
+        if(++count >= 1)
+            break;
     }
-
     pthread_exit(NULL);
 }
 
@@ -234,7 +266,7 @@ static int  do_consumer(void *args, int hid, int prio)
 {
     ssize_t r = 0;
     r = spm_hash_do_for_each_vec(args, hid, _do_consumer, NULL);
-    printf_note("hid[%d] consume %d\n", hid, r);
+    printf_note("hid[%d,0x%x] total consume %ld\n", hid,hid, r);
     return r;
 }
 
@@ -247,15 +279,15 @@ static void *_consumer(void *arg)
     client_hash_create(&cl);
     key = GET_HASHMAP_ID(0x0502, 0x32, 1, 1);
     client_hash_insert(&cl, key);
-    printf_note("------client hash dump-----------%p\n", cl.section.hash);
-    client_hash_dump(&cl);
+    key = GET_HASHMAP_ID(0x0501, 0x32, 1, 1);
+    client_hash_insert(&cl, key);
     while(1){
-        if(notify_over){
-            printf_note("Start consume\n");
-            notify_over = false;
-            hash_do_for_each(cl.section.hash, do_consumer, arg);
-        }
-        usleep(1000);
+        printf_note("Wait consume\n");
+        sem_wait(&consume_start);
+        printf_note("Start consume...\n");
+        hash_do_for_each(cl.section.hash, do_consumer, arg);
+        printf_note("Consume Over\n");
+        sem_post(&consume_over);
     }
 
     pthread_exit(NULL);

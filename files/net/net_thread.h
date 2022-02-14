@@ -50,7 +50,6 @@ struct net_thread_context {
 extern void  net_thread_con_broadcast(int ch, void *args);
 extern struct net_thread_context * net_thread_create_context(void *cl);
 extern uint64_t  get_send_bytes_by_type(int ch, int type, int id);
-extern int  refresh_vec_by_prio(int ch, int prio);
 
 #endif
 

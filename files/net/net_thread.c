@@ -246,29 +246,6 @@ uint64_t  get_send_bytes_by_type(int ch, int type, int id)
     return sum_bytes;
 }
 
-static int clear_vec_entry(void *args, int key, int prio)
-{
-    struct spm_run_parm *arg = args;
-    if(unlikely(arg == NULL)){
-        return -1;
-    }
-    spm_hash_clear_vec_data(arg->hash);
-    return 0;
-}
-
-int  refresh_vec_by_prio(int ch, int prio)
-{
-    struct spm_run_parm *arg = NULL;
-    arg = channel_param[ch];
-
-    if(arg == NULL)
-        return -1;
-
-    hash_do_for_each(arg->hash, clear_vec_entry, arg);
-    return 0;
-}
-
-
 static ssize_t _data_send(struct net_tcp_client *cl, void *data, size_t len)
 {
     #define THREAD_SEND_MAX_BYTE  131072 //8388608//262144//131072

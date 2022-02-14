@@ -471,13 +471,6 @@ static ssize_t xspm_read_xdma_data(int ch , void **data, uint32_t *len, void *ar
     return xspm_stream_read(ch, index, data, len, args);
 }
 
-static inline void xdma_data_dispatcher_refresh(int ch, void *args)
-{
-    struct spm_run_parm *arg = args;
-    int prio = _get_prio_by_channel(ch);
-    refresh_vec_by_prio(ch, prio);
-    arg->xdma_disp.type_num = 0;
-}
 
 static int _xdma_find_next_header(uint8_t *ptr, size_t len)
 {

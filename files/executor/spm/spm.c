@@ -518,9 +518,7 @@ loop:
 static inline void _net_thread_dispatcher_refresh(void *args, int ch)
 {
     struct spm_run_parm *arg = args;
-    int prio = _get_prio_by_channel(ch);
-    refresh_vec_by_prio(ch, prio);
-    arg->xdma_disp.type_num = 0;
+    spm_clear_all_hash(arg->hash);
 }
 
 void spm_xdma_data_handle_thread_dispatcher(void *arg)

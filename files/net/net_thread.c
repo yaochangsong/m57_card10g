@@ -221,18 +221,18 @@ static bool _of_match_type_id(int hash_id, int type_id, int offset, int mask)
 uint64_t  get_send_bytes_by_type(int ch, int type, int id)
 {
     struct spm_run_parm *arg = NULL;
-     
     uint64_t sum_bytes = 0;
     struct hash_entry *entry;
     struct hash_entry *tmp;
-    struct cache_hash *hash = arg->hash;
+    struct cache_hash *hash = NULL;
     struct ikey_record *r;
     int key, rv;
-    
+
     arg = channel_param[ch];
     if(arg == NULL)
         return 0;
 
+    hash = arg->hash;
     rv = pthread_rwlock_rdlock(&(hash->cache_lock));
     if (rv)
         return 0;
@@ -247,9 +247,8 @@ uint64_t  get_send_bytes_by_type(int ch, int type, int id)
             }
         }
     }
-
     pthread_rwlock_unlock(&(hash->cache_lock));
-
+    
     return sum_bytes;
 }
 
@@ -324,11 +323,11 @@ static void print_array(uint8_t *ptr, ssize_t len)
     printf("\n");
 }
 
-static ssize_t send_vec_entry(void *ptr, void *args, void *data)
+static ssize_t send_vec_entry(void *args, void *_vec, void *data)
 {
     struct net_thread_context *ctx = args;
     struct net_tcp_client *cl = ctx->thread.client;
-    struct iovec *vec = (struct iovec *)ptr;
+    struct iovec *vec = (struct iovec *)_vec;
     ssize_t r = 0;
 
     //统计每个hash key发送字节
@@ -366,7 +365,6 @@ static int  data_dispatcher(void *args, int hid, int prio)
         printf_note("ch: %d, index: %d, arg=%p\n", ch, index, arg);
         return -1;
     }
-
     r = spm_hash_do_for_each_vec(arg->hash, hid,send_vec_entry, ctx);
     return r;
 }
@@ -388,7 +386,6 @@ void  net_thread_con_broadcast(int ch, void *args)
         _net_thread_con_wait_timeout(con_wait[prio], notify_num, 2000);
     }
 }
-
 
 
 static int _net_thread_main_loop(void *arg)

@@ -61,7 +61,7 @@ extern char *assemble_json_statistics_client_info(void);
 extern char *assemble_json_statistics_all_info(void);
 extern char *assemble_json_sys_info(void);
 extern char *assemble_json_client_sub_info(void);
-
+extern char *assemble_json_spm_hash_info(void);
 
 #endif
 

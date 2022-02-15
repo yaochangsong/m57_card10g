@@ -925,6 +925,16 @@ int cmd_get_status_client_sub_info(struct uh_client *cl, void **arg, void **cont
     return code;
 }
 
+int cmd_get_status_spm_hash_info(struct uh_client *cl, void **arg, void **content)
+{
+    int code = RESP_CODE_OK;
+    *content = assemble_json_spm_hash_info();
+    if(*content == NULL)
+        code = RESP_CODE_EXECMD_ERR;
+    *arg = get_resp_message(code);
+    return code;
+}
+
 
 int cmd_get_statistics_info(struct uh_client *cl, void **arg, void **content)
 {

@@ -103,7 +103,7 @@ struct spm_backend_ops {
 struct spm_context {
     struct poal_config *pdata;
     const struct spm_backend_ops *ops;
-    struct spm_run_parm *run_args[MAX_RADIO_CHANNEL_NUM];
+    struct spm_run_parm *run_args[MAX_XDMA_NUM];
     void *pool_buffer;
 };
 

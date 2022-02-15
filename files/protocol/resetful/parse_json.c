@@ -1100,7 +1100,7 @@ int _assemble_statistics_client_info(struct net_tcp_client *cl, void* array)
     return 0;
 }
 
-static int  _client_sub_info(void *args, int hid, int prio)
+static int  _sub_info(void *args, int hid, int prio)
 {
     cJSON* item = args;
     char buffer[256] = {0};
@@ -1125,7 +1125,7 @@ int _assemble_client_sub_info(struct net_tcp_client *cl, void* array)
     cJSON_AddItemToArray(_array, item = cJSON_CreateObject());
     cJSON_AddStringToObject(item, "ipaddr", cl->get_peer_addr(cl));
     cJSON_AddNumberToObject(item, "port",   cl->get_peer_port(cl));
-    hash_do_for_each(cl->section.hash, _client_sub_info, item);
+    hash_do_for_each(cl->section.hash, _sub_info, item);
     return 0;
 }
 
@@ -1166,6 +1166,29 @@ char *assemble_json_client_sub_info(void)
     cJSON_Delete(array);
     return str_json;
 }
+
+char *assemble_json_spm_hash_info(void)
+{
+    char *str_json = NULL;
+    struct spm_context *_ctx;
+    void *hash;
+    cJSON* item = NULL;
+    
+    cJSON *array = cJSON_CreateArray();
+    for(int i = 0; i < MAX_XDMA_NUM; i++){
+        cJSON_AddItemToArray(array, item = cJSON_CreateObject());
+        cJSON_AddNumberToObject(item, "ch",   i);
+        _ctx = get_spm_ctx();
+        if(_ctx && _ctx->run_args[i]){
+            hash = _ctx->run_args[i]->hash;
+            hash_do_for_each(hash, _sub_info, item);
+        }
+    }
+    str_json = cJSON_PrintUnformatted(array);
+    cJSON_Delete(array);
+    return str_json;
+}
+
 
 char *assemble_json_sys_info(void)
 {

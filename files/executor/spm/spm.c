@@ -55,7 +55,7 @@ static pthread_mutex_t spm_xdma_cond_mutex[MAX_XDMA_NUM];
 
 struct sem_st work_sem;
 
-void  *spm_xdma_param_init(void);
+void  *spm_xdma_param_init(int ch);
 static struct spm_context *spmctx = NULL;
 
 static void spm_cond_init(void)
@@ -538,7 +538,7 @@ void spm_xdma_data_handle_thread_dispatcher(void *arg)
     
     pthread_detach(pthread_self());
    // thread_bind_cpu(1);
-    run = spm_xdma_param_init();
+    run = spm_xdma_param_init(ch);
     io_set_enable_command(XDMA_MODE_DISABLE, ch, 0, 0);
 loop:
     printf_note(">>>>>Read XDMA%d Wait!\n", ch);
@@ -595,7 +595,7 @@ void thread_attr_set(pthread_attr_t *attr, int policy, int prio)
     pthread_attr_setinheritsched(attr,PTHREAD_EXPLICIT_SCHED);
 }
 
-void  *spm_xdma_param_init(void)
+void  *spm_xdma_param_init(int ch)
 {
     struct spm_run_parm *param;
 
@@ -603,9 +603,10 @@ void  *spm_xdma_param_init(void)
     if (!param)
         return NULL;
 
-    printf_note("SPM Hash create!\n");
+    printf_note("ch:%d SPM Hash create!\n", ch);
     spm_hash_create(&(param->hash));
-
+    if(spmctx)
+        spmctx->run_args[ch] = param;
     return param;
 }
 void *spm_init(void)

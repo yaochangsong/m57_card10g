@@ -79,6 +79,7 @@ static struct request_info http_req_cmd[] = {
     {"GET",     "/status/slot",                         -1,                cmd_get_status_slot_info},
     {"GET",     "/status/client",                       -1,                cmd_get_status_client_info},
     {"GET",     "/status/client/subInfo",               -1,                cmd_get_status_client_sub_info},
+    {"GET",     "/status/spm/hashInfo",                  -1,                cmd_get_status_spm_hash_info},
     {"GET",     "/status/sysinfo",                      -1,                cmd_get_sys_info},
     {"GET",     "/status/rf_identify_info",             -1,                cmd_get_rf_identify_info},
     {"GET",     "/statistics",                          -1,                cmd_get_statistics_info},

@@ -4,7 +4,7 @@
 /* 最大hash节点数 */
 #define MAX_SPM_RANDOM_ENTRIES  8192
 /* 一个hash节点最大数据数组长度 */
-#define MAX_SPM_HASH_DATA  16384
+#define MAX_SPM_HASH_DATA  65536
 
 
 void spm_test_main(void);

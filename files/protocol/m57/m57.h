@@ -169,6 +169,7 @@ extern void m57_send_heatbeat(void *client);
 extern int m57_unload_bitfile_from_fpga(uint16_t chip_id);
 extern int m57_unload_bitfile_by_client(struct sockaddr_in *addr);
 extern int m57_unload_bitfile_all(void);
+extern void  m57_unload_all_bitfile_from_fpga(void);
 extern int m57_loading_bitfile_to_fpga_asyn(void *client, char *filename);
 extern int m57_stop_load(void *client);
 

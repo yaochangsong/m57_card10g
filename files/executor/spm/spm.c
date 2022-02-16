@@ -521,6 +521,7 @@ static inline void _net_thread_dispatcher_refresh(void *args, int ch)
     spm_clear_all_hash(arg->hash);
 }
 
+
 void spm_xdma_data_handle_thread_dispatcher(void *arg)
 {
     void *ptr = NULL;
@@ -561,6 +562,7 @@ loop:
         ctx->ops->read_xdma_over_deal(ch, NULL);
         if(socket_bitmap_weight() == 0){
             io_set_enable_command(XDMA_MODE_DISABLE, ch, 0, 0);
+            m57_unload_all_bitfile_from_fpga();
             printf_note("all client offline\n");
             usleep(1000);
             goto loop;

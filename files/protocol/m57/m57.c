@@ -16,6 +16,8 @@
 #include "m57.h"
 #include "../../net/net_sub.h"
 #include "../../bsp/io.h"
+#include "../../utils/bitops.h"
+
 
 static int _m57_write_data_to_fpga(uint8_t *ptr, size_t len);
 static bool  _m57_stop_load_bitfile_to_fpga(uint16_t chip_id);
@@ -752,6 +754,20 @@ int m57_unload_bitfile_from_fpga(uint16_t chip_id)
     return _m57_start_unload_bitfile_from_fpga(chip_id);
 }
 
+void  m57_unload_all_bitfile_from_fpga(void)
+{
+    int bit = 0;
+    uint16_t chip_id = 0;
+    for_each_set_bit(bit, cards_status_get_bitmap(), MAX_FPGA_CARD_SLOT_NUM){
+        for(int i = 1; i <= MAX_FPGA_CHIPID_NUM; i++){
+            chip_id = CARD_SLOT_CHIP_NUM(bit, i);
+            printf_note("Unload SlotChip:0x%x\n", chip_id);
+            m57_unload_bitfile_from_fpga(chip_id);
+        }
+    }
+}
+
+
 static int  _unload_bitfile_by_hashid(void *args, int hid, int prio)
 {
     uint16_t chip_id;
@@ -764,7 +780,7 @@ static int  _unload_bitfile_by_hashid(void *args, int hid, int prio)
 int m57_unload_bitfile_by_client(struct sockaddr_in *addr)
 {
     struct net_tcp_client *cl = container_of(addr, struct net_tcp_client, peer_addr);
-
+    
     if(cl == NULL || cl->section.hash == NULL)
         return -1;
 

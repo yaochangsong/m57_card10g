@@ -572,7 +572,7 @@ struct net_tcp_client *tcp_find_prio_client(void *client, int prio)
 
     struct net_tcp_server *srv = cl->srv;
     list_for_each_entry_safe(cl_list, list_tmp, &srv->clients, list){
-        printf_note("prio:%d, %d, %s:%d\n", cl_list->section.prio, prio, cl_list->get_peer_addr(cl_list), cl_list->get_peer_port(cl_list));
+        printf_info("prio:%d, %d, %s:%d\n", cl_list->section.prio, prio, cl_list->get_peer_addr(cl_list), cl_list->get_peer_port(cl_list));
         if(cl->peer_addr.sin_addr.s_addr == cl_list->peer_addr.sin_addr.s_addr && 
             prio == cl_list->section.prio && 
             _is_idata_in_range(cl_list->get_peer_port(cl_list), cl->get_peer_port(cl), 1)){
@@ -580,7 +580,7 @@ struct net_tcp_client *tcp_find_prio_client(void *client, int prio)
         }
     }
     /* Not Find client */
-    printf_warn("NOT find client, try again\n");
+    printf_info("NOT find client, try again\n");
     list_for_each_entry_safe(cl_list, list_tmp, &srv->clients, list){
         if(cl->peer_addr.sin_addr.s_addr == cl_list->peer_addr.sin_addr.s_addr && prio == cl_list->section.prio){
             return cl_list;

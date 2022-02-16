@@ -339,7 +339,7 @@ static ssize_t xspm_stream_read(int ch, int type,  void **data, uint32_t *len, v
         }
         _spm_gettime(&now);
         if(_spm_tv_diff(&now, &start) > _STREAM_READ_TIMEOUT_MS){
-            printfn("Read TimeOut![%u]\r",timer++);
+            printfi("Read TimeOut![%u]\r",timer++);
             break;
         }
     }while(info->status == RING_TRANS_PENDING);

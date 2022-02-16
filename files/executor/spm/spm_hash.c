@@ -145,7 +145,7 @@ ssize_t spm_hash_do_for_each_vec(void *hash, int key, ssize_t (*callback) (void 
     if(r != NULL){
         printf_debug("Find it\n");
     } else{
-        printf_note("Not find key: %x[%d]\n", key, key);
+        printf_debug("Not find key: %x[%d]\n", key, key);
         return -1;
     }
     
@@ -193,7 +193,7 @@ void _spm_hash_clear_vec_data(void *hash, int key)
         struct ikey_record *r = tmp->data;
         struct _hash_data *d;
         d = r->value;
-        printf_note("key: %d, vec cnt: %d\n", r->key, d->cnt);
+        printf_debug("key: %d, vec cnt: %d\n", r->key, d->cnt);
         for(int i = 0; i < d->cnt; i++){
             memset(&d->data[i], 0, sizeof(struct iovec));
         }

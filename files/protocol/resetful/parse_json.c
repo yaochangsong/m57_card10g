@@ -1049,6 +1049,7 @@ char *assemble_json_slot_info(void)
     cJSON *array = cJSON_CreateArray();
     int bit = 0;
     char buffer[128] = {0};
+    uint64_t bytes = 0;
 
 #ifdef DEBUG_TEST
        cJSON_AddItemToArray(array, item = cJSON_CreateObject());
@@ -1068,7 +1069,10 @@ char *assemble_json_slot_info(void)
         cJSON_AddStringToObject(item, "status", buffer);
         cJSON_AddNumberToObject(item, "type", 1);
         cJSON_AddStringToObject(item, "loadStatus",  ns_downlink_get_loadbit_str_result(bit));
-        snprintf(buffer, sizeof(buffer) - 1, "%" PRIu64, get_send_bytes_by_type(0, HASHMAP_TYPE_SLOT, bit));
+        bytes = 0;
+        for(int i = 0; i < MAX_XDMA_NUM; i++)
+            bytes += get_send_bytes_by_type(i, HASHMAP_TYPE_SLOT, bit);
+        snprintf(buffer, sizeof(buffer) - 1, "%" PRIu64, bytes);
         cJSON_AddStringToObject(item, "uplinkBytes", buffer);
         snprintf(buffer, sizeof(buffer) - 1, "%x", io_xdma_get_slot_version(bit));
         cJSON_AddStringToObject(item, "softVersion", buffer);

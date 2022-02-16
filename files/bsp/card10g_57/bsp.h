@@ -48,6 +48,8 @@
 
 #define CARD_SLOT_NUM(x) ((((x)>>8) & 0x0ff) % CARD_SLOT_MODE)    //05
 #define CARD_CHIP_NUM(x) (((x) & 0xff) % CARD_CHIP_MODE)    //02
+#define CARD_SLOT_CHIP_NUM(x, y) ((((x%CARD_SLOT_MODE) & 0xff) << 8) | ((y%CARD_CHIP_MODE) & 0xff))
+
 
 /* XDMA分发类型数 */
 ////HASH ID: funcId |chip |slot

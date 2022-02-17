@@ -238,13 +238,9 @@ uint64_t  get_send_bytes_by_type(int ch, int type, int id)
         return 0;
 
     HASH_ITER(hh, hash->entries, entry, tmp) {
-        for(int i = 0; i < ARRAY_SIZE(_hash_type_table); i++){
-            if(type != _hash_type_table[i].type)
-                continue;
-            if(_of_match_type_id(entry->key, id, _hash_type_table[i].offset, _hash_type_table[i].mask)){
-                r = entry->data;
-                sum_bytes += spm_hash_get_sendbytes((void *)r);
-            }
+        if(type == HASHMAP_TYPE_SLOT && id == GET_SLOTID_BY_HASHID(entry->key)){
+            r = entry->data;
+            sum_bytes += spm_hash_get_sendbytes((void *)r);
         }
     }
     pthread_rwlock_unlock(&(hash->cache_lock));

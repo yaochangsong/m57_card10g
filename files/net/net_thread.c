@@ -326,6 +326,9 @@ static ssize_t send_vec_entry(void *args, void *_vec, void *data)
     struct iovec *vec = (struct iovec *)_vec;
     ssize_t r = 0;
 
+    if(vec == NULL || vec->iov_len == 0)
+        return -1;
+    
     //统计每个hash key发送字节
     spm_hash_set_sendbytes(data, vec->iov_len);
     r = _data_send((struct net_tcp_client *)cl, vec->iov_base, vec->iov_len);
@@ -336,7 +339,7 @@ static ssize_t send_vec_entry(void *args, void *_vec, void *data)
         printf_warn("overun: send len:%ld/%zu\n", r, vec->iov_len);
     }
     /* 统计发送失败字节 */
-    if(vec->iov_len - r > 0 && r >= 0){
+    if((ssize_t)vec->iov_len - r > 0 && r >= 0){
         statistics_client_send_err_add(ctx->thread.statistics, vec->iov_len - r);
     }
 

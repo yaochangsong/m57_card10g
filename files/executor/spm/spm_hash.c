@@ -160,6 +160,42 @@ ssize_t spm_hash_do_for_each_vec(void *hash, int key, ssize_t (*callback) (void 
     return rv;
 }
 
+int spm_hash_do_for_each(void *hash, int (*callback) (int, void *, void *, void *), void *args)
+{
+    struct hash_entry *entry;
+    struct hash_entry *tmp;
+    struct ikey_record *r;
+    struct _hash_data *d;
+    struct cache_hash *cache = hash;
+    int rv = 0;
+    
+    if (!cache)
+        return -EINVAL;
+
+    rv = pthread_rwlock_rdlock(&(cache->cache_lock));
+    if (rv)
+        return rv;
+    HASH_ITER(hh, cache->entries, entry, tmp) {
+        if(callback){
+            r = entry->data;
+            
+            if(unlikely(r == NULL)){
+                goto exit;
+            }
+            d = r->value;
+            for(int i = 0; i < d->cnt; i++){
+                callback(entry->key, d, &d->data[i], args);
+            }
+        }
+    }
+exit:
+    rv = pthread_rwlock_unlock(&(cache->cache_lock));
+    return rv;
+
+}
+
+
+
 static int dump_entry(void *args, int key)
 {
     struct hash_entry *entry = args;

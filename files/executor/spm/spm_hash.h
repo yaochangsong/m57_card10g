@@ -19,6 +19,7 @@ extern int spm_hash_dump(void *hash);
 extern int  spm_clear_all_hash(void *hash);
 extern void spm_hash_clear_vec_data(void *hash);
 extern ssize_t spm_hash_do_for_each_vec(void *hash, int key, ssize_t (*callback) (void *, void *, void *), void *args);
+extern int spm_hash_do_for_each(void *hash, int (*callback) (int, void *, void *, void *), void *args);
 extern uint64_t spm_hash_get_sendbytes(void *r);
 extern void spm_hash_set_sendbytes(void *data, size_t bytes);
 extern uint64_t  get_send_bytes_by_type_ex(void *args,  int type, int id);

@@ -248,7 +248,7 @@ int hash_do_for_each(struct cache_hash *cache,int (*callback) (void *, int, int)
     if (!cache)
         return -EINVAL;
 
-    rv = pthread_rwlock_wrlock(&(cache->cache_lock));
+    rv = pthread_rwlock_rdlock(&(cache->cache_lock));
     if (rv)
         return rv;
     

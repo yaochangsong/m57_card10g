@@ -97,6 +97,27 @@ int client_hash_insert(struct net_tcp_client *cl, int key)
 }
 
 
+ssize_t client_hash_do_for_each_key(struct net_tcp_client *cl, int key, void *data, void *vec, 
+                                                ssize_t (*callback) (void *, void *, void *), void *args)
+{
+    ssize_t rv = 0;
+    struct hash_entry *tmp = NULL;
+    struct cache_hash *cache = cl->section.hash;
+    
+    if(unlikely(cache == NULL)){
+        return -1;
+    }
+   // printf_note("key:%d[0x%x]\n", key, key);
+    HASH_FIND_INT(cache->entries, &key, tmp);  /* s: output pointer */
+    if (tmp) {
+        if(callback){
+            rv = callback(args, vec, data);
+        }
+    }
+
+    return rv;
+}
+
 
 static int dump_entry(void *args, int key)
 {

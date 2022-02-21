@@ -319,16 +319,19 @@ static void print_array(uint8_t *ptr, ssize_t len)
     printf("\n");
 }
 
-static ssize_t send_vec_entry(void *args, void *_vec, void *data)
+static ssize_t _send_vec_entry(void *args, void *_vec, void *data)
 {
     struct net_thread_context *ctx = args;
     struct net_tcp_client *cl = ctx->thread.client;
     struct iovec *vec = (struct iovec *)_vec;
     ssize_t r = 0;
 
-    if(vec == NULL || vec->iov_len == 0)
+    //printf_note("vec->iov_base=%p, vec->iov_len=%zu\n", vec->iov_base, vec->iov_len);
+    if(vec == NULL || vec->iov_len == 0 || ctx == NULL || cl == NULL){
+        printf_warn("invalid data!\n");
         return -1;
-    
+    }
+
     //统计每个hash key发送字节
     spm_hash_set_sendbytes(data, vec->iov_len);
     r = _data_send((struct net_tcp_client *)cl, vec->iov_base, vec->iov_len);
@@ -336,7 +339,7 @@ static ssize_t send_vec_entry(void *args, void *_vec, void *data)
     if(r > 0)
         statistics_client_send_add(ctx->thread.statistics, r);
     if(r != vec->iov_len){
-        printf_warn("overun: send len:%ld/%zu\n", r, vec->iov_len);
+        printf_warn("overrun: send len:%ld/%zu\n", r, vec->iov_len);
     }
     /* 统计发送失败字节 */
     if((ssize_t)vec->iov_len - r > 0 && r >= 0){
@@ -347,25 +350,20 @@ static ssize_t send_vec_entry(void *args, void *_vec, void *data)
 }
 
 
-static int  data_dispatcher(void *args, int hid, int prio)
+static int  _data_dispatcher(int key, void *data, void *vec, void *_ctx)
 {
-    struct net_thread_context *ctx = args;
-    struct spm_context *spm_ctx = ctx->args;
-    struct spm_run_parm *arg = NULL;//spm_ctx->run_args[0];
+    struct net_thread_context *ctx = _ctx;
     struct net_tcp_client *cl = ctx->thread.client;
-    int ch = 0, r = 0;
-    prio = ctx->thread.prio;
-    ch = _get_channel_by_prio(prio);
-    arg = channel_param[ch];
-    int index = hid;
-
-    if(arg == NULL){
-        printf_note("error!\n");
-        printf_note("ch: %d, index: %d, arg=%p\n", ch, index, arg);
+    int rv = 0;
+    //printf_note("key:%d\n", key);
+    if(unlikely(cl == NULL)){
+        printf_note("client is null!\n");
         return -1;
     }
-    r = spm_hash_do_for_each_vec(arg->hash, hid,send_vec_entry, ctx);
-    return r;
+
+    rv = client_hash_do_for_each_key(cl, key, data, vec, _send_vec_entry, _ctx);
+
+    return rv;
 }
 
 
@@ -393,11 +391,17 @@ static int _net_thread_main_loop(void *arg)
     struct spm_context *spm_ctx = ctx->args;
     struct net_thread_m *ptd = &ctx->thread;
     struct net_tcp_client *cl = ctx->thread.client;
+    int ch;
 
     /* thread wait until receive start data consume */
     _net_thread_wait(ctx);
     printf_debug("thread[%s] receive start consume, prio=%d\n", ptd->name, ctx->thread.prio);
-    hash_do_for_each(cl->section.hash, data_dispatcher, arg);
+    //TIME_ELAPSED(
+    ch = _get_channel_by_prio(cl->section.thread->thread.prio);
+    if(spm_ctx && spm_ctx->run_args[ch]){
+        spm_hash_do_for_each(spm_ctx->run_args[ch]->hash, _data_dispatcher, arg);
+    }
+    //);
     _net_thread_con_over(con_wait[ctx->thread.prio], ptd);
     return 0;
 }

@@ -681,10 +681,10 @@ int tcp_send_data_to_client(int fd, const char *buf, int buflen)
 
         if (len < 0) {
             //printf_note("[fd:%d]-send len : %ld, %d[%s], %d, %d, %d, %d\n", fd, len, errno, strerror(errno), EAGAIN, EWOULDBLOCK, ENOTCONN, EINTR);
-            if (errno == EINTR || errno == EAGAIN || errno == EWOULDBLOCK)
-                continue;
+            //if (errno == EINTR )
+            //    continue;
 
-            if ( errno == ENOTCONN)
+            if ( errno == ENOTCONN || errno == EAGAIN || errno == EWOULDBLOCK)
                 break;
 
             return -1;

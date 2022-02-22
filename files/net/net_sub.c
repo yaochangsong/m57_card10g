@@ -107,13 +107,16 @@ ssize_t client_hash_do_for_each_key(struct net_tcp_client *cl, int key, void *da
     if(unlikely(cache == NULL)){
         return -1;
     }
-   // printf_note("key:%d[0x%x]\n", key, key);
+    rv = pthread_rwlock_rdlock(&(cache->cache_lock));
+    if (rv)
+        return rv;
     HASH_FIND_INT(cache->entries, &key, tmp);  /* s: output pointer */
     if (tmp) {
         if(callback){
             rv = callback(args, vec, data);
         }
     }
+    rv = pthread_rwlock_unlock(&(cache->cache_lock));
 
     return rv;
 }

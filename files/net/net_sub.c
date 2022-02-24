@@ -96,6 +96,15 @@ int client_hash_insert(struct net_tcp_client *cl, int key)
     return 0;
 }
 
+void client_hash_unlock(struct net_tcp_client *cl)
+{
+    int rc;
+    struct cache_hash *cache = cl->section.hash;
+    pthread_rwlock_trywrlock(&(cache->cache_lock));
+    (void)pthread_rwlock_unlock(&(cache->cache_lock));
+    pthread_rwlock_tryrdlock(&(cache->cache_lock));
+    (void)pthread_rwlock_unlock(&(cache->cache_lock));
+}
 
 ssize_t client_hash_do_for_each_key(struct net_tcp_client *cl, int key, void *data, void *vec, 
                                                 ssize_t (*callback) (void *, void *, void *), void *args)

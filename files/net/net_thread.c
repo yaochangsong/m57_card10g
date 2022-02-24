@@ -156,7 +156,8 @@ static int _net_thread_wait(void *args)
     }
     ptd->pwait.is_wait = true;
     pthread_mutex_unlock(&ptd->pwait.t_mutex);
-    pthread_setcancelstate (PTHREAD_CANCEL_ENABLE , NULL);
+    //pthread_setcancelstate (PTHREAD_CANCEL_ENABLE , NULL);
+    pthread_setcancelstate (PTHREAD_CANCEL_DISABLE , NULL);
     return 0;
 }
 
@@ -415,6 +416,7 @@ static int  _net_thread_exit(void *arg)
     _net_thread_count_sub(ctx->thread.prio);
     safe_free(ctx->thread.name);
     safe_free(ctx->thread.statistics);
+    client_hash_unlock(cl);
     if(cl){
         safe_free(cl->section.thread);
         printf_debug("thread free\n");

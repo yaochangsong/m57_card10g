@@ -1712,17 +1712,21 @@ uint8_t  io_restart_app(void)
 void io_set_xdma_disable(int ch, int subch)
 {
     printf_note("ch:%d Xdma out disable\n", ch);
+#ifndef DEBUG_TEST
     _set_xdma_channel(get_fpga_reg(), ch, 0);
     if((get_spm_ctx()!=NULL) && get_spm_ctx()->ops->stream_stop)
         get_spm_ctx()->ops->stream_stop(ch, subch, XDMA_STREAM);
+#endif
 }
 
 void io_set_xdma_enable(int ch, int subch)
 {
     printf_note("ch:%d Xdma out enable\n", ch);
+#ifndef DEBUG_TEST
     _set_xdma_channel(get_fpga_reg(), ch, 1);
     if((get_spm_ctx()!=NULL) && get_spm_ctx()->ops->stream_start)
         get_spm_ctx()->ops->stream_start(ch, subch, 0, 0, XDMA_STREAM);
+#endif
 }
 
 bool io_get_xdma_fpga_status(void)
@@ -1730,6 +1734,7 @@ bool io_get_xdma_fpga_status(void)
     uint8_t *info = NULL, *ptr;
     int nbyte = 0;
     bool ret = false;
+#ifndef DEBUG_TEST
     nbyte = _reg_get_fpga_info_(get_fpga_reg(), 0, (void **)&info);
     ptr = info;
     if(nbyte > 0){
@@ -1739,7 +1744,8 @@ bool io_get_xdma_fpga_status(void)
                 break;
             }
     }
-    safe_free(info);
+safe_free(info);
+    #endif
     return ret;
 }
 
@@ -1789,8 +1795,12 @@ void io_reg_rf_get_data(uint8_t *buffer, int len)
 bool io_xdma_is_valid_chipid(int chipid)
 {
     int id = 0;
+#ifdef DEBUG_TEST
+    return true;
+#else
     id = CARD_SLOT_NUM(chipid);
     return cards_status_test(id);
+#endif
 }
 
 bool io_xdma_is_valid_addr(int slot_id)
@@ -1842,7 +1852,9 @@ void io_init(void)
     printf_info("io init!\n");
     socket_bitmap_init();
     cards_status_bitmap_init();
+#ifndef DEBUG_TEST
     io_check_PCIe_FPGA();
+#endif
     //ch_bitmap_init();
     //subch_bitmap_init();
 }

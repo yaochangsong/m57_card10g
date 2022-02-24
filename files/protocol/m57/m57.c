@@ -729,6 +729,9 @@ static int _m57_start_unload_bitfile_from_fpga(uint16_t chip_id)
     struct spm_context *_ctx;
     ssize_t nwrite, ret = 0;
     
+#ifdef DEBUG_TEST
+    return 0;
+#endif
     _ctx = get_spm_ctx();
     memset(buffer, 0, sizeof(buffer));
     printfi("Unload BitFile [fpga id:0x%x]\n", chip_id);

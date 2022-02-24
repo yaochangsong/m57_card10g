@@ -145,7 +145,7 @@ int main(int argc, char **argv)
     signal(SIGKILL, pl_handle_sig);
     config_init();
     uloop_init();
-#ifndef DEBUG_TEST
+
 #ifdef SUPPORT_NRS1800
     //nsr1800_init();
 #endif
@@ -154,12 +154,13 @@ int main(int argc, char **argv)
 #endif
  if(spectrum_aditool_debug == false){
 #ifdef SUPPORT_RF
+#ifndef DEBUG_TEST
     rf_init(); 
+#endif
 #endif
     }
     executor_init();
     net_statistics_init();
-#endif /* End define DEBUG_TEST*/
     if(server_init() == -1){
         printf_err("server init fail!\n");
         goto done;

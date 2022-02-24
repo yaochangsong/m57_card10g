@@ -17,10 +17,10 @@
 
 #define  SPM_DISPATCHER_ON
 
-#ifdef DEBUG_TEST
-#else
+//#ifdef DEBUG_TEST
+//#else
 #define  SPM_HEADER_CHECK
-#endif
+//#endif
 
 static int xspm_read_stream_stop(int ch, int subch, enum stream_type type);
 static int xspm_read_xdma_data_over(int ch,  void *arg);
@@ -843,9 +843,11 @@ static ssize_t xspm_read_xdma_data_dispatcher(int ch , void **data, uint32_t *le
     index = xspm_find_index_by_rw(ch, -1, XDMA_READ);
     if(index < 0)
         return -1;
-
+#ifdef DEBUG_TEST
+    count = xspm_stream_read_test(ch, index, data, len, args);
+#else
     count = xspm_stream_read(ch, index, data, len, args);
-    //count = xspm_stream_read_test(ch, index, data, len, args);
+#endif
     if(count > 0 && count < XDMA_TRANSFER_MAX_DESC){
         if(xdma_data_dispatcher_buffer(ch, data, len, count, args) == -1){
             return -1;

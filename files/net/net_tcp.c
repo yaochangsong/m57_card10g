@@ -322,7 +322,7 @@ void tcp_free(struct net_tcp_client *cl)
         /* close clinet dispatcher thread */
         if(cl->section.thread && cl->section.thread->ops->close)
             cl->section.thread->ops->close(cl);
-        executor_net_disconnect_notify(&cl->peer_addr);
+        //executor_net_disconnect_notify(&cl->peer_addr);
         client_hash_delete(cl);
         uloop_timeout_cancel(&cl->timeout);
         ustream_free(&cl->sfd.stream);

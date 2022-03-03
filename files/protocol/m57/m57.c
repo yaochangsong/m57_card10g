@@ -1058,7 +1058,7 @@ bool m57_execute_cmd(void *client, int *code)
             _type = (_reg.type == 1 ? M57_PRIO_LOW: 1);
             printf_note("=====>>>%s[%d, %d]mode:%d, port:%d\n", _type == 1 ? "Urgent" : "Normal", _type, _reg.type,_reg.type_mode, cl->get_peer_port(cl));
             cl->section.prio = _type;
-            if(cl->section.thread->ops->set_prio)
+            if(cl->section.thread && cl->section.thread->ops->set_prio)
                 cl->section.thread->ops->set_prio(cl, _type);
             #ifdef DEBUG_TEST
              struct sub_st{

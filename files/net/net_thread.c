@@ -407,6 +407,15 @@ static int _net_thread_main_loop(void *arg)
     return 0;
 }
 
+void _net_thread_unlock(void *arg)
+{
+    struct net_thread_context *ptr = arg;
+    struct net_thread_m *ptd = &ptr->thread;
+    pthread_mutex_trylock(&(ptd->pwait.t_mutex));
+    pthread_mutex_unlock(&ptd->pwait.t_mutex);
+}
+
+
 static int  _net_thread_exit(void *arg)
 {
     struct net_thread_context *ctx = arg;
@@ -417,6 +426,7 @@ static int  _net_thread_exit(void *arg)
     safe_free(ctx->thread.name);
     safe_free(ctx->thread.statistics);
     client_hash_unlock(cl);
+    _net_thread_unlock(ctx);
     if(cl){
         safe_free(cl->section.thread);
         printf_debug("thread free\n");
@@ -438,6 +448,8 @@ static int _net_thread_close(void *client)
 
 static int _net_thread_set_prio(struct net_tcp_client *client, int prio)
 {
+    if(!client || !client->section.thread)
+        return -1;
     if(likely(client->section.prio < MAX_PRIO_LEVEL))
         client->section.thread->thread.prio = prio;
     else

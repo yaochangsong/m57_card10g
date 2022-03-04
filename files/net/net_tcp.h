@@ -79,6 +79,7 @@ struct tcp_section {
     pthread_mutex_t free_lock;
     bool is_keytool_cmd;
     volatile bool is_unloading;
+    volatile bool thread_exited;
 };
 
 

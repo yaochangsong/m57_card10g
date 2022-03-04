@@ -340,7 +340,7 @@ static ssize_t _send_vec_entry(void *args, void *_vec, void *data)
     if(r > 0)
         statistics_client_send_add(ctx->thread.statistics, r);
     if(r != vec->iov_len){
-        printf_warn("overrun: send len:%ld/%zu\n", r, vec->iov_len);
+        printf_warn("[%s,%d]overrun: send len:%ld/%zu\n",cl->get_serv_addr(cl), cl->get_serv_port(cl), r, vec->iov_len);
     }
     /* 统计发送失败字节 */
     if((ssize_t)vec->iov_len - r > 0 && r >= 0){
@@ -429,8 +429,8 @@ static int  _net_thread_exit(void *arg)
     _net_thread_unlock(ctx);
     if(cl){
         safe_free(cl->section.thread);
-        printf_debug("thread free\n");
     }
+    cl->section.thread_exited = true;
     return 0;
 }
 
@@ -438,11 +438,23 @@ static int _net_thread_close(void *client)
 {
     struct net_tcp_client *cl = client;
     m57_stop_load((void *)cl);
+    if(!cl || !cl->section.thread){
+        printf_warn("cl=%p or cl->section.thread=%p is null\n", cl, cl->section.thread);
+        return -1;
+    }
     if(pthread_check_alive_by_tid(cl->section.thread->thread.tid) == true){
+        cl->section.thread_exited = false;
         pthread_cancel_by_tid(cl->section.thread->thread.tid);
         printf_debug("thread close!\n");
+    }else{
+        printf_warn("thread is not alived\n");
+        return -1;
     }
-    usleep(10);
+    printf_note("thread_exitting...\n");
+    do{
+        usleep(10);
+    }while(cl->section.thread_exited == false);
+    printf_note("thread is exited [%s]\n", cl->section.thread_exited == true ? "yes" : "no");
     return 0;
 }
 

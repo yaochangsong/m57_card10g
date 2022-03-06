@@ -12,6 +12,7 @@ do_package()
 	logfile=$appdir/conf/rsyslog.d/platform.conf
 	logrotate_file=$appdir/conf/logrotate/platform 
 	cron_file=$appdir/conf/logrotate/platform.cron
+	platform_conf_file=$appdir/conf/config.json
 	etc_dir=$appdir/build/app/etc
 	nrs1800_dir=$appdir/tools/nrs1800
 	
@@ -26,11 +27,16 @@ do_package()
 	cp -f $cron_file $appdir/build/app/rsyslog.d
 	cp -f $logfile $appdir/build/app/rsyslog.d
 	cp -f $appdir/shell/*.sh	$appdir/build/app/shell/
+	if [ -f $platform_conf_file ]; then
+		cp -f $platform_conf_file $etc_dir
+	fi
 	if [ ! -d $etc_dir ]; then
 		mkdir -p $etc_dir
 	fi
 	#nrs1800
-	cp -f $nrs1800_dir/nr_config.json $etc_dir
+	if [ -f $nrs1800_dir/nr_config.json ]; then
+		cp -f $nrs1800_dir/nr_config.json $etc_dir
+	fi
 	if [ -f $nrs1800_dir/sroute ]; then
 		cp -f $nrs1800_dir/sroute $etc_dir
 	fi

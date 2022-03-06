@@ -11,6 +11,7 @@ LOGROTATE_SRC_FILE=${INS_SRC_DIR}/app/rsyslog.d/platform
 CRON_SRC_FILE=${INS_SRC_DIR}/app/rsyslog.d/platform.cron
 GOAHEAD_SHELL=${INS_SRC_DIR}/app/shell/goahead.sh
 ETC_DIR=${INS_SRC_DIR}/app/etc
+CONF_FILE=${INS_SRC_DIR}/app/config.json
 install_platform()
 {
 	echo "install platform!"
@@ -39,6 +40,9 @@ install_platform()
 	fi
 	if [ -f ${ETC_DIR}/sroute ]; then
 		install -m 0755 ${ETC_DIR}/sroute ${INS_PLATFOR_DIR}
+	fi
+	if [ -f ${CONF_FILE} ]; then
+		install -m 0755 ${CONF_FILE} /etc/
 	fi
 	
 	if [ -f ${INS_SRC_DIR}/app/shell/platform.sh ]; then

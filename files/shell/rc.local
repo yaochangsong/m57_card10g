@@ -15,7 +15,7 @@ insmod /lib/xdma.ko
 /usr/bin/sroute -c /etc/nr_config.json &
 sleep 1
 /etc/init.d/platform.sh start &
-sheep 1
+sleep 1
 /etc/init.d/goahead.sh start &
 sleep 1
 exit 0

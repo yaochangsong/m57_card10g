@@ -10,6 +10,7 @@ LOG_CONF_SRC_FILE=${INS_SRC_DIR}/app/rsyslog.d/platform.conf
 LOGROTATE_SRC_FILE=${INS_SRC_DIR}/app/rsyslog.d/platform
 CRON_SRC_FILE=${INS_SRC_DIR}/app/rsyslog.d/platform.cron
 GOAHEAD_SHELL=${INS_SRC_DIR}/app/shell/goahead.sh
+ETC_DIR=${INS_SRC_DIR}/app/etc
 install_platform()
 {
 	echo "install platform!"
@@ -33,12 +34,25 @@ install_platform()
 		install -m 0755 $GOAHEAD_SHELL /etc/init.d/
 	fi	
 	#echo "install router table!"
-	#install -m 0755 ${INS_SRC_DIR}/app/nr_config.json /etc/
-	#install -m 0755 ${INS_SRC_DIR}/app/sroute ${INS_PLATFOR_DIR}
+	if [ -f ${ETC_DIR}/nr_config.json ]; then
+		install -m 0755 ${ETC_DIR}/nr_config.json /etc/
+	fi
+	if [ -f ${ETC_DIR}/sroute ]; then
+		install -m 0755 ${ETC_DIR}/sroute ${INS_PLATFOR_DIR}
+	fi
 	
-	#install -m 0755 ${INS_SRC_DIR}/app/shell/platform.sh /etc/init.d/
+	if [ -f ${INS_SRC_DIR}/app/shell/platform.sh ]; then
+		install -m 0755 ${INS_SRC_DIR}/app/shell/platform.sh /etc/init.d/
+	fi
+	if [ -f ${INS_SRC_DIR}/app/shell/interfaces ]; then
+		install -m 0755 ${INS_SRC_DIR}/app/shell/interfaces /etc/network/
+	fi
+	if [ -f ${INS_SRC_DIR}/app/shell/rc.local ]; then
+	install -m 0755 ${INS_SRC_DIR}/app/shell/rc.local /etc/
+	fi
 	#echo "install shell!"
-	#install -m 0755 ${INS_SRC_DIR}/app/shell/*.sh /etc/
+	install -m 0755 ${INS_SRC_DIR}/app/shell/*.sh /etc/
+
 	sync
 }
 

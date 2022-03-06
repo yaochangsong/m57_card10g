@@ -12,6 +12,8 @@ do_package()
 	logfile=$appdir/conf/rsyslog.d/platform.conf
 	logrotate_file=$appdir/conf/logrotate/platform 
 	cron_file=$appdir/conf/logrotate/platform.cron
+	etc_dir=$appdir/build/app/etc
+	nrs1800_dir=$appdir/tools/nrs1800
 	
 	cp -f $appdir/shell/install/install.sh $appdir/build/
 	cp -f $jenkins_ver $appdir/build/app
@@ -24,6 +26,21 @@ do_package()
 	cp -f $cron_file $appdir/build/app/rsyslog.d
 	cp -f $logfile $appdir/build/app/rsyslog.d
 	cp -f $appdir/shell/*.sh	$appdir/build/app/shell/
+	if [ ! -d $etc_dir ]; then
+		mkdir -p $etc_dir
+	fi
+	#nrs1800
+	cp -f $nrs1800_dir/nr_config.json $etc_dir
+	if [ -f $nrs1800_dir/sroute ]; then
+		cp -f $nrs1800_dir/sroute $etc_dir
+	fi
+	#network
+	if [ -f $appdir/shell/interfaces ]; then
+		cp -f $appdir/shell/interfaces	$appdir/build/app/shell/
+	fi
+	if [ -f $appdir/shell/rc.local ]; then
+		cp -f $appdir/shell/rc.local	$appdir/build/app/shell/
+	fi
 	tar -zcf platform_install.tar.gz -C $appdir/build .
 }
 

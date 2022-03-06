@@ -27,18 +27,19 @@ do_package()
 	cp -f $cron_file $appdir/build/app/rsyslog.d
 	cp -f $logfile $appdir/build/app/rsyslog.d
 	cp -f $appdir/shell/*.sh	$appdir/build/app/shell/
-	if [ -f $platform_conf_file ]; then
-		cp -f $platform_conf_file $etc_dir
-	fi
+
 	if [ ! -d $etc_dir ]; then
 		mkdir -p $etc_dir
 	fi
+	if [ -f $platform_conf_file ]; then
+		cp -f $platform_conf_file $etc_dir/
+	fi
 	#nrs1800
 	if [ -f $nrs1800_dir/nr_config.json ]; then
-		cp -f $nrs1800_dir/nr_config.json $etc_dir
+		cp -f $nrs1800_dir/nr_config.json $etc_dir/
 	fi
 	if [ -f $nrs1800_dir/sroute ]; then
-		cp -f $nrs1800_dir/sroute $etc_dir
+		cp -f $nrs1800_dir/sroute $etc_dir/
 	fi
 	#network
 	if [ -f $appdir/shell/interfaces ]; then

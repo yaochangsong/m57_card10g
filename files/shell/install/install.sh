@@ -11,7 +11,7 @@ LOGROTATE_SRC_FILE=${INS_SRC_DIR}/app/rsyslog.d/platform
 CRON_SRC_FILE=${INS_SRC_DIR}/app/rsyslog.d/platform.cron
 GOAHEAD_SHELL=${INS_SRC_DIR}/app/shell/goahead.sh
 ETC_DIR=${INS_SRC_DIR}/app/etc
-CONF_FILE=${INS_SRC_DIR}/app/config.json
+CONF_FILE=${ETC_DIR}/config.json
 install_platform()
 {
 	echo "install platform!"

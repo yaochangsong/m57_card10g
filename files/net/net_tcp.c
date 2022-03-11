@@ -672,6 +672,7 @@ int tcp_client_do_for_each(int (*f)(struct net_tcp_client *, void *), void **cl,
 int tcp_send_data_to_client(int fd, const char *buf, int buflen)
 {
     ssize_t ret = 0, len;
+    int count = 0;
 
     if (!buflen)
         return 0;
@@ -680,11 +681,14 @@ int tcp_send_data_to_client(int fd, const char *buf, int buflen)
         len = send(fd, buf, buflen, 0);
 
         if (len < 0) {
-            //printf_note("[fd:%d]-send len : %ld, %d[%s], %d, %d, %d, %d\n", fd, len, errno, strerror(errno), EAGAIN, EWOULDBLOCK, ENOTCONN, EINTR);
-            //if (errno == EINTR )
-            //    continue;
-
-            if ( errno == ENOTCONN || errno == EAGAIN || errno == EWOULDBLOCK)
+            //printf_note("[fd:%d]count:%d, send len : %ld, %d[%s], %d, %d, %d, %d\n", fd, len, count, errno, strerror(errno), EAGAIN, EWOULDBLOCK, ENOTCONN, EINTR);
+            if (errno == EINTR || errno == EAGAIN || errno == EWOULDBLOCK){
+                if(count ++ > 10000)
+                    break;
+                else
+                    continue;
+            }
+            if ( errno == ENOTCONN )
                 break;
 
             return -1;

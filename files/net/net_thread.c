@@ -15,6 +15,33 @@ struct thread_con_wait {
     int prio;   /* 0: low, 1: high */
 }*con_wait[MAX_PRIO_LEVEL];
 
+/* HPA协议头定义 8字节 */
+struct hpa_data_header_st {
+    #define HPA_DATA_HEADER_LEN 8
+    uint16_t header;        /* 头标志0x5751*/
+    uint8_t  prio : 4;      /* 优先级：0:最低,1:普通,2:优先,3:最高 */
+    uint8_t  type : 4;      /* 包类型: 数据：0,控制：2 */
+    uint8_t  number;        /* 流水号 */
+    uint16_t len;           /* 包长度：所有字段总长度 */
+    uint16_t resv;          /* 保留   */
+};
+
+/* HPA扩展协议头定义 16字节 */
+struct hpa_data_exheader_st {
+    #define HPA_DATA_EX_HEADER_LEN 16
+    uint16_t py_dist_addr;
+    uint16_t py_src_addr;
+    uint16_t dist_addr;
+    uint16_t len;
+    uint16_t type;
+    uint16_t src_addr;
+    uint16_t port;
+    uint16_t resv;
+};
+#define HPA_HEADER_LEN (HPA_DATA_HEADER_LEN + HPA_DATA_EX_HEADER_LEN)
+#define HPA_MAXDATA_LEN (2048)
+
+
 static char *_get_thread_name(int index)
 {
     static char buffer[64];
@@ -278,30 +305,6 @@ uint64_t  get_send_bytes_by_type_ex(void *args,  int type, int id)
     return sum_bytes;
 }
 
-/* HPA协议头定义 8字节 */
-struct hpa_data_header_st {
-    #define HPA_DATA_HEADER_LEN 8
-    uint16_t header;        /* 头标志0x5751*/
-    uint8_t  prio : 4;      /* 优先级：0:最低,1:普通,2:优先,3:最高 */
-    uint8_t  type : 4;      /* 包类型: 数据：0,控制：2 */
-    uint8_t  number;        /* 流水号 */
-    uint16_t len;           /* 包长度：所有字段总长度 */
-    uint16_t resv;          /* 保留   */
-};
-
-/* HPA扩展协议头定义 16字节 */
-struct hpa_data_exheader_st {
-    #define HPA_DATA_EX_HEADER_LEN 16
-    uint16_t py_dist_addr;
-    uint16_t py_src_addr;
-    uint16_t dist_addr;
-    uint16_t len;
-    uint16_t type;
-    uint16_t src_addr;
-    uint16_t port;
-    uint16_t resv;
-};
-
 static int __find_next_header__(uint8_t *ptr, size_t len)
 {
     size_t offset = 0;
@@ -320,13 +323,33 @@ static int __find_next_header__(uint8_t *ptr, size_t len)
     return offset;
 }
 
+static int __find_next_header_ex__(uint8_t *ptr, size_t len)
+{
+    size_t offset = 0;
+    int find = 0;
+    do{
+        ptr += 8;
+        offset += 8;
+        if(*(uint16_t *)ptr == 0x5751){
+            find = 1;
+            break;
+        }
+    }while(offset < len);
+
+    if(find == 0)
+        return -1;
+
+    return offset;
+}
+
+
 static ssize_t _data_send_package(struct net_tcp_client *cl, void *data, size_t len)
 {
     struct hpa_data_header_st header;
     struct hpa_data_exheader_st exheader;
     int payload_len = 0, pad_len = 0, send_data_len = 0, sendok_len = 0, rv = 0, senderr_len = 0;
     char *pdata = NULL;
-    #define HPA_HEADER_LEN (HPA_DATA_HEADER_LEN + HPA_DATA_EX_HEADER_LEN)
+
     if(len < HPA_HEADER_LEN || !data)
         return 0;
 
@@ -335,7 +358,7 @@ static ssize_t _data_send_package(struct net_tcp_client *cl, void *data, size_t 
         memcpy(&header, pdata, HPA_DATA_HEADER_LEN);
        // memcpy(&exheader, (uint8_t *)pdata + HPA_DATA_HEADER_LEN, HPA_DATA_EX_HEADER_LEN);
         if(header.header != 0x5751){
-            pad_len = __find_next_header__(pdata, 32);
+            pad_len = __find_next_header__((uint8_t *)pdata, 32);
             if(pad_len > 0){
                 pdata += pad_len;
                 send_data_len += pad_len;
@@ -366,6 +389,47 @@ static ssize_t _data_send_package(struct net_tcp_client *cl, void *data, size_t 
     return (rv);
 }
 
+static ssize_t _data_send_package_(struct net_tcp_client *cl, void *data, size_t len)
+{
+    struct hpa_data_header_st header;
+    int payload_len = 0, pad_len = 0, sendok_len = 0, rv = 0;
+    uint8_t *pdata = NULL;
+    int offset = 0, left_len = 0;
+    
+    if(len < HPA_HEADER_LEN || !data)
+        return 0;
+
+    pdata = data;
+    do{
+        if(*(uint16_t *)pdata != 0x5751){
+            rv = __find_next_header_ex__(pdata, 32);
+            if(rv > 0){
+                pdata += rv;
+                pad_len += rv;
+            }else
+                break;
+        }
+        memcpy(&header, pdata, HPA_DATA_HEADER_LEN);
+        if(header.len < HPA_HEADER_LEN || header.len  > HPA_MAXDATA_LEN){
+            printf_err("payload_len err:%d\n", header.len);
+            break;
+        }
+        payload_len = header.len; 
+        rv = tcp_send_data_to_client(cl->sfd.fd.fd,   (char *)pdata,  payload_len);
+        if(rv > 0)
+            sendok_len += rv;
+        pdata += payload_len;
+        
+        offset = (void *)pdata - data;
+        left_len = len - offset;
+        if(left_len < HPA_HEADER_LEN){
+            pad_len += left_len;
+            break;
+        }
+    }while(sendok_len + pad_len < len);
+    
+    return (sendok_len + pad_len);
+}
 
 static ssize_t _data_send(struct net_tcp_client *cl, void *data, size_t len)
 {

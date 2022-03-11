@@ -278,6 +278,93 @@ uint64_t  get_send_bytes_by_type_ex(void *args,  int type, int id)
     return sum_bytes;
 }
 
+/* HPA协议头定义 8字节 */
+struct hpa_data_header_st {
+    #define HPA_DATA_HEADER_LEN 8
+    uint16_t header;        /* 头标志0x5751*/
+    uint8_t  prio : 4;      /* 优先级：0:最低,1:普通,2:优先,3:最高 */
+    uint8_t  type : 4;      /* 包类型: 数据：0,控制：2 */
+    uint8_t  number;        /* 流水号 */
+    uint16_t len;           /* 包长度：所有字段总长度 */
+    uint16_t resv;          /* 保留   */
+};
+
+/* HPA扩展协议头定义 16字节 */
+struct hpa_data_exheader_st {
+    #define HPA_DATA_EX_HEADER_LEN 16
+    uint16_t py_dist_addr;
+    uint16_t py_src_addr;
+    uint16_t dist_addr;
+    uint16_t len;
+    uint16_t type;
+    uint16_t src_addr;
+    uint16_t port;
+    uint16_t resv;
+};
+
+static int __find_next_header__(uint8_t *ptr, size_t len)
+{
+    size_t offset = 0;
+    do{
+        if(*(uint16_t *)ptr != 0x5751){
+            ptr += 8;
+            offset += 8;
+        }else{
+            break;
+        }
+    }while(offset < len);
+
+    if(offset >= len)
+        return -1;
+
+    return offset;
+}
+
+static ssize_t _data_send_package(struct net_tcp_client *cl, void *data, size_t len)
+{
+    struct hpa_data_header_st header;
+    struct hpa_data_exheader_st exheader;
+    int payload_len = 0, pad_len = 0, send_data_len = 0, sendok_len = 0, rv = 0, senderr_len = 0;
+    char *pdata = NULL;
+    #define HPA_HEADER_LEN (HPA_DATA_HEADER_LEN + HPA_DATA_EX_HEADER_LEN)
+    if(len < HPA_HEADER_LEN || !data)
+        return 0;
+
+    pdata = data;
+    do{
+        memcpy(&header, pdata, HPA_DATA_HEADER_LEN);
+       // memcpy(&exheader, (uint8_t *)pdata + HPA_DATA_HEADER_LEN, HPA_DATA_EX_HEADER_LEN);
+        if(header.header != 0x5751){
+            pad_len = __find_next_header__(pdata, 32);
+            if(pad_len > 0){
+                pdata += pad_len;
+                send_data_len += pad_len;
+                continue;
+            }
+            break;
+        }
+       
+        if(header.len < HPA_HEADER_LEN){
+            printf_err("payload_len err\n");
+            break;
+        }
+        payload_len = header.len; 
+        //print_array(pdata, payload_len);
+        rv = tcp_send_data_to_client(cl->sfd.fd.fd,   pdata,  payload_len);
+        if(rv > 0)
+            sendok_len += rv;
+        else
+            senderr_len += payload_len;
+        send_data_len += payload_len;
+        pdata += payload_len;
+    }while(send_data_len < len);
+   // printf_note("send_data_len:%d, sendok_len = %d, len=%d\n", send_data_len, sendok_len, len);
+    rv = (int)len - senderr_len;
+    if(rv < 0)
+        rv = 0;
+    
+    return (rv);
+}
 
 
 static ssize_t _data_send(struct net_tcp_client *cl, void *data, size_t len)
@@ -335,7 +422,7 @@ static ssize_t _send_vec_entry(void *args, void *_vec, void *data)
 
     //统计每个hash key发送字节
     spm_hash_set_sendbytes(data, vec->iov_len);
-    r = _data_send((struct net_tcp_client *)cl, vec->iov_base, vec->iov_len);
+    r = _data_send_package((struct net_tcp_client *)cl, vec->iov_base, vec->iov_len);
     //统计每个客户端线程发送成功字节
     if(r > 0)
         statistics_client_send_add(ctx->thread.statistics, r);
@@ -372,16 +459,18 @@ void  net_thread_con_broadcast(int ch, void *args)
 {
     int prio = 0;
     channel_param[ch] = args;
+    static int s_notify_num[_NOTIFY_MAX_NUM] = {0, 0};
+    int notify_num[_NOTIFY_MAX_NUM] = {0, 0};
 
     prio = _get_prio_by_channel(ch);
-    int notify_num = tcp_client_do_for_each(_net_thread_con_nofity, NULL, prio, NULL);
-    //printf_debug("ch:%d, notify_num=%d, prio=%d, %d\n", ch, notify_num, prio, _net_thread_count_get(prio));
-    notify_num = min(_net_thread_count_get(prio), notify_num);
+    notify_num[ch] = tcp_client_do_for_each(_net_thread_con_nofity, NULL, prio, NULL);
+    //printf_note("ch:%d, notify_num=%d, prio=%d, %d\n", ch, notify_num, prio, _net_thread_count_get(prio));
+    notify_num[ch] = max(_net_thread_count_get(prio), notify_num[ch]);
     if(ch >= _NOTIFY_MAX_NUM)
         ch = _NOTIFY_MAX_NUM-1;
-    if(notify_num > 0){
-        printf_debug("broadcast client num: %d, prio:%d\n", notify_num, prio);
-        _net_thread_con_wait_timeout(con_wait[prio], notify_num, 2000);
+    if(notify_num[ch] > 0){
+        printf_debug("broadcast client num: %d, prio:%d\n", notify_num[ch] , prio);
+        _net_thread_con_wait_timeout(con_wait[prio], notify_num[ch] , 2000);
     }
 }
 

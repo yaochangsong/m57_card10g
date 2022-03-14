@@ -16,6 +16,7 @@ struct net_thread_m{
     void *client;
     void *statistics;
     int prio;
+    bool is_sub;
     struct net_thread_wait pwait;
 };
 

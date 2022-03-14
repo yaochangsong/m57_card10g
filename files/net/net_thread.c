@@ -522,19 +522,26 @@ static int  _data_dispatcher(int key, void *data, void *vec, void *_ctx)
 void  net_thread_con_broadcast(int ch, void *args)
 {
     int prio = 0;
-    channel_param[ch] = args;
-    static int s_notify_num[_NOTIFY_MAX_NUM] = {0, 0};
-    int notify_num[_NOTIFY_MAX_NUM] = {0, 0};
-
-    prio = _get_prio_by_channel(ch);
-    notify_num[ch] = tcp_client_do_for_each(_net_thread_con_nofity, NULL, prio, NULL);
-    //printf_note("ch:%d, notify_num=%d, prio=%d, %d\n", ch, notify_num, prio, _net_thread_count_get(prio));
-    notify_num[ch] = max(_net_thread_count_get(prio), notify_num[ch]);
     if(ch >= _NOTIFY_MAX_NUM)
         ch = _NOTIFY_MAX_NUM-1;
-    if(notify_num[ch] > 0){
-        printf_debug("broadcast client num: %d, prio:%d\n", notify_num[ch] , prio);
-        _net_thread_con_wait_timeout(con_wait[prio], notify_num[ch] , 2000);
+    
+    channel_param[ch] = args;
+    static int s_notify_num[_NOTIFY_MAX_NUM] = {[0 ... _NOTIFY_MAX_NUM-1] = 0};
+    int notify_num = 0;
+
+    prio = _get_prio_by_channel(ch);
+    //notify_num[ch] = tcp_client_do_for_each(_net_thread_con_nofity, NULL, prio, NULL);
+    //printf_note("ch:%d, notify_num=%d, prio=%d, %d\n", ch, notify_num, prio, _net_thread_count_get(prio));
+    //notify_num[ch] = max(_net_thread_count_get(prio), notify_num[ch]);
+    notify_num = _net_thread_count_get(prio);
+    if(notify_num != s_notify_num[ch]){
+        printf_note("notify_num channged from %d to %d\n", s_notify_num[ch], notify_num);
+        s_notify_num[ch] = notify_num;
+    }
+
+    if(notify_num > 0){
+        printf_debug("broadcast client num: %d, prio:%d\n", notify_num , prio);
+        _net_thread_con_wait_timeout(con_wait[prio], notify_num , 2000);
     }
 }
 
@@ -619,8 +626,13 @@ static int _net_thread_set_prio(struct net_tcp_client *client, int prio)
         client->section.thread->thread.prio = prio;
     else
         client->section.thread->thread.prio = 0;
-    printf_note("set prio: %s\n", client->section.thread->thread.prio == 1 ? "Urgent" : "Normal");
-    _net_thread_count_add(client->section.thread->thread.prio);
+    
+    if(client->section.thread->thread.is_sub == false){
+        client->section.thread->thread.is_sub = true;
+        _net_thread_count_add(client->section.thread->thread.prio);
+        printf_note("set prio: %s\n", client->section.thread->thread.prio == 1 ? "Urgent" : "Normal");
+    }
+        
     return 0;
 }
 
@@ -646,6 +658,7 @@ static int _thread_init(void *args)
         }
         have_inited = 1;
     }
+    client->section.thread->thread.is_sub = false;
     ctx->thread.statistics = net_statistics_client_create_context(client->get_peer_port(client));
     return 0;
 }

@@ -150,6 +150,10 @@ int client_hash_dump(struct net_tcp_client *cl)
     return hash_dump((struct cache_hash *)cl->section.hash, dump_entry);
 }
 
+bool client_hash_is_null(struct net_tcp_client *cl)
+{
+    return false;
+}
 
 
 void sub_test_main(void)

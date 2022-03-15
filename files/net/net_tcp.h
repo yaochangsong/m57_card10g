@@ -153,6 +153,7 @@ extern int tcp_send_data_uplink(char  *data, int len, void *args);
 extern int tcp_client_do_for_each(int (*f)(struct net_tcp_client *, void *), void **cl, int prio, void *args);
 extern int send_vec_data_to_client(struct net_tcp_client *client, struct iovec *iov, int iov_len);
 extern int tcp_send_data_to_client(int fd, const char *buf, int buflen);
+extern int tcp_send_data_to_client_ex(struct net_tcp_client *client, const char *buf, int buflen);
 extern struct net_tcp_client *tcp_find_prio_client(void *client, int prio);
 
 #endif

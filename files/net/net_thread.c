@@ -196,7 +196,8 @@ static int _net_thread_con_nofity(struct net_tcp_client *cl, void *args)
     struct net_thread_m *ptd = &cl->section.thread->thread;
     if(unlikely(ptd == NULL))
         return -1;
-    
+    //if(client_hash_is_null(cl))
+   //     return -1;
    // if(pthread_check_alive_by_tid(ptd->tid) == false){
    //     printf_note("[%s]pthread is not running\n",  ptd->name);
    //     return -1;
@@ -433,7 +434,7 @@ static ssize_t _data_send_package_(struct net_tcp_client *cl, void *data, size_t
 
 static ssize_t _data_send(struct net_tcp_client *cl, void *data, size_t len)
 {
-    #define THREAD_SEND_MAX_BYTE  131072 //8388608//262144//131072
+    #define THREAD_SEND_MAX_BYTE 65536//131072 //8388608//262144//131072
     int index = 0, r = 0;
     size_t sbyte = 0, reminder = 0;
     char *pdata = NULL;
@@ -446,13 +447,13 @@ static ssize_t _data_send(struct net_tcp_client *cl, void *data, size_t len)
     pdata = (char *)data;
 
     for(int i = 0; i<index; i++){
-        r = tcp_send_data_to_client(cl->sfd.fd.fd,   pdata,  THREAD_SEND_MAX_BYTE);
+        r = tcp_send_data_to_client_ex(cl, pdata,  THREAD_SEND_MAX_BYTE);
         pdata += THREAD_SEND_MAX_BYTE;
         if(r > 0)
             send_len += r;
     }
     if(reminder > 0){
-        r = tcp_send_data_to_client(cl->sfd.fd.fd,   pdata,  reminder);
+        r = tcp_send_data_to_client_ex(cl, pdata,  reminder);
         if(r > 0)
             send_len += r;
     }
@@ -542,7 +543,7 @@ void  net_thread_con_broadcast(int ch, void *args)
 
     if(notify_num > 0){
         printf_debug("broadcast client num: %d, prio:%d\n", notify_num , prio);
-        _net_thread_con_wait_timeout(ch, con_wait[prio], notify_num , 2000);
+        _net_thread_con_wait_timeout(ch, con_wait[prio], notify_num , 4000);
     }
 }
 

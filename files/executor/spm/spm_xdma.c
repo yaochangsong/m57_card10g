@@ -617,7 +617,7 @@ static ssize_t _xdma_of_match_pkgs(int ch, void *data, uint32_t len, void *args,
             //printf_note("[%d]not aglin 16,add %d, frame_len:%lu[0x%lx], raw_len:%lu[0x%lx]\n", pos, reminder16, frame_len, frame_len,raw_len,raw_len);
         }
         #endif
-        _align_nbyte(&frame_len, 16);
+        //_align_nbyte(&frame_len, 16);
         if(frame_len > 2048){   /* 帧长度必须<=2048，否则认为是错误帧 */
             printf_warn("payload length error: %lu\n", frame_len);
             *err_code = 1;

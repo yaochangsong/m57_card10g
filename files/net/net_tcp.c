@@ -672,7 +672,6 @@ int tcp_client_do_for_each(int (*f)(struct net_tcp_client *, void *), void **cl,
 int tcp_send_data_to_client(int fd, const char *buf, int buflen)
 {
     ssize_t ret = 0, len;
-    int count = 0;
 
     if (!buflen)
         return 0;
@@ -683,12 +682,7 @@ int tcp_send_data_to_client(int fd, const char *buf, int buflen)
         if (len < 0) {
             //printf_note("[fd:%d]count:%d, send len : %ld, %d[%s], %d, %d, %d, %d\n", fd, len, count, errno, strerror(errno), EAGAIN, EWOULDBLOCK, ENOTCONN, EINTR);
             if (errno == EINTR || errno == EAGAIN || errno == EWOULDBLOCK){
-                if(count ++ > 200000){
-                    printf_note("[fd:%d]count:%d, send len : %ld, %d[%s], %d, %d, %d, %d\n", fd, len, count, errno, strerror(errno), EAGAIN, EWOULDBLOCK, ENOTCONN, EINTR);
-                    break;
-                }
-                else
-                    continue;
+                continue;
             }
             if ( errno == ENOTCONN )
                 break;
@@ -703,6 +697,51 @@ int tcp_send_data_to_client(int fd, const char *buf, int buflen)
     
     return ret;
 }
+
+int tcp_send_data_to_client_ex(struct net_tcp_client *client, const char *buf, int buflen)
+{
+    ssize_t ret = 0, len;
+    int count = 0;
+    
+    if (!buflen || !client)
+        return 0;
+    int fd = client->sfd.fd.fd;
+
+    while (buflen) {
+        len = send(fd, buf, buflen, 0);
+
+        if (len < 0) {
+            //printf_note("[fd:%d]count:%d, send len : %ld, %d[%s], %d, %d, %d, %d\n", fd, len, count, errno, strerror(errno), EAGAIN, EWOULDBLOCK, ENOTCONN, EINTR);
+            if (errno == EINTR || errno == EAGAIN || errno == EWOULDBLOCK){
+                count++;
+                //if(count % 1000 == 0){
+                   //printf_note("[%s:%d]count:%d, send len : %ld, %d[%s], %d, %d, %d, %d\n", client->get_peer_addr(client), client->get_peer_port(client),count, len, errno, strerror(errno), EAGAIN, EWOULDBLOCK, ENOTCONN, EINTR);
+                //   usleep(1);
+                //}
+                if(count > 100000){
+                    count = 0;
+                    printf_note("[%s:%d]count:%d, send len : %ld, %d[%s], %d, %d, %d, %d\n", client->get_peer_addr(client), client->get_peer_port(client),count, len, errno, strerror(errno), EAGAIN, EWOULDBLOCK, ENOTCONN, EINTR);
+                    //break;
+                }
+                //else
+                 continue;
+            }
+            if ( errno == ENOTCONN )
+                break;
+
+            return -1;
+        }
+
+        ret += len;
+        buf += len;
+        buflen -= len;
+    }
+    
+    return ret;
+}
+
+
+
 
 
 int send_vec_data_to_client(struct net_tcp_client *client, struct iovec *iov, int iov_len)

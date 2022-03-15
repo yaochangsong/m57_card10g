@@ -135,7 +135,7 @@ static void *_net_thread_con_init(int level)
     return wait;
 }
 
-static void _net_thread_con_wait_timeout(struct thread_con_wait *wait, int num, int timeout_ms)
+static void _net_thread_con_wait_timeout(int ch, struct thread_con_wait *wait, int num, int timeout_ms)
 {
     if(num <= 0 || wait == NULL)
         return;
@@ -148,7 +148,7 @@ static void _net_thread_con_wait_timeout(struct thread_con_wait *wait, int num, 
     printf_debug("Wait[%d] to finish consume %d\n", num, wait->count);
     pthread_mutex_lock(&wait->count_lock);
     while (wait->count < num){
-        printf_debug("Wait[%d]!= %d\n", num, wait->count);
+        //printf_debug("Wait[%d]!= %d\n", num, wait->count);
         //pthread_cond_wait(&wait->count_cond, &wait->count_lock);
         #if 1
         gettimeofday(&now, NULL);
@@ -158,12 +158,12 @@ static void _net_thread_con_wait_timeout(struct thread_con_wait *wait, int num, 
         outtime.tv_nsec = us * 1000;
         ret = pthread_cond_timedwait(&wait->count_cond, &wait->count_lock, &outtime);
         if(ret != 0){
-            printf_warn(">>>>>>wait thread timeout!!\n");
+            printf_warn(">>>>>>[ch:%d]wait thread timeout!!\n", ch);
             break;
         }
         #endif
     }
-    printf_debug("Wait[%d] consume over>>> %d\n", num, wait->count);
+   // printf_debug("Wait[%d] consume over>>> %d\n", num, wait->count);
     wait->count = 0;
     pthread_mutex_unlock(&wait->count_lock);
     //_net_thread_con_stopped(wait);
@@ -486,7 +486,8 @@ static ssize_t _send_vec_entry(void *args, void *_vec, void *data)
 
     //统计每个hash key发送字节
     spm_hash_set_sendbytes(data, vec->iov_len);
-    r = _data_send_package((struct net_tcp_client *)cl, vec->iov_base, vec->iov_len);
+    //r = _data_send_package_((struct net_tcp_client *)cl, vec->iov_base, vec->iov_len);
+    r = _data_send((struct net_tcp_client *)cl, vec->iov_base, vec->iov_len);
     //统计每个客户端线程发送成功字节
     if(r > 0)
         statistics_client_send_add(ctx->thread.statistics, r);
@@ -530,18 +531,18 @@ void  net_thread_con_broadcast(int ch, void *args)
     int notify_num = 0;
 
     prio = _get_prio_by_channel(ch);
-    //notify_num[ch] = tcp_client_do_for_each(_net_thread_con_nofity, NULL, prio, NULL);
+    notify_num = tcp_client_do_for_each(_net_thread_con_nofity, NULL, prio, NULL);
     //printf_note("ch:%d, notify_num=%d, prio=%d, %d\n", ch, notify_num, prio, _net_thread_count_get(prio));
-    //notify_num[ch] = max(_net_thread_count_get(prio), notify_num[ch]);
-    notify_num = _net_thread_count_get(prio);
+    notify_num = max(_net_thread_count_get(prio), notify_num);
+    //notify_num = _net_thread_count_get(prio);
     if(notify_num != s_notify_num[ch]){
-        printf_note("notify_num channged from %d to %d\n", s_notify_num[ch], notify_num);
+        printf_note("ch:%d,notify_num channged from %d to %d\n", ch, s_notify_num[ch], notify_num);
         s_notify_num[ch] = notify_num;
     }
 
     if(notify_num > 0){
         printf_debug("broadcast client num: %d, prio:%d\n", notify_num , prio);
-        _net_thread_con_wait_timeout(con_wait[prio], notify_num , 2000);
+        _net_thread_con_wait_timeout(ch, con_wait[prio], notify_num , 2000);
     }
 }
 
@@ -658,7 +659,7 @@ static int _thread_init(void *args)
         }
         have_inited = 1;
     }
-    client->section.thread->thread.is_sub = false;
+    ctx->thread.is_sub = false;
     ctx->thread.statistics = net_statistics_client_create_context(client->get_peer_port(client));
     return 0;
 }

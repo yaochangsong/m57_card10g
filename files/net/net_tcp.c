@@ -683,8 +683,10 @@ int tcp_send_data_to_client(int fd, const char *buf, int buflen)
         if (len < 0) {
             //printf_note("[fd:%d]count:%d, send len : %ld, %d[%s], %d, %d, %d, %d\n", fd, len, count, errno, strerror(errno), EAGAIN, EWOULDBLOCK, ENOTCONN, EINTR);
             if (errno == EINTR || errno == EAGAIN || errno == EWOULDBLOCK){
-                if(count ++ > 10000)
+                if(count ++ > 200000){
+                    printf_note("[fd:%d]count:%d, send len : %ld, %d[%s], %d, %d, %d, %d\n", fd, len, count, errno, strerror(errno), EAGAIN, EWOULDBLOCK, ENOTCONN, EINTR);
                     break;
+                }
                 else
                     continue;
             }

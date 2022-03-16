@@ -262,6 +262,22 @@ int hash_do_for_each(struct cache_hash *cache,int (*callback) (void *, int, int)
 
 }
 
+int hash_count(struct cache_hash *cache)
+{
+    int rv = 0;
+
+    if (!cache)
+        return -EINVAL;
+
+    if ((rv = pthread_rwlock_rdlock(&(cache->cache_lock))) != 0)
+        return -1;
+    
+    rv = HASH_COUNT(cache->entries);
+    pthread_rwlock_unlock(&(cache->cache_lock));
+    return rv;
+}
+
+
 int hash_dump(struct cache_hash *hash, int (*callback) (void *, int))
 {
     struct hash_entry *entry;

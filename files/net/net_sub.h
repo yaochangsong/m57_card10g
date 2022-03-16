@@ -31,5 +31,6 @@ extern int client_hash_dump(struct net_tcp_client *cl);
 extern ssize_t client_hash_do_for_each_key(struct net_tcp_client *cl, int key, void *data, void *vec, 
                                                 ssize_t (*callback) (void *, void *, void *), void *args);
 extern void client_hash_unlock(struct net_tcp_client *cl);
+extern bool client_hash_is_null(struct net_tcp_client *cl);
 
 #endif

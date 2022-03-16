@@ -196,8 +196,8 @@ static int _net_thread_con_nofity(struct net_tcp_client *cl, void *args)
     struct net_thread_m *ptd = &cl->section.thread->thread;
     if(unlikely(ptd == NULL))
         return -1;
-    //if(client_hash_is_null(cl))
-   //     return -1;
+    if(client_hash_is_null(cl))
+        return -1;
    // if(pthread_check_alive_by_tid(ptd->tid) == false){
    //     printf_note("[%s]pthread is not running\n",  ptd->name);
    //     return -1;
@@ -487,8 +487,8 @@ static ssize_t _send_vec_entry(void *args, void *_vec, void *data)
 
     //统计每个hash key发送字节
     spm_hash_set_sendbytes(data, vec->iov_len);
-    //r = _data_send_package_((struct net_tcp_client *)cl, vec->iov_base, vec->iov_len);
-    r = _data_send((struct net_tcp_client *)cl, vec->iov_base, vec->iov_len);
+    r = _data_send_package_((struct net_tcp_client *)cl, vec->iov_base, vec->iov_len);
+   // r = _data_send((struct net_tcp_client *)cl, vec->iov_base, vec->iov_len);
     //统计每个客户端线程发送成功字节
     if(r > 0)
         statistics_client_send_add(ctx->thread.statistics, r);
@@ -534,7 +534,7 @@ void  net_thread_con_broadcast(int ch, void *args)
     prio = _get_prio_by_channel(ch);
     notify_num = tcp_client_do_for_each(_net_thread_con_nofity, NULL, prio, NULL);
     //printf_note("ch:%d, notify_num=%d, prio=%d, %d\n", ch, notify_num, prio, _net_thread_count_get(prio));
-    notify_num = max(_net_thread_count_get(prio), notify_num);
+    notify_num = min(_net_thread_count_get(prio), notify_num);
     //notify_num = _net_thread_count_get(prio);
     if(notify_num != s_notify_num[ch]){
         printf_note("ch:%d,notify_num channged from %d to %d\n", ch, s_notify_num[ch], notify_num);

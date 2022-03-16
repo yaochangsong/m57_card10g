@@ -32,6 +32,7 @@ extern int hash_delete_key(struct cache_hash *cache, int keep_data);
 extern int hash_lookup(struct cache_hash *cache, int key, void *result);
 extern int hash_insert(struct cache_hash *cache, int key, void *data);
 extern int hash_do_for_each(struct cache_hash *cache,int (*callback) (void *, int, int), void *args);
+extern int hash_count(struct cache_hash *cache);
 extern int hash_dump(struct cache_hash *hash, int (*callback) (void *, int));
 #endif
 

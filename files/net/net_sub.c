@@ -152,6 +152,9 @@ int client_hash_dump(struct net_tcp_client *cl)
 
 bool client_hash_is_null(struct net_tcp_client *cl)
 {
+    if(hash_count((struct cache_hash *)cl->section.hash) <= 0)
+        return true;
+
     return false;
 }
 

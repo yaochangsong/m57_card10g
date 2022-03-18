@@ -558,7 +558,8 @@ loop:
            //if(ctx->ops->send_xdma_data)
            //     ctx->ops->send_xdma_data(ch, ptr_data, len, count, run);
         }
-         _net_thread_dispatcher_refresh(run, ch);
+         if(count > 0)
+            _net_thread_dispatcher_refresh(run, ch);
         ctx->ops->read_xdma_over_deal(ch, NULL);
         if(socket_bitmap_weight() == 0){
             io_set_enable_command(XDMA_MODE_DISABLE, ch, 0, 0);

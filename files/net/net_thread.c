@@ -102,7 +102,7 @@ static uint32_t _net_thread_count_get(int level)
 
 static void _net_thread_con_over(struct thread_con_wait *wait, struct net_thread_m *ptd)
 {
-    printf_debug("thread consume over start\n");
+    //printf_debug("thread consume over start\n");
     pthread_mutex_lock(&wait->count_lock);
     wait->count++;
     //printf_note("thread[%s] consume over, %u\n", ptd->name, wait->count);
@@ -145,7 +145,7 @@ static void _net_thread_con_wait_timeout(int ch, struct thread_con_wait *wait, i
     int ret = 0;
     uint64_t us;
 
-    printf_debug("Wait[%d] to finish consume %d\n", num, wait->count);
+    //printf_debug("Wait[%d] to finish consume %d\n", num, wait->count);
     pthread_mutex_lock(&wait->count_lock);
     while (wait->count < num){
         //printf_debug("Wait[%d]!= %d\n", num, wait->count);
@@ -403,7 +403,7 @@ static ssize_t _data_send_package_(struct net_tcp_client *cl, void *data, size_t
     pdata = data;
     do{
         if(*(uint16_t *)pdata != 0x5751){
-            rv = __find_next_header_ex__(pdata, 32);
+            rv = __find_next_header_ex__(pdata, len - sendok_len - pad_len);
             if(rv > 0){
                 pdata += rv;
                 pad_len += rv;
@@ -542,7 +542,7 @@ void  net_thread_con_broadcast(int ch, void *args)
     }
 
     if(notify_num > 0){
-        printf_debug("broadcast client num: %d, prio:%d\n", notify_num , prio);
+        //printf_debug("broadcast client num: %d, prio:%d\n", notify_num , prio);
         _net_thread_con_wait_timeout(ch, con_wait[prio], notify_num , 4000);
     }
 }
@@ -558,7 +558,7 @@ static int _net_thread_main_loop(void *arg)
 
     /* thread wait until receive start data consume */
     _net_thread_wait(ctx);
-    printf_debug("thread[%s] receive start consume, prio=%d\n", ptd->name, ctx->thread.prio);
+    //printf_debug("thread[%s] receive start consume, prio=%d\n", ptd->name, ctx->thread.prio);
     //TIME_ELAPSED(
     ch = _get_channel_by_prio(cl->section.thread->thread.prio);
     if(spm_ctx && spm_ctx->run_args[ch]){

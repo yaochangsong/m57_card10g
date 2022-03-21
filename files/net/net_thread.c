@@ -403,7 +403,7 @@ static ssize_t _data_send_package_(struct net_tcp_client *cl, void *data, size_t
     pdata = data;
     do{
         if(*(uint16_t *)pdata != 0x5751){
-            rv = __find_next_header_ex__(pdata, len - sendok_len - pad_len);
+            rv = __find_next_header_ex__(pdata, 32);
             if(rv > 0){
                 pdata += rv;
                 pad_len += rv;

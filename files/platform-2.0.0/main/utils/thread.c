@@ -13,6 +13,7 @@
 *  Initial revision.
 ******************************************************************************/
 #include <unistd.h> 
+#include <stdlib.h>
 #include "bitops.h"
 #include <assert.h>
 #include <stdbool.h>
@@ -70,6 +71,8 @@ void *thread_loop_cb (void *s)
     struct thread_args args;
     
     memcpy(&args, s, sizeof(struct thread_args));
+    if(s)
+        free(s);
     pthread_detach(pthread_self());
     
     pthread_cleanup_push(args.exit_callback, args.arg_exit);
@@ -98,13 +101,16 @@ int pthread_create_detach (const pthread_attr_t *attr, int (*init_callback) (voi
                                         char *name, void *arg_cb,void *arg_exit, pthread_t *tid)
 {
 
-    struct thread_args args;
-    args.name = name;
-    args.init_callback = init_callback;
-    args.arg_exit = arg_exit;
-    args.arg_cb = arg_cb;
-    args.callback = start_routine;
-    args.exit_callback = exit_callback;
+    struct thread_args *args;
+    args = (struct thread_args *)calloc(1, sizeof(*args));
+    if(args == NULL)
+        return -1;
+    args->name = name;
+    args->init_callback = init_callback;
+    args->arg_exit = arg_exit;
+    args->arg_cb = arg_cb;
+    args->callback = start_routine;
+    args->exit_callback = exit_callback;
     int err, i;
     unsigned long   tid_index = 0;
     if(bitmap_weight(thread_bmp, MAX_TEST_BITS) >= MAX_TEST_BITS){
@@ -121,7 +127,7 @@ int pthread_create_detach (const pthread_attr_t *attr, int (*init_callback) (voi
     tid_index = find_first_zero_bit(thread_bmp, MAX_TEST_BITS);
     tbmp.thread_t[tid_index].name = strdup(name);
 
-    err = pthread_create (&tbmp.thread_t[tid_index].tid , attr , thread_loop_cb , &args);
+    err = pthread_create (&tbmp.thread_t[tid_index].tid , attr , thread_loop_cb , args);
     if (err != 0){
         printf("can't create thread: %s\n", strerror(err));
         return -1;

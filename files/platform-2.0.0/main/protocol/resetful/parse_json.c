@@ -101,10 +101,12 @@ static int8_t xw_decode_method_convert(uint8_t method)
         d_method = IO_DQ_MODE_AM;
     }else if(method == DC_MODE_FM || method == DC_MODE_WFM) {
         d_method = IO_DQ_MODE_FM;
-    }else if(method == DC_MODE_LSB || method == DC_MODE_USB) {
+    }else if(method == DC_MODE_LSB || method == DC_MODE_USB || method == DC_MODE_ISB) {
         d_method = IO_DQ_MODE_LSB;
     }else if(method == DC_MODE_CW) {
         d_method = IO_DQ_MODE_CW;
+    }else if(method == DC_MODE_PM) {
+        d_method = IO_DQ_MODE_PM;
     }else if(method == DC_MODE_IQ) {
         d_method = IO_DQ_MODE_IQ;
     }else{
@@ -255,6 +257,7 @@ int parse_json_net(const char * const body)
         r = inet_pton(AF_INET, value->valuestring, &addr);
         if(r <= 0){
             printf_warn("invalid gateway: %s\n", value->valuestring);
+            cJSON_Delete(root);
             return RESP_CODE_PARSE_ERR;
         }
         gw = addr.s_addr;

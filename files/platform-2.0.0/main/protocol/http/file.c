@@ -271,7 +271,7 @@ static char *file_unix2date(time_t ts, char *buf, int len)
 static char *file_Etag(struct stat *s, char *buf, int len)
 {
     memset(buf, 0, len); 
-    snprintf(buf, len, "%lx-%lu", (uint64_t)s->st_mtime, (uint64_t)s->st_size);
+    snprintf(buf, len, "\"%lx-%lu\"", (uint64_t)s->st_mtime, (uint64_t)s->st_size);
     return buf;
 }
 static const char * uh_file_mime_lookup(const char *path)
@@ -300,8 +300,10 @@ static void uh_file_response_ok_hdrs(struct uh_client *cl, struct stat *s)
     cl->printf(cl, "Cache-Control:no-cache\r\n");
     cl->printf(cl, "Access-Control-Allow-Origin:*\r\n");/* 允许跨域 add by yaocs */
     cl->printf(cl, "Content-Disposition:attachement\r\n");
-    cl->printf(cl, "Last-Modified: %s\r\n", file_unix2date(s->st_mtime, buf, sizeof(buf)));
-    cl->printf(cl, "Etag: %s\r\n", file_Etag(s, buf, sizeof(buf)));    //Etag字段add by wzq
+    if (s) {
+        cl->printf(cl, "Last-Modified: %s\r\n", file_unix2date(s->st_mtime, buf, sizeof(buf)));
+        cl->printf(cl, "Etag: %s\r\n", file_Etag(s, buf, sizeof(buf)));    //Etag字段add by wzq
+    }
     cl->printf(cl, "Date: %s\r\n", file_unix2date(time(NULL), buf, sizeof(buf)));
 }
 
@@ -326,7 +328,7 @@ static void uh_file_response_206(struct uh_client *cl, struct stat *s)
 
 static void uh_file_response_416(struct uh_client *cl, struct stat *s)
 {
-    cl->send_header(cl, 416, "Requested Range Not Satisfiable", s->st_size);
+    cl->send_header(cl, 416, "Requested Range Not Satisfiable", 0);
     uh_file_response_ok_hdrs(cl, s);
 }
 static int uh_file_if_modified_since(struct uh_client *cl, struct stat *s)
@@ -424,15 +426,21 @@ static int uh_file_if_range(struct uh_client *cl, struct stat *s)
         if (pbytes)
             pbytes++;
         else
-            return false;
+            goto fail;
 
-        res = uh_prase_range(cl, pbytes, s);
-        return res;
+        if ((res = uh_prase_range(cl, pbytes, s)) == true)
+            return res;
+        else
+            goto fail;
     }
 exit:
     cl->range.offset = 0;
     cl->range.length = s->st_size;
     return true;
+
+fail:
+    uh_file_response_416(cl, s);
+    return false;
 }
 static void file_write_cb(struct uh_client *cl)
 {
@@ -474,24 +482,18 @@ static void uh_file_free(struct uh_client *cl)
 static void uh_file_data(struct uh_client *cl, struct path_info *pi, int fd)
 {
     /* test preconditions */
-    if ((!uh_file_if_modified_since(cl, &pi->stat))) {
+    if ((!uh_file_if_modified_since(cl, &pi->stat)) ||
+        (!uh_file_if_range(cl, &pi->stat))) {
         cl->printf(cl, "\r\n");
         cl->request_done(cl);
         close(fd);
         return;
     }
-     printf_warn("pi->phys[%s], pi->name:%s,pi->info=%s\n", pi->phys,pi->name, pi->info);
+    printf_warn("pi->phys[%s], pi->name:%s,pi->info=%s\n", pi->phys,pi->name, pi->info);
 
-    if (!uh_file_if_range(cl, &pi->stat)) {
-        uh_file_response_416(cl, &pi->stat);
-        cl->printf(cl, "\r\n");
-        cl->request_done(cl);
-        close(fd);
-        return;
-    }
     /* write status */
     if (cl->range.length == pi->stat.st_size) {
-    uh_file_response_200(cl, &pi->stat);
+        uh_file_response_200(cl, &pi->stat);
     } else {
         uh_file_response_206(cl, &pi->stat);
     }

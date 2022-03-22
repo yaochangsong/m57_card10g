@@ -23,6 +23,8 @@ typedef enum _XW_DECODE_ID{
     DC_MODE_LSB = 0x04,
     DC_MODE_USB = 0x05,
     DC_MODE_WFM = 0x06,
+    DC_MODE_ISB = 0x07,
+    DC_MODE_PM = 0x08,
 }_DECODE_ID;
 
 

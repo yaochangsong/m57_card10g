@@ -555,7 +555,7 @@ static void client_free(struct uh_client *cl)
            // uh_ssl_client_detach(cl);
         }
         cl->srv->nclients--;
-        executor_net_disconnect_notify(&cl->peer_addr);
+        //executor_net_disconnect_notify(&cl->peer_addr);
         ustream_free(&cl->sfd.stream);
         shutdown(cl->sfd.fd.fd, SHUT_RDWR);
         close(cl->sfd.fd.fd);

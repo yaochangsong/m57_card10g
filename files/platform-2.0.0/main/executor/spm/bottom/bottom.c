@@ -235,6 +235,9 @@ static int bottom_load_buffer(int ch, int fft_order_len)
                     memset(filename, 0, sizeof(filename));
                     _bottom_noise_data_filename(filename, sizeof(filename), fftsize, freq_table[j].mfreq, MHZ(bw_points[k].bw_mhz), ch);
                     printf_debug("filename: %s\n", filename);
+                    if (access(filename, F_OK)) {
+                        continue;
+                    }
                     result = stat(filename, &fstat);
                     if(result != 0){
                         printfw("filename: %s;", filename);

@@ -44,11 +44,34 @@ static  void init_write_file(char *filename, int index)
     }
 }
 
+static inline void close_file(void)
+{
+    for(int i = 0; i < 4; i++){
+        if(_file_fd[i] > 0){
+            fclose(_file_fd[i]);
+        }
+    }
+    
+}
+
+
 static inline int write_file_ascii(int16_t *pdata, int n, int index)
 {
     char _file_buffer[32] = {0};
     for(int i = 0; i < n; i++){
         sprintf(_file_buffer, "%d ", *pdata ++);
+        fwrite((void *)_file_buffer,strlen(_file_buffer), 1, _file_fd[index]);
+    }
+
+
+    return 0;
+}
+
+static inline int write_float_file_ascii(float *fdata, int n, int index)
+{
+    char _file_buffer[64] = {0};
+    for(int i = 0; i < n; i++){
+        sprintf(_file_buffer, "%f ", *fdata ++);
         fwrite((void *)_file_buffer,strlen(_file_buffer), 1, _file_fd[index]);
     }
 
@@ -72,34 +95,34 @@ static void printf_fft(fft_t *ptr, size_t len)
     printf("\n");
 }
 
-
 static void *_creat_sin_data(uint32_t points, uint32_t maxval, void *data)
 {
     //data = k*sin(w*t + k)
-    int32_t  q  = 0;
     #define PI (3.1415926)
-    uint32_t k = maxval;
-    uint32_t T = points;
-    float fdata;
-    float w = 2*PI/T;
-    int16_t *ptr = NULL, *header;
-    static uint32_t n = 0;
+    int16_t *iptr = NULL, *header;
+    //float f0 = 100000;
+    float f0 = 1000;
+    float fs = MHZ(10);
+    static float ph = PI;
 
     if(data == NULL)
         return NULL;
     
-    ptr = header = data;
-    
-    for(int t = 0; t < points; t++){
-        fdata = k * sin(w * (t+n) + q);
-        *ptr++ = (int16_t)fdata;
-    }
-    n = points + n;
-    if(n > 100*points)
-        n = 0;
+    iptr = header = data;
 
+    double t,y;
+    int x;
+    for(x = 0; x < points; x++){
+        y = 1000*cos(x*2.0*PI*f0/fs+ph);
+        *iptr++ = (int16_t)y;
+    }
+     ph+=PI;
+    if(ph > 1000)
+        ph = 0;
     return header;
 }
+
+
 static int spm_x86_create(void)
 {
     printf_note("X86 Spm\n");
@@ -125,7 +148,7 @@ static ssize_t spm_x86_read_fft_data(int ch,  void **data, void *args)
         goto err;
     
     iqdata = zalloc(fft_size*4);
-    _creat_sin_data(fft_size, 1800, iqdata);
+    _creat_sin_data(fft_size*2, 0, iqdata);
 
     floatdata = zalloc(fft_size*4);
     if(floatdata == NULL)
@@ -141,11 +164,13 @@ static ssize_t spm_x86_read_fft_data(int ch,  void **data, void *args)
         }
     }
     memset(fftdata[ch], 0, fft_size_dup[ch]*4);
-    //FDATA_MUL_OFFSET(floatdata, 10, fft_size);
     FLOAT_TO_SHORT(floatdata, fftdata[ch], fft_size);
     free(floatdata);
     floatdata = NULL;
+
     *data = fftdata[ch];
+    //*data = iqdata;
+
     return (fft_size*sizeof(fft_t));
 err:
     safe_free(iqdata);
@@ -192,6 +217,7 @@ static int spm_x86_send_fft_data(void *data, size_t fft_len, void *arg)
     iov[0].iov_len = header_len;
     iov[1].iov_base = data;
     iov[1].iov_len = data_byte_size;
+
     if(hparam->ch == 0)
         __lock_fft_send__();
     else
@@ -247,7 +273,7 @@ struct spm_context * spm_create_context(void)
     ctx->ops = &spm_ops;
     ctx->pdata = &config_get_config()->oal_config;
     //init_write_file("tmp/fft", 0);
-    
+
 err_set_errno:
     errno = -ret;
     return ctx;

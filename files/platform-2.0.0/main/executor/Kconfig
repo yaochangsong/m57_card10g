@@ -56,7 +56,7 @@ menuconfig SPM
 	    select LIBIIO 
         select LIBFFTW3
         default n
-		depends on SPM && SPM_SOURCE_CHIP
+		depends on SPM
     
 	config SPM_FFT_SIGNAL_ANALYSIS
         bool "FFT analysis"

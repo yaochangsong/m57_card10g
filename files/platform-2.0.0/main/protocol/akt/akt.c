@@ -2167,7 +2167,7 @@ void *akt_assamble_data_frame_header_data(uint32_t *len, void *config)
     package_header->syn_flag = AKT_START_FLAG;
     package_header->type = header_param->type;
     gettimeofday(&tv,NULL);
-    package_header->toa = tv.tv_sec*1000000 + tv.tv_usec;
+    package_header->toa = (uint64_t)tv.tv_sec*1000000 + tv.tv_usec;
     package_header->seqnum = seq_num[header_param->ch]++;
     package_header->virtual_ch = 0;
     memset(package_header->reserve, 0, sizeof(package_header->reserve));

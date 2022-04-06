@@ -950,7 +950,8 @@ static int _fs_start_save_file_thread(void *arg)
                 printf_warn("write file error, save thread exit\n");
             if(_ctx->ops->read_adc_over_deal)
                 _ctx->ops->read_adc_over_deal(ch, &nread);
-            _fs_stop_save_file(ch, NULL, NULL);
+            //_fs_stop_save_file(ch, NULL, NULL);
+            pthread_exit_by_name(_fs_get_save_thread_name(ch));
             return -1;
         }
     }
@@ -969,7 +970,8 @@ static int _fs_start_save_file_thread(void *arg)
         if(_fs_sample_size_full(p_args)){
             if(_ctx && _ctx->ops->read_adc_over_deal)
                 _ctx->ops->read_adc_over_deal(ch, &nread);
-            _fs_stop_save_file(ch, NULL, NULL);
+            //_fs_stop_save_file(ch, NULL, NULL);
+            pthread_exit_by_name(_fs_get_save_thread_name(ch));
             return -1;
         }
     }else{

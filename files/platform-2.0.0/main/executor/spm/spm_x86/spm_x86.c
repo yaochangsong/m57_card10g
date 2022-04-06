@@ -251,6 +251,41 @@ static int spm_x86_close(void *_ctx)
     return 0;
 }
 
+static int spm_x86_scan(uint64_t *s_freq_offset, uint64_t *e_freq, uint32_t *scan_bw, uint32_t *bw, uint64_t *m_freq)
+{
+    //#define MAX_SCAN_FREQ_HZ (6000000000)
+    uint64_t _m_freq;
+    uint64_t _s_freq, _e_freq;
+    uint32_t _scan_bw, _bw;
+    
+    _s_freq = *s_freq_offset;
+    _e_freq = *e_freq;
+    _scan_bw = *scan_bw;
+    if((_e_freq - _s_freq)/_scan_bw > 0){
+        _bw = _scan_bw;
+        *s_freq_offset = _s_freq + _scan_bw;
+    }else{
+        _bw = _e_freq - _s_freq;
+        *s_freq_offset = _e_freq;
+    }
+    *scan_bw = _scan_bw;
+    _m_freq = _s_freq + _scan_bw/2;
+#ifdef CONFIG_BSP_SSA_MONITOR
+    if (_m_freq >= _e_freq) {
+        _m_freq = _s_freq + _bw/2;
+    }
+#endif
+    //fix bug:中频超6G无信号 wzq
+    #if 0
+    if (_m_freq > MAX_SCAN_FREQ_HZ){
+        _m_freq = MAX_SCAN_FREQ_HZ;
+    }
+    #endif
+    *bw = _bw;
+    *m_freq = _m_freq;
+
+    return 0;
+}
 
 
 static const struct spm_backend_ops spm_ops = {
@@ -259,6 +294,7 @@ static const struct spm_backend_ops spm_ops = {
     .send_fft_data = spm_x86_send_fft_data,
     .stream_start = spm_x86_stream_start,
     .stream_stop = spm_x86_stream_stop,
+    .spm_scan = spm_x86_scan,
     .close = spm_x86_close,
 };
 

@@ -931,6 +931,7 @@ static int _fs_start_save_file_thread(void *arg)
     void *ptr = NULL;
     ssize_t nread = 0; 
     int ret = 0, ch;
+    uint8_t is_write = 0;
     struct push_arg *p_args;
     struct spm_context *_ctx;
     p_args = (struct push_arg *)arg;
@@ -960,16 +961,19 @@ static int _fs_start_save_file_thread(void *arg)
         p_args->count ++;
         if((ret = _fs_split_file(p_args)) == 0){
             ret = _write_disk_run(p_args->fd, nread, ptr);
-            if(_ctx && _ctx->ops->read_adc_over_deal)
+            if(_ctx && _ctx->ops->read_adc_over_deal){
                 _ctx->ops->read_adc_over_deal(ch, &nread);
+                is_write = 1;
+            }
         } 
 #if defined(CONFIG_FS_NOTIFIER)
         fs_notifier_update_file_size(&p_args->notifier, nread);
 #endif
         p_args->split_nbyte += nread;
         if(_fs_sample_size_full(p_args)){
-            if(_ctx && _ctx->ops->read_adc_over_deal)
+            if(_ctx && _ctx->ops->read_adc_over_deal && is_write == 0){
                 _ctx->ops->read_adc_over_deal(ch, &nread);
+            }
             //_fs_stop_save_file(ch, NULL, NULL);
             pthread_exit_by_name(_fs_get_save_thread_name(ch));
             return -1;

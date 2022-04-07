@@ -66,10 +66,13 @@ load_network()
 load_mac()
 {
 	ret=0
-	IFNAME=eth1
+	IFNAME1G=eth1
+	IFNAME10G=eth0
 	cp /etc/network/interfaces /etc/network/.interfaces
-	mac=`/etc/genmac.sh`
-	/etc/netset.sh set_mac $IFNAME $mac
+	mac=`/etc/genmac.sh g1`
+	/etc/netset.sh set_mac $IFNAME1G $mac
+	mac=`/etc/genmac.sh g10`
+	/etc/netset.sh set_mac $IFNAME10G $mac
 	cmp -s /etc/network/interfaces /etc/network/.interfaces || ret=1    
 	if [ $ret -ne 0 ]; then
         cp /etc/network/interfaces /etc/network/.interfaces
@@ -83,8 +86,10 @@ load_default_route()
     for((i=0;i<${#ifname[@]};i++))
     do
         gw=`/etc/netset.sh  get_gw ${ifname[i]}`
-        isValidIp $gw
-        route add default gw $gw
+        if [ -n "$gw" ]; then
+            isValidIp $gw
+            route add default gw $gw
+        fi
     done
 }
 

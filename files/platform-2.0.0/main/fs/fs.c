@@ -51,7 +51,7 @@
 #if defined(CONFIG_ARCH_ARM)
 #define ROOT_DIR    "/run/media/nvme0n1/data"
 #else
-#define ROOT_DIR    "/home/ycs/workplace/share/test"
+#define ROOT_DIR    "/home"
 #endif
 
 struct fs_context *fs_ctx = NULL;

@@ -14,6 +14,29 @@ then
 	interface=/$MOUNT_DIR/network/interfaces 
 fi
 
+restart_network()
+{
+    ifname=(`ifconfig |grep ^[a-z]|awk  '{print $1}'`)
+    for((i=0;i<${#ifname[@]};i++))
+    do
+        ip addr flush dev ${ifname[$i]}
+        ifconfig ${ifname[$i]} down
+    done
+    /etc/init.d/networking restart
+}
+
+load_default_route()
+{
+    ifname=(`ifconfig |grep ^[a-z]|awk  '{print $1}'`)
+    for((i=0;i<${#ifname[@]};i++))
+    do
+        gw=`/etc/netset.sh  get_gw ${ifname[i]}`
+        if [ -n "$gw" ]; then
+            isValidIp $gw
+            route add default gw $gw
+        fi
+    done
+}
 
 isValidIp() 
 {
@@ -163,6 +186,12 @@ case $1 in
 	get_gw)
 		get_gw $2
 		;;
+	restart_net)
+		restart_network
+		;;
+	set_route)
+		load_default_route
+		;;
 	*)
 		echo "Usage: $0 set|get_ip|get_netmask|get_gw|set_mac eth0|1..." 
 		echo "       $0 set eth0 192.168.2.111 255.255.255.0 192.168.2.1"
@@ -173,6 +202,8 @@ case $1 in
 		echo "       $0 get_ip eth0"
 		echo "       $0 get_netmask eth0"
 		echo "       $0 get_gw eth0"
+		echo "       $0 restart_net"
+		echo "       $0 set_route"
 		exit 2
 		;;
 esac

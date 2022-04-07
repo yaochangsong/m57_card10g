@@ -38,7 +38,10 @@ start()
     if [ $is_running -eq 0 ]; then
 	/etc/checkproc.sh start >/dev/null 2>&1
     fi
-
+    is_running=$(ps -ef|grep "tcpsvd"|grep -v grep|wc -l)
+    if [ $is_running -eq 0 ]; then
+        /etc/ftp.sh start 2021 >/dev/null 2>&1
+    fi
 }
 
 

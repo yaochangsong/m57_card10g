@@ -186,8 +186,8 @@ int main(int argc, char **argv)
 
     config_init();
     uloop_init();
-    device_init();
     register_init();
+    device_init();
     executor_init();
 #if defined(CONFIG_FS)
     fs_init();

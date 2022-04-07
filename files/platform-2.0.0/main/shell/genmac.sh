@@ -73,8 +73,16 @@ mac_gen()
 	isValidMac $mac_md  > /dev/null
 	echo "$mac_md"
 }
-
-env_mac=`get_env_mac`
-mac=`mac_gen $env_mac` > /dev/null 2>&1
-
-echo $mac
+#local env_mac
+#local mac_10g
+case $1 in
+	g1)
+		env_mac=`get_env_mac`
+		echo $env_mac
+	;;
+	g10)
+		env_mac=`get_env_mac`
+		mac_10g=`mac_gen $env_mac` > /dev/null 2>&1
+		echo $mac_10g
+	;;
+esac

@@ -1499,6 +1499,38 @@ static int akt_execute_get_command(void *cl)
     return err_code;
 }
 
+static int udp_get_addr_ifname(struct in_addr *addr, char *ifname)
+{
+    struct in_addr ipaddr, netmask, local_net, peer_net;
+    struct in_addr *claddr = (struct in_addr *)addr;
+    int num = get_ifname_number();
+    char if_name[IF_NAMESIZE] = {0};
+    char  *name;
+    
+    for(int index = 1; index <= num; index++){
+        name = if_indextoname(index, if_name);
+        if(name == NULL)
+            continue;
+        if(get_netmask(if_name, &netmask) != -1){
+            printf_debug("===>netmask[0x%x]\n", netmask.s_addr);
+        }
+        
+        if(get_ipaddress(if_name, &ipaddr) != -1){
+            local_net.s_addr = ipaddr.s_addr& netmask.s_addr;
+            peer_net.s_addr = claddr->s_addr & netmask.s_addr;
+            printf_debug("===>ipaddr[0x%x,  net=0x%x]\n", ipaddr.s_addr, ipaddr.s_addr& netmask.s_addr);
+            printf_debug("===>peer net=0x%x, ip=0x%x\n",   claddr->s_addr & netmask.s_addr,claddr->s_addr);
+            if(local_net.s_addr == peer_net.s_addr){
+                strcpy(ifname, if_name);
+                return 0;
+            }
+        }
+    }
+
+    return -1;
+}
+
+
 static int akt_execute_discovery_command(void *client, const char *buf, int len)
 {
     struct poal_config *poal_config = &(config_get_config()->oal_config);
@@ -1507,6 +1539,8 @@ static int akt_execute_discovery_command(void *client, const char *buf, int len)
     struct in_addr ipdata;
     struct net_udp_client *cl = NULL;
     struct sockaddr_in addr;
+    char if_name[IF_NAMESIZE] = {0};
+    int index = -1;
     struct discover_net{
         uint32_t ipaddr;
         uint16_t port;
@@ -1521,10 +1555,20 @@ static int akt_execute_discovery_command(void *client, const char *buf, int len)
     
     cl = (struct net_udp_client *)client;
 
-    int index = config_get_if_nametoindex(cl->ifname);
+#if 0
+    index = config_get_if_nametoindex(cl->ifname);
     if(index == -1){
+       return -1;
+    }
+#else
+    if (0 == udp_get_addr_ifname(&addr.sin_addr, if_name)) {
+        index = config_get_if_nametoindex(if_name);
+        if (index == -1)
+            return -1;
+    } else {
         return -1;
     }
+#endif
     memcpy(netinfo.mac, poal_config->network[index].addr.mac, sizeof(netinfo.mac));
     netinfo.ipaddr = htonl(poal_config->network[index].addr.ipaddress);
     netinfo.gateway = htonl(poal_config->network[index].addr.gateway);

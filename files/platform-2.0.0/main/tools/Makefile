@@ -1,3 +1,5 @@
+include ../../.config
+
 SOURCE = $(wildcard *.c)  
 TARGETS = $(patsubst %.c, %, $(SOURCE))  
 TOPDIR = $(abspath $(shell pwd)/../../)
@@ -6,7 +8,14 @@ LDLIBS += -lpthread
 
 CFLAGS = -Wall -g 
 
+
 tool_sub_dir = 
+ifeq ($(CONFIG_SSDP),y)
+	ssdp_exist=$(shell if [ -d ssdp ]; then echo "y"; else echo "n"; fi)
+ifeq ($(ssdp_exist), y)
+	tool_sub_dir += ssdp 
+endif
+endif
 
 all:$(TARGETS)  tool_sub
 

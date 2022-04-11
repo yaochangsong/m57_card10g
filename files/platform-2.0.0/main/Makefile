@@ -11,7 +11,7 @@ obj-y  					+= protocol/
 obj-y  					+= utils/
 
 install:
-	cp ${S}/main/bsp/$(BSP_NAME)/config.json conf/
+	cp bsp/$(BSP_NAME)/config.json conf/
 	install -d ${D}${bindir}
 	install -d ${D}${libdir}
 	install -d ${D}/etc/init.d/

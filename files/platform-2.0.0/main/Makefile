@@ -35,10 +35,13 @@ endif
 	install -m 0755 ${S}/main/shell/reset-event.sh ${D}/etc/
 	install -m 0755 ${S}/main/shell/reset-button.sh ${D}/etc/
 	install -m 0755 ${S}/main/shell/config.sh ${D}/etc/
+	install -m 0755 ${S}/main/shell/ssdp.sh ${D}/etc/
 	#install -m 0755 ${S}/main/shell/sysupgrade_rootfs.sh ${D}/etc/
 	install -m 0755 ${S}/main/conf/config.json ${D}/etc/config.json.jffs2
 	install -m 0755 ${S}/main/conf/platform_version ${D}/etc/
 	install -m 0755 ${S}/main/conf/compile.info ${D}/etc/
 	install -m 0755 tools/xjson ${D}${bindir}
 	install -m 0755 tools/reset-button  ${D}${bindir}
+	install -m 0755 tools/ssdp/src/ssdpd ${D}${bindir}
+	install -m 0755 tools/jq/jq-1.6/build/jq ${D}${bindir}
 	$(shell if [ -d ${TOPDIR}/images/linux ]; then cp ${S}/platform ${TOPDIR}/images/linux/; fi)

@@ -9,7 +9,7 @@ LDLIBS += -lpthread
 CFLAGS = -Wall -g 
 
 
-tool_sub_dir = jq
+tool_sub_dir =
 ifeq ($(CONFIG_SSDP),y)
 	ssdp_exist=$(shell if [ -d ssdp ]; then echo "y"; else echo "n"; fi)
 ifeq ($(ssdp_exist), y)
@@ -55,5 +55,16 @@ tool_sub:
 	
 .PHONY:clean all  
 clean:
-	@for dir in $(tool_sub_dir); do make -C $$dir clean|| exit 1; done
+	@for dir in $(tool_sub_dir);\
+ 	do \
+		if [ "$$dir" = "jq" ]; then \
+			cd jq/jq-1.6/build; \
+                        if [  -f Makefile ]; then      \
+                                 cd jq/jq-1.6/build; make clean;   \
+                        fi;   \
+			cd -; \
+                else \
+			make -C $$dir clean|| exit 1;\
+		fi;\
+	 done
 	@-rm -rf $(TARGETS)

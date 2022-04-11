@@ -9,7 +9,7 @@ LDLIBS += -lpthread
 CFLAGS = -Wall -g 
 
 
-tool_sub_dir = 
+tool_sub_dir = jq
 ifeq ($(CONFIG_SSDP),y)
 	ssdp_exist=$(shell if [ -d ssdp ]; then echo "y"; else echo "n"; fi)
 ifeq ($(ssdp_exist), y)
@@ -33,6 +33,18 @@ tool_sub:
 				./autogen.sh; \
 				./configure;	\
 			fi;	\
+			make;\
+			cd -; \
+		elif [ "$$dir" = "jq" ]; then \
+			echo "build jq............" ;    \
+			cd jq/jq-1.6/build; rm -rf ./*; autoreconf -fi ..;  \
+			if [ "$(CC)" != "cc" ]; then      \
+				echo "configure CC =$(CC)"; \
+                        	../configure --without-oniguruma --disable-maintainer-mode CFLAGS='-std=c99' --host='aarch64-linux-gnu';   \
+			else \
+				echo "configure CC =$(CC)";\
+                        	../configure --without-oniguruma --disable-maintainer-mode CFLAGS='-std=c99'; \
+		fi;     \
 			make;\
 			cd -; \
 		else \

@@ -2,3 +2,7 @@
 	path = files/platform-2.0.0/main/tools/ssdp
 	url = http://192.168.0.200:8082/linux-/ssdp.git
 	branch = master
+[submodule "files/platform-2.0.0/main/tools/jq"]
+	path = files/platform-2.0.0/main/tools/jq
+	url = http://192.168.0.200:8082/linux-/jq.git
+	branch = master

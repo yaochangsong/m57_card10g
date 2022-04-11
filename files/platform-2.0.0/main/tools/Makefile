@@ -3,7 +3,7 @@ include ../../.config
 SOURCE = $(wildcard *.c)  
 TARGETS = $(patsubst %.c, %, $(SOURCE))  
 TOPDIR = $(abspath $(shell pwd)/../../)
-LIBDIR = $(TOPDIR)/$(LIBS)
+LIBDIR = ../../main/dao/json/lib.a 
 LDLIBS += -lpthread
 
 CFLAGS = -Wall -g 
@@ -23,8 +23,22 @@ $(TARGETS):%:%.c
 	@$(CC) $< $(CFLAGS) -o $@  -Wl,--start-group $(LIBDIR) -Wl,--end-group $(LDLIBS)
 	
 tool_sub:
-	for dir in $(tool_sub_dir); \
-	do $(MAKE) -C $$dir all || exit 1; \
+	@for dir in $(tool_sub_dir);  \
+	do \
+		if [ "$$dir" = "ssdp" ]; then \
+			echo "build ssdp" ;    \
+			LDFLAGS=	; LIBS=;\
+			cd ssdp;	\
+			if [ ! -f Makefile ]; then	\
+				./autogen.sh; \
+				./configure;	\
+			fi;	\
+			make;\
+			cd -; \
+		else \
+			echo "build $$dir"; \
+			$(MAKE) -C $$dir all || exit 1; \
+		fi; \
 	done
 	
 .PHONY:clean all  

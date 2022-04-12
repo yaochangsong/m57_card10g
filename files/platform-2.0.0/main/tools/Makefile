@@ -9,11 +9,18 @@ LDLIBS += -lpthread
 CFLAGS = -Wall -g 
 
 
-tool_sub_dir = jq
+tool_sub_dir = 
 ifeq ($(CONFIG_SSDP),y)
 	ssdp_exist=$(shell if [ -d ssdp ]; then echo "y"; else echo "n"; fi)
 ifeq ($(ssdp_exist), y)
 	tool_sub_dir += ssdp 
+endif
+endif
+
+ifeq ($(CONFIG_JQ),y)
+        ssdp_exist=$(shell if [ -d jq ]; then echo "y"; else echo "n"; fi)
+ifeq ($(ssdp_exist), y)
+        tool_sub_dir += jq
 endif
 endif
 

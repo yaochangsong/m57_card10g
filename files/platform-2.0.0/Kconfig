@@ -82,6 +82,10 @@ config LOCAL_CTRL_EN
 config SSDP
         bool "Enable SSDP"
         default y
+
+config JQ
+        bool "Enable JSON JQ"
+        default y
 endmenu   
 
 menu "Compile Selection" 

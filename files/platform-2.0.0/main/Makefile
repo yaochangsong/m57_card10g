@@ -11,7 +11,7 @@ obj-y  					+= protocol/
 obj-y  					+= utils/
 
 install:
-	cp ${S}/main/bsp/$(BSP_NAME)/config.json conf/
+	cp bsp/$(BSP_NAME)/config.json conf/
 	install -d ${D}${bindir}
 	install -d ${D}${libdir}
 	install -d ${D}/etc/init.d/
@@ -35,10 +35,17 @@ endif
 	install -m 0755 ${S}/main/shell/reset-event.sh ${D}/etc/
 	install -m 0755 ${S}/main/shell/reset-button.sh ${D}/etc/
 	install -m 0755 ${S}/main/shell/config.sh ${D}/etc/
+	install -m 0755 ${S}/main/shell/ssdp.sh ${D}/etc/
 	#install -m 0755 ${S}/main/shell/sysupgrade_rootfs.sh ${D}/etc/
 	install -m 0755 ${S}/main/conf/config.json ${D}/etc/config.json.jffs2
 	install -m 0755 ${S}/main/conf/platform_version ${D}/etc/
 	install -m 0755 ${S}/main/conf/compile.info ${D}/etc/
 	install -m 0755 tools/xjson ${D}${bindir}
 	install -m 0755 tools/reset-button  ${D}${bindir}
+ifeq ($(CONFIG_SSDP),y)
+	install -m 0755 tools/ssdp/src/ssdpd ${D}${bindir}
+endif
+ifeq ($(CONFIG_JQ),y)
+	install -m 0755 tools/jq/jq-1.6/build/jq ${D}${bindir}
+endif
 	$(shell if [ -d ${TOPDIR}/images/linux ]; then cp ${S}/platform ${TOPDIR}/images/linux/; fi)

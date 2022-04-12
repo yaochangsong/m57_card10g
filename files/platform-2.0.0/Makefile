@@ -103,7 +103,7 @@ CROSS_COMPILE	?= $(CONFIG_CROSS_COMPILE:"%"=%)
 BSP_NAME	= $(CONFIG_BSP_NAME:"%"=%)
 
 KCONFIG_CONFIG	?= .config
-export KCONFIG_CONFIG BSP_NAME CONFIG_SPM_FFT_WINDOWS CONFIG_LIBFFTW3
+export KCONFIG_CONFIG BSP_NAME CONFIG_SPM_FFT_WINDOWS CONFIG_LIBFFTW3 CONFIG_SSDP CONFIG_JQ
 
 # SHELL used by kbuild
 CONFIG_SHELL := $(shell if [ -x "$$BASH" ]; then echo $$BASH; \
@@ -381,7 +381,7 @@ platform: $(myapp-all)
 
 tools: $(myapp-libs)
 	for dir in main/tools; \
-	do $(MAKE) -C $$dir all CC="$(CC)" LIBS=main/dao/json/lib.a || exit 1; \
+	do $(MAKE) -C $$dir all CC="$(CC)" || exit 1; \
 	done
 # The actual objects are generated when descending, 
 # make sure no implicit rule kicks in

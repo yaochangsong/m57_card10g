@@ -78,6 +78,14 @@ config RESIDENCY_STRATEGY
 config LOCAL_CTRL_EN
 	bool "Enable Remote or Local Control"
 	default n
+
+config SSDP
+        bool "Enable SSDP"
+        default y
+
+config JQ
+        bool "Enable JSON JQ"
+        default y
 endmenu   
 
 menu "Compile Selection" 

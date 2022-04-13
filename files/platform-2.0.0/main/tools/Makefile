@@ -38,7 +38,11 @@ tool_sub:
 			cd ssdp;	\
 			if [ ! -f Makefile ]; then	\
 				./autogen.sh; \
-				./configure;	\
+				if [ "$(CC)" != "cc" ]; then      \
+				./configure --host='aarch64-linux-gnu';	\
+				else	\
+				./configure; \
+				fi;	\
 			fi;	\
 			make;\
 			cd -; \

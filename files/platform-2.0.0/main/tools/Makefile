@@ -38,8 +38,12 @@ tool_sub:
 			cd ssdp;	\
 			if [ ! -f Makefile ]; then	\
 				./autogen.sh; \
-				if [ "$(CC)" != "cc" ]; then      \
-				./configure --host='aarch64-linux-gnu';	\
+				if [ "$(CC)" != "gcc" ]; then      \
+					if [ "$(CC)" = "aarch64-linux-gnu-gcc" ]; then      \
+						./configure --host='aarch64-linux-gnu';	\
+					elif [ "$(CC)" = "arm-linux-gnueabihf-gcc" ]; then \
+						 ./configure --host='arm-linux-gnueabihf';\
+					fi;	\
 				else	\
 				./configure; \
 				fi;	\
@@ -48,16 +52,17 @@ tool_sub:
 			cd -; \
 		elif [ "$$dir" = "jq" ]; then \
 			echo "build jq............" ;    \
-			cd jq/jq-1.6/build; rm -rf ./*; autoreconf -fi ..;  \
+			cd jq/jq-1.6/build; make clean;  \
 			chmod +x ../configure;	\
-			if [ "$(CC)" != "cc" ]; then      \
+			if [ "$(CC)" != "gcc" ]; then      \
 				echo "configure CC =$(CC)"; \
-                        	../configure --without-oniguruma --disable-maintainer-mode CFLAGS='-std=c99' --host='aarch64-linux-gnu';   \
-			else \
-				echo "configure CC =$(CC)";\
-                        	../configure --without-oniguruma --disable-maintainer-mode CFLAGS='-std=c99'; \
-		fi;     \
-			make;\
+				if [ "$(CC)" = "aarch64-linux-gnu-gcc" ]; then      \
+                        		../configure --without-oniguruma --disable-maintainer-mode CFLAGS='-std=c99' --host='aarch64-linux-gnu';   \
+				elif [ "$(CC)" = "arm-linux-gnueabihf-gcc" ]; then \
+					../configure --without-oniguruma --disable-maintainer-mode CFLAGS='-std=c99' --host='arm-linux-gnueabihf'; \
+				fi;\
+				make;\
+			fi;     \
 			cd -; \
 		else \
 			echo "build $$dir"; \

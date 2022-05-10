@@ -401,7 +401,7 @@ int nsr1800_init(void)
 
 	printf("nsr1800 I2C init\n");
 
-	file = open("/dev/i2c-1", O_RDWR);
+	file = open("/dev/i2c-0", O_RDWR);
 	if(file < 0){  
 		printf("####i2c device open failed####\n");  
 		return (-1);  

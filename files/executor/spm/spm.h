@@ -70,7 +70,8 @@ struct spm_backend_ops {
     ssize_t (*read_fft_data)(int, void **, void*);
     ssize_t (*read_adc_data)(int,void **);
    // ssize_t (*read_xdma_data)(int, void **, void *);
-   ssize_t (*read_xdma_data)(int, void **, uint32_t*, void *);
+    ssize_t (*read_xdma_raw_data)(int, void **, uint32_t*, void *);
+    ssize_t (*read_xdma_data)(int, void **, uint32_t*, void *);
     int (*read_xdma_over_deal)(int, void *);
     int (*read_adc_over_deal)(int,void *);
     int (*read_niq_over_deal)(void *);
@@ -157,6 +158,5 @@ extern void spm_fft_deal_notify(void *arg);
 extern void spm_niq_deal_notify(void *arg);
 extern void spm_biq_deal_notify(void *arg);
 extern void spm_xdma_deal_notify(void *arg);
-
 
 #endif

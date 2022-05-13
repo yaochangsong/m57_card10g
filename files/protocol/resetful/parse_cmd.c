@@ -1148,3 +1148,33 @@ error:
     *arg = get_resp_message(code);
     return code;
 }
+
+int cmd_qa_xdmaloop(struct uh_client *cl, void **arg, void **content)
+{
+    int code = RESP_CODE_OK;
+    const char  *enable, *s_ch;
+    int _enable, ch;
+
+    s_ch = cl->get_restful_var(cl, "ch");
+    if(str_to_int(s_ch, &ch, check_valid_ch) == false){
+        code = RESP_CODE_CHANNEL_ERR;
+        goto error;
+    }
+
+    enable = cl->get_restful_var(cl, "enable");
+    if(str_to_int(enable, &_enable, check_valid_enable) == false){
+        code = RESP_CODE_INVALID_PARAM;
+        goto error;
+    }
+    //printf_note("ch:%d, enable: %d\n", ch, _enable);
+    if(_enable){
+        if(io_srio_data_loop_qa(ch) == false){
+            code = RESP_CODE_EXECMD_ERR;
+        }
+    }
+error:
+    *arg = get_resp_message(code);
+    return code;
+}
+
+

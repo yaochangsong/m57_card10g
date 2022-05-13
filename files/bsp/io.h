@@ -130,5 +130,6 @@ extern ssize_t io_keytool_read_e2prom_file(int id, void **args);
 extern void io_write_abnormal_file(uint16_t data, char *filename);
 extern bool io_check_PCIe_FPGA(void);
 extern uint64_t io_xdma_get_overflow(int ch);
+extern bool io_srio_data_loop_qa(int ch);
 
 #endif

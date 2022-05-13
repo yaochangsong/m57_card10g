@@ -1847,6 +1847,173 @@ bool io_check_PCIe_FPGA(void)
     return true;
 }
 
+static inline int __align_4byte(int *rc)
+{
+    int _rc = *rc;
+    int reminder = _rc % 4;
+    if(reminder != 0){
+        _rc += (4 - reminder);
+        *rc = _rc;
+        return (4 - reminder);
+    }
+    return 0;
+}
+
+
+static int _io_dma_write(uint8_t *ptr, size_t len)
+{
+    struct spm_context *_ctx;
+    ssize_t nwrite;
+    void *buffer = NULL;
+    int pagesize = 0,reminder = 0, _len = 0;
+    pagesize=getpagesize();
+    posix_memalign((void **)&buffer, pagesize /*alignment */ , len + pagesize);
+    if (!buffer) {
+        fprintf(stderr, "OOM %u.\n", pagesize);
+        return -1;
+    }
+    memset(buffer, 0 , len + pagesize);
+    memcpy(buffer, ptr, len);
+    _ctx = get_spm_ctx();
+    _len = len;
+    reminder = __align_4byte((int *)&_len);
+    nwrite = _ctx->ops->write_xdma_data(0, buffer, _len);
+    printf("Write data %s![%ld],align 4byte reminder=%d[raw len: %lu]\n",  (nwrite == _len) ? "OK" : "Faild", nwrite, reminder, len);
+    free(buffer);
+    buffer = NULL;
+    return nwrite;
+}
+
+static int io_srio_data_read_qa(int ch, void *pdata, size_t len)
+{
+    struct spm_context *ctx = get_spm_ctx();
+    char *ptr[2048] = {NULL};
+    uint32_t  _len[2048] = {0};
+    int count = 0;
+    
+    if(ctx->ops->read_xdma_raw_data){
+        count = ctx->ops->read_xdma_raw_data(ch, (void **)ptr, _len, NULL);
+        if(len != _len[0]){
+            printf_note("count:%d, read len err: %u, %lu\n", count, _len[0], len);
+            return -1;
+        }
+        printf_note("read count:%d, read len: %u\n", count, _len[0]);
+        memcpy(pdata, ptr[0], len);
+        ctx->ops->read_xdma_over_deal(ch, NULL);
+        return 0;
+    }
+    return -1;
+}
+
+static int io_srio_data_write_qa(int ch, uint8_t *pheader, size_t len)
+{
+    static uint32_t tid = 0;
+    uint64_t *ll_header;
+    struct srio_header{
+        uint8_t src_tid;
+        uint8_t ttype  : 4;
+        uint8_t ftype5: 4;
+        uint8_t size_h;
+        uint8_t size_l;
+        uint32_t addr_h;
+    };
+    
+    uint8_t *ptr = pheader;
+
+    if(ptr == NULL || len <= sizeof(struct srio_header))
+        return -1;
+    
+    memset(ptr, 0, len);
+
+    struct srio_header *header;
+    uint8_t *pdata;
+    header = (struct srio_header *)ptr;
+    int _size = len - sizeof(struct srio_header) -1;
+
+    header->src_tid = tid++;
+    header->ftype5 = 5;
+    header->ttype= 4;
+    header->size_l = (_size & 0xf) << 0x04;
+    header->size_h = (_size>>4) & 0xf;
+    pdata = ptr+sizeof(*header);
+    printfd("_size=%d, size_l=%02x, size_h=%02x\n", _size, header->size_l, header->size_h);
+    ll_header = (uint64_t *)header;
+
+    printfd("Befault htonl:\n");
+
+    for(int i = 0; i < sizeof(*header); i++){
+        printfd("%02x ", *ptr++);
+    }
+    printfd("\n");
+    uint32_t header_h, header_l;
+    header_l = *ll_header & 0xffffffff;
+    header_h = (*ll_header >> 32) & 0xffffffff;
+    *ll_header = htonl(header_l);
+    *ll_header = (*ll_header <<32) | htonl(header_h);
+    printfd("After htonl:\n");
+
+    ptr = pheader;
+    for(int i = 0; i < sizeof(*header); i++){
+        printfd("%02x ", *ptr++);
+    }
+    printfd("\n");
+    #if 1
+    for(uint8_t i = 0; i <= _size; i++){
+        *pdata++ = i & 0x0ff;
+    }
+    #endif
+    ptr = pheader;
+    for(int i = 0; i < len; i++){
+        printfd("%02x ", *ptr++);
+    }
+    printfd("\n");
+    _io_dma_write(pheader, len);
+    return 0;
+}
+
+bool io_srio_data_loop_qa(int ch)
+{
+    uint8_t wbuffer[256], rbuffer[256];
+    int ret = 0;
+    io_set_enable_command(XDMA_MODE_ENABLE, 0, 0, 0);
+    io_set_enable_command(XDMA_MODE_ENABLE, 1, 0, 0);
+    //io_set_enable_command(XDMA_MODE_ENABLE, 2, 0, 0);
+    io_srio_data_write_qa(0, wbuffer, sizeof(wbuffer));
+    printfd(">>>write data:\n");
+    for(int i = 0; i < sizeof(wbuffer); i++){
+        printfd("%02x ", wbuffer[i]);
+    }
+    printfd("\n");
+    usleep(1000);
+    ret = io_srio_data_read_qa(1, rbuffer, sizeof(rbuffer));
+    if(ret == -1)
+        return false;
+    
+    printfd(">>>read data:\n");
+    for(int i = 0; i < sizeof(rbuffer); i++){
+        printfd("%02x ", rbuffer[i]);
+    }
+    printfd("\n");
+    io_set_enable_command(XDMA_MODE_DISABLE, 0, 0, 0);
+    io_set_enable_command(XDMA_MODE_DISABLE, 1, 0, 0);
+    //io_set_enable_command(XDMA_MODE_DISABLE, 2, 0, 0);
+
+    uint8_t *rptr = rbuffer, *wptr = wbuffer;
+    uint8_t *rdata, *wdata;
+    rdata = rptr + 8;
+    wdata = wptr + 8;
+    for(int i = 0; i < sizeof(rbuffer) - 8; i++){
+        if(*rdata != *wdata){
+            printf_warn("data not equal, data offset:%d [read:0x%x, write:0x%x]\n", i, *rdata, *wdata);
+            return false;
+        }
+        rdata++;
+        wdata++;
+    }
+    return true;
+}
+
+
 void io_init(void)
 {
     printf_info("io init!\n");

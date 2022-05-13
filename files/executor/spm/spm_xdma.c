@@ -329,7 +329,8 @@ static ssize_t xspm_stream_read(int ch, int type,  void **data, uint32_t *len, v
         } else if(info->status == RING_TRANS_OVERRUN){
             printf_warn("*****status:RING_TRANS_OVERRUN.*****\n");
             ns_uplink_add_over_run_cnt(ch, 1);
-            xspm_xdma_data_clear(ch, args);
+            if(args)
+                xspm_xdma_data_clear(ch, args);
         } else if(info->status == RING_TRANS_INITIALIZING){
             printf_warn("*****status:RING_TRANS_INITIALIZING.*****\n");
             usleep(10);
@@ -859,6 +860,26 @@ static ssize_t xspm_read_xdma_data_dispatcher(int ch , void **data, uint32_t *le
     return count;
 }
 
+static ssize_t xspm_read_xdma_raw_data(int ch , void **data, uint32_t *len, void *args)
+{
+    int index;
+    ssize_t count = 0;
+    
+    index = xspm_find_index_by_rw(ch, -1, XDMA_READ);
+    if(index < 0)
+        return -1;
+
+    count = xspm_stream_read(ch, index, data, len, args);
+    if(count > 0 && count < XDMA_TRANSFER_MAX_DESC){
+
+    }else {
+        if(count >= XDMA_TRANSFER_MAX_DESC)
+            printf_err("count: %ld is too big\n", count);
+    }
+    return count;
+}
+
+
 static int xspm_send_data(int ch, char *buf[], uint32_t len[], int count, void *args)
 {
     int section_id = *(int *)args;
@@ -1019,6 +1040,7 @@ static const struct spm_backend_ops xspm_ops = {
     .read_xdma_data = xspm_read_xdma_data,
     .send_xdma_data = xspm_send_data,
 #endif
+    .read_xdma_raw_data = xspm_read_xdma_raw_data,
     .read_xdma_over_deal = xspm_read_xdma_data_over,
     .stream_start = xspm_read_stream_start,
     .stream_stop = xspm_read_stream_stop,

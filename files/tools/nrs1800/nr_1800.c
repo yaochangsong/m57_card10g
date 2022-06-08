@@ -21,14 +21,10 @@ extern void nr_config_init(void);
 
 static srio_port_info ports_info[] = 
 {
-	{4, 4, 4, {16,17,18,19}, LANE_SPEED_3_125_G},
-	{5, 5, 4, {20,21,22,23}, LANE_SPEED_3_125_G},
-	{7, 7, 4, {28,29,30,31}, LANE_SPEED_3_125_G},
-	{9, 9, 4, {36,37,38,39}, LANE_SPEED_3_125_G},
-	{12, 0, 1, {2,0,0,0}, LANE_SPEED_3_125_G},
-	{13, 1, 1, {6,0,0,0}, LANE_SPEED_3_125_G},
-	{16, 0, 1, {3,0,0,0}, LANE_SPEED_3_125_G},
-	{17, 1, 1, {7,0,0,0}, LANE_SPEED_3_125_G},
+	{4, 4, 4, {16,17,18,19}, LANE_SPEED_5_G},
+	{5, 5, 4, {20,21,22,23}, LANE_SPEED_5_G},
+	{7, 7, 4, {28,29,30,31}, LANE_SPEED_5_G},
+	{9, 9, 4, {36,37,38,39}, LANE_SPEED_5_G},
 };
 #if 0
 static srio_route_rule default_rules[] =

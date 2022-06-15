@@ -275,14 +275,18 @@ int nsr1800_set_router_rules(int file)
 	if(size == 0 || table == NULL){
 		for(i = 0; i < sizeof(default_rules)/sizeof(srio_route_rule); i++)
 		{
-			//nsr1800_set_router_rule(file, default_rules[i].port_num, default_rules[i].dest_id, default_rules[i].dest_port);
-            nsr1800_set_broadcast_router_rule(file, default_rules[i].dest_id, default_rules[i].dest_port);
+			if(default_rules[i].port_num != -1)
+				nsr1800_set_router_rule(file, default_rules[i].port_num, default_rules[i].dest_id, default_rules[i].dest_port);
+			else
+            	nsr1800_set_broadcast_router_rule(file, default_rules[i].dest_id, default_rules[i].dest_port);
 		}
 	} else {
 		for(int i = 0; i < size; i++){
 			//printf("==>dest_id=%d, dest_port=%d, port_num=%d\n", table[i]->dest_id, table[i]->dest_port, table[i]->port_num);
-			//nsr1800_set_router_rule(file, table[i]->port_num, table[i]->dest_id, table[i]->dest_port);
-            nsr1800_set_broadcast_router_rule(file, table[i]->dest_id, table[i]->dest_port);
+			if(table[i]->port_num != -1)
+				nsr1800_set_router_rule(file, table[i]->port_num, table[i]->dest_id, table[i]->dest_port);
+			else
+            	nsr1800_set_broadcast_router_rule(file, table[i]->dest_id, table[i]->dest_port);
 		}
 	}
 	return 0;

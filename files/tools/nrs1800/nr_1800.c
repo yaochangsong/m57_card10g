@@ -25,6 +25,8 @@ static srio_port_info ports_info[] =
 	{5, 5, 4, {20,21,22,23}, LANE_SPEED_5_G},
 	{7, 7, 4, {28,29,30,31}, LANE_SPEED_5_G},
 	{9, 9, 4, {36,37,38,39}, LANE_SPEED_5_G},
+ 	{3, 3, 4, {12,13,14,15}, LANE_SPEED_6_25_G},
+	{10, 10, 4, {40,41,42,43}, LANE_SPEED_6_25_G},
 };
 #if 0
 static srio_route_rule default_rules[] =

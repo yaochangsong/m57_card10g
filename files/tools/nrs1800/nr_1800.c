@@ -543,7 +543,7 @@ int nsr1800_init(void)
 	for(i = 0; i < NSR1800_LANE_NUM; i++)
 	{
 		addr = 0xFF8034 + 0x100 * i;
-		value = 0x9c422220;
+		value = 0x94422220;
 		if(!nsr1800_7bit_write_i2c_register(file, NSR1800_I2C_SLAVE_7BIT_ADDR, addr, &value, sizeof(value)))
 		{
 			printf_debug("write addr:0x%x value:0x%x\n", addr, value);

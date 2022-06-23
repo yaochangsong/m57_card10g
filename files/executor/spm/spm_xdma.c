@@ -15,7 +15,11 @@
 #include "../../lib/libubox/list.h"
 #include "../../net/net_sub.h"
 
-#define  SPM_DISPATCHER_ON
+#if (TCP_DATA_SEND_BY_THREADS == 0)
+#define SPM_DISPATCHER_ON 0
+#else
+#define SPM_DISPATCHER_ON 1
+#endif
 
 //#ifdef DEBUG_TEST
 //#else
@@ -25,7 +29,7 @@
 static int xspm_read_stream_stop(int ch, int subch, enum stream_type type);
 static int xspm_read_xdma_data_over(int ch,  void *arg);
 static int xspm_xdma_data_clear(int ch,  void *arg);
-
+static ssize_t xspm_stream_read_test(int ch, int type,  void **data, uint32_t *len, void *args);
 
 static inline void *zalloc(size_t size)
 {
@@ -467,9 +471,11 @@ static ssize_t xspm_read_xdma_data(int ch , void **data, uint32_t *len, void *ar
         parg->func_id = 0x6;
     }
     #endif
-
-    //return xspm_stream_read_test(ch, index, data, len, args);
+#ifdef DEBUG_TEST
+    return xspm_stream_read_test(ch, index, data, len, args);
+#else
     return xspm_stream_read(ch, index, data, len, args);
+#endif
 }
 
 
@@ -893,8 +899,10 @@ static int xspm_send_data(int ch, char *buf[], uint32_t len[], int count, void *
         //tcp_send_data_uplink(buf[i], len[i], args);
     }
     tcp_send_vec_data_uplink(iov, count, args);
-    xspm_read_xdma_data_over(ch, NULL);
-    
+    //xspm_read_xdma_data_over(ch, NULL);
+#ifdef DEBUG_TEST
+    usleep(1000000);
+#endif
     return 0;
 }
 
@@ -1034,7 +1042,7 @@ static int xspm_read_xdma_data_over(int ch,  void *arg)
 
 static const struct spm_backend_ops xspm_ops = {
     .create = xspm_create,
-#ifdef SPM_DISPATCHER_ON
+#if (SPM_DISPATCHER_ON == 1)
     .read_xdma_data = xspm_read_xdma_data_dispatcher,
 #else
     .read_xdma_data = xspm_read_xdma_data,

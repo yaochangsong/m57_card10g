@@ -53,6 +53,11 @@ static pthread_mutex_t spm_fft_cond_mutex;
 static pthread_cond_t spm_xdma_cond[MAX_XDMA_NUM];
 static pthread_mutex_t spm_xdma_cond_mutex[MAX_XDMA_NUM];
 
+/* qa */
+static pthread_cond_t spm_xdma_qa_cond[MAX_XDMA_NUM];
+static pthread_mutex_t spm_xdma_qa_cond_mutex[MAX_XDMA_NUM];
+
+
 struct sem_st work_sem;
 
 void  *spm_xdma_param_init(int ch);
@@ -63,6 +68,8 @@ static void spm_cond_init(void)
     for(int i = 0; i < MAX_XDMA_NUM; i++){
         pthread_cond_init(&spm_xdma_cond[i], NULL);
         pthread_mutex_init(&spm_xdma_cond_mutex[i], NULL);
+        pthread_cond_init(&spm_xdma_qa_cond[i], NULL);
+        pthread_mutex_init(&spm_xdma_qa_cond_mutex[i], NULL);
     }
 #if 0
     for(int i = 0; i < MAX_RADIO_CHANNEL_NUM; i++){
@@ -125,6 +132,23 @@ void spm_xdma_deal_notify(void *arg)
         return;
     pthread_cond_signal(&spm_xdma_cond[ch]);
 }
+
+static bool qa_start_enable = false;
+void spm_xdma_qa_notify(void *arg, bool enable)
+{
+    int ch;
+    
+    if(arg == NULL)
+        return;
+    
+    ch = *(uint8_t *)arg;
+    if(ch >= MAX_XDMA_NUM)
+        return;
+    
+    qa_start_enable = enable;
+    pthread_cond_signal(&spm_xdma_qa_cond[ch]);
+}
+
 
 void spm_niq_deal_notify(void *arg)
 {
@@ -554,14 +578,12 @@ loop:
         if(ctx->ops->read_xdma_data)
             count = ctx->ops->read_xdma_data(ch, (void **)ptr_data, len, run);
         if(count > 0 && (count < sizeof(len))){
-#if (TCP_DATA_SEND_BY_THREADS == 1)
             net_thread_con_broadcast(ch, run);
-            _net_thread_dispatcher_refresh(run, ch);
-#else
-            if(ctx->ops->send_xdma_data)
-                ctx->ops->send_xdma_data(ch, ptr_data, len, count, run);
-#endif
+           //if(ctx->ops->send_xdma_data)
+           //     ctx->ops->send_xdma_data(ch, ptr_data, len, count, run);
         }
+         if(count > 0)
+            _net_thread_dispatcher_refresh(run, ch);
         ctx->ops->read_xdma_over_deal(ch, NULL);
         if(socket_bitmap_weight() == 0){
             io_set_enable_command(XDMA_MODE_DISABLE, ch, 0, 0);
@@ -573,6 +595,57 @@ loop:
     }while(1);
     
 }
+
+void spm_xdma_data_handle_thread_qa(void *arg)
+{
+    void *ptr = NULL;
+    struct spm_context *ctx = NULL;
+    char *ptr_data[XDMA_TRANSFER_MAX_DESC] = {NULL};
+    uint32_t  len[XDMA_TRANSFER_MAX_DESC] = {0};
+    int ch, section_id = 0;
+    int count = 0;
+
+    ctx = spmctx;
+    ch = *(int *)arg;
+    if(ch >= MAX_XDMA_NUM)
+        pthread_exit(0);
+    
+    pthread_detach(pthread_self());
+    //io_set_enable_command(XDMA_MODE_DISABLE, ch, 0, 0);
+loop:
+    printf_note(">>>>>QA Read XDMA%d Wait!\n", ch);
+    pthread_mutex_lock(&spm_xdma_qa_cond_mutex[ch]);
+    while(qa_start_enable == false)
+        pthread_cond_wait(&spm_xdma_qa_cond[ch], &spm_xdma_qa_cond_mutex[ch]);
+    pthread_mutex_unlock(&spm_xdma_qa_cond_mutex[ch]);
+    io_set_enable_command(XDMA_MODE_ENABLE, ch, 0, 0);
+    //spm_hash_delete(run->hash);/* clear hash table */
+    printf_note(">>>>>QA XDMA%d read start\n", ch);
+    do{
+        if(ctx->ops->read_xdma_raw_data)
+            count = ctx->ops->read_xdma_raw_data(ch, (void **)ptr_data, len, NULL);
+        ctx->ops->read_xdma_over_deal(ch, NULL);
+        if(count > 0){
+            uint8_t  *ptr;
+            for(int c = 0; c < count; c++){
+                ptr = ptr_data[c];
+                printfn("count:%d, %u\n", count, len[c]);
+                for(int i = 0; i < len[c]; i++){
+                    printfn("%02x ", *ptr++);
+                }
+                printfn("\n");
+            }
+        }
+        if(qa_start_enable == false){
+            io_set_enable_command(XDMA_MODE_DISABLE, ch, 0, 0);
+            printf_note("QA STOP\n");
+            usleep(1000);
+            goto loop;
+        }
+    }while(1);
+    
+}
+
 
 
 struct spm_context *get_spm_ctx(void)
@@ -646,9 +719,13 @@ void *spm_init(void)
         if(ret!=0)
             perror("pthread cread xdma");
     }
-    
 
-
+    for(int i = 0; i <MAX_XDMA_NUM; i++){
+        xdma_ch[i] = i;
+        ret=pthread_create(&recv_thread_id,NULL,(void *)spm_xdma_data_handle_thread_qa, &xdma_ch[i]);
+        if(ret!=0)
+            perror("pthread cread qa xdma");
+    }
 //#endif /* SUPPORT_PLATFORM_ARCH_ARM */
     return (void *)spmctx;
 }

@@ -3,6 +3,8 @@
 
 //#define DEBUG_TEST
 //#define LOAD_FILE_ASYN 1
+#define TCP_DATA_SEND_BY_THREADS 0
+
 #define KEY_TOOL_ENABLE 1
 #define MAX_RADIO_CHANNEL_NUM 1         /* 最大射频通道数 */
 #define MAX_RF_NUM 1                    /* 最大射频数 */

@@ -120,7 +120,7 @@ void fpga_io_init(void)
 
     if(fpga_init_flag)
         return;
-
+#ifndef DEBUG_TEST
     fd_fpga = open(FPGA_REG_DEV, O_RDWR|O_SYNC);
     if (fd_fpga == -1){
         printf_warn("%s, open error\n", FPGA_REG_DEV);
@@ -133,6 +133,7 @@ void fpga_io_init(void)
     printf("FPGA version:%x\n", fpga_reg->system->version);
     fpga_reg->system->system_reset = 1;
     usleep(100);
+#endif
     fpga_init_flag = true;
 }
 

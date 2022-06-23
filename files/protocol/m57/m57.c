@@ -1060,7 +1060,7 @@ bool m57_execute_cmd(void *client, int *code)
             cl->section.prio = _type;
             if(cl->section.thread && cl->section.thread->ops->set_prio)
                 cl->section.thread->ops->set_prio(cl, _type);
-            #ifdef DEBUG_TEST
+            #if 0 //def DEBUG_TEST
              struct sub_st{
                 uint16_t chip_id;
                 uint16_t func_id;

@@ -31,14 +31,20 @@ typedef struct{
 }chip_config;
 
 static chip_config g_chip;
+static FILE *ret_fp;
 
 static uint32_t read_reg(uint32_t *addr)
 {
     uint32_t val = 0;
     char buf[100] = {'\0'};
-    sprintf(buf, "nrs1800_tool -a 0x%x", *addr);
-    val = system(buf);
-    //val = safe_system(buf);
+    char rbuf[20] = {'\0'};
+
+    sprintf(buf, "val=`nrs1800_tool -a 0x%x`; reg_val=`echo ${val##*:}`; echo $reg_val >> ret_val.txt", *addr);
+    system(buf);
+    fflush(ret_fp);
+    fread(rbuf, sizeof(char), 10, ret_fp);
+    sscanf(rbuf, "0x%08x", &val);
+    
     return val;
 }
 
@@ -324,7 +330,12 @@ int main(int argc, char *argv[])
             break;
         }
     }
-
+    ret_fp = fopen("ret_val.txt", "w+");
+    if(ret_fp)
+    {
+        printf("error: open ret_val.txt failed!\n");
+        return -1;
+    }
     cJSON *root = NULL;
     root = json_read_file("/etc/nrs1800_desc.json", root);
     ret = parse_reg_json_with_config(root);

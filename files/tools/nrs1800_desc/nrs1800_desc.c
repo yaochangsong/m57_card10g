@@ -34,16 +34,20 @@ static chip_config g_chip;
 
 static uint32_t read_reg(uint32_t *addr)
 {
-
+    uint32_t val = 0;
+    char buf[100] = {'\0'};
+    sprintf(buf, "nrs1800_tool -a 0x%x", *addr);
+    val = system(buf);
+    //val = safe_system(buf);
+    return val;
 }
 
 static void get_reg_bit_val(uint32_t *addr, uint32_t *retval)
 {
     uint32_t val, ret0, ret1, ret3 = 0;
 
-    //val = read_reg(addr);
+    val = read_reg(addr);
 
-    val = 0x12345678;
     ret0 = val & 0xffff0000;
     ret1 = val & 0x0000ffff;
     for(int i = 0; i < 16; i ++)
@@ -290,7 +294,7 @@ static void printf_reg_info(uint32_t reg_num)
 static void usage(const char *prog)
 {
     printf("Usage: %s [option]\n"
-        "       -a read reg, such as: -a 0x15c\n", prog);
+        "       -r read reg, such as: -r 0x15c\n", prog);
     exit(1);
 }
 
@@ -302,10 +306,10 @@ int main(int argc, char *argv[])
     if(argc < 2)
         usage(argv[0]);
     
-    while((opt = getopt(argc, argv, "a:")) != -1)
+    while((opt = getopt(argc, argv, "r:")) != -1)
     {
         switch (opt){
-            case 'a':
+            case 'r':
                 printf("read regs\t= %s\n", optarg);
                 if(!strstr(optarg, "x"))
                 {

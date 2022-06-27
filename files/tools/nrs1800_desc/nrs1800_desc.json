@@ -1,0 +1,141 @@
+{
+    "chip name" : "nrs1800",
+
+    "regs":[
+        {
+            "short_name" : "PORT_0_17_CTL_1_CSR",
+            "offset" : "0x15c",
+            "port_size" : "0x20",
+            "port_max"  : "17",
+            "info" : [
+                {
+                    "bits" : "0:1",
+                    "name" : "PWIDTH",
+                    "describe" : "\t\t\t\t\t\t\t\t\t该端口支持的端口宽度模式\n\t\t\t\t\t\t\t\t\t0b00 = 不支持 2x 或 4x\n\t\t\t\t\t\t\t\t\t0b01 = 不支持 2x；支持 4x\n\t\t\t\t\t\t\t\t\t0b10 = 支持 2x；不支持 4x\n\t\t\t\t\t\t\t\t\t0b11 = 支持 2x 和 4x\n\t\t\t\t\t\t\t\t\t注意：所有端口都支持 1x\n",
+                    "type" : "RO",
+                    "default_val" : "0b11"
+                },
+            
+                {
+                    "bits" : "2:4",
+                    "name" : "INIT_PWIDTH",
+                    "describe" : "\t\t\t\t\t\t\t\t\t初始化的端口宽度\n\t\t\t\t\t\t\t\t\t0b000 = 单通道端口\n\t\t\t\t\t\t\t\t\t0b001 = 单通道端口，通道 R (冗余通道)\n\t\t\t\t\t\t\t\t\t0b010 = 4x 端口\n\t\t\t\t\t\t\t\t\t0b011 = 2x 端口\n\t\t\t\t\t\t\t\t\t其他数值均被保留\n",
+                    "type" : "RO",
+                    "default_val" : "0b010"
+                },
+            
+                {
+                    "bits" : "5:7",
+                    "name" : "PWIDTH_OVRD",
+                    "describe" : "\t\t\t\t\t\t\t\t\t通过软件配置在初始化时可以改变端口宽度\n\t\t\t\t\t\t\t\t\t0b000 = 没有重写\n\t\t\t\t\t\t\t\t\t0b001 = 保留\n\t\t\t\t\t\t\t\t\t0b010 = 强制成单通道端口\n\t\t\t\t\t\t\t\t\t0b011 = 强制为单通道端口，通道 R (冗余通道)\n\t\t\t\t\t\t\t\t\t0b100 = 保留\n\t\t\t\t\t\t\t\t\t0b101 = 使能 2x 模式，关闭 4x 模式\n\t\t\t\t\t\t\t\t\t0b110 = 使能 4x 模式，关闭 x 模式\n\t\t\t\t\t\t\t\t\t0b111 = 使能 2x 和 4x 模式\n\t\t\t\t\t\t\t\t\t端口不允许启用该端口不支持的宽度模式。\n\t\t\t\t\t\t\t\t\t改变该字段将导致端口用新的值重新初始化。\n\t\t\t\t\t\t\t\t\t注意：当 PORT_DIS 从 1 变为 0 时该字段被清 0。\n",
+                    "type" : "RW",
+                    "default_val" : "0b000"
+                },
+            
+                {
+                    "bits" : "8",
+                    "name" : "PORT_DIS",
+                    "describe" : "\t\t\t\t\t\t\t\t\t端口关闭\n\t\t\t\t\t\t\t\t\t0 = 使能端口\n\t\t\t\t\t\t\t\t\t1 = 关闭端口；端口不能接收/发送任何包或控制符\n\t\t\t\t\t\t\t\t\t注意：当 PORT_DIS=1，ackID 被清为 0。\n",
+                    "type" : "RW",
+                    "default_val" : "0"
+                },
+            
+                {
+                    "bits" : "9",
+                    "name" : "OUTPUT_PORT_EN",
+                    "describe" : "\t\t\t\t\t\t\t\t\t使能输出端口传送\n\t\t\t\t\t\t\t\t\t0 = 输出端口被中止，不能发送除维护包之外的任何\n\t\t\t\t\t\t\t\t\t包。控制符不受影响并正常传送。\n\t\t\t\t\t\t\t\t\t1 = 端口被使能发送任何包。\n\t\t\t\t\t\t\t\t\t注意：当 OUTPUT_PORT_EN 从 1 被清为 0 时，路由\n\t\t\t\t\t\t\t\t\t该端口的包被丢弃。已经在输出缓存里的包被传送。\n",
+                    "type" : "RW",
+                    "default_val" : "0b1"
+                },
+            
+                {
+                    "bits" :     "10",
+                    "name" :     "INPUT_PORT_EN",
+                    "describe" : "\t\t\t\t\t\t\t\t\t使能输入端口接收\n\t\t\t\t\t\t\t\t\t0 = 输入端口被中止，只能接收维护包。对其他信息包\n\t\t\t\t\t\t\t\t\t产生 NACK 控制符以强制发送端标记出错环境。控制符\n\t\t\t\t\t\t\t\t\t不受影响并正常接收。\n\t\t\t\t\t\t\t\t\t1 = 端口被使能接收任何包。\n",
+                    "type" : "RW",
+                    "default_val" : "0"
+                },
+            
+                {
+                    "bits" :     "11",
+                    "name" :     "ERR_CHK_DIS",
+                    "describe" : "\t\t\t\t\t\t\t\t\t0 = 使能 S-RIO 传输错误检查和恢复\n\t\t\t\t\t\t\t\t\t1 = 关闭 S-RIO 传输错误检查和恢复\n",
+                    "type" : "RO",
+                    "default_val" : "0"
+                },
+            
+                {
+                    "bits" :     "12",
+                    "name" :     "ERR_CHK_DIS",
+                    "describe" : "\t\t\t\t\t\t\t\t\t0 = 不向该端口发送多播事件控制符\n\t\t\t\t\t\t\t\t\t1 = 向该端口发送多播事件控制符\n",
+                    "type" : "RW",
+                    "default_val" : "0"
+                },
+            
+                {
+                    "bits" :     "13",
+                    "name" :     "保留",
+                    "describe" : "\t\t\t\t\t\t\t\t\t保留\n",  
+                    "type" : "RO",
+                    "default_val" : "0"
+                },
+            
+                {
+                    "bits" :     "14",
+                    "name" :     "ENUM_B",
+                    "describe" : "\t\t\t\t\t\t\t\t\t枚举边界感知系统采用枚举算法对该标志进行标记。在\n\t\t\t\t\t\t\t\t\t入口或出口端口上的算法不会枚举该字段被设置的端\n\t\t\t\t\t\t\t\t\t口。这为 S- RIO 结构的软件提供了强制枚举域。设备只\n\t\t\t\t\t\t\t\t\t需要存储写入该字段的数值。\n",
+                    "type" : "RW",
+                    "default_val" : "0"
+                },
+            
+                {
+                    "bits" :     "15:19",
+                    "name" :     "ERR_CHK_DIS",
+                    "describe" : "\t\t\t\t\t\t\t\t\t保留\n",    
+                    "type" : "RO",
+                    "default_val" : "0"
+                },
+            
+                {
+                    "bits" :     "20:27",
+                    "name" :     "ERR_MASK",
+                    "describe" : "\t\t\t\t\t\t\t\t\tCRC 错误时抑制包重传.\n\t\t\t\t\t\t\t\t\t0b0000_0000 - 关闭错误恢复抑制\n\t\t\t\t\t\t\t\t\t0bxxxx_xxx1 - 抑制 CRF = 0, 优先级 0 重传\n\t\t\t\t\t\t\t\t\t0bxxxx_xx1x - 抑制 CRF = 0, 优先级 1 重传\n\t\t\t\t\t\t\t\t\t0bxxxx_x1xx - 抑制 CRF = 0, 优先级 2 重传\n\t\t\t\t\t\t\t\t\t0bxxxx_1xxx - 抑制 CRF = 0, 优先级 3 重传\n\t\t\t\t\t\t\t\t\t0bxxx1_xxxx - 抑制 CRF = 1, 优先级 0 重传\n\t\t\t\t\t\t\t\t\t0bxx1x_xxxx - 抑制 CRF = 1, 优先级 1 重传\n\t\t\t\t\t\t\t\t\t0bx1xx_xxxx - 抑制 CRF = 1, 优先级 2 重传\n\t\t\t\t\t\t\t\t\t0b1xxx_xxxx - 抑制 CRF = 1, 优先级 3 重传\n\t\t\t\t\t\t\t\t\t建议设置该字段所有位为 1 或不设置，以确保当包的\n\t\t\t\t\t\t\t\t\tPRIO 或 CRF 字段被损坏时的一致操作。\n\t\t\t\t\t\t\t\t\t当该字段匹配包的优先级时，接收到 CRC 错误的包会导\n\t\t\t\t\t\t\t\t\t致该包被认可和丢弃。注意这时 Port {0..17} Error and \n\t\t\t\t\t\t\t\t\tStatus CSR.OUTPUT_DROP 不会被置 1。相反端口的\n\t\t\t\t\t\t\t\t\tPort {0..17} Implementation Specific Error Detect\n",    
+                    "type" : "RW",
+                    "default_val" : "0b00000000"
+                },
+            
+                {
+                    "bits" :     "28",
+                    "name" :     "STOP_ON_PORT_FAIL_ENC_EN",
+                    "describe" : "\t\t\t\t\t\t\t\t\t当 Error Rate Failed Threshold 触及时该字段和\n\t\t\t\t\t\t\t\t\tDROP_PKT_EN 一起用于强制某种操作\n",    
+                    "type" : "RW",
+                    "default_val" : "0"
+                },
+            
+                {
+                    "bits" :     "29",
+                    "name" :     "DROP_PKT_EN",
+                    "describe" : "\t\t\t\t\t\t\t\t\t当 Error Rate Failed Threshold 触及时该字段和\n\t\t\t\t\t\t\t\t\tSTOP_ON_PORT_FAIL_ENC_EN 一起用于强制某种操作\n", 
+                    "type" : "RW",
+                    "default_val" : "0"
+                },
+            
+                {
+                    "bits" :     "30",
+                    "name" :     "PORT_LOCKOUT",
+                    "describe" : "\t\t\t\t\t\t\t\t\t当该字段被清 0 时，包的接收和发送被该寄存器的\n\t\t\t\t\t\t\t\t\tOUTPUT_PORT_EN 和 INPUT_PORT_EN 所控制。\n\t\t\t\t\t\t\t\t\t当该字段为 1 时，该端口被停止，不能发送和接收任何\n\t\t\t\t\t\t\t\t\t包。但是端口仍遵循训练程序，仍能发送 Link-Request\n\t\t\t\t\t\t\t\t\t控制符并做出响应。对接收的包返回 NACK 控制符。\n", 
+                    "type" : "RW",
+                    "default_val" : "0"
+                },
+            
+                {
+                    "bits" :     "31",
+                    "name" :     "PORT_Type",
+                    "describe" : "\t\t\t\t\t\t\t\t\t指示端口类型\n\t\t\t\t\t\t\t\t\t1 = 串行端口\n", 
+                    "type" : "RO",
+                    "default_val" : "1"
+                }
+            ]
+        }
+    ]
+}

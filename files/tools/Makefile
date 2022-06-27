@@ -6,7 +6,7 @@ LDLIBS += -lpthread
 
 CFLAGS = -Wall -g 
 
-tool_sub_dir = nrs1800 nettool
+tool_sub_dir = nrs1800 nettool nrs1800_desc
 
 all:$(TARGETS)  tool_sub
 

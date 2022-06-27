@@ -290,7 +290,7 @@ static void printf_reg_info(uint32_t reg_num)
 static void usage(const char *prog)
 {
     printf("Usage: %s [option]\n"
-        "       -r read reg, such as: -r 0x15c\n", prog);
+        "       -a read reg, such as: -a 0x15c\n", prog);
     exit(1);
 }
 
@@ -302,10 +302,10 @@ int main(int argc, char *argv[])
     if(argc < 2)
         usage(argv[0]);
     
-    while((opt = getopt(argc, argv, "r:")) != -1)
+    while((opt = getopt(argc, argv, "a:")) != -1)
     {
         switch (opt){
-            case 'r':
+            case 'a':
                 printf("read regs\t= %s\n", optarg);
                 if(!strstr(optarg, "x"))
                 {

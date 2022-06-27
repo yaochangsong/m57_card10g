@@ -41,6 +41,12 @@ install_platform()
 	if [ -f ${ETC_DIR}/sroute ]; then
 		install -m 0755 ${ETC_DIR}/sroute ${INS_PLATFOR_DIR}
 	fi
+	if [ -f ${ETC_DIR}/nrs1800_desc ]; then
+		install -m 0755 ${ETC_DIR}/nrs1800_desc ${INS_PLATFOR_DIR}
+	fi
+	if [ -f ${ETC_DIR}/nrs1800_desc.json ]; then
+		install -m 0755 ${ETC_DIR}/nrs1800_desc.json /etc/
+	fi
 	if [ -f ${CONF_FILE} ]; then
 		install -m 0755 ${CONF_FILE} /etc/
 	fi

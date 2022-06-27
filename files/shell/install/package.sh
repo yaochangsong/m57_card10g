@@ -1,7 +1,5 @@
 #!/bin/sh
 
-INS_PLATFORM_DIR="/usr/bin/"
-
 appdir=`pwd`/files
 
 do_package()
@@ -15,6 +13,7 @@ do_package()
 	platform_conf_file=$appdir/conf/config.json
 	etc_dir=$appdir/build/app/etc
 	nrs1800_dir=$appdir/tools/nrs1800
+	nrs1800_desc_dir=$appdir/tools/nrs1800_desc
 	
 	cp -f $appdir/shell/install/install.sh $appdir/build/
 	cp -f $jenkins_ver $appdir/build/app
@@ -40,6 +39,12 @@ do_package()
 	fi
 	if [ -f $nrs1800_dir/sroute ]; then
 		cp -f $nrs1800_dir/sroute $etc_dir/
+	fi
+	if [ -f $nrs1800_desc_dir/nrs1800_desc.json ]; then
+		cp -f $nrs1800_desc_dir/nrs1800_desc.json $etc_dir/
+	fi
+	if [ -f $nrs1800_desc_dir/nrs1800_desc ]; then
+		cp -f $nrs1800_desc_dir/nrs1800_desc $etc_dir/
 	fi
 	#network
 	if [ -f $appdir/shell/interfaces ]; then

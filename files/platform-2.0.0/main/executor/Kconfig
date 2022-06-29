@@ -23,6 +23,8 @@ menuconfig SPM
 				
 			config SPM_SOURCE_X86
 				bool "X86 Demo"
+			config SPM_SOURCE_XDMA
+				bool "XDMA"
 		endchoice                         
 	endif
 	

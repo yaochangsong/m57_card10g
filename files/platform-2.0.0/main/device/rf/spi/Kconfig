@@ -9,6 +9,9 @@ choice
 config DEVICE_RF_SPI_ACT
     bool "act"
 
+config DEVICE_RF_SPI_ACT_V2
+    bool "act_v2"
+	
 config DEVICE_RF_SPI_TF713
     bool "tf713"
 

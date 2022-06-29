@@ -187,9 +187,9 @@ static bool  _executor_points_scan_mode(uint8_t ch, int mode, void *args)
         if(spmctx->ops->sample_ctrl)
             spmctx->ops->sample_ctrl(r_args);
         executor_set_command(EX_RF_FREQ_CMD,  EX_RF_MID_FREQ, ch, &point->points[i].center_freq);
-        executor_set_command(EX_RF_FREQ_CMD,  EX_RF_MID_BW, ch, &point->points[i].bandwidth);
+        //executor_set_command(EX_RF_FREQ_CMD,  EX_RF_MID_BW, ch, &point->points[i].bandwidth);
         executor_set_command(EX_MID_FREQ_CMD, EX_BANDWITH, ch, &point->points[i].bandwidth);
-        executor_set_command(EX_MID_FREQ_CMD, EX_MID_FREQ,    ch, &point->points[i].center_freq, point->points[i].center_freq);
+        //executor_set_command(EX_MID_FREQ_CMD, EX_MID_FREQ,    ch, &point->points[i].center_freq, point->points[i].center_freq);
         //executor_set_command(EX_RF_FREQ_CMD,  EX_RF_LOW_NOISE, ch, &point->points[i].center_freq);
         //executor_set_command(EX_MID_FREQ_CMD, EX_FFT_SIZE, ch, &point->points[i].fft_size);
         /* 根据带宽设置边带�?*/

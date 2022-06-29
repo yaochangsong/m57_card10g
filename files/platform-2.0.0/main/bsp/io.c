@@ -94,6 +94,7 @@ bool test_ch_fft_on(uint8_t ch)
 static void  io_get_config_bandwidth_factor(uint32_t anays_band,               /* 输入参数：带宽 */
                                             uint32_t *bw_factor,        /* 输出参数：带宽系数 */
                                             uint32_t *filter_factor,    /* 输出参数：滤波器系数 */
+                                            uint32_t *filter_factor2,    /* 输出参数：滤波器系数2 */
                                             struct bindwidth_factor_table *table,/* 输入参数：系数表 */
                                             uint32_t table_len          /* 输入参数：系数表长度 */
                                             )
@@ -103,12 +104,14 @@ static void  io_get_config_bandwidth_factor(uint32_t anays_band,               /
     if(anays_band == 0 || table_len == 0){
         *bw_factor = table[0].extract;
         *filter_factor = table[0].filter;
+        *filter_factor2 = table[0].filter2;
         printf_note("band=0, set default: extract=%d, extract_filter=%d\n", *bw_factor, *filter_factor);
     }
     for(i = 0; i<table_len; i++){
         if(table[i].bw_hz == anays_band){
             *bw_factor = table[i].extract;
             *filter_factor = table[i].filter;
+            *filter_factor2 = table[i].filter2;
             found = 1;
             break;
         }
@@ -116,6 +119,7 @@ static void  io_get_config_bandwidth_factor(uint32_t anays_band,               /
     if(found == 0){
         *bw_factor = table[0].extract;
         *filter_factor = table[0].filter;
+        *filter_factor2 = table[0].filter2;
         printf_note("[%u]not find band table, set default:[%uHz] extract=%d, extract_filter=%d\n", anays_band, table[0].bw_hz, *bw_factor, *filter_factor);
     }
 }
@@ -142,15 +146,15 @@ static void  io_get_bandwidth_factor(uint32_t anays_band,               /* 输�
         if(table[i].band == anays_band){
             *bw_factor = table[i].extract_factor;
             *filter_factor = table[i].filter_factor;
-        *filter_factor2 = table[i].filter_factor2;
+            *filter_factor2 = table[i].filter_factor2;
             found = 1;
             break;
         }
     }
     if(found == 0){
-        *bw_factor = table[i-1].extract_factor;
-        *filter_factor = table[i-1].filter_factor;
-        *filter_factor2 = table[i-1].filter_factor2;
+        *bw_factor = table[0].extract_factor;
+        *filter_factor = table[0].filter_factor;
+        *filter_factor2 = table[0].filter_factor2;
         printf_info("[%u]not find band table, set default:[%uHz] extract=%d, extract_filter=%d\n", anays_band, table[i-1].band, *bw_factor, *filter_factor);
     }
 }
@@ -181,7 +185,7 @@ int32_t io_set_bandwidth(uint32_t ch, uint32_t bandwidth){
        table_len = ARRAY_SIZE(config_get_config()->oal_config.ctrl_para.bband_bw_factor);
        printf_debug("table_len:%d\n", table_len);
 
-       io_get_config_bandwidth_factor(bandwidth, &band_factor,&filter_factor, config_table, table_len);
+       io_get_config_bandwidth_factor(bandwidth, &band_factor,&filter_factor, &filter_factor2, config_table, table_len);
     }
     else
     {
@@ -210,13 +214,17 @@ int32_t io_set_bandwidth(uint32_t ch, uint32_t bandwidth){
 
 int32_t io_set_noise(uint32_t ch, uint32_t noise_en,int8_t noise_level_tmp){
     uint32_t  noise_level;
+    uint32_t  noise_level_cfg = config_get_noise_level();
+    if (noise_level_cfg == 0)
+        noise_level_cfg = 16000;
+    
     if(noise_en == 1)
     {
         if(noise_level_tmp > 0)
         {
             noise_level_tmp = 0;
         }
-        noise_level =  (uint32_t)(16000.0 * pow((double)10.0, (double)(noise_level_tmp / 20.0)));
+        noise_level =  (uint32_t)(noise_level_cfg * pow((double)10.0, (double)(noise_level_tmp / 20.0)));
     }
     else 
     {
@@ -243,7 +251,7 @@ int32_t io_set_dec_bandwidth(uint32_t ch, uint32_t dec_bandwidth){
 
     if(config_table[0].bw_hz != 0){
         table_len = ARRAY_SIZE(config_get_config()->oal_config.ctrl_para.bband_bw_factor);
-        io_get_config_bandwidth_factor(dec_bandwidth, &band_factor,&filter_factor, config_table, table_len);
+        io_get_config_bandwidth_factor(dec_bandwidth, &band_factor,&filter_factor, &filter_factor2, config_table, table_len);
      }
     else
     {
@@ -331,8 +339,7 @@ static uint32_t io_set_dec_middle_freq_reg(uint8_t ch, uint64_t dec_middle_freq,
 
 #if defined(CONFIG_BSP_YF21025)
         uint64_t board_mid_freq;
-        //config_read_by_cmd(EX_RF_FREQ_CMD, EX_RF_MID_FREQ_FILTER, ch, &board_mid_freq);
-        board_mid_freq = MHZ(140);
+        config_read_by_cmd(EX_RF_FREQ_CMD, EX_RF_MID_FREQ_FILTER, ch, &board_mid_freq);
         printf_note("ch%d set subch mid freq, board freq:%"PRIu64"\n", ch, board_mid_freq);
         delta_freq = board_mid_freq +  dec_middle_freq - middle_freq ; 
 #else
@@ -394,13 +401,15 @@ uint64_t io_get_raw_sample_rate(uint32_t ch, uint64_t middle_freq, uint32_t bw)
         printf_info("!!!!!!!!!!!!!SideRate Is Not Set In Config File[bandwidth=%u]!!!!!!!!!!!!!\n", bw);
         side_rate = DEFAULT_SIDE_BAND_RATE;
     }
-    
     uint64_t sample_rate = (uint64_t)bw * side_rate;
+    #if defined(CONFIG_BSP_WD_XCR)
     int reminder = sample_rate % MHZ(1.28);
     sample_rate = (sample_rate / MHZ(1.28)) * MHZ(1.28);
     if (reminder > 0 && (sample_rate % MHZ(1))) {
         sample_rate = sample_rate + MHZ(1.28);
     }
+    #endif
+    
     return sample_rate;
 }
 
@@ -471,13 +480,16 @@ int32_t io_set_subch_bandwidth(uint32_t subch, uint32_t bandwidth, uint8_t dec_m
     
     static uint32_t old_val = 0;
     static int32_t old_ch=-1;
+    static uint8_t old_method = 0xff;
     
-    if((old_val == bandwidth) && (subch == old_ch)){
+    if((old_val == bandwidth) && (subch == old_ch) && (old_method == dec_method)){
         /* 避免重复设置相同参数 */
         return ret;
     }
     old_val = bandwidth;
     old_ch = subch;
+    old_method = dec_method;
+    
    // dec_method = IO_DQ_MODE_IQ; /* TEST */
     if(dec_method == IO_DQ_MODE_IQ){
 #ifdef CONFIG_FPGA_REGISTER
@@ -502,7 +514,7 @@ int32_t io_set_subch_bandwidth(uint32_t subch, uint32_t bandwidth, uint8_t dec_m
     if(table == NULL)
         return -1;
     if(config_table[0].bw_hz != 0 ){
-        io_get_config_bandwidth_factor(bandwidth, &band_factor,&filter_factor, config_table, config_table_len);
+        io_get_config_bandwidth_factor(bandwidth, &band_factor,&filter_factor, &filter_factor2, config_table, config_table_len);
     }
     else{
         io_get_bandwidth_factor(bandwidth, &band_factor,&filter_factor,&filter_factor2, table, table_len);
@@ -616,7 +628,7 @@ void io_set_smooth_threshold(uint32_t ch, int val)
 void io_set_smooth_time(uint32_t ch, uint16_t stime)
 {
     static uint16_t old_val[MAX_RADIO_CHANNEL_NUM] = {0};
-    if(old_val[ch] == stime || ch >= MAX_RADIO_CHANNEL_NUM){
+    if( ch >= MAX_RADIO_CHANNEL_NUM || old_val[ch] == stime){
         /* 避免重复设置相同参数 */
         return;
     }
@@ -639,7 +651,7 @@ void io_set_calibrate_val(uint32_t ch, int32_t  cal_value)
 {
     static int32_t old_val[MAX_RADIO_CHANNEL_NUM] = {0};
 
-    if(old_val[ch] == cal_value || ch >= MAX_RADIO_CHANNEL_NUM){
+    if(ch >= MAX_RADIO_CHANNEL_NUM || old_val[ch] == cal_value){
         /* 避免重复设置相同参数 */
         return;
     }
@@ -727,7 +739,7 @@ void io_set_fft_size(uint32_t ch, uint32_t fft_size)
     uint32_t factor;
     static uint32_t old_value[MAX_RADIO_CHANNEL_NUM] = {0};
 
-    if(old_value[ch] == fft_size || ch >= MAX_RADIO_CHANNEL_NUM){
+    if(ch >= MAX_RADIO_CHANNEL_NUM || old_value[ch] == fft_size){
         return;
     }
     old_value[ch] = fft_size;
@@ -821,14 +833,6 @@ int32_t io_set_audio_volume(uint32_t ch,uint8_t volume)
 {
     if(reg_get()->misc && reg_get()->misc->set_audio_volume)
         reg_get()->misc->set_audio_volume(ch, volume);
-#if 0
-    #if defined(SUPPORT_PROJECT_AKT_4CH)
-     _set_audio_volume(get_fpga_reg(), ch, volume);
-     #else
-     volume_set((intptr_t)AUDIO_REG(get_fpga_reg()), volume);
-     #endif
-     //volume_set(get_fpga_reg()->audioReg,volume);
-#endif
     return 0;
 }
 

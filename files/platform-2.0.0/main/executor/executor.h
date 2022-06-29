@@ -117,6 +117,7 @@ enum {
     EX_RF_SAMPLE_CTRL,             /* 直采控制 0关闭直采，1开启直采 */
     EX_RF_LOW_NOISE,              /* 低噪放 */
     EX_RF_STATUS,                   /* 射频状态 0:ok -1:failed */
+    EX_RF_MID_FREQ_FILTER,        /*射频中频频率*/
 };
 
 /* network paramters */

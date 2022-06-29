@@ -44,7 +44,7 @@ static uint32_t read_reg(uint32_t *addr)
     fflush(ret_fp);
     fread(rbuf, sizeof(char), 10, ret_fp);
     sscanf(rbuf, "0x%08x", &val);
-    
+    fclose(ret_fp); 
     return val;
 }
 
@@ -52,8 +52,9 @@ static void get_reg_bit_val(uint32_t *addr, uint32_t *retval)
 {
     uint32_t val, ret0, ret1, ret3 = 0;
 
-    val = read_reg(addr);
-
+//    val = read_reg(addr);
+    val = 0x06400000;
+#if 1
     ret0 = val & 0xffff0000;
     ret1 = val & 0x0000ffff;
     for(int i = 0; i < 16; i ++)
@@ -61,6 +62,42 @@ static void get_reg_bit_val(uint32_t *addr, uint32_t *retval)
         ret3 |= ((ret1 >> i) & 0x1) << (31 - i);
         ret3 |= ((ret0 >> (31-i)) & 0x1) << i;
     }
+#else
+    ret3 = ((val & 0x000000ff) << 24) |
+            ((val & 0x0000ff00) << 8) |
+            ((val & 0x00ff0000) >> 8) |
+            ((val & 0xff000000) >> 24);
+#endif
+
+#if 1
+    char *bitrangs[] = {
+            "07:00","15:08", "23:16","31:24"
+         };
+    printf("val = 0x%08x\n", val);
+    printf("source val:\n");
+    for(int i = 0; i < 4; i++)
+    {
+        printf("%s ", bitrangs[i]);
+        for(int j = 0; j < 8; j++)
+        {
+            printf("%c ", (val >> (i * 8 + (7-j))) & 0x1 == 0x1 ? '1' : '0');
+        }
+        printf("\n");
+    }
+    printf("change val:0x%08x\n", ret3);
+    printf("changebit val:\n");
+
+    for(int i = 0; i < 4; i++)
+    {
+        printf("%s ", bitrangs[i]);
+        for(int j = 0; j < 8; j++)
+        {
+            printf("%c ", (ret3 >> (i * 8 + (7-j))) & 0x1 == 0x1 ? '1' : '0');
+        }
+        printf("\n");
+    }
+#endif
+
     *retval = ret3;
 }
 
@@ -286,7 +323,7 @@ static void printf_reg_info(uint32_t reg_num)
     if(g_chip.p_regs[reg_num].port_max != 0)
         printf("reg port_max\t:%d\n", g_chip.p_regs[reg_num].port_max);
     printf("reg short_name\t:%s\n", g_chip.p_regs[reg_num].short_name);
-    printf("reg real val\t:0x%x\n", g_chip.p_regs[reg_num].real_val);
+    printf("reg real val\t:0x%08x\n", g_chip.p_regs[reg_num].real_val);
     printf("——————————————————————————————————————————————————————————————————————————————————————————————————————————————————————\n");
     printf("bits\t|real_val\t|name\t\t\t  |type\t|def_val\t|describe\n");
     for(int j = 0; j < g_chip.p_regs[reg_num].bitrange_num; j++)
@@ -300,6 +337,7 @@ static void printf_reg_info(uint32_t reg_num)
 static void usage(const char *prog)
 {
     printf("Usage: %s [option]\n"
+        "       -c config the chip's reg json file"
         "       -r read reg, such as: -r 0x15c\n", prog);
     exit(1);
 }
@@ -311,10 +349,19 @@ int main(int argc, char *argv[])
     int opt;
     if(argc < 2)
         usage(argv[0]);
-    
-    while((opt = getopt(argc, argv, "r:")) != -1)
+
+    int fileflag = 0;
+    cJSON *root = NULL;
+
+    while((opt = getopt(argc, argv, "c:r:")) != -1)
     {
         switch (opt){
+            case 'c':
+                printf("json file:\t= %s\n", optarg);
+                root = json_read_file(optarg, root);
+                fileflag = 1;
+            break;
+
             case 'r':
                 printf("read regs\t= %s\n", optarg);
                 if(!strstr(optarg, "x"))
@@ -324,6 +371,7 @@ int main(int argc, char *argv[])
                 }
                 sscanf(optarg, "0x%x", &read_reg);
             break;
+
             
             default:
                 usage(argv[0]);
@@ -331,13 +379,15 @@ int main(int argc, char *argv[])
         }
     }
     ret_fp = fopen("ret_val.txt", "w+");
-    if(ret_fp)
+    if(!ret_fp)
     {
         printf("error: open ret_val.txt failed!\n");
         return -1;
     }
-    cJSON *root = NULL;
-    root = json_read_file("/etc/nrs1800_desc.json", root);
+    
+    if(fileflag == 0)
+        root = json_read_file("/etc/nrs1800_desc.json", root);
+    
     ret = parse_reg_json_with_config(root);
     if(ret == false)
         return -1;

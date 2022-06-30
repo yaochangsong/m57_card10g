@@ -13,7 +13,7 @@
 				"data":	[1235, 1236, 1237]
 			}
 		}, {
-			"ifname":	"enp17s0f0",
+			"ifname":	"enp17s0f1",
 			"port":	{
 				"command":	5000,
 				"data":	[1235, 1236, 1237]

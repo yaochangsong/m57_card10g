@@ -4,6 +4,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <unistd.h>
+//#include "cJSON.h"
 #include "../../dao/json/cJSON.h"
 
 typedef struct{
@@ -33,10 +34,12 @@ typedef struct{
 static chip_config g_chip;
 static FILE *ret_fp;
 
+
+
 static uint32_t read_reg(uint32_t *addr)
 {
     uint32_t val = 0;
-    char buf[100] = {'\0'};
+    char buf[200] = {'\0'};
     char rbuf[20] = {'\0'};
 
     ret_fp = fopen("/tmp/.ret_val.txt", "w+");
@@ -46,7 +49,7 @@ static uint32_t read_reg(uint32_t *addr)
         return -1;
     }
 
-    sprintf(buf, "val=`sudo nrs1800_tool -a 0x%x`; reg_val=`echo ${val##*:}`; echo $reg_val >> /tmp/.ret_val.txt", *addr);
+    sprintf(buf, "val=`sudo /var/local/qa/nrs1800/nrs1800_tool -a 0x%x`; reg_val=`echo ${val##*:}`; echo $reg_val >> /tmp/.ret_val.txt", *addr);
     system(buf);
     fflush(ret_fp);
     fread(rbuf, sizeof(char), 10, ret_fp);
@@ -399,7 +402,7 @@ int main(int argc, char *argv[])
     if(ret == true)
     {    
         printf("baseaddr\t= 0x%x\nreg_num\t\t= %d\n", baseaddr, reg_num);
-        get_reg_bit_val(NULL, &g_chip.p_regs[reg_num].real_val);
+        get_reg_bit_val(&read_reg, &g_chip.p_regs[reg_num].real_val);
         printf_reg_info(reg_num);
         return 0;
     }

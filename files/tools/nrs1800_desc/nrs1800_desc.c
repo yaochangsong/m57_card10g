@@ -52,8 +52,8 @@ static void get_reg_bit_val(uint32_t *addr, uint32_t *retval)
 {
     uint32_t val, ret0, ret1, ret3 = 0;
 
-//    val = read_reg(addr);
-    val = 0x06400000;
+    val = read_reg(addr);
+//    val = 0x06400000;
 #if 1
     ret0 = val & 0xffff0000;
     ret1 = val & 0x0000ffff;

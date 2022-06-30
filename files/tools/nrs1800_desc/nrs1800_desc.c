@@ -44,7 +44,8 @@ static uint32_t read_reg(uint32_t *addr)
     fflush(ret_fp);
     fread(rbuf, sizeof(char), 10, ret_fp);
     sscanf(rbuf, "0x%08x", &val);
-    fclose(ret_fp); 
+    fclose(ret_fp);
+    system("rm /tmp/.ret_val.txt");
     return val;
 }
 
@@ -378,7 +379,7 @@ int main(int argc, char *argv[])
             break;
         }
     }
-    ret_fp = fopen("ret_val.txt", "w+");
+    ret_fp = fopen("/tmp/.ret_val.txt", "w+");
     if(!ret_fp)
     {
         printf("error: open ret_val.txt failed!\n");

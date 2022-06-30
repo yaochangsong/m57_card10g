@@ -39,7 +39,14 @@ static uint32_t read_reg(uint32_t *addr)
     char buf[100] = {'\0'};
     char rbuf[20] = {'\0'};
 
-    sprintf(buf, "val=`nrs1800_tool -a 0x%x`; reg_val=`echo ${val##*:}`; echo $reg_val >> ret_val.txt", *addr);
+    ret_fp = fopen("/tmp/.ret_val.txt", "w+");
+    if(!ret_fp)
+    {
+        printf("error: open ret_val.txt failed!\n");
+        return -1;
+    }
+
+    sprintf(buf, "val=`sudo nrs1800_tool -a 0x%x`; reg_val=`echo ${val##*:}`; echo $reg_val >> /tmp/.ret_val.txt", *addr);
     system(buf);
     fflush(ret_fp);
     fread(rbuf, sizeof(char), 10, ret_fp);
@@ -378,12 +385,6 @@ int main(int argc, char *argv[])
                 usage(argv[0]);
             break;
         }
-    }
-    ret_fp = fopen("/tmp/.ret_val.txt", "w+");
-    if(!ret_fp)
-    {
-        printf("error: open ret_val.txt failed!\n");
-        return -1;
     }
     
     if(fileflag == 0)

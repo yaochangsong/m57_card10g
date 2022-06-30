@@ -79,8 +79,10 @@ static void get_reg_bit_val(uint32_t *addr, uint32_t *retval)
             ((val & 0x00ff0000) >> 8) |
             ((val & 0xff000000) >> 24);
 #endif
+    printf("read reg val:\t0x%08x\n", val);
+    printf("change val:\t0x%08x\n", ret3);
 
-#if 1
+#if 0
     char *bitrangs[] = {
             "07:00","15:08", "23:16","31:24"
          };
@@ -327,7 +329,7 @@ static cJSON* json_read_file(const char *filename, cJSON* root)
 static void printf_reg_info(uint32_t reg_num)
 {
     bool ret = false;
-
+#if 0
     printf("reg offset\t:0x%x\n", g_chip.p_regs[reg_num].offset);
     if(g_chip.p_regs[reg_num].port_size != 0)
         printf("reg port_size\t:0x%x\n", g_chip.p_regs[reg_num].port_size);
@@ -335,6 +337,7 @@ static void printf_reg_info(uint32_t reg_num)
         printf("reg port_max\t:%d\n", g_chip.p_regs[reg_num].port_max);
     printf("reg short_name\t:%s\n", g_chip.p_regs[reg_num].short_name);
     printf("reg real val\t:0x%08x\n", g_chip.p_regs[reg_num].real_val);
+#endif
     printf("——————————————————————————————————————————————————————————————————————————————————————————————————————————————————————\n");
     printf("bits\t|real_val\t|name\t\t\t  |type\t|def_val\t|describe\n");
     for(int j = 0; j < g_chip.p_regs[reg_num].bitrange_num; j++)

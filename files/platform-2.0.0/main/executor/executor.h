@@ -138,7 +138,8 @@ enum {
     EX_CTRL_TIMESET,             /* 时间设置 */
     EX_CTRL_SIDEBAND,            /* 边带率 */
     EX_CTRL_CALI_SIGAL_THRE,     /* 有无信号门限值 */
-    EX_CTRL_IQ_DATA_LENGTH       /* IQ数据长度 */
+    EX_CTRL_IQ_DATA_LENGTH,       /* IQ数据长度 */
+    EX_CTRL_AUDIO_VOLUME         /* 音频音量 */
 };
 
 //#include "config.h"

@@ -374,6 +374,7 @@ int8_t executor_set_command(exec_cmd cmd, uint8_t type, uint8_t ch,  void *data,
             int32_t subch = va_arg(argp, int32_t);
             int32_t enable = *(int32_t *)data;
             printf_note("ch=%d, subch:%d,enable=%d NIQ %s\n",ch, subch, enable, enable == 0 ? "disable" : "enable");
+            #if 0
             if(enable){
                 io_set_enable_command(IQ_MODE_ENABLE, ch, subch, 0);
                 spm_niq_deal_notify(NULL);
@@ -381,7 +382,9 @@ int8_t executor_set_command(exec_cmd cmd, uint8_t type, uint8_t ch,  void *data,
             else{
                 io_set_enable_command(IQ_MODE_DISABLE, ch,subch, 0);
             }
-            
+            #else
+            executor_niq_work_nofity(NULL, ch, subch, enable);
+            #endif
             break;
         }
         default:

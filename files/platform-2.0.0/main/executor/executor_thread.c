@@ -8,6 +8,9 @@
 
 struct executor_context *exec_ctx = NULL;
 static inline bool _is_executor_thread_reset(struct executor_thread_m *thread);
+static inline void _set_executor_thread_wait(struct executor_thread_m *thread, bool wait);
+int executor_fft_work_nofity(void *cl, int ch, int mode, bool enable);
+int executor_niq_work_nofity(void *cl, int ch, int subch, bool enable);
 
 
 static const struct executor_thread_ops exec_ops = {
@@ -198,18 +201,26 @@ static bool  _executor_points_scan_mode(uint8_t ch, int mode, void *args)
                     poal_config->channel[ch].multi_freq_point_param.points[i].d_method,poal_config->channel[ch].multi_freq_point_param.points[i].d_bandwith,
                     poal_config->channel[ch].multi_freq_point_param.points[i].noise_thrh,poal_config->channel[ch].multi_freq_point_param.points[i].noise_en,
                     poal_config->channel[ch].multi_freq_point_param.points[i].audio_volume);
+        subch = CONFIG_AUDIO_CHANNEL;
         if(poal_config->channel[ch].enable.map.bit.audio){
-            subch = CONFIG_AUDIO_CHANNEL;
             executor_set_command(EX_MID_FREQ_CMD, EX_DEC_METHOD, subch, &poal_config->channel[ch].multi_freq_point_param.points[i].d_method);
             executor_set_command(EX_MID_FREQ_CMD, EX_SUB_CH_DEC_BW, subch, &poal_config->channel[ch].multi_freq_point_param.points[i].d_bandwith);
             executor_set_command(EX_MID_FREQ_CMD, EX_SUB_CH_MID_FREQ, subch,&poal_config->channel[ch].multi_freq_point_param.points[i].center_freq,poal_config->channel[ch].multi_freq_point_param.points[i].center_freq, ch);
             executor_set_command(EX_MID_FREQ_CMD, EX_MUTE_THRE, subch,&poal_config->channel[ch].multi_freq_point_param.points[i].noise_thrh,poal_config->channel[ch].multi_freq_point_param.points[i].noise_en);
             
             executor_set_command(EX_MID_FREQ_CMD, EX_AUDIO_VOL_CTRL, subch,&point->points[i].audio_volume);
+            #if 0
             io_set_enable_command(AUDIO_MODE_ENABLE, ch, -1, 0);  //音频通道开�?
             spm_niq_deal_notify(NULL);
+            #else
+            executor_niq_work_nofity(NULL, ch, subch, 1);
+            #endif
         }else{
+            #if 0
             io_set_enable_command(AUDIO_MODE_DISABLE, ch, -1, 0);  //音频通道开�?
+            #else
+            executor_niq_work_nofity(NULL, ch, subch, 0);
+            #endif
         }
         
 #if defined (CONFIG_RESIDENCY_STRATEGY) 
@@ -387,23 +398,23 @@ static bool  _executor_points_scan_mode2(uint8_t ch, int mode, void *args)
 static bool  _executor_niq_thread_loop(uint8_t ch, int mode, void *args)
 {
     printf_note("NIQ \n");
-    #if 0
     iq_t *ptr_iq = NULL;
     struct executor_thread_m *arg = args;
     struct spm_context *ctx = (struct spm_context *)arg->args;
     struct spm_run_parm  run;
     int len = 0;
-
-    len = ctx->ops->read_niq_data((void **)&ptr_iq);
-    if(len > 0){
-        ctx->ops->send_niq_data(ptr_iq, len, &run);
-    }
-    if(subch_bitmap_weight(CH_TYPE_IQ) == 0){
-        printf_debug("iq disabled\n");
-        usleep(1000);
-        return false;
-    }
-    #endif
+    memcpy(&run, ctx->run_args[ch], sizeof(run));
+    //spm_niq_dispatcher_buffer_clear();
+    do {
+        len = ctx->ops->read_niq_data((void **)&ptr_iq);
+        if(len > 0){
+            ctx->ops->send_niq_data(ptr_iq, len, &run);
+        }
+        if(subch_bitmap_weight(CH_TYPE_IQ) == 0){
+            _set_executor_thread_wait(arg, true);
+            return false;
+        }
+    } while(1);
     return true;
 }
 
@@ -465,6 +476,13 @@ static inline bool _is_executor_thread_reset(struct executor_thread_m *thread)
     reset = thread->reset;
     pthread_mutex_unlock(&thread->pwait.t_mutex);
     return reset;
+}
+
+static inline void _set_executor_thread_wait(struct executor_thread_m *thread, bool wait)
+{
+    pthread_mutex_lock(&thread->pwait.t_mutex);
+    thread->pwait.is_wait = wait;
+    pthread_mutex_unlock(&thread->pwait.t_mutex);
 }
 
 
@@ -645,20 +663,20 @@ int executor_niq_work_nofity(void *cl, int ch, int subch, bool enable)
     } else{
         pctx = exec_ctx;
     }
-
-    io_set_enable_command(IQ_MODE_ENABLE, ch, subch, 0);
     
-    if(unlikely(ch >= EXEC_THREAD_FFT_NUM)){
-        printf_note("ch:%d > %d\n", ch, EXEC_THREAD_FFT_NUM);
+    if(unlikely(ch >= MAX_RADIO_CHANNEL_NUM)){
+        printf_note("ch:%d > %d\n", ch, MAX_RADIO_CHANNEL_NUM);
         return -1;
     }
 
     printf_debug("ch=%d, mode=%d, enable=%d\n", ch, mode, enable);
     
-    if(enable)
-        ch_bitmap_set(ch, CH_TYPE_FFT);
+    if(enable) {
+        io_set_enable_command(IQ_MODE_ENABLE, ch, subch, 0);
+    }
     else{
-        ch_bitmap_clear(ch, CH_TYPE_FFT);
+        io_set_enable_command(IQ_MODE_DISABLE, ch, subch, 0);
+        return 0;
     }
     struct executor_thread_m *thread = &pctx->thread[EXEC_THREAD_TYPE_NIQ][0];
     

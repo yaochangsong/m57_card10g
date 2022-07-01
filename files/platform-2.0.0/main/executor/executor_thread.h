@@ -61,5 +61,5 @@ struct executor_context {
 extern void executor_thread_init(void);
 extern struct executor_context *get_executor_ctx(void);
 extern int executor_fft_work_nofity(void *cl, int ch, int mode, bool enable);
-
+extern int executor_niq_work_nofity(void *cl, int ch, int subch, bool enable);
 #endif

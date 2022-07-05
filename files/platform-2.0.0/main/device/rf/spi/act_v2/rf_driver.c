@@ -141,7 +141,7 @@ static int spi_send_data(int spi_fd, uint8_t *send_buffer, size_t send_len,
     return ret;
 }
 
-static int spi_assemble_send_data(uint8_t *buffer, uint8_t cmd, void *data, size_t len)
+static int spi_assemble_send_data(uint8_t ch, uint8_t *buffer, uint8_t cmd, void *data, size_t len)
 {
     #define SPI_DATA_HADER 0xaa
     #define SPI_DATA_END   0x55
@@ -152,11 +152,18 @@ static int spi_assemble_send_data(uint8_t *buffer, uint8_t cmd, void *data, size
     pchecksum = ptr;
     *ptr++ = len;
     *ptr++ = cmd;
+    if (cmd != RF_CMD_CODE_TEMPERATURE) {
+        *ptr++ = ch;
+    }
     if(len != 0){
         memcpy(ptr, data, len);
         ptr += len;
     }
-    *ptr++ = spi_checksum(pchecksum, len+2);
+    if (cmd == RF_CMD_CODE_TEMPERATURE) {
+        *ptr++ = spi_checksum(pchecksum, len+2);
+    } else {
+        *ptr++ = spi_checksum(pchecksum, len+3);
+    }
     *ptr++ = SPI_DATA_END;
     return (ptr - buffer);/* RETURN: total frame byte count */
 }
@@ -164,9 +171,14 @@ static int spi_assemble_send_data(uint8_t *buffer, uint8_t cmd, void *data, size
 
 static ssize_t prase_recv_data(uint8_t cmd, uint8_t *recv_buffer, size_t data_len, void *data)
 {
-    uint8_t *ptr_data, status;
+    uint8_t *ptr_data, *res_data, status;
     int status_len = 0;
-    ptr_data = recv_buffer+3;
+    
+    if (cmd == RF_CMD_CODE_TEMPERATURE) {
+        ptr_data = res_data = recv_buffer+3;
+    } else {
+        ptr_data = res_data = recv_buffer+4;
+    }
     if(cmd == RF_QUERY_CMD_CODE_FREQUENCY || cmd == RF_CMD_CODE_FREQUENCY){
         status_len = 2;
     }else{
@@ -175,19 +187,13 @@ static ssize_t prase_recv_data(uint8_t cmd, uint8_t *recv_buffer, size_t data_le
     if(data_len < status_len){
         return -1;
     }
-    #if 0
-    if(data != NULL){
-        memcpy(data, ptr_data, data_len -status_len);
-    }
-    #endif
-    ptr_data += data_len -status_len;
+
+    ptr_data += data_len - status_len;
     status = *ptr_data;  //特殊（射频频率设置查询回复，状态码两个字节，Byte1：0-锁定，1-失锁 Byte2：0-成功 1-失败）
 
     if (status == 0 && data != NULL) {
-        memcpy(data, recv_buffer+3, data_len -status_len);
+        memcpy(data, res_data, data_len - status_len);
     }
-    
-    printf_debug("status=%d\n", status);
     return status;
 }
 
@@ -210,7 +216,7 @@ static int rf_get_temperature(uint8_t ch, int16_t *temperatue)
 
     data_len = 3;
     recv_size = data_len + 5; //5 is frame header & tail length
-    frame_size = spi_assemble_send_data(frame_buffer, RF_CMD_CODE_TEMPERATURE, NULL, 0);
+    frame_size = spi_assemble_send_data(ch, frame_buffer, RF_CMD_CODE_TEMPERATURE, NULL, 0);
     
     ret = spi_send_data(_fd[ch], frame_buffer, frame_size, recv_buffer, recv_size);
     if (ret < 0) {
@@ -237,8 +243,8 @@ static int rf_get_mid_freq(uint8_t ch, uint8_t *freq)
     int frame_size = -1, recv_size = 0, data_len = 0;
 
     data_len = 2;
-    recv_size = data_len + 5; //5 is frame header & tail length
-    frame_size = spi_assemble_send_data(frame_buffer, RF_QUERY_CMD_CODE_MID_FREQ, NULL, 0);
+    recv_size = data_len + 5 + 1; //5 is frame header & tail length
+    frame_size = spi_assemble_send_data(ch, frame_buffer, RF_QUERY_CMD_CODE_MID_FREQ, NULL, 0);
     
     ret = spi_send_data(_fd[ch], frame_buffer, frame_size, recv_buffer, recv_size);
     if (ret < 0) {
@@ -284,8 +290,8 @@ static int rf_get_bw(uint8_t ch, uint8_t *bw)
     int frame_size = -1, recv_size = 0, data_len = 0;
 
     data_len = 2;
-    recv_size = data_len + 5; //5 is frame header & tail length
-    frame_size = spi_assemble_send_data(frame_buffer, RF_QUERY_CMD_CODE_BW, NULL, 0);
+    recv_size = data_len + 5 + 1; //5 is frame header & tail length
+    frame_size = spi_assemble_send_data(ch, frame_buffer, RF_QUERY_CMD_CODE_BW, NULL, 0);
     
     ret = spi_send_data(_fd[ch], frame_buffer, frame_size, recv_buffer, recv_size);
     if (ret < 0) {
@@ -339,8 +345,8 @@ static int rf_get_work_mode(uint8_t ch, uint8_t *mode)
     int frame_size = -1, recv_size = 0, data_len = 0;
 
     data_len = 2;
-    recv_size = data_len + 5; //5 is frame header & tail length
-    frame_size = spi_assemble_send_data(frame_buffer, RF_QUERY_CMD_CODE_MODE, NULL, 0);
+    recv_size = data_len + 5 + 1; //5 is frame header & tail length
+    frame_size = spi_assemble_send_data(ch, frame_buffer, RF_QUERY_CMD_CODE_MODE, NULL, 0);
     
     ret = spi_send_data(_fd[ch], frame_buffer, frame_size, recv_buffer, recv_size);
     if (ret < 0) {
@@ -377,8 +383,8 @@ static int rf_get_mgc_gain(uint8_t ch, uint8_t *gain)
     int frame_size = -1, recv_size = 0, data_len = 0;
 
     data_len = 2;
-    recv_size = data_len + 5; //5 is frame header & tail length
-    frame_size = spi_assemble_send_data(frame_buffer, RF_QUERY_CMD_CODE_MF_GAIN, NULL, 0);
+    recv_size = data_len + 5 + 1; //5 is frame header & tail length
+    frame_size = spi_assemble_send_data(ch, frame_buffer, RF_QUERY_CMD_CODE_MF_GAIN, NULL, 0);
     
     ret = spi_send_data(_fd[ch], frame_buffer, frame_size, recv_buffer, recv_size);
     if (ret < 0) {
@@ -405,8 +411,8 @@ static int rf_get_rf_gain(uint8_t ch, uint8_t *gain)
     int frame_size = -1, recv_size = 0, data_len = 0;
 
     data_len = 2;
-    recv_size = data_len + 5; //5 is frame header & tail length
-    frame_size = spi_assemble_send_data(frame_buffer, RF_QUERY_CMD_CODE_RF_GAIN, NULL, 0);
+    recv_size = data_len + 5 + 1; //5 is frame header & tail length
+    frame_size = spi_assemble_send_data(ch, frame_buffer, RF_QUERY_CMD_CODE_RF_GAIN, NULL, 0);
     
     ret = spi_send_data(_fd[ch], frame_buffer, frame_size, recv_buffer, recv_size);
     if (ret < 0) {
@@ -433,8 +439,8 @@ static int rf_get_frequency(uint8_t ch, uint64_t *freq)
     int frame_size = -1, recv_size = 0, data_len = 0;
 
     data_len = 7;
-    recv_size = data_len + 5; //5 is frame header & tail length
-    frame_size = spi_assemble_send_data(frame_buffer, RF_QUERY_CMD_CODE_FREQUENCY, NULL, 0);
+    recv_size = data_len + 5 + 1; //5 is frame header & tail length, 1 is ch number
+    frame_size = spi_assemble_send_data(ch, frame_buffer, RF_QUERY_CMD_CODE_FREQUENCY, NULL, 0);
     
     ret = spi_send_data(_fd[ch], frame_buffer, frame_size, recv_buffer, recv_size);
     if (ret < 0) {
@@ -472,8 +478,8 @@ static int rf_set_bw(uint8_t channel, uint8_t bw)
 
     uint8_t data = bw;
     size_t data_len = 1;
-    frame_size = spi_assemble_send_data(frame_buffer, RF_CMD_CODE_BW, &data, data_len);
-    int recv_size = 2+5;
+    frame_size = spi_assemble_send_data(channel, frame_buffer, RF_CMD_CODE_BW, &data, data_len);
+    int recv_size = 2+5+1;
     ret = spi_send_data(_fd[channel], frame_buffer, frame_size, recv_buffer, recv_size);
     if (ret < 0) {
         return -1;
@@ -484,6 +490,7 @@ static int rf_set_bw(uint8_t channel, uint8_t bw)
 static int _rf_set_bw(uint8_t channel, uint32_t bw_hz)
 {
     uint8_t mbw = 0;
+#if 0
     if(bw_hz == MHZ(20))
         mbw = 5;
     else if(bw_hz == MHZ(10))
@@ -502,6 +509,36 @@ static int _rf_set_bw(uint8_t channel, uint32_t bw_hz)
         mbw = 8;
     else
         mbw = 7;
+#else
+    if(bw_hz == MHZ(1))
+        mbw = 0;
+    else if(bw_hz == MHZ(2))
+        mbw = 1;
+    else if(bw_hz == MHZ(5))
+        mbw = 2;
+    else if(bw_hz == MHZ(10))
+        mbw = 3;
+    else if(bw_hz == MHZ(20))
+        mbw = 4;
+    else if(bw_hz == MHZ(0.5))
+        mbw = 5;
+    else if(bw_hz == MHZ(40))
+        mbw = 6;
+    else if(bw_hz == MHZ(80))
+        mbw = 7;
+    else if(bw_hz == MHZ(0.2))
+        mbw = 8;
+    else if(bw_hz == MHZ(70))
+        mbw = 9;
+    else if(bw_hz == MHZ(60))
+        mbw = 10;
+    else if(bw_hz == MHZ(200))
+        mbw = 11;
+    else {
+        printf_warn("not supported rf bw %u hz\n", bw_hz);
+        return -1;
+    }
+#endif
             
     return rf_set_bw(channel, mbw);
 }
@@ -518,8 +555,8 @@ static int rf_set_mode(uint8_t channel, uint8_t mode)
 
     uint8_t data = mode;
     size_t data_len = 1;
-    frame_size = spi_assemble_send_data(frame_buffer, RF_CMD_CODE_MODE, &data, data_len);
-    int recv_size = 2+5;
+    frame_size = spi_assemble_send_data(channel, frame_buffer, RF_CMD_CODE_MODE, &data, data_len);
+    int recv_size = 2+5+1;
     ret = spi_send_data(_fd[channel], frame_buffer, frame_size, recv_buffer, recv_size);
     if (ret < 0) {
         return -1;
@@ -545,8 +582,8 @@ static int rf_set_mid_freq(uint8_t channel, uint8_t freq)
 
     uint8_t data = freq;
     size_t data_len = 1;
-    frame_size = spi_assemble_send_data(frame_buffer, RF_CMD_CODE_MID_FREQ, &data, data_len);
-    int recv_size = 2+5;
+    frame_size = spi_assemble_send_data(channel, frame_buffer, RF_CMD_CODE_MID_FREQ, &data, data_len);
+    int recv_size = 2+5+1;
     ret = spi_send_data(_fd[channel], frame_buffer, frame_size, recv_buffer, recv_size);
     if (ret < 0) {
         return -1;
@@ -582,8 +619,8 @@ static int rf_set_mf_gain(uint8_t channel, uint8_t gain)
 
     uint8_t data = gain;
     size_t data_len = 1;
-    frame_size = spi_assemble_send_data(frame_buffer, RF_CMD_CODE_MF_GAIN, &data, data_len);
-    int recv_size = 2+5;
+    frame_size = spi_assemble_send_data(channel, frame_buffer, RF_CMD_CODE_MF_GAIN, &data, data_len);
+    int recv_size = 2+5+1;
     ret = spi_send_data(_fd[channel], frame_buffer, frame_size, recv_buffer, recv_size);
     if (ret < 0) {
         return -1;
@@ -602,8 +639,8 @@ static int rf_set_rf_gain(uint8_t channel, uint8_t gain)
 
     uint8_t data = gain;
     size_t data_len = 1;
-    frame_size = spi_assemble_send_data(frame_buffer, RF_CMD_CODE_RF_GAIN, &data, data_len);
-    int recv_size = 2+5;
+    frame_size = spi_assemble_send_data(channel, frame_buffer, RF_CMD_CODE_RF_GAIN, &data, data_len);
+    int recv_size = 2+5+1;
     ret = spi_send_data(_fd[channel], frame_buffer, frame_size, recv_buffer, recv_size);
     if (ret < 0) {
         return -1;
@@ -623,8 +660,8 @@ static int rf_set_frequency(uint8_t channel, uint64_t freq)
     
     uint64_t data = freq;
     size_t data_len = 5;
-    recv_size = 7 + 5;
-    frame_size = spi_assemble_send_data(frame_buffer, RF_CMD_CODE_FREQUENCY, &data, data_len);
+    recv_size = 7 + 5 + 1;
+    frame_size = spi_assemble_send_data(channel, frame_buffer, RF_CMD_CODE_FREQUENCY, &data, data_len);
     
     ret = spi_send_data(_fd[channel], frame_buffer, frame_size, recv_buffer, recv_size);
     if (ret < 0) {

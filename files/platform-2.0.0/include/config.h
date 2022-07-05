@@ -88,6 +88,7 @@
 #include "../main/device/clk_adc/clk_adc.h"
 #include "../main/device/gps/gps_com.h"
 #include "../main/device/lcd/lcd.h"
+#include "../main/device/lcd/ss_k600.h" 
 #include "../main/device/rf/rf.h"
 #include "../main/device/rf/fpga/rf_driver.h"
 #include "../main/device/rf/adrv/adrv.h"

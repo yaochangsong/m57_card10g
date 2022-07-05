@@ -171,6 +171,7 @@ struct rf_para_st{
     volatile uint32_t agc_ctrl_time;         /* AGC 控制时间; 单位：10 微秒 快速：100 微秒  中速：1000 微秒 慢速：10000 微秒*/
     uint32_t mid_bw;                /* 射频中频带宽; 0~2^32 */
     uint64_t mid_freq;              /* 中心频率 */
+    uint64_t board_mid_freq;        /* 中频频率 */
     int32_t agc_ref_val_0dbm;       /* AGC: 0DB 主通道读取值 */
     int32_t subch_ref_val_0dbm;       /* 多频点模式下: 0DB 主通道读取值  */
     struct  rf_mode_param_st rf_mode;  /* 射频模式参数 */
@@ -243,6 +244,7 @@ struct bindwidth_factor_table{
     uint32_t bw_hz;
     uint32_t extract;
     uint32_t filter;
+    uint32_t filter2;
 };
 
 /* 控制/配置参数 */
@@ -271,7 +273,7 @@ struct control_st{
     struct bindwidth_factor_table bband_bw_factor[32];            /* 宽带系数表 */
     struct bindwidth_factor_table niq_bw_factor[32];              /* 窄带iq系数表 */
     struct bindwidth_factor_table dem_bw_factor[32];              /* 解调系数表 */
-    
+    uint32_t noise_level;                                         /*静噪门限*/
 };//__attribute__ ((packed));
 
 /*状态参数*/

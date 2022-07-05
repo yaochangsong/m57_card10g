@@ -58,9 +58,10 @@ static int rf_set_low_noise(uint64_t midfreq)
 }
 
 
-uint8_t rf_set_interface(uint8_t cmd,uint8_t ch,void *data)
+int8_t rf_set_interface(uint8_t cmd,uint8_t ch,void *data)
 {
-    uint8_t ret = -1;
+    int ret = -1;
+
     switch(cmd){
         case EX_RF_MID_FREQ :
         {
@@ -129,6 +130,21 @@ uint8_t rf_set_interface(uint8_t cmd,uint8_t ch,void *data)
                 ret = rfctx->ops->set_rf_gain(ch, rf_gain_value);
             break;
         }
+        case EX_RF_MID_FREQ_FILTER:
+        {
+            static uint64_t freq_hz = 0;/* Hz */
+            static int32_t old_ch=-1;
+            if((freq_hz == *(uint64_t*)data) && (ch == old_ch)){
+                /* 避免重复设置相同参数 */
+                break;
+            }
+            freq_hz = *(uint64_t*)data;
+            old_ch = ch;
+            printf_debug("[**RF**]ch=%d, rf_middle_freq=%"PRIu64"\n",ch, *(uint64_t*)data);
+            if(rfctx && rfctx->ops->set_rf_mid_freq)
+                ret = rfctx->ops->set_rf_mid_freq(ch, freq_hz);
+            break;
+        }
         case EX_RF_LOW_NOISE:
         {
             ret = rf_set_low_noise(*((uint64_t *)data));
@@ -191,6 +207,15 @@ int8_t rf_read_interface(uint8_t cmd,uint8_t ch,void *data, va_list ap)
             }
             *(int8_t *)data = status;
             ret = (status == false ? -1 : 0);
+            break;
+        }
+        case EX_RF_MID_FREQ_FILTER:
+        {
+            uint64_t mid_freq = 0;
+            if(rfctx && rfctx->ops->get_rf_mid_freq)
+                ret = rfctx->ops->get_rf_mid_freq(ch, &mid_freq);
+            if(ret != -1)
+                *(uint64_t *)data = mid_freq;
             break;
         }
         default:{

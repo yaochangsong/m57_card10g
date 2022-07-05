@@ -15,6 +15,7 @@ struct rf_ops {
     int (*set_rf_gain)(uint8_t, uint8_t);       /* 设置射频频增益/衰减 */
     int (*set_rf_cali)(uint8_t, uint8_t);       /* 设置射频校准 */
     int (*set_direct_sample_onoff)(uint8_t, int); /* 设置直采开关 */
+    int (*set_rf_mid_freq)(uint8_t, uint64_t);   /*设置射频中频频率*/
     /* GET */
     int (*get_mid_freq)(uint8_t, uint64_t*);    /* 获取中心频率 */
     int (*get_bindwidth)(uint8_t, uint32_t*);   /* 获取中频带宽 */
@@ -24,6 +25,7 @@ struct rf_ops {
     int (*get_rf_gain)(uint8_t, uint8_t*);      /* 获取射频频增益/衰减 */
     int (*get_temperature)(uint8_t, int16_t*);  /* 获取射频温度 */
     bool(*get_status)(uint8_t);                 /* 获取射频工作状态 */
+    int (*get_rf_mid_freq)(uint8_t, uint64_t*);   /*获取射频中频频率*/
 };
 
 struct rf_ctx {
@@ -31,7 +33,7 @@ struct rf_ctx {
 };
 
 extern    int rf_init(void);
-extern    uint8_t  rf_set_interface(uint8_t cmd,uint8_t ch,void *data);                 //射频设置接口
+extern    int8_t  rf_set_interface(uint8_t cmd,uint8_t ch,void *data);                 //射频设置接口
 extern    int8_t  rf_read_interface(uint8_t cmd,uint8_t ch,void *data, va_list ap);                //射频查询接口
 extern    struct rf_ctx *get_rfctx(void);
 

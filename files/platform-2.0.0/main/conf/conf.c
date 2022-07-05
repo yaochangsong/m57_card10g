@@ -329,6 +329,11 @@ bool config_get_is_internal_clock(void)
     return true;
 }
 
+uint32_t config_get_noise_level(void)
+{
+    return config.oal_config.ctrl_para.noise_level;
+}
+
 uint64_t config_get_disk_alert_threshold(void)
 {
     return config.oal_config.status_para.diskInfo.alert.alert_threshold_byte;
@@ -831,6 +836,10 @@ int8_t config_write_data(int cmd, uint8_t type, uint8_t ch, void *data, ...)
                     poal_config->channel[ch].rf_para.mid_bw = *(uint32_t *)data;
                     printf_note("mid_bw=%u\n", poal_config->channel[ch].rf_para.mid_bw);
                     break;
+                case EX_RF_MID_FREQ_FILTER:
+                    poal_config->channel[ch].rf_para.board_mid_freq = *(uint64_t *)data;
+                    printf_note("board_mid_freq=%"PRIu64"\n", poal_config->channel[ch].rf_para.board_mid_freq);
+                    break;
                 case EX_RF_MODE_CODE:
                     poal_config->channel[ch].rf_para.rf_mode_code = *(int8_t *)data;
                     printf_note("rf_mode_code=%d\n", poal_config->channel[ch].rf_para.rf_mode_code);
@@ -1011,6 +1020,10 @@ int8_t config_read_by_cmd(exec_cmd cmd, uint8_t type, uint8_t ch, void *data, ..
                 case EX_RF_ATTENUATION:
                     *(int8_t *)data = poal_config->channel[ch].rf_para.attenuation;
                     break;
+                case EX_RF_MID_FREQ_FILTER:
+                    *(uint64_t *)data = poal_config->channel[ch].rf_para.board_mid_freq;
+                    break;
+                
                 default:
                     printf_err("not surpport type\n");
                     goto exit;

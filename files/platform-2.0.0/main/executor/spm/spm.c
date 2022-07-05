@@ -270,7 +270,7 @@ void *spm_init(void)
     pthread_attr_t attr;
     pthread_t work_id;
     spmctx = spm_create_context();
-    if(spmctx != NULL){
+    if(spmctx != NULL && spmctx->ops->create){
         spmctx->ops->create();
     }
     if(spmctx == NULL){
@@ -303,19 +303,6 @@ void *spm_init(void)
 
     spm_cond_init();
 
-    /* 创建多通道并行宽带IQ线程 */
-    //for(int i = 0; i < MAX_BIQ_NUM; i++){
-    //    s_ch[i] = i;
-    //    ret=pthread_create(&work_id, NULL, (void *)spm_biq_handle_thread, &s_ch[i]);
-    //    if(ret!=0)
-    //        perror("pthread cread biq");
-    //}
-
-    /* 创建多通道窄带IQ线程 */
-    //ret=pthread_create(&recv_thread_id,NULL,(void *)spm_niq_handle_thread, spmctx);
-    //if(ret!=0)
-    //    perror("pthread cread niq");
-    
     return (void *)spmctx;
 }
 

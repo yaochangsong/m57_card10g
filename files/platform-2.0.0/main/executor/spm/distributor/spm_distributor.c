@@ -63,7 +63,7 @@
 
 struct spm_distributor_pkt_data_s{
     int ch;
-    uint32_t index;
+    uint32_t sn;
     void *pkt_buffer_ptr;
     size_t pkt_len;
     int frame_pkt_num;
@@ -144,8 +144,8 @@ static int _frame_devider_init(struct frame_devider_s *fds)
 static int _data_dump(void *args)
 {
     struct spm_distributor_pkt_data_s *pkt = args;
-    printf("pkt:%p, frameId:%"PRIu64", ptr:%p, len:%lu, index:%u\n", pkt,
-        pkt->frame_idx, pkt->pkt_buffer_ptr, pkt->pkt_len, pkt->index);
+    printf("pkt:%p, frameId:%"PRIu64", ptr:%p, len:%lu, sn:%u\n", pkt,
+        pkt->frame_idx, pkt->pkt_buffer_ptr, pkt->pkt_len, pkt->sn);
     return 0;
 }
 
@@ -184,17 +184,17 @@ int _spm_distributor_analysis(int type, uint8_t *mbufs, size_t len, struct spm_d
             break;
         }
         pkt->ch = fft_header->channel;
-        pkt->index = fft_header->serial_num;
+        pkt->sn = fft_header->serial_num;
         pkt->frame_idx = fidx;
         if(fft_header->pkt_len > dtype->pkt_header_len){
             pkt->pkt_len = fft_header->pkt_len - dtype->pkt_header_len;
             pkt->pkt_buffer_ptr = ptr + dtype->pkt_header_len;
         }
         else
-            printf_warn("header len[%d] is bigger than pkt len[%d\n]", dtype->pkt_header_len, fft_header->pkt_len);
+            printf_warn("header len[%d] is bigger than pkt len[%d]\n", dtype->pkt_header_len, fft_header->pkt_len);
         
         queue_ctx_t *qctx = dtype->pkt_queue[pkt->ch];
-       // printf_note("push,ch:%d, pkt：%p\n", pkt->ch, pkt);
+        printf_note("push pkt:  ch:%d, sn: %d, pkt_len:%lu, frame_idx:%"PRIu64"\n", pkt->ch, pkt->sn, pkt->pkt_len, pkt->frame_idx);
         qctx->ops->push(qctx, pkt);
         //qctx->ops->foreach(qctx, _data_dump);
         offset += fft_header->pkt_len;
@@ -239,17 +239,18 @@ static int _spm_distributor_data_frame_producer(int ch, int type, void **data, s
         _gettime(&now);
         //printf_note(">>>name:%s, %p, frame_buffer:%p\n",   dist_type[type].name, &dist_type[type], mbuf_header);
         if(_tv_diff(&now, &start) > _SPM_DIST_TIMEOUT_MS){
-            printf_warn("Read TimeOut!\r");
-            return -1;
+            printf_warn("Read TimeOut!\n");
+            ret = -1;
+            break;
         }
        // pkt_q->ops->foreach(pkt_q, _data_dump);
         pkt = pkt_q->ops->pop(pkt_q);
         if(pkt == NULL)
             continue;
-        printf_note(">>>ch:%d, frame_buffer:%p,%p, pkt:%p, len:%d, pkt_buffer_ptr:%p, len:%lu\n", ch, mbuf_header, ptr, pkt, pkt->pkt_len, pkt->pkt_buffer_ptr, len);
+        //printf_note(">>>ch:%d, frame_buffer:%p,%p, pkt:%p, len:%d, pkt_buffer_ptr:%p, len:%lu\n", ch, mbuf_header, ptr, pkt, pkt->pkt_len, pkt->pkt_buffer_ptr, len);
         //print_array(pkt->pkt_buffer_ptr, pkt->pkt_len);
         /* 流水号为0说明是第一包数据开始，初始化相关变量 */
-        if(pkt->index == 0){
+        if(pkt->sn == 0){
             start_frame = true;
             frame_1st_idx = pkt->frame_idx;
             frame_len = pkt->pkt_len;
@@ -259,6 +260,7 @@ static int _spm_distributor_data_frame_producer(int ch, int type, void **data, s
         }
         /* 未收到从0开始的数据包，说明起始包错误，丢弃,重新找流水号为0的包*/
         if(start_frame == false){
+            printf_warn("Not receive start pkt[sn:%d], Discard pkt\n", pkt->sn);
             _safe_free_(pkt);
             continue;
         }
@@ -266,24 +268,25 @@ static int _spm_distributor_data_frame_producer(int ch, int type, void **data, s
             frame_len += pkt_len;
         /* 接受到中间包帧号和第一包帧号不一致，说明不是同一帧，丢弃，重新查找流水号为0的包 */
         if(frame_1st_idx != pkt->frame_idx && frame_len < len){
+            printf_warn("Frame idx:%d err, Discard pkt\n", pkt->frame_idx);
             start_frame = false;
             _safe_free_(pkt);
             continue;
         }
         /* 将包数据逐步拷贝到通道缓存区，直到完成一帧的数据长度 */
         memcpy(ptr, pkt->pkt_buffer_ptr, pkt_len);
-        printf_note("mbuf_header:%p, ch data:%d\n", mbuf_header, ch);
-        print_array(ptr, 512);
+       // printf_note("mbuf_header:%p, ch data:%d\n", mbuf_header, ch);
+        //print_array(ptr, 512);
         _safe_free_(pkt);
-        if(frame_len <= len){
-            printf_note("Do over!\n");
+        if(frame_len == len){
+            printf_note("ch=%d, frame_len=%lu, len=%lu, Frame OK!\n", ch, frame_len, len);
             break;
         }
         ptr += pkt_len;
         frame_pkt_num++;
     }while(frame_len < len);
-    if(ret != -1 && frame_len != len){
-        printf("read len[%lu] is bigger than expect len[%lu]\n", frame_len, len);
+    if(frame_len > 0 && frame_len != len){
+        printf_warn("Read len[%lu] is not eq expect len[%lu], Discard pkt\n", frame_len, len);
         ret = -1;
     }
     *data = ptr;
@@ -310,14 +313,18 @@ static int _assamble_header_debug(int ch, int type,  void **data, size_t *len, v
 {
     void *mbuf = NULL;
     int count = 0;
-    static int cn = 0;
+    static int cn = 0, sn = 0;
     //if(mbuf == NULL){
     //    mbuf = calloc(1, 528);
     //}
-    mbuf = calloc(1, 528);
-    if(cn++ < 2){
+    
+    if(cn++ < 4){
+        mbuf = calloc(1, 528);
         count = 1;
-    }
+    }else
+        return -1;
+    if(cn == 4)
+        sn = 0;
         
     uint8_t *ptr = (void *)mbuf;
     struct _header_pkt{
@@ -330,7 +337,8 @@ static int _assamble_header_debug(int ch, int type,  void **data, size_t *len, v
     }*hpkt;
     hpkt = (struct _header_pkt *)ptr;
     hpkt->start_flags = 0xaa55;
-    hpkt->sn = 0;
+    
+    hpkt->sn = sn++;
     hpkt->ch = ch;
     hpkt->len = 528;
     for(int i = 0; i < 512; i++){
@@ -426,7 +434,7 @@ int spm_consumer_thread(void *arg)
         return 0;
     struct spm_context *spmctx = get_spm_ctx();
     struct spm_run_parm *args = spmctx->run_args[ch];
-    args->fft_size = 256;
+    args->fft_size = 512;
     args->ch = ch;
     spm_deal(spmctx, args, ch);
     sleep(1);

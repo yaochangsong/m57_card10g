@@ -433,6 +433,7 @@ void executor_timer_task_init(void)
 
 void executor_init(void)
 {
+    pthread_init();
     ch_bitmap_init();
     subch_bitmap_init();
 #if defined(CONFIG_SPM_BOTTOM)
@@ -443,6 +444,9 @@ void executor_init(void)
         printf_err("spm create failed\n");
         exit(-1);
     }
+#ifdef CONFIG_SPM_DISTRIBUTOR
+    spm_distributor_create();
+#endif
     executor_thread_init();
 }
 

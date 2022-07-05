@@ -106,11 +106,14 @@
 #include "../main/executor/spm/spm.h"
 #include "../main/executor/spm/spm_fpga/spm_fpga.h"
 #include "../main/executor/spm/spm_xdma/spm_xdma.h"
+#include "../main/executor/spm/distributor/spm_distributor.h"
+
 #include "../main/executor/executor_thread.h"
 #include "../main/executor/executor.h"
 #include "../main/executor/spm/bottom/bottom.h"
 #include "../main/executor/fft/fft.h"
 #include "../main/executor/analysis/spm_analysis.h"
+
 
 #include "../main/protocol/akt/akt.h"
 #include "../main/protocol/resetful/request.h"

@@ -1,2 +1,2 @@
-obj-y  	+= distributor.o
+obj-y  	+= spm_distributor.o
 

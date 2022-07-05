@@ -9,21 +9,20 @@
 *  permission of Showay Technology Dev Co.,Ltd. (C) 2019
 ******************************************************************************/
 /*****************************************************************************     
-*  Rev 1.0   22 June 2020   yaochangsong
+*  Rev 1.0   30 June. 2022   yaochangsong
 *  Initial revision.
 ******************************************************************************/
-#ifndef _THREAD_H_
-#define _THREAD_H_
+#ifndef _SPM_DISTRIBUTOR_H_
+#define _SPM_DISTRIBUTOR_H_
 
-extern void pthread_init(void);
-extern int pthread_create_detach (const pthread_attr_t *attr, int (*init_callback) (void *),
-                                        int (*start_routine) (void *), void (*exit_callback) (void *), 
-                                        char *name, void *arg_cb, void *arg_exit, pthread_t *tid);
+/* Type of distribution */
+enum spm_distributor_type {
+    SPM_DIST_FFT = 0,
+    SPM_DIST_IQ,
+    SPM_DIST_MAX,
+};
 
-extern void *pthread_cancel_by_name(char *name);
-extern int pthread_exit_by_name(char *name);
-extern bool pthread_check_alive_by_name(char *name);
-extern bool pthread_check_alive_by_tid(pthread_t tid);
-extern int pthread_cancel_by_tid(pthread_t tid);
+extern int spm_distributor_create(void);
+extern int spm_distributor_fft_data_frame_producer(int ch, void **data, size_t len);
 
 #endif

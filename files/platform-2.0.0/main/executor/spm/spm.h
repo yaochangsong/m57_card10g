@@ -59,6 +59,7 @@ struct spm_backend_ops {
     ssize_t (*read_niq_data)(void **);
     ssize_t (*read_biq_data)(int ch, void **data);
     ssize_t (*read_fft_data)(int, void **, void*);
+    ssize_t (*read_fft_vec_data)(int, void **, void*, void*);
     ssize_t (*read_adc_data)(int,void **);
     int (*read_adc_over_deal)(int,void *);
     int (*read_niq_over_deal)(void *);
@@ -83,8 +84,8 @@ struct spm_backend_ops {
     
 };
 
+#include "bsp.h"
 
-#include "config.h"
 struct spm_context {
     struct poal_config *pdata;
     const struct spm_backend_ops *ops;

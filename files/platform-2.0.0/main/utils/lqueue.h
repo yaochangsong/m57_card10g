@@ -9,21 +9,36 @@
 *  permission of Showay Technology Dev Co.,Ltd. (C) 2019
 ******************************************************************************/
 /*****************************************************************************     
-*  Rev 1.0   22 June 2020   yaochangsong
+*  Rev 1.0   2 July. 2022   yaochangsong
 *  Initial revision.
 ******************************************************************************/
-#ifndef _THREAD_H_
-#define _THREAD_H_
+#ifndef _LQUEUE_H_H
+#define _LQUEUE_H_H
 
-extern void pthread_init(void);
-extern int pthread_create_detach (const pthread_attr_t *attr, int (*init_callback) (void *),
-                                        int (*start_routine) (void *), void (*exit_callback) (void *), 
-                                        char *name, void *arg_cb, void *arg_exit, pthread_t *tid);
+struct lqueue_ops;
 
-extern void *pthread_cancel_by_name(char *name);
-extern int pthread_exit_by_name(char *name);
-extern bool pthread_check_alive_by_name(char *name);
-extern bool pthread_check_alive_by_tid(pthread_t tid);
-extern int pthread_cancel_by_tid(pthread_t tid);
+struct tailq_data_s {
+    void *args;
+//    pthread_mutex_t lock;
+    TAILQ_ENTRY(tailq_data_s) next;
+};
+
+typedef struct queue_ctx_s {
+    TAILQ_HEAD(ltailq_head, tailq_data_s) list_head;
+    struct lqueue_ops *ops;
+    pthread_mutex_t lock;
+}queue_ctx_t;
+
+
+struct lqueue_ops {
+    int (*create)(void );
+    int (*push)(queue_ctx_t *, void *);
+    void *(*pop)(queue_ctx_t *);
+    void (*foreach)(queue_ctx_t *, int (*func)(void *));
+    int (*close)(void);
+};
+
+extern queue_ctx_t * queue_create_ctx(void);
 
 #endif
+

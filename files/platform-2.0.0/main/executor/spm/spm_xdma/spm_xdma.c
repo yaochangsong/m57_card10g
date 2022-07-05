@@ -16,7 +16,6 @@
 #include "../agc/agc.h"
 
 
-
 static int xspm_read_stream_stop(int ch, int subch, enum stream_type type);
 static int xspm_read_xdma_data_over(int ch,  void *arg,  int type);
 static int xspm_xdma_data_clear(int ch,  void *arg, int type);
@@ -367,10 +366,31 @@ static int xspm_stram_write(int ch, const void *data, size_t data_len)
     return ret;
 }
 
+ssize_t xspm_read_fft_vec_data(int ch , void **data, uint32_t *len, void *args)
+{
+    ssize_t count = 0;
+    int index;
+   // uint32_t  len[XDMA_TRANSFER_MAX_DESC] = {0};
+    
+    index = xspm_find_index_by_type(ch, -1, STREAM_FFT);
+    if(index < 0)
+        return -1;
+    return xspm_stream_read(ch, index, data, len, args);
+}
+
+
 static ssize_t xspm_read_fft_data(int ch, void **data, void *args)
 {
     struct spm_run_parm *run_args = args;
-    ssize_t count = 0, fft_byte_len = 0;
+    ssize_t fft_byte_len = 0;
+#ifdef CONFIG_SPM_DISTRIBUTOR
+    size_t byte_len = 0;
+    byte_len = run_args->fft_size * sizeof(fft_t);
+    if(spm_distributor_fft_data_frame_producer(ch, data, byte_len) == -1)
+        return -1;
+    fft_byte_len = byte_len;
+#else
+    ssize_t count = 0;
     int index;
     uint32_t  len[XDMA_TRANSFER_MAX_DESC] = {0};
     
@@ -380,7 +400,7 @@ static ssize_t xspm_read_fft_data(int ch, void **data, void *args)
     count = xspm_stream_read(ch, index, data, len, args);
     count = count;
     fft_byte_len = len[0];
-    
+#endif
     return fft_byte_len;
 }
 
@@ -393,7 +413,6 @@ static int xspm_send_fft_data(void *data, size_t fft_len, void *arg)
 
     if(data == NULL || fft_len == 0 || arg == NULL)
         return -1;
-    
     struct spm_run_parm *hparam;
     hparam = (struct spm_run_parm *)arg;
 
@@ -419,7 +438,6 @@ static int xspm_send_fft_data(void *data, size_t fft_len, void *arg)
         return -1;
 #endif
     struct iovec iov[2];
-
     iov[0].iov_base = ptr_header;
     iov[0].iov_len = header_len;
     iov[1].iov_base = data;
@@ -435,9 +453,9 @@ static int xspm_send_fft_data(void *data, size_t fft_len, void *arg)
 #endif
     if(hparam->ch == 0)
         __unlock_fft_send__();
-    else
+   else
         __unlock_fft2_send__();
-    safe_free(ptr_header);
+    _safe_free_(ptr_header);
     return (header_len + data_byte_size);
 }
 
@@ -568,6 +586,7 @@ static int xspm_read_xdma_data_over(int ch,  void *arg,  int type)
 static const struct spm_backend_ops xspm_ops = {
     .create = xspm_create,
     .read_fft_data = xspm_read_fft_data,
+    .read_fft_vec_data = xspm_read_fft_vec_data,
     .send_fft_data = xspm_send_fft_data,
     .stream_start = xspm_read_stream_start,
     .stream_stop = xspm_read_stream_stop,

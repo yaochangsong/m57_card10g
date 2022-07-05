@@ -215,8 +215,6 @@ struct spm_run_parm{
     pthread_mutex_unlock(&set_cmd_mutex); \
 } while (0)
 
-#include "config.h"
-
 extern void executor_init(void);
 extern int executor_net_disconnect_notify(struct sockaddr_in *addr);
 extern int8_t executor_get_command(exec_cmd cmd, uint8_t type, uint8_t ch,  void *data, ...);

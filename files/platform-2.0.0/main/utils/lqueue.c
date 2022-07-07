@@ -69,12 +69,13 @@ int _queue_push(queue_ctx_t *q, void *args)
 {
     struct tailq_data_s *data = (struct tailq_data_s *)calloc(1, sizeof(*data));
     data->args = args;
+    pthread_mutex_lock(&q->lock);
     if(q->entries >= q->max_entry){
         printf("WARN:Queue[%u] is Full[max:%u]\n", q->entries, q->max_entry);
+        pthread_mutex_unlock(&q->lock);
         return -1;
     }
     q->entries++;
-    pthread_mutex_lock(&q->lock);
     TAILQ_INSERT_HEAD(&q->list_head, data, next);
     pthread_mutex_unlock(&q->lock);
     return 0;
@@ -114,6 +115,22 @@ uint32_t _queue_get_entry(queue_ctx_t *q)
     return q->entries;
 }
 
+int _queue_clear(queue_ctx_t *q)
+{
+    struct tailq_data_s *data = NULL;
+    pthread_mutex_lock(&q->lock);
+    while ((data = TAILQ_FIRST(&q->list_head)) != NULL) {
+        TAILQ_REMOVE(&q->list_head, data, next);
+        free(data);
+        data = NULL;
+        if(q->entries > 0)
+            q->entries--;
+    }
+    q->entries = 0;
+    pthread_mutex_unlock(&q->lock);
+    return 0;
+}
+
 
 int _queue_close(void)
 {
@@ -128,6 +145,7 @@ static  struct lqueue_ops queue_ops = {
     .pop = _queue_pop,
     .foreach = _queue_foreach,
     .get_entry = _queue_get_entry,
+    .clear = _queue_clear,
     .close = _queue_close,
 };
 

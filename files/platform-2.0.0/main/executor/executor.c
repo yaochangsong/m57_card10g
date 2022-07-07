@@ -447,9 +447,6 @@ void executor_init(void)
         printf_err("spm create failed\n");
         exit(-1);
     }
-#ifdef CONFIG_SPM_DISTRIBUTOR
-    spm_distributor_create();
-#endif
     executor_thread_init();
 }
 

@@ -92,6 +92,7 @@ struct spm_context {
     const struct spm_backend_ops *ops;
     struct spm_run_parm *run_args[MAX_RADIO_CHANNEL_NUM];
     void *pool_buffer;
+    void *distributor;
 };
 
 extern pthread_mutex_t send_fft_mutex;

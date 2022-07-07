@@ -636,6 +636,15 @@ int executor_fft_work_nofity(void *cl, int ch, int mode, bool enable)
         ch_bitmap_set(ch, CH_TYPE_FFT);
     else{
         ch_bitmap_clear(ch, CH_TYPE_FFT);
+#ifdef CONFIG_SPM_DISTRIBUTOR
+        struct spm_context *spm_ctx;
+        spm_distributor_ctx_t *dist = NULL;
+        spm_ctx = pctx->args;
+        if(spm_ctx && spm_ctx->distributor){
+            dist = (spm_distributor_ctx_t *)spm_ctx->distributor;
+            dist->ops->reset(SPM_DIST_FFT, ch);
+        }
+#endif
     }
     struct executor_thread_m *thread = &pctx->thread[EXEC_THREAD_TYPE_FFT][ch];
     

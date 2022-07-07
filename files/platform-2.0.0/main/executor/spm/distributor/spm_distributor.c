@@ -90,6 +90,7 @@ struct spm_distributor_type_attr_s{
     int (*distributor_loop)(void *);
     void *pkt_queue[FRAME_MAX_CHANNEL];
     void *frame_buffer[FRAME_MAX_CHANNEL];
+    volatile bool is_reset[FRAME_MAX_CHANNEL];
 } dist_type[] = {
     {"FFT", 1, SPM_DIST_FFT, 528, 16, 0xaa55, _spm_distributor_fft_thread_loop},
 //    {"IQ",  DIST_MAX_IQ_CHANNEL,  SPM_DIST_IQ,  512, 16, 0xaa55, _spm_distributor_iq_thread_loop},
@@ -234,7 +235,7 @@ int _spm_distributor_analysis(int type, uint8_t *mbufs, size_t len, struct spm_d
             printf_warn("header len[%d] is bigger than pkt len[%d]\n", dtype->pkt_header_len, header->pkt_len);
 
         queue_ctx_t *qctx = dtype->pkt_queue[pkt->ch];
-        printf_note("PUSH pkt:  ch:%d, sn: %d, pkt_len:%lu, frame_idx:%"PRIu64"\n", pkt->ch, pkt->sn, pkt->pkt_len, pkt->frame_idx);
+        printf_info("PUSH pkt:  ch:%d, sn: %d, pkt_len:%lu, frame_idx:%"PRIu64"\n", pkt->ch, pkt->sn, pkt->pkt_len, pkt->frame_idx);
         qctx->ops->push(qctx, pkt);
         //qctx->ops->foreach(qctx, _data_dump);
         offset += header->pkt_len;
@@ -290,30 +291,6 @@ static int _spm_distributor_iq_data_producer(int ch, void **data, size_t len)
     return 0;
 }
 
-static int _spm_distributor_data_frame_producer_(int ch, int type, void **data, size_t len)
-{
-    queue_ctx_t *pkt_q  = (queue_ctx_t *)dist_type[type].pkt_queue[ch];
-    uint8_t *mbuf_header = (uint8_t *)dist_type[type].frame_buffer[ch];
-    if(!pkt_q || !mbuf_header)
-        return -1;
-    struct spm_distributor_pkt_data_s *pkt = NULL;
-    size_t frame_len = 0, frame_pkt_num = 0, pkt_len = 0;
-    int frame_1st_idx = -1, ret = 0;
-    bool start_frame = false;
-    uint8_t *ptr = mbuf_header;
-    struct timeval start, now;
-    //printf_note("POP,type:%d, ch:%d\n", type, ch);
-    pkt = pkt_q->ops->pop(pkt_q);
-    if(pkt == NULL)
-       return -1;
-    printf_note("POP ch:%d, frame_buffer:%p,%p, pkt:%p, len:%lu, pkt_buffer_ptr:%p, len:%lu\n", ch, mbuf_header, ptr, pkt, pkt->pkt_len, pkt->pkt_buffer_ptr, len);
-    _safe_free_(pkt);
-    *data = NULL;
-    return 0;
-
-}
-
-
 static int _spm_distributor_data_frame_producer(int ch, int type, void **data, size_t len)
 {
     queue_ctx_t *pkt_q  = (queue_ctx_t *)dist_type[type].pkt_queue[ch];
@@ -334,12 +311,15 @@ static int _spm_distributor_data_frame_producer(int ch, int type, void **data, s
             ret = -1;
             break;
         }
+        if(dist_type[type].is_reset[ch] == true){
+            dist_type[type].is_reset[ch] = false;
+            break;
+        }
         //printf_note("POP,type:%d, ch:%d\n", type, ch);
         pkt = pkt_q->ops->pop(pkt_q);
         if(pkt == NULL)
             continue;
-        printf_note("POP ch:%d, sn:%u, fidx:%"PRIu64", pkt_len:%lu\n", ch, pkt->sn, pkt->frame_idx, pkt->pkt_len);
-        //printf_note(">>>ch:%d, frame_buffer:%p,%p, pkt:%p, len:%lu, pkt_buffer_ptr:%p, len:%lu\n", ch, mbuf_header, ptr, pkt, pkt->pkt_len, pkt->pkt_buffer_ptr, len);
+        printf_info("POP ch:%d, sn:%u, fidx:%"PRIu64", pkt_len:%lu\n", ch, pkt->sn, pkt->frame_idx, pkt->pkt_len);
         /* 流水号为0说明是第一包数据开始，初始化相关变量 */
         if(pkt->sn == 0){
             start_frame = true;
@@ -393,7 +373,6 @@ static int spm_distributor_process(int type, size_t count, uint8_t **mbufs, size
 {
     int ret = 0;
     for(int index = 0; index < count; index++){
-        //printf_note("index:%d, buf:%p, len:%lu\n", index, mbufs[index], len[index]);
         ret = _spm_distributor_analysis(type, mbufs[index], len[index], &dist_type[type]);
         if(ret == -1)
             continue;
@@ -410,7 +389,7 @@ static int _spm_distributor_fft_thread_loop(void *s)
 
     _ctx = get_spm_ctx();
     if(_ctx == NULL)
-        return 0;
+        return -1;
 
     if(_ctx->ops->read_fft_vec_data)
         count = _ctx->ops->read_fft_vec_data(-1, (void **)ptr, len, NULL);
@@ -440,44 +419,15 @@ static int _spm_distributor_iq_thread_loop(void *s)
     return 0;
 }
 
-static void _spm_distributor_thread_exit(void *arg)
-{
-
-}
-
-static int _spm_distributor_thread_init(void *args)
-{
-    struct spm_distributor_type_attr_s *disp_type = args;
-    queue_ctx_t *qctx = NULL;
-    sleep(2);
-    printf_note("disp_type:%p, name:%s, chnum:%d, %d\n", disp_type, disp_type->name, disp_type->channel_num, DIST_MAX_FFT_CHANNEL);
-    for(int i = 0; i < disp_type->channel_num; i++){
-        qctx = queue_create_ctx();
-        if(qctx){
-            disp_type->pkt_queue[i] = (void *)qctx;
-        }
-        _frame_devider_init(&frame_devider[disp_type->type][i]);
-        disp_type->frame_buffer[i] = calloc(1, MAX_FRAME_BUFFER_LEN);
-        if(!disp_type->frame_buffer[i]){
-            printf_warn("calloc memory faild!\n");
-            continue;
-        }
-        printf_note("frame buffer: %p\n", disp_type->frame_buffer[i]);
-    }
-
-    return 0;
-}
-
-
 int spm_distributor_thread(void *dtype)
 {
     pthread_t tid;
     int ret;
     struct spm_distributor_type_attr_s *disp_type = dtype;
     ret =  pthread_create_detach (NULL,
-                _spm_distributor_thread_init, 
+                NULL, 
                 disp_type->distributor_loop, 
-                _spm_distributor_thread_exit,  
+                NULL,  
                 disp_type->name ,disp_type, disp_type, &tid
     );
     if(ret != 0){
@@ -503,12 +453,6 @@ int spm_consumer_thread(void *arg)
     return 0;
 }
 
-static int _spm_consumer_thread_init(void *args)
-{
-    //usleep(2100000);
-    return 0;
-}
-
 int spm_distributor_fft_consumer_thread(int ch, int type)
 {
     pthread_t tid;
@@ -521,7 +465,7 @@ int spm_distributor_fft_consumer_thread(int ch, int type)
     printf_note("thread name:%s\n", name);
 
     ret =  pthread_create_detach (NULL,
-                _spm_consumer_thread_init, 
+                NULL, 
                 spm_consumer_thread,
                 NULL, 
                 name ,&s_ch, &s_ch, &tid
@@ -534,19 +478,66 @@ int spm_distributor_fft_consumer_thread(int ch, int type)
 }
 
 
-int spm_distributor_create(void)
+static int _spm_distributor_init(void *args)
 {
-    int ret = 0;
+    queue_ctx_t *qctx = NULL;
+    int type;
     for(int i = 0; i < ARRAY_SIZE(dist_type); i++){
-        
-        printf_note("type:%d, %p, %s\n", i, &dist_type[i], dist_type[i].name);
-        spm_distributor_thread(&dist_type[i]);
+        printf_note("type:%d, %s\n", i,  dist_type[i].name);
         for(int ch = 0; ch < dist_type[i].channel_num; ch++){
-            printf_note("ch:%d\n", ch);
-            dist_type[i].pkt_queue[ch] = NULL;
-            dist_type[i].frame_buffer[ch] = NULL;
-            spm_distributor_fft_consumer_thread(ch, i);
+            qctx = queue_create_ctx();
+            if(qctx){
+                dist_type[i].pkt_queue[ch] = (void *)qctx;
+            }
+            _frame_devider_init(&frame_devider[i][ch]);
+            dist_type[i].frame_buffer[ch] = calloc(1, MAX_FRAME_BUFFER_LEN);
+            if(!dist_type[i].frame_buffer[ch]){
+                printf_warn("calloc memory faild!\n");
+                continue;
+            }
+            dist_type[i].is_reset[ch] = false;
         }
     }
-    return ret;
+    for(int i = 0; i < ARRAY_SIZE(dist_type); i++)
+        spm_distributor_thread(&dist_type[i]);
+    return 0;
 }
+
+static int _spm_distributor_reset(int type, int ch)
+{
+    if(type > SPM_DIST_MAX)
+        return -1;
+    
+    if(ch > dist_type[type].channel_num)
+        return -1;
+
+    dist_type[type].is_reset[ch] = true;
+    queue_ctx_t *qctx =  dist_type[type].pkt_queue[ch];
+    if(qctx->ops->clear)
+        qctx->ops->clear(qctx);
+    _frame_devider_init(&frame_devider[type][ch]);
+    printf_note("Reset, type:%d, ch:%d\n", type, ch);
+    return 0;
+}
+
+static const struct spm_distributor_ops spm_disp_ops = {
+    .init = _spm_distributor_init,
+    .reset = _spm_distributor_reset,
+};
+
+spm_distributor_ctx_t * spm_create_distributor_ctx(void)
+{
+    int ret = -ENOMEM, ch;
+    unsigned int len;
+    spm_distributor_ctx_t *ctx = calloc(1, sizeof(*ctx));
+    if (!ctx)
+        goto err_set_errno;
+
+    ctx->ops = &spm_disp_ops;
+    ctx->ops->init(NULL);
+err_set_errno:
+    errno = -ret;
+    return ctx;
+
+}
+

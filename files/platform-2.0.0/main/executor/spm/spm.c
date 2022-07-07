@@ -300,8 +300,10 @@ void *spm_init(void)
             spmctx->run_args[ch]->dis_iq.len[type] = 0;
         }
     }
-
     spm_cond_init();
+#ifdef CONFIG_SPM_DISTRIBUTOR
+    spmctx->distributor = (void *)spm_create_distributor_ctx();
+#endif
 
     return (void *)spmctx;
 }

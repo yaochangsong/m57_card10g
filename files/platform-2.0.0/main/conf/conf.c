@@ -154,6 +154,16 @@ char *config_get_ifname_by_addr(struct sockaddr_in *addr)
     return NULL;
 }
 
+bool config_get_work_enable(void)
+{
+    for(int i = 0; i < MAX_RADIO_CHANNEL_NUM; i++){
+        if(config.oal_config.channel[i].enable.map.enable){
+            return true;
+        }
+    }
+    return false;
+}
+
 /** Accessor for the current configuration
 @return:  A pointer to the current config.
  */

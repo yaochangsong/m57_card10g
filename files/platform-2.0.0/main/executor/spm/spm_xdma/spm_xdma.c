@@ -455,7 +455,7 @@ static ssize_t xspm_stream_read_from_file(int type, int ch, void **data, size_t 
         //print_array(data[cn], len[cn]);
         cn++;
     }while(cn < STRAM_READ_BLOCK_COUNT);
-    usleep(100000);
+    usleep(10000);
     return cn;
 }
 
@@ -463,6 +463,10 @@ static ssize_t xspm_stream_read_from_file(int type, int ch, void **data, size_t 
 ssize_t xspm_read_fft_vec_data(int ch , void **data, void *len, void *args)
 {
 #ifdef DEBUG_TEST
+    if(config_get_work_enable() == false){
+        usleep(1000);
+        return -1;
+    }
     return xspm_stream_read_from_file(STREAM_FFT, ch, data, len, args);
 #else
     int index;
@@ -510,7 +514,6 @@ ssize_t xspm_read_biq_data(int ch , void **data, void *len, void *args)
     return xspm_stream_read(ch, index, data, len, args);
 
 }
-
 
 
 static ssize_t xspm_read_fft_data(int ch, void **data, void *args)
@@ -889,6 +892,90 @@ static int xspm_read_xdma_data_over(int ch,  void *arg,  int type)
     return 0;
 }
 
+static  float get_side_band_rate(uint32_t bandwidth)
+{
+    #define DEFAULT_SIDE_BAND_RATE  (1.28)
+    float side_rate = 0.0;
+     /* 根据带宽获取边带率 */
+    if(config_read_by_cmd(EX_CTRL_CMD, EX_CTRL_SIDEBAND,0, &side_rate, bandwidth) == -1){
+        printf_info("!!!!!!!!!!!!!SideRate Is Not Set In Config File[bandwidth=%u]!!!!!!!!!!!!!\n", bandwidth);
+        return DEFAULT_SIDE_BAND_RATE;
+    }
+    return side_rate;
+}
+
+static int _spm_extract_half_point(void *data, int len, void *outbuf)
+{
+    fft_t *pdata = (fft_t *)data;
+    for(int i = 0; i < len; i++){
+        *(uint8_t *)outbuf++ = *pdata & 0x0ff;
+        pdata++;
+    }
+    return len/2;
+}
+
+
+/* 频谱数据整理 */
+static fft_t *xspm_data_order(fft_t *fft_data, 
+                                size_t fft_len,  
+                                size_t *order_fft_len,
+                                void *arg)
+{
+    struct spm_run_parm *run_args;
+    float sigle_side_rate, side_rate;
+    uint32_t single_sideband_size;
+    uint64_t start_freq_hz = 0;
+    int i;
+    size_t order_len = 0, offset = 0;
+    fft_t *p_buffer = NULL;
+    if(fft_data == NULL || fft_len == 0){
+        printf_note("null data\n");
+        return NULL;
+    }
+    
+    run_args = (struct spm_run_parm *)arg;
+    /* 获取边带率 */
+    side_rate  =  get_side_band_rate(run_args->scan_bw);
+    printf_note("side_rate:%f\n", side_rate);
+    /* 去边带后FFT长度 */
+    order_len = (size_t)((float)(fft_len) / side_rate + 0.5);
+    /*双字节对齐*/
+    order_len = order_len&0x0fffffffe; 
+    
+
+   //printf_note("side_rate = %f[fft_len:%lu, order_len=%lu], scan_bw=%u\n", side_rate, fft_len, order_len, run_args->scan_bw);
+    // printf_warn("run_args->fft_ptr=%p, fft_data=%p, order_len=%u, fft_len=%u, side_rate=%f\n", run_args->fft_ptr, fft_data, order_len,fft_len, side_rate);
+    /* 信号倒谱 */
+    /*
+       原始信号（注意去除中间边带）：==>真实输出信号；
+       __                     __                             ___
+         \                   /              ==》             /   \
+          \_______  ________/                     _________/     \_________
+                  \/                                                      
+                 |边带  |
+    */
+    #if 1
+    memcpy((uint8_t *)run_args->fft_ptr_swap,         (uint8_t *)(fft_data) , fft_len*2);
+    memcpy((uint8_t *)run_args->fft_ptr,              (uint8_t *)(run_args->fft_ptr_swap + fft_len*2 -order_len), order_len);
+    memcpy((uint8_t *)(run_args->fft_ptr+order_len),  (uint8_t *)run_args->fft_ptr_swap , order_len);
+    #else
+    memcpy((uint8_t *)run_args->fft_ptr,                (uint8_t *)(fft_data+fft_len -order_len/2) , order_len);
+    memcpy((uint8_t *)(run_args->fft_ptr+order_len),    (uint8_t *)fft_data , order_len);
+    #endif
+
+    p_buffer =  (fft_t *)run_args->fft_ptr + offset ;
+
+#if defined(CONFIG_SPM_FFT_EXTRACT_POINT)
+    order_len =  _spm_extract_half_point(p_buffer, order_len, run_args->fft_ptr_swap);
+    p_buffer = run_args->fft_ptr_swap;
+#endif
+    *order_fft_len = order_len;
+    printf_debug("order_len=%lu, offset = %lu, start_freq_hz=%"PRIu64", s_freq_offset=%"PRIu64", m_freq=%"PRIu64", scan_bw=%u,fft_len=%lu\n", 
+        order_len, offset, start_freq_hz, run_args->s_freq_offset, run_args->m_freq_s, run_args->scan_bw,fft_len);
+
+    return (fft_t *)p_buffer;
+}
+
 
 static const struct spm_backend_ops xspm_ops = {
     //.create = xspm_create,
@@ -902,6 +989,7 @@ static const struct spm_backend_ops xspm_ops = {
     .send_niq_data = xspm_send_niq_data,
     .stream_start = xspm_read_stream_start,
     .stream_stop = xspm_read_stream_stop,
+    .data_order = xspm_data_order,
     .close = _xspm_close,
 };
 

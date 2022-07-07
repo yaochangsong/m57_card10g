@@ -23,7 +23,18 @@ enum spm_distributor_type {
     SPM_DIST_MAX,
 };
 
-extern int spm_distributor_create(void);
+struct spm_distributor_ops {
+    int (*init)(void*);
+    int (*reset)(int, int);
+    int (*close)(void *);
+    
+};
+
+typedef struct spm_distributor_ctx {
+    const struct spm_distributor_ops *ops;
+}spm_distributor_ctx_t;
+
+extern spm_distributor_ctx_t * spm_create_distributor_ctx(void);
 extern int spm_distributor_fft_data_frame_producer(int ch, void **data, size_t len);
 
 #endif

@@ -115,10 +115,13 @@ static void print_array(uint8_t *ptr, ssize_t len)
         return;
     
     for(int i = 0; i< len; i++){
+        if(i % 16 == 0 && i != 0)
+            printf("\n");
         printf("%02x ", *ptr++);
     }
-    printf("\n");
+    printf("\n----------------------\n");
 }
+
 
 
 static int _frame_devider_gen_idx(int type, int ch, int pkt_index, uint64_t *f_idx)
@@ -386,11 +389,11 @@ int spm_distributor_fft_data_frame_producer(int ch, void **data, size_t len)
     return _spm_distributor_data_frame_producer(ch, SPM_DIST_FFT, data, len);
 }
 
-static int spm_distributor_process(int type, size_t count, uint8_t **mbufs, size_t *len)
+static int spm_distributor_process(int type, size_t count, uint8_t **mbufs, size_t len[])
 {
     int ret = 0;
     for(int index = 0; index < count; index++){
-        //printf_note("index:%d, buf:%p, len:%u\n", index, mbufs[index], (uint32_t)len[index]);
+        //printf_note("index:%d, buf:%p, len:%lu\n", index, mbufs[index], len[index]);
         ret = _spm_distributor_analysis(type, mbufs[index], len[index], &dist_type[type]);
         if(ret == -1)
             continue;

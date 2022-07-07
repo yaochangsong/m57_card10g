@@ -389,12 +389,12 @@ static ssize_t _xspm_find_header(uint8_t *ptr, uint16_t header, size_t len)
 }
 
 
-static ssize_t xspm_stream_read_from_file(int type, int ch, void **data, uint32_t *len, void *args)
+static ssize_t xspm_stream_read_from_file(int type, int ch, void **data, size_t *len, void *args)
 {
     #define STRAM_IQ_FILE_PATH "/home/ycs/share/platform-2.0.0/files/platform-2.0.0/DEV0_CH0_IQ.raw"
     #define STRAM_FFT_FILE_PATH "/home/ycs/share/platform-2.0.0/files/platform-2.0.0/DEV0_CH1_FFT8K.raw"
     #define STRAM_READ_BLOCK_SIZE  528
-    #define STRAM_READ_BLOCK_COUNT 1
+    #define STRAM_READ_BLOCK_COUNT 4
 
     size_t rc = 0, rc2 = 0;
     static FILE * fp = NULL;
@@ -451,7 +451,7 @@ static ssize_t xspm_stream_read_from_file(int type, int ch, void **data, uint32_
         data[cn] = (uint8_t *)buffer[cn] + offset;
         len[cn] = rc - offset + rc2;
 
-        //printf_note("cn:%u, data=%p, len:%u,offset:%ld, rc=%lu, %lu, sn=%d\n", cn, data[cn], len[cn], offset, rc, rc2, *((uint8_t *)data[cn]+2));
+        //printf_note("cn:%u, data=%p, len:%lu,offset:%ld, rc=%lu, %lu, sn=%d\n", cn, data[cn], len[cn], offset, rc, rc2, *((uint8_t *)data[cn]+2));
         //print_array(data[cn], len[cn]);
         cn++;
     }while(cn < STRAM_READ_BLOCK_COUNT);

@@ -47,8 +47,11 @@ enum uart_func_code{
   UART_COMPASS2_30_1350M_CODE = 0x05
 };
 
-
+#ifdef CONFIG_SPM_SOURCE_XDMA
+extern struct _spm_xstream* spm_dev_get_stream(int *count);
+#else
 extern struct _spm_stream* spm_dev_get_stream(int *count);
+#endif
 extern struct gpio_node_info* dev_get_gpio(int *count);
 #ifdef CONFIG_DEVICE_UART
 extern struct uart_info_t* dev_get_uart(int *count);

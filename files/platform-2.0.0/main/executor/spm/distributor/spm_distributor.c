@@ -56,6 +56,11 @@
 
 #define DIST_MAX_COUNT 2048
 #define DIST_MAX_FFT_CHANNEL MAX_RADIO_CHANNEL_NUM
+#define DIST_MAX_IQ_CHANNEL  8
+#define SPM_DIST_TIMEOUT_MS (10000)
+
+/* The max number of channel 48 is considered OK at present*/
+#define FRAME_MAX_CHANNEL 48
 
 #ifndef ARRAY_SIZE
 #define ARRAY_SIZE(array) (sizeof(array)/sizeof(array[0]))
@@ -76,17 +81,18 @@ static int _spm_distributor_fft_thread_loop(void *s);
 
 struct spm_distributor_type_attr_s{
     char *name;
+    /* The max number of channel each type*/
     int channel_num;
     int type;
     int pkt_len;
     int pkt_header_len;
     uint16_t pkt_header_flags;
     int (*distributor_loop)(void *);
-    void *pkt_queue[8];
-    void *frame_buffer[8];
+    void *pkt_queue[FRAME_MAX_CHANNEL];
+    void *frame_buffer[FRAME_MAX_CHANNEL];
 } dist_type[] = {
-    {"FFT", DIST_MAX_FFT_CHANNEL, SPM_DIST_FFT, 528, 16, 0xaa55, _spm_distributor_fft_thread_loop},
-//    {"IQ", 8, SPM_DIST_IQ, 528, 16, 0xaa55, _spm_distributor_iq_thread_loop},
+    {"FFT", 1, SPM_DIST_FFT, 528, 16, 0xaa55, _spm_distributor_fft_thread_loop},
+//    {"IQ",  DIST_MAX_IQ_CHANNEL,  SPM_DIST_IQ,  512, 16, 0xaa55, _spm_distributor_iq_thread_loop},
 };
 
 struct spm_data_pkt_s{
@@ -96,7 +102,7 @@ struct spm_data_pkt_s{
     uint16_t pkt_len;
 };
 
-#define FRAME_MAX_CHANNEL 32
+
 struct frame_devider_s{
     bool frame_start;
     int old_pkt_idx;
@@ -120,6 +126,7 @@ static int _frame_devider_gen_idx(int type, int ch, int pkt_index, uint64_t *f_i
     if(ch  >= FRAME_MAX_CHANNEL)
         return -1;
     struct frame_devider_s *frd = &frame_devider[type][ch];
+    //printf_note("old_pkt_idx=%d,frame_start=%d,frame_idx=%"PRIu64",pkt_index=%d\n", frd->old_pkt_idx, frd->frame_start,frd->frame_idx, pkt_index);
     if(pkt_index == 0){
         frd->frame_start = true;
         frd->frame_idx++;
@@ -149,61 +156,91 @@ static int _data_dump(void *args)
     return 0;
 }
 
+static ssize_t _spm_find_header(uint8_t *ptr, uint16_t header, size_t len)
+{
+    size_t offset = 0;
+    do{
+        if(ptr != NULL && *(uint16_t *)ptr != header){
+            ptr += 2;
+            offset += 2;
+        }else{
+            break;
+        }
+    }while(offset < len);
+
+    if(offset >= len || ptr == NULL)
+        return -1;
+
+    return offset;
+}
+
+
 int _spm_distributor_analysis(int type, uint8_t *mbufs, size_t len, struct spm_distributor_type_attr_s *dtype)
 {
     uint8_t *ptr = mbufs;
-    struct spm_data_pkt_s *fft_header = (struct spm_data_pkt_s *)mbufs;
     size_t offset = 0;
+    ssize_t dirty_offset = 0;
     int ret = -1;
     uint64_t fidx = 0;
-    //printf_note("Type:%d,%p\n", type, ptr);
+    struct spm_data_pkt_s *header = NULL;
+
     do{
-        if(!fft_header)
+        header= (struct spm_data_pkt_s *)ptr;
+        if(!header)
             break;
-        if(fft_header->header_flags != dtype->pkt_header_flags){
-            printf("fft header[0x%x] error\n", fft_header->header_flags);
+        if(header->header_flags != dtype->pkt_header_flags){
+           // printf("fft header[0x%x] error\n", header->header_flags);
+            dirty_offset = _spm_find_header(ptr, dtype->pkt_header_flags, dtype->pkt_len);
+            if(dirty_offset > 0){
+                ptr += dirty_offset;
+                header= (struct spm_data_pkt_s *)ptr;
+               // printf_note("find header, offset:%ld\n", dirty_offset);
+            }else{
+                break;
+            }
+        }
+        if(header->channel >= dtype->channel_num){
+            printf("fft channel[%d] too big\n", header->channel);
             break;
         }
-        if(fft_header->channel >= dtype->channel_num){
-            printf("fft channel[%d] too big\n", fft_header->channel);
-            break;
-        }
-        if(fft_header->pkt_len != dtype->pkt_len){
-            printf("fft pkt_len[%d] error\n", fft_header->pkt_len);
+        if(header->pkt_len != dtype->pkt_len){
+            printf("fft pkt_len[%d] error[%d]\n", header->pkt_len, dtype->pkt_len);
             break;
         }
 
-        if(_frame_devider_gen_idx(type, fft_header->channel, fft_header->serial_num, &fidx) == -1){
-            printf_note("frame sn[%d] error\n", fft_header->serial_num);
-            break;
+        if(type == SPM_DIST_FFT){
+            if(_frame_devider_gen_idx(type, header->channel, header->serial_num, &fidx) == -1){
+                printf_note("frame sn[%d] error\n", header->serial_num);
+                break;
+            }
         }
-        //printf_note("frame idx:%"PRIu64"\n", fidx);
+
         struct spm_distributor_pkt_data_s *pkt;
         pkt = calloc(1, sizeof(*pkt));
         if(!pkt){
             break;
         }
-        pkt->ch = fft_header->channel;
-        pkt->sn = fft_header->serial_num;
+        pkt->ch = header->channel;
+        pkt->sn = header->serial_num;
         pkt->frame_idx = fidx;
-        if(fft_header->pkt_len > dtype->pkt_header_len){
-            pkt->pkt_len = fft_header->pkt_len - dtype->pkt_header_len;
+        if(header->pkt_len > dtype->pkt_header_len){
+            pkt->pkt_len = header->pkt_len - dtype->pkt_header_len;
             pkt->pkt_buffer_ptr = ptr + dtype->pkt_header_len;
         }
         else
-            printf_warn("header len[%d] is bigger than pkt len[%d]\n", dtype->pkt_header_len, fft_header->pkt_len);
-        
+            printf_warn("header len[%d] is bigger than pkt len[%d]\n", dtype->pkt_header_len, header->pkt_len);
+
         queue_ctx_t *qctx = dtype->pkt_queue[pkt->ch];
-        printf_note("push pkt:  ch:%d, sn: %d, pkt_len:%lu, frame_idx:%"PRIu64"\n", pkt->ch, pkt->sn, pkt->pkt_len, pkt->frame_idx);
+        printf_note("PUSH pkt:  ch:%d, sn: %d, pkt_len:%lu, frame_idx:%"PRIu64"\n", pkt->ch, pkt->sn, pkt->pkt_len, pkt->frame_idx);
         qctx->ops->push(qctx, pkt);
         //qctx->ops->foreach(qctx, _data_dump);
-        offset += fft_header->pkt_len;
-        if(offset >= len){
+        offset += header->pkt_len;
+        if(offset + dirty_offset >= len){
             ret = 0;
             break;
         }
-        ptr += fft_header->pkt_len;
-    }while(offset < len);
+        ptr += header->pkt_len;
+    }while(offset + dirty_offset < len);
     return ret;
 }
 
@@ -223,11 +260,63 @@ static int _tv_diff(struct timeval *t1, struct timeval *t2)
         (t1->tv_usec - t2->tv_usec) / 1000;
 }
 
-static int _spm_distributor_data_frame_producer(int ch, int type, void **data, size_t len)
+static int _spm_distributor_iq_data_producer(int ch, void **data, size_t len)
 {
-    #define _SPM_DIST_TIMEOUT_MS (1000)
+    queue_ctx_t *pkt_q  = (queue_ctx_t *)dist_type[SPM_DIST_IQ].pkt_queue[ch];
+    uint8_t *mbuf_header = (uint8_t *)dist_type[SPM_DIST_IQ].frame_buffer[ch];
+    struct spm_distributor_pkt_data_s *pkt = NULL;
+    struct timeval start, now;
+    uint8_t *ptr = mbuf_header;
+    
+    _gettime(&start);
+    do{
+        _gettime(&now);
+        if(_tv_diff(&now, &start) > SPM_DIST_TIMEOUT_MS){
+            printf_warn("IQ Read TimeOut!\n");
+            return -1;
+        }
+        pkt = pkt_q->ops->pop(pkt_q);
+        if(pkt == NULL)
+            continue;
+        memcpy(ptr, pkt->pkt_buffer_ptr, pkt->pkt_len);
+        _safe_free_(pkt);
+        break;
+    }while(1);
+
+    *data = ptr;
+    return 0;
+}
+
+static int _spm_distributor_data_frame_producer_(int ch, int type, void **data, size_t len)
+{
     queue_ctx_t *pkt_q  = (queue_ctx_t *)dist_type[type].pkt_queue[ch];
     uint8_t *mbuf_header = (uint8_t *)dist_type[type].frame_buffer[ch];
+    if(!pkt_q || !mbuf_header)
+        return -1;
+    struct spm_distributor_pkt_data_s *pkt = NULL;
+    size_t frame_len = 0, frame_pkt_num = 0, pkt_len = 0;
+    int frame_1st_idx = -1, ret = 0;
+    bool start_frame = false;
+    uint8_t *ptr = mbuf_header;
+    struct timeval start, now;
+    //printf_note("POP,type:%d, ch:%d\n", type, ch);
+    pkt = pkt_q->ops->pop(pkt_q);
+    if(pkt == NULL)
+       return -1;
+    printf_note("POP ch:%d, frame_buffer:%p,%p, pkt:%p, len:%lu, pkt_buffer_ptr:%p, len:%lu\n", ch, mbuf_header, ptr, pkt, pkt->pkt_len, pkt->pkt_buffer_ptr, len);
+    _safe_free_(pkt);
+    *data = NULL;
+    return 0;
+
+}
+
+
+static int _spm_distributor_data_frame_producer(int ch, int type, void **data, size_t len)
+{
+    queue_ctx_t *pkt_q  = (queue_ctx_t *)dist_type[type].pkt_queue[ch];
+    uint8_t *mbuf_header = (uint8_t *)dist_type[type].frame_buffer[ch];
+    if(!pkt_q || !mbuf_header)
+        return -1;
     struct spm_distributor_pkt_data_s *pkt = NULL;
     size_t frame_len = 0, frame_pkt_num = 0, pkt_len = 0;
     int frame_1st_idx = -1, ret = 0;
@@ -237,18 +326,17 @@ static int _spm_distributor_data_frame_producer(int ch, int type, void **data, s
     _gettime(&start);
     do{
         _gettime(&now);
-        //printf_note(">>>name:%s, %p, frame_buffer:%p\n",   dist_type[type].name, &dist_type[type], mbuf_header);
-        if(_tv_diff(&now, &start) > _SPM_DIST_TIMEOUT_MS){
+        if(_tv_diff(&now, &start) > SPM_DIST_TIMEOUT_MS){
             printf_warn("Read TimeOut!\n");
             ret = -1;
             break;
         }
-       // pkt_q->ops->foreach(pkt_q, _data_dump);
+        //printf_note("POP,type:%d, ch:%d\n", type, ch);
         pkt = pkt_q->ops->pop(pkt_q);
         if(pkt == NULL)
             continue;
-        //printf_note(">>>ch:%d, frame_buffer:%p,%p, pkt:%p, len:%d, pkt_buffer_ptr:%p, len:%lu\n", ch, mbuf_header, ptr, pkt, pkt->pkt_len, pkt->pkt_buffer_ptr, len);
-        //print_array(pkt->pkt_buffer_ptr, pkt->pkt_len);
+        printf_note("POP ch:%d, sn:%u, fidx:%"PRIu64", pkt_len:%lu\n", ch, pkt->sn, pkt->frame_idx, pkt->pkt_len);
+        //printf_note(">>>ch:%d, frame_buffer:%p,%p, pkt:%p, len:%lu, pkt_buffer_ptr:%p, len:%lu\n", ch, mbuf_header, ptr, pkt, pkt->pkt_len, pkt->pkt_buffer_ptr, len);
         /* 流水号为0说明是第一包数据开始，初始化相关变量 */
         if(pkt->sn == 0){
             start_frame = true;
@@ -268,7 +356,7 @@ static int _spm_distributor_data_frame_producer(int ch, int type, void **data, s
             frame_len += pkt_len;
         /* 接受到中间包帧号和第一包帧号不一致，说明不是同一帧，丢弃，重新查找流水号为0的包 */
         if(frame_1st_idx != pkt->frame_idx && frame_len < len){
-            printf_warn("Frame idx:%d err, Discard pkt\n", pkt->frame_idx);
+            printf_warn("Frame idx:%"PRIu64" err, Discard pkt\n", pkt->frame_idx);
             start_frame = false;
             _safe_free_(pkt);
             continue;
@@ -298,87 +386,54 @@ int spm_distributor_fft_data_frame_producer(int ch, void **data, size_t len)
     return _spm_distributor_data_frame_producer(ch, SPM_DIST_FFT, data, len);
 }
 
-static int spm_distributor_process(int type, int count, uint8_t *mbufs, size_t *len)
+static int spm_distributor_process(int type, size_t count, uint8_t **mbufs, size_t *len)
 {
     int ret = 0;
-    //print_array(mbufs, 512);
     for(int index = 0; index < count; index++){
-        ret = _spm_distributor_analysis(type, mbufs, len[index], &dist_type[type]);
+        //printf_note("index:%d, buf:%p, len:%u\n", index, mbufs[index], (uint32_t)len[index]);
+        ret = _spm_distributor_analysis(type, mbufs[index], len[index], &dist_type[type]);
         if(ret == -1)
-            break;
+            continue;
     }
     return ret;
 }
-static int _assamble_header_debug(int ch, int type,  void **data, size_t *len, void *args)
-{
-    void *mbuf = NULL;
-    int count = 0;
-    static int cn = 0, sn = 0;
-    //if(mbuf == NULL){
-    //    mbuf = calloc(1, 528);
-    //}
-    
-    if(cn++ < 4){
-        mbuf = calloc(1, 528);
-        count = 1;
-    }else
-        return -1;
-    if(cn == 4)
-        sn = 0;
-        
-    uint8_t *ptr = (void *)mbuf;
-    struct _header_pkt{
-        uint16_t start_flags;
-        uint8_t sn;
-        uint8_t ch;
-        uint16_t len;
-        uint8_t resv[10];
-        uint8_t data[512];
-    }*hpkt;
-    hpkt = (struct _header_pkt *)ptr;
-    hpkt->start_flags = 0xaa55;
-    
-    hpkt->sn = sn++;
-    hpkt->ch = ch;
-    hpkt->len = 528;
-    for(int i = 0; i < 512; i++){
-        hpkt->data[i] = i;
-    }
-   // printf_note("hpkt->data:%p\n", hpkt->data);
-   // print_array(hpkt->data, 512);
-    data[0] = hpkt;
-    len[0] = 528;
-    return count;
-}
+
 static int _spm_distributor_fft_thread_loop(void *s)
 {
     struct spm_context *_ctx;
-    volatile uint8_t *ptr = NULL;
-    size_t len[DIST_MAX_COUNT] = {0}, count = 0;
-    static int dma_ch = -1;
+    volatile uint8_t *ptr[DIST_MAX_COUNT] = {NULL};
+    size_t len[DIST_MAX_COUNT] = {0};
+    ssize_t count = 0;
 
-    #if 0
     _ctx = get_spm_ctx();
     if(_ctx == NULL)
         return 0;
 
     if(_ctx->ops->read_fft_vec_data)
-        count = _ctx->ops->read_fft_vec_data(dma_ch, (void **)&ptr, len, NULL);
+        count = _ctx->ops->read_fft_vec_data(-1, (void **)ptr, len, NULL);
+
     if(count > 0 && count < DIST_MAX_COUNT){
-        spm_distributor_process(SPM_DIST_FFT, count, ptr, len);
+        spm_distributor_process(SPM_DIST_FFT, count, (uint8_t **)ptr, len);
     }
-    #else
-    for(int i = 0; i < DIST_MAX_FFT_CHANNEL; i++){
-        count = _assamble_header_debug(i, SPM_DIST_FFT, (void **)&ptr, len, NULL);
-        if(count > 0 && count < DIST_MAX_COUNT)
-            spm_distributor_process(SPM_DIST_FFT, count, ptr, len);
-    }
-    #endif
+
     return 0;
 }
 
 static int _spm_distributor_iq_thread_loop(void *s)
 {
+    struct spm_context *_ctx;
+    volatile uint8_t *ptr[DIST_MAX_COUNT] = {NULL};
+    size_t len[DIST_MAX_COUNT] = {0}, count = 0;
+
+    _ctx = get_spm_ctx();
+    if(_ctx == NULL)
+        return 0;
+
+    if(_ctx->ops->read_iq_vec_data)
+        count = _ctx->ops->read_iq_vec_data(-1, (void **)&ptr, len, NULL);
+    if(count > 0 && count < DIST_MAX_COUNT){
+        spm_distributor_process(SPM_DIST_IQ, count, (uint8_t **)ptr, len);
+    }
     return 0;
 }
 
@@ -399,7 +454,11 @@ static int _spm_distributor_thread_init(void *args)
             disp_type->pkt_queue[i] = (void *)qctx;
         }
         _frame_devider_init(&frame_devider[disp_type->type][i]);
-        disp_type->frame_buffer[i] = calloc(1, 16384);
+        disp_type->frame_buffer[i] = calloc(1, MAX_FRAME_BUFFER_LEN);
+        if(!disp_type->frame_buffer[i]){
+            printf_warn("calloc memory faild!\n");
+            continue;
+        }
         printf_note("frame buffer: %p\n", disp_type->frame_buffer[i]);
     }
 
@@ -434,15 +493,17 @@ int spm_consumer_thread(void *arg)
         return 0;
     struct spm_context *spmctx = get_spm_ctx();
     struct spm_run_parm *args = spmctx->run_args[ch];
-    args->fft_size = 512;
+    args->fft_size = 8192;
     args->ch = ch;
     spm_deal(spmctx, args, ch);
-    sleep(1);
+    //sleep(1);
+    return 0;
 }
 
 static int _spm_consumer_thread_init(void *args)
 {
-    sleep(3);
+    //usleep(2100000);
+    return 0;
 }
 
 int spm_distributor_fft_consumer_thread(int ch, int type)
@@ -474,10 +535,13 @@ int spm_distributor_create(void)
 {
     int ret = 0;
     for(int i = 0; i < ARRAY_SIZE(dist_type); i++){
+        
         printf_note("type:%d, %p, %s\n", i, &dist_type[i], dist_type[i].name);
         spm_distributor_thread(&dist_type[i]);
         for(int ch = 0; ch < dist_type[i].channel_num; ch++){
             printf_note("ch:%d\n", ch);
+            dist_type[i].pkt_queue[ch] = NULL;
+            dist_type[i].frame_buffer[ch] = NULL;
             spm_distributor_fft_consumer_thread(ch, i);
         }
     }

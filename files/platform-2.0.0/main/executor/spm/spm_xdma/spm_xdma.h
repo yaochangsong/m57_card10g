@@ -16,7 +16,7 @@
 #define XDMA_DATA_TYPE_MAX_PKGS (65536)
 
 
-struct _spm_xstream {
+typedef struct _spm_xstream {
     char *devname;      /* 流设备节点名称 */
     int id;             /* 频谱流类型描述符 */
     int ch;
@@ -27,7 +27,7 @@ struct _spm_xstream {
     enum stream_type type;
     int consume_index;  /* 每次消费的块索引 */
     uint8_t *ptr[XDMA_TRANSFER_MAX_DESC];       /* 频谱流数据buffer指针 */
-};
+}spm_xstream_t;
 
 
 /*bob 20191017 for C2H revice ring buffer function*/

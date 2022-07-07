@@ -225,5 +225,4 @@ extern uint32_t executor_get_audio_point(uint8_t ch);
 extern uint64_t executor_get_mid_freq(uint8_t ch);
 extern uint32_t executor_get_bandwidth(uint8_t ch);
 extern void executor_close(void);
-extern void udp_free(struct net_udp_client *cl);
 #endif

@@ -37,7 +37,7 @@ enum stream_iq_type {
     STREAM_BIQ_TYPE_RAW,
 };
 
-struct _spm_stream {
+typedef struct _spm_stream {
     char *devname;      /* 流设备节点名称 */
     int id;             /* 频谱流类型描述符 */
     int ch;             /* 主通道，如果没有写-1 */
@@ -46,7 +46,7 @@ struct _spm_stream {
     char *name;         /* 频谱流名称 */
     int rd_wr;
     enum stream_type type;
-};
+}spm_stream_t;
 
 #define for_each_niq_type(type, run) \
     for (int i = 0; \
@@ -60,6 +60,7 @@ struct spm_backend_ops {
     ssize_t (*read_biq_data)(int ch, void **data);
     ssize_t (*read_fft_data)(int, void **, void*);
     ssize_t (*read_fft_vec_data)(int, void **, void*, void*);
+    ssize_t (*read_iq_vec_data)(int, void **, void*, void*);
     ssize_t (*read_adc_data)(int,void **);
     int (*read_adc_over_deal)(int,void *);
     int (*read_niq_over_deal)(void *);

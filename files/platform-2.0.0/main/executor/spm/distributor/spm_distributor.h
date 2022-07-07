@@ -15,6 +15,7 @@
 #ifndef _SPM_DISTRIBUTOR_H_
 #define _SPM_DISTRIBUTOR_H_
 
+#define MAX_FRAME_BUFFER_LEN (65536)
 /* Type of distribution */
 enum spm_distributor_type {
     SPM_DIST_FFT = 0,

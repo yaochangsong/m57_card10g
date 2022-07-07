@@ -20,6 +20,8 @@ static int xspm_read_stream_stop(int ch, int subch, enum stream_type type);
 static int xspm_read_xdma_data_over(int ch,  void *arg,  int type);
 static int xspm_xdma_data_clear(int ch,  void *arg, int type);
 
+#define DEFAULT_IQ_SEND_BYTE 512
+size_t iq_send_unit_byte = DEFAULT_IQ_SEND_BYTE;    /* IQ发送长度 */
 
 static inline void *zalloc(size_t size)
 {
@@ -118,9 +120,11 @@ static void print_array(uint8_t *ptr, ssize_t len)
         return;
     
     for(int i = 0; i< len; i++){
+        if(i % 16 == 0 && i != 0)
+            printf("\n");
         printf("%02x ", *ptr++);
     }
-    printf("\n");
+    printf("\n----------------------\n");
 }
 
 static void _spm_gettime(struct timeval *tv)
@@ -366,17 +370,147 @@ static int xspm_stram_write(int ch, const void *data, size_t data_len)
     return ret;
 }
 
-ssize_t xspm_read_fft_vec_data(int ch , void **data, uint32_t *len, void *args)
+static ssize_t _xspm_find_header(uint8_t *ptr, uint16_t header, size_t len)
 {
-    ssize_t count = 0;
-    int index;
-   // uint32_t  len[XDMA_TRANSFER_MAX_DESC] = {0};
+    ssize_t offset = 0;
+    do{
+        if(ptr != NULL && *(uint16_t *)ptr != header){
+            ptr += 2;
+            offset += 2;
+        }else{
+            break;
+        }
+    }while(offset < len);
+
+    if(offset >= len || ptr == NULL)
+        return -1;
+
+    return offset;
+}
+
+
+static ssize_t xspm_stream_read_from_file(int type, int ch, void **data, uint32_t *len, void *args)
+{
+    #define STRAM_IQ_FILE_PATH "/home/ycs/share/platform-2.0.0/files/platform-2.0.0/DEV0_CH0_IQ.raw"
+    #define STRAM_FFT_FILE_PATH "/home/ycs/share/platform-2.0.0/files/platform-2.0.0/DEV0_CH1_FFT8K.raw"
+    #define STRAM_READ_BLOCK_SIZE  528
+    #define STRAM_READ_BLOCK_COUNT 1
+
+    size_t rc = 0, rc2 = 0;
+    static FILE * fp = NULL;
+    static void *buffer[STRAM_READ_BLOCK_COUNT] = {[0 ... STRAM_READ_BLOCK_COUNT-1] = NULL};
+    char *path = NULL;
     
-    index = xspm_find_index_by_type(ch, -1, STREAM_FFT);
+    if(type == STREAM_FFT){
+        path = STRAM_FFT_FILE_PATH;
+    }else
+        path = STRAM_IQ_FILE_PATH;
+    if(fp == NULL){
+        printf_err("Open file[%s]!\n", path);
+        fp = fopen (path, "rb");
+        if(!fp){
+            printf_err("Open file[%s] error!\n", path);
+            return -1;
+        }
+    }
+
+    for(int i = 0; i < STRAM_READ_BLOCK_COUNT; i++){
+        if(buffer[i] == NULL){
+            buffer[i] = safe_malloc(STRAM_READ_BLOCK_SIZE);
+            if(!buffer[i]){
+                printf_warn("Malloc faild\n");
+                return -1;
+            }
+        }
+    }
+
+    uint32_t cn = 0;
+    ssize_t offset = 0;
+    uint8_t *ptr = NULL;
+    do{
+        rc2 = 0;
+        rc = fread(buffer[cn], 1, STRAM_READ_BLOCK_SIZE, fp);
+        if(rc == 0){ /* read over */
+            printf_note("Read over!%d\n", feof(fp));
+            rewind(fp);
+            printf_note("ftell:%ld\n", ftell(fp));
+            break;
+        }
+        ptr = buffer[cn];
+        offset = _xspm_find_header(buffer[cn], 0xaa55, rc);
+        if(offset < 0){ 
+            continue;
+        }
+        else{
+            ptr += rc;
+            if(offset > 0){
+                //printf_note("[%02x]rc=%lu, offset=%ld, %lu\n", *ptr, rc, offset, rc - offset);
+                rc2 = fread((void *)ptr, 1, offset , fp);
+            }
+        }
+        data[cn] = (uint8_t *)buffer[cn] + offset;
+        len[cn] = rc - offset + rc2;
+
+        //printf_note("cn:%u, data=%p, len:%u,offset:%ld, rc=%lu, %lu, sn=%d\n", cn, data[cn], len[cn], offset, rc, rc2, *((uint8_t *)data[cn]+2));
+        //print_array(data[cn], len[cn]);
+        cn++;
+    }while(cn < STRAM_READ_BLOCK_COUNT);
+    usleep(100000);
+    return cn;
+}
+
+
+ssize_t xspm_read_fft_vec_data(int ch , void **data, void *len, void *args)
+{
+#ifdef DEBUG_TEST
+    return xspm_stream_read_from_file(STREAM_FFT, ch, data, len, args);
+#else
+    int index;
+    
+    index = xspm_find_index_by_type(-1, -1, STREAM_FFT);
+    if(index < 0)
+        return -1;
+    return xspm_stream_read(ch, index, data, len, args);
+#endif
+}
+
+ssize_t xspm_read_iq_vec_data(int ch , void **data, void *len, void *args)
+{
+#ifdef DEBUG_TEST
+    return xspm_stream_read_from_file(STREAM_NIQ, ch, data, len, args);
+#else
+    int index;
+    
+    index = xspm_find_index_by_type(-1, -1, STREAM_NIQ);
+    if(index < 0)
+        return -1;
+    return xspm_stream_read(ch, index, data, len, args);
+#endif
+}
+
+
+ssize_t xspm_read_niq_data(int ch , void **data, void *len, void *args)
+{
+    int index;
+    
+    index = xspm_find_index_by_type(-1, -1, STREAM_NIQ);
     if(index < 0)
         return -1;
     return xspm_stream_read(ch, index, data, len, args);
 }
+
+
+ssize_t xspm_read_biq_data(int ch , void **data, void *len, void *args)
+{
+    int index;
+    
+    index = xspm_find_index_by_type(-1, -1, STREAM_BIQ);
+    if(index < 0)
+        return -1;
+    return xspm_stream_read(ch, index, data, len, args);
+
+}
+
 
 
 static ssize_t xspm_read_fft_data(int ch, void **data, void *args)
@@ -457,6 +591,179 @@ static int xspm_send_fft_data(void *data, size_t fft_len, void *arg)
         __unlock_fft2_send__();
     _safe_free_(ptr_header);
     return (header_len + data_byte_size);
+}
+
+static void *_assamble_iq_header(int ch, size_t subch, size_t *hlen, size_t data_len, void *arg, enum stream_iq_type type)
+{
+    uint8_t *ptr = NULL, *ptr_header = NULL;
+    uint32_t header_len = 0;
+    struct poal_config *poal_config = &(config_get_config()->oal_config);
+    struct sub_channel_freq_para_st *sub_channel_array;
+    
+    if(data_len == 0 || arg == NULL)
+        return NULL;
+
+    struct spm_run_parm *hparam;
+    hparam = (struct spm_run_parm *)arg;
+#ifdef CONFIG_PROTOCOL_ACT
+    hparam->data_len = data_len;
+    hparam->type = BASEBAND_DATUM_IQ;
+    hparam->ex_type = DEMODULATE_DATUM;
+    ch = hparam->ch;
+    if(type == STREAM_NIQ_TYPE_AUDIO){
+        int i;
+        struct multi_freq_point_para_st  *points = &poal_config->channel[ch].multi_freq_point_param;
+        i = executor_get_audio_point(ch);
+        hparam->sub_ch_para.bandwidth_hz = points->points[i].d_bandwith;
+        hparam->sub_ch_para.m_freq_hz =  points->points[i].center_freq;
+        hparam->sub_ch_para.d_method = points->points[i].raw_d_method;
+        hparam->sub_ch_para.sample_rate = 32000;    /* audio 32Khz */
+    }else if(type == STREAM_NIQ_TYPE_RAW){
+        sub_channel_array = &poal_config->channel[ch].sub_channel_para;
+        hparam->sub_ch_para.bandwidth_hz = sub_channel_array->sub_ch[subch].d_bandwith;
+        hparam->sub_ch_para.m_freq_hz = sub_channel_array->sub_ch[subch].center_freq;
+        hparam->sub_ch_para.d_method = sub_channel_array->sub_ch[subch].raw_d_method;
+        hparam->sub_ch_para.sample_rate =  io_get_raw_sample_rate(0, 0, hparam->sub_ch_para.bandwidth_hz);
+    }
+   
+    printf_debug("ch=%d, subch = %zd, m_freq_hz=%"PRIu64", bandwidth:%uhz, sample_rate=%u, d_method=%d\n", 
+        ch,
+        subch,
+        hparam->sub_ch_para.m_freq_hz,
+        hparam->sub_ch_para.bandwidth_hz, 
+        hparam->sub_ch_para.sample_rate,  
+        hparam->sub_ch_para.d_method );
+    
+    if((ptr_header = akt_assamble_data_frame_header_data(&header_len, arg))== NULL){
+        return NULL;
+    }
+    
+#elif defined(CONFIG_PROTOCOL_XW)
+    //ch = subch;
+    hparam->data_len = data_len; 
+    if(type == STREAM_BIQ_TYPE_RAW){
+        printf_debug("ch=%d,middle_freq=%"PRIu64",bandwidth=%"PRIu64"\n",ch,poal_config->channel[ch].multi_freq_point_param.ddc.middle_freq,
+                        poal_config->channel[ch].multi_freq_point_param.ddc.bandwidth);
+        hparam->type = DEFH_DTYPE_BB_IQ;
+        hparam->ddc_m_freq = poal_config->channel[ch].multi_freq_point_param.ddc.middle_freq;
+        hparam->ddc_bandwidth = poal_config->channel[ch].multi_freq_point_param.ddc.bandwidth;
+    }
+    else if(type == STREAM_NIQ_TYPE_RAW || STREAM_NIQ_TYPE_AUDIO){
+        sub_channel_array = &poal_config->channel[ch].sub_channel_para;
+        hparam->ddc_bandwidth = sub_channel_array->sub_ch[subch].d_bandwith;
+        hparam->ddc_m_freq = sub_channel_array->sub_ch[subch].center_freq;
+        hparam->d_method = sub_channel_array->sub_ch[subch].raw_d_method;
+        hparam->type = (type ==  STREAM_NIQ_TYPE_RAW ? DEFH_DTYPE_CH_IQ : DEFH_DTYPE_AUDIO);
+    }
+    hparam->ex_type = DFH_EX_TYPE_DEMO;
+    ptr_header = xw_assamble_frame_data(&header_len, arg);
+    if(ptr_header == NULL)
+        return NULL;
+#endif
+    *hlen = header_len;
+
+    return ptr_header;
+
+}
+
+int xspm_send_niq_data(void *data, size_t len, void *arg)
+{
+    #define _NIQ_SEND_TIMEOUT_US 10000
+    size_t header_len = 0;
+    struct _spm_xstream *pstream = spm_dev_get_stream(NULL);
+    size_t _send_byte = 32768;
+    uint8_t *hptr = NULL;
+    int i, index;
+    static struct timeval start, now;
+    static bool time_start = true;
+    
+    if(data == NULL || len == 0 || arg == NULL)
+        return -1;
+    if(time_start){
+        time_start = false;
+        _spm_gettime(&start);
+    }
+    if(len < _send_byte){
+        _spm_gettime(&now);
+        if(_spm_tv_diff(&now, &start) > _NIQ_SEND_TIMEOUT_US && len >= 4096){
+            index = len / 4096;
+            len = index * 4096;
+            _send_byte = len;
+        }else{
+            return -1;
+        }
+    }
+    _spm_gettime(&start);
+    if((hptr = _assamble_iq_header(0, 0, &header_len, _send_byte, arg, STREAM_NIQ_TYPE_RAW)) == NULL){
+        printf_err("assamble head error\n");
+        return -1;
+    }
+    
+    uint8_t *pdata;
+    struct iovec iov[2];
+    iov[0].iov_base = hptr;
+    iov[0].iov_len = header_len;
+    index = len / _send_byte;
+    pdata = (uint8_t *)data;
+    __lock_iq_send__();
+    for(i = 0; i<index; i++){
+        iov[1].iov_base = pdata;
+        iov[1].iov_len = _send_byte;
+#if (defined CONFIG_PROTOCOL_DATA_TCP)
+    tcp_send_vec_data(iov, 2, NET_DATA_TYPE_NIQ);
+#else
+    udp_send_vec_data(iov, 2, NET_DATA_TYPE_NIQ);
+#endif
+        pdata += _send_byte;
+    }
+    __unlock_iq_send__();
+    
+    xspm_read_xdma_data_over(-1, NULL, STREAM_NIQ);
+    safe_free(hptr);
+    
+    return (int)(header_len + len);
+}
+
+
+int xspm_send_biq_data(int ch, void *data, size_t len, void *arg)
+{
+    size_t header_len = 0;
+    struct _spm_xstream *pstream = spm_dev_get_stream(NULL);
+    size_t _send_byte = (iq_send_unit_byte > 0 ? iq_send_unit_byte : DEFAULT_IQ_SEND_BYTE);
+    uint8_t *hptr = NULL;
+    
+    if(data == NULL || len == 0 || arg == NULL)
+        return -1;
+
+    if(len < _send_byte)
+        return -1;
+    if((hptr = _assamble_iq_header(ch, 0, &header_len, _send_byte, arg, STREAM_BIQ_TYPE_RAW)) == NULL){
+        printf_err("assamble head error\n");
+        return -1;
+    }
+   
+    int i, index;
+    uint8_t *pdata;
+    struct iovec iov[2];
+    iov[0].iov_base = hptr;
+    iov[0].iov_len = header_len;
+    index = len / _send_byte;
+    pdata = (uint8_t *)data;
+
+    for(i = 0; i<index; i++){
+        iov[1].iov_base = pdata;
+        iov[1].iov_len = _send_byte;
+#if (defined CONFIG_PROTOCOL_DATA_TCP)
+    tcp_send_vec_data(iov, 2, NET_DATA_TYPE_BIQ);
+#else
+    udp_send_vec_data(iov, 2, NET_DATA_TYPE_BIQ);
+#endif
+        pdata += _send_byte;
+    }
+    xspm_read_xdma_data_over(-1, NULL, STREAM_BIQ);
+    safe_free(hptr);
+    
+    return (int)(header_len + len);
 }
 
 
@@ -584,10 +891,15 @@ static int xspm_read_xdma_data_over(int ch,  void *arg,  int type)
 
 
 static const struct spm_backend_ops xspm_ops = {
-    .create = xspm_create,
+    //.create = xspm_create,
     .read_fft_data = xspm_read_fft_data,
     .read_fft_vec_data = xspm_read_fft_vec_data,
     .send_fft_data = xspm_send_fft_data,
+    .read_iq_vec_data = xspm_read_iq_vec_data,
+    //.read_niq_data = xspm_read_niq_data,
+    //.read_biq_data = xspm_read_biq_data,
+    .send_biq_data = xspm_send_biq_data,
+    .send_niq_data = xspm_send_niq_data,
     .stream_start = xspm_read_stream_start,
     .stream_stop = xspm_read_stream_stop,
     .close = _xspm_close,

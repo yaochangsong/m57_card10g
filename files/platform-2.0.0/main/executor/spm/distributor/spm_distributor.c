@@ -385,6 +385,35 @@ static int spm_distributor_process(int type, size_t count, uint8_t **mbufs, size
     return ret;
 }
 
+int _spm_distributor_wait_fft_read_over(void)
+{
+    #define WAIT_FFT_CONSUME_TIMEOUT_MS 10
+    queue_ctx_t *pkt_q;
+    struct timeval start, now;
+    int ret = 0;
+    _gettime(&start);
+    do{
+        for(int i = 0; i < ARRAY_SIZE(dist_type); i++){
+            for(int ch = 0; ch < dist_type[i].channel_num; ch++){
+                pkt_q = (queue_ctx_t *)dist_type[i].pkt_queue[ch];
+                if(!pkt_q->ops->is_empty(pkt_q)){
+                    _gettime(&now);
+                    if(_tv_diff(&now, &start) > WAIT_FFT_CONSUME_TIMEOUT_MS){
+                        printf_warn("Wait TimeOut!\n");
+                        ret = -1;
+                        break;
+                    }
+                    usleep(5);
+                    continue;
+                }
+            }
+        }
+        /* consumer over */
+        break;
+    }while(1);
+    return ret;
+}
+
 static int _spm_distributor_fft_thread_loop(void *s)
 {
     struct spm_context *_ctx;
@@ -402,7 +431,11 @@ static int _spm_distributor_fft_thread_loop(void *s)
     if(count > 0 && count < DIST_MAX_COUNT){
         spm_distributor_process(SPM_DIST_FFT, count, (uint8_t **)ptr, len);
     }
-
+    _spm_distributor_wait_fft_read_over();
+    
+    if(_ctx->ops->read_fft_over_deal)
+        _ctx->ops->read_fft_over_deal(-1, NULL);
+    
     return 0;
 }
 

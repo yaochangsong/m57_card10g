@@ -894,6 +894,12 @@ static int xspm_read_xdma_data_over(int ch,  void *arg,  int type)
     return 0;
 }
 
+static int xspm_read_xdma_fft_data_over(int ch,  void *arg)
+{
+    return xspm_read_xdma_data_over(ch, arg, STREAM_FFT);
+}
+
+
 static  float get_side_band_rate(uint32_t bandwidth)
 {
     #define DEFAULT_SIDE_BAND_RATE  (1.28)
@@ -1019,6 +1025,7 @@ static const struct spm_backend_ops xspm_ops = {
     .read_iq_vec_data = xspm_read_iq_vec_data,
     //.read_niq_data = xspm_read_niq_data,
     //.read_biq_data = xspm_read_biq_data,
+    .read_fft_over_deal = xspm_read_xdma_fft_data_over,
     .send_biq_data = xspm_send_biq_data,
     .send_niq_data = xspm_send_niq_data,
     .stream_start = xspm_read_stream_start,

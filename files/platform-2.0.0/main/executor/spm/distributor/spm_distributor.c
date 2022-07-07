@@ -355,7 +355,7 @@ static int _spm_distributor_data_frame_producer(int ch, int type, void **data, s
         //print_array(ptr, 512);
         _safe_free_(pkt);
         if(frame_len == len){
-            printf_note("ch=%d, frame_len=%lu, len=%lu, Frame OK!\n", ch, frame_len, len);
+            printf_info("ch=%d, frame_len=%lu, len=%lu, Frame OK!\n", ch, frame_len, len);
             break;
         }
         ptr += pkt_len;

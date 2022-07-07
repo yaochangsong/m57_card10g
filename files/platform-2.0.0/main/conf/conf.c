@@ -471,8 +471,8 @@ int config_get_fft_resolution(int mode, int ch, int index, uint32_t bw_hz,uint32
         *fft_size = config_get_fft_by_resolution(point->points[index].freq_resolution, bw_hz);
 #else
         if(point->points[index].fft_size == 0){
-            printf_warn("fft Size is NULL, default: 2K\n");
-            point->points[index].fft_size = 2048;
+            printf_warn("fft Size is NULL, default: 8K\n");
+            point->points[index].fft_size = 8192;
         }
         *fft_size = point->points[index].fft_size;
         *resolution = config_get_resolution_by_fft(point->points[index].fft_size, bw_hz);
@@ -485,8 +485,8 @@ int config_get_fft_resolution(int mode, int ch, int index, uint32_t bw_hz,uint32
         *fft_size = config_get_fft_by_resolution(fregment->fregment[index].freq_resolution, bw_hz);
 #else
         if(fregment->fregment[index].fft_size == 0){
-            printf_warn("fft Size is NULL, default: 2K\n");
-            fregment->fregment[index].fft_size = 2048;
+            printf_warn("fft Size is NULL, default: 8K\n");
+            fregment->fregment[index].fft_size = 8192;
         }
         *fft_size = fregment->fregment[index].fft_size;
         *resolution = config_get_resolution_by_fft(fregment->fregment[index].fft_size, bw_hz);

@@ -97,8 +97,8 @@ static bool  _executor_fragment_scan(uint32_t fregment_num,uint8_t ch, work_mode
         r_args->e_freq = e_freq;
         #endif
         if(spmctx->ops->spm_scan)
-        spmctx->ops->spm_scan(&_s_freq_hz_offset, &_e_freq_hz, &scan_bw, &_bw_hz, &_m_freq_hz);
-        printf_info("[%d] s_freq_offset=%"PRIu64"Hz,scan_bw=%uHz _bw_hz=%u, _m_freq_hz=%"PRIu64"Hz\n", index, r_args->s_freq_offset, scan_bw, _bw_hz, _m_freq_hz);
+            spmctx->ops->spm_scan(&_s_freq_hz_offset, &_e_freq_hz, &scan_bw, &_bw_hz, &_m_freq_hz);
+        printf_debug("[%d] s_freq_offset=%"PRIu64"Hz,scan_bw=%uHz _bw_hz=%u, _m_freq_hz=%"PRIu64"Hz\n", index, r_args->s_freq_offset, scan_bw, _bw_hz, _m_freq_hz);
         r_args->scan_bw = scan_bw;
         r_args->bandwidth = _bw_hz;
         r_args->m_freq = r_args->s_freq_offset + _bw_hz/2;
@@ -106,7 +106,7 @@ static bool  _executor_fragment_scan(uint32_t fregment_num,uint8_t ch, work_mode
         r_args->fft_sn = index;
         r_args->total_fft = t_fft;
         r_args->fregment_num = fregment_num;
-        printf_info("[ch:%d, %d]s_freq=%"PRIu64", e_freq=%"PRIu64", scan_bw=%u, bandwidth=%u,m_freq=%"PRIu64", m_freq_s=%"PRIu64", freq_resolution = %u, fftsize=%u\n", 
+        printf_debug("[ch:%d, %d]s_freq=%"PRIu64", e_freq=%"PRIu64", scan_bw=%u, bandwidth=%u,m_freq=%"PRIu64", m_freq_s=%"PRIu64", freq_resolution = %u, fftsize=%u\n", 
             ch, index, r_args->s_freq, r_args->e_freq, r_args->scan_bw, r_args->bandwidth, r_args->m_freq, r_args->m_freq_s, r_args->freq_resolution, r_args->fft_size);
         if(spmctx->ops->sample_ctrl)
             spmctx->ops->sample_ctrl(r_args);

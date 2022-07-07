@@ -186,7 +186,9 @@ static int xspm_create(void)
     int pagesize = getpagesize();
     int dev_len = 0;
     printf_info("SPM init\n");
-
+#ifdef DEBUG_TEST
+    return 0;
+#endif
     pstream = spm_dev_get_stream(&dev_len);
     /* create stream */
     for(i = 0; i< dev_len ; i++){
@@ -455,7 +457,7 @@ static ssize_t xspm_stream_read_from_file(int type, int ch, void **data, size_t 
         //print_array(data[cn], len[cn]);
         cn++;
     }while(cn < STRAM_READ_BLOCK_COUNT);
-    usleep(10000);
+    usleep(100);
     return cn;
 }
 
@@ -914,6 +916,39 @@ static int _spm_extract_half_point(void *data, int len, void *outbuf)
     return len/2;
 }
 
+static int spm_scan(uint64_t *s_freq_offset, uint64_t *e_freq, uint32_t *scan_bw, uint32_t *bw, uint64_t *m_freq)
+{
+    //#define MAX_SCAN_FREQ_HZ (6000000000)
+    uint64_t _m_freq;
+    uint64_t _s_freq, _e_freq;
+    uint32_t _scan_bw, _bw;
+    
+    _s_freq = *s_freq_offset;
+    _e_freq = *e_freq;
+    _scan_bw = *scan_bw;
+
+    {
+        //_scan_bw = 175000000;
+        if((_e_freq - _s_freq)/_scan_bw > 0){
+            _bw = _scan_bw;
+            *s_freq_offset = _s_freq + _scan_bw;
+        }else{
+            _bw = _e_freq - _s_freq;
+            *s_freq_offset = _e_freq;
+        }
+        *scan_bw = _scan_bw;
+        _m_freq = _s_freq + _bw/2;
+        //fix bug:中频超6G无信号 wzq
+        if (_m_freq > MAX_SCAN_FREQ_HZ){
+            _m_freq = MAX_SCAN_FREQ_HZ;
+        }
+        *bw = _bw;
+    }
+    *m_freq = _m_freq;
+
+    return 0;
+}
+
 
 /* 频谱数据整理 */
 static fft_t *xspm_data_order(fft_t *fft_data, 
@@ -936,7 +971,6 @@ static fft_t *xspm_data_order(fft_t *fft_data,
     run_args = (struct spm_run_parm *)arg;
     /* 获取边带率 */
     side_rate  =  get_side_band_rate(run_args->scan_bw);
-    printf_note("side_rate:%f\n", side_rate);
     /* 去边带后FFT长度 */
     order_len = (size_t)((float)(fft_len) / side_rate + 0.5);
     /*双字节对齐*/
@@ -978,7 +1012,7 @@ static fft_t *xspm_data_order(fft_t *fft_data,
 
 
 static const struct spm_backend_ops xspm_ops = {
-    //.create = xspm_create,
+    .create = xspm_create,
     .read_fft_data = xspm_read_fft_data,
     .read_fft_vec_data = xspm_read_fft_vec_data,
     .send_fft_data = xspm_send_fft_data,
@@ -990,6 +1024,7 @@ static const struct spm_backend_ops xspm_ops = {
     .stream_start = xspm_read_stream_start,
     .stream_stop = xspm_read_stream_stop,
     .data_order = xspm_data_order,
+    .spm_scan = spm_scan,
     .close = _xspm_close,
 };
 

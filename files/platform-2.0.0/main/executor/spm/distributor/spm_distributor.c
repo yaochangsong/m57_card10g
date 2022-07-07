@@ -337,6 +337,11 @@ static int _spm_distributor_data_frame_producer(int ch, int type, void **data, s
         }
         if(frame_pkt_num > 1)
             frame_len += pkt_len;
+        if(frame_len >= MAX_FRAME_BUFFER_LEN){
+            printf_err("Frame pkt[%lu] is too long!\n", frame_pkt_num);
+            _safe_free_(pkt);
+            break;
+        }
         /* 接受到中间包帧号和第一包帧号不一致，说明不是同一帧，丢弃，重新查找流水号为0的包 */
         if(frame_1st_idx != pkt->frame_idx && frame_len < len){
             printf_warn("Frame idx:%"PRIu64" err, Discard pkt\n", pkt->frame_idx);
@@ -360,7 +365,7 @@ static int _spm_distributor_data_frame_producer(int ch, int type, void **data, s
         printf_warn("Read len[%lu] is not eq expect len[%lu], Discard pkt\n", frame_len, len);
         ret = -1;
     }
-    *data = ptr;
+    *data = mbuf_header;
     return ret;
 }
 

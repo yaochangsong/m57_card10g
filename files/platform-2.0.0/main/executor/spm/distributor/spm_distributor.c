@@ -52,6 +52,7 @@
 #include "../../../main/utils/lqueue.h"
 #include "../../../main/utils/thread.h"
 #include "../../../main/utils/utils.h"
+#include "../../../main/conf/conf.h"
 
 
 #define DIST_MAX_COUNT 2048
@@ -205,6 +206,10 @@ int _spm_distributor_analysis(int type, uint8_t *mbufs, size_t len, struct spm_d
         }
         if(header->channel >= dtype->channel_num){
             printf("fft channel[%d] too big\n", header->channel);
+            break;
+        }
+        if(config_get_fft_work_enable(header->channel) == false){
+            printf("fft channel[%d] not work\n", header->channel);
             break;
         }
         if(header->pkt_len != dtype->pkt_len){

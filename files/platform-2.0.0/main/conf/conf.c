@@ -164,6 +164,15 @@ bool config_get_work_enable(void)
     return false;
 }
 
+bool config_get_fft_work_enable(int ch)
+{
+    if(ch >= MAX_RADIO_CHANNEL_NUM)
+        return false;
+    if(config.oal_config.channel[ch].enable.map.bit.fft){
+        return true;
+    }
+}
+
 /** Accessor for the current configuration
 @return:  A pointer to the current config.
  */

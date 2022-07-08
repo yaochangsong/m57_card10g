@@ -80,6 +80,7 @@ extern int config_get_if_cmd_port(const char *ifname, uint16_t *port);
 extern int config_set_if_cmd_port(const char *ifname, uint16_t port);
 extern uint32_t config_get_noise_level(void);
 extern bool config_get_work_enable(void);
+extern bool config_get_fft_work_enable(int ch);
 
 #endif
 

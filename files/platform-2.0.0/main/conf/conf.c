@@ -171,6 +171,7 @@ bool config_get_fft_work_enable(int ch)
     if(config.oal_config.channel[ch].enable.map.bit.fft){
         return true;
     }
+    return false;
 }
 
 /** Accessor for the current configuration

@@ -208,7 +208,7 @@ int _spm_distributor_analysis(int type, uint8_t *mbufs, size_t len, struct spm_d
             printf("fft channel[%d] too big\n", header->channel);
             break;
         }
-        if(config_get_fft_work_enable(header->channel) == false){
+        if(type == SPM_DIST_FFT && config_get_fft_work_enable(header->channel) == false){
             printf("fft channel[%d] not work\n", header->channel);
             break;
         }

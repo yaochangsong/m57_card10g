@@ -968,7 +968,7 @@ static fft_t *xspm_data_order(fft_t *fft_data,
     uint64_t start_freq_hz = 0;
     int i;
     size_t order_len = 0, offset = 0;
-    fft_t *p_buffer = NULL;
+    fft_t *p_buffer = NULL, *first = NULL;
     if(fft_data == NULL || fft_len == 0){
         printf_note("null data\n");
         return NULL;
@@ -1003,17 +1003,32 @@ static fft_t *xspm_data_order(fft_t *fft_data,
     memcpy((uint8_t *)(run_args->fft_ptr+order_len),    (uint8_t *)fft_data , order_len);
     #endif
 
-    p_buffer =  (fft_t *)run_args->fft_ptr + offset ;
+    p_buffer =  (fft_t *)run_args->fft_ptr;
 
 #if defined(CONFIG_SPM_FFT_EXTRACT_POINT)
     order_len =  _spm_extract_half_point(p_buffer, order_len, run_args->fft_ptr_swap);
     p_buffer = run_args->fft_ptr_swap;
 #endif
+    if(run_args->mode == OAL_FAST_SCAN_MODE || run_args->mode ==OAL_MULTI_ZONE_SCAN_MODE){
+        if(run_args->scan_bw > run_args->bandwidth){
+             uint64_t start_freq_hz = 0;
+             /* 扫描最后一段，射频中心频率为实际剩余带宽的中心频率，需要去掉多余部分 */
+             start_freq_hz = run_args->s_freq_offset - (run_args->m_freq_s - run_args->scan_bw/2);
+             offset = ((float)order_len * ((float)start_freq_hz/(float)run_args->scan_bw));
+             order_len = ((float)order_len * ((float)run_args->bandwidth/(float)run_args->scan_bw));
+        }
+    }
+    first = p_buffer + offset;
+#if defined(CONFIG_SPM_BOTTOM)
+        if(bottom_noise_cali_en())
+            bottom_calibration(run_args->ch, first, fft_len, run_args->fft_size, run_args->m_freq, run_args->bandwidth);
+        bottom_deal(run_args->ch, first, fft_len, run_args->fft_size, run_args->m_freq, run_args->bandwidth);
+#endif
     *order_fft_len = order_len;
     printf_debug("order_len=%lu, offset = %lu, start_freq_hz=%"PRIu64", s_freq_offset=%"PRIu64", m_freq=%"PRIu64", scan_bw=%u,fft_len=%lu\n", 
         order_len, offset, start_freq_hz, run_args->s_freq_offset, run_args->m_freq_s, run_args->scan_bw,fft_len);
 
-    return (fft_t *)p_buffer;
+    return (fft_t *)first;
 }
 
 

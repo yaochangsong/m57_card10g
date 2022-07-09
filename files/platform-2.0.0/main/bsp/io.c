@@ -120,7 +120,7 @@ static void  io_get_config_bandwidth_factor(uint32_t anays_band,               /
         *bw_factor = table[0].extract;
         *filter_factor = table[0].filter;
         *filter_factor2 = table[0].filter2;
-        printf_note("[%u]not find band table, set default:[%uHz] extract=%d, extract_filter=%d\n", anays_band, table[0].bw_hz, *bw_factor, *filter_factor);
+        printf_debug("[%u]not find band table, set default:[%uHz] extract=%d, extract_filter=%d\n", anays_band, table[0].bw_hz, *bw_factor, *filter_factor);
     }
 }
 
@@ -930,6 +930,11 @@ int8_t io_set_enable_command(uint8_t type, int ch, int subc_ch, uint32_t fftsize
         case PSD_MODE_ENABLE:
         {
             io_set_dma_SPECTRUM_out_en(ch, subc_ch, fftsize,0);
+            break;
+        }
+        case PSD_CON_MODE_ENABLE:
+        {
+            io_set_dma_SPECTRUM_out_en(ch, subc_ch, fftsize,1);
             break;
         }
         case PSD_MODE_DISABLE:

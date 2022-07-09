@@ -209,7 +209,7 @@ int _spm_distributor_analysis(int type, uint8_t *mbufs, size_t len, struct spm_d
             break;
         }
         if(type == SPM_DIST_FFT && config_get_fft_work_enable(header->channel) == false){
-            printf("fft channel[%d] not work\n", header->channel);
+            printf_info("fft channel[%d] not work\n", header->channel);
             break;
         }
         if(header->pkt_len != dtype->pkt_len){
@@ -421,17 +421,29 @@ int _spm_distributor_wait_fft_read_over(void)
 
 static int _spm_distributor_fft_thread_loop(void *s)
 {
+    #define FFT_PROD_PKTS 100
     struct spm_context *_ctx;
     volatile uint8_t *ptr[DIST_MAX_COUNT] = {NULL};
-    size_t len[DIST_MAX_COUNT] = {0};
+    size_t len[DIST_MAX_COUNT] = {0}, prod_size = 0;
     ssize_t count = 0;
+    struct spm_distributor_type_attr_s *disp = s;
+    
 
     _ctx = get_spm_ctx();
     if(_ctx == NULL)
         return -1;
-
+#if (!defined CONFIG_SPM_FFT_CONTINUOUS_MODE)
+    /* Start DMA */
+    prod_size = disp->channel_num * disp->pkt_len * FFT_PROD_PKTS;
+    io_set_enable_command(PSD_MODE_ENABLE, -1, -1, prod_size);
+#endif
+    
     if(_ctx->ops->read_fft_vec_data)
         count = _ctx->ops->read_fft_vec_data(-1, (void **)ptr, len, NULL);
+#if (!defined CONFIG_SPM_FFT_CONTINUOUS_MODE)
+    /* Stop DMA */
+    io_set_enable_command(PSD_MODE_DISABLE, -1, -1, 0);
+#endif
 
     if(count > 0 && count < DIST_MAX_COUNT){
         spm_distributor_process(SPM_DIST_FFT, count, (uint8_t **)ptr, len);

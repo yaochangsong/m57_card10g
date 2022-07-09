@@ -83,6 +83,7 @@ static bool  _executor_fragment_scan(uint32_t fregment_num,uint8_t ch, work_mode
     r_args->ch = ch;
     //r_args->fft_size = fftsize;
     dma_fft_size = r_args->fft_size * SAMPLING_FFT_TIMES;
+    dma_fft_size = dma_fft_size; /* for warning */
     r_args->mode = mode;
     r_args->gain_mode = poal_config->channel[ch].rf_para.gain_ctrl_method;
     r_args->gain_value = poal_config->channel[ch].rf_para.mgc_gain_value;
@@ -116,13 +117,17 @@ static bool  _executor_fragment_scan(uint32_t fregment_num,uint8_t ch, work_mode
         executor_set_command(EX_MID_FREQ_CMD, EX_MID_FREQ,    ch, &_m_freq_hz, _m_freq_hz);
         executor_set_command(EX_MID_FREQ_CMD, EX_FPGA_CALIBRATE, ch, &r_args->fft_size, r_args->m_freq,0);
         index ++;
+#if (!defined CONFIG_SPM_FFT_CONTINUOUS_MODE) && (!defined CONFIG_SPM_DISTRIBUTOR)
         if(poal_config->channel[ch].enable.map.bit.fft){
             io_set_enable_command(PSD_MODE_ENABLE, ch, -1, dma_fft_size);
         }
+#endif
         spm_deal(spmctx, r_args, ch);
+#if (!defined CONFIG_SPM_FFT_CONTINUOUS_MODE) && (!defined CONFIG_SPM_DISTRIBUTOR)
         if(poal_config->channel[ch].enable.map.bit.fft){
             io_set_enable_command(PSD_MODE_DISABLE, ch, -1, dma_fft_size);
         }
+#endif
         if(_is_executor_thread_reset(args)){
             printf_info("Recv reset\n");
             return false;
@@ -240,21 +245,24 @@ static bool  _executor_points_scan_mode(uint8_t ch, int mode, void *args)
         gettimeofday(&beginTime, NULL);
         do{
             config_get_fft_resolution(mode, ch, i, r_args->scan_bw,  &r_args->fft_size, &r_args->freq_resolution);
-            dma_fft_size = r_args->fft_size * SAMPLING_FFT_TIMES;
             executor_set_command(EX_MID_FREQ_CMD, EX_FFT_SIZE, ch, &point->points[i].fft_size);
             executor_set_command(EX_MID_FREQ_CMD, EX_SMOOTH_TIME, ch, &poal_config->channel[ch].multi_freq_point_param.smooth_time);
             executor_set_command(EX_MID_FREQ_CMD, EX_FPGA_CALIBRATE, ch, &point->points[i].fft_size, r_args->m_freq);
+#if (!defined CONFIG_SPM_FFT_CONTINUOUS_MODE) && (!defined CONFIG_SPM_DISTRIBUTOR)
+            dma_fft_size = r_args->fft_size * SAMPLING_FFT_TIMES;
             if(poal_config->channel[ch].enable.map.bit.fft){
                 io_set_enable_command(PSD_MODE_ENABLE, ch, -1, dma_fft_size);
             }
+#endif
             if(spmctx->ops->agc_ctrl)
                 spmctx->ops->agc_ctrl(ch, spmctx);
             if(spmctx != NULL)
                 spm_deal(spmctx, r_args, ch);
+#if (!defined CONFIG_SPM_FFT_CONTINUOUS_MODE) && (!defined CONFIG_SPM_DISTRIBUTOR)
             if(poal_config->channel[ch].enable.map.bit.fft){
                 io_set_enable_command(PSD_MODE_DISABLE, ch, -1, dma_fft_size);
             }
-            
+#endif
             if(_is_executor_thread_reset(arg))
                 return false;
 #if defined (CONFIG_RESIDENCY_STRATEGY) 
@@ -631,11 +639,21 @@ int executor_fft_work_nofity(void *cl, int ch, int mode, bool enable)
     }
 
     printf_debug("ch=%d, mode=%d, enable=%d\n", ch, mode, enable);
-    
-    if(enable)
+
+    if(enable){
+#if (defined CONFIG_SPM_FFT_CONTINUOUS_MODE) 
+        if(ch_bitmap_weight(CH_TYPE_FFT) == 0)
+            io_set_enable_command(PSD_CON_MODE_ENABLE, ch, -1, 0);
+#endif
         ch_bitmap_set(ch, CH_TYPE_FFT);
+    }
     else{
         ch_bitmap_clear(ch, CH_TYPE_FFT);
+#if (defined CONFIG_SPM_FFT_CONTINUOUS_MODE) 
+        if(ch_bitmap_weight(CH_TYPE_FFT) == 0)
+            io_set_enable_command(PSD_MODE_DISABLE, ch, -1, 0);
+#endif
+
 #ifdef CONFIG_SPM_DISTRIBUTOR
         struct spm_context *spm_ctx;
         spm_distributor_ctx_t *dist = NULL;

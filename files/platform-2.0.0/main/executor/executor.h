@@ -69,6 +69,7 @@ enum {
 enum {
     PSD_MODE_ENABLE=50,          /*PSD 数据使能*/
     PSD_MODE_DISABLE,
+    PSD_CON_MODE_ENABLE,          /*FFT连续模式使能*/
     AUDIO_MODE_ENABLE,           /*音频数据使能*/
     AUDIO_MODE_DISABLE,
     IQ_MODE_ENABLE,              /*IQ 数据使能*/

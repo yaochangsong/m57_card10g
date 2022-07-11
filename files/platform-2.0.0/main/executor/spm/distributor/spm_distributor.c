@@ -91,7 +91,6 @@ struct spm_distributor_type_attr_s{
     int (*distributor_loop)(void *);
     void *pkt_queue[FRAME_MAX_CHANNEL];
     void *frame_buffer[FRAME_MAX_CHANNEL];
-    volatile bool is_reset[FRAME_MAX_CHANNEL];
 } dist_type[] = {
     {"FFT", 1, SPM_DIST_FFT, 528, 16, 0xaa55, _spm_distributor_fft_thread_loop},
 //    {"IQ",  DIST_MAX_IQ_CHANNEL,  SPM_DIST_IQ,  512, 16, 0xaa55, _spm_distributor_iq_thread_loop},
@@ -205,7 +204,7 @@ int _spm_distributor_analysis(int type, uint8_t *mbufs, size_t len, struct spm_d
             }
         }
         if(header->channel >= dtype->channel_num){
-            printf("fft channel[%d] too big\n", header->channel);
+            printf("channel[%d] too big\n", header->channel);
             break;
         }
         if(type == SPM_DIST_FFT && config_get_fft_work_enable(header->channel) == false){
@@ -213,7 +212,7 @@ int _spm_distributor_analysis(int type, uint8_t *mbufs, size_t len, struct spm_d
             break;
         }
         if(header->pkt_len != dtype->pkt_len){
-            printf("fft pkt_len[%d] error[%d]\n", header->pkt_len, dtype->pkt_len);
+            printf("pkt_len[%d] error[%d]\n", header->pkt_len, dtype->pkt_len);
             break;
         }
 
@@ -316,14 +315,16 @@ static int _spm_distributor_data_frame_producer(int ch, int type, void **data, s
             ret = -1;
             break;
         }
-        if(dist_type[type].is_reset[ch] == true){
-            dist_type[type].is_reset[ch] = false;
+        
+        if(type == SPM_DIST_FFT && !config_get_fft_work_enable(ch))
             break;
-        }
+
         //printf_note("POP,type:%d, ch:%d\n", type, ch);
         pkt = pkt_q->ops->pop(pkt_q);
-        if(pkt == NULL)
+        if(pkt == NULL){
+            usleep(2);
             continue;
+        }
         printf_info("POP ch:%d, sn:%u, fidx:%"PRIu64", pkt_len:%lu\n", ch, pkt->sn, pkt->frame_idx, pkt->pkt_len);
         /* 流水号为0说明是第一包数据开始，初始化相关变量 */
         if(pkt->sn == 0){
@@ -550,7 +551,6 @@ static int _spm_distributor_init(void *args)
                 printf_warn("calloc memory faild!\n");
                 continue;
             }
-            dist_type[i].is_reset[ch] = false;
         }
     }
     for(int i = 0; i < ARRAY_SIZE(dist_type); i++)
@@ -566,7 +566,6 @@ static int _spm_distributor_reset(int type, int ch)
     if(ch > dist_type[type].channel_num)
         return -1;
 
-    dist_type[type].is_reset[ch] = true;
     queue_ctx_t *qctx =  dist_type[type].pkt_queue[ch];
     if(qctx->ops->clear)
         qctx->ops->clear(qctx);

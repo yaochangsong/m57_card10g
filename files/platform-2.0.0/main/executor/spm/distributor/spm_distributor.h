@@ -26,6 +26,8 @@ enum spm_distributor_type {
 struct spm_distributor_ops {
     int (*init)(void*);
     int (*reset)(int, int);
+    int (*fft_prod)(void);
+    int (*fft_consume)(int, void **, size_t);
     int (*close)(void *);
     
 };

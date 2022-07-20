@@ -220,7 +220,7 @@ ssize_t _spm_distributor_analysis(int type, uint8_t *mbufs, size_t len, struct s
             }
         }
         if(header->channel >= dtype->channel_num){
-            printf_note("channel[%d] too big\n", header->channel);
+            printf_warn("channel[%d] too big\n", header->channel);
             ptr += dtype->pkt_len;
             data_len -= dtype->pkt_len;
             consume_len += dtype->pkt_len;
@@ -228,7 +228,7 @@ ssize_t _spm_distributor_analysis(int type, uint8_t *mbufs, size_t len, struct s
         }
         
         if(header->pkt_len != dtype->pkt_len){
-            printf_note("pkt_len[%d] error[%d]\n", header->pkt_len, dtype->pkt_len);
+            printf_warn("pkt_len[%d] error[%d]\n", header->pkt_len, dtype->pkt_len);
             ptr += dtype->pkt_len;
             data_len -= dtype->pkt_len;
             consume_len += dtype->pkt_len;
@@ -237,7 +237,7 @@ ssize_t _spm_distributor_analysis(int type, uint8_t *mbufs, size_t len, struct s
 
         if(type == SPM_DIST_FFT){
             if(_frame_devider_gen_idx(type, header->channel, header->serial_num, &fidx) == -1){
-                printf_note("frame sn[%d] error\n", header->serial_num);
+                printf_warn("frame sn[%d] error\n", header->serial_num);
                 ptr += dtype->pkt_len;
                 data_len -= dtype->pkt_len;
                 consume_len += dtype->pkt_len;
@@ -266,7 +266,7 @@ ssize_t _spm_distributor_analysis(int type, uint8_t *mbufs, size_t len, struct s
         }
 
         queue_ctx_t *qctx = dtype->pkt_queue[pkt->ch];
-        printf_info("PUSH pkt:  ch:%d, sn: %d, pkt_len:%lu, frame_idx:%"PRIu64"\n", pkt->ch, pkt->sn, pkt->pkt_len, pkt->frame_idx);
+        printf_debug("[%p]PUSH pkt:  ch:%d, sn: %d, pkt_len:%lu, frame_idx:%"PRIu64"\n", ptr, pkt->ch, pkt->sn, pkt->pkt_len, pkt->frame_idx);
         if(qctx->ops->push(qctx, pkt) == -1){
             consume_len = len;
             free(pkt);
@@ -415,6 +415,7 @@ static ssize_t spm_distributor_process(int type, size_t count, uint8_t **mbufs, 
     for(int index = 0; index < count; index++){
         consume_size += _spm_distributor_analysis(type, mbufs[index], len[index], &dist_type[type]);
     }
+
     return consume_size;
 }
 
@@ -485,6 +486,12 @@ static int _spm_distributor_fft_thread_loop(void *s)
     
     return 0;
 }
+
+static int _spm_distributor_fft_prod(void)
+{
+    return _spm_distributor_fft_thread_loop(&dist_type[SPM_DIST_FFT]);
+}
+
 
 static int _spm_distributor_iq_thread_loop(void *s)
 {
@@ -582,8 +589,8 @@ static int _spm_distributor_init(void *args)
             }
         }
     }
-    for(int i = 0; i < ARRAY_SIZE(dist_type); i++)
-        spm_distributor_thread(&dist_type[i]);
+    //for(int i = 0; i < ARRAY_SIZE(dist_type); i++)
+    //    spm_distributor_thread(&dist_type[i]);
     return 0;
 }
 
@@ -606,6 +613,7 @@ static int _spm_distributor_reset(int type, int ch)
 static const struct spm_distributor_ops spm_disp_ops = {
     .init = _spm_distributor_init,
     .reset = _spm_distributor_reset,
+    .fft_prod = _spm_distributor_fft_prod,
 };
 
 spm_distributor_ctx_t * spm_create_distributor_ctx(void)

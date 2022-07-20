@@ -71,6 +71,7 @@ int _queue_push(queue_ctx_t *q, void *args)
     data->args = args;
     pthread_mutex_lock(&q->lock);
     if(q->entries >= q->max_entry){
+        free(data);
         printf("WARN:Queue[%u] is Full[max:%u]\n", q->entries, q->max_entry);
         pthread_mutex_unlock(&q->lock);
         return -1;

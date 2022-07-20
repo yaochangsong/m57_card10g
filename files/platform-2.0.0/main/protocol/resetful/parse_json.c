@@ -1339,6 +1339,38 @@ char *assemble_json_disk_info(void)
     
    return str_json;
 }
+
+char *assemble_json_distributor_info(void)
+{
+    char *str_json = NULL;
+    cJSON *array = cJSON_CreateArray();
+    cJSON* item = NULL;
+
+#ifdef CONFIG_SPM_DISTRIBUTOR
+    struct spm_context * ctx= get_spm_ctx();
+    spm_distributor_ctx_t *dist = ctx->distributor;
+    spm_dist_statistics_t *stat = NULL;
+    char buffer[64] = {0};
+    if(dist && dist->ops->get_fft_statistics)
+        stat = dist->ops->get_fft_statistics();
+    if(!stat)
+        goto exit;
+    cJSON_AddItemToArray(array, item = cJSON_CreateObject());
+    cJSON_AddNumberToObject(item, "read_bytes", stat->read_bytes);
+    cJSON_AddNumberToObject(item, "read_ok_pkts", stat->read_ok_pkts);
+    cJSON_AddNumberToObject(item, "read_ok_frame", stat->read_ok_frame);
+    cJSON_AddNumberToObject(item, "read_ok_speed_fps", stat->read_ok_speed_fps);
+    cJSON_AddNumberToObject(item, "read_speed_byteps", stat->read_speed_bps);
+    snprintf(buffer, sizeof(buffer) -1, "%.6f", stat->loss_rate);
+    cJSON_AddStringToObject(item, "loss_rate", buffer);
+exit:
+#endif
+   str_json = cJSON_PrintUnformatted(array);
+    cJSON_Delete(array);
+    
+   return str_json;
+}
+
 char *assemble_json_all_info(void)
 {
     char *str_json = NULL;
@@ -1354,6 +1386,7 @@ char *assemble_json_all_info(void)
 #endif
     safe_cJson_AddItemToObject(root, "netInfo", assemble_json_net_list_info());
     safe_cJson_AddItemToObject(root, "buildInfo", assemble_json_build_info());
+    safe_cJson_AddItemToObject(root, "distributorInfo", assemble_json_distributor_info());
     json_print(root, 1);
     str_json = cJSON_PrintUnformatted(root);
     cJSON_Delete(root);

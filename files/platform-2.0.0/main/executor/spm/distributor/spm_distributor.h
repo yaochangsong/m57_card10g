@@ -23,13 +23,24 @@ enum spm_distributor_type {
     SPM_DIST_MAX,
 };
 
+/* 分发数据统计 */
+typedef struct spm_distributor_statistics{
+    volatile uint64_t read_bytes;           /* 读取字节数 */
+    volatile uint64_t read_ok_pkts;         /* 读取成功包数 */
+    volatile uint64_t read_ok_frame;        /* 读取成功帧数 */
+    volatile uint32_t read_ok_speed_fps;    /* 读取帧速度，帧/s */
+    volatile uint32_t read_speed_bps;       /* 读取字节速度bps */
+    volatile float loss_rate;               /* 转发失败率 */
+}spm_dist_statistics_t;
+
+
 struct spm_distributor_ops {
     int (*init)(void*);
     int (*reset)(int, int);
     int (*fft_prod)(void);
     int (*fft_consume)(int, void **, size_t);
+    void *(*get_fft_statistics)(void);
     int (*close)(void *);
-    
 };
 
 typedef struct spm_distributor_ctx {

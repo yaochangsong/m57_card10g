@@ -79,7 +79,6 @@ struct spm_distributor_pkt_data_s{
 static int _spm_distributor_iq_thread_loop(void *s);
 static int _spm_distributor_fft_thread_loop(void *s);
 
-
 struct spm_distributor_type_attr_s{
     char *name;
     /* The max number of channel each type*/
@@ -91,6 +90,7 @@ struct spm_distributor_type_attr_s{
     int (*distributor_loop)(void *);
     void *pkt_queue[FRAME_MAX_CHANNEL];
     void *frame_buffer[FRAME_MAX_CHANNEL];
+    spm_dist_statistics_t stat;
 } dist_type[] = {
     {"FFT", 1, SPM_DIST_FFT, 528, 16, 0xaa55, _spm_distributor_fft_thread_loop},
 //    {"IQ",  DIST_MAX_IQ_CHANNEL,  SPM_DIST_IQ,  512, 16, 0xaa55, _spm_distributor_iq_thread_loop},
@@ -276,7 +276,9 @@ ssize_t _spm_distributor_analysis(int type, uint8_t *mbufs, size_t len, struct s
         ptr += header->pkt_len;
         data_len -= dtype->pkt_len;
         consume_len += dtype->pkt_len;
+        dtype->stat.read_ok_pkts ++;
     }while(1);
+    dtype->stat.read_bytes += consume_len;
     return consume_len;
 }
 
@@ -327,7 +329,8 @@ static int _spm_distributor_data_frame_producer(int ch, int type, void **data, s
 {
     queue_ctx_t *pkt_q  = (queue_ctx_t *)dist_type[type].pkt_queue[ch];
     uint8_t *mbuf_header = (uint8_t *)dist_type[type].frame_buffer[ch];
-    if(!pkt_q || !mbuf_header)
+    struct spm_distributor_type_attr_s *dtype = &dist_type[type];
+    if(!dtype || !pkt_q || !mbuf_header)
         return -1;
     struct spm_distributor_pkt_data_s *pkt = NULL;
     size_t frame_len = 0, frame_pkt_num = 0, pkt_len = 0;
@@ -390,6 +393,7 @@ static int _spm_distributor_data_frame_producer(int ch, int type, void **data, s
         _safe_free_(pkt);
         if(frame_len == len){
             printf_info("ch=%d, frame_len=%lu, len=%lu, Frame OK!\n", ch, frame_len, len);
+            dtype->stat.read_ok_frame++;
             break;
         }
         ptr += pkt_len;
@@ -530,6 +534,59 @@ int spm_distributor_thread(void *dtype)
     return ret;
 }
 
+static uint64_t _get_speed(int index, int time_sec, uint64_t data)
+{
+    static uint64_t olddata[16] = {[0 ... 15] = 0};
+    uint64_t speed = 0;
+
+    if(data > olddata[index]){
+        speed = (data - olddata[index]) / time_sec;
+    }
+    olddata[index] = data;
+    
+    return speed;
+}
+
+void *_spm_distributor_statistics_speed_loop(void *args)
+{
+    struct spm_distributor_type_attr_s *dtype = args;
+    int time_interval = 3;
+    int pkt_len = dtype->pkt_len;
+    pthread_detach(pthread_self());
+
+    while(1){
+        sleep(time_interval);
+        dtype->stat.read_speed_bps = _get_speed(0, time_interval, dtype->stat.read_bytes);
+        dtype->stat.read_ok_speed_fps = _get_speed(1, time_interval, dtype->stat.read_ok_frame);
+        if(dtype->stat.read_bytes > 0){
+            dtype->stat.loss_rate = (double)(dtype->stat.read_bytes - (dtype->stat.read_ok_pkts * pkt_len))/(double)dtype->stat.read_bytes;
+        }
+        //printf_debug("loss_rate=%f, read_bytes=%"PRIu64", read_ok_pkts=%"PRIu64", pkt_len=%d\n", 
+        //    dtype->stat.loss_rate, dtype->stat.read_bytes, dtype->stat.read_ok_pkts, pkt_len);
+    }
+}
+
+static void *_spm_get_fft_distributor_statistics(void)
+{
+    struct spm_distributor_type_attr_s *dtype = &dist_type[SPM_DIST_FFT];
+    return (void *)&dtype->stat;
+}
+
+
+
+int spm_distributor_statistics_speed_thread(void *args)
+{
+    int ret;
+    pthread_t tid;
+    ret=pthread_create(&tid, NULL, _spm_distributor_statistics_speed_loop, args);
+    if(ret!=0){
+        perror("pthread create");
+        return -1;
+    }
+    return 0;
+}
+
+
 int spm_consumer_thread(void *arg)
 {
     int ch = *(int *)arg;
@@ -588,6 +645,8 @@ static int _spm_distributor_init(void *args)
                 continue;
             }
         }
+        memset(&dist_type[i].stat, 0, sizeof(dist_type[i].stat));
+        spm_distributor_statistics_speed_thread(&dist_type[i]);
     }
     //for(int i = 0; i < ARRAY_SIZE(dist_type); i++)
     //    spm_distributor_thread(&dist_type[i]);
@@ -614,6 +673,7 @@ static const struct spm_distributor_ops spm_disp_ops = {
     .init = _spm_distributor_init,
     .reset = _spm_distributor_reset,
     .fft_prod = _spm_distributor_fft_prod,
+    .get_fft_statistics = _spm_get_fft_distributor_statistics,
 };
 
 spm_distributor_ctx_t * spm_create_distributor_ctx(void)

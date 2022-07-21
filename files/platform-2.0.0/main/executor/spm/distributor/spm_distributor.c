@@ -195,12 +195,6 @@ ssize_t _spm_distributor_analysis(int type, uint8_t *mbufs, size_t len, struct s
             break;
         }
 
-        if(type == SPM_DIST_FFT && config_get_fft_work_enable(header->channel) == false){
-            printf_info("fft channel[%d] not work\n", header->channel);
-            consume_len = len;
-            break;
-        }
-        
         if(header->header_flags != dtype->pkt_header_flags){
             //printf("fft header[0x%x] error\n", header->header_flags);
             dirty_offset = _spm_find_header(ptr, dtype->pkt_header_flags, dtype->pkt_len);
@@ -208,7 +202,7 @@ ssize_t _spm_distributor_analysis(int type, uint8_t *mbufs, size_t len, struct s
                 ptr += dirty_offset;
                 data_len -= dirty_offset;
                 consume_len += dirty_offset;
-                // printf_note("find header, offset:%ld\n", dirty_offset);
+                 //printf_note("find header, offset:%ld\n", dirty_offset);
                 continue;
             }else{
                 /* find faild */
@@ -225,6 +219,12 @@ ssize_t _spm_distributor_analysis(int type, uint8_t *mbufs, size_t len, struct s
             data_len -= dtype->pkt_len;
             consume_len += dtype->pkt_len;
             continue;
+        }
+
+        if(type == SPM_DIST_FFT && config_get_fft_work_enable(header->channel) == false){
+            printf_warn("fft channel[%d] not work\n", header->channel);
+            consume_len = len;
+            break;
         }
         
         if(header->pkt_len != dtype->pkt_len){
@@ -266,14 +266,14 @@ ssize_t _spm_distributor_analysis(int type, uint8_t *mbufs, size_t len, struct s
         }
 
         queue_ctx_t *qctx = dtype->pkt_queue[pkt->ch];
-        printf_debug("[%p]PUSH pkt:  ch:%d, sn: %d, pkt_len:%lu, frame_idx:%"PRIu64"\n", ptr, pkt->ch, pkt->sn, pkt->pkt_len, pkt->frame_idx);
+        //printf_warn("[%p]PUSH pkt:  ch:%d, sn: %d, pkt_len:%lu, frame_idx:%"PRIu64"\n", ptr, pkt->ch, pkt->sn, pkt->pkt_len, pkt->frame_idx);
         if(qctx->ops->push(qctx, pkt) == -1){
             consume_len = len;
             free(pkt);
             break;
         }
         //qctx->ops->foreach(qctx, _data_dump);
-        ptr += header->pkt_len;
+        ptr += dtype->pkt_len;
         data_len -= dtype->pkt_len;
         consume_len += dtype->pkt_len;
         dtype->stat.read_ok_pkts ++;
@@ -357,7 +357,7 @@ static int _spm_distributor_data_frame_producer(int ch, int type, void **data, s
             continue;
         }
         printf_info("POP ch:%d, sn:%u, fidx:%"PRIu64", pkt_len:%lu\n", ch, pkt->sn, pkt->frame_idx, pkt->pkt_len);
-        /* Á÷Ë®ºÅÎª0ËµÃ÷ÊÇµÚÒ»°üÊý¾Ý¿ªÊ¼£¬³õÊ¼»¯Ïà¹Ø±äÁ¿ */
+        /* æµæ°´å·ä¸º0è¯´æ˜Žæ˜¯ç¬¬ä¸€åŒ…æ•°æ®å¼€å§‹ï¼Œåˆå§‹åŒ–ç›¸å…³å˜é‡ */
         if(pkt->sn == 0){
             start_frame = true;
             frame_1st_idx = pkt->frame_idx;
@@ -366,7 +366,7 @@ static int _spm_distributor_data_frame_producer(int ch, int type, void **data, s
             frame_pkt_num = 1;
             ptr = mbuf_header;
         }
-        /* Î´ÊÕµ½´Ó0¿ªÊ¼µÄÊý¾Ý°ü£¬ËµÃ÷ÆðÊ¼°ü´íÎó£¬¶ªÆú,ÖØÐÂÕÒÁ÷Ë®ºÅÎª0µÄ°ü*/
+        /* æœªæ”¶åˆ°ä»Ž0å¼€å§‹çš„æ•°æ®åŒ…ï¼Œè¯´æ˜Žèµ·å§‹åŒ…é”™è¯¯ï¼Œä¸¢å¼ƒ,é‡æ–°æ‰¾æµæ°´å·ä¸º0çš„åŒ…*/
         if(start_frame == false){
             printf_warn("Not receive start pkt[sn:%d], Discard pkt\n", pkt->sn);
             _safe_free_(pkt);
@@ -379,14 +379,14 @@ static int _spm_distributor_data_frame_producer(int ch, int type, void **data, s
             _safe_free_(pkt);
             break;
         }
-        /* ½ÓÊÜµ½ÖÐ¼ä°üÖ¡ºÅºÍµÚÒ»°üÖ¡ºÅ²»Ò»ÖÂ£¬ËµÃ÷²»ÊÇÍ¬Ò»Ö¡£¬¶ªÆú£¬ÖØÐÂ²éÕÒÁ÷Ë®ºÅÎª0µÄ°ü */
+        /* æŽ¥å—åˆ°ä¸­é—´åŒ…å¸§å·å’Œç¬¬ä¸€åŒ…å¸§å·ä¸ä¸€è‡´ï¼Œè¯´æ˜Žä¸æ˜¯åŒä¸€å¸§ï¼Œä¸¢å¼ƒï¼Œé‡æ–°æŸ¥æ‰¾æµæ°´å·ä¸º0çš„åŒ… */
         if(frame_1st_idx != pkt->frame_idx && frame_len < len){
             printf_warn("Frame idx:%"PRIu64" err, Discard pkt\n", pkt->frame_idx);
             start_frame = false;
             _safe_free_(pkt);
             continue;
         }
-        /* ½«°üÊý¾ÝÖð²½¿½±´µ½Í¨µÀ»º´æÇø£¬Ö±µ½Íê³ÉÒ»Ö¡µÄÊý¾Ý³¤¶È */
+        /* å°†åŒ…æ•°æ®é€æ­¥æ‹·è´åˆ°é€šé“ç¼“å­˜åŒºï¼Œç›´åˆ°å®Œæˆä¸€å¸§çš„æ•°æ®é•¿åº¦ */
         memcpy(ptr, pkt->pkt_buffer_ptr, pkt_len);
        // printf_note("mbuf_header:%p, ch data:%d\n", mbuf_header, ch);
         //print_array(ptr, 512);
@@ -414,11 +414,34 @@ int spm_distributor_fft_data_frame_producer(int ch, void **data, size_t len)
 
 static ssize_t spm_distributor_process(int type, size_t count, uint8_t **mbufs, size_t len[])
 {
-    ssize_t consume_size = 0;
+    #define DIST_MAX_SWAP_BUFFER_LEN 4096
+    ssize_t consume_size = 0, copy_len = 0, offset = 0;
+    uint8_t *ptr = NULL, *header = NULL;
+    static uint8_t buffer[DIST_MAX_SWAP_BUFFER_LEN] = {0};
 
-    for(int index = 0; index < count; index++){
-        consume_size += _spm_distributor_analysis(type, mbufs[index], len[index], &dist_type[type]);
+    if(count > 1){
+        ptr = header = buffer;
+        for(int i = 0; i < count; i++){
+            offset += len[i];
+            /* å­˜åœ¨å¤šä¸ªæ•°æ®å—ï¼Œåˆ™å°†æ•°æ®å…¨éƒ¨å¡«å……åˆ°bufferç¼“å­˜ç›´åˆ°æ»¡(æœ€å¤š)ä¸ºæ­¢ */
+            copy_len = (offset <= DIST_MAX_SWAP_BUFFER_LEN ? len[i] : DIST_MAX_SWAP_BUFFER_LEN - (offset -len[i]));
+            memcpy(ptr, mbufs[i], copy_len);
+            ptr += copy_len;
+            if(ptr - header >= DIST_MAX_SWAP_BUFFER_LEN){
+                copy_len = DIST_MAX_SWAP_BUFFER_LEN;
+                break;
+            } else {
+                copy_len = offset;
+            }
+         }
+    } else{
+        header = mbufs[0];
+        copy_len = len[0];
     }
+    consume_size = _spm_distributor_analysis(type, header, copy_len, &dist_type[type]);
+    //(count > 1){
+    //   printf_warn("count:%lu, consume_size:%ld, [%p]len0:%lu, [%p]len1:%lu\n", count,consume_size, mbufs[0], len[0], mbufs[1],len[1]);
+    //}
 
     return consume_size;
 }

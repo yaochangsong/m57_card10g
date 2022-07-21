@@ -185,6 +185,7 @@ ssize_t _spm_distributor_analysis(int type, uint8_t *mbufs, size_t len, struct s
     ssize_t dirty_offset = 0, consume_len = 0;
     uint64_t fidx = 0;
     struct spm_data_pkt_s *header = NULL;
+    int ch = 0;
 
     do{
         header= (struct spm_data_pkt_s *)ptr;
@@ -220,9 +221,9 @@ ssize_t _spm_distributor_analysis(int type, uint8_t *mbufs, size_t len, struct s
             consume_len += dtype->pkt_len;
             continue;
         }
-
-        if(type == SPM_DIST_FFT && config_get_fft_work_enable(header->channel) == false){
-            printf_warn("fft channel[%d] not work\n", header->channel);
+        ch = header->channel;
+        if(type == SPM_DIST_FFT && config_get_fft_work_enable(ch) == false){
+            printf_warn("fft channel[%d] not work\n", ch);
             consume_len = len;
             break;
         }
@@ -236,7 +237,7 @@ ssize_t _spm_distributor_analysis(int type, uint8_t *mbufs, size_t len, struct s
         }
 
         if(type == SPM_DIST_FFT){
-            if(_frame_devider_gen_idx(type, header->channel, header->serial_num, &fidx) == -1){
+            if(_frame_devider_gen_idx(type, ch, header->serial_num, &fidx) == -1){
                 printf_warn("frame sn[%d] error\n", header->serial_num);
                 ptr += dtype->pkt_len;
                 data_len -= dtype->pkt_len;
@@ -250,7 +251,7 @@ ssize_t _spm_distributor_analysis(int type, uint8_t *mbufs, size_t len, struct s
         if(!pkt){
             break;
         }
-        pkt->ch = header->channel;
+        pkt->ch = ch;
         pkt->sn = header->serial_num;
         pkt->frame_idx = fidx;
         if(header->pkt_len > dtype->pkt_header_len){
@@ -262,6 +263,7 @@ ssize_t _spm_distributor_analysis(int type, uint8_t *mbufs, size_t len, struct s
             ptr += dtype->pkt_len;
             data_len -= dtype->pkt_len;
             consume_len += dtype->pkt_len;
+            free(pkt);
             continue;
         }
 

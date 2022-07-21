@@ -412,10 +412,20 @@ int spm_distributor_fft_data_frame_producer(int ch, void **data, size_t len)
     return _spm_distributor_data_frame_producer(ch, SPM_DIST_FFT, data, len);
 }
 
+/* 
+    功能: 频谱分发处理：
+    说明: 1）对于从(xwdma)DMA线性环形缓存区取数, 若读取一段数据，正常进入分析流程处理；若为两段数据，由于存在一个包
+         分别存在两段数据中情况，则需要将两段数据(全部或部分)拷贝到一个临时缓冲区(临时缓冲区大小>=1包数据长度),
+         再将临时缓冲区数据传入分析流程处理;通过消费回写DMA机制,读取剩余数据。
+         2）对于XDMA，以块为单位消费，每个块数据需要保证为完整包的整数倍，否则第一个或最后一包会丢弃
+         (暂不考虑缓存不完整包)
+*/
 static ssize_t spm_distributor_process(int type, size_t count, uint8_t **mbufs, size_t len[])
 {
+    ssize_t consume_size = 0;
+#if (!defined CONFIG_SPM_SOURCE_XDMA) /* XWDMA */
     #define DIST_MAX_SWAP_BUFFER_LEN 4096
-    ssize_t consume_size = 0, copy_len = 0, offset = 0;
+    ssize_t copy_len = 0, offset = 0;
     uint8_t *ptr = NULL, *header = NULL;
     static uint8_t buffer[DIST_MAX_SWAP_BUFFER_LEN] = {0};
 
@@ -423,7 +433,7 @@ static ssize_t spm_distributor_process(int type, size_t count, uint8_t **mbufs, 
         ptr = header = buffer;
         for(int i = 0; i < count; i++){
             offset += len[i];
-            /* 存在多个数据块，则将数据全部填充到buffer缓存直到满(最多)为止 */
+            /* 存在多段(=2)数据，则将数据全部填充到buffer缓存直到满(最多)为止 */
             copy_len = (offset <= DIST_MAX_SWAP_BUFFER_LEN ? len[i] : DIST_MAX_SWAP_BUFFER_LEN - (offset -len[i]));
             memcpy(ptr, mbufs[i], copy_len);
             ptr += copy_len;
@@ -439,6 +449,11 @@ static ssize_t spm_distributor_process(int type, size_t count, uint8_t **mbufs, 
         copy_len = len[0];
     }
     consume_size = _spm_distributor_analysis(type, header, copy_len, &dist_type[type]);
+#else /* XDMA */
+     for(int i = 0; i < count; i++){
+        consume_size = _spm_distributor_analysis(type, mbufs[i], len[i], &dist_type[type]);
+    }
+#endif
     //(count > 1){
     //   printf_warn("count:%lu, consume_size:%ld, [%p]len0:%lu, [%p]len1:%lu\n", count,consume_size, mbufs[0], len[0], mbufs[1],len[1]);
     //}

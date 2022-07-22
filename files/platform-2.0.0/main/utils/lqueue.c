@@ -132,6 +132,10 @@ int _queue_clear(queue_ctx_t *q)
     struct tailq_data_s *data = NULL;
     pthread_mutex_lock(&q->lock);
     while ((data = TAILQ_FIRST(&q->list_head)) != NULL) {
+        if(data->args){
+            free(data->args);
+            data->args = NULL;
+        }
         TAILQ_REMOVE(&q->list_head, data, next);
         free(data);
         data = NULL;

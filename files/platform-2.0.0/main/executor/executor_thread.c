@@ -83,6 +83,7 @@ static bool  _executor_fragment_scan(uint32_t fregment_num,uint8_t ch, work_mode
     r_args->ch = ch;
     //r_args->fft_size = fftsize;
     dma_fft_size = r_args->fft_size * SAMPLING_FFT_TIMES;
+    dma_fft_size = dma_fft_size; /* for warning */
     r_args->mode = mode;
     r_args->gain_mode = poal_config->channel[ch].rf_para.gain_ctrl_method;
     r_args->gain_value = poal_config->channel[ch].rf_para.mgc_gain_value;
@@ -97,8 +98,8 @@ static bool  _executor_fragment_scan(uint32_t fregment_num,uint8_t ch, work_mode
         r_args->e_freq = e_freq;
         #endif
         if(spmctx->ops->spm_scan)
-        spmctx->ops->spm_scan(&_s_freq_hz_offset, &_e_freq_hz, &scan_bw, &_bw_hz, &_m_freq_hz);
-        printf_info("[%d] s_freq_offset=%"PRIu64"Hz,scan_bw=%uHz _bw_hz=%u, _m_freq_hz=%"PRIu64"Hz\n", index, r_args->s_freq_offset, scan_bw, _bw_hz, _m_freq_hz);
+            spmctx->ops->spm_scan(&_s_freq_hz_offset, &_e_freq_hz, &scan_bw, &_bw_hz, &_m_freq_hz);
+        printf_debug("[%d] s_freq_offset=%"PRIu64"Hz,scan_bw=%uHz _bw_hz=%u, _m_freq_hz=%"PRIu64"Hz\n", index, r_args->s_freq_offset, scan_bw, _bw_hz, _m_freq_hz);
         r_args->scan_bw = scan_bw;
         r_args->bandwidth = _bw_hz;
         r_args->m_freq = r_args->s_freq_offset + _bw_hz/2;
@@ -106,7 +107,7 @@ static bool  _executor_fragment_scan(uint32_t fregment_num,uint8_t ch, work_mode
         r_args->fft_sn = index;
         r_args->total_fft = t_fft;
         r_args->fregment_num = fregment_num;
-        printf_info("[ch:%d, %d]s_freq=%"PRIu64", e_freq=%"PRIu64", scan_bw=%u, bandwidth=%u,m_freq=%"PRIu64", m_freq_s=%"PRIu64", freq_resolution = %u, fftsize=%u\n", 
+        printf_debug("[ch:%d, %d]s_freq=%"PRIu64", e_freq=%"PRIu64", scan_bw=%u, bandwidth=%u,m_freq=%"PRIu64", m_freq_s=%"PRIu64", freq_resolution = %u, fftsize=%u\n", 
             ch, index, r_args->s_freq, r_args->e_freq, r_args->scan_bw, r_args->bandwidth, r_args->m_freq, r_args->m_freq_s, r_args->freq_resolution, r_args->fft_size);
         if(spmctx->ops->sample_ctrl)
             spmctx->ops->sample_ctrl(r_args);
@@ -116,13 +117,17 @@ static bool  _executor_fragment_scan(uint32_t fregment_num,uint8_t ch, work_mode
         executor_set_command(EX_MID_FREQ_CMD, EX_MID_FREQ,    ch, &_m_freq_hz, _m_freq_hz);
         executor_set_command(EX_MID_FREQ_CMD, EX_FPGA_CALIBRATE, ch, &r_args->fft_size, r_args->m_freq,0);
         index ++;
+#if (!defined CONFIG_SPM_FFT_CONTINUOUS_MODE) && (!defined CONFIG_SPM_DISTRIBUTOR)
         if(poal_config->channel[ch].enable.map.bit.fft){
             io_set_enable_command(PSD_MODE_ENABLE, ch, -1, dma_fft_size);
         }
+#endif
         spm_deal(spmctx, r_args, ch);
+#if (!defined CONFIG_SPM_FFT_CONTINUOUS_MODE) && (!defined CONFIG_SPM_DISTRIBUTOR)
         if(poal_config->channel[ch].enable.map.bit.fft){
             io_set_enable_command(PSD_MODE_DISABLE, ch, -1, dma_fft_size);
         }
+#endif
         if(_is_executor_thread_reset(args)){
             printf_info("Recv reset\n");
             return false;
@@ -240,21 +245,24 @@ static bool  _executor_points_scan_mode(uint8_t ch, int mode, void *args)
         gettimeofday(&beginTime, NULL);
         do{
             config_get_fft_resolution(mode, ch, i, r_args->scan_bw,  &r_args->fft_size, &r_args->freq_resolution);
-            dma_fft_size = r_args->fft_size * SAMPLING_FFT_TIMES;
             executor_set_command(EX_MID_FREQ_CMD, EX_FFT_SIZE, ch, &point->points[i].fft_size);
             executor_set_command(EX_MID_FREQ_CMD, EX_SMOOTH_TIME, ch, &poal_config->channel[ch].multi_freq_point_param.smooth_time);
             executor_set_command(EX_MID_FREQ_CMD, EX_FPGA_CALIBRATE, ch, &point->points[i].fft_size, r_args->m_freq);
+#if (!defined CONFIG_SPM_FFT_CONTINUOUS_MODE) && (!defined CONFIG_SPM_DISTRIBUTOR)
+            dma_fft_size = r_args->fft_size * SAMPLING_FFT_TIMES;
             if(poal_config->channel[ch].enable.map.bit.fft){
                 io_set_enable_command(PSD_MODE_ENABLE, ch, -1, dma_fft_size);
             }
+#endif
             if(spmctx->ops->agc_ctrl)
                 spmctx->ops->agc_ctrl(ch, spmctx);
             if(spmctx != NULL)
                 spm_deal(spmctx, r_args, ch);
+#if (!defined CONFIG_SPM_FFT_CONTINUOUS_MODE) && (!defined CONFIG_SPM_DISTRIBUTOR)
             if(poal_config->channel[ch].enable.map.bit.fft){
                 io_set_enable_command(PSD_MODE_DISABLE, ch, -1, dma_fft_size);
             }
-            
+#endif
             if(_is_executor_thread_reset(arg))
                 return false;
 #if defined (CONFIG_RESIDENCY_STRATEGY) 
@@ -440,6 +448,23 @@ static bool  _executor_biq_thread_loop(uint8_t ch, int mode, void *args)
     return true;
 }
 
+static bool  _executor_fft_dist_thread_loop(uint8_t ch, int mode, void *args)
+{
+    struct executor_thread_m *arg = args;
+    struct spm_context *ctx = (struct spm_context *)arg->args;
+#ifdef CONFIG_SPM_DISTRIBUTOR
+    spm_distributor_ctx_t *dist = ctx->distributor;
+    if(dist && dist->ops->fft_prod){
+         dist->ops->fft_prod();
+    }
+    if(_is_executor_thread_reset(arg))
+        return false;
+    return true;
+#else
+    return false;
+#endif
+}
+
 
 
 static bool  _executor_fragment_scan_mode(uint8_t ch, int mode, void *args)
@@ -538,14 +563,19 @@ struct executor_mode_table mode_table[EXEC_THREAD_TYPE_MAX][OAL_MAX_MODE] = {
         .mode = -1,
         .name = "BIQ",
         .exec = _executor_biq_thread_loop,
+    },
+    [EXEC_THREAD_TYPE_FFT_DIST][0] = {
+        .mode = -1,
+        .name = "FFT_DISP",
+        .exec = _executor_fft_dist_thread_loop,
     }
-    
 };
 
 static const char *const thread_type_string[] = {
     [EXEC_THREAD_TYPE_FFT] = "FFT",
     [EXEC_THREAD_TYPE_NIQ] = "NIQ",
     [EXEC_THREAD_TYPE_BIQ] = "BIQ",
+    [EXEC_THREAD_TYPE_FFT_DIST] = "FFT_DIST",
 };
 
 
@@ -565,15 +595,14 @@ static int _executor_thread_main_loop(void *args)
     //    printf_note("ch: %d is bigger than thread num:%d\n", ch, EXEC_THREAD_NUM);
     //    return -1;
     //}
-    printf_info("-------------------------------------\n");
-    printf_info("Thread Wait [name:%s, index:%d] \n", thread->name, index);
-    printf_info("-------------------------------------\n");
+    printf_debug("-------------------------------------\n");
+    printf_debug("Thread Wait [name:%s, index:%d] \n", thread->name, index);
+    printf_debug("-------------------------------------\n");
     _executor_thread_wait(thread, &mode);
-    
     if(unlikely(mode >= OAL_MAX_MODE)){
         return -1;
     }
-    //ARRAY_SIZE(mode_table[type]) ||
+
     if (!mode_table[type][mode].exec){
         _executor_thread_stop(thread);
         return -1;
@@ -587,8 +616,6 @@ static int _executor_thread_main_loop(void *args)
     }
     
     if (!mode_table[type][mode].exec(ch, mode, args)) {
-        //io_set_enable_command(PSD_MODE_DISABLE, ch, -1, 0);
-        //io_set_enable_command(AUDIO_MODE_DISABLE, ch, -1, 0);
          _printf_nchar('-', 60);
          printf("Thread \e[33mSTOP\e[0m <== ch:%2d, name:%-14s, mode: %-32s\n", ch, thread->name, mode_table[type][mode].name);
          _printf_nchar('-', 60);
@@ -609,6 +636,32 @@ static void *_get_client_thread(void *cl)
 #endif
     return NULL;
 }
+
+int executor_fft_distributor_work_nofity(void *cl, bool enable)
+{
+    struct executor_context  *pctx;
+    int mode = 0;
+    if(cl){
+        pctx = _get_client_thread(cl);
+    } else{
+        pctx = exec_ctx;
+    }
+
+    struct executor_thread_m *thread = &pctx->thread[EXEC_THREAD_TYPE_FFT_DIST][0];
+    
+    if(thread == NULL)
+        return -1;
+
+    pthread_mutex_lock(&thread->pwait.t_mutex);
+    thread->pwait.is_wait = !enable;
+    thread->mode->mode = mode;
+    thread->reset = true;
+    printf_debug("[%s]notify fft dist thread %s\n", thread->name, thread->pwait.is_wait == true ? "PAUSE" : "RUN");
+    pthread_cond_signal(&thread->pwait.t_cond);
+    pthread_mutex_unlock(&thread->pwait.t_mutex);
+    return 0;
+}
+
 
 /* FFT工作使能 */
 int executor_fft_work_nofity(void *cl, int ch, int mode, bool enable)
@@ -631,11 +684,39 @@ int executor_fft_work_nofity(void *cl, int ch, int mode, bool enable)
     }
 
     printf_debug("ch=%d, mode=%d, enable=%d\n", ch, mode, enable);
-    
-    if(enable)
+
+    if(enable){
+#if (defined CONFIG_SPM_DISTRIBUTOR) 
+        struct spm_context *spm_ctx;
+        spm_distributor_ctx_t *dist = NULL;
+        spm_ctx = pctx->args;
+        if(spm_ctx && spm_ctx->distributor){
+            dist = (spm_distributor_ctx_t *)spm_ctx->distributor;
+            dist->ops->reset(SPM_DIST_FFT, ch);
+        }
+        if(ch_bitmap_weight(CH_TYPE_FFT) == 0){
+            executor_fft_distributor_work_nofity(cl, enable);
+        }
+#endif
+#if (defined CONFIG_SPM_FFT_CONTINUOUS_MODE) 
+        if(ch_bitmap_weight(CH_TYPE_FFT) == 0){
+            io_set_enable_command(PSD_CON_MODE_ENABLE, ch, -1, 0);
+        }
+#endif
         ch_bitmap_set(ch, CH_TYPE_FFT);
+    }
     else{
         ch_bitmap_clear(ch, CH_TYPE_FFT);
+#if (defined CONFIG_SPM_FFT_CONTINUOUS_MODE) 
+        if(ch_bitmap_weight(CH_TYPE_FFT) == 0){
+            io_set_enable_command(PSD_MODE_DISABLE, ch, -1, 0);
+            #if (defined CONFIG_SPM_DISTRIBUTOR) 
+             executor_fft_distributor_work_nofity(cl, enable);
+            #endif
+        }
+#endif
+
+
     }
     struct executor_thread_m *thread = &pctx->thread[EXEC_THREAD_TYPE_FFT][ch];
     
@@ -646,7 +727,7 @@ int executor_fft_work_nofity(void *cl, int ch, int mode, bool enable)
     thread->pwait.is_wait = !enable;
     thread->mode->mode = mode;
     thread->reset = true;
-    printf_note("[%s]notify thread %s\n", thread->name, thread->pwait.is_wait == true ? "PAUSE" : "RUN");
+    printf_info("[%s]notify thread %s\n", thread->name, thread->pwait.is_wait == true ? "PAUSE" : "RUN");
     pthread_cond_signal(&thread->pwait.t_cond);
     pthread_mutex_unlock(&thread->pwait.t_mutex);
     //("[%s]notify thread %s\n", ptd->name,  enable == true ? "RUN" : "PAUSE");
@@ -774,7 +855,13 @@ struct executor_context * _executor_thread_create_context(void)
         _executor_thread_create(ch, thread_count, EXEC_THREAD_TYPE_BIQ,  &ctx->thread[EXEC_THREAD_TYPE_BIQ][i]);
         thread_count ++;
     }
-    
+#ifdef CONFIG_SPM_DISTRIBUTOR
+    for(i = 0; i < EXEC_THREAD_FFT_DISP_NUM; i++){
+        ch = i;
+        _executor_thread_create(ch, thread_count, EXEC_THREAD_TYPE_FFT_DIST,  &ctx->thread[EXEC_THREAD_TYPE_FFT_DIST][i]);
+        thread_count ++;
+    }
+#endif
     return ctx;
 }
 

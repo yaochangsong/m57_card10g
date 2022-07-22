@@ -1,15 +1,6 @@
 #ifndef _SPM_XDMA_H
 #define _SPM_XDMA_H
 
-//#define XDMA_R_DEV0 "/dev/xdma0_c2h_0"
-#define XDMA_R_DEV0 "/dev/xdma0_h2c_0"  //下行
-#define XDMA_R_DEV1 "/dev/xdma0_c2h_0"  //上行
-#define XDMA_R_DEV2 "/dev/xdma0_c2h_1"
-#define XDMA_R_DEV3 "/dev/xdma0_c2h_3"
-
-
-
-
 #define DMA_BUFFER_16M_SIZE (16 * 1024 * 1024)
 #define DMA_BUFFER_32M_SIZE (32 * 1024 * 1024)
 #define DMA_BUFFER_64M_SIZE (64 * 1024 * 1024)
@@ -25,7 +16,7 @@
 #define XDMA_DATA_TYPE_MAX_PKGS (65536)
 
 
-struct _spm_xstream {
+typedef struct _spm_xstream {
     char *devname;      /* 流设备节点名称 */
     int id;             /* 频谱流类型描述符 */
     int ch;
@@ -36,7 +27,7 @@ struct _spm_xstream {
     enum stream_type type;
     int consume_index;  /* 每次消费的块索引 */
     uint8_t *ptr[XDMA_TRANSFER_MAX_DESC];       /* 频谱流数据buffer指针 */
-};
+}spm_xstream_t;
 
 
 /*bob 20191017 for C2H revice ring buffer function*/
@@ -95,24 +86,7 @@ struct xdma_ring_trans_ioctl
 #define IOCTL_XDMA_INIT_BUFF	 _IOW('q', 12, struct xdma_ring_trans_ioctl *)
 /*bob 20191017*/
 
-
-struct spm_data_node{
-    struct list_head normal_list;
-    struct list_head urgent_list;
-    uint8_t *data;
-    uint32_t data_len;
-};
-struct spm_dispatcher{
-    #define _DATA_CARDID_NUM_MAX 4
-    struct list_head normal_list[_DATA_CARDID_NUM_MAX];
-    struct list_head urgent_list[_DATA_CARDID_NUM_MAX];
-    uint32_t normal_num[_DATA_CARDID_NUM_MAX];
-    uint32_t urgent_num[_DATA_CARDID_NUM_MAX];
-};
-
-extern void *xspm_dispatcher_init(void);
-extern struct spm_context * spm_create_xdma_context(void);
-
+extern struct spm_context * spm_create_context(void);
 
 #endif
 

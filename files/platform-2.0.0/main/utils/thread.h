@@ -15,7 +15,7 @@
 #ifndef _THREAD_H_
 #define _THREAD_H_
 
-extern void pthread_bmp_init(void);
+extern void pthread_init(void);
 extern int pthread_create_detach (const pthread_attr_t *attr, int (*init_callback) (void *),
                                         int (*start_routine) (void *), void (*exit_callback) (void *), 
                                         char *name, void *arg_cb, void *arg_exit, pthread_t *tid);

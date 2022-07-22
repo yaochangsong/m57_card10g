@@ -1,8 +1,8 @@
 #ifndef _BSP_H
 #define _BSP_H
 
-
-#define MAX_RADIO_CHANNEL_NUM 2         /* 最大射频通道数 */
+#define DEBUG_TEST 
+#define MAX_RADIO_CHANNEL_NUM 8         /* 最大射频通道数 */
 #define MAX_RF_NUM 2                    /* 最大射频数 */
 #define MAX_SIGNAL_CHANNEL_NUM (17)     /* 最大解调子通道数 */
 #define MAX_SIG_CHANNLE 10              /* 最大频点数 */

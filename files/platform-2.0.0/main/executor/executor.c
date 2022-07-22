@@ -436,6 +436,7 @@ void executor_timer_task_init(void)
 
 void executor_init(void)
 {
+    pthread_init();
     ch_bitmap_init();
     subch_bitmap_init();
 #if defined(CONFIG_SPM_BOTTOM)

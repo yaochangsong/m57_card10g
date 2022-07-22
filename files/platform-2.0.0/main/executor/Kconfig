@@ -28,6 +28,16 @@ menuconfig SPM
 		endchoice                         
 	endif
 	
+	config SPM_DISTRIBUTOR
+        bool "FFT Distributor"
+        default n
+		depends on SPM
+		
+	config SPM_FFT_CONTINUOUS_MODE
+        bool "FFT Continuous Mode"
+        default n
+		depends on SPM
+	
 	config SPM_FFT_WINDOWS
         bool "Windows"
         default n

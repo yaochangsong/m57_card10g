@@ -33,6 +33,15 @@ struct _spm_xstream* spm_dev_get_stream(int *count)
     return spm_stream;
 }
 
+int get_fft_dma_ch(void)
+{
+    for(int i = 0; i < ARRAY_SIZE(spm_stream); i++){
+        if(spm_stream[i].type == STREAM_FFT)
+            return spm_stream[i].ch;
+    }
+    return -1;
+}
+
 static struct gpio_node_info gpio_node[] ={
     /* pin   direction  default gpio value   func_code    func_name    fd */
 //    {3,      "out",        0,               GPIO_LOCAL_CTR,   "GPIO LOCAL REMOTE",                 -1 },  //通道射频电源控制

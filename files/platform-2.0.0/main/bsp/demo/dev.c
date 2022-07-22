@@ -14,6 +14,16 @@
 ******************************************************************************/
 #include "dev.h"
 
+#ifdef CONFIG_SPM_SOURCE_XDMA
+#define XDMA_R_DEV0 "/dev/xdma0_h2c_0"  //下行
+#define XDMA_R_DEV1 "/dev/xdma0_c2h_0"  //上行
+#define XDMA_R_DEV2 "/dev/xdma0_c2h_1"
+#define XDMA_R_DEV3 "/dev/xdma0_c2h_3"
+static struct _spm_xstream spm_stream[] = {
+    {XDMA_R_DEV1,      -1, 0, XDMA_BUFFER_SIZE, XDMA_BLOCK_SIZE,  "FFT Stream", DMA_READ, STREAM_FFT, -1},
+    {XDMA_R_DEV2,      -1, 1, XDMA_BUFFER_SIZE, XDMA_BLOCK_SIZE,  "NIQ Stream", DMA_READ, STREAM_NIQ, -1},
+};
+#else
 #define DMA_FFT0_DEV "/dev/dma_fft"
 #define DMA_FFT1_DEV "/dev/dma_fft2"
 #define DMA_NIQ_DEV  "/dev/dma_iq"
@@ -31,9 +41,13 @@ static struct _spm_stream spm_stream[] = {
     {DMA_ADC_RX0_DEV,   -1, 0, NULL, DMA_BUFFER_64M_SIZE, "ADC Rx0 Stream", DMA_READ, STREAM_ADC_READ},
     {DMA_ADC_RX1_DEV,   -1, 1, NULL, DMA_BUFFER_64M_SIZE, "ADC Rx1 Stream", DMA_READ, STREAM_ADC_READ},
 };
+#endif
 
-
+#ifdef CONFIG_SPM_SOURCE_XDMA
+struct _spm_xstream* spm_dev_get_stream(int *count)
+#else
 struct _spm_stream* spm_dev_get_stream(int *count)
+#endif
 {
     if(count)
         *count = ARRAY_SIZE(spm_stream);

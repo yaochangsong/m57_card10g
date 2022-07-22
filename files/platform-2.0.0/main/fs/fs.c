@@ -1598,7 +1598,6 @@ static inline void _fs_init_(void)
     if(fs_has_inited == true)
         return;
     fs_ctx = fs_create_context();
-    pthread_bmp_init();
 #if defined(CONFIG_ARCH_ARM)
     _fs_mkdir(fs_get_root_dir());
 #endif

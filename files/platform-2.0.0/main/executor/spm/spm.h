@@ -37,7 +37,7 @@ enum stream_iq_type {
     STREAM_BIQ_TYPE_RAW,
 };
 
-struct _spm_stream {
+typedef struct _spm_stream {
     char *devname;      /* 流设备节点名称 */
     int id;             /* 频谱流类型描述符 */
     int ch;             /* 主通道，如果没有写-1 */
@@ -46,7 +46,7 @@ struct _spm_stream {
     char *name;         /* 频谱流名称 */
     int rd_wr;
     enum stream_type type;
-};
+}spm_stream_t;
 
 #define for_each_niq_type(type, run) \
     for (int i = 0; \
@@ -59,9 +59,12 @@ struct spm_backend_ops {
     ssize_t (*read_niq_data)(void **);
     ssize_t (*read_biq_data)(int ch, void **data);
     ssize_t (*read_fft_data)(int, void **, void*);
+    ssize_t (*read_fft_vec_data)(int, void **, void*, void*);
+    ssize_t (*read_iq_vec_data)(int, void **, void*, void*);
     ssize_t (*read_adc_data)(int,void **);
     int (*read_adc_over_deal)(int,void *);
     int (*read_niq_over_deal)(void *);
+    int (*read_fft_over_deal)(int,  void *);
     fft_t *(*data_order)(fft_t *, size_t,  size_t *, void *);
     int (*send_fft_data)(void *, size_t, void *);
     int (*send_biq_data)(int, void *, size_t, void *);
@@ -83,13 +86,14 @@ struct spm_backend_ops {
     
 };
 
+#include "bsp.h"
 
-#include "config.h"
 struct spm_context {
     struct poal_config *pdata;
     const struct spm_backend_ops *ops;
     struct spm_run_parm *run_args[MAX_RADIO_CHANNEL_NUM];
     void *pool_buffer;
+    void *distributor;
 };
 
 extern pthread_mutex_t send_fft_mutex;

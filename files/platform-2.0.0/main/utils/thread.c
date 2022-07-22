@@ -273,6 +273,11 @@ ssize_t thread_test (void *s)
     return 0;
 }
 
+void pthread_init(void)
+{
+    pthread_bmp_init();
+}
+
 int main_thread_test(void)
 {
     int i = 1, j, k,l,m,n,o;

@@ -69,6 +69,7 @@ enum {
 enum {
     PSD_MODE_ENABLE=50,          /*PSD 数据使能*/
     PSD_MODE_DISABLE,
+    PSD_CON_MODE_ENABLE,          /*FFT连续模式使能*/
     AUDIO_MODE_ENABLE,           /*音频数据使能*/
     AUDIO_MODE_DISABLE,
     IQ_MODE_ENABLE,              /*IQ 数据使能*/
@@ -217,8 +218,6 @@ struct spm_run_parm{
     pthread_mutex_unlock(&set_cmd_mutex); \
 } while (0)
 
-#include "config.h"
-
 extern void executor_init(void);
 extern int executor_net_disconnect_notify(struct sockaddr_in *addr);
 extern int8_t executor_get_command(exec_cmd cmd, uint8_t type, uint8_t ch,  void *data, ...);
@@ -227,5 +226,4 @@ extern uint32_t executor_get_audio_point(uint8_t ch);
 extern uint64_t executor_get_mid_freq(uint8_t ch);
 extern uint32_t executor_get_bandwidth(uint8_t ch);
 extern void executor_close(void);
-extern void udp_free(struct net_udp_client *cl);
 #endif

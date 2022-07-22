@@ -16,11 +16,12 @@
 #include "../agc/agc.h"
 
 
-
 static int xspm_read_stream_stop(int ch, int subch, enum stream_type type);
 static int xspm_read_xdma_data_over(int ch,  void *arg,  int type);
 static int xspm_xdma_data_clear(int ch,  void *arg, int type);
 
+#define DEFAULT_IQ_SEND_BYTE 512
+size_t iq_send_unit_byte = DEFAULT_IQ_SEND_BYTE;    /* IQ发送长度 */
 
 static inline void *zalloc(size_t size)
 {
@@ -119,9 +120,11 @@ static void print_array(uint8_t *ptr, ssize_t len)
         return;
     
     for(int i = 0; i< len; i++){
+        if(i % 16 == 0 && i != 0)
+            printf("\n");
         printf("%02x ", *ptr++);
     }
-    printf("\n");
+    printf("\n----------------------\n");
 }
 
 static void _spm_gettime(struct timeval *tv)
@@ -183,7 +186,9 @@ static int xspm_create(void)
     int pagesize = getpagesize();
     int dev_len = 0;
     printf_info("SPM init\n");
-
+#ifdef DEBUG_TEST
+    return 0;
+#endif
     pstream = spm_dev_get_stream(&dev_len);
     /* create stream */
     for(i = 0; i< dev_len ; i++){
@@ -367,10 +372,164 @@ static int xspm_stram_write(int ch, const void *data, size_t data_len)
     return ret;
 }
 
+static ssize_t _xspm_find_header(uint8_t *ptr, uint16_t header, size_t len)
+{
+    ssize_t offset = 0;
+    do{
+        if(ptr != NULL && *(uint16_t *)ptr != header){
+            ptr += 2;
+            offset += 2;
+        }else{
+            break;
+        }
+    }while(offset < len);
+
+    if(offset >= len || ptr == NULL)
+        return -1;
+
+    return offset;
+}
+
+
+static ssize_t xspm_stream_read_from_file(int type, int ch, void **data, size_t *len, void *args)
+{
+    #define STRAM_IQ_FILE_PATH "/home/ycs/share/platform-2.0.0/files/platform-2.0.0/DEV0_CH0_IQ.raw"
+    #define STRAM_FFT_FILE_PATH "/home/ycs/share/platform-2.0.0/files/platform-2.0.0/DEV0_CH1_FFT8K.raw"
+    #define STRAM_READ_BLOCK_SIZE  528
+    #define STRAM_READ_BLOCK_COUNT 4
+
+    size_t rc = 0, rc2 = 0;
+    static FILE * fp = NULL;
+    static void *buffer[STRAM_READ_BLOCK_COUNT] = {[0 ... STRAM_READ_BLOCK_COUNT-1] = NULL};
+    char *path = NULL;
+    
+    if(type == STREAM_FFT){
+        path = STRAM_FFT_FILE_PATH;
+    }else
+        path = STRAM_IQ_FILE_PATH;
+    if(fp == NULL){
+        printf_err("Open file[%s]!\n", path);
+        fp = fopen (path, "rb");
+        if(!fp){
+            printf_err("Open file[%s] error!\n", path);
+            return -1;
+        }
+    }
+
+    for(int i = 0; i < STRAM_READ_BLOCK_COUNT; i++){
+        if(buffer[i] == NULL){
+            buffer[i] = safe_malloc(STRAM_READ_BLOCK_SIZE);
+            if(!buffer[i]){
+                printf_warn("Malloc faild\n");
+                return -1;
+            }
+        }
+    }
+
+    uint32_t cn = 0;
+    ssize_t offset = 0;
+    uint8_t *ptr = NULL;
+    do{
+        rc2 = 0;
+        rc = fread(buffer[cn], 1, STRAM_READ_BLOCK_SIZE, fp);
+        if(rc == 0){ /* read over */
+            printf_note("Read over!%d\n", feof(fp));
+            rewind(fp);
+            printf_note("ftell:%ld\n", ftell(fp));
+            break;
+        }
+        ptr = buffer[cn];
+        offset = _xspm_find_header(buffer[cn], 0xaa55, rc);
+        if(offset < 0){ 
+            continue;
+        }
+        else{
+            ptr += rc;
+            if(offset > 0){
+                //printf_note("[%02x]rc=%lu, offset=%ld, %lu\n", *ptr, rc, offset, rc - offset);
+                rc2 = fread((void *)ptr, 1, offset , fp);
+            }
+        }
+        data[cn] = (uint8_t *)buffer[cn] + offset;
+        len[cn] = rc - offset + rc2;
+
+        //printf_note("cn:%u, data=%p, len:%lu,offset:%ld, rc=%lu, %lu, sn=%d\n", cn, data[cn], len[cn], offset, rc, rc2, *((uint8_t *)data[cn]+2));
+        //print_array(data[cn], len[cn]);
+        cn++;
+    }while(cn < STRAM_READ_BLOCK_COUNT);
+    usleep(100);
+    return cn;
+}
+
+
+ssize_t xspm_read_fft_vec_data(int ch , void **data, void *len, void *args)
+{
+#ifdef DEBUG_TEST
+    if(config_get_work_enable() == false){
+        usleep(1000);
+        return -1;
+    }
+    return xspm_stream_read_from_file(STREAM_FFT, ch, data, len, args);
+#else
+    int index;
+    
+    index = xspm_find_index_by_type(-1, -1, STREAM_FFT);
+    if(index < 0)
+        return -1;
+    return xspm_stream_read(ch, index, data, len, args);
+#endif
+}
+
+ssize_t xspm_read_iq_vec_data(int ch , void **data, void *len, void *args)
+{
+#ifdef DEBUG_TEST
+    return xspm_stream_read_from_file(STREAM_NIQ, ch, data, len, args);
+#else
+    int index;
+    
+    index = xspm_find_index_by_type(-1, -1, STREAM_NIQ);
+    if(index < 0)
+        return -1;
+    return xspm_stream_read(ch, index, data, len, args);
+#endif
+}
+
+
+ssize_t xspm_read_niq_data(int ch , void **data, void *len, void *args)
+{
+    int index;
+    
+    index = xspm_find_index_by_type(-1, -1, STREAM_NIQ);
+    if(index < 0)
+        return -1;
+    return xspm_stream_read(ch, index, data, len, args);
+}
+
+
+ssize_t xspm_read_biq_data(int ch , void **data, void *len, void *args)
+{
+    int index;
+    
+    index = xspm_find_index_by_type(-1, -1, STREAM_BIQ);
+    if(index < 0)
+        return -1;
+    return xspm_stream_read(ch, index, data, len, args);
+
+}
+
+
 static ssize_t xspm_read_fft_data(int ch, void **data, void *args)
 {
     struct spm_run_parm *run_args = args;
-    ssize_t count = 0, fft_byte_len = 0;
+    ssize_t fft_byte_len = 0;
+#ifdef CONFIG_SPM_DISTRIBUTOR
+    size_t byte_len = 0;
+    byte_len = run_args->fft_size * sizeof(fft_t);
+    if(spm_distributor_fft_data_frame_producer(ch, data, byte_len) == -1)
+        return -1;
+    fft_byte_len = byte_len;
+#else
+    ssize_t count = 0;
     int index;
     uint32_t  len[XDMA_TRANSFER_MAX_DESC] = {0};
     
@@ -380,7 +539,7 @@ static ssize_t xspm_read_fft_data(int ch, void **data, void *args)
     count = xspm_stream_read(ch, index, data, len, args);
     count = count;
     fft_byte_len = len[0];
-    
+#endif
     return fft_byte_len;
 }
 
@@ -393,7 +552,6 @@ static int xspm_send_fft_data(void *data, size_t fft_len, void *arg)
 
     if(data == NULL || fft_len == 0 || arg == NULL)
         return -1;
-    
     struct spm_run_parm *hparam;
     hparam = (struct spm_run_parm *)arg;
 
@@ -419,7 +577,6 @@ static int xspm_send_fft_data(void *data, size_t fft_len, void *arg)
         return -1;
 #endif
     struct iovec iov[2];
-
     iov[0].iov_base = ptr_header;
     iov[0].iov_len = header_len;
     iov[1].iov_base = data;
@@ -435,10 +592,183 @@ static int xspm_send_fft_data(void *data, size_t fft_len, void *arg)
 #endif
     if(hparam->ch == 0)
         __unlock_fft_send__();
-    else
+   else
         __unlock_fft2_send__();
-    safe_free(ptr_header);
+    _safe_free_(ptr_header);
     return (header_len + data_byte_size);
+}
+
+static void *_assamble_iq_header(int ch, size_t subch, size_t *hlen, size_t data_len, void *arg, enum stream_iq_type type)
+{
+    uint8_t *ptr = NULL, *ptr_header = NULL;
+    uint32_t header_len = 0;
+    struct poal_config *poal_config = &(config_get_config()->oal_config);
+    struct sub_channel_freq_para_st *sub_channel_array;
+    
+    if(data_len == 0 || arg == NULL)
+        return NULL;
+
+    struct spm_run_parm *hparam;
+    hparam = (struct spm_run_parm *)arg;
+#ifdef CONFIG_PROTOCOL_ACT
+    hparam->data_len = data_len;
+    hparam->type = BASEBAND_DATUM_IQ;
+    hparam->ex_type = DEMODULATE_DATUM;
+    ch = hparam->ch;
+    if(type == STREAM_NIQ_TYPE_AUDIO){
+        int i;
+        struct multi_freq_point_para_st  *points = &poal_config->channel[ch].multi_freq_point_param;
+        i = executor_get_audio_point(ch);
+        hparam->sub_ch_para.bandwidth_hz = points->points[i].d_bandwith;
+        hparam->sub_ch_para.m_freq_hz =  points->points[i].center_freq;
+        hparam->sub_ch_para.d_method = points->points[i].raw_d_method;
+        hparam->sub_ch_para.sample_rate = 32000;    /* audio 32Khz */
+    }else if(type == STREAM_NIQ_TYPE_RAW){
+        sub_channel_array = &poal_config->channel[ch].sub_channel_para;
+        hparam->sub_ch_para.bandwidth_hz = sub_channel_array->sub_ch[subch].d_bandwith;
+        hparam->sub_ch_para.m_freq_hz = sub_channel_array->sub_ch[subch].center_freq;
+        hparam->sub_ch_para.d_method = sub_channel_array->sub_ch[subch].raw_d_method;
+        hparam->sub_ch_para.sample_rate =  io_get_raw_sample_rate(0, 0, hparam->sub_ch_para.bandwidth_hz);
+    }
+   
+    printf_debug("ch=%d, subch = %zd, m_freq_hz=%"PRIu64", bandwidth:%uhz, sample_rate=%u, d_method=%d\n", 
+        ch,
+        subch,
+        hparam->sub_ch_para.m_freq_hz,
+        hparam->sub_ch_para.bandwidth_hz, 
+        hparam->sub_ch_para.sample_rate,  
+        hparam->sub_ch_para.d_method );
+    
+    if((ptr_header = akt_assamble_data_frame_header_data(&header_len, arg))== NULL){
+        return NULL;
+    }
+    
+#elif defined(CONFIG_PROTOCOL_XW)
+    //ch = subch;
+    hparam->data_len = data_len; 
+    if(type == STREAM_BIQ_TYPE_RAW){
+        printf_debug("ch=%d,middle_freq=%"PRIu64",bandwidth=%"PRIu64"\n",ch,poal_config->channel[ch].multi_freq_point_param.ddc.middle_freq,
+                        poal_config->channel[ch].multi_freq_point_param.ddc.bandwidth);
+        hparam->type = DEFH_DTYPE_BB_IQ;
+        hparam->ddc_m_freq = poal_config->channel[ch].multi_freq_point_param.ddc.middle_freq;
+        hparam->ddc_bandwidth = poal_config->channel[ch].multi_freq_point_param.ddc.bandwidth;
+    }
+    else if(type == STREAM_NIQ_TYPE_RAW || STREAM_NIQ_TYPE_AUDIO){
+        sub_channel_array = &poal_config->channel[ch].sub_channel_para;
+        hparam->ddc_bandwidth = sub_channel_array->sub_ch[subch].d_bandwith;
+        hparam->ddc_m_freq = sub_channel_array->sub_ch[subch].center_freq;
+        hparam->d_method = sub_channel_array->sub_ch[subch].raw_d_method;
+        hparam->type = (type ==  STREAM_NIQ_TYPE_RAW ? DEFH_DTYPE_CH_IQ : DEFH_DTYPE_AUDIO);
+    }
+    hparam->ex_type = DFH_EX_TYPE_DEMO;
+    ptr_header = xw_assamble_frame_data(&header_len, arg);
+    if(ptr_header == NULL)
+        return NULL;
+#endif
+    *hlen = header_len;
+
+    return ptr_header;
+
+}
+
+int xspm_send_niq_data(void *data, size_t len, void *arg)
+{
+    #define _NIQ_SEND_TIMEOUT_US 10000
+    size_t header_len = 0;
+    struct _spm_xstream *pstream = spm_dev_get_stream(NULL);
+    size_t _send_byte = 32768;
+    uint8_t *hptr = NULL;
+    int i, index;
+    static struct timeval start, now;
+    static bool time_start = true;
+    
+    if(data == NULL || len == 0 || arg == NULL)
+        return -1;
+    if(time_start){
+        time_start = false;
+        _spm_gettime(&start);
+    }
+    if(len < _send_byte){
+        _spm_gettime(&now);
+        if(_spm_tv_diff(&now, &start) > _NIQ_SEND_TIMEOUT_US && len >= 4096){
+            index = len / 4096;
+            len = index * 4096;
+            _send_byte = len;
+        }else{
+            return -1;
+        }
+    }
+    _spm_gettime(&start);
+    if((hptr = _assamble_iq_header(0, 0, &header_len, _send_byte, arg, STREAM_NIQ_TYPE_RAW)) == NULL){
+        printf_err("assamble head error\n");
+        return -1;
+    }
+    
+    uint8_t *pdata;
+    struct iovec iov[2];
+    iov[0].iov_base = hptr;
+    iov[0].iov_len = header_len;
+    index = len / _send_byte;
+    pdata = (uint8_t *)data;
+    __lock_iq_send__();
+    for(i = 0; i<index; i++){
+        iov[1].iov_base = pdata;
+        iov[1].iov_len = _send_byte;
+#if (defined CONFIG_PROTOCOL_DATA_TCP)
+    tcp_send_vec_data(iov, 2, NET_DATA_TYPE_NIQ);
+#else
+    udp_send_vec_data(iov, 2, NET_DATA_TYPE_NIQ);
+#endif
+        pdata += _send_byte;
+    }
+    __unlock_iq_send__();
+    
+    xspm_read_xdma_data_over(-1, NULL, STREAM_NIQ);
+    safe_free(hptr);
+    
+    return (int)(header_len + len);
+}
+
+
+int xspm_send_biq_data(int ch, void *data, size_t len, void *arg)
+{
+    size_t header_len = 0;
+    struct _spm_xstream *pstream = spm_dev_get_stream(NULL);
+    size_t _send_byte = (iq_send_unit_byte > 0 ? iq_send_unit_byte : DEFAULT_IQ_SEND_BYTE);
+    uint8_t *hptr = NULL;
+    
+    if(data == NULL || len == 0 || arg == NULL)
+        return -1;
+
+    if(len < _send_byte)
+        return -1;
+    if((hptr = _assamble_iq_header(ch, 0, &header_len, _send_byte, arg, STREAM_BIQ_TYPE_RAW)) == NULL){
+        printf_err("assamble head error\n");
+        return -1;
+    }
+   
+    int i, index;
+    uint8_t *pdata;
+    struct iovec iov[2];
+    iov[0].iov_base = hptr;
+    iov[0].iov_len = header_len;
+    index = len / _send_byte;
+    pdata = (uint8_t *)data;
+
+    for(i = 0; i<index; i++){
+        iov[1].iov_base = pdata;
+        iov[1].iov_len = _send_byte;
+#if (defined CONFIG_PROTOCOL_DATA_TCP)
+    tcp_send_vec_data(iov, 2, NET_DATA_TYPE_BIQ);
+#else
+    udp_send_vec_data(iov, 2, NET_DATA_TYPE_BIQ);
+#endif
+        pdata += _send_byte;
+    }
+    xspm_read_xdma_data_over(-1, NULL, STREAM_BIQ);
+    safe_free(hptr);
+    
+    return (int)(header_len + len);
 }
 
 
@@ -564,13 +894,159 @@ static int xspm_read_xdma_data_over(int ch,  void *arg,  int type)
     return 0;
 }
 
+static int xspm_read_xdma_fft_data_over(int ch,  void *arg)
+{
+    return xspm_read_xdma_data_over(ch, arg, STREAM_FFT);
+}
+
+
+static  float get_side_band_rate(uint32_t bandwidth)
+{
+    #define DEFAULT_SIDE_BAND_RATE  (1.28)
+    float side_rate = 0.0;
+     /* 根据带宽获取边带率 */
+    if(config_read_by_cmd(EX_CTRL_CMD, EX_CTRL_SIDEBAND,0, &side_rate, bandwidth) == -1){
+        printf_info("!!!!!!!!!!!!!SideRate Is Not Set In Config File[bandwidth=%u]!!!!!!!!!!!!!\n", bandwidth);
+        return DEFAULT_SIDE_BAND_RATE;
+    }
+    return side_rate;
+}
+
+static int _spm_extract_half_point(void *data, int len, void *outbuf)
+{
+    fft_t *pdata = (fft_t *)data;
+    for(int i = 0; i < len; i++){
+        *(uint8_t *)outbuf++ = *pdata & 0x0ff;
+        pdata++;
+    }
+    return len/2;
+}
+
+static int spm_scan(uint64_t *s_freq_offset, uint64_t *e_freq, uint32_t *scan_bw, uint32_t *bw, uint64_t *m_freq)
+{
+    //#define MAX_SCAN_FREQ_HZ (6000000000)
+    uint64_t _m_freq;
+    uint64_t _s_freq, _e_freq;
+    uint32_t _scan_bw, _bw;
+    
+    _s_freq = *s_freq_offset;
+    _e_freq = *e_freq;
+    _scan_bw = *scan_bw;
+
+    {
+        //_scan_bw = 175000000;
+        if((_e_freq - _s_freq)/_scan_bw > 0){
+            _bw = _scan_bw;
+            *s_freq_offset = _s_freq + _scan_bw;
+        }else{
+            _bw = _e_freq - _s_freq;
+            *s_freq_offset = _e_freq;
+        }
+        *scan_bw = _scan_bw;
+        _m_freq = _s_freq + _bw/2;
+        //fix bug:中频超6G无信号 wzq
+        if (_m_freq > MAX_SCAN_FREQ_HZ){
+            _m_freq = MAX_SCAN_FREQ_HZ;
+        }
+        *bw = _bw;
+    }
+    *m_freq = _m_freq;
+
+    return 0;
+}
+
+
+/* 频谱数据整理 */
+static fft_t *xspm_data_order(fft_t *fft_data, 
+                                size_t fft_len,  
+                                size_t *order_fft_len,
+                                void *arg)
+{
+    struct spm_run_parm *run_args;
+    float sigle_side_rate, side_rate;
+    uint32_t single_sideband_size;
+    uint64_t start_freq_hz = 0;
+    int i;
+    size_t order_len = 0, offset = 0;
+    fft_t *p_buffer = NULL, *first = NULL;
+    if(fft_data == NULL || fft_len == 0){
+        printf_note("null data\n");
+        return NULL;
+    }
+    
+    run_args = (struct spm_run_parm *)arg;
+    /* 获取边带率 */
+    side_rate  =  get_side_band_rate(run_args->scan_bw);
+    /* 去边带后FFT长度 */
+    order_len = (size_t)((float)(fft_len) / side_rate + 0.5);
+    /*双字节对齐*/
+    order_len = order_len&0x0fffffffe; 
+    
+
+   //printf_note("side_rate = %f[fft_len:%lu, order_len=%lu], scan_bw=%u\n", side_rate, fft_len, order_len, run_args->scan_bw);
+    // printf_warn("run_args->fft_ptr=%p, fft_data=%p, order_len=%u, fft_len=%u, side_rate=%f\n", run_args->fft_ptr, fft_data, order_len,fft_len, side_rate);
+    /* 信号倒谱 */
+    /*
+       原始信号（注意去除中间边带）：==>真实输出信号；
+       __                     __                             ___
+         \                   /              ==》             /   \
+          \_______  ________/                     _________/     \_________
+                  \/                                                      
+                 |边带  |
+    */
+    #if 1
+    memcpy((uint8_t *)run_args->fft_ptr_swap,         (uint8_t *)(fft_data) , fft_len*2);
+    memcpy((uint8_t *)run_args->fft_ptr,              (uint8_t *)(run_args->fft_ptr_swap + fft_len*2 -order_len), order_len);
+    memcpy((uint8_t *)(run_args->fft_ptr+order_len),  (uint8_t *)run_args->fft_ptr_swap , order_len);
+    #else
+    memcpy((uint8_t *)run_args->fft_ptr,                (uint8_t *)(fft_data+fft_len -order_len/2) , order_len);
+    memcpy((uint8_t *)(run_args->fft_ptr+order_len),    (uint8_t *)fft_data , order_len);
+    #endif
+
+    p_buffer =  (fft_t *)run_args->fft_ptr;
+
+#if defined(CONFIG_SPM_FFT_EXTRACT_POINT)
+    order_len =  _spm_extract_half_point(p_buffer, order_len, run_args->fft_ptr_swap);
+    p_buffer = run_args->fft_ptr_swap;
+#endif
+    if(run_args->mode == OAL_FAST_SCAN_MODE || run_args->mode ==OAL_MULTI_ZONE_SCAN_MODE){
+        if(run_args->scan_bw > run_args->bandwidth){
+             uint64_t start_freq_hz = 0;
+             /* 扫描最后一段，射频中心频率为实际剩余带宽的中心频率，需要去掉多余部分 */
+             start_freq_hz = run_args->s_freq_offset - (run_args->m_freq_s - run_args->scan_bw/2);
+             offset = ((float)order_len * ((float)start_freq_hz/(float)run_args->scan_bw));
+             order_len = ((float)order_len * ((float)run_args->bandwidth/(float)run_args->scan_bw));
+        }
+    }
+    first = p_buffer + offset;
+#if defined(CONFIG_SPM_BOTTOM)
+        if(bottom_noise_cali_en())
+            bottom_calibration(run_args->ch, first, fft_len, run_args->fft_size, run_args->m_freq, run_args->bandwidth);
+        bottom_deal(run_args->ch, first, fft_len, run_args->fft_size, run_args->m_freq, run_args->bandwidth);
+#endif
+    *order_fft_len = order_len;
+    printf_debug("order_len=%lu, offset = %lu, start_freq_hz=%"PRIu64", s_freq_offset=%"PRIu64", m_freq=%"PRIu64", scan_bw=%u,fft_len=%lu\n", 
+        order_len, offset, start_freq_hz, run_args->s_freq_offset, run_args->m_freq_s, run_args->scan_bw,fft_len);
+
+    return (fft_t *)first;
+}
+
 
 static const struct spm_backend_ops xspm_ops = {
     .create = xspm_create,
     .read_fft_data = xspm_read_fft_data,
+    .read_fft_vec_data = xspm_read_fft_vec_data,
     .send_fft_data = xspm_send_fft_data,
+    .read_iq_vec_data = xspm_read_iq_vec_data,
+    //.read_niq_data = xspm_read_niq_data,
+    //.read_biq_data = xspm_read_biq_data,
+    .read_fft_over_deal = xspm_read_xdma_fft_data_over,
+    .send_biq_data = xspm_send_biq_data,
+    .send_niq_data = xspm_send_niq_data,
     .stream_start = xspm_read_stream_start,
     .stream_stop = xspm_read_stream_stop,
+    .data_order = xspm_data_order,
+    .spm_scan = spm_scan,
     .close = _xspm_close,
 };
 

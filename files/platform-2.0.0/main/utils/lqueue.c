@@ -103,6 +103,25 @@ void *_queue_pop(queue_ctx_t *q)
     return args;
 }
 
+void *_queue_pop_head(queue_ctx_t *q)
+{
+    struct tailq_data_s *data = NULL;
+    void *args = NULL;
+    pthread_mutex_lock(&q->lock);
+    if (!TAILQ_EMPTY(&q->list_head)) {
+        data = TAILQ_FIRST(&q->list_head);
+        args = data->args;
+        TAILQ_REMOVE(&q->list_head, data, next);
+        free(data);
+        data = NULL;
+        if(q->entries > 0)
+            q->entries--;
+    }
+    pthread_mutex_unlock(&q->lock);
+    return args;
+}
+
+
 bool _queue_is_empty(queue_ctx_t *q)
 {
     bool empty = false;
@@ -159,6 +178,7 @@ static  struct lqueue_ops queue_ops = {
     .create = _queue_create,
     .push = _queue_push,
     .pop = _queue_pop,
+    .pop_head = _queue_pop_head,
     .foreach = _queue_foreach,
     .get_entry = _queue_get_entry,
     .clear = _queue_clear,

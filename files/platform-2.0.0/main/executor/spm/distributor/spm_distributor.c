@@ -355,8 +355,11 @@ static int _spm_distributor_data_frame_producer(int ch, int type, void **data, s
         if(type == SPM_DIST_FFT && !config_get_fft_work_enable(ch))
             break;
 
-        //printf_note("POP,type:%d, ch:%d\n", type, ch);
-        pkt = pkt_q->ops->pop(pkt_q);
+        if(type == SPM_DIST_FFT)
+            pkt = pkt_q->ops->pop_head(pkt_q);/* FFT取入队的最新数据包组帧 */
+        else
+            pkt = pkt_q->ops->pop(pkt_q);
+        //printf_note("POP,type:%d, ch:%d, pkt:%p\n", type, ch, pkt);
         if(pkt == NULL){
             usleep(2);
             continue;
@@ -373,7 +376,7 @@ static int _spm_distributor_data_frame_producer(int ch, int type, void **data, s
         }
         /* 未收到从0开始的数据包，说明起始包错误，丢弃,重新找流水号为0的包*/
         if(start_frame == false){
-            printf_warn("Not receive start pkt[sn:%d], Discard pkt\n", pkt->sn);
+            printf_debug("Not receive start pkt[sn:%d], Discard pkt\n", pkt->sn);
             _safe_free_(pkt);
             continue;
         }
@@ -726,7 +729,7 @@ static int _spm_distributor_reset(int type, int ch)
     if(qctx->ops->clear)
         qctx->ops->clear(qctx);
     _frame_devider_init(&frame_devider[type][ch]);
-    printf_note("Reset, type:%d, ch:%d\n", type, ch);
+    //printf_note("Reset, type:%d, ch:%d\n", type, ch);
     return 0;
 }
 

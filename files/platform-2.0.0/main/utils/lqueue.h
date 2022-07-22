@@ -36,6 +36,7 @@ struct lqueue_ops {
     int (*create)(void );
     int (*push)(queue_ctx_t *, void *);
     void *(*pop)(queue_ctx_t *);
+    void *(*pop_head)(queue_ctx_t *);
     void (*foreach)(queue_ctx_t *, int (*func)(void *));
     uint32_t (*get_entry)(queue_ctx_t *);
     int (*clear)(queue_ctx_t *);

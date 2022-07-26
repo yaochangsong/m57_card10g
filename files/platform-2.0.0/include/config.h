@@ -108,6 +108,7 @@
 #include "../main/executor/spm/spm_fpga/spm_fpga.h"
 #include "../main/executor/spm/spm_xdma/spm_xdma.h"
 #include "../main/executor/spm/distributor/spm_distributor.h"
+#include "../main/executor/spm/file_sink/file_sink.h"
 
 #include "../main/executor/executor_thread.h"
 #include "../main/executor/executor.h"

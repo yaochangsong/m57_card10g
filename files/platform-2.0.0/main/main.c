@@ -26,7 +26,9 @@ static void usage(const char *prog)
         "          -c config.json path #[default path: /etc/config.json]\n"
         "          -f format disk  # [Warn:format once when start,Default false]\n"
         "          -b bottom calibration  # [bottom calibration,Default false]\n"
-        "          -t ADI Tool     # [(ADI IIO)specturm tool on; true or false,Default false]\n", prog);
+        "          -o output stream sink filename, default fft data source\n"
+        "          -t time ms of output stream sink filename\n"
+        "          -a ADI Tool     # [(ADI IIO)specturm tool on; true or false,Default false]\n", prog);
     exit(1);
 }
 
@@ -86,6 +88,20 @@ bool bottom_noise_cali_en(void)
     return avg_bottom_noise_cali_en;
 }
 
+char *sink_file_path_name = NULL;
+char *get_sink_file_path_name(void)
+{
+    return sink_file_path_name;
+}
+
+int32_t sink_file_time_ms = 0;
+
+int32_t get_sink_file_time_ms(void)
+{
+    return sink_file_time_ms;
+}
+
+
 static void pl_handle_sig(int sig)
 {
     printf("ctrl+c or killed; ready to exit!!\n");
@@ -135,7 +151,7 @@ int main(int argc, char **argv)
 {
     int debug_level = -1;
     int opt;
-    while ((opt = getopt(argc, argv, "d:tm:c:fb")) != -1) {
+    while ((opt = getopt(argc, argv, "d:am:c:fbo:t:")) != -1) {
         switch (opt)
         {
         case 'd':
@@ -148,7 +164,7 @@ int main(int argc, char **argv)
                 exit(-1);
             }
             break;
-        case 't':
+        case 'a':
             spectrum_aditool_debug = true;
             printf("spectrum_aditool_debug:%d\n", spectrum_aditool_debug);
             break;
@@ -167,6 +183,14 @@ int main(int argc, char **argv)
         case 'b':
             avg_bottom_noise_cali_en = true;
             printf("avg_bottom_noise_cali_en: true\n");
+            break;
+        case 'o':
+            sink_file_path_name = strdup(optarg);
+            printf("sink file: %s\n", sink_file_path_name);
+            break;
+        case 't':
+            sink_file_time_ms = atoi(optarg);
+            printf("sink file time: %dms\n", sink_file_time_ms);
             break;
         default: /* '?' */
             usage(argv[0]);

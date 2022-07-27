@@ -13,9 +13,9 @@
 #include <time.h>
 #include <dirent.h>
 #include <sys/sendfile.h>
+#include <arpa/inet.h>
 #include "ftp_server.h"
-
-
+#include "../../../main/log/log.h"
 
 #ifndef BSIZE
 #define BSIZE 1024
@@ -96,7 +96,7 @@ static const char *usernames[] =
 };
 
 /* Welcome message */
-static char *welcome_message = "A very warm welcome!";
+static char *welcome_message = "Welcome Showay FTP Service";
 
 /* Server functions */
 void gen_port(Port *);

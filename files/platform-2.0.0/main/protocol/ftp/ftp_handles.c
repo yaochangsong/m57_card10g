@@ -54,7 +54,7 @@ int lookup_cmd(char *cmd){
 */
 int accept_connection(int socket)
 {
-    int addrlen = 0;
+    unsigned int addrlen = 0;
     struct sockaddr_in client_address;
     addrlen = sizeof(client_address);
     return accept(socket,(struct sockaddr*) &client_address,&addrlen);
@@ -171,15 +171,15 @@ void ftp_pasv(Command *cmd, State *state)
 
         /* Start listening here, but don't accept the connection */
         state->sock_pasv = create_socket((256*port->p1)+port->p2);
-        printf("port: %d\n",256*port->p1+port->p2);
+        printf_debug("port: %d\n",256*port->p1+port->p2);
         sprintf(buff,response,ip[0],ip[1],ip[2],ip[3],port->p1,port->p2);
         state->message = buff;
         state->mode = SERVER;
-        puts(state->message);
-
+        printf_debug("%s\n", state->message);
+        free(port);
     }else{
         state->message = "530 Please login with USER and PASS.\n";
-        printf("%s",state->message);
+        printf_debug("%s",state->message);
     }
     write_state(state);
 }
@@ -218,14 +218,14 @@ void ftp_list(Command *cmd, State *state)
 
                 connection = accept_connection(state->sock_pasv);
                 state->message = "150 Here comes the directory listing.\n";
-                puts(state->message);
+                printf_debug("%s\n", state->message);
 
-                while(entry=readdir(dp)){
+                while((entry = readdir(dp)) != NULL){
                     if(stat(entry->d_name,&statbuf)==-1){
                         fprintf(stderr, "FTP: Error reading file stats...\n");
                     }else{
-                        char *perms = malloc(9);
-                        memset(perms,0,9);
+                        char perms[32];
+                        memset(perms,0,32);
 
                         /* Convert time_t to tm struct */
                         rawtime = statbuf.st_mtime;
@@ -233,9 +233,9 @@ void ftp_list(Command *cmd, State *state)
                         strftime(timebuff,80,"%b %d %H:%M",time);
                         str_perm((statbuf.st_mode & ALLPERMS), perms);
                         dprintf(connection,
-                                "%c%s %5d %4d %4d %8d %s %s\r\n",
+                                "%c%s %5ld %4d %4d %8ld %s %s\r\n",
                                 (entry->d_type==DT_DIR)?'d':'-',
-                                perms,statbuf.st_nlink,
+                                perms,(unsigned long)statbuf.st_nlink,
                                 statbuf.st_uid,
                                 statbuf.st_gid,
                                 statbuf.st_size,
@@ -379,14 +379,13 @@ void ftp_retr(Command *cmd, State *state)
 
                 connection = accept_connection(state->sock_pasv);
                 close(state->sock_pasv);
-                if(sent_total = sendfile(connection, fd, &offset, stat_buf.st_size)){
-
+                if((sent_total = sendfile(connection, fd, &offset, stat_buf.st_size)) > 0){
                     if(sent_total != stat_buf.st_size){
                         perror("ftp_retr:sendfile");
-                        exit(EXIT_SUCCESS);
-                    }
-
-                    state->message = "226 File send OK.\n";
+                        //exit(EXIT_SUCCESS);
+                        state->message = "550 Failed to read file.\n";
+                    } else
+                        state->message = "226 File send OK.\n";
                 }else{
                     state->message = "550 Failed to read file.\n";
                 }
@@ -512,8 +511,6 @@ static ssize_t ftp_readn(int fd, void *ptr, size_t n)
 void ftp_stor2(Command *cmd, State *state)
 {
     int connection;
-    off_t offset = 0;
-    //int pipefd[2];
     int res = 1;
     const int buff_size = 8192;
     ftp_client_t *c = state->private_args;
@@ -535,18 +532,11 @@ void ftp_stor2(Command *cmd, State *state)
             /* Using splice function for file receiving.
             * The splice() system call first appeared in Linux 2.6.17.
             */
-
-#if 1
             uint8_t  buffer[8192];
             while((res = ftp_readn(connection, buffer, 8192)) > 0){
                 c->server->downlink_cb(-1, buffer, 8192-res);
             }
-            printf("ftp_readn over:%d\n", res);
-#else
-            while ((res = splice(connection, 0, pipefd[1], NULL, buff_size, SPLICE_F_MORE | SPLICE_F_MOVE))>0){
-                server->downlink_cb(pipefd[0], NULL, buff_size);
-            }
-#endif
+            printf_debug("ftp_readn over:%d\n", res);
             state->message = "226 File send OK.\n";
             close(connection);
         }
@@ -634,7 +624,7 @@ void ftp_size(Command *cmd, State *state)
         memset(filesize,0,128);
         /* Success */
         if(stat(cmd->arg,&statbuf)==0){
-            sprintf(filesize, "213 %d\n", statbuf.st_size);
+            sprintf(filesize, "213 %ld\n", statbuf.st_size);
             state->message = filesize;
         }else{
             state->message = "550 Could not get file size.\n";

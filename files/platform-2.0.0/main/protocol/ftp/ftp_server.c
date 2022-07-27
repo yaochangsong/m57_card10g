@@ -8,7 +8,7 @@ void parse_command(char *cmdstring, Command *cmd);
 
 //Communication
 void* communication(void* _c) {
-    chdir("/home");
+    chdir("/home/ycs/share/tmp/ftp");
     ftp_client_t *c = (ftp_client_t *)_c;
     int connection = c->fd;
     int bytes_read;
@@ -25,16 +25,18 @@ void* communication(void* _c) {
     }else{
         strcat(welcome, "Welcome to nice FTP service.");
     }
-
+    sprintf(buffer ," [%s:%d]\n", inet_ntoa(c->client_address.sin_addr), c->client_address.sin_port);
+    strcat(welcome, buffer);
     /* Write welcome message */
     strcat(welcome,"\n");
     write(connection, welcome,strlen(welcome));
 
+    memset(buffer,0,BSIZE);
     /* Read commands from client */
-    while (bytes_read = read(connection,buffer,BSIZE) > 0){
+    while ((bytes_read = read(connection,buffer,BSIZE)) > 0){
         if(!(bytes_read>BSIZE) && bytes_read > 0){
             /* TODO: output this to log */
-            printf("User %s sent command: %s\n",(state->username==0)?"unknown":state->username,buffer);
+            printf_debug("User %s sent command: %s\n",(state->username==NULL)?"unknown":state->username,buffer);
             parse_command(buffer,cmd);
             state->connection = connection;
 
@@ -43,19 +45,29 @@ void* communication(void* _c) {
                 response(cmd,state);
             }
             memset(buffer,0,BSIZE);
-            memset(cmd,0,sizeof(cmd));
+            memset(cmd,0,sizeof(*cmd));
         }else{
             /* Read error */
             perror("server:read");
         }
     }
+    printf_debug("Client disconnected.\n");
     close(connection);
-    printf("Client disconnected.\n");
+    free(c);
+    c = NULL;
+    free(cmd);
+    cmd = NULL;
+    if(state->username){
+        free(state->username);
+        state->username = NULL;
+    }
+    free(state);
+    state = NULL;
     return NULL ;
 }
 
 
-void ftp_server_thread_loop(void *s)
+void *ftp_server_thread_loop(void *s)
 {
     //set defaul ftp server root work path.You can customize the path.
 #if 0
@@ -68,12 +80,13 @@ void ftp_server_thread_loop(void *s)
     ftp_server_t *server = s;
     int sock = create_socket(server->port);
     struct sockaddr_in client_address;
-    int len = sizeof(client_address);
+    unsigned int len = sizeof(client_address);
     pthread_detach(pthread_self());
     while(1){
         ftp_client_t *c = malloc(sizeof(ftp_client_t));
         c->fd = accept(sock, (struct sockaddr*) &client_address,&len);
         c->server = server;
+        memcpy(&c->client_address, &client_address, len);
         pthread_t pid;
         pthread_create(&pid, NULL, communication, (void*) (c));
     }
@@ -89,12 +102,10 @@ void ftp_server_init(int port)
     
     int ret;
     pthread_t work_id;
-    ret=pthread_create(&work_id, NULL, ftp_server_thread_loop, server);
+    ret=pthread_create(&work_id, NULL, ftp_server_thread_loop, (void *)server);
     if(ret!=0){
         perror("pthread create");
-        return -1;
     }
-    return 0;
 }
 
 /**

@@ -70,6 +70,8 @@ char *filepath_gen(enum file_sink_type_t type,char *buf, size_t len)
         stype = "niq";
     else if(type == FILE_SINK_TYPE_BIQ)
         stype = "biq";
+    else 
+        stype = "raw";
     srand(time(NULL));
     snprintf(buf, len, "/tmp/%s_%8.8x", stype, rand() & 0xFFFFFFFF);
     return buf;

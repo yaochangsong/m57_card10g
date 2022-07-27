@@ -123,4 +123,5 @@
 #include "../main/protocol/http/file.h"
 #include "../main/protocol/http/utils.h"
 #include "../main/protocol/http/client.h"
+#include "../main/protocol/ftp/ftp_server.h"
 #include "../main/protocol/oal/poal.h"

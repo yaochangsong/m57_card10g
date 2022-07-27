@@ -14,44 +14,19 @@
 ******************************************************************************/
 #include "config.h"
 
-
-//struct mq_ctx *mqctx;
-//#define SPM_MQ_NAME "/spmmq"
+static struct spm_context *spmctx = NULL;
 
 /* send mutex */
-pthread_mutex_t send_fft_mutex = PTHREAD_MUTEX_INITIALIZER;
-pthread_mutex_t send_fft2_mutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t send_fft_mutex[MAX_RADIO_CHANNEL_NUM];
 pthread_mutex_t send_iq_mutex = PTHREAD_MUTEX_INITIALIZER;
 
-/* biq */
-static pthread_cond_t spm_biq_cond[MAX_RADIO_CHANNEL_NUM];
-static pthread_mutex_t spm_biq_cond_mutex[MAX_RADIO_CHANNEL_NUM];
-
-/* niq */
-static pthread_cond_t spm_niq_cond;
-static pthread_mutex_t spm_niq_cond_mutex;
-
-/* fft */
-static pthread_cond_t spm_fft_cond;
-static pthread_mutex_t spm_fft_cond_mutex;
-struct sem_st work_sem;
-
-
-static struct spm_context *spmctx = NULL;
 
 static void spm_cond_init(void)
 {
-    for(int i = 0; i < MAX_RADIO_CHANNEL_NUM; i++){
-        pthread_cond_init(&spm_biq_cond[i], NULL);
-        pthread_mutex_init(&spm_biq_cond_mutex[i], NULL);
+     for(int i = 0; i < MAX_RADIO_CHANNEL_NUM; i++){
+        pthread_mutex_init(& send_fft_mutex[i], NULL);
     }
-    pthread_cond_init(&spm_niq_cond, NULL);
-    pthread_mutex_init(&spm_niq_cond_mutex, NULL);
-    
-    pthread_cond_init(&spm_fft_cond, NULL);
-    pthread_mutex_init(&spm_fft_cond_mutex, NULL);
 }
-
 
 static void show_thread_priority(pthread_attr_t *attr,int policy)
 {
@@ -70,148 +45,6 @@ static int get_thread_priority(pthread_attr_t *attr)
   assert(rs==0);
   printf("priority=%d",param.__sched_priority);
   return param.__sched_priority;
-}
-
-
-void spm_biq_deal_notify(void *arg)
-{
-    int ch;
-    
-    if(arg == NULL)
-        return;
-    
-    ch = *(uint8_t *)arg;
-    
-    if(ch >= MAX_RADIO_CHANNEL_NUM)
-        return;
-    /* 通知IQ处理线程开始处理IQ数据 */
-    pthread_cond_signal(&spm_biq_cond[ch]);
-}
-
-void spm_niq_deal_notify(void *arg)
-{
-    pthread_cond_signal(&spm_niq_cond);
-}
-
-
-static void spm_niq_dispatcher_buffer_clear(void)
-{
-    int type, ch;
-    struct spm_context *ctx = NULL;
-    
-    ctx = get_spm_ctx();
-    if(ctx == NULL)
-        return;
-    for(ch = 0; ch< MAX_RADIO_CHANNEL_NUM; ch++){
-        for(type = 0; type < STREAM_NIQ_TYPE_MAX; type++){
-            memset(ctx->run_args[ch]->dis_iq.ptr[type], 0, DMA_IQ_TYPE_BUFFER_SIZE);
-            ctx->run_args[ch]->dis_iq.len[type] = 0;
-            ctx->run_args[ch]->dis_iq.offset[type] = 0;
-        }
-    }
-}
-
-/* 在DMA连续模式下；IQ读取线程 
-   在该模式下，应以最快速度读取发送数据；
-   使能后，不断读取、组包、发送；读取前无需停止DMA。
-*/
-void spm_niq_handle_thread(void *arg)
-{
-    void *ptr = NULL;
-    ssize_t nbyte = 0;
-    struct spm_run_parm *ptr_run = NULL, run;
-    struct spm_context *ctx = NULL;
-    iq_t *ptr_iq = NULL;
-    ssize_t  len = 0, i;
-    struct poal_config *poal_config = &(config_get_config()->oal_config);
-    int ch, type;
-    //thread_bind_cpu(1);
-    ctx = (struct spm_context *)arg;
-    pthread_detach(pthread_self());
-    
-loop:
-    printf_note("######Wait NIQ or Radio enable######\n");
-    /* 通过条件变量阻塞方式等待数据使能 */
-    pthread_mutex_lock(&spm_niq_cond_mutex);
-    while(subch_bitmap_weight(CH_TYPE_IQ) == 0)
-        pthread_cond_wait(&spm_niq_cond, &spm_niq_cond_mutex);
-    pthread_mutex_unlock(&spm_niq_cond_mutex);
-
-    ch = poal_config->cid;
-    printf_note(">>>>>[ch=%d]NIQ or Radio start\n", ch);
-    memset(&run, 0, sizeof(run));
-    memcpy(&run, ctx->run_args[ch], sizeof(run));
-    spm_niq_dispatcher_buffer_clear();
-    do{
-        len = ctx->ops->read_niq_data((void **)&ptr_iq);
-        if(len > 0){
-            #if 0
-            if(ctx->ops->niq_dispatcher && test_audio_on()){
-                ctx->ops->niq_dispatcher(ptr_iq, len, &run);
-                for_each_niq_type(type, run){
-                    if(ctx->ops->send_niq_type){
-                        ctx->ops->send_niq_type(type, run.dis_iq.send_ptr, run.dis_iq.send_len, &run);
-                    }
-                }
-                ctx->ops->read_niq_over_deal(&len);
-            }else
-            #endif
-            {
-                ctx->ops->send_niq_data(ptr_iq, len, &run);
-            }
-        }
-        if(subch_bitmap_weight(CH_TYPE_IQ) == 0){
-            printf_debug("iq disabled\n");
-            usleep(1000);
-            goto loop;
-        }
-    }while(1);
-    
-}
-
-void spm_biq_handle_thread(void *arg)
-{
-    void *ptr = NULL;
-    ssize_t nbyte = 0;
-    struct spm_run_parm *ptr_run = NULL, run;
-    struct spm_context *ctx = NULL;
-    iq_t *ptr_iq = NULL;
-    ssize_t  len = 0, i;
-    struct poal_config *poal_config = &(config_get_config()->oal_config);
-    int ch, type;
-   // thread_bind_cpu(1);
-    ctx = spmctx;
-    ch = *(int *)arg;
-    if(ch >= MAX_RADIO_CHANNEL_NUM)
-        pthread_exit(0);
-    
-    pthread_detach(pthread_self());
-loop:
-    printf_note("######Wait BIQ[ch:%d] enable######\n", ch);
-    /* 通过条件变量阻塞方式等待数据使能 */
-    pthread_mutex_lock(&spm_biq_cond_mutex[ch]);
-    while(test_ch_iq_on(ch) == false)
-        pthread_cond_wait(&spm_biq_cond[ch], &spm_biq_cond_mutex[ch]);
-    pthread_mutex_unlock(&spm_biq_cond_mutex[ch]);
-
-    
-    printf_note(">>>>>[ch=%d]BIQ start\n", ch);
-    memset(&run, 0, sizeof(run));
-    memcpy(&run, ctx->run_args[ch], sizeof(run));
-    do{
-        if(ctx->ops->read_biq_data)
-            len = ctx->ops->read_biq_data(ch, (void **)&ptr_iq);
-        if(len > 0){
-                if(ctx->ops->send_biq_data)
-                    ctx->ops->send_biq_data(ch, ptr_iq, len, &run);
-        }
-        if(test_ch_iq_on(ch) == false){
-            printf_note("iq disabled\n");
-            usleep(1000);
-            goto loop;
-        }
-    }while(1);
-    
 }
 
 
@@ -244,6 +77,43 @@ void spm_deal(struct spm_context *ctx, void *args, int ch)
             pctx->ops->send_fft_data(ord_ptr, fft_ord_len, args);
     }
 }
+
+ssize_t spm_raw_data_uplink_handle(int fd)
+{
+     struct spm_context *pctx = spmctx;
+    if(!pctx)
+        return -1;
+
+    ssize_t count = 0, r = 0;
+    volatile uint8_t *ptr[2048] = {NULL};
+    size_t len[2048] = {0};
+    
+    if(pctx->ops->read_raw_vec_data)
+        count = pctx->ops->read_raw_vec_data(-1, (void **)ptr, len, NULL);
+    for(int i = 0; i < count; i++){
+        if(pctx->ops->send_data_by_fd)
+            r += pctx->ops->send_data_by_fd(fd, ptr[i], len[i], NULL);
+    }
+
+    if(pctx->ops->read_raw_over_deal)
+        pctx->ops->read_raw_over_deal(-1, NULL);
+    return r;
+}
+
+ssize_t spm_raw_data_downlink_handle(int fd, const void *data, size_t len)
+{
+    struct spm_context *pctx = spmctx;
+    ssize_t w = 0;
+    
+    if(!pctx)
+        return -1;
+
+    if(pctx->ops->write_raw_data)
+        w = pctx->ops->write_raw_data(-1, data, len, fd);
+
+    return w;
+}
+
 
 struct spm_context *get_spm_ctx(void)
 {

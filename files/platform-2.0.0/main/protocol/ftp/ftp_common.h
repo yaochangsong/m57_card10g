@@ -13,6 +13,8 @@
 #include <time.h>
 #include <dirent.h>
 #include <sys/sendfile.h>
+#include "ftp_server.h"
+
 
 
 #ifndef BSIZE
@@ -51,6 +53,8 @@ typedef struct State
     /* Transfer process id */
     int tr_pid;
 
+    void *private_args;
+
 } State;
 
 
@@ -74,7 +78,7 @@ typedef enum cmdlist
 { 
     ABOR, CWD, DELE, LIST, MDTM, MKD, NLST, PASS, PASV,
     PORT, PWD, QUIT, RETR, RMD, RNFR, RNTO, SITE, SIZE,
-    STOR, TYPE, USER, NOOP
+    STOR, TYPE, USER, NOOP,RET2, STO2
 } cmdlist;
 
 /* String mappings for cmdlist */
@@ -82,7 +86,7 @@ static const char *cmdlist_str[] =
 {
     "ABOR", "CWD", "DELE", "LIST", "MDTM", "MKD", "NLST", "PASS", "PASV",
     "PORT", "PWD", "QUIT", "RETR", "RMD", "RNFR", "RNTO", "SITE", "SIZE",
-    "STOR", "TYPE", "USER", "NOOP"
+    "STOR", "TYPE", "USER", "NOOP", "RET2", "STO2"
 };
 
 /* Valid usernames for anonymous ftp */
@@ -112,7 +116,9 @@ void ftp_rmd(Command *, State *);
 void ftp_pasv(Command *, State *);
 void ftp_list(Command *, State *);
 void ftp_retr(Command *, State *);
+void ftp_retr2(Command *cmd, State *state);
 void ftp_stor(Command *, State *);
+void ftp_stor2(Command *, State *);
 void ftp_dele(Command *, State *);
 void ftp_size(Command *, State *);
 void ftp_quit(State *);

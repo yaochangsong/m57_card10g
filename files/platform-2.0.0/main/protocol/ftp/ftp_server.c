@@ -1,17 +1,23 @@
 #include "ftp_common.h"
 #include "ftp_server.h"
+#include <stdbool.h>
+#include "../../../main/executor/spm/spm.h"
 #include <pthread.h>
 
 void parse_command(char *cmdstring, Command *cmd);
 
 //Communication
 void* communication(void* _c) {
-    chdir("/");
-    int connection = *(int*)_c , bytes_read;
+    chdir("/home");
+    ftp_client_t *c = (ftp_client_t *)_c;
+    int connection = c->fd;
+    int bytes_read;
     char buffer[BSIZE];
     Command *cmd = malloc(sizeof(Command));
     State *state = malloc(sizeof(State));
     state->username = NULL; //add by zhaoyou
+    state->private_args = c;
+    state->logged_in = 1;
     memset(buffer,0,BSIZE);
     char welcome[BSIZE] = "220 ";
     if(strlen(welcome_message)<BSIZE-4){
@@ -48,28 +54,47 @@ void* communication(void* _c) {
     return NULL ;
 }
 
-/** 
-* Sets up server and handles incoming connections
-* @param port Server port
-*/
-void ftp_server(int port)
+
+void ftp_server_thread_loop(void *s)
 {
     //set defaul ftp server root work path.You can customize the path.
+#if 0
    if(chroot(SERVERROOTPATH) !=0 )
    {
        printf("%s","chroot erro：please run as root!\n");
        exit(0);
    }
-    int sock = create_socket(port);
+#endif
+    ftp_server_t *server = s;
+    int sock = create_socket(server->port);
     struct sockaddr_in client_address;
     int len = sizeof(client_address);
+    pthread_detach(pthread_self());
     while(1){
-        int *connection = (int*)malloc(sizeof(int));
-        *connection = accept(sock, (struct sockaddr*) &client_address,&len);
-
+        ftp_client_t *c = malloc(sizeof(ftp_client_t));
+        c->fd = accept(sock, (struct sockaddr*) &client_address,&len);
+        c->server = server;
         pthread_t pid;
-        pthread_create(&pid, NULL, communication, (void*) (connection));
+        pthread_create(&pid, NULL, communication, (void*) (c));
     }
+}
+
+void ftp_server_init(int port)
+{
+    pthread_t pid;
+    ftp_server_t *server = malloc(sizeof(ftp_server_t));
+    server->port = port;
+    server->downlink_cb = spm_raw_data_downlink_handle;
+    server->uplink_cb = spm_raw_data_uplink_handle;
+    
+    int ret;
+    pthread_t work_id;
+    ret=pthread_create(&work_id, NULL, ftp_server_thread_loop, server);
+    if(ret!=0){
+        perror("pthread create");
+        return -1;
+    }
+    return 0;
 }
 
 /**

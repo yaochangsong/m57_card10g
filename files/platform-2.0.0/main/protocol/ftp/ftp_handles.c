@@ -100,7 +100,9 @@ void response(Command *cmd, State *state)
     case MKD:  ftp_mkd(cmd,state); break;
     case RMD:  ftp_rmd(cmd,state); break;
     case RETR: ftp_retr(cmd,state); break;
+    case RET2: ftp_retr2(cmd,state); break;
     case STOR: ftp_stor(cmd,state); break;
+    case STO2: ftp_stor2(cmd,state); break;
     case DELE: ftp_dele(cmd,state); break;
     case SIZE: ftp_size(cmd,state); break;
     case ABOR: ftp_abor(state); break;
@@ -403,6 +405,36 @@ void ftp_retr(Command *cmd, State *state)
     write_state(state);
 }
 
+/** RETR command 下载文件*/
+void ftp_retr2(Command *cmd, State *state)
+{
+    int connection;
+    ftp_client_t *c = state->private_args;
+    ssize_t r = 0;
+    
+    if(state->logged_in){
+        /* Passive mode */
+        if(state->mode == SERVER){
+            connection = accept_connection(state->sock_pasv);
+            close(state->sock_pasv);
+
+            state->message = "150 Opening BINARY mode data connection.\n";
+            write_state(state);
+            do{
+                r = c->server->uplink_cb(connection);
+            }while(r > 0);
+            state->message = "226 File send OK.\n";
+        }else{
+            state->message = "550 Please use PASV instead of PORT.\n";
+        }
+    }else{
+        state->message = "530 Please login with USER and PASS.\n";
+    }
+    close(connection);
+    write_state(state);
+}
+
+
 /** Handle STOR command. TODO: check permissions. 上传文件*/
 void ftp_stor(Command *cmd, State *state)
 {
@@ -413,7 +445,6 @@ void ftp_stor(Command *cmd, State *state)
     const int buff_size = 8192;
 
     FILE *fp = fopen(cmd->arg,"w");
-
     if(fp==NULL){
         /* TODO: write status message here! */
         perror("ftp_stor:fopen");
@@ -428,19 +459,17 @@ void ftp_stor(Command *cmd, State *state)
             close(state->sock_pasv);
             if(pipe(pipefd)==-1)perror("ftp_stor: pipe");
 
-            state->message = "125 Data connection already open; transfer starting.\n";
+            //state->message = "125 Data connection already open; transfer starting.\n";
+            state->message = "150 Ok to send data.\r\n";
             write_state(state);
 
             /* Using splice function for file receiving.
             * The splice() system call first appeared in Linux 2.6.17.
             */
-
             while ((res = splice(connection, 0, pipefd[1], NULL, buff_size, SPLICE_F_MORE | SPLICE_F_MOVE))>0){
                 splice(pipefd[0], NULL, fd, 0, buff_size, SPLICE_F_MORE | SPLICE_F_MOVE);
             }
-
             /* TODO: signal with ABOR command to exit */
-
             /* Internal error */
             if(res==-1){
                 perror("ftp_stor: splice");
@@ -457,6 +486,77 @@ void ftp_stor(Command *cmd, State *state)
     close(connection);
     write_state(state);
 }
+
+static ssize_t ftp_readn(int fd, void *ptr, size_t n)
+{
+    size_t nleft;
+    ssize_t nread;
+
+    nleft = n;
+    while(nleft > 0){
+        if((nread = read(fd, ptr, nleft)) < 0){
+            if(nleft == n)
+                return -1;
+            else
+                break;
+        }else if(nread == 0){
+            break;
+        }
+        nleft -= nread;
+        ptr += nread;
+    }
+    return (n - nleft);  /* return >=0 */
+}
+
+
+void ftp_stor2(Command *cmd, State *state)
+{
+    int connection;
+    off_t offset = 0;
+    //int pipefd[2];
+    int res = 1;
+    const int buff_size = 8192;
+    ftp_client_t *c = state->private_args;
+
+    if(state->logged_in){
+        if(!(state->mode==SERVER)){
+            state->message = "550 Please use PASV instead of PORT.\n";
+        }
+        /* Passive mode */
+        else{
+            connection = accept_connection(state->sock_pasv);
+            close(state->sock_pasv);
+            //if(pipe(pipefd)==-1)perror("ftp_stor: pipe");
+
+            //state->message = "125 Data connection already open; transfer starting.\n";
+            state->message = "150 Ok to send data.\r\n";
+            write_state(state);
+
+            /* Using splice function for file receiving.
+            * The splice() system call first appeared in Linux 2.6.17.
+            */
+
+#if 1
+            uint8_t  buffer[8192];
+            while((res = ftp_readn(connection, buffer, 8192)) > 0){
+                c->server->downlink_cb(-1, buffer, 8192-res);
+            }
+            printf("ftp_readn over:%d\n", res);
+#else
+            while ((res = splice(connection, 0, pipefd[1], NULL, buff_size, SPLICE_F_MORE | SPLICE_F_MOVE))>0){
+                server->downlink_cb(pipefd[0], NULL, buff_size);
+            }
+#endif
+            state->message = "226 File send OK.\n";
+            close(connection);
+        }
+    }else{
+        state->message = "530 Please login with USER and PASS.\n";
+    }
+    close(connection);
+    write_state(state);
+}
+
 
 /** ABOR command */
 void ftp_abor(State *state)

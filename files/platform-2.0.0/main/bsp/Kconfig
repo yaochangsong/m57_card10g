@@ -38,6 +38,8 @@ menuconfig BSP
 				bool "yf21025"
 			config BSP_YF21033
 				bool "yf21033"
+			config BSP_M57_VPX
+				bool "m57_vpx"
 		endchoice                         #结束选择配置项
 		
 	config BSP_NAME

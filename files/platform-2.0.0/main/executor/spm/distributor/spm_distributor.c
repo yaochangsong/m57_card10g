@@ -58,7 +58,7 @@
 #define DIST_MAX_COUNT 2048
 #define DIST_MAX_FFT_CHANNEL MAX_RADIO_CHANNEL_NUM
 #define DIST_MAX_IQ_CHANNEL  8
-#define SPM_DIST_TIMEOUT_MS (10000)
+#define SPM_DIST_TIMEOUT_MS (2000)
 
 /* The max number of channel 48 is considered OK at present*/
 #define FRAME_MAX_CHANNEL 48
@@ -168,8 +168,8 @@ static ssize_t _spm_find_header(uint8_t *ptr, uint16_t header, size_t len)
     size_t offset = 0;
     do{
         if(ptr != NULL && *(uint16_t *)ptr != header){
-            ptr += 2;
-            offset += 2;
+            ptr += 1;
+            offset += 1;
         }else{
             break;
         }
@@ -241,7 +241,7 @@ ssize_t _spm_distributor_analysis(int type, uint8_t *mbufs, size_t len, struct s
 
         if(type == SPM_DIST_FFT){
             if(_frame_devider_gen_idx(type, ch, header->serial_num, &fidx) == -1){
-                printf_warn("frame sn[%d] error\n", header->serial_num);
+                printf_info("frame sn[%d] error,channel=%d\n", header->serial_num, header->channel);
                 ptr += dtype->pkt_len;
                 data_len -= dtype->pkt_len;
                 consume_len += dtype->pkt_len;
@@ -355,10 +355,7 @@ static int _spm_distributor_data_frame_producer(int ch, int type, void **data, s
         if(type == SPM_DIST_FFT && !config_get_fft_work_enable(ch))
             break;
 
-        if(type == SPM_DIST_FFT)
-            pkt = pkt_q->ops->pop_head(pkt_q);/* FFT取入队的最新数据包组帧 */
-        else
-            pkt = pkt_q->ops->pop(pkt_q);
+        pkt = pkt_q->ops->pop(pkt_q);
         //printf_note("POP,type:%d, ch:%d, pkt:%p\n", type, ch, pkt);
         if(pkt == NULL){
             usleep(2);
@@ -389,7 +386,7 @@ static int _spm_distributor_data_frame_producer(int ch, int type, void **data, s
         }
         /* 接受到中间包帧号和第一包帧号不一致，说明不是同一帧，丢弃，重新查找流水号为0的包 */
         if(frame_1st_idx != pkt->frame_idx && frame_len < len){
-            printf_warn("Frame idx:%"PRIu64" err, Discard pkt\n", pkt->frame_idx);
+            printf_info("Frame idx:%"PRIu64" err, Discard pkt\n", pkt->frame_idx);
             start_frame = false;
             _safe_free_(pkt);
             continue;
@@ -621,7 +618,8 @@ void *_spm_distributor_statistics_speed_loop(void *args)
         dtype->stat.read_speed_bps = _get_speed(0, time_interval, dtype->stat.read_bytes);
         dtype->stat.read_ok_speed_fps = _get_speed(1, time_interval, dtype->stat.read_ok_frame);
         if(dtype->stat.read_bytes > 0){
-            dtype->stat.loss_rate = (double)(dtype->stat.read_bytes - (dtype->stat.read_ok_pkts * pkt_len))/(double)dtype->stat.read_bytes;
+            dtype->stat.loss_bytes = dtype->stat.read_bytes - dtype->stat.read_ok_pkts * pkt_len;
+            dtype->stat.loss_rate = (double)(dtype->stat.loss_bytes)/(double)dtype->stat.read_bytes;
         }
         //printf_debug("loss_rate=%f, read_bytes=%"PRIu64", read_ok_pkts=%"PRIu64", pkt_len=%d\n", 
         //    dtype->stat.loss_rate, dtype->stat.read_bytes, dtype->stat.read_ok_pkts, pkt_len);
@@ -728,6 +726,8 @@ static int _spm_distributor_reset(int type, int ch)
     queue_ctx_t *qctx =  dist_type[type].pkt_queue[ch];
     if(qctx->ops->clear)
         qctx->ops->clear(qctx);
+    dist_type[type].have_frame[ch] = false;
+    dist_type[type].consume_over[ch] = false;
     _frame_devider_init(&frame_devider[type][ch]);
     //printf_note("Reset, type:%d, ch:%d\n", type, ch);
     return 0;

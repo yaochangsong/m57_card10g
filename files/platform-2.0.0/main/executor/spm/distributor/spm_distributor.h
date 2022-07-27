@@ -31,6 +31,7 @@ typedef struct spm_distributor_statistics{
     volatile uint32_t read_ok_speed_fps;    /* 读取帧速度，帧/s */
     volatile uint32_t read_speed_bps;       /* 读取字节速度bps */
     volatile float loss_rate;               /* 转发失败率 */
+    volatile uint64_t loss_bytes;           /* 转发失败字节数 */
 }spm_dist_statistics_t;
 
 

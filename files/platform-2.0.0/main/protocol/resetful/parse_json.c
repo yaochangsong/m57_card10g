@@ -1361,6 +1361,7 @@ char *assemble_json_distributor_info(void)
     cJSON_AddNumberToObject(item, "read_ok_frame", stat->read_ok_frame);
     cJSON_AddNumberToObject(item, "read_ok_speed_fps", stat->read_ok_speed_fps);
     cJSON_AddNumberToObject(item, "read_speed_byteps", stat->read_speed_bps);
+    cJSON_AddNumberToObject(item, "loss_bytes", stat->loss_bytes);
     snprintf(buffer, sizeof(buffer) -1, "%.6f", stat->loss_rate);
     cJSON_AddStringToObject(item, "loss_rate", buffer);
 exit:

@@ -41,3 +41,13 @@ menuconfig PROTOCOL
         int "HTTP Port"
         default 80
 		depends on PROTOCOL
+	
+	config PROTOCOL_FTP
+        bool "Use FTP to Tranfer Data"
+        default n
+		depends on PROTOCOL
+		
+	config PROTOCOL_FTP_PORT
+        int "HTTP Port"
+        default 8000
+		depends on PROTOCOL_FTP

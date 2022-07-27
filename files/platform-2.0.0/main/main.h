@@ -15,6 +15,7 @@ extern uint32_t get_power_level_threshold(void);
 extern bool is_spectrum_aditool_debug(void);
 extern int32_t get_signal_snr(void);
 extern char *get_config_path(void);
-bool bottom_noise_cali_en(void);
-
+extern bool bottom_noise_cali_en(void);
+extern char *get_sink_file_path_name(void);
+extern int32_t get_sink_file_time_ms(void);
 #endif

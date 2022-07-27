@@ -101,6 +101,11 @@ menuconfig SPM
 			endchoice                         
 		endif
 	
+	config FILE_SINK
+	bool "Stream data file sink"
+	default n
+		depends on SPM
+
 	config LIBIIO
         bool
         default n

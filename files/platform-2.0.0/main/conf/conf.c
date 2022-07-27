@@ -247,7 +247,7 @@ int config_set_network(char *ifname, uint32_t ipaddr, uint32_t netmask, uint32_t
 static int config_set_netaddr(char *ifname, uint32_t netaddr, char *script)
 {
     // /etc/netset.sh set_xxx eth0 192.168.2.111
-    static char buffer[128] = {0};
+    char buffer[128] = {0};
     struct in_addr in_ipaddr;
     char s_netaddr[32];
     int ret = 0;
@@ -482,7 +482,7 @@ int config_get_fft_resolution(int mode, int ch, int index, uint32_t bw_hz,uint32
 #else
         if(point->points[index].fft_size == 0){
             printf_warn("fft Size is NULL, default: 8K\n");
-            point->points[index].fft_size = 8192;
+            point->points[index].fft_size = 512;
         }
         *fft_size = point->points[index].fft_size;
         *resolution = config_get_resolution_by_fft(point->points[index].fft_size, bw_hz);
@@ -496,7 +496,7 @@ int config_get_fft_resolution(int mode, int ch, int index, uint32_t bw_hz,uint32
 #else
         if(fregment->fregment[index].fft_size == 0){
             printf_warn("fft Size is NULL, default: 8K\n");
-            fregment->fregment[index].fft_size = 8192;
+            fregment->fregment[index].fft_size = 512;
         }
         *fft_size = fregment->fregment[index].fft_size;
         *resolution = config_get_resolution_by_fft(fregment->fregment[index].fft_size, bw_hz);

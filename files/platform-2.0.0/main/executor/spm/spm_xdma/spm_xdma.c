@@ -231,30 +231,30 @@ static int xspm_create(void)
 
 
 struct xdma_ring_trans_ioctl xinfo[4];
-static ssize_t xspm_stream_read(int ch, int type,  void **data, uint32_t *len, void *args)
+static ssize_t xspm_stream_read(int ch, int index, int type,  void **data, uint32_t *len, void *args)
 {
     #define _STREAM_READ_TIMEOUT_MS (1000)
     int rc = 0;
     struct _spm_xstream *pstream = spm_dev_get_stream(NULL);
-    struct xdma_ring_trans_ioctl *info = &xinfo[type];
+    struct xdma_ring_trans_ioctl *info = &xinfo[index];
     size_t readn = 0;
     static uint32_t timer = 0;
     struct timeval start, now;
     
     memset(info, 0, sizeof(struct xdma_ring_trans_ioctl));
-    if(pstream[type].id < 0){
-        printf_debug("%d stream node:%s not found\n",type, pstream[type].name);
+    if(pstream[index].id < 0){
+        printf_debug("%d stream node:%s not found\n",index, pstream[index].name);
         return -1;
     }
      _spm_gettime(&start);
     do{
-        rc =  ioctl(pstream[type].id, IOCTL_XDMA_TRANS_GET, info);
+        rc =  ioctl(pstream[index].id, IOCTL_XDMA_TRANS_GET, info);
         if (rc) {
-            printf_err("type=%d, id=%d ioctl(IOCTL_XDMA_TRANS_GET) failed %d, info=%p, %p, %p\n",type, pstream[type].id, rc, info, &xinfo[0], &xinfo[1]);
+            printf_err("type=%d, id=%d ioctl(IOCTL_XDMA_TRANS_GET) failed %d, info=%p, %p, %p\n",index, pstream[index].id, rc, info, &xinfo[0], &xinfo[1]);
             return -1;
         }
         if(info->status == RING_TRANS_OK){
-            printf_debug("type=%d\n", type);
+            printf_debug("type=%d\n", index);
             printf_debug("ring_trans.rx_index:%d\n", info->rx_index);
             printf_debug("ring_trans.ready_count:%d\n", info->ready_count);
             printf_debug("ring_trans.status:%d\n", info->status);
@@ -263,7 +263,7 @@ static ssize_t xspm_stream_read(int ch, int type,  void **data, uint32_t *len, v
             return -1;
         } else if(info->status == RING_TRANS_OVERRUN){
             printf_warn("*****status:RING_TRANS_OVERRUN.*****\n");
-            xspm_xdma_data_clear(ch, args, type);
+            xspm_xdma_data_clear(ch, args, index);
         } else if(info->status == RING_TRANS_INITIALIZING){
             printf_warn("*****status:RING_TRANS_INITIALIZING.*****\n");
             usleep(10);
@@ -278,17 +278,26 @@ static ssize_t xspm_stream_read(int ch, int type,  void **data, uint32_t *len, v
         }
     }while(info->status == RING_TRANS_PENDING);
 
-   int index;
+   int j;
     uint8_t *ptr = NULL;
     //printf_note("ready_count: %u, type:%d\n", info->ready_count, type);
     for(int i = 0; i < info->ready_count; i++){
-        index = (info->rx_index + i) % info->block_count;
-        data[i] = pstream[type].ptr[index];
-        len[i] = info->results[index].length;
+        j = (info->rx_index + i) % info->block_count;
+        data[i] = pstream[index].ptr[j];
+        len[i] = info->results[j].length;
         timer = 0;
         printf_debug("[%d,index:%d][%p, %p, len:%u, offset=0x%x]%s\n", 
-                i, index, data[i], pstream[type].ptr[index], len[i], info->rx_index,  pstream[type].name);
+                i, j, data[i], pstream[index].ptr[j], len[i], info->rx_index,  pstream[index].name);
+#ifdef CONFIG_FILE_SINK
+        int sink_type = STREAM_FFT;
+        if(type == STREAM_NIQ)
+            sink_type = FILE_SINK_TYPE_NIQ;
+        else if(type == STREAM_BIQ)
+            sink_type = FILE_SINK_TYPE_BIQ;
+        file_sink_work(sink_type, data[i], len[i]);
+#endif
     }
+    
     return info->ready_count;
 }
 
@@ -394,9 +403,10 @@ static ssize_t _xspm_find_header(uint8_t *ptr, uint16_t header, size_t len)
 static ssize_t xspm_stream_read_from_file(int type, int ch, void **data, size_t *len, void *args)
 {
     #define STRAM_IQ_FILE_PATH "/home/ycs/share/platform-2.0.0/files/platform-2.0.0/DEV0_CH0_IQ.raw"
-    #define STRAM_FFT_FILE_PATH "/home/ycs/share/platform-2.0.0/files/platform-2.0.0/DEV0_CH1_FFT8K.raw"
+    #define STRAM_FFT_FILE_PATH "/home/ycs/share/platform-2.0.0/files/platform-2.0.0/fft512.dat"
+    //#define STRAM_FFT_FILE_PATH "/home/ycs/share/platform-2.0.0/files/platform-2.0.0/DEV0_CH1_FFT8K.raw"
     #define STRAM_READ_BLOCK_SIZE  528
-    #define STRAM_READ_BLOCK_COUNT 4
+    #define STRAM_READ_BLOCK_COUNT 2
 
     size_t rc = 0, rc2 = 0;
     static FILE * fp = NULL;
@@ -408,7 +418,6 @@ static ssize_t xspm_stream_read_from_file(int type, int ch, void **data, size_t 
     }else
         path = STRAM_IQ_FILE_PATH;
     if(fp == NULL){
-        printf_err("Open file[%s]!\n", path);
         fp = fopen (path, "rb");
         if(!fp){
             printf_err("Open file[%s] error!\n", path);
@@ -441,12 +450,13 @@ static ssize_t xspm_stream_read_from_file(int type, int ch, void **data, size_t 
         ptr = buffer[cn];
         offset = _xspm_find_header(buffer[cn], 0xaa55, rc);
         if(offset < 0){ 
+            printf_note("find header err\n");
             continue;
         }
         else{
             ptr += rc;
             if(offset > 0){
-                //printf_note("[%02x]rc=%lu, offset=%ld, %lu\n", *ptr, rc, offset, rc - offset);
+                printf_note("[%02x]rc=%lu, offset=%ld, %lu\n", *ptr, rc, offset, rc - offset);
                 rc2 = fread((void *)ptr, 1, offset , fp);
             }
         }
@@ -476,7 +486,7 @@ ssize_t xspm_read_fft_vec_data(int ch , void **data, void *len, void *args)
     index = xspm_find_index_by_type(-1, -1, STREAM_FFT);
     if(index < 0)
         return -1;
-    return xspm_stream_read(ch, index, data, len, args);
+    return xspm_stream_read(ch, index, STREAM_FFT, data, len, args);
 #endif
 }
 
@@ -490,7 +500,7 @@ ssize_t xspm_read_iq_vec_data(int ch , void **data, void *len, void *args)
     index = xspm_find_index_by_type(-1, -1, STREAM_NIQ);
     if(index < 0)
         return -1;
-    return xspm_stream_read(ch, index, data, len, args);
+    return xspm_stream_read(ch, index, STREAM_NIQ, data, len, args);
 #endif
 }
 
@@ -502,7 +512,7 @@ ssize_t xspm_read_niq_data(int ch , void **data, void *len, void *args)
     index = xspm_find_index_by_type(-1, -1, STREAM_NIQ);
     if(index < 0)
         return -1;
-    return xspm_stream_read(ch, index, data, len, args);
+    return xspm_stream_read(ch, index, STREAM_NIQ, data, len, args);
 }
 
 
@@ -513,7 +523,7 @@ ssize_t xspm_read_biq_data(int ch , void **data, void *len, void *args)
     index = xspm_find_index_by_type(-1, -1, STREAM_BIQ);
     if(index < 0)
         return -1;
-    return xspm_stream_read(ch, index, data, len, args);
+    return xspm_stream_read(ch, index, STREAM_BIQ, data, len, args);
 
 }
 
@@ -536,7 +546,7 @@ static ssize_t xspm_read_fft_data(int ch, void **data, void *args)
     index = xspm_find_index_by_type(ch, -1, STREAM_FFT);
     if(index < 0)
         return -1;
-    count = xspm_stream_read(ch, index, data, len, args);
+    count = xspm_stream_read(ch, index, STREAM_FFT, data, len, args);
     count = count;
     fft_byte_len = len[0];
 #endif
@@ -922,7 +932,7 @@ static int _spm_extract_half_point(void *data, int len, void *outbuf)
     return len/2;
 }
 
-static int spm_scan(uint64_t *s_freq_offset, uint64_t *e_freq, uint32_t *scan_bw, uint32_t *bw, uint64_t *m_freq)
+static int xspm_scan(uint64_t *s_freq_offset, uint64_t *e_freq, uint32_t *scan_bw, uint32_t *bw, uint64_t *m_freq)
 {
     //#define MAX_SCAN_FREQ_HZ (6000000000)
     uint64_t _m_freq;
@@ -954,7 +964,6 @@ static int spm_scan(uint64_t *s_freq_offset, uint64_t *e_freq, uint32_t *scan_bw
 
     return 0;
 }
-
 
 /* 频谱数据整理 */
 static fft_t *xspm_data_order(fft_t *fft_data, 
@@ -1046,7 +1055,7 @@ static const struct spm_backend_ops xspm_ops = {
     .stream_start = xspm_read_stream_start,
     .stream_stop = xspm_read_stream_stop,
     .data_order = xspm_data_order,
-    .spm_scan = spm_scan,
+    .spm_scan = xspm_scan,
     .close = _xspm_close,
 };
 
@@ -1060,6 +1069,11 @@ struct spm_context * spm_create_context(void)
 
     ctx->ops = &xspm_ops;
     ctx->pdata = &config_get_config()->oal_config;
+#ifdef CONFIG_FILE_SINK
+    file_sink_init(get_sink_file_path_name(), FILE_SINK_TYPE_FFT, get_sink_file_time_ms());
+    file_sink_init(NULL, FILE_SINK_TYPE_NIQ, get_sink_file_time_ms());
+    file_sink_init(NULL, FILE_SINK_TYPE_BIQ, get_sink_file_time_ms());
+#endif
     printf_info("create xdma ctx\n");
 err_set_errno:
     errno = -ret;

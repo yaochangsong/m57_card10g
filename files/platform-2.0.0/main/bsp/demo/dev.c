@@ -22,6 +22,7 @@
 static struct _spm_xstream spm_stream[] = {
     {XDMA_R_DEV1,      -1, 0, XDMA_BUFFER_SIZE, XDMA_BLOCK_SIZE,  "FFT Stream", DMA_READ, STREAM_FFT, -1},
     {XDMA_R_DEV2,      -1, 1, XDMA_BUFFER_SIZE, XDMA_BLOCK_SIZE,  "NIQ Stream", DMA_READ, STREAM_NIQ, -1},
+    {XDMA_R_DEV0,      -1, 1, XDMA_BUFFER_SIZE, XDMA_BLOCK_SIZE,  "XDMA Stream", DMA_WRITE, STREAM_NIQ, -1},
 };
 #else
 #define DMA_FFT0_DEV "/dev/dma_fft"

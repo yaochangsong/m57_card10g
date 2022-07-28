@@ -511,12 +511,10 @@ static ssize_t ftp_readn(int fd, void *ptr, size_t n)
     return (n - nleft);  /* return >=0 */
 }
 
-
 void ftp_stor2(Command *cmd, State *state)
 {
     int connection;
     int res = 1;
-    const int buff_size = 8192;
     ftp_client_t *c = state->private_args;
 
     if(state->logged_in){
@@ -535,9 +533,9 @@ void ftp_stor2(Command *cmd, State *state)
 
             if(c->server->pre_cb)
                 c->server->pre_cb(MISC_WRITE, NULL);
-            uint8_t  buffer[8192];
+            uint8_t buffer[8192];
             while((res = ftp_readn(connection, buffer, 8192)) > 0){
-                c->server->downlink_cb(-1, buffer, 8192-res);
+                c->server->downlink_cb(-1, buffer, res);
             }
             if(c->server->post_cb)
                 c->server->post_cb(MISC_WRITE, NULL);

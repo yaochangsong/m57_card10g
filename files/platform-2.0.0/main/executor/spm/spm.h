@@ -68,7 +68,7 @@ struct spm_backend_ops {
     int (*read_niq_over_deal)(void *);
     int (*read_fft_over_deal)(int,  void *);
     int (*read_raw_over_deal)(int,  void *);
-    int (*write_raw_data)(int, const void *, size_t, int);
+    int (*write_data)(int, const void *, size_t);
     fft_t *(*data_order)(fft_t *, size_t,  size_t *, void *);
     int (*send_fft_data)(void *, size_t, void *);
     int (*send_biq_data)(int, void *, size_t, void *);

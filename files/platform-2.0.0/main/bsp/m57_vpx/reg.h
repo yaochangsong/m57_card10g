@@ -24,6 +24,7 @@
 #define FPGA_STAUS_OFFSET 	    (0x1000)
 #define FPGA_SPI_REG_OFFSET 	(0x3010)
 #define FPGA_CTRL_REG_OFFSET 	(0x3100)
+#define FPGA_SRIO_REG_OFFSET 	(0x4000)
 
 
 #define VALID_MAX_CARD_SLOTS_NUM 4
@@ -78,6 +79,12 @@ typedef struct _CTRL_REG_
     uint32_t ddr_ready;
 }CTRL_REG;
 
+typedef struct _SRIO_REG_
+{
+    uint32_t rev; 
+    uint32_t dma0_src_dst_id;
+    uint32_t dma1_src_dst_id;
+}SRIO_REG;
 
 
 typedef struct _FPGA_CONFIG_REG_
@@ -86,6 +93,7 @@ typedef struct _FPGA_CONFIG_REG_
     STATUS_REG *status[MAX_FPGA_CARD_SLOT_NUM];
     SPI_REG *rf_reg;
     CTRL_REG *ctrl_reg;
+    SRIO_REG *srio_reg;
 }FPGA_CONFIG_REG;
 
 
@@ -104,6 +112,11 @@ typedef struct _FPGA_CONFIG_REG_
 #define SET_RF_BYTE_CMD(reg, v)              (reg->rf_reg->cmd=v)
 #define GET_RF_STATUS(reg)                   (reg->rf_reg->status)
 #define GET_RF_BYTE_READ(reg)                (reg->rf_reg->read)
+
+/* SRIO */
+#define SET_SRIO_SRC_DST_ID1(reg, v)              (reg->srio_reg->dma0_src_dst_id=v)
+#define SET_SRIO_SRC_DST_ID2(reg, v)              (reg->srio_reg->dma1_src_dst_id=v)
+
 
 
 /* 获取射频不同工作模式下放大倍数 

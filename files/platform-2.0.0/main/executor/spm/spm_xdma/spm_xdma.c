@@ -357,6 +357,9 @@ static int xspm_stram_write(int ch, const void *data, size_t data_len)
     if (!buflen)
         return 0;
 
+#ifdef DEBUG_TEST
+    return data_len;
+#endif
     index = xspm_find_index_by_rw(ch, -1, DMA_WRITE);
     if(index < 0)
         return -1;
@@ -393,7 +396,7 @@ static inline int _align_4byte(int *rc)
     }
     return 0;
 }
-static int xspm_stram_write_align(int ch, const void *data, size_t len, int args)
+static int xspm_stram_write_align(int ch, const void *data, size_t len)
 {
     ssize_t nwrite;
     void *buffer = NULL;
@@ -409,7 +412,11 @@ static int xspm_stram_write_align(int ch, const void *data, size_t len, int args
     memcpy(buffer, data, len);
     _len = len;
     reminder = _align_4byte((int *)&_len);
+#ifndef DEBUG_TEST
     nwrite = xspm_stram_write(ch, buffer, _len);
+#else
+    nwrite = _len;
+#endif
     printf_note("Write data %s![%ld],align 4byte reminder=%d[raw len: %lu]\n",  (nwrite == _len) ? "OK" : "Faild", nwrite, reminder, len);
     free(buffer);
     buffer = NULL;
@@ -1107,7 +1114,7 @@ static const struct spm_backend_ops xspm_ops = {
     .read_raw_vec_data = xspm_read_xdma_raw_data,
     .read_raw_over_deal = xspm_read_xdma_raw_data_over,
     .send_data_by_fd = xspm_send_data_by_fd,
-    .write_raw_data = xspm_stram_write_align,
+    .write_data = xspm_stram_write,
     //.read_niq_data = xspm_read_niq_data,
     //.read_biq_data = xspm_read_biq_data,
     .read_fft_over_deal = xspm_read_xdma_fft_data_over,

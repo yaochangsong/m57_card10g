@@ -51,3 +51,9 @@ menuconfig PROTOCOL
         int "FTP Port"
         default 8000
 		depends on PROTOCOL_FTP
+
+	config PROTOCOL_FTP_PATH
+	string	"Ftp Path"
+	default "/home"
+	
+	

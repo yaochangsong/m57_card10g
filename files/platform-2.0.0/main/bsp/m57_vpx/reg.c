@@ -79,6 +79,13 @@ static int fpga_memmap(int fd_dev, FPGA_CONFIG_REG *fpga_reg)
         return -1;
     }
 
+    fpga_reg->srio_reg = (SRIO_REG *)((uint8_t *)fpga_reg->system + FPGA_SRIO_REG_OFFSET);
+    if (!fpga_reg->srio_reg)
+    {
+        printf("mmap failed, NULL pointer!\n");
+        return -1;
+    }
+
     return 0;
 }
 

@@ -8,7 +8,12 @@ void parse_command(char *cmdstring, Command *cmd);
 
 //Communication
 void* communication(void* _c) {
-    chdir("/home/ycs/share/tmp/ftp");
+#ifdef CONFIG_PROTOCOL_FTP_PATH
+    chdir(CONFIG_PROTOCOL_FTP_PATH);
+#else
+    chdir("/home");
+#endif
+    
     ftp_client_t *c = (ftp_client_t *)_c;
     int connection = c->fd;
     int bytes_read;

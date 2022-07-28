@@ -14,55 +14,26 @@
 ******************************************************************************/
 #include "dev.h"
 
-#ifdef CONFIG_SPM_SOURCE_XDMA
 #define XDMA_R_DEV0 "/dev/xdma0_h2c_0"  //下行
 #define XDMA_R_DEV1 "/dev/xdma0_c2h_0"  //上行
 #define XDMA_R_DEV2 "/dev/xdma0_c2h_1"
 #define XDMA_R_DEV3 "/dev/xdma0_c2h_3"
-static struct _spm_xstream spm_stream[] = {
-    {XDMA_R_DEV1,      -1, 0, XDMA_BUFFER_SIZE, XDMA_BLOCK_SIZE,  "FFT Stream", DMA_READ, STREAM_FFT, -1},
-    {XDMA_R_DEV2,      -1, 1, XDMA_BUFFER_SIZE, XDMA_BLOCK_SIZE,  "NIQ Stream", DMA_READ, STREAM_NIQ, -1},
-    {XDMA_R_DEV0,      -1, 1, XDMA_BUFFER_SIZE, XDMA_BLOCK_SIZE,  "XDMA Stream", DMA_WRITE, STREAM_NIQ, -1},
-};
-#else
-#define DMA_FFT0_DEV "/dev/dma_fft"
-#define DMA_FFT1_DEV "/dev/dma_fft2"
-#define DMA_NIQ_DEV  "/dev/dma_iq"
-#define DMA_ADC_TX0_DEV "/dev/dma_adc_tx"
-#define DMA_ADC_RX0_DEV "/dev/dma_adc_rx"
-#define DMA_ADC_TX1_DEV "/dev/dma_adc_tx2"
-#define DMA_ADC_RX1_DEV "/dev/dma_adc_rx2"
 
-static struct _spm_stream spm_stream[] = {
-    {DMA_NIQ_DEV,       -1,-1, NULL, DMA_IQ_BUFFER_SIZE, "NIQ Stream",      DMA_READ, STREAM_NIQ},
-    {DMA_FFT0_DEV,      -1, 0, NULL, DMA_BUFFER_16M_SIZE, "FFT0 Stream",    DMA_READ, STREAM_FFT},
-    {DMA_FFT1_DEV,      -1, 1, NULL, DMA_BUFFER_16M_SIZE, "FFT1 Stream",    DMA_READ, STREAM_FFT},
-    {DMA_ADC_TX0_DEV,   -1, 0, NULL, DMA_BUFFER_64M_SIZE, "ADC Tx0 Stream", DMA_WRITE, STREAM_ADC_WRITE},
-    {DMA_ADC_TX1_DEV,   -1, 1, NULL, DMA_BUFFER_64M_SIZE, "ADC Tx1 Stream", DMA_WRITE, STREAM_ADC_WRITE},
-    {DMA_ADC_RX0_DEV,   -1, 0, NULL, DMA_BUFFER_64M_SIZE, "ADC Rx0 Stream", DMA_READ, STREAM_ADC_READ},
-    {DMA_ADC_RX1_DEV,   -1, 1, NULL, DMA_BUFFER_64M_SIZE, "ADC Rx1 Stream", DMA_READ, STREAM_ADC_READ},
+static struct _spm_xstream spm_xstream[] = {
+        {XDMA_R_DEV0,        -1, 0, XDMA_BUFFER_SIZE, XDMA_BLOCK_SIZE, "Write XDMA Stream",  DMA_WRITE, STREAM_XDMA, -1},
+        {XDMA_R_DEV1,        -1, 0, XDMA_BUFFER_SIZE, XDMA_BLOCK_SIZE, "Read XDMA Stream0",  DMA_READ,  STREAM_XDMA, -1},
 };
-#endif
 
-#ifdef CONFIG_SPM_SOURCE_XDMA
 struct _spm_xstream* spm_dev_get_stream(int *count)
-#else
-struct _spm_stream* spm_dev_get_stream(int *count)
-#endif
 {
     if(count)
-        *count = ARRAY_SIZE(spm_stream);
-    return spm_stream;
+        *count = ARRAY_SIZE(spm_xstream);
+    return spm_xstream;
 }
 
 
 static struct gpio_node_info gpio_node[] ={
     /* pin   direction  default gpio value   func_code    func_name    fd */
-    {24,     "out",        1,               GPIO_RF_POWER_ONOFF,    "Rf Power On/Off  gpio ctrl",   -1 },
-    {25,     "out",        0,               GPIO_GPS_LOCK,          "GPS Locked gpio ctrl",         -1 },
-    {4,      "out",        0,               GPIO_FUNC_LOW_NOISER,   "RS485 0 ctrl",                 -1 },
-    {5,      "out",        0,               GPIO_FUNC_COMPASS2,     "RS485 1 ctrl",                 -1 },
-    {6,      "out",        0,               GPIO_FUNC_COMPASS1,     "RS485 2 ctrl",                 -1 },
 };
 
 struct gpio_node_info* dev_get_gpio(int *count)
@@ -75,7 +46,7 @@ struct gpio_node_info* dev_get_gpio(int *count)
 #ifdef CONFIG_DEVICE_UART
 struct uart_info_t uartinfo[] = {
     /* NOTE: ttyUL*为PL侧控制，波特率由PL侧设置（默认为9600，不可更改），需要更改FPGA */
-   {UART_GPS_CODE, "/dev/ttyUL1", 9600,   "gps",   false},
+  // {UART_GPS_CODE, "/dev/ttyUL1", 9600,   "gps",   false},
 };
 
 struct uart_info_t* dev_get_uart(int *count)

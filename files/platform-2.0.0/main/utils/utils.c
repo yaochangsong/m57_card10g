@@ -502,6 +502,22 @@ int writen(int fd, const uint8_t *buf, int buflen)
     return ret;
 }
 
+void *malloc_align(size_t size)
+{
+    void *buffer = NULL;
+    int pagesize = 0;
+
+    pagesize=getpagesize();
+    posix_memalign((void **)&buffer, pagesize /*alignment */ , size + pagesize);
+    if (!buffer) {
+       fprintf(stderr, "OOM %u.\n", pagesize);
+       return NULL;
+    }
+    memset(buffer, 0 , size + pagesize);
+    return buffer;
+}
+
+
 void* safe_malloc(size_t size) {
 
     void* result = malloc(size);

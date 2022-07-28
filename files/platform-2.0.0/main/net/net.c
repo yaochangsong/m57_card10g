@@ -243,7 +243,11 @@ int server_init(void)
     srv->on_accept = on_accept;
     srv->on_request = on_request;
     nserver->http_server = srv;
-    
+
+#ifdef CONFIG_PROTOCOL_FTP
+    ftp_server_init(CONFIG_PROTOCOL_FTP_PORT);
+    printf_note("FTP Server listen on port: %d\n", CONFIG_PROTOCOL_FTP_PORT);
+#endif
     return 0;
 }
 

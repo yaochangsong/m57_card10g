@@ -289,11 +289,13 @@ static ssize_t xspm_stream_read(int ch, int index, int type,  void **data, uint3
         printf_debug("[%d,index:%d][%p, %p, len:%u, offset=0x%x]%s\n", 
                 i, j, data[i], pstream[index].ptr[j], len[i], info->rx_index,  pstream[index].name);
 #ifdef CONFIG_FILE_SINK
-        int sink_type = STREAM_FFT;
+        int sink_type = FILE_SINK_TYPE_FFT;
         if(type == STREAM_NIQ)
             sink_type = FILE_SINK_TYPE_NIQ;
         else if(type == STREAM_BIQ)
             sink_type = FILE_SINK_TYPE_BIQ;
+        else if(type == STREAM_XDMA)
+            sink_type = FILE_SINK_TYPE_RAW;
         file_sink_work(sink_type, data[i], len[i]);
 #endif
     }
@@ -345,7 +347,6 @@ static inline int xspm_find_index_by_rw(int ch, int subch, int rw)
     return index;
 }
 
-
 static int xspm_stram_write(int ch, const void *data, size_t data_len)
 {
     ssize_t ret = 0, len;
@@ -356,6 +357,9 @@ static int xspm_stram_write(int ch, const void *data, size_t data_len)
     if (!buflen)
         return 0;
 
+#ifdef DEBUG_TEST
+    return data_len;
+#endif
     index = xspm_find_index_by_rw(ch, -1, DMA_WRITE);
     if(index < 0)
         return -1;
@@ -379,6 +383,44 @@ static int xspm_stram_write(int ch, const void *data, size_t data_len)
         buflen -= len;
     }
     return ret;
+}
+
+static inline int _align_4byte(int *rc)
+{
+    int _rc = *rc;
+    int reminder = _rc % 4;
+    if(reminder != 0){
+        _rc += (4 - reminder);
+        *rc = _rc;
+        return (4 - reminder);
+    }
+    return 0;
+}
+static int xspm_stram_write_align(int ch, const void *data, size_t len)
+{
+    ssize_t nwrite;
+    void *buffer = NULL;
+    int pagesize = 0,reminder = 0, _len = 0;
+
+    pagesize=getpagesize();
+    posix_memalign((void **)&buffer, pagesize /*alignment */ , len + pagesize);
+    if (!buffer) {
+        fprintf(stderr, "OOM %u.\n", pagesize);
+        return -1;
+    }
+    memset(buffer, 0 , len + pagesize);
+    memcpy(buffer, data, len);
+    _len = len;
+    reminder = _align_4byte((int *)&_len);
+#ifndef DEBUG_TEST
+    nwrite = xspm_stram_write(ch, buffer, _len);
+#else
+    nwrite = _len;
+#endif
+    printf_note("Write data %s![%ld],align 4byte reminder=%d[raw len: %lu]\n",  (nwrite == _len) ? "OK" : "Faild", nwrite, reminder, len);
+    free(buffer);
+    buffer = NULL;
+    return nwrite;
 }
 
 static ssize_t _xspm_find_header(uint8_t *ptr, uint16_t header, size_t len)
@@ -527,6 +569,34 @@ ssize_t xspm_read_biq_data(int ch , void **data, void *len, void *args)
 
 }
 
+static ssize_t xspm_read_xdma_raw_data(int ch , void **data, void *len, void *args)
+{
+
+#ifdef DEBUG_TEST
+       /* if(config_get_work_enable() == false){
+            usleep(1000);
+            return -1;
+        }*/
+        return xspm_stream_read_from_file(STREAM_FFT, ch, data, len, args);
+#else
+    int index;
+    index = xspm_find_index_by_type(-1, -1, STREAM_XDMA);
+    if(index < 0)
+        return -1;
+    return xspm_stream_read(ch, index, STREAM_XDMA, data, len, args);
+#endif
+}
+
+static int xspm_read_xdma_raw_data_over(int ch,  void *arg)
+{
+    return xspm_read_xdma_data_over(ch, arg, STREAM_XDMA);
+}
+
+static int xspm_send_data_by_fd(int fd, void *data, size_t len, void *arg)
+{
+    return tcp_send_data_to_client(fd, data, len);
+}
+
 
 static ssize_t xspm_read_fft_data(int ch, void **data, void *args)
 {
@@ -591,19 +661,14 @@ static int xspm_send_fft_data(void *data, size_t fft_len, void *arg)
     iov[0].iov_len = header_len;
     iov[1].iov_base = data;
     iov[1].iov_len = data_byte_size;
-    if(hparam->ch == 0)
-        __lock_fft_send__();
-    else
-        __lock_fft2_send__();
+    int ch = hparam->ch;
+    __lock_fft_send__(ch);
 #if (defined CONFIG_PROTOCOL_DATA_TCP)
     tcp_send_vec_data(iov, 2, NET_DATA_TYPE_FFT);
 #else
     udp_send_vec_data(iov, 2, NET_DATA_TYPE_FFT);
 #endif
-    if(hparam->ch == 0)
-        __unlock_fft_send__();
-   else
-        __unlock_fft2_send__();
+    __unlock_fft_send__(ch);
     _safe_free_(ptr_header);
     return (header_len + data_byte_size);
 }
@@ -909,7 +974,6 @@ static int xspm_read_xdma_fft_data_over(int ch,  void *arg)
     return xspm_read_xdma_data_over(ch, arg, STREAM_FFT);
 }
 
-
 static  float get_side_band_rate(uint32_t bandwidth)
 {
     #define DEFAULT_SIDE_BAND_RATE  (1.28)
@@ -1047,6 +1111,10 @@ static const struct spm_backend_ops xspm_ops = {
     .read_fft_vec_data = xspm_read_fft_vec_data,
     .send_fft_data = xspm_send_fft_data,
     .read_iq_vec_data = xspm_read_iq_vec_data,
+    .read_raw_vec_data = xspm_read_xdma_raw_data,
+    .read_raw_over_deal = xspm_read_xdma_raw_data_over,
+    .send_data_by_fd = xspm_send_data_by_fd,
+    .write_data = xspm_stram_write,
     //.read_niq_data = xspm_read_niq_data,
     //.read_biq_data = xspm_read_biq_data,
     .read_fft_over_deal = xspm_read_xdma_fft_data_over,

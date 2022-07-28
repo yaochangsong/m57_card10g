@@ -1,17 +1,28 @@
 #include "ftp_common.h"
 #include "ftp_server.h"
+#include <stdbool.h>
+#include "../../../main/executor/spm/spm.h"
 #include <pthread.h>
 
 void parse_command(char *cmdstring, Command *cmd);
 
 //Communication
 void* communication(void* _c) {
-    chdir("/");
-    int connection = *(int*)_c , bytes_read;
+#ifdef CONFIG_PROTOCOL_FTP_PATH
+    chdir(CONFIG_PROTOCOL_FTP_PATH);
+#else
+    chdir("/home");
+#endif
+    
+    ftp_client_t *c = (ftp_client_t *)_c;
+    int connection = c->fd;
+    int bytes_read;
     char buffer[BSIZE];
     Command *cmd = malloc(sizeof(Command));
     State *state = malloc(sizeof(State));
     state->username = NULL; //add by zhaoyou
+    state->private_args = c;
+    state->logged_in = 1;
     memset(buffer,0,BSIZE);
     char welcome[BSIZE] = "220 ";
     if(strlen(welcome_message)<BSIZE-4){
@@ -19,16 +30,18 @@ void* communication(void* _c) {
     }else{
         strcat(welcome, "Welcome to nice FTP service.");
     }
-
+    sprintf(buffer ," [%s:%d]\n", inet_ntoa(c->client_address.sin_addr), c->client_address.sin_port);
+    strcat(welcome, buffer);
     /* Write welcome message */
     strcat(welcome,"\n");
     write(connection, welcome,strlen(welcome));
 
+    memset(buffer,0,BSIZE);
     /* Read commands from client */
-    while (bytes_read = read(connection,buffer,BSIZE) > 0){
+    while ((bytes_read = read(connection,buffer,BSIZE)) > 0){
         if(!(bytes_read>BSIZE) && bytes_read > 0){
             /* TODO: output this to log */
-            printf("User %s sent command: %s\n",(state->username==0)?"unknown":state->username,buffer);
+            printf_debug("User %s sent command: %s\n",(state->username==NULL)?"unknown":state->username,buffer);
             parse_command(buffer,cmd);
             state->connection = connection;
 
@@ -37,38 +50,76 @@ void* communication(void* _c) {
                 response(cmd,state);
             }
             memset(buffer,0,BSIZE);
-            memset(cmd,0,sizeof(cmd));
+            memset(cmd,0,sizeof(*cmd));
         }else{
             /* Read error */
             perror("server:read");
         }
     }
+    printf_debug("Client disconnected.\n");
     close(connection);
-    printf("Client disconnected.\n");
+    free(c);
+    c = NULL;
+    free(cmd);
+    cmd = NULL;
+    if(state->username){
+        free(state->username);
+        state->username = NULL;
+    }
+    free(state);
+    state = NULL;
     return NULL ;
 }
 
-/** 
-* Sets up server and handles incoming connections
-* @param port Server port
-*/
-void ftp_server(int port)
+
+void *ftp_server_thread_loop(void *s)
 {
     //set defaul ftp server root work path.You can customize the path.
+#if 0
    if(chroot(SERVERROOTPATH) !=0 )
    {
        printf("%s","chroot erro：please run as root!\n");
        exit(0);
    }
-    int sock = create_socket(port);
+#endif
+    ftp_server_t *server = s;
+    int sock = create_socket(server->port);
     struct sockaddr_in client_address;
-    int len = sizeof(client_address);
+    unsigned int len = sizeof(client_address);
+    pthread_detach(pthread_self());
     while(1){
-        int *connection = (int*)malloc(sizeof(int));
-        *connection = accept(sock, (struct sockaddr*) &client_address,&len);
-
+        ftp_client_t *c = malloc(sizeof(ftp_client_t));
+        c->fd = accept(sock, (struct sockaddr*) &client_address,&len);
+        c->server = server;
+        memcpy(&c->client_address, &client_address, len);
         pthread_t pid;
-        pthread_create(&pid, NULL, communication, (void*) (connection));
+        pthread_create(&pid, NULL, communication, (void*) (c));
+    }
+}
+
+void ftp_server_init(int port)
+{
+    pthread_t pid;
+    struct misc_ops  *m= misc_get();
+    ftp_server_t *server = malloc(sizeof(ftp_server_t));
+    memset(server, 0, sizeof(*server));
+    server->port = port;
+    if(!m)
+        return;
+    if(m->pre_handle)
+        server->pre_cb = m->pre_handle;
+    if(m->post_handle)
+        server->post_cb = m->post_handle;
+    if(m->write_handle)
+        server->downlink_cb = m->write_handle;
+    if(m->read_handle)
+        server->uplink_cb = m->read_handle;
+
+    int ret;
+    pthread_t work_id;
+    ret=pthread_create(&work_id, NULL, ftp_server_thread_loop, (void *)server);
+    if(ret!=0){
+        perror("pthread create");
     }
 }
 

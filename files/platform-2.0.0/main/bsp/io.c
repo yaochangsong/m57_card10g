@@ -330,7 +330,11 @@ int32_t io_set_dec_method(uint32_t ch, uint8_t dec_method){
 static uint32_t io_set_dec_middle_freq_reg(uint8_t ch, uint64_t dec_middle_freq, uint64_t middle_freq)
 {
         /* delta_freq = (reg* 204800000)/2^32 ==>  reg= delta_freq*2^32/204800000 */
+#ifdef CLOCK_FREQ_HZ
 #define FREQ_MAGIC1 CLOCK_FREQ_HZ
+#else
+#define FREQ_MAGIC1 (256000000)
+#endif
 #define FREQ_MAGIC2 (0x100000000ULL)  /* 2^32 */
     
         uint64_t delta_freq;
@@ -922,6 +926,33 @@ static void io_set_BIQ_out_disable(int ch, int subch)
     }
 }
 
+void io_set_xdma_disable(int ch, int subch)
+{
+    printf_note("ch:%d Xdma out disable\n", ch);
+#ifndef DEBUG_TEST
+    if(reg_get()->iif && reg_get()->iif->set_channel)
+        reg_get()->iif->set_channel(ch , 0);
+    else
+        printf_warn("please realize set channel in reg_if.c\n");
+    if((get_spm_ctx()!=NULL) && get_spm_ctx()->ops->stream_stop)
+        get_spm_ctx()->ops->stream_stop(ch, subch, STREAM_XDMA);
+#endif
+}
+
+void io_set_xdma_enable(int ch, int subch)
+{
+    printf_note("ch:%d Xdma out enable\n", ch);
+#ifndef DEBUG_TEST
+    if(reg_get()->iif && reg_get()->iif->set_channel)
+        reg_get()->iif->set_channel(ch , 1);
+    else
+        printf_warn("please realize set channel in reg_if.c\n");
+    if((get_spm_ctx()!=NULL) && get_spm_ctx()->ops->stream_start)
+        get_spm_ctx()->ops->stream_start(ch, subch, 0, 0, STREAM_XDMA);
+#endif
+}
+
+
 int8_t io_set_enable_command(uint8_t type, int ch, int subc_ch, uint32_t fftsize)
 {
     struct poal_config *poal_config = &(config_get_config()->oal_config);
@@ -1005,6 +1036,16 @@ int8_t io_set_enable_command(uint8_t type, int ch, int subc_ch, uint32_t fftsize
         case BIQ_MODE_DISABLE:
         {
             io_set_BIQ_out_disable(ch, subc_ch);
+            break;
+        }
+        case XDMA_MODE_ENABLE:
+        {
+            io_set_xdma_enable(ch, subc_ch);
+            break;
+        }
+        case XDMA_MODE_DISABLE:
+        {
+            io_set_xdma_disable(ch, subc_ch);
             break;
         }
         case SPCTRUM_MODE_ANALYSIS_ENABLE:

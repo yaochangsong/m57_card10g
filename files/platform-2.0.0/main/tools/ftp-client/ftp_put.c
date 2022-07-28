@@ -6,7 +6,7 @@ int ftp_put(int sock_fd)
     char    file_name[256] ;
     char    ftp_upload_cmd[128] ;
     int     fd = -1 ;
-    char    rbuf[128] ;
+    char    rbuf[4096] ;
     
     
   /*    
@@ -46,7 +46,7 @@ int ftp_put(int sock_fd)
         close(ftp_pasv_fd) ;
         return ERROR ;
     }
-    
+
     do{
         memset(rbuf, 0, sizeof(rbuf)) ;
         rv = read(fd, rbuf, sizeof(rbuf)) ;

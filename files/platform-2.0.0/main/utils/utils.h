@@ -81,6 +81,7 @@ extern int get_mac(char *ifname, uint8_t * mac, int len_limit);
 extern int write_file_in_int16(void *pdata, unsigned int data_len, char *filename);
 extern int32_t  diff_time(void);
 extern char *get_version_string(void);
+extern void *malloc_align(size_t size);
 extern void* safe_malloc(size_t size);
 extern int safe_system(const char *cmdstring);
 extern void safe_free(void *p);

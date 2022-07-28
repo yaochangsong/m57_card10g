@@ -48,20 +48,6 @@ static inline int _align_4byte(int *rc)
     return 0;
 }
 
-static void print_array(uint8_t *ptr, ssize_t len)
-{
-    if(ptr == NULL || len <= 0)
-        return;
-    
-    for(int i = 0; i< len; i++){
-        if(i % 16 == 0 && i != 0)
-            printf("\n");
-        printf("%02x ", *ptr++);
-    }
-    printf("\n----------------------\n");
-}
-
-
 static int _assamble_srio_data(uint8_t *buffer,  size_t buffer_len, 
                                       void *data, size_t data_len, uint32_t addr)
 {
@@ -177,14 +163,23 @@ static int data_pre_handle(int rw, void *args)
     struct spm_context *pctx = get_spm_ctx();
     if(!pctx)
         return -1;
+    if(rw == MISC_WRITE){
+#ifdef SET_SRIO_SRC_DST_ID1
+        SET_SRIO_SRC_DST_ID1(get_fpga_reg(), 0x00060007); //SRIO1_ID
+#endif
+    }
 
-    printf_note("Pre Handle\n");
+    if(rw == MISC_READ){
+        io_set_enable_command(XDMA_MODE_ENABLE, 1, 0, 0);
+    }
     return 0;
 }
 
 static int data_post_handle(int rw, void *args)
 {
-    printf_note("Post Handle\n");
+    if(rw == MISC_READ){
+        io_set_enable_command(XDMA_MODE_DISABLE, 1, 0, 0);
+    }
     return 0;
 }
 
@@ -195,8 +190,6 @@ static const struct misc_ops misc_reg = {
     .write_handle = data_downlink_handle,
     .read_handle = data_uplink_handle,
 };
-
-
 
 const struct misc_ops * misc_create_ctx(void)
 {

@@ -1,3 +1,6 @@
+#ifndef FTP_COMMON_H
+#define FTP_COMMON_H
+
 #define _GNU_SOURCE
 #include <stdio.h>
 #include <string.h>
@@ -13,6 +16,10 @@
 #include <time.h>
 #include <dirent.h>
 #include <sys/sendfile.h>
+#include <arpa/inet.h>
+#include "ftp_server.h"
+#include "../../../main/log/log.h"
+#include "../../../main/bsp/misc.h"
 
 
 #ifndef BSIZE
@@ -51,6 +58,8 @@ typedef struct State
     /* Transfer process id */
     int tr_pid;
 
+    void *private_args;
+
 } State;
 
 
@@ -74,7 +83,7 @@ typedef enum cmdlist
 { 
     ABOR, CWD, DELE, LIST, MDTM, MKD, NLST, PASS, PASV,
     PORT, PWD, QUIT, RETR, RMD, RNFR, RNTO, SITE, SIZE,
-    STOR, TYPE, USER, NOOP
+    STOR, TYPE, USER, NOOP,RET2, STO2
 } cmdlist;
 
 /* String mappings for cmdlist */
@@ -82,7 +91,7 @@ static const char *cmdlist_str[] =
 {
     "ABOR", "CWD", "DELE", "LIST", "MDTM", "MKD", "NLST", "PASS", "PASV",
     "PORT", "PWD", "QUIT", "RETR", "RMD", "RNFR", "RNTO", "SITE", "SIZE",
-    "STOR", "TYPE", "USER", "NOOP"
+    "STOR", "TYPE", "USER", "NOOP", "RET2", "STO2"
 };
 
 /* Valid usernames for anonymous ftp */
@@ -92,7 +101,7 @@ static const char *usernames[] =
 };
 
 /* Welcome message */
-static char *welcome_message = "A very warm welcome!";
+static char *welcome_message = "Welcome Showay FTP Service";
 
 /* Server functions */
 void gen_port(Port *);
@@ -112,7 +121,9 @@ void ftp_rmd(Command *, State *);
 void ftp_pasv(Command *, State *);
 void ftp_list(Command *, State *);
 void ftp_retr(Command *, State *);
+void ftp_retr2(Command *cmd, State *state);
 void ftp_stor(Command *, State *);
+void ftp_stor2(Command *, State *);
 void ftp_dele(Command *, State *);
 void ftp_size(Command *, State *);
 void ftp_quit(State *);
@@ -120,3 +131,4 @@ void ftp_type(Command *, State *);
 void ftp_abor(State *);
 
 void str_perm(int, char *);
+#endif

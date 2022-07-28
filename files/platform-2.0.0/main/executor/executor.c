@@ -13,10 +13,6 @@
 *  Initial revision.
 ******************************************************************************/
 #include "config.h"
-#include "spm/spm.h"
-#include "../bsp/io.h"
-#include "../utils/bitops.h"
-#include "../conf/conf.h"
 
 
 /**
@@ -362,7 +358,7 @@ int8_t executor_set_command(exec_cmd cmd, uint8_t type, uint8_t ch,  void *data,
                     io_set_enable_command(BIQ_MODE_DISABLE, i, subch, 0);
                 /* 2: start one channnel */
                 io_set_enable_command(BIQ_MODE_ENABLE, ch, subch, 0);
-                spm_biq_deal_notify(&ch);
+                //spm_biq_deal_notify(&ch);
             }
             else{
                 io_set_enable_command(BIQ_MODE_DISABLE, ch,subch, 0);

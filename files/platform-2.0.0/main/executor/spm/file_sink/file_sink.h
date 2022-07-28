@@ -19,6 +19,7 @@ enum file_sink_type_t{
     FILE_SINK_TYPE_FFT,
     FILE_SINK_TYPE_NIQ,
     FILE_SINK_TYPE_BIQ,
+    FILE_SINK_TYPE_RAW,
     FILE_SINK_TYPE_MAX,
 };
 

@@ -24,6 +24,7 @@ enum stream_type {
     STREAM_NIQ = 0,
     STREAM_BIQ,
     STREAM_FFT,
+    STREAM_XDMA,
     STREAM_ADC_WRITE,
     STREAM_ADC_READ,
 };
@@ -61,15 +62,19 @@ struct spm_backend_ops {
     ssize_t (*read_fft_data)(int, void **, void*);
     ssize_t (*read_fft_vec_data)(int, void **, void*, void*);
     ssize_t (*read_iq_vec_data)(int, void **, void*, void*);
+    ssize_t (*read_raw_vec_data)(int, void **, void*, void*);
     ssize_t (*read_adc_data)(int,void **);
     int (*read_adc_over_deal)(int,void *);
     int (*read_niq_over_deal)(void *);
     int (*read_fft_over_deal)(int,  void *);
+    int (*read_raw_over_deal)(int,  void *);
+    int (*write_data)(int, const void *, size_t);
     fft_t *(*data_order)(fft_t *, size_t,  size_t *, void *);
     int (*send_fft_data)(void *, size_t, void *);
     int (*send_biq_data)(int, void *, size_t, void *);
     int (*send_niq_data)(void *, size_t, void *);
     int (*send_niq_type)(enum stream_iq_type, iq_t *, size_t, void *);
+    int (*send_data_by_fd)(int, void *, size_t, void *);
     int (*niq_dispatcher)(iq_t *, size_t, void *);
     int (*agc_ctrl)(int, void *);
     bool (*residency_time_arrived)(uint8_t, int, bool);
@@ -96,24 +101,15 @@ struct spm_context {
     void *distributor;
 };
 
-extern pthread_mutex_t send_fft_mutex;
-extern pthread_mutex_t send_fft2_mutex;
+extern pthread_mutex_t send_fft_mutex[MAX_RADIO_CHANNEL_NUM];
 extern pthread_mutex_t send_iq_mutex;
 
-#define __lock_fft_send__() do {           \
-        pthread_mutex_lock(&send_fft_mutex); \
+#define __lock_fft_send__(ch) do {           \
+        pthread_mutex_lock(&send_fft_mutex[ch]); \
 } while (0)
 
-#define __unlock_fft_send__() do { \
-    pthread_mutex_unlock(&send_fft_mutex); \
-} while (0)
-
-#define __lock_fft2_send__() do { \
-    pthread_mutex_lock(&send_fft2_mutex); \
-} while (0)
-
-#define __unlock_fft2_send__() do { \
-    pthread_mutex_unlock(&send_fft2_mutex); \
+#define __unlock_fft_send__(ch) do { \
+    pthread_mutex_unlock(&send_fft_mutex[ch]); \
 } while (0)
 
 
@@ -126,22 +122,26 @@ extern pthread_mutex_t send_iq_mutex;
 } while (0)
 
 #define __lock_send__() do { \
-    __lock_fft_send__(); \
-    __lock_fft2_send__(); \
+    for(int i=0; i<MAX_RADIO_CHANNEL_NUM; i++) {\
+        __lock_fft_send__(i); \
+    }\
     __lock_iq_send__(); \
 } while (0)
 
+
 #define __unlock_send__() do { \
-    __unlock_fft_send__(); \
-    __unlock_fft2_send__(); \
+    for(int i=0; i<MAX_RADIO_CHANNEL_NUM; i++) {\
+        __unlock_fft_send__(i); \
+    }\
     __unlock_iq_send__(); \
 } while (0)
+
 extern void *spm_init(void);
 extern struct spm_context *get_spm_ctx(void);
 extern void spm_deal(struct spm_context *ctx, void *args, int ch);
+extern ssize_t spm_raw_data_uplink_handle(int fd);
+extern ssize_t spm_raw_data_downlink_handle(int fd, const void *data, size_t len);
 extern int spm_close(void);
-extern void spm_niq_deal_notify(void *arg);
-extern void spm_biq_deal_notify(void *arg);
 
 
 #endif

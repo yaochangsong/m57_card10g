@@ -48,6 +48,12 @@ menuconfig PROTOCOL
 		depends on PROTOCOL
 		
 	config PROTOCOL_FTP_PORT
-        int "HTTP Port"
+        int "FTP Port"
         default 8000
 		depends on PROTOCOL_FTP
+
+	config PROTOCOL_FTP_PATH
+	string	"Ftp Path"
+	default "/home"
+	
+	

@@ -82,7 +82,11 @@ static bool  _executor_fragment_scan(uint32_t fregment_num,uint8_t ch, work_mode
     executor_set_command(EX_MID_FREQ_CMD, EX_FFT_SIZE,  ch, &r_args->fft_size);
     r_args->ch = ch;
     //r_args->fft_size = fftsize;
+#ifdef SAMPLING_FFT_TIMES
     dma_fft_size = r_args->fft_size * SAMPLING_FFT_TIMES;
+#else
+    dma_fft_size = r_args->fft_size;
+#endif
     dma_fft_size = dma_fft_size; /* for warning */
     r_args->mode = mode;
     r_args->gain_mode = poal_config->channel[ch].rf_para.gain_ctrl_method;
@@ -249,7 +253,11 @@ static bool  _executor_points_scan_mode(uint8_t ch, int mode, void *args)
             executor_set_command(EX_MID_FREQ_CMD, EX_SMOOTH_TIME, ch, &poal_config->channel[ch].multi_freq_point_param.smooth_time);
             executor_set_command(EX_MID_FREQ_CMD, EX_FPGA_CALIBRATE, ch, &point->points[i].fft_size, r_args->m_freq);
 #if (!defined CONFIG_SPM_FFT_CONTINUOUS_MODE) && (!defined CONFIG_SPM_DISTRIBUTOR)
+#ifdef SAMPLING_FFT_TIMES
             dma_fft_size = r_args->fft_size * SAMPLING_FFT_TIMES;
+#else
+            dma_fft_size = r_args->fft_size;
+#endif
             if(poal_config->channel[ch].enable.map.bit.fft){
                 io_set_enable_command(PSD_MODE_ENABLE, ch, -1, dma_fft_size);
             }

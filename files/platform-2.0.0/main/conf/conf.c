@@ -445,7 +445,9 @@ static uint32_t config_get_resolution_by_fft(uint32_t fftsize, uint32_t bw_hz)
         resolution = sample_rate/1024;
         printf_err("fftsize is 0,use default fftsize value: 1024, resolution:%u", resolution);
     }
+#ifdef FFT_RESOLUTION_FACTOR
     resolution = resolution/FFT_RESOLUTION_FACTOR;
+#endif
 
     printf_debug("resolution=%uhz, fftsize=%u\n", resolution, fftsize);
     return resolution;
@@ -463,7 +465,9 @@ static uint32_t config_get_fft_by_resolution(uint32_t resolution, uint32_t bw_hz
         printf_err("resolution is 0,use default fftsize value: 1024");
         fftsize = 1024;
     }
+#ifdef FFT_RESOLUTION_FACTOR
     fftsize = fftsize/FFT_RESOLUTION_FACTOR;
+#endif
 
    // printf_note("resolution=%uhz, fftsize=%u\n", resolution, fftsize);
     return fftsize;

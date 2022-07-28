@@ -320,8 +320,27 @@ static inline int tcp_send_vec_data_to_client(struct net_tcp_client *client, str
     return 0;
 }
 
+int tcp_send_vec_data_by_fd(int fd, struct iovec *iov, int iov_len)
+{    
+    struct msghdr msgsent;
+    int r=0;
 
-static int tcp_send_data_to_client(int fd, const char *buf, int buflen)
+    msgsent.msg_name = NULL;
+    msgsent.msg_namelen = 0;
+    msgsent.msg_iovlen = iov_len;
+    msgsent.msg_iov = iov;
+    msgsent.msg_control = NULL;
+    msgsent.msg_controllen = 0;
+
+    r = sendmsg(fd, &msgsent, 0);
+    if(r < 0){
+        perror("sendmsg");
+        return -1;
+    }
+    return r;
+}
+
+int tcp_send_data_to_client(int fd, const char *buf, int buflen)
 {
     ssize_t ret = 0, len;
 

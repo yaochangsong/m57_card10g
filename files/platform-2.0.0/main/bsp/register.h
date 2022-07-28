@@ -28,6 +28,7 @@ struct if_reg_ops {
     void (*set_niq_channel)(int ch, int subch, void *args, int enable);          /* 设置中频窄带IQ通道 */
     void (*set_fft_channel)(int ch, void *args);                                 /* 设置中频FFT通道 */
     void (*set_biq_channel)(int ch, void *args);                                 /* 设置中频宽带IQ通道 */
+    void (*set_channel)(int ch, int enable);
 };
 
 struct misc_reg_ops {

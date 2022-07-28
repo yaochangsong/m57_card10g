@@ -95,11 +95,21 @@ void *ftp_server_thread_loop(void *s)
 void ftp_server_init(int port)
 {
     pthread_t pid;
+    struct misc_ops  *m= misc_get();
     ftp_server_t *server = malloc(sizeof(ftp_server_t));
+    memset(server, 0, sizeof(*server));
     server->port = port;
-    server->downlink_cb = spm_raw_data_downlink_handle;
-    server->uplink_cb = spm_raw_data_uplink_handle;
-    
+    if(!m)
+        return;
+    if(m->pre_handle)
+        server->pre_cb = m->pre_handle;
+    if(m->post_handle)
+        server->post_cb = m->post_handle;
+    if(m->write_handle)
+        server->downlink_cb = m->write_handle;
+    if(m->read_handle)
+        server->uplink_cb = m->read_handle;
+
     int ret;
     pthread_t work_id;
     ret=pthread_create(&work_id, NULL, ftp_server_thread_loop, (void *)server);

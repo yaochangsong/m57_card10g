@@ -325,7 +325,7 @@ void ftp_mkd(Command *cmd, State *state)
 {
     if(state->logged_in){
         char cwd[BSIZE];
-        char res[BSIZE];
+        char res[2048];
         memset(cwd,0,BSIZE);
         memset(res,0,BSIZE);
         getcwd(cwd,BSIZE);
@@ -346,7 +346,7 @@ void ftp_mkd(Command *cmd, State *state)
         /* Relative path */
         else{
             if(mkdir(cmd->arg,S_IRWXU)==0){
-                sprintf(res,"257 \"%s/%s\" new directory created.\n",cwd,cmd->arg);
+                sprintf(res, "257 \"%s/%s\" new directory created.\n",cwd,cmd->arg);
                 state->message = res;
             }else{
                 state->message = "550 Failed to create directory.\n";
@@ -419,9 +419,13 @@ void ftp_retr2(Command *cmd, State *state)
 
             state->message = "150 Opening BINARY mode data connection.\n";
             write_state(state);
+            if(c->server->pre_cb)
+                c->server->pre_cb(MISC_READ, NULL);
             do{
-                r = c->server->uplink_cb(connection);
+                r = c->server->uplink_cb(connection, NULL);
             }while(r > 0);
+            if(c->server->post_cb)
+                c->server->post_cb(MISC_READ, NULL);
             state->message = "226 File send OK.\n";
         }else{
             state->message = "550 Please use PASV instead of PORT.\n";
@@ -529,13 +533,14 @@ void ftp_stor2(Command *cmd, State *state)
             state->message = "150 Ok to send data.\r\n";
             write_state(state);
 
-            /* Using splice function for file receiving.
-            * The splice() system call first appeared in Linux 2.6.17.
-            */
+            if(c->server->pre_cb)
+                c->server->pre_cb(MISC_WRITE, NULL);
             uint8_t  buffer[8192];
             while((res = ftp_readn(connection, buffer, 8192)) > 0){
                 c->server->downlink_cb(-1, buffer, 8192-res);
             }
+            if(c->server->post_cb)
+                c->server->post_cb(MISC_WRITE, NULL);
             printf_debug("ftp_readn over:%d\n", res);
             state->message = "226 File send OK.\n";
             close(connection);
@@ -604,8 +609,8 @@ void ftp_rmd(Command *cmd, State *state)
     if(!state->logged_in){
         state->message = "530 Please login first.\n";
     }else{
-        char cmd_rm[512];
-        snprintf(cmd_rm,512,"rm -rf %s",cmd->arg);//change by zhaoyou
+        char cmd_rm[2048];
+        snprintf(cmd_rm,2048,"rm -rf %s",cmd->arg);//change by zhaoyou
         if(system(cmd_rm)/*remove(cmd->arg)*/==0){
             state->message = "250 Requested file action okay, completed.\n";
         }else{
@@ -647,7 +652,7 @@ void str_perm(int perm, char *str_perm)
     int read, write, exec;
 
     /* Flags buffer */
-    char fbuff[3];
+    char fbuff[8];
     read = write = exec = 0;
 
     int i;

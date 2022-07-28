@@ -3,8 +3,10 @@
 
 typedef struct ftp_server_s{
     int port;
-    ssize_t (*uplink_cb)(int);
+    int (*pre_cb)(int, void *);
+    ssize_t (*uplink_cb)(int, void *);
     ssize_t (*downlink_cb)(int, const void *, size_t);
+    int (*post_cb)(int, void *);
 }ftp_server_t;
 
 typedef struct ftp_client_s{

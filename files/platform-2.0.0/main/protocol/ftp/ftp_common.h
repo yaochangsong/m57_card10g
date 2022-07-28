@@ -1,3 +1,6 @@
+#ifndef FTP_COMMON_H
+#define FTP_COMMON_H
+
 #define _GNU_SOURCE
 #include <stdio.h>
 #include <string.h>
@@ -16,6 +19,8 @@
 #include <arpa/inet.h>
 #include "ftp_server.h"
 #include "../../../main/log/log.h"
+#include "../../../main/bsp/misc.h"
+
 
 #ifndef BSIZE
 #define BSIZE 1024
@@ -126,3 +131,4 @@ void ftp_type(Command *, State *);
 void ftp_abor(State *);
 
 void str_perm(int, char *);
+#endif

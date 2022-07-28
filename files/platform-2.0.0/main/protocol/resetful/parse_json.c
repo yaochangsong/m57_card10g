@@ -1117,7 +1117,9 @@ char *assemble_json_clock_info(void)
         cJSON_AddStringToObject(root, "inout", (external_clk == 1 ? "out" : "in"));
         cJSON_AddStringToObject(root, "status", (lock_ok == false ? "no":"ok"));
         cJSON_AddNumberToObject(root, "code", get_adc_status_code(lock_ok));
+#ifdef CLOCK_FREQ_HZ
         cJSON_AddNumberToObject(root, "frequency", CLOCK_FREQ_HZ);
+#endif
     }
     json_print(root, 1);
     str_json = cJSON_PrintUnformatted(root);

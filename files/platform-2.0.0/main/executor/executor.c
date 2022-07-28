@@ -13,10 +13,6 @@
 *  Initial revision.
 ******************************************************************************/
 #include "config.h"
-#include "spm/spm.h"
-#include "../bsp/io.h"
-#include "../utils/bitops.h"
-#include "../conf/conf.h"
 
 
 /**

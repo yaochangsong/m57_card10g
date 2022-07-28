@@ -78,42 +78,6 @@ void spm_deal(struct spm_context *ctx, void *args, int ch)
     }
 }
 
-ssize_t spm_raw_data_uplink_handle(int fd)
-{
-     struct spm_context *pctx = spmctx;
-    if(!pctx)
-        return -1;
-
-    ssize_t count = 0, r = 0;
-    volatile uint8_t *ptr[2048] = {NULL};
-    size_t len[2048] = {0};
-    
-    if(pctx->ops->read_raw_vec_data)
-        count = pctx->ops->read_raw_vec_data(-1, (void **)ptr, len, NULL);
-    for(int i = 0; i < count; i++){
-        if(pctx->ops->send_data_by_fd)
-            r += pctx->ops->send_data_by_fd(fd, ptr[i], len[i], NULL);
-    }
-
-    if(pctx->ops->read_raw_over_deal)
-        pctx->ops->read_raw_over_deal(-1, NULL);
-    return r;
-}
-
-ssize_t spm_raw_data_downlink_handle(int fd, const void *data, size_t len)
-{
-    struct spm_context *pctx = spmctx;
-    ssize_t w = 0;
-    
-    if(!pctx)
-        return -1;
-
-    if(pctx->ops->write_raw_data)
-        w = pctx->ops->write_raw_data(-1, data, len, fd);
-
-    return w;
-}
-
 
 struct spm_context *get_spm_ctx(void)
 {

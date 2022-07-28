@@ -167,11 +167,9 @@ static int data_pre_handle(int rw, void *args)
 #ifdef SET_SRIO_SRC_DST_ID1
         SET_SRIO_SRC_DST_ID1(get_fpga_reg(), 0x00060007); //SRIO1_ID
 #endif
-        _malloc_align();
     }
 
     if(rw == MISC_READ){
-        static int do_count = 0;
         io_set_enable_command(XDMA_MODE_ENABLE, 1, 0, 0);
     }
     return 0;

@@ -86,6 +86,10 @@ config SSDP
 config JQ
         bool "Enable JSON JQ"
         default y
+		
+config NRS1800
+        bool "Enable NRS1800"
+        default n
 endmenu   
 
 menu "Compile Selection" 

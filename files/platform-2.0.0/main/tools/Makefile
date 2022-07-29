@@ -10,10 +10,15 @@ CFLAGS = -Wall -g
 
 
 tool_sub_dir = 
+
+ifeq ($(CONFIG_NRS1800),y)
+	tool_sub_dir += nrs1800
+endif
+
 ifeq ($(CONFIG_SSDP),y)
 	ssdp_exist=$(shell if [ -d ssdp ]; then echo "y"; else echo "n"; fi)
 ifeq ($(ssdp_exist), y)
-	tool_sub_dir += ssdp 
+	tool_sub_dir += ssdp
 endif
 endif
 
@@ -66,6 +71,7 @@ tool_sub:
 			cd -; \
 		else \
 			echo "build $$dir"; \
+			cd $$dir	\
 			$(MAKE) -C $$dir all || exit 1; \
 		fi; \
 	done

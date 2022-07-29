@@ -50,7 +50,6 @@ typedef struct _srio_route_rule_{
 	int dest_port;  //目的端口
 }srio_route_rule;
 
-extern int nsr1800_init(void);
 extern char *get_config_path(void);
 
 #endif

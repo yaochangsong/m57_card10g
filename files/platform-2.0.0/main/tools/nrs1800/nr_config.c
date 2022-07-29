@@ -20,30 +20,6 @@ struct nr_config{
 
 static cJSON* nr_root_json = NULL;
 
-static int nr_json_print(cJSON *root, int do_format)
-{
-    if(root == NULL){
-        return -1;
-    }
-    char *printed_json = NULL;
-    if (do_format)
-    {
-        printed_json = cJSON_Print(root);
-    }
-    else
-    {
-        printed_json = cJSON_PrintUnformatted(root);
-    }
-        
-    if (printed_json == NULL)
-    {
-        return -1;
-    }
-    printf("%s\n", printed_json);
-    free(printed_json);
-    return 0;
-}
-
 
 static cJSON* nr_json_read_file(const char *filename, cJSON* root)
 {
@@ -152,7 +128,7 @@ static int nr_json_read_config_file(const void *config)
 
 static struct nr_config nrconfig;
 
-srio_route_rule  **nr_get_route_table(int *count)
+srio_route_rule  **nr_get_route_table(size_t *count)
 {
     if(count)
         *count = nrconfig.rtable_len;

@@ -9,6 +9,6 @@
 #endif
 
 extern void nr_config_init(void);
-extern srio_route_rule  **nr_get_route_table(int *count);
+extern srio_route_rule  **nr_get_route_table(size_t *count);
 
 #endif

@@ -31,29 +31,7 @@ static srio_port_info ports_info[] =
  	{3, 3, 4, {12,13,14,15}, LANE_SPEED_6_25_G},
 	{10, 10, 4, {40,41,42,43}, LANE_SPEED_6_25_G},
 };
-#if 0
-static srio_route_rule default_rules[] =
-{
-	{3,0x48,10},
-	{10,0x49,3},
-	{4,0x48,10},
-	{5,0x48,10},
-	{7,0x48,10},
-	{9,0x48,10},
-	{12,0x48,10},
-	{13,0x48,10},
-	{16,0x48,10},
-	{17,0x48,10},
-//	{10,0x40,4},
-	{10,0x40,5},
-//	{10,0x40,7},
-//	{10,0x40,9},
-	{10,0x1A,12},
-	{10,0x1C,13},
-	{10,0x1B,16},
-	{10,0x1D,17},	
-};
-#else
+
 static srio_route_rule default_rules[] =
 {
 	{-1,0x1A,12},
@@ -63,14 +41,11 @@ static srio_route_rule default_rules[] =
 	{-1,0x1E,10},
 	{-1,0x40,5},
 	{-1,0x48,10},
-//	{-1,0x1C,3},
 };
 
-#endif
 static int nsr1800_10bit_read_i2c_register(int file, uint16_t dev_addr, uint32_t mem_addr, uint32_t *value, int len) 
 {  
     int ret = 0;
-    uint16_t read_num = 0;
     unsigned char outbuf[4] = {0};  
 
     struct i2c_rdwr_ioctl_data packets;  
@@ -92,7 +67,7 @@ static int nsr1800_10bit_read_i2c_register(int file, uint16_t dev_addr, uint32_t
 	messages[1].addr  = dev_addr;  
 	messages[1].flags = I2C_M_RD | I2C_M_TEN;  
     messages[1].len   = len;    
-    messages[1].buf  = value;  
+    messages[1].buf  = (void *)value;  
 
     packets.msgs  = messages;  
     packets.nmsgs = 2;  
@@ -146,7 +121,6 @@ static int nsr1800_10bit_write_i2c_register(int file, uint16_t dev_addr, uint32_
 static int nsr1800_7bit_read_i2c_register(int file, uint8_t dev_addr, uint32_t mem_addr, uint32_t *value, int len) 
 {  
     int ret = 0;
-    uint16_t read_num = 0;
     unsigned char outbuf[4] = {0};  
 
     struct i2c_rdwr_ioctl_data packets;  
@@ -168,7 +142,7 @@ static int nsr1800_7bit_read_i2c_register(int file, uint8_t dev_addr, uint32_t m
 	messages[1].addr  = dev_addr;  
 	messages[1].flags = I2C_M_RD;  
     messages[1].len   = len;    
-    messages[1].buf  = value;  
+    messages[1].buf  = (void *)value;  
 
     packets.msgs  = messages;  
     packets.nmsgs = 2;  
@@ -397,20 +371,20 @@ w, 0xFF8030 + 0x100[48],0x45400090
 w, 0xF20300,0xbfffffff
 */
 
-int nsr1800_init(void)
+int nsr1800_init(int file)
 {
 	uint32_t addr = 0;
 	uint32_t value = 0;
-	int i = 0, j = 0;
-	int file;
+	int i = 0;
 
 	printf("nsr1800 I2C init\n");
-
+    #if 0
 	file = open("/dev/i2c-0", O_RDWR);
 	if(file < 0){  
 		printf("####i2c device open failed####\n");  
 		return (-1);  
 	}
+    #endif
 
 	printf_debug("**********disable Idle2 mode**********\n");
 	//关闭Idle2模式	
@@ -605,7 +579,7 @@ int nsr1800_init(void)
 		printf("error write addr:0x%x value:0x%x\n", addr, value);
 		return -1;
 	}
-	close(file);
+
 	return 0;
 }
 
@@ -638,121 +612,88 @@ char *get_config_path(void)
 	return config_path;
 }
 
-#if 1
-int main(int argc, char *argv[])
+static void usage(const char *prog)
 {
-	int cmd_opt;
-
-	while ((cmd_opt = getopt_long(argc, argv, "c:", NULL, NULL)) != -1)
-	{
-		switch (cmd_opt)
-		{
-		  case 'c':
-		    config_path = strdup(optarg);
-		    break;		
-		  default:
-		    exit(0);
-		    break;
-		}
-	}
-    nr_config_init();
-    nsr1800_init();
+    fprintf(stderr, "Usage: %s [option]\n"
+        "          -i nrs1800 init [default]\n"
+        "          -a nrs1800 address \n"
+        "          -r read nrs1800 register[ -a 0x0000 -r]\n"
+        "          -w write nrs1800 register value [-a 0x0000 -w 0xff] \n"
+        "          -c router config file #[default: nr_config.json]\n"
+        "          -s reset nrs1800  \n", prog);
+    exit(1);
 }
-#else
+
 int main(int argc, char *argv[])
 {
-	int cmd_opt;
-	int i2c_fd = 0;
-	uint32_t addr = 0;
-	uint32_t value = 0;
-	int isWrite = 0;
-	int retry = 3;
-	int timeout = 100;
-	int init = 0;
-	int reset = 0;
-	
-    printf("nsr1800 I2C init\n");  
-    i2c_fd = open("/dev/i2c-1", O_RDWR);
-    if(i2c_fd < 0){  
-        printf("####i2c device open failed####\n");  
-        return (-1);  
-    }
+    int cmd_opt;
+    int init = 0, reset = 0, iswrite = 0, isread = 0;
+    int file = -1, ret = -1;
+    uint32_t addr = 0, value = 0;
 
-	while ((cmd_opt = getopt_long(argc, argv, "a:d:ir", NULL, NULL)) != -1)
-	{
-		switch (cmd_opt)
-		{
-		  case 'i':
-		    init = 1;
-		    break;		
-		  case 'r':
-		    reset = 1;
-		    break;	
-		  case 'a':
-		    addr = getopt_integer(optarg);
-		    break;
-		  case 'd':
-		  	isWrite = 1;
-		    value = getopt_integer(optarg);
-		    break;
-		  default:
-		    exit(0);
-		    break;
-		}
-	}
-#if 1
-    if(ioctl(i2c_fd, I2C_RETRIES, 5) < 0) {  
-        perror("Unable to set I2C_RETRIES\n");  
-    }  
-
-    if(ioctl(i2c_fd, I2C_TIMEOUT, 10) < 0) {  
-        perror("Unable to set I2C_TIMEOUT\n");  
-    }  
-#endif
-
-#if 0
-	if(init)
-	{
-		if(nsr1800_init(i2c_fd))
-		{
-    		printf("error nsr1800 init failed\n");
-		}
-		close(i2c_fd);
-    	return 0;
-	}
-#endif
-	if(reset)
-	{
-		if(nsr1800_soft_reset(i2c_fd))
-		{
-    		printf("error nsr1800 reset port failed\n");
-		}
-		close(i2c_fd);
-    	return 0;
-	}
-	
-	if(isWrite)
-	{
-    	if(!nsr1800_7bit_write_i2c_register(i2c_fd, NSR1800_I2C_SLAVE_7BIT_ADDR, addr, &value, sizeof(value)))
-    	{
-			printf("write addr:0x%x value:0x%08x\n", addr, value);
-    	}
-    	else
-    		printf("error write addr:0x%x value:0x%x\n", addr, value);
-    }
-    else
+    while ((cmd_opt = getopt_long(argc, argv, "c:a:rwshi", NULL, NULL)) != -1)
     {
-		if(!nsr1800_7bit_read_i2c_register(i2c_fd, NSR1800_I2C_SLAVE_7BIT_ADDR, addr, &value, sizeof(value)))
-		{
-			printf("read addr:0x%x value:0x%08x\n", addr, value);
-		}
-		else
-			printf("error read addr:0x%x\n", addr);
-	}
-	
-    close(i2c_fd);
-    return 0;
+        switch (cmd_opt)
+        {
+            case 'c':
+                config_path = strdup(optarg);
+                break;
+            case 'a':
+                addr = getopt_integer(optarg);
+                break;
+            case 'r':
+                isread = 1;
+                break;
+            case 'w':
+                iswrite = 1;
+                break;
+            case 's':
+                reset = 1;
+                break;
+            case 'h':
+                usage(argv[0]);
+                exit(0);
+            case 'i':
+            default:
+                init = 1;
+                break;
+        }
+    }
+
+    char *i2c_file = "/dev/i2c-0";
+    file = open(i2c_file, O_RDWR);
+    if(file < 0){  
+        printf("####i2c device[%s] open failed####\n", i2c_file);  
+        exit(1);
+    }
+    if(init){
+        nr_config_init();
+        nsr1800_init(file);
+    } else if(reset){
+        if(nsr1800_soft_reset(file) == -1){
+            printf("error nsr1800 reset port failed\n");
+            goto failed_exit;
+        }
+        printf("Reset nrs1800 OK\n");
+    } else if(isread && addr != 0){
+        if(!nsr1800_7bit_read_i2c_register(file, NSR1800_I2C_SLAVE_7BIT_ADDR, addr, &value, sizeof(value))){
+            printf("read addr:0x%x value:0x%08x ok\n", addr, value);
+        }
+        else{
+            printf("error read addr:0x%x\n", addr);
+            goto failed_exit;
+        }
+    } else if(iswrite && addr != 0){
+        if(!nsr1800_7bit_write_i2c_register(file, NSR1800_I2C_SLAVE_7BIT_ADDR, addr, &value, sizeof(value))){
+            printf("write addr:0x%x value:0x%08x ok\n", addr, value);
+        }
+        else{
+            printf("error write addr:0x%x value:0x%x\n", addr, value);
+            goto failed_exit;
+        }
+     }
+    ret = 0;
+failed_exit:
+    close(file);
+    return ret;
 }
-#endif
-
-

@@ -71,7 +71,6 @@ tool_sub:
 			cd -; \
 		else \
 			echo "build $$dir"; \
-			cd $$dir	\
 			$(MAKE) -C $$dir all || exit 1; \
 		fi; \
 	done

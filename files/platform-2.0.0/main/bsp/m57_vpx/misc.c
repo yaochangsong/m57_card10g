@@ -23,16 +23,22 @@ static ssize_t data_uplink_handle(int fd, void *args)
     ssize_t count = 0, r = 0;
     volatile uint8_t *ptr[2048] = {NULL};
     size_t len[2048] = {0};
-    
+
     if(pctx->ops->read_raw_vec_data)
         count = pctx->ops->read_raw_vec_data(-1, (void **)ptr, len, NULL);
+
+    if(count <= 0){
+        r = 1;/* loop read */
+    }
     for(int i = 0; i < count; i++){
         if(pctx->ops->send_data_by_fd)
             r += pctx->ops->send_data_by_fd(fd, ptr[i], len[i], NULL);
     }
-
-    if(pctx->ops->read_raw_over_deal)
-        pctx->ops->read_raw_over_deal(-1, NULL);
+    if(count > 0){
+        if(pctx->ops->read_raw_over_deal)
+                pctx->ops->read_raw_over_deal(-1, NULL);
+    }
+    
     return r;
 }
 
@@ -168,9 +174,8 @@ static int data_pre_handle(int rw, void *args)
         SET_SRIO_SRC_DST_ID1(get_fpga_reg(), 0x00060007); //SRIO1_ID
 #endif
     }
-
     if(rw == MISC_READ){
-        io_set_enable_command(XDMA_MODE_ENABLE, 1, 0, 0);
+        io_set_enable_command(XDMA_MODE_ENABLE, -1, 0, 0);
     }
     return 0;
 }
@@ -178,7 +183,7 @@ static int data_pre_handle(int rw, void *args)
 static int data_post_handle(int rw, void *args)
 {
     if(rw == MISC_READ){
-        io_set_enable_command(XDMA_MODE_DISABLE, 1, 0, 0);
+        io_set_enable_command(XDMA_MODE_DISABLE, -1, 0, 0);
     }
     return 0;
 }

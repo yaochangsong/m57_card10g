@@ -204,15 +204,15 @@ static int xspm_create(void)
         printf_info("block_size=%u, block_count=%u, len=%u\n", ring_trans.block_size, ring_trans.block_count, pstream[i].len);
         xspm_read_stream_stop(pstream[i].ch, -1, pstream[i].type);
         if(pstream[i].rd_wr == DMA_READ){
-        rc = ioctl(pstream[i].id, IOCTL_XDMA_INIT_BUFF, &ring_trans);  //close时释放
-        if (rc == 0) {
-            printf_info("IOCTL_XDMA_INIT_BUFF succesful.\n");
-        } 
-        else {
-            printf("ioctl(IOCTL_XDMA_INIT_BUFF) failed= %d\n", rc);
-            exit(-1);
-        }
-            printf_info("[%d, ch=%d]create stream[%s] dev:%s len=%u, block_size:%u, block_count=%u\n", pstream[i].id,pstream[i].ch, pstream[i].name, 
+            rc = ioctl(pstream[i].id, IOCTL_XDMA_INIT_BUFF, &ring_trans);  //close时释放
+            if (rc == 0) {
+                printf_info("IOCTL_XDMA_INIT_BUFF succesful.\n");
+            } 
+            else {
+                printf("ioctl(IOCTL_XDMA_INIT_BUFF) failed= %d\n", rc);
+                exit(-1);
+            }
+            printf_note("[%d, ch=%d]create stream[%s] dev:%s len=%u, block_size:%u, block_count=%u\n", pstream[i].id,pstream[i].ch, pstream[i].name, 
                                 pstream[i].devname, pstream[i].len, pstream[i].block_size, ring_trans.block_count);
             for(int j = 0; j < ring_trans.block_count; j++){
                 pstream[i].ptr[j] = mmap(NULL, ring_trans.block_size, PROT_READ | PROT_WRITE,MAP_SHARED, pstream[i].id, j * pagesize);
@@ -243,7 +243,7 @@ static ssize_t xspm_stream_read(int ch, int index, int type,  void **data, uint3
     
     memset(info, 0, sizeof(struct xdma_ring_trans_ioctl));
     if(pstream[index].id < 0){
-        printf_debug("%d stream node:%s not found\n",index, pstream[index].name);
+        printf_note("%d stream node:%s not found\n",index, pstream[index].name);
         return -1;
     }
      _spm_gettime(&start);
@@ -268,19 +268,19 @@ static ssize_t xspm_stream_read(int ch, int index, int type,  void **data, uint3
             printf_warn("*****status:RING_TRANS_INITIALIZING.*****\n");
             usleep(10);
         } else if(info->status == RING_TRANS_PENDING){
-            //printf_warn("*****status:RING_TRANS_PENDING\n");
+            printf_debug("*****status:RING_TRANS_PENDING\n");
             usleep(1);
         }
         _spm_gettime(&now);
         if(_spm_tv_diff(&now, &start) > _STREAM_READ_TIMEOUT_MS){
-            printfi("Read TimeOut![%u]\r",timer++);
+            printfn("Read TimeOut![%u]\r",timer++);
             break;
         }
     }while(info->status == RING_TRANS_PENDING);
 
-   int j;
+    int j;
     uint8_t *ptr = NULL;
-    //printf_note("ready_count: %u, type:%d\n", info->ready_count, type);
+    printf_debug("ready_count: %u, type:%d\n", info->ready_count, type);
     for(int i = 0; i < info->ready_count; i++){
         j = (info->rx_index + i) % info->block_count;
         data[i] = pstream[index].ptr[j];
@@ -446,7 +446,7 @@ static ssize_t _xspm_find_header(uint8_t *ptr, uint16_t header, size_t len)
 static ssize_t xspm_stream_read_from_file(int type, int ch, void **data, size_t *len, void *args)
 {
     #define STRAM_IQ_FILE_PATH "/home/ycs/share/platform-2.0.0/files/platform-2.0.0/DEV0_CH0_IQ.raw"
-    #define STRAM_FFT_FILE_PATH "/home/ycs/share/platform-2.0.0/files/platform-2.0.0/fft512.dat"
+    #define STRAM_FFT_FILE_PATH "/home/kylin/src/platform2.0.0/platform-2.0.0/fft512.dat"
     //#define STRAM_FFT_FILE_PATH "/home/ycs/share/platform-2.0.0/files/platform-2.0.0/DEV0_CH1_FFT8K.raw"
     #define STRAM_READ_BLOCK_SIZE  528
     #define STRAM_READ_BLOCK_COUNT 2
@@ -510,7 +510,7 @@ static ssize_t xspm_stream_read_from_file(int type, int ch, void **data, size_t 
         //print_array(data[cn], len[cn]);
         cn++;
     }while(cn < STRAM_READ_BLOCK_COUNT);
-    usleep(100);
+    //usleep(100);
     return cn;
 }
 
@@ -572,7 +572,6 @@ ssize_t xspm_read_biq_data(int ch , void **data, void *len, void *args)
 
 static ssize_t xspm_read_xdma_raw_data(int ch , void **data, void *len, void *args)
 {
-
 #ifdef DEBUG_TEST
        /* if(config_get_work_enable() == false){
             usleep(1000);
@@ -580,8 +579,7 @@ static ssize_t xspm_read_xdma_raw_data(int ch , void **data, void *len, void *ar
         }*/
         return xspm_stream_read_from_file(STREAM_FFT, ch, data, len, args);
 #else
-    int index;
-    index = xspm_find_index_by_type(-1, -1, STREAM_XDMA);
+    int index = xspm_find_index_by_rw(ch, -1, DMA_READ);
     if(index < 0)
         return -1;
     return xspm_stream_read(ch, index, STREAM_XDMA, data, len, args);
@@ -854,7 +852,7 @@ static int xspm_read_stream_start(int ch, int subch, uint32_t len,uint8_t contin
     struct _spm_xstream *pstream = spm_dev_get_stream(NULL);
     struct xdma_ring_trans_ioctl ring_trans;
     
-    index = xspm_find_index_by_type(ch, -1, type);
+    index = xspm_find_index_by_rw(ch, -1, DMA_READ);
     if(index < 0)
         return -1;
 
@@ -864,7 +862,7 @@ static int xspm_read_stream_start(int ch, int subch, uint32_t len,uint8_t contin
 
     if(pstream[index].id < 0)
         return -1;
-    
+    printf_note("pstream[%d].id:%d, %s,%s\n", index, pstream[index].id, pstream[index].name, pstream[index].devname);
     rc = ioctl(pstream[index].id, IOCTL_XDMA_TRANS_START, &ring_trans);
     if (rc == 0) {
         printf_info("IOCTL_XDMA_TRANS_START succesful.\n");
@@ -888,7 +886,7 @@ static int xspm_read_stream_stop(int ch, int subch, enum stream_type type)
     int index, ret, reg;
     struct xdma_ring_trans_ioctl ring_trans;
 
-    index = xspm_find_index_by_type(ch, -1, type);
+    index = xspm_find_index_by_rw(ch, -1, DMA_READ);
     if(index < 0)
         return -1;
     printf_info("name=%s, type=%d, id=%d\n", pstream[index].name, type, pstream[index].id);
@@ -947,7 +945,7 @@ static int xspm_read_xdma_data_over(int ch,  void *arg,  int type)
 {
     int ret;
     struct _spm_xstream *pstream = spm_dev_get_stream(NULL);
-    int index = xspm_find_index_by_type(ch, -1, type);
+    int index = xspm_find_index_by_rw(ch, -1, DMA_READ);
     if(index < 0)
         return -1;
 
@@ -963,7 +961,7 @@ static int xspm_read_xdma_data_over(int ch,  void *arg,  int type)
     if(pstream){
         ret = ioctl(pstream[index].id, IOCTL_XDMA_TRANS_SET, ring_trans);
         if (ret){
-            //printf("ioctl(IOCTL_XDMA_TRANS_SET) failed:%d\n", ret);
+            printf("ioctl(IOCTL_XDMA_TRANS_SET) failed:%d\n", ret);
             return -1;
         }
     }

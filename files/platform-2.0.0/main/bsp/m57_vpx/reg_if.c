@@ -22,7 +22,7 @@
 static void set_xdma_channel(int ch,  int enable)
 {
     FPGA_CONFIG_REG *reg = get_fpga_reg();
-    if(!reg)
+    if(!reg || ch < 0)
         return;
     
     uint32_t ch_map = GET_CHANNEL_SEL(reg);

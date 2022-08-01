@@ -41,7 +41,7 @@ void* communication(void* _c) {
     while ((bytes_read = read(connection,buffer,BSIZE)) > 0){
         if(!(bytes_read>BSIZE) && bytes_read > 0){
             /* TODO: output this to log */
-            printf_debug("User %s sent command: %s\n",(state->username==NULL)?"unknown":state->username,buffer);
+            printf_note("User %s sent command: %s\n",(state->username==NULL)?"unknown":state->username,buffer);
             parse_command(buffer,cmd);
             state->connection = connection;
 

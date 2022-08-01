@@ -133,11 +133,11 @@ static ssize_t data_downlink_handle(int fd, const void *data, size_t len)
             ret = -1;
             break;
         }
-        if(r < max_data_len){
+        if(r < max_pkt_len){
             _align_4byte(&r);
         }
-        if(r > max_data_len)
-            r = max_data_len;
+        if(r > max_pkt_len)
+            r = max_pkt_len;
 
         if(pctx->ops->write_data){
             if(pctx->ops->write_data(-1, buffer, r) < 0){

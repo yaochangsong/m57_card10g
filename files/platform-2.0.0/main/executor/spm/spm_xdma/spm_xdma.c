@@ -334,7 +334,7 @@ static inline int xspm_find_index_by_rw(int ch, int subch, int rw)
 
     subch = subch;
     for(i = 0; i < dev_len; i++){
-        if(rw == pstream[i].rd_wr && ch == pstream[i].ch){
+        if(rw == pstream[i].rd_wr && (ch == pstream[i].ch || pstream[i].ch == -1)){
             index = i;
             find = 1;
             break;
@@ -361,6 +361,7 @@ static int xspm_stram_write(int ch, const void *data, size_t data_len)
     return data_len;
 #endif
     index = xspm_find_index_by_rw(ch, -1, DMA_WRITE);
+
     if(index < 0)
         return -1;
     

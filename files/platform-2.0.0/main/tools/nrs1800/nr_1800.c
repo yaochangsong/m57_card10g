@@ -628,7 +628,7 @@ int main(int argc, char *argv[])
 {
     int cmd_opt;
     int init = 0, reset = 0, iswrite = 0, isread = 0;
-    int file = -1, ret = -1;
+    int file = -1, ret = -1, is_addr = 0;
     uint32_t addr = 0, value = 0;
 
     while ((cmd_opt = getopt_long(argc, argv, "c:a:rwshi", NULL, NULL)) != -1)
@@ -640,6 +640,7 @@ int main(int argc, char *argv[])
                 break;
             case 'a':
                 addr = getopt_integer(optarg);
+                is_addr = 1;
                 break;
             case 'r':
                 isread = 1;
@@ -675,7 +676,7 @@ int main(int argc, char *argv[])
             goto failed_exit;
         }
         printf("Reset nrs1800 OK\n");
-    } else if(isread && addr != 0){
+    } else if(isread && is_addr != 0){
         if(!nsr1800_7bit_read_i2c_register(file, NSR1800_I2C_SLAVE_7BIT_ADDR, addr, &value, sizeof(value))){
             printf("read addr:0x%x value:0x%08x ok\n", addr, value);
         }
@@ -683,7 +684,7 @@ int main(int argc, char *argv[])
             printf("error read addr:0x%x\n", addr);
             goto failed_exit;
         }
-    } else if(iswrite && addr != 0){
+    } else if(iswrite && is_addr != 0){
         if(!nsr1800_7bit_write_i2c_register(file, NSR1800_I2C_SLAVE_7BIT_ADDR, addr, &value, sizeof(value))){
             printf("write addr:0x%x value:0x%08x ok\n", addr, value);
         }
@@ -691,6 +692,8 @@ int main(int argc, char *argv[])
             printf("error write addr:0x%x value:0x%x\n", addr, value);
             goto failed_exit;
         }
+     } else {
+        printf("Param error\n");
      }
     ret = 0;
 failed_exit:

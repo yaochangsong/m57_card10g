@@ -615,14 +615,17 @@ char *get_config_path(void)
 static void usage(const char *prog)
 {
     fprintf(stderr, "Usage: %s [option]\n"
-        "          -i nrs1800 init [default]\n"
-        "          -a nrs1800 address \n"
-        "          -r read nrs1800 register[ -a 0x0000 -r]\n"
-        "          -w write nrs1800 register value [-a 0x0000 -w 0xff] \n"
-        "          -c router config file #[default: nr_config.json]\n"
-        "          -s reset nrs1800  \n", prog);
+        "          -i --init            nrs1800 init [default]\n"
+        "          -a --addr <address>  read/write nrs1800 address, default read\n"
+        "          -r --read            read nrs1800 register[ -a 0x0000 -r]\n"
+        "          -w --write           write value to nrs1800 register[-a 0x0000 -w 0xff] \n"
+        "          -c --config <config.json> router config file #[default: nr_config.json]\n"
+        "          -s --reset          reset nrs1800\n"
+        "          -h --help\n", prog);
     exit(1);
 }
+
+
 
 int main(int argc, char *argv[])
 {
@@ -631,12 +634,26 @@ int main(int argc, char *argv[])
     int file = -1, ret = -1, is_addr = 0;
     uint32_t addr = 0, value = 0;
 
-    while ((cmd_opt = getopt_long(argc, argv, "c:a:rwshi", NULL, NULL)) != -1)
+    const char *short_opts = "c:a:rwshi";
+    const struct option long_opts[] =   {  
+            {"help", no_argument, NULL, 'h'},    
+            {"addr", required_argument, NULL, 'a'},
+            { "read", no_argument, NULL, 'r'},
+            { "write", no_argument, NULL, 'w'},
+            { "config", required_argument, NULL, 'c'}, 
+            { "reset", no_argument, NULL, 's'}, 
+            { "init", no_argument, NULL, 'i'}, 
+            {0, 0, 0, 0} 
+        };
+
+    while ((cmd_opt = getopt_long(argc, argv, short_opts, long_opts, NULL)) != -1)
     {
         switch (cmd_opt)
         {
             case 'c':
                 config_path = strdup(optarg);
+            case 'i':
+                init = 1;
                 break;
             case 'a':
                 addr = getopt_integer(optarg);
@@ -652,12 +669,9 @@ int main(int argc, char *argv[])
                 reset = 1;
                 break;
             case 'h':
+            default:
                 usage(argv[0]);
                 exit(0);
-            case 'i':
-            default:
-                init = 1;
-                break;
         }
     }
 
@@ -676,7 +690,11 @@ int main(int argc, char *argv[])
             goto failed_exit;
         }
         printf("Reset nrs1800 OK\n");
-    } else if(isread && is_addr != 0){
+    } else if(isread || is_addr){
+        if(is_addr == 0){
+            printf("Please input address[eg. -a 0x0]\n");
+            exit(1);
+        }
         if(!nsr1800_7bit_read_i2c_register(file, NSR1800_I2C_SLAVE_7BIT_ADDR, addr, &value, sizeof(value))){
             printf("read addr:0x%x value:0x%08x ok\n", addr, value);
         }
@@ -684,7 +702,11 @@ int main(int argc, char *argv[])
             printf("error read addr:0x%x\n", addr);
             goto failed_exit;
         }
-    } else if(iswrite && is_addr != 0){
+    } else if(iswrite){
+        if(is_addr == 0){
+            printf("Please input address[eg. -a 0x0]\n");
+            exit(1);
+        }
         if(!nsr1800_7bit_write_i2c_register(file, NSR1800_I2C_SLAVE_7BIT_ADDR, addr, &value, sizeof(value))){
             printf("write addr:0x%x value:0x%08x ok\n", addr, value);
         }
@@ -693,7 +715,8 @@ int main(int argc, char *argv[])
             goto failed_exit;
         }
      } else {
-        printf("Param error\n");
+        nr_config_init();
+        nsr1800_init(file);
      }
     ret = 0;
 failed_exit:

@@ -28,92 +28,6 @@ static inline void *zalloc(size_t size)
 	return calloc(1, size);
 }
 
-FILE *_file_fd[64] = {0};
-static  void init_write_file(char *filename, int index)
-{
-    _file_fd[index] = fopen(filename, "w+b");
-    if(!_file_fd[index]){
-        printf_err("Open file error!\n");
-    }
-}
-
-static inline void create_file_path(int index)
-{
-    char buffer[64];
-    
-    if(_file_fd[index] > 0)
-        return;
-    
-    sprintf(buffer, "/tmp/ch_%d", index);
-    init_write_file(buffer, index);
-    printf_info("create file: %s\n", buffer);
-}
-
-static inline void create_tmp_file(int index, int chip_id, int func_id, int prio_id, int port)
-{
-    char buffer[64];
-    
-    if(_file_fd[index] > 0)
-        return;
-    
-    sprintf(buffer, "/tmp/c%x_f%x_prio%x_port%x", chip_id,func_id,prio_id,port);
-    init_write_file(buffer, index);
-    printf_info("create file: %s\n", buffer);
-}
-
-
-static inline void close_file(void)
-{
-    for(int i = 0; i < 64; i++){
-        if(_file_fd[i] > 0){
-            fclose(_file_fd[i]);
-        }
-    }
-    
-}
-
-
-static inline int write_file(uint8_t *pdata, int index, int len)
-{
-    char _file_buffer[32] = {0};
-    uint8_t *ptr = pdata;
-    for(int i = 0; i < len; i++){
-        sprintf(_file_buffer, "0x%02x ", *ptr++);
-        fwrite((void *)_file_buffer,1, strlen(_file_buffer), _file_fd[index]);
-    }
-    sync();
-
-    return 0;
-}
-
-static inline int write_file_nbyte(int8_t *pdata, int n, int index)
-{
-    fwrite((void *)pdata, sizeof(int8_t), n, _file_fd[index]);
-    return 0;
-}
-
-
-static inline int write_file_nfft(int16_t *pdata, int n, int index)
-{
-    fwrite((void *)pdata, sizeof(int16_t), n, _file_fd[index]);
-    return 0;
-}
-static inline int write_lf(int index)
-{
-    char lf = '\n';
-    fwrite((void *)&lf,1, 1, _file_fd[index]);
-    return 0;
-}
-
-static inline int write_over(int index, uint32_t len)
-{
-    char buffer[128];
-    sprintf(buffer, "\n------------read frame over: %u[0x%x]---------------\n", len,len);
-    fwrite((void *)buffer, 1, strlen(buffer), _file_fd[index]);
-    sync();
-    return 0;
-}
-
 static void print_array(uint8_t *ptr, ssize_t len)
 {
     if(ptr == NULL || len <= 0)
@@ -192,19 +106,19 @@ static int xspm_create(void)
     pstream = spm_dev_get_stream(&dev_len);
     /* create stream */
     for(i = 0; i< dev_len ; i++){
-        pstream[i].id = open(pstream[i].devname, O_RDWR);
-        if( pstream[i].id < 0){
-            fprintf(stderr, "[%d]open:%s, %s\n", i, pstream[i].devname, strerror(errno));
+        pstream[i].base.id = open(pstream[i].base.devname, O_RDWR);
+        if( pstream[i].base.id < 0){
+            fprintf(stderr, "[%d]open:%s, %s\n", i, pstream[i].base.devname, strerror(errno));
             continue;
         }
-        printf_info("mmap: %s\n", pstream[i].devname);
+        printf_info("mmap: %s\n", pstream[i].base.devname);
         memset(&ring_trans, 0, sizeof(struct xdma_ring_trans_ioctl));
         ring_trans.block_size = pstream[i].block_size;
-        ring_trans.block_count = pstream[i].len / pstream[i].block_size;
-        printf_info("block_size=%u, block_count=%u, len=%u\n", ring_trans.block_size, ring_trans.block_count, pstream[i].len);
-        xspm_read_stream_stop(pstream[i].ch, -1, pstream[i].type);
-        if(pstream[i].rd_wr == DMA_READ){
-            rc = ioctl(pstream[i].id, IOCTL_XDMA_INIT_BUFF, &ring_trans);  //close时释放
+        ring_trans.block_count = pstream[i].base.len / pstream[i].block_size;
+        printf_info("block_size=%u, block_count=%u, len=%u\n", ring_trans.block_size, ring_trans.block_count, pstream[i].base.len);
+        xspm_read_stream_stop(pstream[i].base.ch, -1, pstream[i].base.type);
+        if(pstream[i].base.rd_wr == DMA_READ){
+            rc = ioctl(pstream[i].base.id, IOCTL_XDMA_INIT_BUFF, &ring_trans);  //close时释放
             if (rc == 0) {
                 printf_info("IOCTL_XDMA_INIT_BUFF succesful.\n");
             } 
@@ -212,15 +126,15 @@ static int xspm_create(void)
                 printf("ioctl(IOCTL_XDMA_INIT_BUFF) failed= %d\n", rc);
                 exit(-1);
             }
-            printf_note("[%d, ch=%d]create stream[%s] dev:%s len=%u, block_size:%u, block_count=%u\n", pstream[i].id,pstream[i].ch, pstream[i].name, 
-                                pstream[i].devname, pstream[i].len, pstream[i].block_size, ring_trans.block_count);
+            printf_note("[%d, ch=%d]create stream[%s] dev:%s len=%u, block_size:%u, block_count=%u\n", pstream[i].base.id,pstream[i].base.ch, pstream[i].base.name, 
+                                pstream[i].base.devname, pstream[i].base.len, pstream[i].block_size, ring_trans.block_count);
             for(int j = 0; j < ring_trans.block_count; j++){
-                pstream[i].ptr[j] = mmap(NULL, ring_trans.block_size, PROT_READ | PROT_WRITE,MAP_SHARED, pstream[i].id, j * pagesize);
-                if (pstream[i].ptr[j] == (void*) -1) {
+                pstream[i].ptr_vec[j] = mmap(NULL, ring_trans.block_size, PROT_READ | PROT_WRITE,MAP_SHARED, pstream[i].base.id, j * pagesize);
+                if (pstream[i].ptr_vec[j] == (void*) -1) {
                     fprintf(stderr, "mmap: %s\n", strerror(errno));
                     exit(-1);
                 }
-                printf_info("block[%d]: ptr=%p, pagesize=%d\n", j, pstream[i].ptr[j], pagesize);
+                printf_info("block[%d]: ptr=%p, pagesize=%d\n", j, pstream[i].ptr_vec[j], pagesize);
             }
         }
         usleep(1000);
@@ -242,15 +156,15 @@ static ssize_t xspm_stream_read(int ch, int index, int type,  void **data, uint3
     struct timeval start, now;
     
     memset(info, 0, sizeof(struct xdma_ring_trans_ioctl));
-    if(pstream[index].id < 0){
-        printf_note("%d stream node:%s not found\n",index, pstream[index].name);
+    if(pstream[index].base.id < 0){
+        printf_note("%d stream node:%s not found\n",index, pstream[index].base.name);
         return -1;
     }
      _spm_gettime(&start);
     do{
-        rc =  ioctl(pstream[index].id, IOCTL_XDMA_TRANS_GET, info);
+        rc =  ioctl(pstream[index].base.id, IOCTL_XDMA_TRANS_GET, info);
         if (rc) {
-            printf_err("type=%d, id=%d ioctl(IOCTL_XDMA_TRANS_GET) failed %d, info=%p, %p, %p\n",index, pstream[index].id, rc, info, &xinfo[0], &xinfo[1]);
+            printf_err("type=%d, id=%d ioctl(IOCTL_XDMA_TRANS_GET) failed %d, info=%p, %p, %p\n",index, pstream[index].base.id, rc, info, &xinfo[0], &xinfo[1]);
             return -1;
         }
         if(info->status == RING_TRANS_OK){
@@ -262,6 +176,9 @@ static ssize_t xspm_stream_read(int ch, int index, int type,  void **data, uint3
             printf_err("status:RING_TRANS_FAILED.\n");
             return -1;
         } else if(info->status == RING_TRANS_OVERRUN){
+            #ifdef CONFIG_SPM_STATISTICS
+            update_dma_over_run_count(index, 1);
+            #endif
             printf_warn("*****status:RING_TRANS_OVERRUN.*****\n");
             xspm_xdma_data_clear(ch, args, index);
         } else if(info->status == RING_TRANS_INITIALIZING){
@@ -280,14 +197,15 @@ static ssize_t xspm_stream_read(int ch, int index, int type,  void **data, uint3
 
     int j;
     uint8_t *ptr = NULL;
-    printf_debug("ready_count: %u, type:%d\n", info->ready_count, type);
+    if(info->ready_count > 0)
+        printf_note("ready_count: %u, type:%d\n", info->ready_count, type);
     for(int i = 0; i < info->ready_count; i++){
         j = (info->rx_index + i) % info->block_count;
-        data[i] = pstream[index].ptr[j];
+        data[i] = pstream[index].ptr_vec[j];
         len[i] = info->results[j].length;
         timer = 0;
-        printf_debug("[%d,index:%d][%p, %p, len:%u, offset=0x%x]%s\n", 
-                i, j, data[i], pstream[index].ptr[j], len[i], info->rx_index,  pstream[index].name);
+        printf_note("[%d,index:%d][%p, %p, len:%u, offset=0x%x]%s\n", 
+                i, j, data[i], pstream[index].ptr_vec[j], len[i], info->rx_index,  pstream[index].base.name);
 #ifdef CONFIG_FILE_SINK
         int sink_type = FILE_SINK_TYPE_FFT;
         if(type == STREAM_NIQ)
@@ -299,7 +217,12 @@ static ssize_t xspm_stream_read(int ch, int index, int type,  void **data, uint3
         file_sink_work(sink_type, data[i], len[i]);
 #endif
     }
-    
+#ifdef CONFIG_SPM_STATISTICS
+        struct spm_run_parm *r = args;
+        for(int i = 0; i < info->ready_count; i++)
+            update_dma_readbytes(index, len[i]);
+        update_dma_read_pkts(index, info->ready_count);
+#endif
     return info->ready_count;
 }
 
@@ -313,7 +236,7 @@ static inline int xspm_find_index_by_type(int ch, int subch, enum stream_type ty
 
     subch = subch;
     for(i = 0; i < dev_len; i++){
-        if((type == pstream[i].type) && (ch == pstream[i].ch || pstream[i].ch == -1)){
+        if((type == pstream[i].base.type) && (ch == pstream[i].base.ch || pstream[i].base.ch == -1)){
             index = i;
             find = 1;
             break;
@@ -334,7 +257,7 @@ static inline int xspm_find_index_by_rw(int ch, int subch, int rw)
 
     subch = subch;
     for(i = 0; i < dev_len; i++){
-        if(rw == pstream[i].rd_wr && (ch == pstream[i].ch || pstream[i].ch == -1)){
+        if(rw == pstream[i].base.rd_wr && (ch == pstream[i].base.ch || pstream[i].base.ch == -1)){
             index = i;
             find = 1;
             break;
@@ -365,13 +288,13 @@ static int xspm_stram_write(int ch, const void *data, size_t data_len)
     if(index < 0)
         return -1;
     
-    if(pstream[index].id < 0)
+    if(pstream[index].base.id < 0)
         return -1;
 
     while (buflen) {
-        len =  write(pstream[index].id, buf, buflen);
+        len =  write(pstream[index].base.id, buf, buflen);
         if (len < 0) {
-            printf_note("[fd:%d]-send len : %ld, %d[%s][%s], %d, %p\n", pstream[index].id, len, errno, strerror(errno), pstream[index].name, buflen, buf);
+            printf_note("[fd:%d]-send len : %ld, %d[%s][%s], %d, %p\n", pstream[index].base.id, len, errno, strerror(errno), pstream[index].base.name, buflen, buf);
             if (errno == EINTR)
                 continue;
 
@@ -383,6 +306,9 @@ static int xspm_stram_write(int ch, const void *data, size_t data_len)
         buf += len;
         buflen -= len;
     }
+#ifdef CONFIG_SPM_STATISTICS
+    update_dma_write_bytes(index, ret);
+#endif
     return ret;
 }
 
@@ -858,19 +784,19 @@ static int xspm_read_stream_start(int ch, int subch, uint32_t len,uint8_t contin
 
     memset(&ring_trans, 0, sizeof(struct xdma_ring_trans_ioctl));
     ring_trans.block_size = pstream[index].block_size;
-    ring_trans.block_count = pstream[index].len / pstream[index].block_size;
+    ring_trans.block_count = pstream[index].base.len / pstream[index].block_size;
 
-    if(pstream[index].id < 0)
+    if(pstream[index].base.id < 0)
         return -1;
-    printf_note("pstream[%d].id:%d, %s,%s\n", index, pstream[index].id, pstream[index].name, pstream[index].devname);
-    rc = ioctl(pstream[index].id, IOCTL_XDMA_TRANS_START, &ring_trans);
+    printf_note("pstream[%d].id:%d, %s,%s\n", index, pstream[index].base.id, pstream[index].base.name, pstream[index].base.devname);
+    rc = ioctl(pstream[index].base.id, IOCTL_XDMA_TRANS_START, &ring_trans);
     if (rc == 0) {
         printf_info("IOCTL_XDMA_TRANS_START succesful.\n");
     } 
     else {
         printf("ioctl(IOCTL_XDMA_TRANS_START) failed= %d\n", rc);
     }
-    rc = _WaitDeviceReady(pstream[index].id);
+    rc = _WaitDeviceReady(pstream[index].base.id);
     if (rc < 0) {
         printf("WaitDeviceReady failed %d\n", rc);
     }
@@ -889,12 +815,12 @@ static int xspm_read_stream_stop(int ch, int subch, enum stream_type type)
     index = xspm_find_index_by_rw(ch, -1, DMA_READ);
     if(index < 0)
         return -1;
-    printf_info("name=%s, type=%d, id=%d\n", pstream[index].name, type, pstream[index].id);
+    printf_info("name=%s, type=%d, id=%d\n", pstream[index].base.name, type, pstream[index].base.id);
 
     #if 1
-    if(pstream[index].id < 0)
+    if(pstream[index].base.id < 0)
         return -1;
-    ret = ioctl(pstream[index].id, IOCTL_XDMA_TRANS_STOP, &ring_trans);
+    ret = ioctl(pstream[index].base.id, IOCTL_XDMA_TRANS_STOP, &ring_trans);
     if (ret == 0) {
     	printf_info("IOCTL_XDMA_PERF_STOP succesful.\n");
     } 
@@ -903,7 +829,7 @@ static int xspm_read_stream_stop(int ch, int subch, enum stream_type type)
     }
     #endif
 
-    printf_debug("stream_stop: %d, %s\n", index, pstream[index].name);
+    printf_debug("stream_stop: %d, %s\n", index, pstream[index].base.name);
     return 0;
 }
 
@@ -915,15 +841,14 @@ static int _xspm_close(void *_ctx)
     int i, ch;
 
     for(i = 0; i< dev_len ; i++){
-            if(pstream[i].rd_wr == DMA_READ)
-                xspm_read_stream_stop(pstream[i].ch, -1, pstream[i].type);
-        close(pstream[i].id);
+            if(pstream[i].base.rd_wr == DMA_READ)
+                xspm_read_stream_stop(pstream[i].base.ch, -1, pstream[i].base.type);
+        close(pstream[i].base.id);
     }
     for(ch = 0; ch< MAX_RADIO_CHANNEL_NUM; ch++){
         //safe_free(ctx->run_args[ch]->fft_ptr);
        // safe_free(ctx->run_args[ch]);
     }
-    close_file();
     return 0;
 }
 
@@ -935,8 +860,8 @@ static int xspm_xdma_data_clear(int ch,  void *arg, int type)
     if(index < 0)
         return -1;
     
-    xspm_read_stream_stop(ch, 0, pstream[index].type);
-    xspm_read_stream_start(ch, 0, 0, 0, pstream[index].type);
+    xspm_read_stream_stop(ch, 0, pstream[index].base.type);
+    xspm_read_stream_start(ch, 0, 0, 0, pstream[index].base.type);
     return 0;
 }
 
@@ -955,11 +880,11 @@ static int xspm_read_xdma_data_over(int ch,  void *arg,  int type)
         ring_trans->block_size, ring_trans->block_count, ring_trans->ready_count, ring_trans->rx_index);
     ring_trans->invalid_index = ring_trans->rx_index;
     ring_trans->invalid_count = ring_trans->ready_count;
-    if(pstream[index].id < 0)
+    if(pstream[index].base.id < 0)
         return -1;
 
     if(pstream){
-        ret = ioctl(pstream[index].id, IOCTL_XDMA_TRANS_SET, ring_trans);
+        ret = ioctl(pstream[index].base.id, IOCTL_XDMA_TRANS_SET, ring_trans);
         if (ret){
             printf("ioctl(IOCTL_XDMA_TRANS_SET) failed:%d\n", ret);
             return -1;

@@ -18,12 +18,12 @@
 #define XDMA_R_DEV0 "/dev/xdma0_h2c_0"  //下行
 #define XDMA_R_DEV1 "/dev/xdma0_c2h_0"  //上行
 #define XDMA_R_DEV2 "/dev/xdma0_c2h_1"
-#define XDMA_R_DEV3 "/dev/xdma0_c2h_3"
+#define XDMA_R_DEV3 "/dev/xdma0_h2c_1"
 
 
 static struct _spm_xstream spm_stream[] = {
-    {XDMA_R_DEV1,      -1, 0, XDMA_BUFFER_SIZE, XDMA_BLOCK_SIZE,  "FFT Stream", DMA_READ, STREAM_FFT, -1},
-    {XDMA_R_DEV2,      -1, 1, XDMA_BUFFER_SIZE, XDMA_BLOCK_SIZE,  "NIQ Stream", DMA_READ, STREAM_NIQ, -1},
+    {{0, XDMA_R_DEV0, DMA_WRITE, NULL, XDMA_BUFFER_SIZE, "FFT XDMA Stream", -1, STREAM_XDMA, -1}, XDMA_BLOCK_SIZE},
+    {{1, XDMA_R_DEV2, DMA_READ,  NULL, XDMA_BUFFER_SIZE, "NIQ XDMA Stream", -1, STREAM_XDMA, -1}, XDMA_BLOCK_SIZE},
 };
 
 struct _spm_xstream* spm_dev_get_stream(int *count)

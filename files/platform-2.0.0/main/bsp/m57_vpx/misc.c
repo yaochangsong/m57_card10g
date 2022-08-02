@@ -22,7 +22,7 @@ static ssize_t data_uplink_handle(int fd, void *args)
 
     ssize_t count = 0, r = 0;
     volatile uint8_t *ptr[2048] = {NULL};
-    size_t len[2048] = {0};
+    uint32_t len[2048] = {[0 ... 2047] = 0};
 
     if(pctx->ops->read_raw_vec_data)
         count = pctx->ops->read_raw_vec_data(-1, (void **)ptr, len, NULL);
@@ -184,6 +184,8 @@ static int data_pre_handle(int rw, void *args)
 #ifdef SET_SRIO_SRC_DST_ID1
         SET_SRIO_SRC_DST_ID1(get_fpga_reg(), 0x00060007); //SRIO1_ID
 #endif
+        SET_CHANNEL_SEL(get_fpga_reg(), 0);
+        SET_CHANNEL_SEL(get_fpga_reg(), 0xff);
     }
     if(rw == MISC_READ){
         io_set_enable_command(XDMA_MODE_ENABLE, -1, 0, 0);

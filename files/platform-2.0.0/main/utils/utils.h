@@ -8,8 +8,23 @@
 #define ARRAY_SIZE(array) (sizeof(array)/sizeof(array[0]))
 #endif
 #define EVEN(x) (((x)%2== 0) ? 1 : 0)
-#define alignment_down(a, size) (((uint32_t)a/(uint32_t)size)*(uint32_t)size) //((uint32_t)a & (~((uint32_t)size-1)))
-#define alignment_up(a, size)   (size +((a-1)/size)*size)
+
+#define alignment_down(a, size) (a &(~(size - 1)))
+#define alignment_up(a, size)   ((a + size - 1) & (~(size -1)))
+//#define alignment_up(a, size)   (size +((a-1)/size)*size)
+
+#ifndef __ALIGN_MASK
+#define __ALIGN_MASK(x, mask) (((x) + (mask)) & ~(mask))
+#endif
+
+#ifndef ALIGN
+#define ALIGN(x, a) __ALIGN_MASK(x, (typeof(x))(a) -1)
+#endif
+
+#ifndef IS_ALIGNED
+#define IS_ALIGNED(x, a) (((x) & ((typeof(x))(a) -1)) == 0)
+#endif
+
 
 #define _safe_free_(p)  do{     \
         if((p) != NULL){    \

@@ -54,6 +54,17 @@ static inline int _align_4byte(int *rc)
     return 0;
 }
 
+int _align_power2(int rc)
+{
+    int i = 0;
+    for(i = 1; i <= 8; i++){
+        if(rc <= (1 <<i)){
+            break;
+        }
+    }
+    return (ALIGN(rc, (1 <<i)));
+}
+
 static int _assamble_srio_data(uint8_t *buffer,  size_t buffer_len, 
                                       void *data, size_t data_len, uint32_t addr)
 {
@@ -124,8 +135,8 @@ static ssize_t data_downlink_handle(int fd, const void *data, size_t len)
     struct spm_context *pctx = get_spm_ctx();
     ssize_t consume_len = 0, remain_len = len;
     uint8_t *buffer = NULL, *ptr = NULL;
-    int max_data_len = 248, r = 0, ret = 0;
-    int max_pkt_len = 256;
+    int max_data_len = 256, r = 0, ret = 0;
+    int max_pkt_len = 264;
     
     if(!pctx)
         return -1;
@@ -140,7 +151,7 @@ static ssize_t data_downlink_handle(int fd, const void *data, size_t len)
             break;
         }
         if(r < max_pkt_len){
-            _align_4byte(&r);
+            r = _align_power2(r);
         }
         if(r > max_pkt_len)
             r = max_pkt_len;
@@ -151,7 +162,7 @@ static ssize_t data_downlink_handle(int fd, const void *data, size_t len)
                 break;
             }
         }
-        
+
         if(remain_len >= consume_len){
             remain_len -= consume_len;
             ptr += consume_len;

@@ -24,7 +24,8 @@ enum stream_type {
     STREAM_NIQ = 0,
     STREAM_BIQ,
     STREAM_FFT,
-    STREAM_XDMA,
+    STREAM_XDMA_READ,
+    STREAM_XDMA_WRITE,
     STREAM_ADC_WRITE,
     STREAM_ADC_READ,
 };

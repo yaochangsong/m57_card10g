@@ -22,8 +22,8 @@
 
 
 static struct _spm_xstream spm_stream[] = {
-    {{0, XDMA_R_DEV0, DMA_WRITE, NULL, XDMA_BUFFER_SIZE, "FFT XDMA Stream", -1, STREAM_XDMA, -1}, XDMA_BLOCK_SIZE},
-    {{1, XDMA_R_DEV2, DMA_READ,  NULL, XDMA_BUFFER_SIZE, "NIQ XDMA Stream", -1, STREAM_XDMA, -1}, XDMA_BLOCK_SIZE},
+    {{0, XDMA_R_DEV0, DMA_WRITE, NULL, XDMA_BUFFER_SIZE, "FFT XDMA Stream", -1, STREAM_XDMA_WRITE, -1}, XDMA_BLOCK_SIZE},
+    {{1, XDMA_R_DEV2, DMA_READ,  NULL, XDMA_BUFFER_SIZE, "NIQ XDMA Stream", -1, STREAM_XDMA_READ, -1}, XDMA_BLOCK_SIZE},
 };
 
 struct _spm_xstream* spm_dev_get_stream(int *count)

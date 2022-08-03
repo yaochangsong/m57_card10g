@@ -20,8 +20,8 @@
 #define XDMA_R_DEV2 "/dev/xdma0_c2h_1"
 #define XDMA_R_DEV3 "/dev/xdma0_c2h_3"
 static struct _spm_xstream spm_stream[] = {
-    {{1, XDMA_R_DEV3, DMA_WRITE, NULL, XDMA_BUFFER_SIZE, "Write XDMA Stream", -1, STREAM_XDMA, -1}, XDMA_BLOCK_SIZE},
-    {{0, XDMA_R_DEV1, DMA_READ,  NULL, XDMA_BUFFER_SIZE, "Read XDMA Stream",  -1, STREAM_XDMA, -1}, XDMA_BLOCK_SIZE},
+    {{1, XDMA_R_DEV3, DMA_WRITE, NULL, XDMA_BUFFER_SIZE, "Write XDMA Stream", -1, STREAM_XDMA_WRITE, -1}, XDMA_BLOCK_SIZE},
+    {{0, XDMA_R_DEV1, DMA_READ,  NULL, XDMA_BUFFER_SIZE, "Read XDMA Stream",  -1, STREAM_XDMA_READ, -1}, XDMA_BLOCK_SIZE},
 };
 #else
 #define DMA_FFT0_DEV "/dev/dma_fft"

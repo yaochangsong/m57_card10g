@@ -36,8 +36,8 @@ struct _spm_xstream* spm_dev_get_stream(int *count)
 int get_fft_dma_ch(void)
 {
     for(int i = 0; i < ARRAY_SIZE(spm_stream); i++){
-        if(spm_stream[i].type == STREAM_FFT)
-            return spm_stream[i].ch;
+        if(spm_stream[i].base.type == STREAM_FFT)
+            return spm_stream[i].base.ch;
     }
     return -1;
 }

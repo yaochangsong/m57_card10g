@@ -218,13 +218,14 @@ static int spm_x86_send_fft_data(void *data, size_t fft_len, void *arg)
     iov[1].iov_base = data;
     iov[1].iov_len = data_byte_size;
 
-    __lock_fft_send__();
+    int ch = hparam->ch;
+    __lock_fft_send__(ch);
 #if (defined CONFIG_PROTOCOL_DATA_TCP)
     tcp_send_vec_data(iov, 2, NET_DATA_TYPE_FFT);
 #else
     udp_send_vec_data(iov, 2, NET_DATA_TYPE_FFT);
 #endif
-    __unlock_fft_send__();
+    __unlock_fft_send__(ch);
     safe_free(ptr_header);
     usleep(100);
     return (header_len + data_byte_size);

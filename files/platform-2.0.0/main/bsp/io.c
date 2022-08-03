@@ -935,7 +935,7 @@ void io_set_xdma_disable(int ch, int subch)
     else
         printf_warn("please realize set channel in reg_if.c\n");
     if((get_spm_ctx()!=NULL) && get_spm_ctx()->ops->stream_stop)
-        get_spm_ctx()->ops->stream_stop(ch, subch, STREAM_XDMA);
+        get_spm_ctx()->ops->stream_stop(ch, subch, STREAM_XDMA_READ);
 #endif
 }
 
@@ -948,7 +948,7 @@ void io_set_xdma_enable(int ch, int subch)
     else
         printf_warn("please realize set channel in reg_if.c\n");
     if((get_spm_ctx()!=NULL) && get_spm_ctx()->ops->stream_start)
-        get_spm_ctx()->ops->stream_start(ch, subch, 0, 0, STREAM_XDMA);
+        get_spm_ctx()->ops->stream_start(ch, subch, 0, 0, STREAM_XDMA_READ);
 #endif
 }
 

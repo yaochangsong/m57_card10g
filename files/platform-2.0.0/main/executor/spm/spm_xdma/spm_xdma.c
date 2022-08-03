@@ -214,7 +214,7 @@ static ssize_t xspm_stream_read(int ch, int index, int type,  void **data, uint3
             sink_type = FILE_SINK_TYPE_NIQ;
         else if(type == STREAM_BIQ)
             sink_type = FILE_SINK_TYPE_BIQ;
-        else if(type == STREAM_XDMA)
+        else if(type == STREAM_XDMA_READ)
             sink_type = FILE_SINK_TYPE_RAW;
         file_sink_work(sink_type, data[i], len[i]);
 #endif
@@ -288,7 +288,7 @@ static int xspm_stram_write(int ch, const void *data, size_t data_len)
 #ifdef DEBUG_TEST
     return data_len;
 #endif
-    index = xspm_find_index_by_rw(ch, -1, DMA_WRITE);
+    index = xspm_find_index_by_type(ch, -1, STREAM_XDMA_WRITE);
 
     if(index < 0)
         return -1;
@@ -510,16 +510,16 @@ static ssize_t xspm_read_xdma_raw_data(int ch , void **data, void *len, void *ar
         }*/
         return xspm_stream_read_from_file(STREAM_FFT, ch, data, len, args);
 #else
-    int index = xspm_find_index_by_rw(ch, -1, DMA_READ);
+    int index = xspm_find_index_by_type(ch, -1, STREAM_XDMA_READ);
     if(index < 0)
         return -1;
-    return xspm_stream_read(ch, index, STREAM_XDMA, data, len, args);
+    return xspm_stream_read(ch, index, STREAM_XDMA_READ, data, len, args);
 #endif
 }
 
 static int xspm_read_xdma_raw_data_over(int ch,  void *arg)
 {
-    return xspm_read_xdma_data_over(ch, arg, STREAM_XDMA);
+    return xspm_read_xdma_data_over(ch, arg, STREAM_XDMA_READ);
 }
 
 static int xspm_send_data_by_fd(int fd, void *data, size_t len, void *arg)
@@ -783,7 +783,7 @@ static int xspm_read_stream_start(int ch, int subch, uint32_t len,uint8_t contin
     struct _spm_xstream *pstream = spm_dev_get_stream(NULL);
     struct xdma_ring_trans_ioctl ring_trans;
     
-    index = xspm_find_index_by_rw(ch, -1, DMA_READ);
+    index = xspm_find_index_by_type(ch, -1, type);
     if(index < 0)
         return -1;
 
@@ -817,7 +817,7 @@ static int xspm_read_stream_stop(int ch, int subch, enum stream_type type)
     int index, ret, reg;
     struct xdma_ring_trans_ioctl ring_trans;
 
-    index = xspm_find_index_by_rw(ch, -1, DMA_READ);
+    index = xspm_find_index_by_type(ch, -1, type);
     if(index < 0)
         return -1;
     printf_info("name=%s, type=%d, id=%d\n", pstream[index].base.name, type, pstream[index].base.id);
@@ -875,7 +875,7 @@ static int xspm_read_xdma_data_over(int ch,  void *arg,  int type)
 {
     int ret;
     struct _spm_xstream *pstream = spm_dev_get_stream(NULL);
-    int index = xspm_find_index_by_rw(ch, -1, DMA_READ);
+    int index = xspm_find_index_by_type(ch, -1, type);
     if(index < 0)
         return -1;
 

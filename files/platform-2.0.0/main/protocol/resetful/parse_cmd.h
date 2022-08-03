@@ -65,6 +65,7 @@ extern int cmd_get_softversion(struct uh_client *cl, void **arg, void **content)
 extern int cmd_get_fpga_info(struct uh_client *cl, void **arg, void **content);
 extern int cmd_get_all_info(struct uh_client *cl, void **arg, void **content);
 extern int cmd_get_selfcheck_info(struct uh_client *cl, void **arg, void **content);
+extern int cmd_get_statistics_info(struct uh_client *cl, void **arg, void **content);
 extern int cmd_bddc(struct uh_client *cl, void **arg, void **content);
 extern int cmd_rf_power_onoff(struct uh_client *cl, void **arg, void **content);
 extern int cmd_rf_agcmode(struct uh_client *cl, void **arg, void **content);

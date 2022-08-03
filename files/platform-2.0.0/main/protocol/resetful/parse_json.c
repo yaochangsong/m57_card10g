@@ -18,6 +18,7 @@
 #include <sys/stat.h>
 #include <sys/vfs.h>
 #include <sys/mman.h>
+#include <sys/sysinfo.h>
 #include "config.h"
 #include "parse_cmd.h"
 #include "parse_json.h"
@@ -995,6 +996,94 @@ char *assemble_json_find_rec_file(const char *path, const char *filename)
     return str_json;
 }
 
+char *assemble_json_dma_data_info(void)
+{
+    char *str_json = NULL;
+    cJSON *array = cJSON_CreateArray();
+    cJSON* item = NULL;
+    uint64_t val = 0;
+    char buffer[128] = {0};
+
+#ifdef  CONFIG_SPM_STATISTICS
+    int count = 0;
+    spm_dev_get_stream(&count);
+    for(int i = 0; i < count; i++){
+        cJSON_AddItemToArray(array, item = cJSON_CreateObject());
+        cJSON_AddNumberToObject(item, "channel", i);
+        val = get_dma_readbytes(i);
+        snprintf(buffer, sizeof(buffer) - 1, "%" PRIu64, val);
+        cJSON_AddStringToObject(item, "readBytes", buffer);
+
+        val = get_dma_read_pkts(i);
+        snprintf(buffer, sizeof(buffer) - 1, "%" PRIu64, val);
+        cJSON_AddStringToObject(item, "readPkts", buffer);
+        
+        val = get_dma_write_bytes(i);
+        snprintf(buffer, sizeof(buffer) - 1, "%" PRIu64, val);
+        cJSON_AddStringToObject(item, "writeBytes", buffer);
+
+        val = get_dma_send_bytes(i);
+        snprintf(buffer, sizeof(buffer) - 1, "%" PRIu64, val);
+        cJSON_AddStringToObject(item, "sendBytes", buffer);
+
+        val = get_dma_over_run_count(i);
+        snprintf(buffer, sizeof(buffer) - 1, "%" PRIu64, val);
+        cJSON_AddStringToObject(item, "overrun", buffer);
+    }
+#endif
+    str_json = cJSON_PrintUnformatted(array);
+    cJSON_Delete(array);
+
+    return str_json;
+}
+
+char *assemble_json_net_downlink_info(void)
+{
+    char *str_json = NULL;
+    cJSON *root = cJSON_CreateObject();
+
+#ifdef  CONFIG_SPM_STATISTICS
+    char buffer[128] = {0};
+    snprintf(buffer, sizeof(buffer) - 1, "%" PRIu64, get_downlink_cmd_pkt());
+    cJSON_AddStringToObject(root, "cmdPkts", buffer);
+    cJSON_AddStringToObject(root, "errPkts", "0");
+#endif
+
+    str_json = cJSON_PrintUnformatted(root);
+    cJSON_Delete(root);
+    return str_json;
+}
+
+char *assemble_json_net_uplink_info(void)
+{
+    char *str_json = NULL;
+    cJSON *root = cJSON_CreateObject();
+
+#ifdef  CONFIG_SPM_STATISTICS
+    char buffer[128] = {0};
+    snprintf(buffer, sizeof(buffer) - 1, "%" PRIu64, get_uplink_send_ok_bytes());
+    cJSON_AddStringToObject(root, "sendPkts", buffer);
+#endif
+
+    str_json = cJSON_PrintUnformatted(root);
+    cJSON_Delete(root);
+    return str_json;
+}
+
+
+char *assemble_json_statistics_all_info(void)
+{
+    char *str_json = NULL;
+    cJSON *root = cJSON_CreateObject();
+#ifdef  CONFIG_SPM_STATISTICS
+    safe_cJson_AddItemToObject(root, "dma", assemble_json_dma_data_info());
+    safe_cJson_AddItemToObject(root, "uplink", assemble_json_net_uplink_info());
+    safe_cJson_AddItemToObject(root, "downlink", assemble_json_net_downlink_info());
+ #endif
+    str_json = cJSON_PrintUnformatted(root);
+    cJSON_Delete(root);
+    return str_json;
+}
 
 char *assemble_json_build_info(void)
 {
@@ -1374,6 +1463,41 @@ exit:
    return str_json;
 }
 
+char *assemble_json_sys_info(void)
+{
+    char *str_json = NULL;
+    cJSON *root = cJSON_CreateObject();
+
+    struct sysinfo info;
+    if(sysinfo(&info)){
+        fprintf(stderr, "Failed to get sysinfo, errno: %u[%s]\n", errno, strerror(errno));
+        return NULL;
+    }
+
+    char buffer[128] = {0};
+    snprintf(buffer, sizeof(buffer) - 1, "%" PRIu64, info.uptime);
+    cJSON_AddStringToObject(root, "uptime", buffer);
+    snprintf(buffer, sizeof(buffer) - 1, "1min:%lu,5min:%lu,15min:%lu", info.loads[0], info.loads[1], info.loads[2]);
+    cJSON_AddStringToObject(root, "loads", buffer);
+    snprintf(buffer, sizeof(buffer) - 1, "%" PRIu64, info.totalram);
+    cJSON_AddStringToObject(root, "totalram", buffer);
+    snprintf(buffer, sizeof(buffer) - 1, "%" PRIu64, info.freeram);
+    cJSON_AddStringToObject(root, "freeram", buffer);
+    snprintf(buffer, sizeof(buffer) - 1, "%" PRIu64, info.totalswap);
+    cJSON_AddStringToObject(root, "totalswap", buffer);
+    snprintf(buffer, sizeof(buffer) - 1, "%" PRIu64, info.freeswap);
+    cJSON_AddStringToObject(root, "freeswap", buffer);
+    snprintf(buffer, sizeof(buffer) - 1, "%u", info.procs);
+    cJSON_AddStringToObject(root, "procs", buffer);
+
+//    json_print(root, 1);
+    str_json = cJSON_PrintUnformatted(root);
+    cJSON_Delete(root);
+    return str_json;
+
+}
+
+
 char *assemble_json_all_info(void)
 {
     char *str_json = NULL;
@@ -1389,7 +1513,10 @@ char *assemble_json_all_info(void)
 #endif
     safe_cJson_AddItemToObject(root, "netInfo", assemble_json_net_list_info());
     safe_cJson_AddItemToObject(root, "buildInfo", assemble_json_build_info());
+#ifdef CONFIG_SPM_DISTRIBUTOR
     safe_cJson_AddItemToObject(root, "distributorInfo", assemble_json_distributor_info());
+#endif
+    safe_cJson_AddItemToObject(root, "sysinfo", assemble_json_sys_info());
     json_print(root, 1);
     str_json = cJSON_PrintUnformatted(root);
     cJSON_Delete(root);

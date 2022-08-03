@@ -14,6 +14,8 @@
 #include "../../../protocol/resetful/data_frame.h"
 #include "../../../bsp/io.h"
 #include "../agc/agc.h"
+#include "../statistics/statistics.h"
+
 
 
 static int xspm_read_stream_stop(int ch, int subch, enum stream_type type);
@@ -219,6 +221,9 @@ static ssize_t xspm_stream_read(int ch, int index, int type,  void **data, uint3
     }
 #ifdef CONFIG_SPM_STATISTICS
         struct spm_run_parm *r = args;
+        if(r)
+            r->dma_ch = pstream[index].base.dma_ch;
+
         for(int i = 0; i < info->ready_count; i++)
             update_dma_readbytes(index, len[i]);
         update_dma_read_pkts(index, info->ready_count);

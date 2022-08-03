@@ -54,7 +54,7 @@ static inline uint64_t get_uplink_send_ok_bytes(void)
 
 static inline void update_downlink_cmd_pkt(size_t len)
 {
-    if(spm_stats)
+    if(!spm_stats)
         return;
 
     spm_stats->downlink.cmd_pkt += len;
@@ -62,7 +62,7 @@ static inline void update_downlink_cmd_pkt(size_t len)
 
 static inline uint64_t get_downlink_cmd_pkt(void)
 {
-    if(spm_stats)
+    if(!spm_stats)
         return 0;
 
     return spm_stats->downlink.cmd_pkt;
@@ -70,15 +70,14 @@ static inline uint64_t get_downlink_cmd_pkt(void)
 
 static inline void update_dma_readbytes(int ch, size_t len)
 {
-    if(spm_stats || ch >= DMA_CHANNEL_STATS || ch < 0)
+    if(!spm_stats || ch >= DMA_CHANNEL_STATS || ch < 0)
         return;
-
     spm_stats->dma_stats[ch].read_bytes += len;
 }
 
 static inline uint64_t get_dma_readbytes(int ch)
 {
-    if(spm_stats || ch >= DMA_CHANNEL_STATS || ch < 0)
+    if(!spm_stats || ch >= DMA_CHANNEL_STATS || ch < 0)
         return 0;
 
     return spm_stats->dma_stats[ch].read_bytes ;
@@ -86,7 +85,7 @@ static inline uint64_t get_dma_readbytes(int ch)
 
 static inline void update_dma_write_bytes(int ch, size_t len)
 {
-    if(spm_stats || ch >= DMA_CHANNEL_STATS || ch < 0)
+    if(!spm_stats || ch >= DMA_CHANNEL_STATS || ch < 0)
         return;
 
     spm_stats->dma_stats[ch].write_bytes += len;
@@ -94,7 +93,7 @@ static inline void update_dma_write_bytes(int ch, size_t len)
 
 static inline uint64_t get_dma_write_bytes(int ch)
 {
-    if(spm_stats || ch >= DMA_CHANNEL_STATS || ch < 0)
+    if(!spm_stats || ch >= DMA_CHANNEL_STATS || ch < 0)
         return 0;
 
     return spm_stats->dma_stats[ch].write_bytes ;
@@ -103,7 +102,7 @@ static inline uint64_t get_dma_write_bytes(int ch)
 
 static inline void update_dma_read_pkts(int ch, size_t len)
 {
-    if(spm_stats || ch >= DMA_CHANNEL_STATS || ch < 0)
+    if(!spm_stats || ch >= DMA_CHANNEL_STATS || ch < 0)
         return;
 
     spm_stats->dma_stats[ch].read_pkts += len;
@@ -111,7 +110,7 @@ static inline void update_dma_read_pkts(int ch, size_t len)
 
 static inline uint64_t get_dma_read_pkts(int ch)
 {
-    if(spm_stats || ch >= DMA_CHANNEL_STATS || ch < 0)
+    if(!spm_stats || ch >= DMA_CHANNEL_STATS || ch < 0)
         return 0;
 
     return spm_stats->dma_stats[ch].read_pkts;
@@ -120,7 +119,7 @@ static inline uint64_t get_dma_read_pkts(int ch)
 
 static inline void update_dma_send_bytes(int ch, size_t len)
 {
-    if(spm_stats || ch >= DMA_CHANNEL_STATS || ch < 0)
+    if(!spm_stats || ch >= DMA_CHANNEL_STATS || ch < 0)
         return;
 
     spm_stats->dma_stats[ch].send_bytes += len;
@@ -128,7 +127,7 @@ static inline void update_dma_send_bytes(int ch, size_t len)
 
 static inline uint64_t get_dma_send_bytes(int ch)
 {
-    if(spm_stats || ch >= DMA_CHANNEL_STATS || ch < 0)
+    if(!spm_stats || ch >= DMA_CHANNEL_STATS || ch < 0)
         return 0;
 
     return spm_stats->dma_stats[ch].send_bytes;
@@ -137,7 +136,7 @@ static inline uint64_t get_dma_send_bytes(int ch)
 
 static inline void update_dma_over_run_count(int ch, size_t len)
 {
-    if(spm_stats || ch >= DMA_CHANNEL_STATS || ch < 0)
+    if(!spm_stats || ch >= DMA_CHANNEL_STATS || ch < 0)
         return;
 
     spm_stats->dma_stats[ch].over_run_count += len;
@@ -145,13 +144,13 @@ static inline void update_dma_over_run_count(int ch, size_t len)
 
 static inline uint64_t get_dma_over_run_count(int ch)
 {
-    if(spm_stats || ch >= DMA_CHANNEL_STATS || ch < 0)
+    if(!spm_stats || ch >= DMA_CHANNEL_STATS || ch < 0)
         return 0;
 
     return spm_stats->dma_stats[ch].over_run_count;
 }
 
 
-
+extern void statistics_init(void);
 
 #endif

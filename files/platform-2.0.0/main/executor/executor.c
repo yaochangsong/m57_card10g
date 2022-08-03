@@ -438,6 +438,10 @@ void executor_init(void)
 #if defined(CONFIG_SPM_BOTTOM)
     bottom_init();
 #endif
+#if defined(CONFIG_SPM_STATISTICS)
+    statistics_init();
+#endif
+
     struct spm_context *spmctx = spm_init();
     if(spmctx == NULL){
         printf_err("spm create failed\n");

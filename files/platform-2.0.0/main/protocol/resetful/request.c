@@ -90,6 +90,7 @@ static struct request_info http_req_cmd[] = {
     {"GET",     "/status/device/fpgaInfo",              -1,                cmd_get_fpga_info},
     {"GET",     "/status/device/all",                   -1,                cmd_get_all_info},
     {"GET",     "/status/device/selfcheckInfo",         -1,                cmd_get_selfcheck_info},
+    {"GET",     "/statistics",                          -1,                cmd_get_statistics_info},
     /* 控制参数 */
     /* 时间源 */
     {"PUT",     "/timesource/@value",                   -1,                cmd_timesource_set},

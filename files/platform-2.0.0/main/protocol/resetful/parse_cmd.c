@@ -1273,6 +1273,17 @@ int cmd_get_selfcheck_info(struct uh_client *cl, void **arg, void **content)
     return code;
 }
 
+int cmd_get_statistics_info(struct uh_client *cl, void **arg, void **content)
+{
+    int code = RESP_CODE_OK;
+    *content = assemble_json_statistics_all_info();
+    if(*content == NULL)
+        code = RESP_CODE_EXECMD_ERR;
+    
+    *arg = get_resp_message(code);
+    return code;
+}
+
 int cmd_netget(struct uh_client *cl, void **arg, void **content)
 {
     int code = RESP_CODE_OK;

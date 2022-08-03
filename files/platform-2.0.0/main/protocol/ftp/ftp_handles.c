@@ -1,4 +1,6 @@
 #include "ftp_common.h"
+#include <netinet/tcp.h>
+
 
 /**
 * Get ip where client connected to
@@ -99,9 +101,9 @@ void response(Command *cmd, State *state)
     case PWD:  ftp_pwd(cmd,state); break;
     case MKD:  ftp_mkd(cmd,state); break;
     case RMD:  ftp_rmd(cmd,state); break;
-    case RETR: ftp_retr(cmd,state); break;
+    case RETR: ftp_retr2(cmd,state); break;
     case RET2: ftp_retr2(cmd,state); break;
-    case STOR: ftp_stor(cmd,state); break;
+    case STOR: ftp_stor2(cmd,state); break;
     case STO2: ftp_stor2(cmd,state); break;
     case DELE: ftp_dele(cmd,state); break;
     case SIZE: ftp_size(cmd,state); break;
@@ -404,6 +406,51 @@ void ftp_retr(Command *cmd, State *state)
     write_state(state);
 }
 
+static void set_sock_buf(int sock)
+{
+    #define TCP_SEND_BUF 2*1024*1024
+    int _err;
+    int opt = 6;
+    _err = setsockopt(sock, SOL_SOCKET, SO_PRIORITY, &opt, sizeof(opt));
+    if(_err){
+        printf("setsockopt SO_PRIORITY failure \n");
+    }
+    int defrcvbufsize = -1;
+    int nSnd_buffer = TCP_SEND_BUF;
+    socklen_t optlen = sizeof(defrcvbufsize);
+    if(getsockopt(sock, SOL_SOCKET, SO_SNDBUF, &defrcvbufsize, &optlen) < 0)
+    {
+        printf("getsockopt error\n");
+        return;
+    }
+    printf("Current tcp default send buffer size is:%d\n", defrcvbufsize);
+    if(setsockopt(sock, SOL_SOCKET, SO_SNDBUF, &nSnd_buffer, optlen) < 0)
+    {
+        printf("set tcp recive buffer size failed.\n");
+        return;
+    }
+    if(getsockopt(sock, SOL_SOCKET, SO_SNDBUF, &defrcvbufsize, &optlen) < 0)
+    {
+        printf("getsockopt error\n");
+        return;
+    }
+    printf("Now set tcp send buffer size to:%dByte\n",defrcvbufsize);
+}
+
+static inline int is_socket_disconnect(int fd)
+{
+    socklen_t val;
+    int rv_len = sizeof(val);
+
+    struct tcp_info info;
+    int len = sizeof(info);
+    getsockopt(fd, IPPROTO_TCP, TCP_INFO, &info, (socklen_t *)&len);
+    if(info.tcpi_state != TCP_ESTABLISHED){
+        return -1;
+    }
+
+    return 0;
+}
 /** RETR command 下载文件*/
 void ftp_retr2(Command *cmd, State *state)
 {
@@ -421,8 +468,13 @@ void ftp_retr2(Command *cmd, State *state)
             write_state(state);
             if(c->server->pre_cb)
                 c->server->pre_cb(MISC_READ, NULL);
+            //set_sock_buf(connection);
             do{
                 r = c->server->uplink_cb(connection, NULL);
+                if(is_socket_disconnect(connection) == -1){
+                    printf("socket disconnect\n");
+                    break;
+                }
             }while(r > 0);
             if(c->server->post_cb)
                 c->server->post_cb(MISC_READ, NULL);
@@ -539,7 +591,7 @@ void ftp_stor2(Command *cmd, State *state)
             }
             if(c->server->post_cb)
                 c->server->post_cb(MISC_WRITE, NULL);
-            printf_debug("ftp_readn over:%d\n", res);
+            printf_note("ftp_readn over:%d\n", res);
             state->message = "226 File send OK.\n";
             close(connection);
         }

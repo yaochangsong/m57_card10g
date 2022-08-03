@@ -1,0 +1,17 @@
+{
+	"version":	"1.0",
+	"route" : [		
+                {
+                        "port_num" : 10,  "dest_id" : 7, "dest_port" : 5
+                },
+                {
+                        "port_num" : 9,  "dest_id" : 7, "dest_port" : 3
+                },
+                {
+                        "port_num" : 3,  "dest_id" : 6, "dest_port" : 9
+                },
+                {
+                        "port_num" : 5,  "dest_id" : 6, "dest_port" : 10
+                }
+	]
+}

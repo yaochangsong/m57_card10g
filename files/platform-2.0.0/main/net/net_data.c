@@ -24,6 +24,7 @@
 #include <linux/if_link.h>
 #include "../protocol/http/file.h"
 #include "net_data.h"
+#include "../executor/spm/statistics/statistics.h"
 
 
 static void tcp_ustream_write_cb(struct ustream *s, int bytes)
@@ -316,7 +317,11 @@ static inline int tcp_send_vec_data_to_client(struct net_tcp_client *client, str
     r = sendmsg(client->sfd.fd.fd, &msgsent, 0);
     if(r < 0){
         perror("sendmsg");
+        return -1;
     }
+#ifdef CONFIG_SPM_STATISTICS
+    update_uplink_send_ok_bytes(r);
+#endif
     return 0;
 }
 
@@ -365,7 +370,10 @@ int tcp_send_data_to_client(int fd, const char *buf, int buflen)
         buf += len;
         buflen -= len;
     }
-    
+#ifdef CONFIG_SPM_STATISTICS
+    if(ret > 0)
+        update_uplink_send_ok_bytes(ret);
+#endif
     return ret;
 }
 

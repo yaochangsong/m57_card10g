@@ -7,3 +7,4 @@ obj-$(CONFIG_SPM_SOURCE_XDMA)  	+= spm_xdma/
 obj-$(CONFIG_SPM_SOURCE_X86)  	+= spm_x86/
 obj-$(CONFIG_SPM_DISTRIBUTOR)	+= distributor/
 obj-$(CONFIG_FILE_SINK)			+= file_sink/
+obj-$(CONFIG_SPM_STATISTICS)	+= statistics/

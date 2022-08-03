@@ -39,15 +39,16 @@ enum stream_iq_type {
 };
 
 typedef struct _spm_stream {
-    char *devname;      /* 流设备节点名称 */
-    int id;             /* 频谱流类型描述符 */
-    int ch;             /* 主通道，如果没有写-1 */
+    int dma_ch;         /* DMA通道 */
+    char *devname;      /* DMA流设备节点名称 */
+    int rd_wr;          /* DMA读写 */
     uint8_t *ptr;       /* 频谱流数据buffer指针 */
     uint32_t len;       /* 频谱流数据buffer长度 */
     char *name;         /* 频谱流名称 */
-    int rd_wr;
+    int ch;             /* 射频主通道，如果没有写-1 */
     enum stream_type type;
-}spm_stream_t;
+    int id;             /* 频谱流类型描述符 */
+}spm_base_stream_t;
 
 #define for_each_niq_type(type, run) \
     for (int i = 0; \

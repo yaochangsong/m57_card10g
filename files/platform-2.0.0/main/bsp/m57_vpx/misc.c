@@ -22,17 +22,23 @@ static ssize_t data_uplink_handle(int fd, void *args)
 
     ssize_t count = 0, r = 0;
     volatile uint8_t *ptr[2048] = {NULL};
-    size_t len[2048] = {0};
-    
+    uint32_t len[2048] = {[0 ... 2047] = 0};
+
     if(pctx->ops->read_raw_vec_data)
         count = pctx->ops->read_raw_vec_data(-1, (void **)ptr, len, NULL);
+
+    if(count <= 0){
+        r = 1;/* loop read */
+    }
     for(int i = 0; i < count; i++){
         if(pctx->ops->send_data_by_fd)
             r += pctx->ops->send_data_by_fd(fd, ptr[i], len[i], NULL);
     }
-
-    if(pctx->ops->read_raw_over_deal)
-        pctx->ops->read_raw_over_deal(-1, NULL);
+    if(count > 0){
+        if(pctx->ops->read_raw_over_deal)
+                pctx->ops->read_raw_over_deal(-1, NULL);
+    }
+    
     return r;
 }
 
@@ -46,6 +52,17 @@ static inline int _align_4byte(int *rc)
         return (4 - reminder);
     }
     return 0;
+}
+
+int _align_power2(int rc)
+{
+    int i = 0;
+    for(i = 1; i <= 8; i++){
+        if(rc <= (1 <<i)){
+            break;
+        }
+    }
+    return (ALIGN(rc, (1 <<i)));
 }
 
 static int _assamble_srio_data(uint8_t *buffer,  size_t buffer_len, 
@@ -118,8 +135,8 @@ static ssize_t data_downlink_handle(int fd, const void *data, size_t len)
     struct spm_context *pctx = get_spm_ctx();
     ssize_t consume_len = 0, remain_len = len;
     uint8_t *buffer = NULL, *ptr = NULL;
-    int max_data_len = 248, r = 0, ret = 0;
-    int max_pkt_len = 256;
+    int max_data_len = 256, r = 0, ret = 0;
+    int max_pkt_len = 264;
     
     if(!pctx)
         return -1;
@@ -133,11 +150,11 @@ static ssize_t data_downlink_handle(int fd, const void *data, size_t len)
             ret = -1;
             break;
         }
-        if(r < max_data_len){
-            _align_4byte(&r);
+        if(r < max_pkt_len){
+            r = _align_power2(r);
         }
-        if(r > max_data_len)
-            r = max_data_len;
+        if(r > max_pkt_len)
+            r = max_pkt_len;
 
         if(pctx->ops->write_data){
             if(pctx->ops->write_data(-1, buffer, r) < 0){
@@ -145,7 +162,7 @@ static ssize_t data_downlink_handle(int fd, const void *data, size_t len)
                 break;
             }
         }
-        
+
         if(remain_len >= consume_len){
             remain_len -= consume_len;
             ptr += consume_len;
@@ -167,10 +184,11 @@ static int data_pre_handle(int rw, void *args)
 #ifdef SET_SRIO_SRC_DST_ID1
         SET_SRIO_SRC_DST_ID1(get_fpga_reg(), 0x00060007); //SRIO1_ID
 #endif
+        SET_CHANNEL_SEL(get_fpga_reg(), 0);
+        SET_CHANNEL_SEL(get_fpga_reg(), 0xff);
     }
-
     if(rw == MISC_READ){
-        io_set_enable_command(XDMA_MODE_ENABLE, 1, 0, 0);
+        io_set_enable_command(XDMA_MODE_ENABLE, -1, 0, 0);
     }
     return 0;
 }
@@ -178,7 +196,7 @@ static int data_pre_handle(int rw, void *args)
 static int data_post_handle(int rw, void *args)
 {
     if(rw == MISC_READ){
-        io_set_enable_command(XDMA_MODE_DISABLE, 1, 0, 0);
+        io_set_enable_command(XDMA_MODE_DISABLE, -1, 0, 0);
     }
     return 0;
 }

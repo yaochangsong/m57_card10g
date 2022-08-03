@@ -20,9 +20,8 @@
 #define XDMA_R_DEV2 "/dev/xdma0_c2h_1"
 #define XDMA_R_DEV3 "/dev/xdma0_c2h_3"
 static struct _spm_xstream spm_stream[] = {
-    {XDMA_R_DEV1,      -1, 0, XDMA_BUFFER_SIZE, XDMA_BLOCK_SIZE,  "FFT Stream", DMA_READ, STREAM_FFT, -1},
-    {XDMA_R_DEV2,      -1, 1, XDMA_BUFFER_SIZE, XDMA_BLOCK_SIZE,  "NIQ Stream", DMA_READ, STREAM_NIQ, -1},
-    {XDMA_R_DEV0,      -1, 1, XDMA_BUFFER_SIZE, XDMA_BLOCK_SIZE,  "XDMA Stream", DMA_WRITE, STREAM_NIQ, -1},
+    {{1, XDMA_R_DEV3, DMA_WRITE, NULL, XDMA_BUFFER_SIZE, "Write XDMA Stream", -1, STREAM_XDMA, -1}, XDMA_BLOCK_SIZE},
+    {{0, XDMA_R_DEV1, DMA_READ,  NULL, XDMA_BUFFER_SIZE, "Read XDMA Stream",  -1, STREAM_XDMA, -1}, XDMA_BLOCK_SIZE},
 };
 #else
 #define DMA_FFT0_DEV "/dev/dma_fft"
@@ -34,13 +33,13 @@ static struct _spm_xstream spm_stream[] = {
 #define DMA_ADC_RX1_DEV "/dev/dma_adc_rx2"
 
 static struct _spm_stream spm_stream[] = {
-    {DMA_NIQ_DEV,       -1,-1, NULL, DMA_IQ_BUFFER_SIZE, "NIQ Stream",      DMA_READ, STREAM_NIQ},
-    {DMA_FFT0_DEV,      -1, 0, NULL, DMA_BUFFER_16M_SIZE, "FFT0 Stream",    DMA_READ, STREAM_FFT},
-    {DMA_FFT1_DEV,      -1, 1, NULL, DMA_BUFFER_16M_SIZE, "FFT1 Stream",    DMA_READ, STREAM_FFT},
-    {DMA_ADC_TX0_DEV,   -1, 0, NULL, DMA_BUFFER_64M_SIZE, "ADC Tx0 Stream", DMA_WRITE, STREAM_ADC_WRITE},
-    {DMA_ADC_TX1_DEV,   -1, 1, NULL, DMA_BUFFER_64M_SIZE, "ADC Tx1 Stream", DMA_WRITE, STREAM_ADC_WRITE},
-    {DMA_ADC_RX0_DEV,   -1, 0, NULL, DMA_BUFFER_64M_SIZE, "ADC Rx0 Stream", DMA_READ, STREAM_ADC_READ},
-    {DMA_ADC_RX1_DEV,   -1, 1, NULL, DMA_BUFFER_64M_SIZE, "ADC Rx1 Stream", DMA_READ, STREAM_ADC_READ},
+    {0, DMA_NIQ_DEV,       DMA_READ, NULL, DMA_IQ_BUFFER_SIZE, "NIQ Stream",     -1, STREAM_NIQ},
+    {1, DMA_FFT0_DEV,      DMA_READ, NULL, DMA_BUFFER_16M_SIZE, "FFT0 Stream",    0, STREAM_FFT},
+    {2, DMA_FFT1_DEV,      DMA_READ, NULL, DMA_BUFFER_16M_SIZE, "FFT1 Stream",    1, STREAM_FFT},
+    {3, DMA_ADC_TX0_DEV,   DMA_WRITE,NULL, DMA_BUFFER_64M_SIZE, "ADC Tx0 Stream", 0, STREAM_ADC_WRITE},
+    {4, DMA_ADC_TX1_DEV,   DMA_WRITE,NULL, DMA_BUFFER_64M_SIZE, "ADC Tx1 Stream", 1, STREAM_ADC_WRITE},
+    {5, DMA_ADC_RX0_DEV,   DMA_READ, NULL, DMA_BUFFER_64M_SIZE, "ADC Rx0 Stream", 0, STREAM_ADC_READ},
+    {6, DMA_ADC_RX1_DEV,   DMA_READ, NULL, DMA_BUFFER_64M_SIZE, "ADC Rx1 Stream", 1, STREAM_ADC_READ},
 };
 #endif
 

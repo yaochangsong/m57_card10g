@@ -23,9 +23,9 @@
 
 
 static struct _spm_stream spm_stream[] = {
-    {DMA_FFT0_DEV,      -1,0, NULL, DMA_BUFFER_16M_SIZE, "FFT0 Stream",    DMA_READ, STREAM_FFT},
-    {DMA_NIQ_DEV,      -1,-1, NULL, DMA_BUFFER_16M_SIZE,  "NIQ Stream",     DMA_READ, STREAM_NIQ},
-    {DMA_BIQ_RX_DEV,  -1,-1, NULL, DMA_BUFFER_16M_SIZE,  "BIQ rx Stream",   DMA_READ, STREAM_ADC_READ},
+    {0, DMA_FFT0_DEV,      DMA_READ, NULL, DMA_BUFFER_16M_SIZE, "FFT0 Stream",    0, STREAM_FFT},
+    {1, DMA_NIQ_DEV,   	   DMA_READ, NULL, DMA_BUFFER_16M_SIZE,  "NIQ Stream", 	 -1, STREAM_NIQ},
+	{2, DMA_BIQ_RX_DEV,    DMA_READ, NULL, DMA_BUFFER_16M_SIZE,  "BIQ Stream",   -1, STREAM_BIQ},
 };
 
 

@@ -17,16 +17,10 @@
 
 
 typedef struct _spm_xstream {
-    char *devname;      /* 流设备节点名称 */
-    int id;             /* 频谱流类型描述符 */
-    int ch;
-    uint32_t len;       /* 频谱流数据buffer长度 */
+    spm_base_stream_t base;
     uint32_t block_size;
-    char *name;         /* 频谱流名称 */
-    int rd_wr;
-    enum stream_type type;
     int consume_index;  /* 每次消费的块索引 */
-    uint8_t *ptr[XDMA_TRANSFER_MAX_DESC];       /* 频谱流数据buffer指针 */
+    uint8_t *ptr_vec[XDMA_TRANSFER_MAX_DESC];       /* 频谱流数据buffer指针 */
 }spm_xstream_t;
 
 

@@ -15,18 +15,18 @@
 #include "dev.h"
 
 
-#define XDMA_R_DEV0 "/dev/xdma0_h2c_0"  //下行
-#define XDMA_R_DEV1 "/dev/xdma0_c2h_0"  //上行
-#define XDMA_R_DEV2 "/dev/xdma0_c2h_1"
-#define XDMA_R_DEV3 "/dev/xdma0_h2c_1"
+#define DMA_FFT0_DEV    "/dev/dma_fft0"
+#define DMA_BIQ_RX_DEV  "/dev/dma_biq_rx"
+#define DMA_NIQ_DEV     "/dev/dma_niq"
 
 
-static struct _spm_xstream spm_stream[] = {
-    {{0, XDMA_R_DEV0, DMA_WRITE, NULL, XDMA_BUFFER_SIZE, "FFT XDMA Stream", -1, STREAM_FFT, -1}, XDMA_BLOCK_SIZE},
-    {{1, XDMA_R_DEV2, DMA_READ,  NULL, XDMA_BUFFER_SIZE, "NIQ XDMA Stream", -1, STREAM_NIQ, -1}, XDMA_BLOCK_SIZE},
+
+static struct _spm_stream spm_stream[] = {
+    {0, DMA_FFT0_DEV, DMA_READ, NULL, DMA_BUFFER_64M_SIZE, "FFT0 Stream", -1, STREAM_FFT},   //共用一个dma
+    {1, DMA_NIQ_DEV,  DMA_READ, NULL, DMA_BUFFER_16M_SIZE, "NIQ Stream",  -1, STREAM_NIQ},
 };
 
-struct _spm_xstream* spm_dev_get_stream(int *count)
+struct _spm_stream* spm_dev_get_stream(int *count)
 {
     if(count)
         *count = ARRAY_SIZE(spm_stream);

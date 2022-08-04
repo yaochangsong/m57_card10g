@@ -525,17 +525,9 @@ static int _spm_distributor_fft_thread_loop(void *s)
     _ctx = get_spm_ctx();
     if(_ctx == NULL)
         return -1;
-#if (!defined CONFIG_SPM_FFT_CONTINUOUS_MODE)
-    /* Start DMA */
-    //prod_size = disp->channel_num * disp->pkt_len * FFT_PROD_PKTS;
-    //io_set_enable_command(PSD_MODE_ENABLE, -1, -1, prod_size);
-#endif
-    if(_ctx->ops->read_fft_vec_data)
-        count = _ctx->ops->read_fft_vec_data(-1, (void **)ptr, len, NULL);
-#if (!defined CONFIG_SPM_FFT_CONTINUOUS_MODE)
-    /* Stop DMA */
-    //io_set_enable_command(PSD_MODE_DISABLE, -1, -1, 0);
-#endif
+
+    if(_ctx->ops->read_raw_data)
+        count = _ctx->ops->read_raw_data(-1, STREAM_FFT, (void **)ptr, len, NULL);
 
     if(count > 0 && count < DIST_MAX_COUNT){
         consume_len = spm_distributor_process(SPM_DIST_FFT, count, (uint8_t **)ptr, len);
@@ -544,8 +536,8 @@ static int _spm_distributor_fft_thread_loop(void *s)
         _spm_distributor_fft_wait_read_over(disp);
     }
 
-    if(_ctx->ops->read_fft_over_deal)
-        _ctx->ops->read_fft_over_deal(-1, &consume_len);
+    if(_ctx->ops->read_raw_over_deal)
+        _ctx->ops->read_raw_over_deal(-1, STREAM_FFT, &consume_len);
     
     return 0;
 }
@@ -561,16 +553,19 @@ static int _spm_distributor_iq_thread_loop(void *s)
     struct spm_context *_ctx;
     volatile uint8_t *ptr[DIST_MAX_COUNT] = {NULL};
     size_t len[DIST_MAX_COUNT] = {0}, count = 0;
+    ssize_t consume_len = 0;
 
     _ctx = get_spm_ctx();
     if(_ctx == NULL)
         return 0;
 
-    if(_ctx->ops->read_iq_vec_data)
-        count = _ctx->ops->read_iq_vec_data(-1, (void **)&ptr, len, NULL);
+    if(_ctx->ops->read_raw_data)
+        count = _ctx->ops->read_raw_data(-1, STREAM_NIQ, (void **)&ptr, len, NULL);
     if(count > 0 && count < DIST_MAX_COUNT){
-        spm_distributor_process(SPM_DIST_IQ, count, (uint8_t **)ptr, len);
+        consume_len = spm_distributor_process(SPM_DIST_IQ, count, (uint8_t **)ptr, len);
     }
+    if(_ctx->ops->read_raw_over_deal)
+        _ctx->ops->read_raw_over_deal(-1, STREAM_NIQ, &consume_len);
     return 0;
 }
 

@@ -199,14 +199,14 @@ static ssize_t xspm_stream_read(int ch, int index, int type,  void **data, uint3
 
     int j;
     uint8_t *ptr = NULL;
-    if(info->ready_count > 0)
-        printf_note("ready_count: %u, type:%d\n", info->ready_count, type);
+    //if(info->ready_count > 0)
+    //    printf_note("ready_count: %u, type:%d\n", info->ready_count, type);
     for(int i = 0; i < info->ready_count; i++){
         j = (info->rx_index + i) % info->block_count;
         data[i] = pstream[index].ptr_vec[j];
         len[i] = info->results[j].length;
         timer = 0;
-        printf_note("[%d,index:%d][%p, %p, len:%u, offset=0x%x]%s\n", 
+        printf_debug("[%d,index:%d][%p, %p, len:%u, offset=0x%x]%s\n", 
                 i, j, data[i], pstream[index].ptr_vec[j], len[i], info->rx_index,  pstream[index].base.name);
 #ifdef CONFIG_FILE_SINK
         int sink_type = FILE_SINK_TYPE_FFT;
@@ -464,6 +464,7 @@ ssize_t xspm_read_fft_vec_data(int ch , void **data, void *len, void *args)
 #endif
 }
 
+
 ssize_t xspm_read_iq_vec_data(int ch , void **data, void *len, void *args)
 {
 #ifdef DEBUG_TEST
@@ -501,25 +502,25 @@ ssize_t xspm_read_biq_data(int ch , void **data, void *len, void *args)
 
 }
 
-static ssize_t xspm_read_xdma_raw_data(int ch , void **data, void *len, void *args)
+static ssize_t xspm_read_xdma_raw_data(int ch ,int type, void **data, void *len, void *args)
 {
 #ifdef DEBUG_TEST
        /* if(config_get_work_enable() == false){
             usleep(1000);
             return -1;
         }*/
-        return xspm_stream_read_from_file(STREAM_FFT, ch, data, len, args);
+        return xspm_stream_read_from_file(type, ch, data, len, args);
 #else
-    int index = xspm_find_index_by_type(ch, -1, STREAM_XDMA_READ);
+    int index = xspm_find_index_by_type(ch, -1, type);
     if(index < 0)
         return -1;
-    return xspm_stream_read(ch, index, STREAM_XDMA_READ, data, len, args);
+    return xspm_stream_read(ch, index, type, data, len, args);
 #endif
 }
 
-static int xspm_read_xdma_raw_data_over(int ch,  void *arg)
+static int xspm_read_xdma_raw_data_over(int ch, int type,  void *arg)
 {
-    return xspm_read_xdma_data_over(ch, arg, STREAM_XDMA_READ);
+    return xspm_read_xdma_data_over(ch, arg, type);
 }
 
 static int xspm_send_data_by_fd(int fd, void *data, size_t len, void *arg)
@@ -1037,15 +1038,11 @@ static fft_t *xspm_data_order(fft_t *fft_data,
 static const struct spm_backend_ops xspm_ops = {
     .create = xspm_create,
     .read_fft_data = xspm_read_fft_data,
-    .read_fft_vec_data = xspm_read_fft_vec_data,
     .send_fft_data = xspm_send_fft_data,
-    .read_iq_vec_data = xspm_read_iq_vec_data,
-    .read_raw_vec_data = xspm_read_xdma_raw_data,
+    .read_raw_data = xspm_read_xdma_raw_data,
     .read_raw_over_deal = xspm_read_xdma_raw_data_over,
     .send_data_by_fd = xspm_send_data_by_fd,
     .write_data = xspm_stram_write,
-    //.read_niq_data = xspm_read_niq_data,
-    //.read_biq_data = xspm_read_biq_data,
     .read_fft_over_deal = xspm_read_xdma_fft_data_over,
     .send_biq_data = xspm_send_biq_data,
     .send_niq_data = xspm_send_niq_data,

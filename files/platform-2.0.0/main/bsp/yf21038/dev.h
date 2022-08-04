@@ -20,7 +20,7 @@ enum uart_func_code{
 #define RF_CH_POWER_ONOFF(ch, val) gpio_raw_write_value(ch, val)
 #define LED_LOCAL_ONOFF(val) gpio_raw_write_value(GPIO_LOCAL_CTR, val)
 
-extern struct _spm_xstream* spm_dev_get_stream(int *count);
+extern struct _spm_stream* spm_dev_get_stream(int *count);
 extern struct gpio_node_info* dev_get_gpio(int *count);
 extern struct uart_info_t* dev_get_uart(int *count);
 struct band_table_t* broadband_factor_table(int *count);

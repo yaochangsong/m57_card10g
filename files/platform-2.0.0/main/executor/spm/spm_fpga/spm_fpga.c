@@ -148,6 +148,21 @@ static int32_t _reset_run_timer(uint8_t index, uint8_t ch)
     return 0;
 }
 
+static void _spm_gettime(struct timeval *tv)
+{
+    struct timespec ts;
+
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    tv->tv_sec = ts.tv_sec;
+    tv->tv_usec = ts.tv_nsec / 1000;
+}
+
+static int _spm_tv_diff(struct timeval *t1, struct timeval *t2)
+{
+    return
+        (t1->tv_sec - t2->tv_sec) * 1000 +
+        (t1->tv_usec - t2->tv_usec) / 1000;
+}
 
 static inline const char * get_str_by_code(const char *const *list, int max, int code)
 {
@@ -211,6 +226,78 @@ static int spm_create(void)
     
     return 0;
 }
+
+static ssize_t spm_raw_stream_read(int ch, int index, int type,  void **data, size_t *len, void *args)
+{
+#define _STREAM_READ_TIMEOUT_MS (1000)
+    struct _spm_stream *pstream;
+    ioctl_dma_status status;
+    status.dir = DMA_S2MM;
+    pstream = spm_dev_get_stream(NULL);
+    read_info info;
+    //size_t readn = 0;
+    struct timeval start, now;
+    memset(&info, 0, sizeof(read_info));
+    if(pstream[index].id < 0){
+        printf_warn("stream node:%s not found\n", pstream[index].name);
+        return -1;
+    }
+
+    _spm_gettime(&start);
+    do{
+        ioctl(pstream[index].id, IOCTL_DMA_GET_ASYN_READ_INFO, &info);
+        printf_debug("read status:%d, block_num:%d\n", info.status, info.block_num);
+        if(info.status == READ_BUFFER_STATUS_FAIL){
+            printf_err("read data error\n");
+            exit(-1);
+        }else if(info.status == READ_BUFFER_STATUS_PENDING){
+            ioctl(pstream[index].id, IOCTL_DMA_GET_STATUS, &status);
+           // printf_note("DMA get [%s] status:%s[%d]\n", pstream[type].name, dma_str_status(status.status), status.status);
+            if(status.status == DMA_STATUS_IDLE){
+                printf_note("[%s]DMA idle!\n", pstream[index].name);
+                usleep(1);
+            }
+        }else if(info.status == READ_BUFFER_STATUS_OVERRUN){
+            printf_warn("[%s]data is overrun\n", pstream[index].name);
+            //io_set_enable_command(PSD_MODE_DISABLE, -1, -1, 0); //关dma
+            //io_set_enable_command(PSD_CONTIOUS_MODE_ENABLE, -1, -1, 0);  //连续模式
+        }
+        _spm_gettime(&now);
+        if(_spm_tv_diff(&now, &start) > _STREAM_READ_TIMEOUT_MS){
+            printfn("Read TimeOut![%d]\n", info.status);
+            break;
+        }
+    }while(info.status == READ_BUFFER_STATUS_PENDING);
+
+    for(int i = 0; i < info.block_num; i++){
+        data[i] = pstream[index].ptr + info.blocks[i].offset;
+        len[i] = info.blocks[i].length;
+        //printf_warn("%s, block_num:%u,[%p, offset=0x%x], readn:%u\n", pstream[type].name,  i, pstream[type].ptr, info.blocks[i].offset, info.blocks[i].length);
+#ifdef CONFIG_FILE_SINK
+        int sink_type = FILE_SINK_TYPE_FFT;
+        if(type == STREAM_NIQ)
+            sink_type = FILE_SINK_TYPE_NIQ;
+        else if(type == STREAM_BIQ)
+            sink_type = FILE_SINK_TYPE_BIQ;
+        else if(type == STREAM_XDMA_READ)
+            sink_type = FILE_SINK_TYPE_RAW;
+        file_sink_work(sink_type, data[i], len[i]);
+#endif
+    }
+#ifdef CONFIG_SPM_STATISTICS
+            struct spm_run_parm *r = args;
+            if(r)
+                r->dma_ch = pstream[index].dma_ch;
+    
+            for(int i = 0; i < info.block_num; i++)
+                update_dma_readbytes(index, len[i]);
+            update_dma_read_pkts(index, info.block_num);
+#endif
+
+
+    return info.block_num;
+}
+
 
 static ssize_t spm_stream_read(int ch, int type, void **data)
 {
@@ -310,14 +397,22 @@ static ssize_t spm_read_niq_data(void **data)
 static ssize_t spm_read_fft_data(int ch, void **data, void *args)
 {
     struct spm_run_parm *run_args = args;
-    
+#if defined(SUPPORT_FFT_DISPATCH)
+        ssize_t fft_byte_len = 0;
+        size_t byte_len = 0;
+        byte_len = run_args->fft_size * sizeof(fft_t);
+        if(spm_distributor_fft_data_frame_producer(ch, data, byte_len) == -1)
+            return -1;
+        fft_byte_len = byte_len;
+        return fft_byte_len;
+#else
     int index;
-    
     index = spm_find_index_by_type(ch, -1, STREAM_FFT);
     if(index < 0)
         return -1;
     
     return spm_stream_read(ch, index, data);
+#endif
 }
 
 static ssize_t spm_read_adc_data(int ch, void **data)
@@ -328,6 +423,33 @@ static ssize_t spm_read_adc_data(int ch, void **data)
         return -1;
     
     return spm_stream_read(ch, index, data);
+}
+
+static ssize_t spm_read_raw_data(int ch, int type, void **data, void *len, void *args)
+{
+    int index;
+    index = spm_find_index_by_type(ch, -1, type);
+    if(index < 0)
+        return -1;
+    
+    return spm_raw_stream_read(ch, index, type, data, len, args);
+}
+
+static int spm_read_raw_over_deal(int ch, int type, void *arg)
+{
+    unsigned int nwrite_byte;
+    nwrite_byte = *(unsigned int *)arg;
+    struct _spm_stream *pstream = spm_dev_get_stream(NULL);
+    int index;
+    
+    index = spm_find_index_by_type(ch, -1, type);
+    if(index < 0)
+        return -1;
+    
+    if(pstream){
+        ioctl(pstream[index].id, IOCTL_DMA_SET_ASYN_READ_INFO, &nwrite_byte);
+    }
+    return 0;
 }
 
 
@@ -1397,6 +1519,8 @@ static const struct spm_backend_ops spm_ops = {
     .read_biq_data = spm_read_biq_data,
     .read_fft_data = spm_read_fft_data,
     .read_adc_data = spm_read_adc_data,
+    .read_raw_data = spm_read_raw_data,
+    .read_raw_over_deal = spm_read_raw_over_deal,
     .read_adc_over_deal = spm_read_adc_over_deal,
     .read_niq_over_deal = spm_read_niq_over_deal,
     .data_order = spm_order_pro,

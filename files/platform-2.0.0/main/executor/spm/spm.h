@@ -62,14 +62,12 @@ struct spm_backend_ops {
     ssize_t (*read_niq_data)(void **);
     ssize_t (*read_biq_data)(int ch, void **data);
     ssize_t (*read_fft_data)(int, void **, void*);
-    ssize_t (*read_fft_vec_data)(int, void **, void*, void*);
-    ssize_t (*read_iq_vec_data)(int, void **, void*, void*);
-    ssize_t (*read_raw_vec_data)(int, void **, void*, void*);
+    ssize_t (*read_raw_data)(int, int, void **, void*, void*);
     ssize_t (*read_adc_data)(int,void **);
     int (*read_adc_over_deal)(int,void *);
     int (*read_niq_over_deal)(void *);
     int (*read_fft_over_deal)(int,  void *);
-    int (*read_raw_over_deal)(int,  void *);
+    int (*read_raw_over_deal)(int, int, void *);
     int (*write_data)(int, const void *, size_t);
     fft_t *(*data_order)(fft_t *, size_t,  size_t *, void *);
     int (*send_fft_data)(void *, size_t, void *);

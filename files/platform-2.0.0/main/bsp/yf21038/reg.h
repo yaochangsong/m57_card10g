@@ -65,15 +65,17 @@ typedef struct _ADC_REG_
 typedef struct _SIGNAL_REG_
 {
 	uint32_t reserve;
-	uint32_t data_path_reset;
+	uint32_t data_path_reset;  //0x04
     uint32_t reserve1[0x3];
-    uint32_t trig;
+    uint32_t trig;  //0x14
     uint32_t reserve2[0x7];
     uint32_t reserve3[0xf];
-    uint32_t current_time;
+    uint32_t current_time; //0x70
     uint32_t current_count;
     uint32_t trig_time;
     uint32_t trig_count;
+    uint32_t reserve4[4];  //0x80
+    uint32_t audio_select;  //0x90
 }SIGNAL_REG;
 
 
@@ -198,9 +200,10 @@ typedef struct _FPGA_CONFIG_REG_
 #define SET_FFT_WINDOW_TYPE(reg,v, ch) 			(reg->broad_band[ch]->fft_win=v)
 
 /* BIQ */
-#define SET_BIQ_SIGNAL_CARRIER(reg,v, ch) 		(reg->broad_band[1]->signal_carrier=v)
-#define SET_BIQ_BAND(reg,v, ch) 				(reg->broad_band[1]->band=v)
-#define SET_BIQ_ENABLE(reg,v, ch) 				(reg->broad_band[1]->enable=v)
+#define SET_BIQ_SIGNAL_CARRIER(reg,v, ch) 		(reg->broad_band[8]->signal_carrier=v)
+#define SET_BIQ_BAND(reg,v, ch) 				(reg->broad_band[8]->band=v)
+#define SET_BIQ_ENABLE(reg,v, ch) 				(reg->broad_band[8]->enable=v)
+
 
 
 /*****narrow band*****/
@@ -222,6 +225,7 @@ typedef struct _FPGA_CONFIG_REG_
 #define SET_CURRENT_COUNT(reg,v)		    (reg->signal->current_count=v)
 #define SET_TRIG_TIME(reg,v)			    (reg->signal->trig_time=v)
 #define SET_TRIG_COUNT(reg,v)			    (reg->signal->trig_count=v)
+#define SET_AUDIO_CHANNEL(reg,ch)			(reg->signal->audio_select=ch)
 
 #define GET_CURRENT_TIME(reg)			    (reg->signal->current_time)
 #define GET_CURRENT_COUNT(reg)			    (reg->signal->current_count)

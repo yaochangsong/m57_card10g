@@ -14,7 +14,6 @@
 ******************************************************************************/
 #include "dev.h"
 
-
 #define DMA_FFT0_DEV    "/dev/dma_fft0"
 #define DMA_BIQ_RX_DEV  "/dev/dma_biq_rx"
 #define DMA_NIQ_DEV     "/dev/dma_niq"
@@ -35,7 +34,13 @@ struct _spm_stream* spm_dev_get_stream(int *count)
 
 static struct gpio_node_info gpio_node[] ={
     /* pin   direction  default gpio value   func_code    func_name    fd */
-//    {3,      "out",        0,               GPIO_LOCAL_CTR,   "GPIO LOCAL REMOTE",                 -1 },  //通道射频电源控制
+    {52,      "out",        1,               -1,   "GPIO DIR1",                 -1 },  
+    {53,      "out",        0,               -1,   "GPIO_OE_N1",                 -1 },  
+    {54,      "out",        1,               -1,   "GPIO_DIR2",                 -1 },  
+    {55,      "out",        0,               -1,   "GPIO_OE_N2",                 -1 }, 
+    {56,      "out",        0,               -1,   "GPIO_DIR3",                 -1 },  
+    {57,      "out",        0,               -1,   "GPIO_OE_N3",                 -1 },
+
 };
 
 struct gpio_node_info* dev_get_gpio(int *count)
@@ -49,7 +54,7 @@ struct gpio_node_info* dev_get_gpio(int *count)
 struct uart_info_t uartinfo[] = {
     /* NOTE: ttyUL*为PL侧控制，波特率由PL侧设置（默认为9600，不可更改），需要更改FPGA */
  //  {UART_GPS_CODE, "/dev/ttyUL2", 9600,   "gps",   false},
- //  {UART_LCD_CODE, "/dev/ttyPS1", 115200,   "LCD",   true, -1},
+   {UART_LCD_CODE, "/dev/ttyPS1", 115200,   "LCD",   true, -1},
 };
 
 struct uart_info_t* dev_get_uart(int *count)

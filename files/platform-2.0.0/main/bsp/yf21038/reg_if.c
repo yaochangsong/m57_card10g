@@ -120,8 +120,8 @@ static void _set_narrow_audio_sample_rate(int ch, int subch, int rate)
 */
 static inline void _set_narrow_audio_gain(int ch, int subch, float gain)
 {
-	#define SUB_CH_MAX_GAIN_VAL 90//(57.855)
-    #define SUB_CH_MIN_GAIN_VAL 0 //(-30.0)
+#define SUB_CH_MAX_GAIN_VAL 90//(57.855)
+#define SUB_CH_MIN_GAIN_VAL 0 //(-30.0)
     uint32_t _reg;
     int32_t _val;
     FPGA_CONFIG_REG *reg = get_fpga_reg();
@@ -139,16 +139,17 @@ static inline void _set_narrow_audio_gain(int ch, int subch, float gain)
     _val = (int32_t)(pow(10, (float)gain/20.0));
     int mode = ((_reg & 0x08000) ?  POAL_MGC_MODE : POAL_AGC_MODE);
     if (mode == POAL_MGC_MODE) {
-        _reg = _reg & 0xffff8000;
-        _val = _val & 0x7fff;
+    	_reg = _reg & 0xffff8000;
+    	_val = _val & 0x7fff;
         _reg = _reg | _val;
     } else {
-        _reg = _reg & 0x0ffff;
-        _val = (_val << 16) & 0xffff0000;
-         _reg = _reg | _val;
+    	_reg = _reg & 0x0ffff;
+    	_val = (_val << 16) & 0xffff0000;
+    	 _reg = _reg | _val;
     }
     printf_note("[subch:%d]set audio gain: %f, regval=0x%x, val = 0x%x\n", subch, gain, _reg, _val);
     reg->narrow_band[subch]->agc_mgc_gain = _reg;
+
 }
 
 

@@ -14,7 +14,6 @@
 ******************************************************************************/
 #include "config.h"
 
-
 /**
  * Mutex for the set command, used by command setting related functions. 
  */
@@ -448,6 +447,9 @@ void executor_init(void)
         exit(-1);
     }
     executor_thread_init();
+#if defined(CONFIG_SPM_AGC)
+    agc_init();
+#endif
 }
 
 void executor_close(void)

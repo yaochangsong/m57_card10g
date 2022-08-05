@@ -41,17 +41,22 @@ menuconfig SPM
 	config SPM_FFT_WINDOWS
         bool "Windows"
         default n
-		depends on SPM && SPM_SOURCE_FPGA
+		depends on SPM
 		
-	config SPM_FFT_AGC
+	config SPM_AGC
         bool "AGC"
         default n
-		depends on SPM && SPM_SOURCE_FPGA
+		depends on SPM
+
+	config SPM_AGC_POLLING
+	bool "AGC Polling"
+	default n
+		depends on SPM_AGC
 		
 	config SPM_FFT_EXTRACT_POINT
         bool "Extrace Point"
         default n
-		depends on SPM && SPM_SOURCE_FPGA
+		depends on SPM
 		
 	config SPM_FFT_BOTTOM
         bool "FFT Bottom calibration"

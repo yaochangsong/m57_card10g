@@ -762,6 +762,9 @@ static int akt_execute_set_command(void *cl)
             check_valid_channel(payload[0]);
             poal_config->channel[ch].rf_para.gain_ctrl_method = payload[1];
             printf_note("gain_ctrl_method=%d\n", poal_config->channel[ch].rf_para.gain_ctrl_method);
+            #if defined(CONFIG_SPM_AGC)
+            agc_ctrl_thread_notify(ch);
+            #endif
             //executor_set_command(EX_RF_FREQ_CMD, EX_RF_GAIN_MODE, ch, &poal_config->channel[ch].rf_para.gain_ctrl_method);
             break;
         case RF_AGC_CMD:

@@ -45,7 +45,6 @@ uint8_t cur_dbm[MAX_RADIO_CHANNEL_NUM] = {0};
 
 size_t pagesize = 0;
 size_t iq_send_unit_byte = DEFAULT_IQ_SEND_BYTE;    /* IQ发送长度 */
-int32_t agc_ref_val_0dbm[MAX_RADIO_CHANNEL_NUM];     /* 信号为0DBm时对应的FPGA幅度值 */
 int32_t subch_ref_val_0dbm[MAX_RADIO_CHANNEL_NUM];
 
 
@@ -1221,7 +1220,7 @@ static int spm_sample_ctrl(void *args)
 
 static int spm_agc_ctrl(int ch, void *args)
 {
-#ifdef CONFIG_SPM_AGC
+#if (defined CONFIG_SPM_AGC) && (defined CONFIG_SPM_AGC_POLLING)
     agc_ctrl(ch, args);
 #endif
     return 0;

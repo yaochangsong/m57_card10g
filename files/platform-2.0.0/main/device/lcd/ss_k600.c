@@ -552,7 +552,9 @@ int8_t k600_scanf(uint8_t *pdata, int32_t total_len)
                 int8_t mode = ptr->data[0];
                 printf_note("ch = %d, gain mode = [%d]\n", ch, mode);
                 config_write_save_data(EX_RF_FREQ_CMD,  EX_RF_GAIN_MODE, ch, &mode);
-               //spm_agc_deal_notify(ch);
+                #if defined(CONFIG_SPM_AGC)
+                agc_ctrl_thread_notify(ch);
+                #endif
            }
                 break;
             case SCREEN_CHANNEL_RF_GAIN:  //rf gain

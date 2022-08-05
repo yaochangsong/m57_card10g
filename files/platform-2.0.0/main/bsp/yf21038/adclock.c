@@ -499,30 +499,52 @@ void ad9467_int(volatile char * Spi_synth,uint8_t cs)
 };
 
 
-void ad95163_1024mhz(volatile char * Spi_synth,uint8_t ref,uint8_t cs)
-{//0-- inner ref10mhz,3--ext clk
-	//xil_printf("%s......\r\n",__FUNCTION__);
+void ad9653_int(volatile char *Spi_synth, uint8_t cs)
+{
+    spi_wrapper(Spi_synth,0x008,0x03,cs);
+    spi_wrapper(Spi_synth,0x008,0x00,cs);
+    spi_wrapper(Spi_synth,0x000,0x18,cs);
+    spi_wrapper(Spi_synth,0x100,0x46,cs);
+    spi_wrapper(Spi_synth,0x0ff,0x01,cs);
+    spi_wrapper(Spi_synth,0x009,0x00,cs);
+    spi_wrapper(Spi_synth,0x00b,0x00,cs);
+    spi_wrapper(Spi_synth,0x00c,0x00,cs);
+    spi_wrapper(Spi_synth,0x00d,0x00,cs);
+    spi_wrapper(Spi_synth,0x010,0x7f,cs);
+    spi_wrapper(Spi_synth,0x014,0x01,cs);
+    spi_wrapper(Spi_synth,0x015,0x00,cs);
+    spi_wrapper(Spi_synth,0x016,0x00,cs);
+    spi_wrapper(Spi_synth,0x018,0x04,cs);
+    spi_wrapper(Spi_synth,0x019,0xaa,cs);
+    spi_wrapper(Spi_synth,0x01a,0x55,cs);
+    spi_wrapper(Spi_synth,0x01b,0x55,cs);
+    spi_wrapper(Spi_synth,0x01c,0xaa,cs);
+    spi_wrapper(Spi_synth,0x021,0x30,cs);
+    spi_wrapper(Spi_synth,0x022,0x00,cs);
+};
+
+
+
+void ad95163_125mhz(volatile char *Spi_synth, uint8_t ref, uint8_t cs)
+{
+    spi_wrapper(Spi_synth,0x0000,0xdd,cs);
     spi_wrapper(Spi_synth,0x0000,0x99,cs);
-    spi_wrapper(Spi_synth,0x0010,0x7c,cs);
-    spi_wrapper(Spi_synth,0x0011,0x32,cs);//ref div
+    spi_wrapper(Spi_synth,0x0010,0x7C,cs);
+    spi_wrapper(Spi_synth,0x0011,0x01,cs);//ref div
     spi_wrapper(Spi_synth,0x0012,0x00,cs);
-    spi_wrapper(Spi_synth,0x0013,0x00,cs);
-    spi_wrapper(Spi_synth,0x0014,0x20,cs);
+    spi_wrapper(Spi_synth,0x0013,0x08,cs);
+    spi_wrapper(Spi_synth,0x0014,0x0C,cs);
     spi_wrapper(Spi_synth,0x0015,0x00,cs);
-    spi_wrapper(Spi_synth,0x0016,0x06,cs);
+    spi_wrapper(Spi_synth,0x0016,0x05,cs);
     spi_wrapper(Spi_synth,0x0017,0x00,cs);
-    spi_wrapper(Spi_synth,0x0018,0x06,cs);
+    spi_wrapper(Spi_synth,0x0018,0x07,cs);
     spi_wrapper(Spi_synth,0x0019,0x00,cs);
     spi_wrapper(Spi_synth,0x001a,0x00,cs);//0x2c pd pin use for ref sel mon
     spi_wrapper(Spi_synth,0x001b,0x00,cs);//f7 ref monitor
-    if (config_get_is_internal_clock()) {
-        spi_wrapper(Spi_synth,0x001c,0x44,cs);
-    } else {
-        spi_wrapper(Spi_synth,0x001c,0x02,cs);//disable deglitch enable both ref ,must use ref_sel & ref mon pin
-    }
+    spi_wrapper(Spi_synth,0x001c,0x26,cs);//ref2
     spi_wrapper(Spi_synth,0x001d,0x00,cs);//disable holdover
     spi_wrapper(Spi_synth,0x001e,0x00,cs);
-    spi_wrapper(Spi_synth,0x001f,0x0e,cs);
+    spi_wrapper(Spi_synth,0x001f,0x0E,cs);
     spi_wrapper(Spi_synth,0x00a0,0x01,cs);
     spi_wrapper(Spi_synth,0x00a1,0x00,cs);
     spi_wrapper(Spi_synth,0x00a2,0x00,cs);
@@ -536,31 +558,30 @@ void ad95163_1024mhz(volatile char * Spi_synth,uint8_t ref,uint8_t cs)
     spi_wrapper(Spi_synth,0x00aa,0x00,cs);
     spi_wrapper(Spi_synth,0x00ab,0x00,cs);
     spi_wrapper(Spi_synth,0x00f0,0x08,cs);
-    spi_wrapper(Spi_synth,0x00f1,0x0a,cs);
-	spi_wrapper(Spi_synth,0x00f2,0x08,cs);
-    spi_wrapper(Spi_synth,0x00f3,0x0a,cs);
+    spi_wrapper(Spi_synth,0x00f1,0x0A,cs);
+    spi_wrapper(Spi_synth,0x00f2,0x08,cs);
+    spi_wrapper(Spi_synth,0x00f3,0x0A,cs);
     spi_wrapper(Spi_synth,0x00f4,0x08,cs);
-    spi_wrapper(Spi_synth,0x00f5,0x0a,cs);
-    spi_wrapper(Spi_synth,0x0140,0x42,cs);
+    spi_wrapper(Spi_synth,0x00f5,0x08,cs);
+    spi_wrapper(Spi_synth,0x0140,0x43,cs);
     spi_wrapper(Spi_synth,0x0141,0x43,cs);
-    spi_wrapper(Spi_synth,0x0142,0x42,cs);
-    spi_wrapper(Spi_synth,0x0143,0x42,cs);
-    spi_wrapper(Spi_synth,0x0190,0x21,cs);
+    spi_wrapper(Spi_synth,0x0142,0x43,cs);
+    spi_wrapper(Spi_synth,0x0143,0x43,cs);
+    spi_wrapper(Spi_synth,0x0190,0x11,cs);
     spi_wrapper(Spi_synth,0x0191,0x00,cs);
     spi_wrapper(Spi_synth,0x0192,0x00,cs);
-	spi_wrapper(Spi_synth,0x0193,0x21,cs);
-    spi_wrapper(Spi_synth,0x0194,0x00,cs);
+	spi_wrapper(Spi_synth,0x0193,0x11,cs);
+	spi_wrapper(Spi_synth,0x0194,0x00,cs);
     spi_wrapper(Spi_synth,0x0195,0x00,cs);
-	
-    spi_wrapper(Spi_synth,0x0196,0x21,cs);
+    spi_wrapper(Spi_synth,0x0196,0x11,cs);
     spi_wrapper(Spi_synth,0x0197,0x00,cs);
     spi_wrapper(Spi_synth,0x0198,0x00,cs);
-    spi_wrapper(Spi_synth,0x0199,0x21,cs);
+    spi_wrapper(Spi_synth,0x0199,0x11,cs);
     spi_wrapper(Spi_synth,0x019a,0x00,cs);
     spi_wrapper(Spi_synth,0x019b,0x11,cs);
     spi_wrapper(Spi_synth,0x019c,0x20,cs);
     spi_wrapper(Spi_synth,0x019d,0x00,cs);
-    spi_wrapper(Spi_synth,0x019e,0x21,cs);
+    spi_wrapper(Spi_synth,0x019e,0x11,cs);
     spi_wrapper(Spi_synth,0x019f,0x00,cs);
     spi_wrapper(Spi_synth,0x01a0,0x11,cs);
     spi_wrapper(Spi_synth,0x01a1,0x20,cs);
@@ -569,176 +590,33 @@ void ad95163_1024mhz(volatile char * Spi_synth,uint8_t ref,uint8_t cs)
     spi_wrapper(Spi_synth,0x01e0,0x02,cs);
     spi_wrapper(Spi_synth,0x01e1,0x02,cs);
     spi_wrapper(Spi_synth,0x0230,0x00,cs);
-    if(ref == 3)
-    {
-       spi_wrapper(Spi_synth,0x0010,0x7d,cs);
-       spi_wrapper(Spi_synth,0x0191,0x80,cs);
-       spi_wrapper(Spi_synth,0x019c,0x30,cs);
-       spi_wrapper(Spi_synth,0x01a1,0x30,cs);
-       spi_wrapper(Spi_synth,0x01e1,0x01,cs);//ext vco
-       spi_wrapper(Spi_synth,0x0232,0x01,cs);
-    }
-    else
-    {
-        spi_wrapper(Spi_synth,0x0232,0x01,cs);
-        spi_wrapper(Spi_synth,0x0018,0x07,cs);
-        spi_wrapper(Spi_synth,0x0232,0x01,cs);
-    }
+    spi_wrapper(Spi_synth,0x0232,0x01,cs);
+    spi_wrapper(Spi_synth,0x0018,0x07,cs);
+    spi_wrapper(Spi_synth,0x0232,0x01,cs);
+    
     usleep(10000);
 };
 
-
-void ads42l_int(volatile char * Spi_synth, uint8_t cs)
+void ad95163_93_333mhz(volatile char *Spi_synth, uint8_t ref, uint8_t cs)
 {
-	spi_wrapper(Spi_synth,0x6,0x80,cs);
-	spi_wrapper(Spi_synth,0x7,0x00,cs);
-	spi_wrapper(Spi_synth,0x8,0x08,cs);
-	spi_wrapper(Spi_synth,0xB,0x00,cs);
-	spi_wrapper(Spi_synth,0xC,0x00,cs);
-    spi_wrapper(Spi_synth,0xd,0x6C,cs);
-    spi_wrapper(Spi_synth,0xf,0x00,cs);
-    spi_wrapper(Spi_synth,0x10,0x00,cs);
-    spi_wrapper(Spi_synth,0x11,0x00,cs);
-    spi_wrapper(Spi_synth,0x12,0x00,cs);
-    spi_wrapper(Spi_synth,0x13,0x00,cs);
-    spi_wrapper(Spi_synth,0x14,0x00,cs);
-    spi_wrapper(Spi_synth,0x15,0x01,cs);
-    spi_wrapper(Spi_synth,0x16,0x00,cs);
-    spi_wrapper(Spi_synth,0x17,0x00,cs);
-    spi_wrapper(Spi_synth,0x18,0x00,cs);
-    spi_wrapper(Spi_synth,0x1F,0x00,cs);
-    spi_wrapper(Spi_synth,0x20,0x01,cs);
-};
-
-void ad95163_2048mhz(volatile char * Spi_synth,uint8_t ref,uint8_t cs)
-{//0-- inner ref10mhz,3--ext clk
-	//xil_printf("%s......\r\n",__FUNCTION__);
     spi_wrapper(Spi_synth,0x0000,0xdd,cs);
     spi_wrapper(Spi_synth,0x0000,0x99,cs);
-    spi_wrapper(Spi_synth,0x0010,0x7c,cs);
-    spi_wrapper(Spi_synth,0x0011,0x05,cs);//ref div
-    spi_wrapper(Spi_synth,0x0012,0x00,cs);
-    spi_wrapper(Spi_synth,0x0013,0x00,cs);
-    spi_wrapper(Spi_synth,0x0014,0x20,cs);
-    spi_wrapper(Spi_synth,0x0015,0x00,cs);
-    spi_wrapper(Spi_synth,0x0016,0x06,cs);
-    spi_wrapper(Spi_synth,0x0017,0x00,cs);
-    spi_wrapper(Spi_synth,0x0018,0x06,cs);
-    spi_wrapper(Spi_synth,0x0019,0x00,cs);
-    spi_wrapper(Spi_synth,0x001a,0x00,cs);//0x2c pd pin use for ref sel mon
-    spi_wrapper(Spi_synth,0x001b,0x00,cs);//f7 ref monitor
-    if (ref == 0) {
-        printf_note(">>>>>config set external clock!\n");
-    } else if (ref == 1){
-        printf_note(">>>>>config set internal ref!\n");
-        spi_wrapper(Spi_synth,0x001c,0x44,cs);
-    } else {
-         printf_note(">>>>>config set external ref!\n");
-         SET_ADC_CLOCK_REF(get_fpga_reg(), 0);  //0:外参考
-         spi_wrapper(Spi_synth,0x001c,0x02,cs);  
-    }
-    spi_wrapper(Spi_synth,0x001d,0x00,cs);//disable holdover
-    spi_wrapper(Spi_synth,0x001e,0x00,cs);
-    spi_wrapper(Spi_synth,0x001f,0x0e,cs);
-    spi_wrapper(Spi_synth,0x00a0,0x01,cs);
-    spi_wrapper(Spi_synth,0x00a1,0x00,cs);
-    spi_wrapper(Spi_synth,0x00a2,0x00,cs);
-    spi_wrapper(Spi_synth,0x00a3,0x01,cs);
-    spi_wrapper(Spi_synth,0x00a4,0x00,cs);
-    spi_wrapper(Spi_synth,0x00a5,0x00,cs);
-    spi_wrapper(Spi_synth,0x00a6,0x01,cs);
-    spi_wrapper(Spi_synth,0x00a7,0x00,cs);
-    spi_wrapper(Spi_synth,0x00a8,0x00,cs);
-    spi_wrapper(Spi_synth,0x00a9,0x01,cs);
-    spi_wrapper(Spi_synth,0x00aa,0x00,cs);
-    spi_wrapper(Spi_synth,0x00ab,0x00,cs);
-    spi_wrapper(Spi_synth,0x00f0,0x08,cs);
-    spi_wrapper(Spi_synth,0x00f1,0x0A,cs);
-    spi_wrapper(Spi_synth,0x00f2,0x08,cs);
-    spi_wrapper(Spi_synth,0x00f3,0x08,cs);
-    spi_wrapper(Spi_synth,0x00f4,0x08,cs);
-    spi_wrapper(Spi_synth,0x00f5,0x08,cs);
-    spi_wrapper(Spi_synth,0x0140,0x43,cs);
-    spi_wrapper(Spi_synth,0x0141,0x42,cs);
-    spi_wrapper(Spi_synth,0x0142,0x42,cs);
-    spi_wrapper(Spi_synth,0x0143,0x43,cs);
-    spi_wrapper(Spi_synth,0x0190,0x21,cs);
-    spi_wrapper(Spi_synth,0x0191,0x00,cs);
-    spi_wrapper(Spi_synth,0x0192,0x00,cs);
-	spi_wrapper(Spi_synth,0x0193,0x21,cs);
-	spi_wrapper(Spi_synth,0x0194,0x00,cs);
-    spi_wrapper(Spi_synth,0x0195,0x00,cs);
-    spi_wrapper(Spi_synth,0x0196,0x21,cs);
-    spi_wrapper(Spi_synth,0x0197,0x00,cs);
-    spi_wrapper(Spi_synth,0x0198,0x00,cs);
-    spi_wrapper(Spi_synth,0x0199,0x21,cs);
-    spi_wrapper(Spi_synth,0x019a,0x00,cs);
-    spi_wrapper(Spi_synth,0x019b,0x11,cs);
-    spi_wrapper(Spi_synth,0x019c,0x20,cs);
-    spi_wrapper(Spi_synth,0x019d,0x00,cs);
-    spi_wrapper(Spi_synth,0x019e,0x21,cs);
-    spi_wrapper(Spi_synth,0x019f,0x00,cs);
-    spi_wrapper(Spi_synth,0x01a0,0x11,cs);
-    spi_wrapper(Spi_synth,0x01a1,0x20,cs);
-    spi_wrapper(Spi_synth,0x01a2,0x00,cs);
-    spi_wrapper(Spi_synth,0x01a3,0x00,cs);
-    spi_wrapper(Spi_synth,0x01e0,0x00,cs);
-    spi_wrapper(Spi_synth,0x01e1,0x02,cs);
-    spi_wrapper(Spi_synth,0x0230,0x00,cs);
-    if(ref == 0)  //外时钟
-    {
-       SET_ADC_CLOCK_REF(get_fpga_reg(), 1);//1：外时钟
-       spi_wrapper(Spi_synth,0x0010,0x7d,cs);
-       spi_wrapper(Spi_synth,0x0191,0x80,cs);
-       spi_wrapper(Spi_synth,0x019c,0x30,cs);
-       spi_wrapper(Spi_synth,0x01a1,0x30,cs);
-       spi_wrapper(Spi_synth,0x01e1,0x01,cs);//ext vco
-       spi_wrapper(Spi_synth,0x0232,0x01,cs);
-    }
-    else  //内/外参考
-    {
-        spi_wrapper(Spi_synth,0x0232,0x01,cs);
-        spi_wrapper(Spi_synth,0x0018,0x07,cs);
-        spi_wrapper(Spi_synth,0x0232,0x01,cs);
-    }
-    usleep(10000);
-};
-
-
-//ref: 0-外时钟 1-内参考 2-外参考10M 3-外参考100M
-void ad95163_1866mhz(volatile char * Spi_synth,uint8_t ref,uint8_t cs)
-{//0-- inner ref10mhz,3--ext clk
-	//xil_printf("%s......\r\n",__FUNCTION__);
-    spi_wrapper(Spi_synth,0x0000,0xdd,cs);
-    spi_wrapper(Spi_synth,0x0000,0x99,cs);
-    spi_wrapper(Spi_synth,0x0010,0x7c,cs);
-    if (ref == 3)
-        spi_wrapper(Spi_synth,0x0011,0x0a,cs);//ref div
-    else 
-        spi_wrapper(Spi_synth,0x0011,0x01,cs);//ref div
+    spi_wrapper(Spi_synth,0x0010,0x7C,cs);
+    spi_wrapper(Spi_synth,0x0011,0x01,cs);//ref div
     spi_wrapper(Spi_synth,0x0012,0x00,cs);
     spi_wrapper(Spi_synth,0x0013,0x00,cs);
     spi_wrapper(Spi_synth,0x0014,0x07,cs);
     spi_wrapper(Spi_synth,0x0015,0x00,cs);
     spi_wrapper(Spi_synth,0x0016,0x06,cs);
     spi_wrapper(Spi_synth,0x0017,0x00,cs);
-    spi_wrapper(Spi_synth,0x0018,0x06,cs);
+    spi_wrapper(Spi_synth,0x0018,0x00,cs);
     spi_wrapper(Spi_synth,0x0019,0x00,cs);
     spi_wrapper(Spi_synth,0x001a,0x00,cs);//0x2c pd pin use for ref sel mon
     spi_wrapper(Spi_synth,0x001b,0x00,cs);//f7 ref monitor
-    if (ref == 0) {
-        printf_note(">>>>>config set external clock!\n");
-    } else if (ref == 1){
-        printf_note(">>>>>config set internal ref!\n");
-        spi_wrapper(Spi_synth,0x001c,0x44,cs);
-    } else {
-         printf_note(">>>>>config set external ref!\n");
-         SET_ADC_CLOCK_REF(get_fpga_reg(), 0);  //0:外参考
-         spi_wrapper(Spi_synth,0x001c,0x02,cs);  
-    }
+    spi_wrapper(Spi_synth,0x001c,0x26,cs);//ref2
     spi_wrapper(Spi_synth,0x001d,0x00,cs);//disable holdover
     spi_wrapper(Spi_synth,0x001e,0x00,cs);
-    spi_wrapper(Spi_synth,0x001f,0x0e,cs);
+    spi_wrapper(Spi_synth,0x001f,0x0E,cs);
     spi_wrapper(Spi_synth,0x00a0,0x01,cs);
     spi_wrapper(Spi_synth,0x00a1,0x00,cs);
     spi_wrapper(Spi_synth,0x00a2,0x00,cs);
@@ -754,54 +632,112 @@ void ad95163_1866mhz(volatile char * Spi_synth,uint8_t ref,uint8_t cs)
     spi_wrapper(Spi_synth,0x00f0,0x08,cs);
     spi_wrapper(Spi_synth,0x00f1,0x0A,cs);
     spi_wrapper(Spi_synth,0x00f2,0x08,cs);
-    spi_wrapper(Spi_synth,0x00f3,0x08,cs);
+    spi_wrapper(Spi_synth,0x00f3,0x0A,cs);
     spi_wrapper(Spi_synth,0x00f4,0x08,cs);
     spi_wrapper(Spi_synth,0x00f5,0x08,cs);
     spi_wrapper(Spi_synth,0x0140,0x43,cs);
-    spi_wrapper(Spi_synth,0x0141,0x42,cs);
-    spi_wrapper(Spi_synth,0x0142,0x42,cs);
+    spi_wrapper(Spi_synth,0x0141,0x43,cs);
+    spi_wrapper(Spi_synth,0x0142,0x43,cs);
     spi_wrapper(Spi_synth,0x0143,0x43,cs);
-    spi_wrapper(Spi_synth,0x0190,0x22,cs);
+    spi_wrapper(Spi_synth,0x0190,0x11,cs);
     spi_wrapper(Spi_synth,0x0191,0x00,cs);
     spi_wrapper(Spi_synth,0x0192,0x00,cs);
-	spi_wrapper(Spi_synth,0x0193,0x22,cs);
+	spi_wrapper(Spi_synth,0x0193,0x11,cs);
 	spi_wrapper(Spi_synth,0x0194,0x00,cs);
     spi_wrapper(Spi_synth,0x0195,0x00,cs);
-    spi_wrapper(Spi_synth,0x0196,0x22,cs);
+    spi_wrapper(Spi_synth,0x0196,0x11,cs);
     spi_wrapper(Spi_synth,0x0197,0x00,cs);
     spi_wrapper(Spi_synth,0x0198,0x00,cs);
-    spi_wrapper(Spi_synth,0x0199,0x22,cs);
+    spi_wrapper(Spi_synth,0x0199,0x11,cs);
     spi_wrapper(Spi_synth,0x019a,0x00,cs);
     spi_wrapper(Spi_synth,0x019b,0x11,cs);
     spi_wrapper(Spi_synth,0x019c,0x20,cs);
     spi_wrapper(Spi_synth,0x019d,0x00,cs);
-    spi_wrapper(Spi_synth,0x019e,0x22,cs);
+    spi_wrapper(Spi_synth,0x019e,0x11,cs);
     spi_wrapper(Spi_synth,0x019f,0x00,cs);
     spi_wrapper(Spi_synth,0x01a0,0x11,cs);
     spi_wrapper(Spi_synth,0x01a1,0x20,cs);
     spi_wrapper(Spi_synth,0x01a2,0x00,cs);
     spi_wrapper(Spi_synth,0x01a3,0x00,cs);
-    spi_wrapper(Spi_synth,0x01e0,0x00,cs);
+    spi_wrapper(Spi_synth,0x01e0,0x04,cs);
     spi_wrapper(Spi_synth,0x01e1,0x02,cs);
     spi_wrapper(Spi_synth,0x0230,0x00,cs);
-    if(ref == 0)  //外时钟
-    {
-       SET_ADC_CLOCK_REF(get_fpga_reg(), 1);//1：外时钟
-       spi_wrapper(Spi_synth,0x0010,0x7d,cs);
-       spi_wrapper(Spi_synth,0x0191,0x80,cs);
-       spi_wrapper(Spi_synth,0x019c,0x30,cs);
-       spi_wrapper(Spi_synth,0x01a1,0x30,cs);
-       spi_wrapper(Spi_synth,0x01e1,0x01,cs);//ext vco
-       spi_wrapper(Spi_synth,0x0232,0x01,cs);
-    }
-    else
-    {
-        spi_wrapper(Spi_synth,0x0232,0x01,cs);
-        spi_wrapper(Spi_synth,0x0018,0x07,cs);
-        spi_wrapper(Spi_synth,0x0232,0x01,cs);
-    }
+    spi_wrapper(Spi_synth,0x0232,0x01,cs);
+    spi_wrapper(Spi_synth,0x0018,0x07,cs);
+    spi_wrapper(Spi_synth,0x0232,0x01,cs);
     usleep(10000);
-};
+}
+
+void ad95163_100mhz(volatile char *Spi_synth, uint8_t ref, uint8_t cs)
+{
+    spi_wrapper(Spi_synth,0x0000,0xdd,cs);
+    spi_wrapper(Spi_synth,0x0000,0x99,cs);
+    spi_wrapper(Spi_synth,0x0010,0x7C,cs);
+    spi_wrapper(Spi_synth,0x0011,0x01,cs);//ref div
+    spi_wrapper(Spi_synth,0x0012,0x00,cs);
+    spi_wrapper(Spi_synth,0x0013,0x08,cs);
+    spi_wrapper(Spi_synth,0x0014,0x0c,cs);
+    spi_wrapper(Spi_synth,0x0015,0x00,cs);
+    spi_wrapper(Spi_synth,0x0016,0x05,cs);
+    spi_wrapper(Spi_synth,0x0017,0x00,cs);
+    spi_wrapper(Spi_synth,0x0018,0x07,cs);
+    spi_wrapper(Spi_synth,0x0019,0x00,cs);
+    spi_wrapper(Spi_synth,0x001a,0x00,cs);//0x2c pd pin use for ref sel mon
+    spi_wrapper(Spi_synth,0x001b,0x00,cs);//f7 ref monitor
+    spi_wrapper(Spi_synth,0x001c,0x26,cs);//ref2
+    spi_wrapper(Spi_synth,0x001d,0x00,cs);//disable holdover
+    spi_wrapper(Spi_synth,0x001e,0x00,cs);
+    spi_wrapper(Spi_synth,0x001f,0x0E,cs);
+    spi_wrapper(Spi_synth,0x00a0,0x01,cs);
+    spi_wrapper(Spi_synth,0x00a1,0x00,cs);
+    spi_wrapper(Spi_synth,0x00a2,0x00,cs);
+    spi_wrapper(Spi_synth,0x00a3,0x01,cs);
+    spi_wrapper(Spi_synth,0x00a4,0x00,cs);
+    spi_wrapper(Spi_synth,0x00a5,0x00,cs);
+    spi_wrapper(Spi_synth,0x00a6,0x01,cs);
+    spi_wrapper(Spi_synth,0x00a7,0x00,cs);
+    spi_wrapper(Spi_synth,0x00a8,0x00,cs);
+    spi_wrapper(Spi_synth,0x00a9,0x01,cs);
+    spi_wrapper(Spi_synth,0x00aa,0x00,cs);
+    spi_wrapper(Spi_synth,0x00ab,0x00,cs);
+    spi_wrapper(Spi_synth,0x00f0,0x08,cs);
+    spi_wrapper(Spi_synth,0x00f1,0x0A,cs);
+    spi_wrapper(Spi_synth,0x00f2,0x08,cs);
+    spi_wrapper(Spi_synth,0x00f3,0x0A,cs);
+    spi_wrapper(Spi_synth,0x00f4,0x08,cs);
+    spi_wrapper(Spi_synth,0x00f5,0x08,cs);
+    spi_wrapper(Spi_synth,0x0140,0x43,cs);
+    spi_wrapper(Spi_synth,0x0141,0x43,cs);
+    spi_wrapper(Spi_synth,0x0142,0x43,cs);
+    spi_wrapper(Spi_synth,0x0143,0x43,cs);
+    spi_wrapper(Spi_synth,0x0190,0x11,cs);
+    spi_wrapper(Spi_synth,0x0191,0x00,cs);
+    spi_wrapper(Spi_synth,0x0192,0x00,cs);
+    spi_wrapper(Spi_synth,0x0193,0x11,cs);
+    spi_wrapper(Spi_synth,0x0194,0x00,cs);
+    spi_wrapper(Spi_synth,0x0195,0x00,cs);
+    spi_wrapper(Spi_synth,0x0196,0x11,cs);
+    spi_wrapper(Spi_synth,0x0197,0x00,cs);
+    spi_wrapper(Spi_synth,0x0198,0x00,cs);
+    spi_wrapper(Spi_synth,0x0199,0x11,cs);
+    spi_wrapper(Spi_synth,0x019a,0x00,cs);
+    spi_wrapper(Spi_synth,0x019b,0x11,cs);
+    spi_wrapper(Spi_synth,0x019c,0x20,cs);
+    spi_wrapper(Spi_synth,0x019d,0x00,cs);
+    spi_wrapper(Spi_synth,0x019e,0x11,cs);
+    spi_wrapper(Spi_synth,0x019f,0x00,cs);
+    spi_wrapper(Spi_synth,0x01a0,0x11,cs);
+    spi_wrapper(Spi_synth,0x01a1,0x20,cs);
+    spi_wrapper(Spi_synth,0x01a2,0x00,cs);
+    spi_wrapper(Spi_synth,0x01a3,0x00,cs);
+    spi_wrapper(Spi_synth,0x01e0,0x03,cs);
+    spi_wrapper(Spi_synth,0x01e1,0x02,cs);
+    spi_wrapper(Spi_synth,0x0230,0x00,cs);
+    spi_wrapper(Spi_synth,0x0232,0x01,cs);
+    spi_wrapper(Spi_synth,0x0018,0x07,cs);
+    spi_wrapper(Spi_synth,0x0232,0x01,cs);
+    usleep(10000);
+}
 
 //--reset--------------------------------------------------
 static void dds_reset_set(volatile char * base,uint8_t dat)
@@ -875,7 +811,7 @@ struct clock_adc_t ca_ctx;
 
 #define CLK_CS  	4
 #define ADC0_CS 	0
-//#define ADC1_CS   1
+#define ADC1_CS     1
 //#define ADC2_CS   2
 //#define ADC3_CS   3
 
@@ -900,12 +836,15 @@ static int clock_adc_fpga_init(void)
     uint8_t ref = config_get_is_internal_clock();
     clock_reset_set(ca_ctx.vir_addr,1);
     usleep(10000);
-    //ad95163_2048mhz(ca_ctx.vir_addr, ref, CLK_CS);//ad95173_ref100_100mhz ad95173_ref100_192mhz
-    ad95163_1866mhz(ca_ctx.vir_addr, ref, CLK_CS);
+    //ad95163_125mhz(ca_ctx.vir_addr, ref, CLK_CS);
+    ad95163_93_333mhz(ca_ctx.vir_addr, ref, CLK_CS);
+    //ad95163_100mhz(ca_ctx.vir_addr, ref, CLK_CS);
     usleep(1000);
     adc_reset_set(ca_ctx.vir_addr,1);
     usleep(10000);
-    ads42l_int(ca_ctx.vir_addr,ADC0_CS);
+    ad9653_int(ca_ctx.vir_addr, ADC0_CS);
+    usleep(10000);
+    ad9653_int(ca_ctx.vir_addr, ADC1_CS);
     usleep(10000);
     logic_reset_set(ca_ctx.vir_addr,1);
     usleep(10000);

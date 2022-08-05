@@ -112,6 +112,13 @@ int8_t rf_set_interface(uint8_t cmd,uint8_t ch,void *data)
                 ret = rfctx->ops->set_work_mode(ch, noise_mode);
             break;
         }
+        case EX_RF_GAIN_MODE:
+        {
+            #if defined(CONFIG_SPM_AGC)
+            agc_ctrl_thread_notify(ch);
+            #endif
+            break; 
+        }
         case EX_RF_MGC_GAIN:
         {
             volatile int8_t mgc_gain_value;

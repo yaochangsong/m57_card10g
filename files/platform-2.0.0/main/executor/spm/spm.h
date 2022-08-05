@@ -51,11 +51,6 @@ typedef struct _spm_stream {
     int id;             /* 频谱流类型描述符 */
 }spm_base_stream_t;
 
-#define for_each_niq_type(type, run) \
-    for (int i = 0; \
-            type = i, run.dis_iq.send_ptr = run.dis_iq.ptr[i],run.dis_iq.send_len = run.dis_iq.offset[i]*sizeof(iq_t), i < STREAM_NIQ_TYPE_MAX; \
-            i++)
-
 
 struct spm_backend_ops {
     int (*create)(void);
@@ -139,8 +134,6 @@ extern pthread_mutex_t send_iq_mutex;
 extern void *spm_init(void);
 extern struct spm_context *get_spm_ctx(void);
 extern void spm_deal(struct spm_context *ctx, void *args, int ch);
-extern ssize_t spm_raw_data_uplink_handle(int fd);
-extern ssize_t spm_raw_data_downlink_handle(int fd, const void *data, size_t len);
 extern int spm_close(void);
 
 

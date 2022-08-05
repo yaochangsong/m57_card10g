@@ -20,7 +20,6 @@ static struct spm_context *spmctx = NULL;
 pthread_mutex_t send_fft_mutex[MAX_RADIO_CHANNEL_NUM];
 pthread_mutex_t send_iq_mutex = PTHREAD_MUTEX_INITIALIZER;
 
-
 static void spm_cond_init(void)
 {
      for(int i = 0; i < MAX_RADIO_CHANNEL_NUM; i++){

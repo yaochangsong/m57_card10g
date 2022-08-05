@@ -3,13 +3,6 @@
 
 #include "config.h"
 
-enum gpio_func_code{
-    GPIO_POWER_CH0          = 0x00,
-    GPIO_POWER_CH1          = 0x01,
-    GPIO_POWER_CH2          = 0x02,
-    GPIO_POWER_CH3          = 0x03,
-    GPIO_LOCAL_CTR          = 0x04,
-};
 
 //UART
 enum uart_func_code{
@@ -18,7 +11,6 @@ enum uart_func_code{
 };
 
 #define RF_CH_POWER_ONOFF(ch, val) gpio_raw_write_value(ch, val)
-#define LED_LOCAL_ONOFF(val) gpio_raw_write_value(GPIO_LOCAL_CTR, val)
 
 extern struct _spm_stream* spm_dev_get_stream(int *count);
 extern struct gpio_node_info* dev_get_gpio(int *count);

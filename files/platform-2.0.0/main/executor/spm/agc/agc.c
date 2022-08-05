@@ -469,8 +469,10 @@ loop:
 
 void agc_ctrl_thread_notify(int ch)
 {
+#if (!defined CONFIG_SPM_AGC_POLLING)
     if (ch < MAX_RADIO_CHANNEL_NUM)
         pthread_cond_signal(&spm_agc_cond[ch]);
+#endif
 }
 
 int agc_init(void)
@@ -481,6 +483,7 @@ int agc_init(void)
     static int s_ch[MAX_RADIO_CHANNEL_NUM];
     pthread_t work_id;
     
+    printf_note("AGC init\n");
     for(i = 0; i < MAX_RADIO_CHANNEL_NUM; i++){
         _agc_ctrl[i].method = -1;
         _agc_ctrl[i].rf_mode = -1;
@@ -499,17 +502,17 @@ int agc_init(void)
         else
             agc_ref_val_0dbm[ch]  = DEFAULT_AGC_REF_VAL;
     }
-
+#if (!defined CONFIG_SPM_AGC_POLLING)
     for(i = 0; i < MAX_RADIO_CHANNEL_NUM; i++){
         pthread_cond_init(&spm_agc_cond[i], NULL);
         pthread_mutex_init(&spm_agc_cond_mutex[i], NULL);
-
+        s_ch[i] = i;
         ret = pthread_create(&work_id, NULL, (void *)agc_thread_handle, &s_ch[i]);
         if(ret != 0)
             perror("pthread cread agc");
     }
+#endif
 
-    printf_note("AGC init\n");
     return ret;
 }
 

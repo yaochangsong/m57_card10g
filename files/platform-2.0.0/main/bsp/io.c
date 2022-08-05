@@ -317,7 +317,7 @@ int32_t io_set_dec_method(uint32_t ch, uint8_t dec_method){
   //  }
   //  old_val = d_method;
    // old_ch = ch;
-    printf_note("[**REGISTER**]ch:%d, Set Decode method:%u, d_method=0x%x\n", ch, dec_method, d_method);
+    printf_info("[**REGISTER**]ch:%d, Set Decode method:%u, d_method=0x%x\n", ch, dec_method, d_method);
 #ifdef  SET_NARROW_DECODE_TYPE
     SET_NARROW_DECODE_TYPE(get_fpga_reg(),ch,dec_method);;
 #endif
@@ -842,10 +842,10 @@ int32_t io_set_audio_volume(uint32_t ch,uint8_t volume)
 
 static void io_set_dma_SPECTRUM_out_en(int ch, int subch, uint32_t trans_len,uint8_t continuous)
 {
-    printf_debug("SPECTRUM out enable: ch[%d]output en, trans_len=%u\n",ch, trans_len);
+    printf_note("SPECTRUM out enable: ch[%d]output en, trans_len=%u, continuous=%d\n",ch, trans_len, continuous);
 
     if(reg_get()->iif &&reg_get()->iif->set_fft_channel)
-        reg_get()->iif->set_fft_channel(ch, NULL);
+        reg_get()->iif->set_fft_channel(ch, 1, NULL);
 
     if((get_spm_ctx()!=NULL) && get_spm_ctx()->ops->stream_start){
         get_spm_ctx()->ops->stream_start(ch, subch, trans_len*sizeof(fft_t), continuous, STREAM_FFT);
@@ -871,6 +871,8 @@ static void io_set_dma_adc_out_disable(int ch, int subch)
 
 static void io_set_dma_SPECTRUM_out_disable(int ch, int subch)
 {
+    if(reg_get()->iif &&reg_get()->iif->set_fft_channel)
+        reg_get()->iif->set_fft_channel(ch, 0, NULL);
     if((get_spm_ctx()!= NULL) && get_spm_ctx()->ops->stream_stop)
         get_spm_ctx()->ops->stream_stop(ch, subch, STREAM_FFT);
 

@@ -257,7 +257,7 @@ static ssize_t spm_raw_stream_read(int ch, int index, int type,  void **data, si
                 usleep(1);
             }
         }else if(info.status == READ_BUFFER_STATUS_OVERRUN){
-            printf_warn("[%s]data is overrun\n", pstream[index].name);
+            //printf_warn("[%s]data is overrun\n", pstream[index].name);
             //io_set_enable_command(PSD_MODE_DISABLE, -1, -1, 0); //关dma
             //io_set_enable_command(PSD_CONTIOUS_MODE_ENABLE, -1, -1, 0);  //连续模式
         }
@@ -268,10 +268,11 @@ static ssize_t spm_raw_stream_read(int ch, int index, int type,  void **data, si
         }
     }while(info.status == READ_BUFFER_STATUS_PENDING);
 
+    //printf_note("block num:%d\n", info.block_num);
     for(int i = 0; i < info.block_num; i++){
         data[i] = pstream[index].ptr + info.blocks[i].offset;
         len[i] = info.blocks[i].length;
-        //printf_warn("%s, block_num:%u,[%p, offset=0x%x], readn:%u\n", pstream[type].name,  i, pstream[type].ptr, info.blocks[i].offset, info.blocks[i].length);
+        printf_debug("%x, %s, block_num:%u,[%p, offset=0x%x], readn:%u\n", *(uint8_t *)data[i], pstream[index].name,  i, pstream[index].ptr, info.blocks[i].offset, info.blocks[i].length);
 #ifdef CONFIG_FILE_SINK
         int sink_type = FILE_SINK_TYPE_FFT;
         if(type == STREAM_NIQ)
@@ -396,7 +397,7 @@ static ssize_t spm_read_niq_data(void **data)
 static ssize_t spm_read_fft_data(int ch, void **data, void *args)
 {
     struct spm_run_parm *run_args = args;
-#if defined(SUPPORT_FFT_DISPATCH)
+#if defined(CONFIG_SPM_DISTRIBUTOR)
         ssize_t fft_byte_len = 0;
         size_t byte_len = 0;
         byte_len = run_args->fft_size * sizeof(fft_t);
@@ -430,14 +431,15 @@ static ssize_t spm_read_raw_data(int ch, int type, void **data, void *len, void 
     index = spm_find_index_by_type(ch, -1, type);
     if(index < 0)
         return -1;
-    
+
     return spm_raw_stream_read(ch, index, type, data, len, args);
 }
 
 static int spm_read_raw_over_deal(int ch, int type, void *arg)
 {
-    unsigned int nwrite_byte;
-    nwrite_byte = *(unsigned int *)arg;
+    unsigned int nwrite_byte = 0;
+    if(!arg)
+        nwrite_byte = *(unsigned int *)arg;
     struct _spm_stream *pstream = spm_dev_get_stream(NULL);
     int index;
     

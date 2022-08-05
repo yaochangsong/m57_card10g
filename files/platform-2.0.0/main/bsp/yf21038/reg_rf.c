@@ -84,6 +84,7 @@ static bool get_ext_clk(int ch, int index)
 
     FPGA_CONFIG_REG *reg = get_fpga_reg();
     index = index;
+
     if(reg->rfReg[ch] == NULL || ch >= MAX_RADIO_CHANNEL_NUM)
         return false;
     
@@ -99,8 +100,11 @@ static bool get_ext_clk(int ch, int index)
 
 static void _reg_set_rf_frequency(int ch, int index, uint64_t freq_hz)
 {
+
     FPGA_CONFIG_REG *reg = get_fpga_reg();
     uint32_t freq_khz = freq_hz/1000;
+    if(!reg || !reg->rfReg[0])
+        return;
     reg->rfReg[0]->freq_khz = freq_khz;
     usleep(300);
     reg->rfReg[0]->freq_khz = freq_khz;
@@ -134,7 +138,7 @@ static void _reg_set_rf_bandwidth(int ch, int index, uint32_t bw_hz)
         }
     }
     if(found == 0){
-        printf_warn("NOT found bandwidth %uHz in tables,use default[200Mhz]\n", bw_hz);
+        printf_info("NOT found bandwidth %uHz in tables,use default[200Mhz]\n", bw_hz);
         set_val = 0x03; /* default 200MHz */
     }
     

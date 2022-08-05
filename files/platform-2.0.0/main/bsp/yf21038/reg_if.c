@@ -184,48 +184,15 @@ static void _set_niq_channel(int ch, int subch, void *args, int enable)
     reg->narrow_band[subch]->enable = _reg;
 }
 
-static void _set_fft_channel(int ch, void *args)
+static void _set_fft_channel(int ch, int enable, void *args)
 {
-/*
-    ch   频段范围（MHz）
-    0	108～228
-    1	220～340
-    2	335～455
-    3	450～570
-*/
     FPGA_CONFIG_REG *reg = get_fpga_reg();
-    struct  freq_rang_t{
-        int ch;
-        uint64_t s_freq;
-        uint64_t e_freq;
-    }freq_rang [] = {
-            {0, MHZ(108), MHZ(228)},
-            {1, MHZ(220), MHZ(340)},
-            {2, MHZ(335), MHZ(455)},
-            {3, MHZ(450), MHZ(570)},
-        };
-    uint32_t _reg;
-    uint32_t val;
-    int _ch = ch;
-
-    if(args != NULL && _ch < 0){
-        uint64_t freq = *(uint64_t *)args;
-        for(int i = 0; i< ARRAY_SIZE(freq_rang); i++){
-            if(freq >= freq_rang[i].s_freq && freq <= freq_rang[i].e_freq){
-                _ch = freq_rang[i].ch;
-                break;
-            }
-        }
+    if(ch < BROAD_CH_NUM){
+        enable = (enable > 0 ? 0xff : 0);
+        reg->broad_band[ch]->enable = enable;
+        printf_note("SET Broad Band:ch:%d, enable:%d\n", ch, enable);
     }
-
-    _reg = reg->broad_band[0]->enable;
-    val = _ch << 8;
-    _reg = (_reg & 0x00ff)|val;
-    reg->broad_band[0]->enable = _reg;
-    printf_debug("[ch:%d]set reg: 0x%x, val=0x%x 0x%x\n", ch,  _reg, val, reg->broad_band[0]->enable);
 }
-
-
 
 static void _set_biq_channel(int ch, void *args)
 {

@@ -95,7 +95,7 @@ struct spm_distributor_type_attr_s{
     volatile bool  consume_over[FRAME_MAX_CHANNEL];
     spm_dist_statistics_t stat;
 } dist_type[] = {
-    {"FFT", 1, SPM_DIST_FFT, 528, 16, 0xaa55, _spm_distributor_fft_thread_loop},
+    {"FFT", DIST_MAX_FFT_CHANNEL, SPM_DIST_FFT, 528, 16, 0xaa55, _spm_distributor_fft_thread_loop},
 //    {"IQ",  DIST_MAX_IQ_CHANNEL,  SPM_DIST_IQ,  512, 16, 0xaa55, _spm_distributor_iq_thread_loop},
 };
 

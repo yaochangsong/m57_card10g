@@ -118,7 +118,7 @@ static bool  _executor_fragment_scan(uint32_t fregment_num,uint8_t ch, work_mode
         executor_set_command(EX_RF_FREQ_CMD, EX_RF_MID_FREQ, ch, &_m_freq_hz);
         executor_set_command(EX_RF_FREQ_CMD, EX_RF_MODE_CODE, ch, &r_args->rf_mode);
         //executor_set_command(EX_RF_FREQ_CMD, EX_RF_LOW_NOISE, ch, &_m_freq_hz);
-        executor_set_command(EX_MID_FREQ_CMD, EX_MID_FREQ,    ch, &_m_freq_hz, _m_freq_hz);
+        //executor_set_command(EX_MID_FREQ_CMD, EX_MID_FREQ,    ch, &_m_freq_hz, _m_freq_hz);
         executor_set_command(EX_MID_FREQ_CMD, EX_FPGA_CALIBRATE, ch, &r_args->fft_size, r_args->m_freq,0);
         index ++;
 #if (!defined CONFIG_SPM_FFT_CONTINUOUS_MODE) && (!defined CONFIG_SPM_DISTRIBUTOR)
@@ -201,7 +201,7 @@ static bool  _executor_points_scan_mode(uint8_t ch, int mode, void *args)
         executor_set_command(EX_RF_FREQ_CMD,  EX_RF_MID_FREQ, ch, &point->points[i].center_freq);
         //executor_set_command(EX_RF_FREQ_CMD,  EX_RF_MID_BW, ch, &point->points[i].bandwidth);
         executor_set_command(EX_MID_FREQ_CMD, EX_BANDWITH, ch, &point->points[i].bandwidth);
-        //executor_set_command(EX_MID_FREQ_CMD, EX_MID_FREQ,    ch, &point->points[i].center_freq, point->points[i].center_freq);
+        executor_set_command(EX_MID_FREQ_CMD, EX_MID_FREQ,    ch, &point->points[i].center_freq, point->points[i].center_freq);
         //executor_set_command(EX_RF_FREQ_CMD,  EX_RF_LOW_NOISE, ch, &point->points[i].center_freq);
         //executor_set_command(EX_MID_FREQ_CMD, EX_FFT_SIZE, ch, &point->points[i].fft_size);
         /* 根据带宽设置边带�?*/

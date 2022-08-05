@@ -914,7 +914,7 @@ static int clock_adc_switch_ref(uint8_t clock_type)
 static const struct clock_adc_ops ca_ctx_ops = {
     .init = clock_adc_fpga_init,
     .close = clock_adc_fpga_close,
-#if defined(SUPPORT_PROJECT_YF21025)
+#if defined(CONFIG_BSP_YF21025)
     .switch_clock = clock_adc_switch_ref,
 #endif
 };

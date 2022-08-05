@@ -397,7 +397,7 @@ static int _spm_distributor_data_frame_producer(int ch, int type, void **data, s
         //print_array(ptr, 512);
         _safe_free_(pkt);
         if(frame_len == len){
-            printf_info("ch=%d, frame_len=%lu, len=%lu, Frame OK!\n", ch, frame_len, len);
+            //printf_note("ch=%d, frame_len=%lu, len=%lu, Frame OK!\n", ch, frame_len, len);
             dtype->stat.read_ok_frame++;
             dtype->have_frame[ch] = true;
             break;
@@ -409,10 +409,9 @@ static int _spm_distributor_data_frame_producer(int ch, int type, void **data, s
         printf_warn("Read len[%lu] is not eq expect len[%lu], Discard pkt\n", frame_len, len);
         ret = -1;
     }
-    if(dtype->consume_over[ch]){
-        _spm_distributor_reset(SPM_DIST_FFT, ch);
-        dtype->consume_over[ch] = false;
-    }
+    
+    _spm_distributor_reset(SPM_DIST_FFT, ch);
+
     *data = mbuf_header;
     return ret;
 }
@@ -504,7 +503,7 @@ int _spm_distributor_fft_wait_read_over(struct spm_distributor_type_attr_s *dtyp
             }
         }
         if(count == 0 || ch_bitmap_weight(CH_TYPE_FFT) <= have_frame_channel){
-            //printf_note("work channel number:%ld, %d, have data channel count=%d\n", broad_band_bitmap_weight(),  have_frame_channel, count);
+            //printf_note("work channel number:%ld, %d, have data channel count=%d\n", ch_bitmap_weight(CH_TYPE_FFT),  have_frame_channel, count);
             break;
         }
         /* consumer over */
@@ -717,13 +716,26 @@ static int _spm_distributor_reset(int type, int ch)
 
     if(ch >= dist_type[type].channel_num)
         return -1;
+    printf_note("Reset, type:%d, ch:%d\n", type, ch);
+    //printf_note("dist_type[%d].pkt_queue[%d]=%p\n", type, ch, dist_type[type].pkt_queue[ch]);
+    if(ch < 0){
+        for(int c = 0; c < dist_type[type].channel_num; c++){
+            queue_ctx_t *qctx =  dist_type[type].pkt_queue[c];
+            if(qctx && qctx->ops->clear)
+                qctx->ops->clear(qctx);
+            dist_type[type].have_frame[c] = false;
+            _frame_devider_init(&frame_devider[type][c]);
+        }
+    } else{
+            queue_ctx_t *qctx =  dist_type[type].pkt_queue[ch];
+            if(qctx && qctx->ops->clear)
+                qctx->ops->clear(qctx);
+            dist_type[type].have_frame[ch] = false;
+            _frame_devider_init(&frame_devider[type][ch]);
 
-    queue_ctx_t *qctx =  dist_type[type].pkt_queue[ch];
-    if(qctx->ops->clear)
-        qctx->ops->clear(qctx);
-    dist_type[type].have_frame[ch] = false;
-    dist_type[type].consume_over[ch] = false;
-    _frame_devider_init(&frame_devider[type][ch]);
+    }
+   
+    
     //printf_note("Reset, type:%d, ch:%d\n", type, ch);
     return 0;
 }

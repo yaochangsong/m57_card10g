@@ -55,9 +55,9 @@
 #define ARRAY_SIZE(arr) (sizeof(arr) / sizeof((arr)[0]))
 #endif
 
-#if defined(SUPPORT_PROJECT_AKT_4CH)
+#if defined(CONFIG_BSP_AKT_4CH)
 #define MAX_SPI_CH_NUM  4
-#elif defined(SUPPORT_PROJECT_YF21025)
+#elif defined(CONFIG_BSP_YF21025)
 #define MAX_SPI_CH_NUM  1
 #else
 #define MAX_SPI_CH_NUM  0
@@ -66,12 +66,12 @@
 int _fd[MAX_SPI_CH_NUM];
 
 static const char *spi_dev_name[] = {
-#if defined(SUPPORT_PROJECT_AKT_4CH)	
+#if defined(CONFIG_BSP_AKT_4CH)	
     "/dev/spidev1.0",
     "/dev/spidev1.1",
     "/dev/spidev1.2",
     "/dev/spidev1.3",
-#elif defined(SUPPORT_PROJECT_YF21038)
+#elif defined(CONFIG_BSP_YF21038)
     "/dev/spidev1.0",  //外部只用这一路
     "/dev/spidev1.1",
     "/dev/spidev1.2",
@@ -80,10 +80,10 @@ static const char *spi_dev_name[] = {
     "/dev/spidev1.5",
     "/dev/spidev1.6",
     "/dev/spidev1.7",
-#elif defined(SUPPORT_PROJECT_YF21025)
+#elif defined(CONFIG_BSP_YF21025)
     "/dev/spidev1.1",  //spi rf
     "/dev/spidev1.0",
-#elif defined(SUPPORT_PROJECT_YF21036)
+#elif defined(CONFIG_BSP_YF21036)
     "/dev/spidev1.1",  //spi rf
     "/dev/spidev1.0",
 #else
@@ -677,7 +677,7 @@ static int _rf_set_frequency(uint8_t channel, uint64_t freq_hz)
     for (i = 0; i < 3; i++){
         ret = rf_set_frequency(channel, host_freq);
         if (ret < 0){
-            printf_warn("set rf freq fail\n");
+            printf_info("set rf freq fail\n");
             usleep(100);
             continue;
         }

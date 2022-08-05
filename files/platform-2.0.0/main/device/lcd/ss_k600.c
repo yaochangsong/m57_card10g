@@ -627,7 +627,7 @@ int8_t k600_scanf(uint8_t *pdata, int32_t total_len)
                         //executor_set_command(EX_MID_FREQ_CMD, EX_SUB_CH_MID_FREQ, ch, &mid_frq, mid_frq, ch);
 
                         io_set_subch_dec_middle_freq(ch, CONFIG_AUDIO_CHANNEL, mid_frq, mid_frq);
-                        #if defined(SUPPORT_PROJECT_YF21025)
+                        #if defined(CONFIG_BSP_YF21025)
                         io_set_subch_dec_middle_freq(ch, CONFIG_DAC_CHANNEL, 0, 0);
                         #endif
                         break;

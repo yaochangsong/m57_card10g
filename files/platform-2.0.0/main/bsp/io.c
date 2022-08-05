@@ -341,7 +341,7 @@ static uint32_t io_set_dec_middle_freq_reg(uint8_t ch, uint64_t dec_middle_freq,
         uint32_t reg;
         int32_t ret = 0;
 
-#if defined(CONFIG_BSP_YF21025)
+#if defined(CONFIG_BSP_YF21025) || defined(CONFIG_BSP_YF21036) || defined(CONFIG_BSP_YF21038)
         uint64_t board_mid_freq;
         config_read_by_cmd(EX_RF_FREQ_CMD, EX_RF_MID_FREQ_FILTER, ch, &board_mid_freq);
         printf_note("ch%d set subch mid freq, board freq:%"PRIu64"\n", ch, board_mid_freq);
@@ -427,7 +427,7 @@ int32_t io_set_middle_freq(uint32_t ch, uint64_t middle_freq, uint64_t rel_mfreq
         SET_BROAD_SIGNAL_CARRIER(get_fpga_reg(),reg, ch);
     #endif
     printf_debug("ch:%d, freq:%"PRIu64", reg=0x%x\n", ch, middle_freq, reg);
-    printf_debug(">>>>>>ch:%d, feq:%"PRIu64",rel_middle_freq=%"PRIu64", reg=0x%x\n",ch, middle_freq,rel_mfreq,  reg);
+    printf_note(">>>>>>ch:%d, feq:%"PRIu64",rel_middle_freq=%"PRIu64", reg=0x%x\n",ch, middle_freq,rel_mfreq,  reg);
     
     return 0;
 }

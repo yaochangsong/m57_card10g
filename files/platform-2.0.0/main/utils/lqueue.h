@@ -17,7 +17,7 @@
 
 struct lqueue_ops;
 
-#define LQUEUE_MAX_ENTRY 65535
+#define LQUEUE_MAX_ENTRY 165535
 struct tailq_data_s {
     void *args;
     TAILQ_ENTRY(tailq_data_s) next;

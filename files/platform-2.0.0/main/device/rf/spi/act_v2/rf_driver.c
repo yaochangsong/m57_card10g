@@ -71,7 +71,19 @@ static const char *spi_dev_name[] = {
     "/dev/spidev1.1",
     "/dev/spidev1.2",
     "/dev/spidev1.3",
+#elif defined(SUPPORT_PROJECT_YF21038)
+    "/dev/spidev1.0",  //外部只用这一路
+    "/dev/spidev1.1",
+    "/dev/spidev1.2",
+    "/dev/spidev1.3",
+    "/dev/spidev1.4",
+    "/dev/spidev1.5",
+    "/dev/spidev1.6",
+    "/dev/spidev1.7",
 #elif defined(SUPPORT_PROJECT_YF21025)
+    "/dev/spidev1.1",  //spi rf
+    "/dev/spidev1.0",
+#elif defined(SUPPORT_PROJECT_YF21036)
     "/dev/spidev1.1",  //spi rf
     "/dev/spidev1.0",
 #else

@@ -139,7 +139,7 @@ static bool  _executor_fragment_scan(uint32_t fregment_num,uint8_t ch, work_mode
     }while(_s_freq_hz_offset < _e_freq_hz);
     t_fft = index;
 
-    printf_info("Exit fregment scan function\n");
+    printf_debug("ch:%d, Exit fregment scan function\n", ch);
     return true;
 }
 
@@ -206,7 +206,7 @@ static bool  _executor_points_scan_mode(uint8_t ch, int mode, void *args)
         //executor_set_command(EX_MID_FREQ_CMD, EX_FFT_SIZE, ch, &point->points[i].fft_size);
         /* 根据带宽设置边带�?*/
         //executor_set_command(EX_CTRL_CMD, EX_CTRL_SIDEBAND, ch, &r_args->scan_bw);
-        printf_note("d_center_freq=%"PRIu64", d_method=%d, d_bandwith=%u noise=%d noise_en=%d volume=%d\n",poal_config->channel[ch].multi_freq_point_param.points[i].center_freq,
+        printf_note("ch:%d, d_center_freq=%"PRIu64", d_method=%d, d_bandwith=%u noise=%d noise_en=%d volume=%d\n",ch, poal_config->channel[ch].multi_freq_point_param.points[i].center_freq,
                     poal_config->channel[ch].multi_freq_point_param.points[i].d_method,poal_config->channel[ch].multi_freq_point_param.points[i].d_bandwith,
                     poal_config->channel[ch].multi_freq_point_param.points[i].noise_thrh,poal_config->channel[ch].multi_freq_point_param.points[i].noise_en,
                     poal_config->channel[ch].multi_freq_point_param.points[i].audio_volume);
@@ -664,7 +664,7 @@ int executor_fft_distributor_work_nofity(void *cl, bool enable)
     thread->pwait.is_wait = !enable;
     thread->mode->mode = mode;
     thread->reset = true;
-    printf_debug("[%s]notify fft dist thread %s\n", thread->name, thread->pwait.is_wait == true ? "PAUSE" : "RUN");
+    printf_debug("[%s]mode:%d, notify fft dist thread %s\n", thread->name, mode, thread->pwait.is_wait == true ? "PAUSE" : "RUN");
     pthread_cond_signal(&thread->pwait.t_cond);
     pthread_mutex_unlock(&thread->pwait.t_mutex);
     return 0;
@@ -707,24 +707,20 @@ int executor_fft_work_nofity(void *cl, int ch, int mode, bool enable)
         }
 #endif
 #if (defined CONFIG_SPM_FFT_CONTINUOUS_MODE) 
-        if(ch_bitmap_weight(CH_TYPE_FFT) == 0){
-            io_set_enable_command(PSD_CON_MODE_ENABLE, ch, -1, 0);
-        }
+        io_set_enable_command(PSD_CON_MODE_ENABLE, ch, -1, 0);
 #endif
         ch_bitmap_set(ch, CH_TYPE_FFT);
     }
     else{
         ch_bitmap_clear(ch, CH_TYPE_FFT);
 #if (defined CONFIG_SPM_FFT_CONTINUOUS_MODE) 
+        io_set_enable_command(PSD_MODE_DISABLE, ch, -1, 0);
+        #if (defined CONFIG_SPM_DISTRIBUTOR) 
         if(ch_bitmap_weight(CH_TYPE_FFT) == 0){
-            io_set_enable_command(PSD_MODE_DISABLE, ch, -1, 0);
-            #if (defined CONFIG_SPM_DISTRIBUTOR) 
-             executor_fft_distributor_work_nofity(cl, enable);
-            #endif
+            executor_fft_distributor_work_nofity(cl, enable);
         }
+        #endif
 #endif
-
-
     }
     struct executor_thread_m *thread = &pctx->thread[EXEC_THREAD_TYPE_FFT][ch];
     

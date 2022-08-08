@@ -848,7 +848,12 @@ static void io_set_dma_SPECTRUM_out_en(int ch, int subch, uint32_t trans_len,uin
         reg_get()->iif->set_fft_channel(ch, 1, NULL);
 
     if((get_spm_ctx()!=NULL) && get_spm_ctx()->ops->stream_start){
-        get_spm_ctx()->ops->stream_start(ch, subch, trans_len*sizeof(fft_t), continuous, STREAM_FFT);
+        if(ch_bitmap_weight(CH_TYPE_FFT) == 0){
+            printf_note("FFT Stream Start\n");
+            get_spm_ctx()->ops->stream_start(ch, subch, trans_len*sizeof(fft_t), continuous, STREAM_FFT);
+        } else {
+            printf_note("FFT Stream already Started\n");
+        }
     }
 
 }
@@ -873,9 +878,12 @@ static void io_set_dma_SPECTRUM_out_disable(int ch, int subch)
 {
     if(reg_get()->iif &&reg_get()->iif->set_fft_channel)
         reg_get()->iif->set_fft_channel(ch, 0, NULL);
-    if((get_spm_ctx()!= NULL) && get_spm_ctx()->ops->stream_stop)
-        get_spm_ctx()->ops->stream_stop(ch, subch, STREAM_FFT);
-
+    if((get_spm_ctx()!= NULL) && get_spm_ctx()->ops->stream_stop){
+        if(ch_bitmap_weight(CH_TYPE_FFT) == 0){
+            printf_note("FFT Stream Stop\n");
+            get_spm_ctx()->ops->stream_stop(ch, subch, STREAM_FFT);
+        }
+    }
 }
 
 /* 窄带iq禁止 */

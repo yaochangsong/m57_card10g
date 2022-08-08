@@ -91,8 +91,6 @@ struct spm_distributor_type_attr_s{
     int (*distributor_loop)(void *);
     void *pkt_queue[FRAME_MAX_CHANNEL];
     void *frame_buffer[FRAME_MAX_CHANNEL];
-    volatile bool  have_frame[FRAME_MAX_CHANNEL];
-    volatile bool  consume_over[FRAME_MAX_CHANNEL];
     spm_dist_statistics_t stat;
 } dist_type[] = {
     {"FFT", DIST_MAX_FFT_CHANNEL, SPM_DIST_FFT, 528, 16, 0xaa55, _spm_distributor_fft_thread_loop},
@@ -226,6 +224,7 @@ ssize_t _spm_distributor_analysis(int type, uint8_t *mbufs, size_t len, struct s
         }
         ch = header->channel;
         if(type == SPM_DIST_FFT && config_get_fft_work_enable(ch) == false){
+            _spm_distributor_reset(SPM_DIST_FFT, ch);
             printf_warn("fft channel[%d] not work\n", ch);
             consume_len = len;
             break;
@@ -271,7 +270,7 @@ ssize_t _spm_distributor_analysis(int type, uint8_t *mbufs, size_t len, struct s
         }
 
         queue_ctx_t *qctx = dtype->pkt_queue[pkt->ch];
-        //printf_warn("[%p]PUSH pkt:  ch:%d, sn: %d, pkt_len:%lu, frame_idx:%"PRIu64"\n", ptr, pkt->ch, pkt->sn, pkt->pkt_len, pkt->frame_idx);
+        //printf_debug("[%p]PUSH pkt:  ch:%d, sn: %d, pkt_len:%lu, frame_idx:%"PRIu64"\n", ptr, pkt->ch, pkt->sn, pkt->pkt_len, pkt->frame_idx);
         if(qctx->ops->push(qctx, pkt) == -1){
             consume_len = len;
             free(pkt);
@@ -361,7 +360,7 @@ static int _spm_distributor_data_frame_producer(int ch, int type, void **data, s
             usleep(2);
             continue;
         }
-        printf_info("POP ch:%d, sn:%u, fidx:%"PRIu64", pkt_len:%lu\n", ch, pkt->sn, pkt->frame_idx, pkt->pkt_len);
+        //printf_debug("POP ch:%d, sn:%u, fidx:%"PRIu64", pkt_len:%lu\n", ch, pkt->sn, pkt->frame_idx, pkt->pkt_len);
         /* 流水号为0说明是第一包数据开始，初始化相关变量 */
         if(pkt->sn == 0){
             start_frame = true;
@@ -397,9 +396,8 @@ static int _spm_distributor_data_frame_producer(int ch, int type, void **data, s
         //print_array(ptr, 512);
         _safe_free_(pkt);
         if(frame_len == len){
-            //printf_note("ch=%d, frame_len=%lu, len=%lu, Frame OK!\n", ch, frame_len, len);
+           // printf_note("ch=%d, frame_len=%lu, len=%lu, Frame OK!\n", ch, frame_len, len);
             dtype->stat.read_ok_frame++;
-            dtype->have_frame[ch] = true;
             break;
         }
         ptr += pkt_len;
@@ -409,9 +407,7 @@ static int _spm_distributor_data_frame_producer(int ch, int type, void **data, s
         printf_warn("Read len[%lu] is not eq expect len[%lu], Discard pkt\n", frame_len, len);
         ret = -1;
     }
-    
     _spm_distributor_reset(SPM_DIST_FFT, ch);
-
     *data = mbuf_header;
     return ret;
 }
@@ -470,46 +466,41 @@ static ssize_t spm_distributor_process(int type, size_t count, uint8_t **mbufs, 
     return consume_size;
 }
 
-int _spm_distributor_fft_wait_read_over(struct spm_distributor_type_attr_s *dtype)
+#define WAIT_CONSUME_TIMEOUT_MS 2000
+static void wait_consume_over(struct spm_distributor_type_attr_s *dtype)
 {
-    #define WAIT_FFT_CONSUME_TIMEOUT_MS 2000
     queue_ctx_t *pkt_q;
+    volatile int not_consume_over = 0;
+    int timeout = 0;
     struct timeval start, now;
-    int ret = 0, count = 0, timeout = 0, have_frame_channel = 0;
-
+    
+    usleep(20);
     _gettime(&start);
     do{
-        count = 0;
+        not_consume_over = 0;
         for(int ch = 0; ch < dtype->channel_num; ch++){
             if(config_get_fft_work_enable(ch) == false)
                 continue;
+
             pkt_q = (queue_ctx_t *)dtype->pkt_queue[ch];
-             _gettime(&now);
-            timeout = _tv_diff(&now, &start);
-            if(dtype->have_frame[ch]){
-                dtype->consume_over[ch] = true;
-                dtype->have_frame[ch] = false;
-                have_frame_channel++;
-            }
-            if(timeout > WAIT_FFT_CONSUME_TIMEOUT_MS){
-                printf_warn("Wait TimeOut[%dms]!ch:%d, entry:%u, %d, count:%d\n",WAIT_FFT_CONSUME_TIMEOUT_MS, ch, pkt_q->ops->get_entry(pkt_q), _tv_diff(&now, &start), count);
-                ret = -1;
-                break;
-            }
             if(!pkt_q->ops->is_empty(pkt_q)){
+                printf_note("ch: %d is not consume over,  entry:%u\n", ch, pkt_q->ops->get_entry(pkt_q));
+                not_consume_over = 1;
                 usleep(2);
-                count++;
-                continue;
             }
         }
-        if(count == 0 || ch_bitmap_weight(CH_TYPE_FFT) <= have_frame_channel){
-            //printf_note("work channel number:%ld, %d, have data channel count=%d\n", ch_bitmap_weight(CH_TYPE_FFT),  have_frame_channel, count);
+
+        _gettime(&now);
+        timeout = _tv_diff(&now, &start);
+        if(timeout > WAIT_CONSUME_TIMEOUT_MS){
+            printf_warn("Wait TimeOut[%dms]!, %d\n",WAIT_CONSUME_TIMEOUT_MS,   _tv_diff(&now, &start));
             break;
         }
-        /* consumer over */
-    }while(1);
 
-    return ret;
+        if(not_consume_over == 0)
+            break;
+    }while(1);
+    //printf_note("Consume over!\n");
 }
 
 static int _spm_distributor_fft_thread_loop(void *s)
@@ -532,7 +523,7 @@ static int _spm_distributor_fft_thread_loop(void *s)
         consume_len = spm_distributor_process(SPM_DIST_FFT, count, (uint8_t **)ptr, len);
     }
     if(consume_len > 0){
-        _spm_distributor_fft_wait_read_over(disp);
+        wait_consume_over(disp);
     }
 
     if(_ctx->ops->read_raw_over_deal)
@@ -693,8 +684,6 @@ static int _spm_distributor_init(void *args)
                 dist_type[i].pkt_queue[ch] = (void *)qctx;
             }
             _frame_devider_init(&frame_devider[i][ch]);
-            dist_type[i].have_frame[ch] = false;
-            dist_type[i].consume_over[ch] = false;
             dist_type[i].frame_buffer[ch] = calloc(1, MAX_FRAME_BUFFER_LEN);
             if(!dist_type[i].frame_buffer[ch]){
                 printf_warn("calloc memory faild!\n");
@@ -716,27 +705,23 @@ static int _spm_distributor_reset(int type, int ch)
 
     if(ch >= dist_type[type].channel_num)
         return -1;
-    printf_note("Reset, type:%d, ch:%d\n", type, ch);
+    //printf_note("Reset, type:%d, ch:%d\n", type, ch);
     //printf_note("dist_type[%d].pkt_queue[%d]=%p\n", type, ch, dist_type[type].pkt_queue[ch]);
     if(ch < 0){
         for(int c = 0; c < dist_type[type].channel_num; c++){
             queue_ctx_t *qctx =  dist_type[type].pkt_queue[c];
             if(qctx && qctx->ops->clear)
                 qctx->ops->clear(qctx);
-            dist_type[type].have_frame[c] = false;
             _frame_devider_init(&frame_devider[type][c]);
         }
     } else{
             queue_ctx_t *qctx =  dist_type[type].pkt_queue[ch];
             if(qctx && qctx->ops->clear)
                 qctx->ops->clear(qctx);
-            dist_type[type].have_frame[ch] = false;
             _frame_devider_init(&frame_devider[type][ch]);
 
     }
-   
-    
-    //printf_note("Reset, type:%d, ch:%d\n", type, ch);
+
     return 0;
 }
 

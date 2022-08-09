@@ -529,7 +529,7 @@ static int _executor_thread_wait(struct executor_thread_m *thread, int *mode)
         pthread_cond_wait(&wait->t_cond, &wait->t_mutex);
     }
    // wait->is_wait = true;
-    *mode = thread->mode->mode;
+    *mode = thread->mode;
     thread->reset = false;
     pthread_mutex_unlock(&wait->t_mutex);
     pthread_setcancelstate (PTHREAD_CANCEL_ENABLE , NULL);
@@ -662,7 +662,7 @@ int executor_fft_distributor_work_nofity(void *cl, bool enable)
 
     pthread_mutex_lock(&thread->pwait.t_mutex);
     thread->pwait.is_wait = !enable;
-    thread->mode->mode = mode;
+    thread->mode = mode;
     thread->reset = true;
     printf_debug("[%s]mode:%d, notify fft dist thread %s\n", thread->name, mode, thread->pwait.is_wait == true ? "PAUSE" : "RUN");
     pthread_cond_signal(&thread->pwait.t_cond);
@@ -729,7 +729,7 @@ int executor_fft_work_nofity(void *cl, int ch, int mode, bool enable)
 
     pthread_mutex_lock(&thread->pwait.t_mutex);
     thread->pwait.is_wait = !enable;
-    thread->mode->mode = mode;
+    thread->mode = mode;
     thread->reset = true;
     printf_info("[%s]notify thread %s\n", thread->name, thread->pwait.is_wait == true ? "PAUSE" : "RUN");
     pthread_cond_signal(&thread->pwait.t_cond);
@@ -770,7 +770,7 @@ int executor_niq_work_nofity(void *cl, int ch, int subch, bool enable)
 
     pthread_mutex_lock(&thread->pwait.t_mutex);
     thread->pwait.is_wait = !enable;
-    thread->mode->mode = mode;
+    thread->mode = mode;
     thread->reset = true;
     printf_note("[%s]notify thread %s\n", thread->name, thread->pwait.is_wait == true ? "PAUSE" : "RUN");
     pthread_cond_signal(&thread->pwait.t_cond);
@@ -811,10 +811,9 @@ static int _executor_thread_create(int ch, int index, int type, struct executor_
     snprintf(thread_name, sizeof(thread_name) -1, "thread_%d_%s", index, thread_type_string[type]);
     thread->name = strdup(thread_name);
     thread->ch = ch;
-    thread->mode = mode_table[type];
     thread->type = type;
     thread->index = index;
-    thread->mode->mode = OAL_NULL_MODE;
+    thread->mode = OAL_NULL_MODE;
     thread->reset = false;
     thread->args = (void *)get_spm_ctx();
     _wait_init(&thread->pwait);

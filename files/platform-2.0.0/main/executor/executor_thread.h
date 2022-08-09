@@ -21,7 +21,7 @@ struct executor_thread_m{
     void *args;
     int type;
     int index;
-    struct executor_mode_table *mode;
+    int mode;
     struct executor_thread_wait pwait;
     volatile bool reset;
 };

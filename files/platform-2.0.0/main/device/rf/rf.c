@@ -73,7 +73,7 @@ int8_t rf_set_interface(uint8_t cmd,uint8_t ch,void *data)
             }
             freq_hz = *(uint64_t*)data;
             old_ch = ch;
-            printf_note("[**RF**]ch=%d, middle_freq=%"PRIu64"\n",ch, *(uint64_t*)data);
+            printf_debug("[**RF**]ch=%d, middle_freq=%"PRIu64"\n",ch, *(uint64_t*)data);
             if(rfctx && rfctx->ops->set_mid_freq)
                 ret = rfctx->ops->set_mid_freq(ch, freq_hz);
             break;

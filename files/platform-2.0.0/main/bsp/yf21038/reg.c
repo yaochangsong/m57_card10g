@@ -156,12 +156,14 @@ static int fpga_unmemmap(FPGA_CONFIG_REG *fpga_reg)
         return -1;
     }
 
+    #if 0
     ret = munmap(fpga_reg->dacReg, SYSTEM_CONFG_REG_LENGTH); 
     if (ret)
     {
-    	perror("munmap");
+        perror("munmap");
         return -1;
     }
+    #endif
     
     printf_note("munmap OK\n");
     return 0;

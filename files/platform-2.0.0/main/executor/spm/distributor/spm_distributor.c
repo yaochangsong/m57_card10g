@@ -346,6 +346,7 @@ static int _spm_distributor_data_frame_producer(int ch, int type, void **data, s
     do{
         _gettime(&now);
         if(_tv_diff(&now, &start) > SPM_DIST_TIMEOUT_MS){
+            executor_reset_fftsize(ch);
             printf_warn("Read TimeOut!\n");
             ret = -1;
             break;
@@ -484,7 +485,7 @@ static void wait_consume_over(struct spm_distributor_type_attr_s *dtype)
 
             pkt_q = (queue_ctx_t *)dtype->pkt_queue[ch];
             if(!pkt_q->ops->is_empty(pkt_q)){
-                printf_note("ch: %d is not consume over,  entry:%u\n", ch, pkt_q->ops->get_entry(pkt_q));
+                printf_debug("ch: %d is not consume over,  entry:%u\n", ch, pkt_q->ops->get_entry(pkt_q));
                 not_consume_over = 1;
                 usleep(2);
             }
@@ -510,7 +511,7 @@ static int _spm_distributor_fft_thread_loop(void *s)
     size_t len[DIST_MAX_COUNT] = {0}, prod_size = 0;
     ssize_t count = 0;
     struct spm_distributor_type_attr_s *disp = s;
-    ssize_t consume_len = 0;
+    unsigned int consume_len = 0;
 
     _ctx = get_spm_ctx();
     if(_ctx == NULL)

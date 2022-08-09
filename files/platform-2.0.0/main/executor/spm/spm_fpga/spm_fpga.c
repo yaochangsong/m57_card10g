@@ -258,8 +258,12 @@ static ssize_t spm_raw_stream_read(int ch, int index, int type,  void **data, si
             }
         }else if(info.status == READ_BUFFER_STATUS_OVERRUN){
             printf_warn("[%s]data is overrun\n", pstream[index].name);
-            //io_set_enable_command(PSD_MODE_DISABLE, -1, -1, 0); //关dma
-            //io_set_enable_command(PSD_CONTIOUS_MODE_ENABLE, -1, -1, 0);  //连续模式
+            io_set_enable_command(PSD_MODE_DISABLE, -1, -1, 0); //关dma
+            #if (defined CONFIG_SPM_FFT_CONTINUOUS_MODE) 
+            io_set_enable_command(PSD_CON_MODE_ENABLE, -1, -1, 0);  //连续模式
+            #else
+            io_set_enable_command(PSD_MODE_ENABLE, -1, -1, 0);  //连续模式
+            #endif
         }
         _spm_gettime(&now);
         if(_spm_tv_diff(&now, &start) > _STREAM_READ_TIMEOUT_MS){

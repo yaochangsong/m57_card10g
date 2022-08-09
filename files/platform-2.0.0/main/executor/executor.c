@@ -87,6 +87,24 @@ uint32_t executor_get_bandwidth(uint8_t ch)
 }
 
 
+uint32_t executor_reset_fftsize(uint8_t ch)
+{
+    struct spm_context *_ctx;
+    uint32_t fft_size, fft_512 = 512, fft_2K = 2048;
+    _ctx = get_spm_ctx();
+    if(_ctx == NULL)
+        return 0;
+    fft_size = _ctx->run_args[ch]->fft_size;
+    printf_debug("ch:%d FFT size:%u\n", ch, fft_size);
+    if(fft_size != 512)
+        executor_set_command(EX_MID_FREQ_CMD, EX_FFT_SIZE, ch, &fft_512);
+    else
+        executor_set_command(EX_MID_FREQ_CMD, EX_FFT_SIZE, ch, &fft_2K);
+    usleep(2);
+    executor_set_command(EX_MID_FREQ_CMD, EX_FFT_SIZE, ch, &fft_size);
+    return _ctx->run_args[ch]->fft_size;
+}
+
 static int8_t executor_get_kernel_command(uint8_t type, uint8_t ch, void *data)
 {
     switch(type)

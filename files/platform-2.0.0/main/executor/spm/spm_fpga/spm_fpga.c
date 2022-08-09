@@ -257,7 +257,7 @@ static ssize_t spm_raw_stream_read(int ch, int index, int type,  void **data, si
                 usleep(1);
             }
         }else if(info.status == READ_BUFFER_STATUS_OVERRUN){
-            //printf_warn("[%s]data is overrun\n", pstream[index].name);
+            printf_warn("[%s]data is overrun\n", pstream[index].name);
             //io_set_enable_command(PSD_MODE_DISABLE, -1, -1, 0); //关dma
             //io_set_enable_command(PSD_CONTIOUS_MODE_ENABLE, -1, -1, 0);  //连续模式
         }
@@ -438,7 +438,7 @@ static ssize_t spm_read_raw_data(int ch, int type, void **data, void *len, void 
 static int spm_read_raw_over_deal(int ch, int type, void *arg)
 {
     unsigned int nwrite_byte = 0;
-    if(!arg)
+    if(arg)
         nwrite_byte = *(unsigned int *)arg;
     struct _spm_stream *pstream = spm_dev_get_stream(NULL);
     int index;

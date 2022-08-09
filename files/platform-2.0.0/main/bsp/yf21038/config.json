@@ -1,0 +1,216 @@
+{
+	"version":	"1.1",
+	"network":	[{
+			"ifname":	"eth0",
+			"port":	{
+				"command":	1234,
+				"data":	[1235, 1236, 1237]
+			}
+		}, {
+			"ifname":	"eth1",
+			"port":	{
+				"command":	1234,
+				"data":	[1235, 1236, 1237]
+			}
+		}],
+	"control_parm":	{
+		"spectrum_time_interval":	200,
+		"bandwidth_remote_ctrl":	1,
+		"internal_clock":	0,
+		"net10g_threshold_bandwidth":	10000000,
+		"signal_threshold":	90,
+		"iq_data_length":	8192,
+		"disk_full_alert_threshold_MB":	0,
+		"disk_split_file_threshold_MB":	0,
+		"disk_file_notifier_timeout_ms":	2000,
+		"vita49_protocal_switch": 0
+	},
+	"status_parm":	{
+		"soft_version":	{
+			"app":	"v1.1.4_release(2021-08-29-11:26:50)-e6ffcf51e6636971031a4c63463acc7c071b33f6 ",
+			"fpga":	"202012",
+			"kernel":	""
+		},
+		"device_sn":	"ACTI-0208"
+	},
+	"calibration_parm":	{
+		"psd_power_global":	1705,
+		"gain_calibration":	"false",
+		"psd_fftsize":	[{
+				"fftsize":	512,
+				"value":	0
+			}, {
+				"fftsize":	1024,
+				"value":	0
+			}, {
+				"fftsize":	2048,
+				"value":	0
+			}, {
+				"fftsize":	4096,
+				"value":	0
+			}, {
+				"fftsize":	8192,
+				"value":	0
+			}, {
+				"fftsize":	16384,
+				"value":	0
+			}, {
+				"fftsize":	32768,
+				"value":	0
+			}],
+		"psd_freq":	[{
+				"fftsize":	512,
+				"start_freq":	0,
+				"end_freq":	200000,
+				"value":	0
+			}, {
+				"fftsize":	1024,
+				"start_freq":	0,
+				"end_freq":	200000,
+				"value":	0
+			}, {
+				"fftsize":	2048,
+				"start_freq":	0,
+				"end_freq":	200000,
+				"value":	0
+			}, {
+				"fftsize":	4096,
+				"start_freq":	0,
+				"end_freq":	200000,
+				"value":	0
+			}, {
+				"fftsize":	8192,
+				"start_freq":	0,
+				"end_freq":	200000,
+				"value":	0
+			}, {
+				"fftsize":	16384,
+				"start_freq":	0,
+				"end_freq":	200000,
+				"value":	0
+			}, {
+				"fftsize":	0,
+				"start_freq":	18000000,
+				"end_freq":	18088500,
+				"value":	0
+			}],
+		"analysis_power_global":	-195,
+		"analysis_freq":	[{
+				"start_freq":	0,
+				"end_freq":	0,
+				"value":	0
+			}],
+		"low_noise_power":	-100,
+		"lo_leakage_threshold":	40,
+		"lo_leakage_renew_data_len":	0,
+		"lo_leakage":	[{
+				"fftsize":	512,
+				"threshold":	0,
+				"renew_data_len":	2
+			}, {
+				"fftsize":	1024,
+				"threshold":	0,
+				"renew_data_len":	2
+			}],
+		"dc_offset_mshift_onoff":	0,
+		"dc_offset_mshift_global":	15,
+		"dc_offset_mshift":	[{
+				"start_freq":	100000,
+				"end_freq":	500000,
+				"value":	0
+			}, {
+				"start_freq":	500000,
+				"end_freq":	1000000,
+				"value":	0
+			}],
+		"mgc_gain_global":	4,
+		"low_distortion_power_agc":	-150,
+		"low_noise_power_agc":	150,
+		"mgc_gain_freq":	[{
+				"start_freq":	1050000,
+				"end_freq":	1250000,
+				"value":	0
+			}, {
+				"start_freq":	1250000,
+				"end_freq":	1450000,
+				"value":	0
+			}]
+	},
+	"spectrum_parm":	{
+		"side_bandrate":	[{
+				"bandwidth":	80000000,
+				"rate":	1.166667
+			}, {
+				"bandwidth":	40000000,
+				"rate":	1.166667
+			}, {
+				"bandwidth":	20000000,
+				"rate":	1.166667
+			}, {
+				"bandwidth":	10000000,
+				"rate":	1.166667
+			}, {
+				"bandwidth":	4000000,
+				"rate":	1.166667
+			}, {
+				"bandwidth":	2000000,
+				"rate":	1.166667
+			}, {
+				"bandwidth":	1000000,
+				"rate":	1.166667
+			}, {
+				"bandwidth":	500000,
+				"rate":	1.166667
+			}],
+		"dac_parm":	[{
+				"channel":	0,
+				"middle_freq":	70000000,
+				"bandwith":	500000,
+				"gain":	0,
+				"gain_global":21
+			}],
+		"if_parm":	[{
+				"channel":	0,
+				"middle_freq":	70000000,
+				"bandwith":	20000000,
+				"mute_switch":	1,
+				"mute_thrh":	-80,
+				"dec_bandwith":	50000,
+				"dec_method":	0,
+				"audio_volume":	100
+			}],
+		"rf_parm":	[{
+				"channel":	0,
+				"middle_freq":	70000000,
+				"mid_bw":	20000000,
+				"board_mid_freq":	70000000,
+				"attenuation":	0,
+				"mode_code":	1,
+				"gain_mode":	0,
+				"mgc_gain":	0,
+				"agc_ctrl_time":	1000,
+				"agc_output_amp_dbm":	-20,
+				"agc_ref_val_0dbm":	12180,
+				"subch_ref_val_0dbm":	13040,
+				"rf_mode_param":	[{
+						"mode":	"low_distortion",
+						"magification":	20,
+						"rf_attenuation_range":	"0~30",
+						"mgc_attenuation_range":	"0~30",
+						"detection_range":	"10~-115"
+					}, {
+						"mode":	"normal",
+						"magification":	30,
+						"rf_attenuation_range":	"0~30",
+						"mgc_attenuation_range":	"0~30",
+						"detection_range":	"10~-115"
+					}, {
+						"mode":	"low_noise",
+						"magification":	45,
+						"rf_attenuation_range":	"0~30",
+						"mgc_attenuation_range":	"0~30",
+						"detection_range":	"10~-115"
+					}]
+			}]
+	}
+}

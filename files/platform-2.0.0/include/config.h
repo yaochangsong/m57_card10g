@@ -110,6 +110,7 @@
 #include "../main/executor/spm/distributor/spm_distributor.h"
 #include "../main/executor/spm/file_sink/file_sink.h"
 #include "../main/executor/spm/statistics/statistics.h"
+#include "../main/executor/spm/agc/agc.h"
 
 
 #include "../main/executor/executor_thread.h"

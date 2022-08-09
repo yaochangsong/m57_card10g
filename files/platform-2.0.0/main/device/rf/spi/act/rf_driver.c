@@ -55,9 +55,9 @@
 #define ARRAY_SIZE(arr) (sizeof(arr) / sizeof((arr)[0]))
 #endif
 
-#if defined(SUPPORT_PROJECT_AKT_4CH)
+#if defined(CONFIG_BSP_AKT_4CH)
 #define MAX_SPI_CH_NUM  4
-#elif defined(SUPPORT_PROJECT_YF21025)
+#elif defined(CONFIG_BSP_YF21025)
 #define MAX_SPI_CH_NUM  1
 #else
 #define MAX_SPI_CH_NUM  0
@@ -66,12 +66,12 @@
 int _fd[MAX_SPI_CH_NUM];
 
 static const char *spi_dev_name[] = {
-#if defined(SUPPORT_PROJECT_AKT_4CH)	
+#if defined(CONFIG_BSP_AKT_4CH)	
     "/dev/spidev1.0",
     "/dev/spidev1.1",
     "/dev/spidev1.2",
     "/dev/spidev1.3",
-#elif defined(SUPPORT_PROJECT_YF21025)
+#elif defined(CONFIG_BSP_YF21025)
     "/dev/spidev1.1",  //spi rf
     "/dev/spidev1.0",
 #else

@@ -159,7 +159,7 @@ bool _fs_disk_info(struct statfs *diskInfo)
     
     if(access(DEV_NAME, F_OK)){
         disk_error_num = DISK_CODE_NOT_FOUND;
-        printf_note("SSD Disk [%s] check failed\n", DEV_NAME);
+        printf_info("SSD Disk [%s] check failed\n", DEV_NAME);
         return false;
     }
 

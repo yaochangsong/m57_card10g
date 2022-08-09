@@ -552,7 +552,9 @@ int8_t k600_scanf(uint8_t *pdata, int32_t total_len)
                 int8_t mode = ptr->data[0];
                 printf_note("ch = %d, gain mode = [%d]\n", ch, mode);
                 config_write_save_data(EX_RF_FREQ_CMD,  EX_RF_GAIN_MODE, ch, &mode);
-               //spm_agc_deal_notify(ch);
+                #if defined(CONFIG_SPM_AGC)
+                agc_ctrl_thread_notify(ch);
+                #endif
            }
                 break;
             case SCREEN_CHANNEL_RF_GAIN:  //rf gain
@@ -625,7 +627,7 @@ int8_t k600_scanf(uint8_t *pdata, int32_t total_len)
                         //executor_set_command(EX_MID_FREQ_CMD, EX_SUB_CH_MID_FREQ, ch, &mid_frq, mid_frq, ch);
 
                         io_set_subch_dec_middle_freq(ch, CONFIG_AUDIO_CHANNEL, mid_frq, mid_frq);
-                        #if defined(SUPPORT_PROJECT_YF21025)
+                        #if defined(CONFIG_BSP_YF21025)
                         io_set_subch_dec_middle_freq(ch, CONFIG_DAC_CHANNEL, 0, 0);
                         #endif
                         break;
@@ -777,7 +779,7 @@ int8_t k600_receive_write_data_from_user(uint8_t data_type, uint8_t data_cmd, vo
                     for(uint32_t i = 0; i< ARRAY_SIZE(bw_data); i++){
                         if(bw_data[i].idata == *(uint32_t *)pdata){
                             _bw = COMPOSE_16BYTE_BY_8BIT(bw_data[i].type, 0);
-                            printf_note("set bandwidth %u =>%d 0x%x\n", bw_data[i].idata, bw_data[i].type, _bw);
+                            printf_info("set bandwidth %u =>%d 0x%x\n", bw_data[i].idata, bw_data[i].type, _bw);
                             k600_receive_write_act(COMPOSE_16BYTE_BY_8BIT(data_type, data_cmd), &_bw, 1);
                             found ++;
                             break;
@@ -835,7 +837,7 @@ int8_t k600_receive_write_data_from_user(uint8_t data_type, uint8_t data_cmd, vo
                         printf_err("error data\n");
                         return -1;
                     }
-                    printf_note("mode_code: %d, 0x%x\n", *(uint8_t *)pdata, *(uint8_t *)pdata);
+                    printf_info("mode_code: %d, 0x%x\n", *(uint8_t *)pdata, *(uint8_t *)pdata);
                     _data = COMPOSE_16BYTE_BY_8BIT(*(uint8_t *)pdata, 0);
                     k600_receive_write_act(COMPOSE_16BYTE_BY_8BIT(data_type, data_cmd), &_data, 1);
                 }
@@ -883,7 +885,7 @@ int8_t k600_receive_write_data_from_user(uint8_t data_type, uint8_t data_cmd, vo
 
                     if(data_cmd == SCREEN_CHANNEL_DECODE_TYPE){
                         sdata = k600_decode_method_convert_from_standard(sdata);
-                        printf_note("lcd decode type:old[%d],new[%d]\n", *(uint8_t *)pdata, sdata);
+                        printf_debug("lcd decode type:old[%d],new[%d]\n", *(uint8_t *)pdata, sdata);
                     }
                     
                     _data = COMPOSE_16BYTE_BY_8BIT(sdata, 0);

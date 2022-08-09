@@ -762,6 +762,9 @@ static int akt_execute_set_command(void *cl)
             check_valid_channel(payload[0]);
             poal_config->channel[ch].rf_para.gain_ctrl_method = payload[1];
             printf_note("gain_ctrl_method=%d\n", poal_config->channel[ch].rf_para.gain_ctrl_method);
+            #if defined(CONFIG_SPM_AGC)
+            agc_ctrl_thread_notify(ch);
+            #endif
             //executor_set_command(EX_RF_FREQ_CMD, EX_RF_GAIN_MODE, ch, &poal_config->channel[ch].rf_para.gain_ctrl_method);
             break;
         case RF_AGC_CMD:
@@ -1172,7 +1175,7 @@ static int akt_execute_get_command(void *cl)
             if((time_str = get_proc_boot_time()) != NULL){
                 strncpy((char *)self_check.system_power_on_time, time_str, sizeof(self_check.system_power_on_time));
             }
-            printf_note("power on time:%s\n", self_check.system_power_on_time);
+            printf_debug("power on time:%s\n", self_check.system_power_on_time);
             self_check.ch_num = MAX_RF_NUM;
             for(int i = 0; i< MAX_RF_NUM; i++){
                 executor_get_command(EX_RF_FREQ_CMD, EX_RF_STATUS_TEMPERAT, i,  &self_check.t_s[i].rf_temperature);
@@ -1182,7 +1185,7 @@ static int akt_execute_get_command(void *cl)
                 }else{
                     self_check.t_s[i].ch_status = 0;
                 }
-                printf_note("rf ch:%d, ext_clk:%d, ad_status=%d,pfga_temperature=%d,ch_num=%d, rf_temperature=%d, ch_status=%d\n", i,
+                printf_debug("rf ch:%d, ext_clk:%d, ad_status=%d,pfga_temperature=%d,ch_num=%d, rf_temperature=%d, ch_status=%d\n", i,
                     self_check.ext_clk, self_check.ad_status, self_check.pfga_temperature, self_check.ch_num,
                     self_check.t_s[i].rf_temperature, self_check.t_s[i].ch_status);
             }

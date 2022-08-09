@@ -55,9 +55,9 @@
 #define ARRAY_SIZE(arr) (sizeof(arr) / sizeof((arr)[0]))
 #endif
 
-#if defined(SUPPORT_PROJECT_AKT_4CH)
+#if defined(CONFIG_BSP_AKT_4CH)
 #define MAX_SPI_CH_NUM  4
-#elif defined(SUPPORT_PROJECT_YF21025)
+#elif defined(CONFIG_BSP_YF21025)
 #define MAX_SPI_CH_NUM  1
 #else
 #define MAX_SPI_CH_NUM  0
@@ -66,12 +66,24 @@
 int _fd[MAX_SPI_CH_NUM];
 
 static const char *spi_dev_name[] = {
-#if defined(SUPPORT_PROJECT_AKT_4CH)	
+#if defined(CONFIG_BSP_AKT_4CH)	
     "/dev/spidev1.0",
     "/dev/spidev1.1",
     "/dev/spidev1.2",
     "/dev/spidev1.3",
-#elif defined(SUPPORT_PROJECT_YF21025)
+#elif defined(CONFIG_BSP_YF21038)
+    "/dev/spidev1.0",  //外部只用这一路
+    "/dev/spidev1.1",
+    "/dev/spidev1.2",
+    "/dev/spidev1.3",
+    "/dev/spidev1.4",
+    "/dev/spidev1.5",
+    "/dev/spidev1.6",
+    "/dev/spidev1.7",
+#elif defined(CONFIG_BSP_YF21025)
+    "/dev/spidev1.1",  //spi rf
+    "/dev/spidev1.0",
+#elif defined(CONFIG_BSP_YF21036)
     "/dev/spidev1.1",  //spi rf
     "/dev/spidev1.0",
 #else
@@ -150,10 +162,15 @@ static int spi_assemble_send_data(uint8_t ch, uint8_t *buffer, uint8_t cmd, void
         return -1;
     *ptr++ = SPI_DATA_HADER;
     pchecksum = ptr;
-    *ptr++ = len;
+    if (cmd == RF_CMD_CODE_TEMPERATURE) {
+        *ptr++ = len;
+    } else {
+        *ptr++ = len+1;  //1 for ch num
+    }
     *ptr++ = cmd;
     if (cmd != RF_CMD_CODE_TEMPERATURE) {
-        *ptr++ = ch;
+        //*ptr++ = 9 -(ch + 1);  //test
+        *ptr++ = ch + 1;
     }
     if(len != 0){
         memcpy(ptr, data, len);
@@ -490,55 +507,34 @@ static int rf_set_bw(uint8_t channel, uint8_t bw)
 static int _rf_set_bw(uint8_t channel, uint32_t bw_hz)
 {
     uint8_t mbw = 0;
-#if 0
-    if(bw_hz == MHZ(20))
-        mbw = 5;
-    else if(bw_hz == MHZ(10))
-        mbw = 4;
-    else if(bw_hz == MHZ(5))
-        mbw = 3;
-    else if(bw_hz == MHZ(2))
-        mbw = 2;
-    else if(bw_hz == MHZ(1))
-        mbw = 1;
-    else if(bw_hz == MHZ(0.5))
-        mbw = 6;
-    else if(bw_hz == MHZ(40))
-        mbw = 7;
-    else if(bw_hz == MHZ(80))
-        mbw = 8;
-    else
-        mbw = 7;
-#else
     if(bw_hz == MHZ(1))
-        mbw = 0;
-    else if(bw_hz == MHZ(2))
         mbw = 1;
-    else if(bw_hz == MHZ(5))
+    else if(bw_hz == MHZ(2))
         mbw = 2;
-    else if(bw_hz == MHZ(10))
+    else if(bw_hz == MHZ(5))
         mbw = 3;
-    else if(bw_hz == MHZ(20))
+    else if(bw_hz == MHZ(10))
         mbw = 4;
-    else if(bw_hz == MHZ(0.5))
+    else if(bw_hz == MHZ(20))
         mbw = 5;
-    else if(bw_hz == MHZ(40))
+    else if(bw_hz == MHZ(0.5))
         mbw = 6;
-    else if(bw_hz == MHZ(80))
+    else if(bw_hz == MHZ(40))
         mbw = 7;
-    else if(bw_hz == MHZ(0.2))
+    else if(bw_hz == MHZ(80))
         mbw = 8;
-    else if(bw_hz == MHZ(70))
+    else if(bw_hz == MHZ(0.2))
         mbw = 9;
-    else if(bw_hz == MHZ(60))
+    else if(bw_hz == MHZ(70))
         mbw = 10;
-    else if(bw_hz == MHZ(200))
+    else if(bw_hz == MHZ(60))
         mbw = 11;
+    else if(bw_hz == MHZ(200))
+        mbw = 12;
     else {
         printf_warn("not supported rf bw %u hz\n", bw_hz);
         return -1;
     }
-#endif
             
     return rf_set_bw(channel, mbw);
 }
@@ -677,14 +673,15 @@ static int _rf_set_frequency(uint8_t channel, uint64_t freq_hz)
     uint64_t host_freq = htobe64(freq_hz) >> 24;  //act 4ch:单位hz
     uint64_t recv_freq = 0;
     int i = 0;
+
     for (i = 0; i < 3; i++){
         ret = rf_set_frequency(channel, host_freq);
         if (ret < 0){
-            printf_warn("set rf freq fail\n");
+            printf_info("set rf freq fail\n");
             usleep(100);
             continue;
         }
-        usleep(300);
+        usleep(500);
         recv_freq = 0;
         rf_get_frequency(channel, &recv_freq);
         recv_freq = (htobe64(recv_freq) >> 24);

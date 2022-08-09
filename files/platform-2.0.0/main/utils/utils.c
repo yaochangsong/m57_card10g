@@ -484,7 +484,7 @@ int writen(int fd, const uint8_t *buf, int buflen)
         len = write(fd, buf, buflen);
 
         if (len < 0) {
-            printf_note("[fd:%d]-send len : %ld, %d[%s]\n", fd, len, errno, strerror(errno));
+            printf_info("[fd:%d]-send len : %ld, %d[%s]\n", fd, len, errno, strerror(errno));
             if (errno == EINTR)
                 continue;
 

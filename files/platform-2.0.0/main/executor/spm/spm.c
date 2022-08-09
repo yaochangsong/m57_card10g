@@ -20,7 +20,6 @@ static struct spm_context *spmctx = NULL;
 pthread_mutex_t send_fft_mutex[MAX_RADIO_CHANNEL_NUM];
 pthread_mutex_t send_iq_mutex = PTHREAD_MUTEX_INITIALIZER;
 
-
 static void spm_cond_init(void)
 {
      for(int i = 0; i < MAX_RADIO_CHANNEL_NUM; i++){
@@ -130,7 +129,7 @@ void *spm_init(void)
                 printf("malloc failed\n");
                 exit(1);
             }
-            printf_note("type=%d, ptr=%p\n", type, spmctx->run_args[ch]->dis_iq.ptr[type]);
+            printf_debug("type=%d, ptr=%p\n", type, spmctx->run_args[ch]->dis_iq.ptr[type]);
             spmctx->run_args[ch]->dis_iq.len[type] = 0;
         }
     }

@@ -109,11 +109,18 @@ int8_t lcd_scanf(uint8_t *data, int32_t len)
 int8_t lcd_printf(uint8_t cmd, uint8_t type, void *data, uint8_t *ch)
 {
     struct lcd_code_convert_st code, *pcode;
+    uint8_t ch_lcd;
     if(data == NULL){
         return -1;
     }
-    uint8_t ch_dup = *ch +1;
-    pcode = lcd_code_convert(cmd, type, &ch_dup, &code);
+    
+    if (ch != NULL) {
+        ch_lcd = *ch + 1;
+        pcode = lcd_code_convert(cmd, type, &ch_lcd, &code);
+    } else {
+        pcode = lcd_code_convert(cmd, type, NULL, &code);
+    }
+    
     if(pcode == NULL){
         return -1;
     }
@@ -175,46 +182,46 @@ int8_t init_lcd(void)
         io_set_audio_volume(i, volume);
         lcd_printf(EX_CTRL_CMD, EX_CTRL_AUDIO_VOLUME,   &volume, &i);
 
-        printf_note("[lcd init]ch%d dec bw:%u\n",i, poal_config->channel[i].multi_freq_point_param.points[0].d_bandwith);
+        printf_debug("[lcd init]ch%d dec bw:%u\n",i, poal_config->channel[i].multi_freq_point_param.points[0].d_bandwith);
         lcd_printf(EX_MID_FREQ_CMD, EX_DEC_BW,   &poal_config->channel[i].multi_freq_point_param.points[0].d_bandwith, &i);
         executor_set_command(EX_MID_FREQ_CMD,  EX_SUB_CH_DEC_BW, i, &poal_config->channel[i].multi_freq_point_param.points[0].d_bandwith, poal_config->channel[i].multi_freq_point_param.points[0].d_method);
 
-        printf_note("[lcd init]ch%d dec method:%u\n",i, poal_config->channel[i].multi_freq_point_param.points[0].d_method);
+        printf_debug("[lcd init]ch%d dec method:%u\n",i, poal_config->channel[i].multi_freq_point_param.points[0].d_method);
         lcd_printf(EX_MID_FREQ_CMD, EX_DEC_METHOD,   &poal_config->channel[i].multi_freq_point_param.points[0].d_method, &i);
         executor_set_command(EX_MID_FREQ_CMD, EX_DEC_METHOD, i, &poal_config->channel[i].multi_freq_point_param.points[0].d_method);
 
-        printf_note("[lcd init]ch%d rf freq:%"PRIu64"\n",i, poal_config->channel[i].rf_para.mid_freq);
+        printf_debug("[lcd init]ch%d rf freq:%"PRIu64"\n",i, poal_config->channel[i].rf_para.mid_freq);
         lcd_printf(EX_RF_FREQ_CMD,  EX_RF_MID_FREQ,   &poal_config->channel[i].rf_para.mid_freq, &i); 
         executor_set_command(EX_RF_FREQ_CMD, EX_RF_MID_FREQ, i, &poal_config->channel[i].rf_para.mid_freq);
         executor_set_command(EX_MID_FREQ_CMD, EX_SUB_CH_MID_FREQ, i, &poal_config->channel[i].rf_para.mid_freq, poal_config->channel[i].rf_para.mid_freq, i);
 
-        printf_note("[lcd init]ch%d rf mode:%u\n",i, poal_config->channel[i].rf_para.rf_mode_code);
+        printf_debug("[lcd init]ch%d rf mode:%u\n",i, poal_config->channel[i].rf_para.rf_mode_code);
         lcd_printf(EX_RF_FREQ_CMD,  EX_RF_MODE_CODE,   &poal_config->channel[i].rf_para.rf_mode_code, &i);
         executor_set_command(EX_RF_FREQ_CMD, EX_RF_MODE_CODE, i, &poal_config->channel[i].rf_para.rf_mode_code);
 
-        printf_note("[lcd init]ch%d mgc:%d\n",i, poal_config->channel[i].rf_para.mgc_gain_value);
+        printf_debug("[lcd init]ch%d mgc:%d\n",i, poal_config->channel[i].rf_para.mgc_gain_value);
         lcd_printf(EX_RF_FREQ_CMD,  EX_RF_MGC_GAIN,   &poal_config->channel[i].rf_para.mgc_gain_value, &i);
         executor_set_command(EX_RF_FREQ_CMD, EX_RF_MGC_GAIN, i, &poal_config->channel[i].rf_para.mgc_gain_value);
 
-        printf_note("[lcd init]ch%d rf gain:%d\n",i, poal_config->channel[i].rf_para.attenuation);
+        printf_debug("[lcd init]ch%d rf gain:%d\n",i, poal_config->channel[i].rf_para.attenuation);
         lcd_printf(EX_RF_FREQ_CMD,  EX_RF_ATTENUATION,   &poal_config->channel[i].rf_para.attenuation, &i);
         executor_set_command(EX_RF_FREQ_CMD, EX_RF_ATTENUATION, i, &poal_config->channel[i].rf_para.attenuation);
 
-        printf_note("[lcd init]ch%d gain mode:%d\n",i, poal_config->channel[i].rf_para.gain_ctrl_method);
+        printf_debug("[lcd init]ch%d gain mode:%d\n",i, poal_config->channel[i].rf_para.gain_ctrl_method);
         lcd_printf(EX_RF_FREQ_CMD,  EX_RF_GAIN_MODE,   &poal_config->channel[i].rf_para.gain_ctrl_method, &i);
 
-        printf_note("[lcd init]ch%d mid_bw:%u\n",i, poal_config->channel[i].rf_para.mid_bw);
+        printf_debug("[lcd init]ch%d mid_bw:%u\n",i, poal_config->channel[i].rf_para.mid_bw);
         lcd_printf(EX_RF_FREQ_CMD,  EX_RF_MID_BW,   &poal_config->channel[i].rf_para.mid_bw, &i);
         executor_set_command(EX_RF_FREQ_CMD, EX_RF_MID_BW, i, &poal_config->channel[i].rf_para.mid_bw);
 
-        printf_note("[lcd init]ch%d board_mid_freq:%"PRIu64"\n",i, poal_config->channel[i].rf_para.board_mid_freq);
+        printf_debug("[lcd init]ch%d board_mid_freq:%"PRIu64"\n",i, poal_config->channel[i].rf_para.board_mid_freq);
         lcd_printf(EX_RF_FREQ_CMD,  EX_RF_MID_FREQ_FILTER,   &poal_config->channel[i].rf_para.board_mid_freq, &i);
         executor_set_command(EX_RF_FREQ_CMD, EX_RF_MID_FREQ_FILTER, i, &poal_config->channel[i].rf_para.board_mid_freq);
         executor_set_command(EX_MID_FREQ_CMD, EX_MID_FREQ, i, &poal_config->channel[i].rf_para.board_mid_freq, poal_config->channel[i].rf_para.board_mid_freq);
 
         noise_en = poal_config->channel[i].multi_freq_point_param.points[0].noise_en;
         noise_thrh = poal_config->channel[i].multi_freq_point_param.points[0].noise_thrh;
-        printf_note("[lcd init]ch%d noise en:%d, level:%d\n",i, noise_en, noise_thrh);
+        printf_debug("[lcd init]ch%d noise en:%d, level:%d\n",i, noise_en, noise_thrh);
         lcd_printf(EX_MID_FREQ_CMD,  EX_MUTE_SW,   &noise_thrh, &i);
         lcd_printf(EX_MID_FREQ_CMD,  EX_MUTE_THRE,   &noise_en, &i);
         executor_set_command(EX_MID_FREQ_CMD, EX_MUTE_THRE, CONFIG_AUDIO_CHANNEL, &noise_thrh, noise_en);

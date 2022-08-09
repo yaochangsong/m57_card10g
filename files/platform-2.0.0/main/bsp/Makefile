@@ -12,3 +12,4 @@ obj-$(CONFIG_BSP_YF21015)   += yf21015/
 obj-$(CONFIG_BSP_YF21025)   += yf21025/
 obj-$(CONFIG_BSP_YF21033)   += yf21033/
 obj-$(CONFIG_BSP_M57_VPX)   += m57_vpx/
+obj-$(CONFIG_BSP_YF21038)   += yf21038/

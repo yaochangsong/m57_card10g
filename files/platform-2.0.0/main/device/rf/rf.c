@@ -90,7 +90,7 @@ int8_t rf_set_interface(uint8_t cmd,uint8_t ch,void *data)
             }else{
                 bw_hz= *(uint32_t *)data;
             }
-            printf_note("[**RF**]ch=%d, middle bw=%uHz\n", ch, bw_hz);
+            printf_info("[**RF**]ch=%d, middle bw=%uHz\n", ch, bw_hz);
             if(rfctx && rfctx->ops->set_bindwidth)
                 ret = rfctx->ops->set_bindwidth(ch, bw_hz);
             break;
@@ -112,11 +112,18 @@ int8_t rf_set_interface(uint8_t cmd,uint8_t ch,void *data)
                 ret = rfctx->ops->set_work_mode(ch, noise_mode);
             break;
         }
+        case EX_RF_GAIN_MODE:
+        {
+            #if defined(CONFIG_SPM_AGC)
+            agc_ctrl_thread_notify(ch);
+            #endif
+            break; 
+        }
         case EX_RF_MGC_GAIN:
         {
             volatile int8_t mgc_gain_value;
             mgc_gain_value = *((int8_t *)data);
-            printf_note("[**RF**]ch=%d, mgc_gain_value=%d\n",ch, mgc_gain_value);
+            printf_info("[**RF**]ch=%d, mgc_gain_value=%d\n",ch, mgc_gain_value);
             if(rfctx && rfctx->ops->set_mgc_gain)
                 ret = rfctx->ops->set_mgc_gain(ch, mgc_gain_value);
             break;
@@ -125,7 +132,7 @@ int8_t rf_set_interface(uint8_t cmd,uint8_t ch,void *data)
         {
             int8_t rf_gain_value;
             rf_gain_value = *((int8_t *)data);
-            printf_note("[**RF**]ch=%d, rf_gain_value=%d\n",ch, rf_gain_value);
+            printf_info("[**RF**]ch=%d, rf_gain_value=%d\n",ch, rf_gain_value);
             if(rfctx && rfctx->ops->set_rf_gain)
                 ret = rfctx->ops->set_rf_gain(ch, rf_gain_value);
             break;

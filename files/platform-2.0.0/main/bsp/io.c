@@ -317,7 +317,7 @@ int32_t io_set_dec_method(uint32_t ch, uint8_t dec_method){
   //  }
   //  old_val = d_method;
    // old_ch = ch;
-    printf_note("[**REGISTER**]ch:%d, Set Decode method:%u, d_method=0x%x\n", ch, dec_method, d_method);
+    printf_info("[**REGISTER**]ch:%d, Set Decode method:%u, d_method=0x%x\n", ch, dec_method, d_method);
 #ifdef  SET_NARROW_DECODE_TYPE
     SET_NARROW_DECODE_TYPE(get_fpga_reg(),ch,dec_method);;
 #endif
@@ -341,7 +341,7 @@ static uint32_t io_set_dec_middle_freq_reg(uint8_t ch, uint64_t dec_middle_freq,
         uint32_t reg;
         int32_t ret = 0;
 
-#if defined(CONFIG_BSP_YF21025)
+#if defined(CONFIG_BSP_YF21025) || defined(CONFIG_BSP_YF21036) || defined(CONFIG_BSP_YF21038)
         uint64_t board_mid_freq;
         config_read_by_cmd(EX_RF_FREQ_CMD, EX_RF_MID_FREQ_FILTER, ch, &board_mid_freq);
         printf_note("ch%d set subch mid freq, board freq:%"PRIu64"\n", ch, board_mid_freq);
@@ -427,7 +427,7 @@ int32_t io_set_middle_freq(uint32_t ch, uint64_t middle_freq, uint64_t rel_mfreq
         SET_BROAD_SIGNAL_CARRIER(get_fpga_reg(),reg, ch);
     #endif
     printf_debug("ch:%d, freq:%"PRIu64", reg=0x%x\n", ch, middle_freq, reg);
-    printf_debug(">>>>>>ch:%d, feq:%"PRIu64",rel_middle_freq=%"PRIu64", reg=0x%x\n",ch, middle_freq,rel_mfreq,  reg);
+    printf_note(">>>>>>ch:%d, feq:%"PRIu64",rel_middle_freq=%"PRIu64", reg=0x%x\n",ch, middle_freq,rel_mfreq,  reg);
     
     return 0;
 }
@@ -842,13 +842,18 @@ int32_t io_set_audio_volume(uint32_t ch,uint8_t volume)
 
 static void io_set_dma_SPECTRUM_out_en(int ch, int subch, uint32_t trans_len,uint8_t continuous)
 {
-    printf_debug("SPECTRUM out enable: ch[%d]output en, trans_len=%u\n",ch, trans_len);
+    printf_note("SPECTRUM out enable: ch[%d]output en, trans_len=%u, continuous=%d\n",ch, trans_len, continuous);
 
     if(reg_get()->iif &&reg_get()->iif->set_fft_channel)
-        reg_get()->iif->set_fft_channel(ch, NULL);
+        reg_get()->iif->set_fft_channel(ch, 1, NULL);
 
     if((get_spm_ctx()!=NULL) && get_spm_ctx()->ops->stream_start){
-        get_spm_ctx()->ops->stream_start(ch, subch, trans_len*sizeof(fft_t), continuous, STREAM_FFT);
+        if(ch_bitmap_weight(CH_TYPE_FFT) == 0){
+            printf_note("FFT Stream Start\n");
+            get_spm_ctx()->ops->stream_start(ch, subch, trans_len*sizeof(fft_t), continuous, STREAM_FFT);
+        } else {
+            printf_note("FFT Stream already Started\n");
+        }
     }
 
 }
@@ -871,9 +876,14 @@ static void io_set_dma_adc_out_disable(int ch, int subch)
 
 static void io_set_dma_SPECTRUM_out_disable(int ch, int subch)
 {
-    if((get_spm_ctx()!= NULL) && get_spm_ctx()->ops->stream_stop)
-        get_spm_ctx()->ops->stream_stop(ch, subch, STREAM_FFT);
-
+    if(reg_get()->iif &&reg_get()->iif->set_fft_channel)
+        reg_get()->iif->set_fft_channel(ch, 0, NULL);
+    if((get_spm_ctx()!= NULL) && get_spm_ctx()->ops->stream_stop){
+        if(ch_bitmap_weight(CH_TYPE_FFT) == 0){
+            printf_note("FFT Stream Stop\n");
+            get_spm_ctx()->ops->stream_stop(ch, subch, STREAM_FFT);
+        }
+    }
 }
 
 /* 窄带iq禁止 */

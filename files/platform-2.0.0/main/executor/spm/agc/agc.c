@@ -2,6 +2,7 @@
 #include <math.h>
 #include "../../../bsp/io.h"
 
+
 struct agc_ctrl_args {
     int8_t method;      /* 自动增益or手动增益 */
     int8_t rf_mode;     /* 射频模式 */
@@ -12,9 +13,8 @@ struct agc_ctrl_args {
     int32_t slide_down_val;
 };
 
-static struct agc_ctrl_args *agc_init(void);
 
-int32_t agc_ref_val_0dbm[MAX_RADIO_CHANNEL_NUM];     /* 信号为0DBm时对应的FPGA幅度值 */
+static int32_t agc_ref_val_0dbm[MAX_RADIO_CHANNEL_NUM];     /* 信号为0DBm时对应的FPGA幅度值 */
 static struct agc_ctrl_args *g_agc_ctrl = NULL;
 
 
@@ -355,8 +355,8 @@ int agc_ctrl(int ch, struct spm_context *ctx)
     int8_t agc_dbm_val = 0;     /* 读取信号db值 */
     struct agc_ctrl_args *_agc_ctrl = g_agc_ctrl;
 
-    if(_agc_ctrl == NULL)
-        _agc_ctrl = agc_init();
+    if(!_agc_ctrl)
+        return -1;
 
     /* 当增益模式变化时 */
     if(_agc_ctrl[ch].method != gain_ctrl_method || _agc_ctrl[ch].rf_mode != rf_mode || _agc_ctrl[ch].dst_val != agc_ctrl_dbm){
@@ -427,13 +427,63 @@ int agc_ctrl(int ch, struct spm_context *ctx)
 }
 
 
+static void agc_sync(int ch)
+{
+    struct spm_context *spm_arg = get_spm_ctx();
+    if (g_agc_ctrl != NULL) {
+        g_agc_ctrl->dst_val = spm_arg->pdata->channel[ch].rf_para.agc_mid_freq_out_level;
+        g_agc_ctrl->method = spm_arg->pdata->channel[ch].rf_para.gain_ctrl_method;
+        g_agc_ctrl->rf_mode = spm_arg->pdata->channel[ch].rf_para.rf_mode_code;
+    }
+}
 
-static struct agc_ctrl_args *agc_init(void)
+/*agc*/
+static pthread_cond_t spm_agc_cond[MAX_RADIO_CHANNEL_NUM];
+static pthread_mutex_t spm_agc_cond_mutex[MAX_RADIO_CHANNEL_NUM];
+
+static void agc_thread_handle(void *arg)
+{
+    int ch = *(int *)arg;
+    struct spm_context *spm_arg = get_spm_ctx();
+    if(!spm_arg)
+        pthread_exit(0);
+    pthread_detach(pthread_self());
+loop:
+    printf_note("######AGC[ch:%d] Thread Wait######\n", ch);
+    /* 通过条件变量阻塞方式等待数据使能 */
+    pthread_mutex_lock(&spm_agc_cond_mutex[ch]);
+    while(spm_arg->pdata->channel[ch].rf_para.gain_ctrl_method == POAL_MGC_MODE)
+        pthread_cond_wait(&spm_agc_cond[ch], &spm_agc_cond_mutex[ch]);
+    pthread_mutex_unlock(&spm_agc_cond_mutex[ch]);
+
+    while(1) {
+        agc_ctrl(ch, spm_arg);
+
+        if (spm_arg->pdata->channel[ch].rf_para.gain_ctrl_method == POAL_MGC_MODE) {
+            agc_sync(ch);
+            usleep(1000);
+            goto loop;
+        }
+    }
+}
+
+void agc_ctrl_thread_notify(int ch)
+{
+#if (!defined CONFIG_SPM_AGC_POLLING)
+    if (ch < MAX_RADIO_CHANNEL_NUM)
+        pthread_cond_signal(&spm_agc_cond[ch]);
+#endif
+}
+
+int agc_init(void)
 {
     #define DEFAULT_AGC_REF_VAL  0x3000
     static struct agc_ctrl_args _agc_ctrl[MAX_RADIO_CHANNEL_NUM];
-    int i, ch;
+    int i, ch, ret = 0;
+    static int s_ch[MAX_RADIO_CHANNEL_NUM];
+    pthread_t work_id;
     
+    printf_note("AGC init\n");
     for(i = 0; i < MAX_RADIO_CHANNEL_NUM; i++){
         _agc_ctrl[i].method = -1;
         _agc_ctrl[i].rf_mode = -1;
@@ -452,7 +502,17 @@ static struct agc_ctrl_args *agc_init(void)
         else
             agc_ref_val_0dbm[ch]  = DEFAULT_AGC_REF_VAL;
     }
-    printf_note("AGC init...g_agc_ctrl=%p\n", g_agc_ctrl);
-    return g_agc_ctrl;
+#if (!defined CONFIG_SPM_AGC_POLLING)
+    for(i = 0; i < MAX_RADIO_CHANNEL_NUM; i++){
+        pthread_cond_init(&spm_agc_cond[i], NULL);
+        pthread_mutex_init(&spm_agc_cond_mutex[i], NULL);
+        s_ch[i] = i;
+        ret = pthread_create(&work_id, NULL, (void *)agc_thread_handle, &s_ch[i]);
+        if(ret != 0)
+            perror("pthread cread agc");
+    }
+#endif
+
+    return ret;
 }
 

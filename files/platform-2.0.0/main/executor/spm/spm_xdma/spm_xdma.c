@@ -376,8 +376,8 @@ static ssize_t _xspm_find_header(uint8_t *ptr, uint16_t header, size_t len)
 
 static ssize_t xspm_stream_read_from_file(int type, int ch, void **data, size_t *len, void *args)
 {
-    #define STRAM_IQ_FILE_PATH "/home/ycs/share/platform-2.0.0/files/platform-2.0.0/DEV0_CH0_IQ.raw"
-    #define STRAM_FFT_FILE_PATH "/home/kylin/src/platform2.0.0/platform-2.0.0/fft512.dat"
+    #define STRAM_IQ_FILE_PATH CONFIG_PROTOCOL_FTP_PATH"/DEV0_CH0_IQ.raw"
+    #define STRAM_FFT_FILE_PATH CONFIG_PROTOCOL_FTP_PATH"/fft512.dat"
     //#define STRAM_FFT_FILE_PATH "/home/ycs/share/platform-2.0.0/files/platform-2.0.0/DEV0_CH1_FFT8K.raw"
     #define STRAM_READ_BLOCK_SIZE  528
     #define STRAM_READ_BLOCK_COUNT 2
@@ -441,7 +441,7 @@ static ssize_t xspm_stream_read_from_file(int type, int ch, void **data, size_t 
         //print_array(data[cn], len[cn]);
         cn++;
     }while(cn < STRAM_READ_BLOCK_COUNT);
-    //usleep(100);
+    usleep(100);
     return cn;
 }
 

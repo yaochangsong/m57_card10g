@@ -108,7 +108,7 @@ void response(Command *cmd, State *state)
     case DELE: ftp_dele(cmd,state); break;
     case SIZE: ftp_size(cmd,state); break;
     case ABOR: ftp_abor(state); break;
-    case QUIT: ftp_quit(state); break;
+//    case QUIT: ftp_quit(state); break;
     case TYPE: ftp_type(cmd,state); break;
     case NOOP:
         if(state->logged_in){
@@ -468,7 +468,7 @@ void ftp_retr2(Command *cmd, State *state)
             write_state(state);
             if(c->server->pre_cb)
                 c->server->pre_cb(MISC_READ, NULL);
-            //set_sock_buf(connection);
+            set_sock_buf(connection);
             do{
                 r = c->server->uplink_cb(connection, NULL);
                 if(is_socket_disconnect(connection) == -1){

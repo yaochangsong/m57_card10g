@@ -24,8 +24,8 @@ static ssize_t data_uplink_handle(int fd, void *args)
     volatile uint8_t *ptr[2048] = {NULL};
     uint32_t len[2048] = {[0 ... 2047] = 0};
 
-    if(pctx->ops->read_raw_vec_data)
-        count = pctx->ops->read_raw_vec_data(-1, (void **)ptr, len, NULL);
+    if(pctx->ops->read_raw_data)
+        count = pctx->ops->read_raw_data(-1, STREAM_XDMA_READ, (void **)ptr, len, NULL);
 
     if(count <= 0){
         r = 1;/* loop read */
@@ -36,7 +36,7 @@ static ssize_t data_uplink_handle(int fd, void *args)
     }
     if(count > 0){
         if(pctx->ops->read_raw_over_deal)
-                pctx->ops->read_raw_over_deal(-1, NULL);
+                pctx->ops->read_raw_over_deal(-1, STREAM_XDMA_READ, NULL);
     }
     
     return r;
@@ -130,46 +130,59 @@ static int _assamble_srio_data(uint8_t *buffer,  size_t buffer_len,
     return (header_len + data_len);
 }
 
+#define _MAX_PKT_LEN_BYTE 4096
+#define _MAX_BUFFER_LEN_BYTE 8192
+void *gbuffer = NULL;
+
 static ssize_t data_downlink_handle(int fd, const void *data, size_t len)
 {
     struct spm_context *pctx = get_spm_ctx();
     ssize_t consume_len = 0, remain_len = len;
     uint8_t *buffer = NULL, *ptr = NULL;
-    int max_data_len = 256, r = 0, ret = 0;
-    int max_pkt_len = 264;
-    
+    int max_data_len = 256, ret = 0;
+    int max_pkt_len = _MAX_PKT_LEN_BYTE;
+
     if(!pctx)
         return -1;
 
-    buffer = malloc_align(max_pkt_len);
-    ptr = data;
+    if(gbuffer)
+        buffer = gbuffer;
+    else
+        buffer = malloc_align(_MAX_BUFFER_LEN_BYTE);
+    memset(buffer, 0, _MAX_BUFFER_LEN_BYTE);
+    if(!buffer)
+        return -1;
+    if(len > _MAX_BUFFER_LEN_BYTE)
+        len = _MAX_BUFFER_LEN_BYTE;
+    memcpy(buffer, data, len);
+    ptr = buffer;
     do{
-        consume_len = min(max_data_len, remain_len);
-        r = _assamble_srio_data(buffer, max_pkt_len,  ptr, consume_len, 0x06);
-        if(r < 0){
-            ret = -1;
-            break;
+        consume_len = min(max_pkt_len, remain_len);
+        if(consume_len < max_pkt_len){
+            consume_len = max_data_len;
         }
-        if(r < max_pkt_len){
-            r = _align_power2(r);
-        }
-        if(r > max_pkt_len)
-            r = max_pkt_len;
-
+        
         if(pctx->ops->write_data){
-            if(pctx->ops->write_data(-1, buffer, r) < 0){
+            if(pctx->ops->write_data(-1, ptr, consume_len) < 0){
                 ret = -1;
                 break;
             }
         }
-
-        if(remain_len >= consume_len){
+        //printf_note("remain_len:%ld, consume_len:%ld\n", remain_len, consume_len);
+        if(remain_len < consume_len){
+            break;
+        }else {
             remain_len -= consume_len;
             ptr += consume_len;
         }
-        //printf_note("remain_len:%ld, consume_len:%ld\n", remain_len, consume_len);
+        if(ptr - buffer > len){
+            printf_err("buffer ptr err!!!\n");
+            break;
+        }
     }while(remain_len > 0);
-    free(buffer);
+    if(!gbuffer)
+        free(buffer);
+    //usleep(600);
 
     return ret;
 }
@@ -181,11 +194,12 @@ static int data_pre_handle(int rw, void *args)
     if(!pctx)
         return -1;
     if(rw == MISC_WRITE){
-#ifdef SET_SRIO_SRC_DST_ID1
-        SET_SRIO_SRC_DST_ID1(get_fpga_reg(), 0x00060007); //SRIO1_ID
+#ifdef SET_SRIO_SRC_DST_ID2
+        SET_SRIO_SRC_DST_ID2(get_fpga_reg(), 0x00070006); //SRIO1_ID
 #endif
         SET_CHANNEL_SEL(get_fpga_reg(), 0);
         SET_CHANNEL_SEL(get_fpga_reg(), 0xff);
+        gbuffer = malloc_align(_MAX_BUFFER_LEN_BYTE);
     }
     if(rw == MISC_READ){
         io_set_enable_command(XDMA_MODE_ENABLE, -1, 0, 0);
@@ -197,6 +211,12 @@ static int data_post_handle(int rw, void *args)
 {
     if(rw == MISC_READ){
         io_set_enable_command(XDMA_MODE_DISABLE, -1, 0, 0);
+    }
+    if(rw == MISC_WRITE){
+        if(gbuffer){
+            free(gbuffer);
+            gbuffer = NULL;
+        }
     }
     return 0;
 }

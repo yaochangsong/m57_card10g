@@ -24,15 +24,15 @@ static ssize_t data_uplink_handle(int fd, void *args)
     volatile uint8_t *ptr[2048] = {NULL};
     size_t len[2048] = {0};
     
-    if(pctx->ops->read_raw_vec_data)
-        count = pctx->ops->read_raw_vec_data(-1, (void **)ptr, len, NULL);
+    if(pctx->ops->read_raw_data)
+        count = pctx->ops->read_raw_data(-1, STREAM_XDMA_READ, (void **)ptr, len, NULL);
     for(int i = 0; i < count; i++){
         if(pctx->ops->send_data_by_fd)
             r += pctx->ops->send_data_by_fd(fd, ptr[i], len[i], NULL);
     }
 
     if(pctx->ops->read_raw_over_deal)
-        pctx->ops->read_raw_over_deal(-1, NULL);
+        pctx->ops->read_raw_over_deal(-1, STREAM_XDMA_READ, NULL);
     return r;
 }
 

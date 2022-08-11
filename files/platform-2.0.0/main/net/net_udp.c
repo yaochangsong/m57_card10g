@@ -99,11 +99,15 @@ static inline int udp_send_vec_data_to_client(struct net_udp_client *client, str
     msgsent.msg_iov = iov;
     msgsent.msg_control = NULL;
     msgsent.msg_controllen = 0;
-    //printf_debug("send: %s:%d\n", client->get_peer_addr(client), client->get_peer_port(client));
+    printf_debug("send: %s:%d\n", client->get_peer_addr(client), client->get_peer_port(client));
     r = sendmsg(client->srv->fd.fd, &msgsent, 0);
     if(r < 0){
         perror("sendmsg");
+        return -1;
     }
+#ifdef CONFIG_SPM_STATISTICS
+    update_uplink_send_ok_bytes(r);
+#endif
     return 0;
 }
 

@@ -88,10 +88,16 @@ static bool tcp_client_header_cb(struct net_tcp_client *cl, char *buf, int len)
         cl->state = NET_TCP_CLIENT_STATE_DONE;
         cl->srv->send_error(cl, code, NULL);
         cl->request_done(cl);
+#ifdef  CONFIG_SPM_STATISTICS
+        update_downlink_cmd_err_pkt(1);
+#endif
         return false;
     }
     ustream_consume(cl->us, head_len);
     cl->state = NET_TCP_CLIENT_STATE_DATA;
+#ifdef  CONFIG_SPM_STATISTICS
+    update_downlink_cmd_pkt(1);
+#endif
     return stat;
 }
 

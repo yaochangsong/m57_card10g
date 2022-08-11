@@ -1017,6 +1017,14 @@ char *assemble_json_dma_data_info(void)
         val = get_dma_read_pkts(i);
         snprintf(buffer, sizeof(buffer) - 1, "%" PRIu64, val);
         cJSON_AddStringToObject(item, "readPkts", buffer);
+
+        val = get_dma_read_speed(i);
+        snprintf(buffer, sizeof(buffer) - 1, "%" PRIu64, val);
+        cJSON_AddStringToObject(item, "readSpeed", buffer);
+
+        val = get_dma_send_speed(i);
+        snprintf(buffer, sizeof(buffer) - 1, "%" PRIu64, val);
+        cJSON_AddStringToObject(item, "sendSpeed", buffer);
         
         val = get_dma_write_bytes(i);
         snprintf(buffer, sizeof(buffer) - 1, "%" PRIu64, val);
@@ -1062,7 +1070,7 @@ char *assemble_json_net_uplink_info(void)
 #ifdef  CONFIG_SPM_STATISTICS
     char buffer[128] = {0};
     snprintf(buffer, sizeof(buffer) - 1, "%" PRIu64, get_uplink_send_ok_bytes());
-    cJSON_AddStringToObject(root, "sendPkts", buffer);
+    cJSON_AddStringToObject(root, "sendBytes", buffer);
 #endif
 
     str_json = cJSON_PrintUnformatted(root);

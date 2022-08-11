@@ -27,7 +27,7 @@ typedef struct downlink_statistics{
     volatile uint32_t rcv;
 }downlink_statistics_t;
 
-#define DMA_CHANNEL_STATS 4
+#define DMA_CHANNEL_STATS 8
 typedef struct spm_statistics{
     dma_channel_statistics_t dma_stats[DMA_CHANNEL_STATS];
     uplink_statistics_t uplink;
@@ -38,15 +38,14 @@ extern spm_statistics_t *spm_stats;
 
 static inline void update_uplink_send_ok_bytes(size_t len)
 {
-    if(spm_stats)
+    if(!spm_stats)
         return;
-
     spm_stats->uplink.send_ok_bytes += len;
 }
 
 static inline uint64_t get_uplink_send_ok_bytes(void)
 {
-    if(spm_stats)
+    if(!spm_stats)
         return 0;
 
     return spm_stats->uplink.send_ok_bytes;
@@ -67,6 +66,23 @@ static inline uint64_t get_downlink_cmd_pkt(void)
 
     return spm_stats->downlink.cmd_pkt;
 }
+
+static inline void update_downlink_cmd_err_pkt(size_t len)
+{
+    if(!spm_stats)
+        return;
+
+    spm_stats->downlink.err_pkt += len;
+}
+
+static inline uint64_t get_downlink_cmd_err_pkt(void)
+{
+    if(!spm_stats)
+        return 0;
+
+    return spm_stats->downlink.err_pkt;
+}
+
 
 static inline void update_dma_readbytes(int ch, size_t len)
 {
@@ -114,6 +130,22 @@ static inline uint64_t get_dma_read_pkts(int ch)
         return 0;
 
     return spm_stats->dma_stats[ch].read_pkts;
+}
+
+static inline uint64_t get_dma_read_speed(int ch)
+{
+    if(!spm_stats || ch >= DMA_CHANNEL_STATS || ch < 0)
+        return 0;
+
+    return spm_stats->dma_stats[ch].read_speed_bps;
+}
+
+static inline uint64_t get_dma_send_speed(int ch)
+{
+    if(!spm_stats || ch >= DMA_CHANNEL_STATS || ch < 0)
+        return 0;
+
+    return spm_stats->dma_stats[ch].send_speed_bps;
 }
 
 

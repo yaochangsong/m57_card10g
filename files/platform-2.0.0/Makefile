@@ -103,7 +103,7 @@ CROSS_COMPILE	?= $(CONFIG_CROSS_COMPILE:"%"=%)
 BSP_NAME	= $(CONFIG_BSP_NAME:"%"=%)
 
 KCONFIG_CONFIG	?= .config
-export KCONFIG_CONFIG BSP_NAME CONFIG_SPM_FFT_WINDOWS CONFIG_LIBFFTW3 CONFIG_SSDP CONFIG_JQ CONFIG_NRS1800
+export KCONFIG_CONFIG BSP_NAME CONFIG_SPM_FFT_WINDOWS CONFIG_LIBFFTW3 CONFIG_SSDP CONFIG_JQ CONFIG_NRS1800 CONFIG_SYSLOG
 
 # SHELL used by kbuild
 CONFIG_SHELL := $(shell if [ -x "$$BASH" ]; then echo $$BASH; \
@@ -478,8 +478,15 @@ clean := -f $(if $(KBUILD_SRC),$(srctree)/)scripts/Makefile.clean obj
 install:
 	make -C main $@
 
+.PHONY:release
+release:
+	$(shell [ ! -d release ] && mkdir release)
+	tar -zcf release/platform_install.tar.gz -C main/build .
+
 help:
 	@echo  'Cleaning targets:'
+	@echo  '  install [D] [S] - Install source direcory(S) in target destination direcory(D); eg. make install D=build S=..'
+	@echo  '  release         - Release Application in direcory(release),source direcory is main/build '
 	@echo  '  clean		  - Remove most generated files but keep the config and'
 	@echo  '                    enough build support to build external modules'
 	@echo  '  mrproper	  - Remove all generated files + config + various backup files'

@@ -18,6 +18,10 @@ nr_1800.o: nr_1800.c nr_1800.h nr_config.c nr_config.h
 nr_config.o:  nr_config.c nr_config.h
 	@$(CC) -c $(CFLAGS) nr_config.c
 
+install:
+	install -m 0755 sroute  ../../${D}/usr/bin
+	install -m 0755 nr_config.json ../../${D}/etc
+
 .PHONY:clean all  
 clean:  
 	@-rm -rf $(objs) $(target)

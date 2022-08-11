@@ -87,6 +87,10 @@ config JQ
         bool "Enable JSON JQ"
         default y
 		
+config SYSLOG
+	bool "SysLog"
+	default y
+
 config NRS1800
         bool "Enable NRS1800"
         default n

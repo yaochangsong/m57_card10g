@@ -74,6 +74,13 @@ tool_sub:
 			$(MAKE) -C $$dir all || exit 1; \
 		fi; \
 	done
+
+install:
+	@for dir in $(tool_sub_dir);	\
+	do	\
+		make -C $$dir $@;	\
+	done
+	
 	
 .PHONY:clean all  
 clean:

@@ -25,6 +25,8 @@
 #include "../../dao/json/cJSON.h"
 #include "../../bsp/io.h"
 
+char *assemble_json_distributor_info(void);
+
 void safe_cJson_AddItemToObject(cJSON *object, const char *string, char *assemble_info)
 {
     cJSON_AddItemToObject(object, string, cJSON_Parse(assemble_info));
@@ -1001,8 +1003,6 @@ char *assemble_json_dma_data_info(void)
     char *str_json = NULL;
     cJSON *array = cJSON_CreateArray();
     cJSON* item = NULL;
-    uint64_t val = 0;
-    char buffer[128] = {0};
 
 #ifdef  CONFIG_SPM_STATISTICS
     int count = 0;
@@ -1010,33 +1010,13 @@ char *assemble_json_dma_data_info(void)
     for(int i = 0; i < count; i++){
         cJSON_AddItemToArray(array, item = cJSON_CreateObject());
         cJSON_AddNumberToObject(item, "channel", i);
-        val = get_dma_readbytes(i);
-        snprintf(buffer, sizeof(buffer) - 1, "%" PRIu64, val);
-        cJSON_AddStringToObject(item, "readBytes", buffer);
-
-        val = get_dma_read_pkts(i);
-        snprintf(buffer, sizeof(buffer) - 1, "%" PRIu64, val);
-        cJSON_AddStringToObject(item, "readPkts", buffer);
-
-        val = get_dma_read_speed(i);
-        snprintf(buffer, sizeof(buffer) - 1, "%" PRIu64, val);
-        cJSON_AddStringToObject(item, "readSpeed", buffer);
-
-        val = get_dma_send_speed(i);
-        snprintf(buffer, sizeof(buffer) - 1, "%" PRIu64, val);
-        cJSON_AddStringToObject(item, "sendSpeed", buffer);
-        
-        val = get_dma_write_bytes(i);
-        snprintf(buffer, sizeof(buffer) - 1, "%" PRIu64, val);
-        cJSON_AddStringToObject(item, "writeBytes", buffer);
-
-        val = get_dma_send_bytes(i);
-        snprintf(buffer, sizeof(buffer) - 1, "%" PRIu64, val);
-        cJSON_AddStringToObject(item, "sendBytes", buffer);
-
-        val = get_dma_over_run_count(i);
-        snprintf(buffer, sizeof(buffer) - 1, "%" PRIu64, val);
-        cJSON_AddStringToObject(item, "overrun", buffer);
+        cJSON_AddNumberToObject(item, "readBytes", get_dma_readbytes(i));
+        cJSON_AddNumberToObject(item, "readPkts", get_dma_read_pkts(i));
+        cJSON_AddNumberToObject(item, "readSpeed", get_dma_read_speed(i));
+        cJSON_AddNumberToObject(item, "sendSpeed", get_dma_send_speed(i));
+        cJSON_AddNumberToObject(item, "writeBytes", get_dma_write_bytes(i));
+        cJSON_AddNumberToObject(item, "sendBytes", get_dma_send_bytes(i));
+        cJSON_AddNumberToObject(item, "overrun", get_dma_over_run_count(i));
     }
 #endif
     str_json = cJSON_PrintUnformatted(array);
@@ -1051,10 +1031,8 @@ char *assemble_json_net_downlink_info(void)
     cJSON *root = cJSON_CreateObject();
 
 #ifdef  CONFIG_SPM_STATISTICS
-    char buffer[128] = {0};
-    snprintf(buffer, sizeof(buffer) - 1, "%" PRIu64, get_downlink_cmd_pkt());
-    cJSON_AddStringToObject(root, "cmdPkts", buffer);
-    cJSON_AddStringToObject(root, "errPkts", "0");
+    cJSON_AddNumberToObject(root, "cmdPkts", get_downlink_cmd_pkt());
+    cJSON_AddNumberToObject(root, "errPkts", get_downlink_cmd_err_pkt());
 #endif
 
     str_json = cJSON_PrintUnformatted(root);
@@ -1068,9 +1046,7 @@ char *assemble_json_net_uplink_info(void)
     cJSON *root = cJSON_CreateObject();
 
 #ifdef  CONFIG_SPM_STATISTICS
-    char buffer[128] = {0};
-    snprintf(buffer, sizeof(buffer) - 1, "%" PRIu64, get_uplink_send_ok_bytes());
-    cJSON_AddStringToObject(root, "sendBytes", buffer);
+    cJSON_AddNumberToObject(root, "sendBytes", get_uplink_send_ok_bytes());
 #endif
 
     str_json = cJSON_PrintUnformatted(root);
@@ -1087,7 +1063,10 @@ char *assemble_json_statistics_all_info(void)
     safe_cJson_AddItemToObject(root, "dma", assemble_json_dma_data_info());
     safe_cJson_AddItemToObject(root, "uplink", assemble_json_net_uplink_info());
     safe_cJson_AddItemToObject(root, "downlink", assemble_json_net_downlink_info());
- #endif
+#ifdef CONFIG_SPM_DISTRIBUTOR
+    safe_cJson_AddItemToObject(root, "distributor", assemble_json_distributor_info());
+#endif
+#endif
     str_json = cJSON_PrintUnformatted(root);
     cJSON_Delete(root);
     return str_json;
@@ -1455,14 +1434,14 @@ char *assemble_json_distributor_info(void)
     if(!stat)
         goto exit;
     cJSON_AddItemToArray(array, item = cJSON_CreateObject());
-    cJSON_AddNumberToObject(item, "read_bytes", stat->read_bytes);
-    cJSON_AddNumberToObject(item, "read_ok_pkts", stat->read_ok_pkts);
-    cJSON_AddNumberToObject(item, "read_ok_frame", stat->read_ok_frame);
-    cJSON_AddNumberToObject(item, "read_ok_speed_fps", stat->read_ok_speed_fps);
-    cJSON_AddNumberToObject(item, "read_speed_byteps", stat->read_speed_bps);
-    cJSON_AddNumberToObject(item, "loss_bytes", stat->loss_bytes);
+    cJSON_AddNumberToObject(item, "readBytes", stat->read_bytes);
+    cJSON_AddNumberToObject(item, "readOkPkts", stat->read_ok_pkts);
+    cJSON_AddNumberToObject(item, "readOkFrame", stat->read_ok_frame);
+    cJSON_AddNumberToObject(item, "readOkSpeedFps", stat->read_ok_speed_fps);
+    cJSON_AddNumberToObject(item, "readSpeedBps", stat->read_speed_bps);
+    cJSON_AddNumberToObject(item, "lossBytes", stat->loss_bytes);
     snprintf(buffer, sizeof(buffer) -1, "%.6f", stat->loss_rate);
-    cJSON_AddStringToObject(item, "loss_rate", buffer);
+    cJSON_AddStringToObject(item, "lossRate", buffer);
 exit:
 #endif
    str_json = cJSON_PrintUnformatted(array);
@@ -1483,20 +1462,14 @@ char *assemble_json_sys_info(void)
     }
 
     char buffer[128] = {0};
-    snprintf(buffer, sizeof(buffer) - 1, "%" PRIu64, info.uptime);
-    cJSON_AddStringToObject(root, "uptime", buffer);
+    cJSON_AddNumberToObject(root, "uptime", info.uptime);
     snprintf(buffer, sizeof(buffer) - 1, "1min:%lu,5min:%lu,15min:%lu", info.loads[0], info.loads[1], info.loads[2]);
     cJSON_AddStringToObject(root, "loads", buffer);
-    snprintf(buffer, sizeof(buffer) - 1, "%" PRIu64, info.totalram);
-    cJSON_AddStringToObject(root, "totalram", buffer);
-    snprintf(buffer, sizeof(buffer) - 1, "%" PRIu64, info.freeram);
-    cJSON_AddStringToObject(root, "freeram", buffer);
-    snprintf(buffer, sizeof(buffer) - 1, "%" PRIu64, info.totalswap);
-    cJSON_AddStringToObject(root, "totalswap", buffer);
-    snprintf(buffer, sizeof(buffer) - 1, "%" PRIu64, info.freeswap);
-    cJSON_AddStringToObject(root, "freeswap", buffer);
-    snprintf(buffer, sizeof(buffer) - 1, "%u", info.procs);
-    cJSON_AddStringToObject(root, "procs", buffer);
+    cJSON_AddNumberToObject(root, "totalram", info.totalram);
+    cJSON_AddNumberToObject(root, "freeram", info.freeram);
+    cJSON_AddNumberToObject(root, "totalswap", info.totalswap);
+    cJSON_AddNumberToObject(root, "freeswap", info.freeswap);
+    cJSON_AddNumberToObject(root, "procs", info.procs);
 
 //    json_print(root, 1);
     str_json = cJSON_PrintUnformatted(root);
@@ -1521,8 +1494,8 @@ char *assemble_json_all_info(void)
 #endif
     safe_cJson_AddItemToObject(root, "netInfo", assemble_json_net_list_info());
     safe_cJson_AddItemToObject(root, "buildInfo", assemble_json_build_info());
-#ifdef CONFIG_SPM_DISTRIBUTOR
-    safe_cJson_AddItemToObject(root, "distributorInfo", assemble_json_distributor_info());
+#ifdef  CONFIG_SPM_STATISTICS
+    safe_cJson_AddItemToObject(root, "statisticsInfo", assemble_json_statistics_all_info());
 #endif
     safe_cJson_AddItemToObject(root, "sysinfo", assemble_json_sys_info());
     json_print(root, 1);

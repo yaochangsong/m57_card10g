@@ -1,15 +1,27 @@
 {
 	"version":	"1.1",
 	"network":	[{
-			"ifname":	"eno1",
+			"ifname":	"enaphyt4i0",
 			"port":	{
-				"command":	8686,
+				"command":	5000,
 				"data":	[8866, 8867, 8868]
 			}
 		}, {
-			"ifname":	"eth1",
+			"ifname":	"enaphyt4i1",
 			"port":	{
-				"command":	8686,
+				"command":	5000,
+				"data":	[8866, 8867, 8868]
+			}
+		}, {
+			"ifname":	"enp17s0f0",
+			"port":	{
+				"command":	5000,
+				"data":	[8866, 8867, 8868]
+			}
+		}, {
+			"ifname":	"enp17s0f1",
+			"port":	{
+				"command":	5000,
 				"data":	[8866, 8867, 8868]
 			}
 		}],
@@ -26,7 +38,7 @@
 	},
 	"status_parm":	{
 		"soft_version":	{
-			"app":	"1.0.0_debug(2020-07-28-17:09:44)-27aedee4adf7284f5227ce316dc60e0c1897490f ",
+			"app":	"v1.0.0_debug(2022-08-12-10:34:41)",
 			"fpga":	"202012",
 			"kernel":	""
 		},
@@ -136,131 +148,125 @@
 			}]
 	},
 	"spectrum_parm":	{
-    	"bband_bw_factor":[
-    		{
-				"bandwidth":1250000,
-				"extract": 196632,
-				"filter" : 0
-    		},{
-				"bandwidth":2500000,
-				"extract": 196620,
-				"filter" : 0
-    		},{
-				"bandwidth":5000000,
-				"extract": 196614,
-				"filter" : 0
-    		},{
-				"bandwidth":10000000,
-				"extract": 65542,
-				"filter" : 0
-    		},{
-				"bandwidth":20000000,
-				"extract": 1114112,
-				"filter" : 0
-    		},{
-				"bandwidth":40000000,
-				"extract": 104857,
-				"filter" : 0
-    		},{
-				"bandwidth":60000000,
-				"extract": 65536,
-				"filter" : 0
-    		}
-    	],
-    	"niq_bw_factor":[
-    		{
-				"bandwidth":3000,
-				"extract": 209941,
-				"filter" : 0
-    		},{
-				"bandwidth":6000,
-				"extract": 203274,
-				"filter" : 0
-    		},{
-				"bandwidth":9000,
-				"extract": 201052,
-				"filter" : 0
-    		},{
-				"bandwidth":12000,
-				"extract": 199941,
-				"filter" : 0
-    		},{
-				"bandwidth":15000,
-				"extract": 199274,
-				"filter" : 0
-    		},{
-				"bandwidth":30000,
-				"extract": 197941,
-				"filter" : 0
-    		},{
-				"bandwidth":50000,
-				"extract": 197408,
-				"filter" : 0
-    		},{
-				"bandwidth":100000,
-				"extract": 197008,
-				"filter" : 0
-    		},{
-				"bandwidth":150000,
-				"extract": 196874,
-				"filter" : 0
-    		},{
-				"bandwidth":200000,
-				"extract": 196808,
-				"filter" : 0
-    		},{
-				"bandwidth":500000,
-				"extract": 196688,
-				"filter" : 0
-    		}
-    	],
-    	"dem_bw_factor":[
-    		{
-				"bandwidth":3000,
-				"extract": 197888,
-				"filter" : 130
-    		},{
-				"bandwidth":6000,
-				"extract": 197888,
-				"filter" : 132
-    		},{
-				"bandwidth":9000,
-				"extract": 197888,
-				"filter" : 134
-    		},{
-				"bandwidth":12000,
-				"extract": 197888,
-				"filter" : 136
-    		},{
-				"bandwidth":15000,
-				"extract": 197888,
-				"filter" : 0
-    		},{
-				"bandwidth":30000,
-				"extract": 197248,
-				"filter" : 0
-    		},{
-				"bandwidth":50000,
-				"extract": 196928,
-				"filter" : 0
-    		},{
-				"bandwidth":100000,
-				"extract": 196768,
-				"filter" : 0
-    		},{
-				"bandwidth":150000,
-				"extract": 196688,
-				"filter" : 0
-    		},{
-				"bandwidth":200000,
-				"extract": 196688,
-				"filter" : 0
-    		},{
-				"bandwidth":500000,
-				"extract": 196658,
-				"filter" : 0
-    		}
-    	],
+		"bband_bw_factor":	[{
+				"bandwidth":	1250000,
+				"extract":	196632,
+				"filter":	0
+			}, {
+				"bandwidth":	2500000,
+				"extract":	196620,
+				"filter":	0
+			}, {
+				"bandwidth":	5000000,
+				"extract":	196614,
+				"filter":	0
+			}, {
+				"bandwidth":	10000000,
+				"extract":	65542,
+				"filter":	0
+			}, {
+				"bandwidth":	20000000,
+				"extract":	1114112,
+				"filter":	0
+			}, {
+				"bandwidth":	40000000,
+				"extract":	104857,
+				"filter":	0
+			}, {
+				"bandwidth":	60000000,
+				"extract":	65536,
+				"filter":	0
+			}],
+		"niq_bw_factor":	[{
+				"bandwidth":	3000,
+				"extract":	209941,
+				"filter":	0
+			}, {
+				"bandwidth":	6000,
+				"extract":	203274,
+				"filter":	0
+			}, {
+				"bandwidth":	9000,
+				"extract":	201052,
+				"filter":	0
+			}, {
+				"bandwidth":	12000,
+				"extract":	199941,
+				"filter":	0
+			}, {
+				"bandwidth":	15000,
+				"extract":	199274,
+				"filter":	0
+			}, {
+				"bandwidth":	30000,
+				"extract":	197941,
+				"filter":	0
+			}, {
+				"bandwidth":	50000,
+				"extract":	197408,
+				"filter":	0
+			}, {
+				"bandwidth":	100000,
+				"extract":	197008,
+				"filter":	0
+			}, {
+				"bandwidth":	150000,
+				"extract":	196874,
+				"filter":	0
+			}, {
+				"bandwidth":	200000,
+				"extract":	196808,
+				"filter":	0
+			}, {
+				"bandwidth":	500000,
+				"extract":	196688,
+				"filter":	0
+			}],
+		"dem_bw_factor":	[{
+				"bandwidth":	3000,
+				"extract":	197888,
+				"filter":	130
+			}, {
+				"bandwidth":	6000,
+				"extract":	197888,
+				"filter":	132
+			}, {
+				"bandwidth":	9000,
+				"extract":	197888,
+				"filter":	134
+			}, {
+				"bandwidth":	12000,
+				"extract":	197888,
+				"filter":	136
+			}, {
+				"bandwidth":	15000,
+				"extract":	197888,
+				"filter":	0
+			}, {
+				"bandwidth":	30000,
+				"extract":	197248,
+				"filter":	0
+			}, {
+				"bandwidth":	50000,
+				"extract":	196928,
+				"filter":	0
+			}, {
+				"bandwidth":	100000,
+				"extract":	196768,
+				"filter":	0
+			}, {
+				"bandwidth":	150000,
+				"extract":	196688,
+				"filter":	0
+			}, {
+				"bandwidth":	200000,
+				"extract":	196688,
+				"filter":	0
+			}, {
+				"bandwidth":	500000,
+				"extract":	196658,
+				"filter":	0
+			}],
 		"side_bandrate":	[{
 				"bandwidth":	200000000,
 				"rate":	1.28

@@ -11,7 +11,6 @@ obj-y  					+= protocol/
 obj-y  					+= utils/
 
 install:
-	cp ${S}/main/bsp/$(BSP_NAME)/config.json ${S}/main/conf/
 	install -d ${D}/usr/bin
 	install -d ${D}/usr/lib
 	install -d ${D}/etc/init.d/
@@ -24,23 +23,7 @@ ifeq ($(CONFIG_LIBFFTW3),y)
 	install -m 0755 ${S}/lib/libfftw3/arm/lib/libfftw3f.so.3 ${D}/usr/lib
 endif
 	install -m 0755 ${S}/platform ${D}/usr/bin
-	install -m 0755 ${S}/main/shell/platform.sh ${D}/etc/init.d/
-	install -m 0755 ${S}/main/shell/led.sh ${D}/etc/
-	install -m 0755 ${S}/main/shell/genmac.sh ${D}/etc/
-	install -m 0755 ${S}/main/shell/netset.sh ${D}/etc/
-	install -m 0755 ${S}/main/shell/check.sh ${D}/etc/
-	install -m 0755 ${S}/main/shell/network.sh ${D}/etc/
-	install -m 0755 ${S}/main/shell/disk.sh ${D}/etc/
-	install -m 0755 ${S}/main/shell/checkproc.sh ${D}/etc/
-	install -m 0755 ${S}/main/shell/reset-event.sh ${D}/etc/
-	install -m 0755 ${S}/main/shell/reset-button.sh ${D}/etc/
-	install -m 0755 ${S}/main/shell/config.sh ${D}/etc/
-	install -m 0755 ${S}/main/shell/ssdp.sh ${D}/etc/
-	install -m 0755 ${S}/main/conf/config.json ${D}/etc/config.json.jffs2
-	install -m 0755 ${S}/main/conf/platform_version ${D}/etc/
-	install -m 0755 ${S}/main/conf/compile.info ${D}/etc/
-	install -m 0755 tools/xjson ${D}/usr/bin
-	install -m 0755 tools/reset-button  ${D}/usr/bin
+	install -m 0755 ${S}/main/shell/*.sh ${D}/etc/
 ifeq ($(CONFIG_SSDP),y)
 	install -m 0755 tools/ssdp/src/ssdpd ${D}$/usr/bin
 endif
@@ -55,4 +38,16 @@ ifeq ($(CONFIG_SYSLOG),y)
 endif
 	make -C tools $@
 	install -m 0755 ${S}/main/shell/install.sh ${D}
+
+ifeq (,$(wildcard ${S}/main/bsp/$(BSP_NAME)/init.d))
+	install -m 0755 ${S}/main/shell/init.d/* $(D)/etc/init.d/
+else
+	install -m 0755 ${S}/main/bsp/$(BSP_NAME)/init.d/* $(D)/etc/init.d/
+endif
+
+ifeq (,$(wildcard ${S}/main/bsp/$(BSP_NAME)/etc))
+	install -m 0755 ${S}/main/conf/etc/* $(D)/etc/
+else
+	install -m 0755 ${S}/main/bsp/$(BSP_NAME)/etc/* $(D)/etc/
+endif
 	$(shell if [ -d ${TOPDIR}/images/linux ]; then cp ${S}/platform ${TOPDIR}/images/linux/; fi)

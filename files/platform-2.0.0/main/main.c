@@ -27,6 +27,7 @@ static void usage(const char *prog)
         "          -f format disk  # [Warn:format once when start,Default false]\n"
         "          -b bottom calibration  # [bottom calibration,Default false]\n"
         "          -o output stream sink filename, default fft data source\n"
+        "          -s syslog write log to: /var/log/platform.log\n"
         "          -t time ms of output stream sink filename\n"
         "          -a ADI Tool     # [(ADI IIO)specturm tool on; true or false,Default false]\n", prog);
     exit(1);
@@ -149,9 +150,9 @@ void register_init(void)
 
 int main(int argc, char **argv)
 {
-    int debug_level = -1;
+    int debug_level = -1,is_syslog = 0;
     int opt;
-    while ((opt = getopt(argc, argv, "d:am:c:fbo:t:")) != -1) {
+    while ((opt = getopt(argc, argv, "d:am:c:fbo:st:")) != -1) {
         switch (opt)
         {
         case 'd':
@@ -188,6 +189,11 @@ int main(int argc, char **argv)
             sink_file_path_name = strdup(optarg);
             printf("sink file: %s\n", sink_file_path_name);
             break;
+            
+        case 's':
+            printf("write log to: /var/log/platform.log\n");
+            is_syslog = 1;
+            break;
         case 't':
             sink_file_time_ms = atoi(optarg);
             printf("sink file time: %dms\n", sink_file_time_ms);
@@ -196,14 +202,18 @@ int main(int argc, char **argv)
             usage(argv[0]);
         }
     }
-    log_init(debug_level);
+
+    if(is_syslog)
+        log_init(ULOG_SYSLOG, debug_level);
+    else
+        log_init(ULOG_STDIO, debug_level);
     printf("Platform Start...\n");
 #if (defined CONFIG_PROTOCOL_AKT)
-    printf("ACT Protocal\n");
+    printf_note("ACT Protocal\n");
 #elif defined(CONFIG_PROTOCOL_XW)
-    printf("XW Protocal\n");
+    printf_note("XW Protocal\n");
 #endif
-    printf("VERSION:%s\n",get_version_string());
+    printf_note("VERSION:%s\n",get_version_string());
     // Listen to ctrl+c and ASSERT
     signal(SIGINT, pl_handle_sig);
     signal(SIGKILL, pl_handle_sig);

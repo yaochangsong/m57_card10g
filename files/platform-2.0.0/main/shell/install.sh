@@ -1,7 +1,7 @@
 #!/bin/sh
 
-[ "$SRC_DIR" == "" ] && SRC_DIR=/tmp/app_update
-[ "$DST_DIR" == "" ] && DST_DIR=/
+SRC_DIR=/tmp/app_update
+DST_DIR=/
 
 install_pkt()
 {

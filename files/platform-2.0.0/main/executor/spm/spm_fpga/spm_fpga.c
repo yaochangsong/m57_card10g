@@ -262,12 +262,12 @@ static ssize_t spm_raw_stream_read(int ch, int index, int type,  void **data, si
             #if (defined CONFIG_SPM_FFT_CONTINUOUS_MODE) 
             io_set_enable_command(PSD_CON_MODE_ENABLE, -1, -1, 0);  //连续模式
             #else
-            io_set_enable_command(PSD_MODE_ENABLE, -1, -1, 0);  //连续模式
+            io_set_enable_command(PSD_MODE_ENABLE, -1, -1, 0);
             #endif
         }
         _spm_gettime(&now);
         if(_spm_tv_diff(&now, &start) > _STREAM_READ_TIMEOUT_MS){
-            printfn("Read TimeOut![%d]\n", info.status);
+            printfi("Read TimeOut![%d]\n", info.status);
             break;
         }
     }while(info.status == READ_BUFFER_STATUS_PENDING);

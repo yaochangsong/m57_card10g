@@ -55,5 +55,5 @@ menuconfig PROTOCOL
 	config PROTOCOL_FTP_PATH
 	string	"Ftp Path"
 	default "/home"
-	
+		depends on PROTOCOL_FTP	
 	

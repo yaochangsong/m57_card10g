@@ -160,7 +160,7 @@ typedef struct _FPGA_CONFIG_REG_
 #define SET_SELECT_CLOCK(reg,v)             (reg->adcReg->ext_clk_sel=v)  //rw 1:外时钟 0：内时钟
 #define SET_RECONFIG_CLOCK_EN(reg, v)       (reg->adcReg->re_config_en=v) //w 写1完成切换
 //audio
-#define SET_AUDIO_SAMPLE_RATE(reg, v)       (reg->adcReg->audio_sample=v)
+#define SET_AUDIO_SAMPLE_RATE(reg, v)       (reg->adcReg->audio_sample=v)
 #define SET_AUDIO_COM_RATE(reg, v, ch)      (reg->audioReg->com_rate[ch]=v)
 #define SET_AUDIO_FILTER_FC(reg, v, ch)      (reg->audioReg->filter_fc[ch]=v)
 

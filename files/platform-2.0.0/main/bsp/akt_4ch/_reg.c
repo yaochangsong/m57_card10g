@@ -97,7 +97,7 @@ static int fpga_memmap(int fd_dev, FPGA_CONFIG_REG *fpga_reg)
     }
     printf_note("[bddc 0]virtual address:%p, physical address:0x%x\n", fpga_reg->bddc[0], FPGA_DDC_BASE);
     for (i = 1; i < DDC_CHANNEL_MAX_NUM; ++i){
-        fpga_reg->bddc[i] = (BROAD_BAND_REG *)((uint8_t *)fpga_reg->bddc[0] + DDC_REG_LENGTH * i);
+        fpga_reg->bddc[i] = (BROAD_BAND_REG *)((uint8_t *)fpga_reg->bddc[0] + DDC_REG_LENGTH * i);
         printf_note("[bddc %d]virtual address:%p, physical address:0x%x\n", i,fpga_reg->bddc[i], FPGA_DDC_BASE+DDC_REG_LENGTH*i);
         //fpga_reg->bddc[i] = (void *)fpga_reg->bddc[0] + DDC_REG_LENGTH * i;
     }

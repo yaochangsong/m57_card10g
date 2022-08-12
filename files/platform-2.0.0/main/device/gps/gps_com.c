@@ -420,16 +420,16 @@ uint16_t gps_format_days_to_fpga(uint32_t year, uint8_t month, uint8_t day)
                 case 12:
                     days += 31;
                     break;
-                case 2:
+                case 2:
                     if(is_leap_year)
                        days += 29;
                     else
                        days += 28;
-                    break;
-                case 4:
-                case 6:
-                case 9:
-                case 11:
+                    break;
+                case 4:
+                case 6:
+                case 9:
+                case 11:
                    days += 30;
                     break;
             }

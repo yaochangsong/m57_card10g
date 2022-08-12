@@ -32,8 +32,8 @@ union _data_srv{
 struct net_server{
     int number;
     struct uh_server *http_server;
-    union _cmd_srv cmd[2];
-    union _data_srv data[2];
+    union _cmd_srv cmd[CONFIG_NET_NUMBERS];
+    union _data_srv data[CONFIG_NET_NUMBERS];
 };
 
 extern int server_init(void);

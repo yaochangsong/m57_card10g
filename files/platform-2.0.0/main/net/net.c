@@ -228,7 +228,7 @@ int server_init(void)
                 continue;
             }
             if(data_data_server_init(str_ipaddr, port, j, &nserver->data[i]) == NULL){
-            return -1;
+                return -1;
             }
         }
         nserver->number++;

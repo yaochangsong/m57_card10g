@@ -182,7 +182,7 @@ static ssize_t xspm_stream_read(int ch, int index, int type,  void **data, uint3
             update_dma_over_run_count(index, 1);
             #endif
             printf_warn("*****status:RING_TRANS_OVERRUN.*****\n");
-            xspm_xdma_data_clear(ch, args, index);
+            xspm_xdma_data_clear(ch, args, type);
         } else if(info->status == RING_TRANS_INITIALIZING){
             printf_warn("*****status:RING_TRANS_INITIALIZING.*****\n");
             usleep(10);

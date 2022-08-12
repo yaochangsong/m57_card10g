@@ -149,9 +149,10 @@ static ssize_t data_downlink_handle(int fd, const void *data, size_t len)
         buffer = gbuffer;
     else
         buffer = malloc_align(_MAX_BUFFER_LEN_BYTE);
-    memset(buffer, 0, _MAX_BUFFER_LEN_BYTE);
     if(!buffer)
         return -1;
+    
+    memset(buffer, 0, _MAX_BUFFER_LEN_BYTE);
     if(len > _MAX_BUFFER_LEN_BYTE)
         len = _MAX_BUFFER_LEN_BYTE;
     memcpy(buffer, data, len);
@@ -188,36 +189,43 @@ static ssize_t data_downlink_handle(int fd, const void *data, size_t len)
 }
 
 
+volatile int is_read = 0, is_write = 0;
+
 static int data_pre_handle(int rw, void *args)
 {
     struct spm_context *pctx = get_spm_ctx();
     if(!pctx)
         return -1;
     if(rw == MISC_WRITE){
+        is_write = 1;
 #ifdef SET_SRIO_SRC_DST_ID2
         SET_SRIO_SRC_DST_ID2(get_fpga_reg(), 0x00070006); //SRIO1_ID
 #endif
-        SET_CHANNEL_SEL(get_fpga_reg(), 0);
-        SET_CHANNEL_SEL(get_fpga_reg(), 0xff);
         gbuffer = malloc_align(_MAX_BUFFER_LEN_BYTE);
     }
     if(rw == MISC_READ){
+        is_read = 1;
         io_set_enable_command(XDMA_MODE_ENABLE, -1, 0, 0);
     }
-    return 0;
+     SET_CHANNEL_SEL(get_fpga_reg(), 0xff);
+     return 0;
 }
 
 static int data_post_handle(int rw, void *args)
 {
     if(rw == MISC_READ){
         io_set_enable_command(XDMA_MODE_DISABLE, -1, 0, 0);
+        is_read = 0;
     }
     if(rw == MISC_WRITE){
         if(gbuffer){
             free(gbuffer);
             gbuffer = NULL;
         }
+        is_write = 0;
     }
+    if(is_read == 0 && is_write == 0)
+        SET_CHANNEL_SEL(get_fpga_reg(), 0);
     return 0;
 }
 

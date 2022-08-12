@@ -138,7 +138,7 @@ void fpga_io_init(void)
     fpga_reg = &_fpga_reg;
     printf("FPGA version:%x\n", fpga_reg->system->version);
     fpga_reg->system->system_reset = 1;
-    fpga_reg->system->channel_sel = 0xff;
+    fpga_reg->system->channel_sel = 0;
 #endif
     usleep(100);
     fpga_init_flag = true;

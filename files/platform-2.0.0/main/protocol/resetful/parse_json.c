@@ -1047,6 +1047,7 @@ char *assemble_json_net_uplink_info(void)
 
 #ifdef  CONFIG_SPM_STATISTICS
     cJSON_AddNumberToObject(root, "sendBytes", get_uplink_send_ok_bytes());
+    cJSON_AddNumberToObject(root, "sendSpeed", get_uplink_send_speed());
 #endif
 
     str_json = cJSON_PrintUnformatted(root);

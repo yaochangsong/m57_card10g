@@ -51,6 +51,16 @@ static inline uint64_t get_uplink_send_ok_bytes(void)
     return spm_stats->uplink.send_ok_bytes;
 }
 
+static inline uint64_t get_uplink_send_speed(void)
+{
+    if(!spm_stats)
+        return 0;
+
+    return spm_stats->uplink.send_speed_bps;
+}
+
+
+
 static inline void update_downlink_cmd_pkt(size_t len)
 {
     if(!spm_stats)

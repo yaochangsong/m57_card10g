@@ -45,6 +45,7 @@ void *_statistics_speed_loop(void *args)
             stats->dma_stats[i].send_speed_bps = _get_speed(1, time_interval, stats->dma_stats[i].send_bytes);
            // printf_note("dma%d read speed: %ubps, %"PRIu64"\n", i, stats->dma_stats[i].read_speed_bps, stats->dma_stats[i].read_bytes);
         }
+        stats->uplink.send_speed_bps = _get_speed(3, time_interval, stats->uplink.send_ok_bytes);
     }
 }
 

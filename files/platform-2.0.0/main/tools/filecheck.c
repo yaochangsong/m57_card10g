@@ -13,46 +13,11 @@
 #include <stdbool.h>
 #include <sys/statfs.h>
 #include <getopt.h>
+#include <errno.h>
+#include <sys/mman.h>
 
-
- 
-void usage(char *prog)
-{
-    printf("usage: %s\n",prog);
-    printf("%s -c [filename] -b [byte]\n", prog);
-    printf("%s -t [filename]\n", prog);
-}
-
-
-static uint32_t getopt_integer(char *optarg)
-{
-  int rc;
-  uint32_t value;
-  rc = sscanf(optarg, "0x%x", &value);
-  if (rc <= 0)
-    rc = sscanf(optarg, "%ul", &value);
-    
-  return value;
-}
-
-static int create_inc_file(char *filename, long long size)
-{
-    FILE *file;
-    unsigned char data = 0;
-    file = fopen(filename, "wb");
-    if(!file){
-        printf("Open file error!\n");
-        return -1;
-    }
-    fseek(file, 0, SEEK_SET);
-    for(long long i = 0; i < size; i++){
-        fwrite(&data, 1, 1, file);
-        data ++;
-    }
-
-    fclose(file);
-    return 0;
-}
+#define min(x, y) (((x) < (y)) ? (x) : (y))
+#define max(x, y) (((x) > (y)) ? (x) : (y))
 
 static bool check_inc_file(char *filename)
 {
@@ -82,58 +47,194 @@ static bool check_inc_file(char *filename)
 }
 
 
-/*  -c:  创建递增序列文件
-            -b 文件大小 单位字节
-   filecheck -c test.data -b 10000
-   
-    -t: 文件检测是否为递增序列 返回: ture / false
-  filecheck -t test.data
-*/
-int main(int argc, char **argv)
+static ssize_t _find_header(uint8_t *ptr, uint16_t header, size_t len)
 {
-    char *filename = NULL;
-    uint32_t file_size = 0;
-    int  cmd_opt;
-    bool create_file=false, checkfile=false;
-    while ((cmd_opt = getopt_long(argc, argv, "hc:b:t:", NULL, NULL)) != -1)
-    {
-        switch (cmd_opt)
-        { 
-            case 'h':
-                usage(argv[0]);
-                return 0;
-            case 't':
-                filename = optarg;
-                printf("check file: %s\n", filename);
-                checkfile = true;
-                break;
-            case 'c':
-                filename = optarg;
-                printf("create file: %s\n", filename);
-                create_file = true;
-                break;
-            case 'b':
-                file_size = getopt_integer(optarg);
-                printf("file size: %ubyte\n", file_size);
-                break;
-            default:
-            	usage(argv[0]);
-            exit(0);
+    ssize_t offset = 0;
+    do{
+        if(ptr != NULL && *(uint16_t *)ptr != header){
+            ptr += 1;
+            offset += 1;
+        }else{
             break;
         }
+    }while(offset < len);
+
+    if(offset >= len || ptr == NULL)
+        return -1;
+    offset += 2;
+    return offset;
+}
+
+ssize_t _writen(int fd, const uint8_t *buf, size_t buflen)
+{
+    ssize_t ret = 0, len;
+
+    if (!buflen)
+        return 0;
+
+    while (buflen) {
+        len = write(fd, buf, buflen);
+
+        if (len < 0) {
+            printf("[fd:%d]-send len : %ld, %d[%s]\n", fd, len, errno, strerror(errno));
+            if (errno == EINTR)
+                continue;
+
+            if (errno == EAGAIN || errno == EWOULDBLOCK || errno == ENOTCONN)
+                break;
+
+            return -1;
+        }
+
+        ret += len;
+        buf += len;
+        buflen -= len;
     }
-    if(create_file && filename != NULL && file_size > 0){
-        if(create_inc_file(filename, file_size) != 0){
-            printf("create file failed!\n");
+    
+    return ret;
+}
+
+static int m57_vpx_write_data(uint8_t *buffer, size_t len, char *wfile)
+{
+    #define M57_VPX_MIN_PKT_LEN 256
+    int ifd;
+    uint8_t *ptr = buffer;
+    ssize_t consume_len = 0, _len = len;
+    ssize_t offset = 0;
+    
+    ifd = open(wfile, O_WRONLY|O_CREAT, 0644);
+    if(ifd == -1){
+        printf ("Can't open %s: %s\n", wfile, strerror(errno));
+        return -1;
+    }
+
+    do{
+        offset = 0 ;
+        offset = _find_header(ptr, 0x5157, _len);
+        if(offset == -1){
+            break;
+        }
+        if(offset > 0){
+            ptr += offset;
+            _len -= offset;
+        }
+        
+        consume_len = min(_len, M57_VPX_MIN_PKT_LEN);
+        _writen(ifd, ptr, consume_len);
+        ptr += consume_len;
+        _len -= consume_len;
+       // printf("ptr:%p[%ld, %ld, %ld], %p[%lu]\n", ptr, _len, offset, consume_len, buffer, len);
+        if(_len <= 0 || (ssize_t)(ptr - buffer) >= len){
+            printf("write over, %ld\n", _len);
+            break;
+        }
+    }while(1);
+        
+    close(ifd);
+    return 0;
+}
+
+
+
+
+int m57_vpx_data_check_write(char *filename, char *outfilename)
+{
+    struct stat sbuf;
+    unsigned char *ptr;
+    int ifd, ret = 0;
+
+    if(!outfilename){
+        printf ("Output file is null\n");
+        return -1;
+    }
+
+    ifd = open(filename, O_RDONLY);
+    if(!ifd){
+        printf ("Can't open %s: %s\n", filename, strerror(errno));
+        return -1;
+    }
+
+    if (fstat(ifd, &sbuf) < 0) {
+        close(ifd);
+        printf ("Can't stat %s: %s\n", filename, strerror(errno));
+        return -1;
+    }
+
+    ptr = (unsigned char *) mmap(0, sbuf.st_size, PROT_READ, MAP_SHARED, ifd, 0);
+    if ((caddr_t)ptr == (caddr_t)-1) {
+        close(ifd);
+        printf ("Can't mmap %s: %s\n", filename, strerror(errno));
+        return -1;
+    }
+    ret = m57_vpx_write_data(ptr, sbuf.st_size, outfilename);
+    
+    munmap(ptr, sbuf.st_size);
+    close(ifd);
+
+    return ret;
+}
+
+
+static void usage(const char *prog)
+{
+    fprintf(stderr, "Usage: %s [option]\n"
+        "          -t --type [N]          N=0(default): increase file; =1:M57 VPX data file\n"
+        "          -o --of   [file]       output file after removing information\n"
+        "          -i --if   [file]       raw input file\n"
+        "          -h --help\n", prog);
+    exit(1);
+}
+
+
+int main(int argc, char **argv)
+{
+    char *outfile = NULL, *infile = NULL;
+    int type = 0, cmd_opt = 0;
+    const char *short_opts = "ht:o:i:";
+    const struct option long_opts[] =   {  
+            {"help", no_argument, NULL, 'h'},    
+            {"type", required_argument, NULL, 't'},
+            {"of", required_argument, NULL, 'o'},
+            {"if", required_argument, NULL, 'i'},
+            {0, 0, 0, 0} 
+        };
+    while ((cmd_opt = getopt_long(argc, argv, short_opts, long_opts, NULL)) != -1)
+    {
+        switch (cmd_opt)
+        {
+            case 'o':
+                outfile = strdup(optarg);
+                break;
+            case 'i':
+                infile = strdup(optarg);
+                break;
+            case 't':
+                type = atoi(optarg);
+                break;
+            case 'h':
+            default:
+                usage(argv[0]);
+                exit(1);
+        }
+    }
+    if(infile == NULL){
+        usage(argv[0]);
+        exit(1);
+    }
+    if(type == 0){
+        if(check_inc_file(infile)){
+            printf("OK\n");
         }else{
-            printf("create file ok!\n");
+            printf("Failed\n");
         }
-    } else if(checkfile && filename != NULL){
-        if(check_inc_file(filename)){
-            printf("file check ok!\n");
-        } else{
-            printf("file check failed!\n");
+    } else if(type == 1) {
+        if(m57_vpx_data_check_write(infile, outfile) == 0){
+            printf("OK\n");
+        } else {
+            printf("Failed\n");
         }
+    } else {
+        usage(argv[0]);
     }
     return 0;
 }

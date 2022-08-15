@@ -24,12 +24,6 @@ ifeq ($(CONFIG_LIBFFTW3),y)
 endif
 	install -m 0755 ${S}/platform ${D}/usr/bin
 	install -m 0755 ${S}/main/shell/*.sh ${D}/etc/
-ifeq ($(CONFIG_SSDP),y)
-	install -m 0755 tools/ssdp/src/ssdpd ${D}$/usr/bin
-endif
-ifeq ($(CONFIG_JQ),y)
-	install -m 0755 tools/jq/jq-1.6/build/jq ${D}/usr/bin
-endif
 ifeq ($(CONFIG_SYSLOG),y)
 	install -d ${D}/etc/rsyslog.d
 	install -d ${D}/etc/logrotate.d

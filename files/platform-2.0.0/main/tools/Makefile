@@ -31,8 +31,9 @@ $(TARGETS):%:%.c
 tool_sub:
 	@for dir in $(tool_sub_dir);  	\
 	do				\
-	make -C $$dir $@;      		\
-        done
+	make -C $$dir all || exit 1;    \
+	done
+
 install:
 	install -m 0755 $(TARGETS) ../${D}/usr/bin
 

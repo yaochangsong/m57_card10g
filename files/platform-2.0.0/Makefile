@@ -340,12 +340,14 @@ endif # $(dot-config)
 #TODO 
 LIBFFTW3	:= $(CONFIG_LIBFFTW3)
 ARM_ARCH	:= $(CONFIG_ARCH_ARM)
-ifeq ($(ARM_ARCH), y)
+ifeq ($(CONFIG_ARCH_ARM32), y)
 	ARCH_STRING:="arm"
+else ifeq ($(CONFIG_ARCH_ARM64), y)
+	ARCH_STRING:="arm64"
 else
 	ARCH_STRING:="x86"
 endif
-ifeq ($(LIBFFTW3), y)
+ifeq ($(CONFIG_LIBFFTW3), y)
 	LDFLAGS += -Llib/libfftw3/$(ARCH_STRING)/lib
 	LINUXINCLUDE += -I lib/libfftw3/$(ARCH_STRING)/include
 	LLIBS += -lfftw3f

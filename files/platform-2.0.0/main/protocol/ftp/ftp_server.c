@@ -104,6 +104,7 @@ void ftp_server_init(int port)
     ftp_server_t *server = malloc(sizeof(ftp_server_t));
     memset(server, 0, sizeof(*server));
     server->port = port;
+    ftp_client_init_idx(server);
     if(!m)
         return;
     if(m->pre_handle)

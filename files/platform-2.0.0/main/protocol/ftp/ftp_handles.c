@@ -463,22 +463,24 @@ void ftp_retr2(Command *cmd, State *state)
         if(state->mode == SERVER){
             connection = accept_connection(state->sock_pasv);
             close(state->sock_pasv);
-
+            c->retr_idx = ftp_client_get_idx(c->server);
+            printf("ridx: %d\n", c->retr_idx);
             state->message = "150 Opening BINARY mode data connection.\n";
             write_state(state);
-            if(c->server->pre_cb)
-                c->server->pre_cb(MISC_READ, NULL);
             set_sock_buf(connection);
+            if(c->server->pre_cb)
+                c->server->pre_cb(MISC_READ, &c->server);
             do{
-                r = c->server->uplink_cb(connection, NULL);
+                r = c->server->uplink_cb(connection, &c->retr_idx);
                 if(is_socket_disconnect(connection) == -1){
                     printf("socket disconnect\n");
                     break;
                 }
             }while(r > 0);
             if(c->server->post_cb)
-                c->server->post_cb(MISC_READ, NULL);
+                c->server->post_cb(MISC_READ, &c->server);
             state->message = "226 File send OK.\n";
+            ftp_client_idx_clear(c->retr_idx, c->server);
         }else{
             state->message = "550 Please use PASV instead of PORT.\n";
         }

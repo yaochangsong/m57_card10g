@@ -376,11 +376,11 @@ static ssize_t _xspm_find_header(uint8_t *ptr, uint16_t header, size_t len)
 
 static ssize_t xspm_stream_read_from_file(int type, int ch, void **data, size_t *len, void *args)
 {
-    #define STRAM_IQ_FILE_PATH CONFIG_PROTOCOL_FTP_PATH"/DEV0_CH0_IQ.raw"
+    #define STRAM_IQ_FILE_PATH CONFIG_PROTOCOL_FTP_PATH"/512m.data"
     #define STRAM_FFT_FILE_PATH CONFIG_PROTOCOL_FTP_PATH"/fft512.dat"
     //#define STRAM_FFT_FILE_PATH "/home/ycs/share/platform-2.0.0/files/platform-2.0.0/DEV0_CH1_FFT8K.raw"
-    #define STRAM_READ_BLOCK_SIZE  528
-    #define STRAM_READ_BLOCK_COUNT 2
+    #define STRAM_READ_BLOCK_SIZE  1*1024*1024 //528
+    #define STRAM_READ_BLOCK_COUNT 1
 
     size_t rc = 0, rc2 = 0;
     static FILE * fp = NULL;
@@ -417,12 +417,12 @@ static ssize_t xspm_stream_read_from_file(int type, int ch, void **data, size_t 
         rc = fread(buffer[cn], 1, STRAM_READ_BLOCK_SIZE, fp);
         if(rc == 0){ /* read over */
             printf_note("Read over!%d\n", feof(fp));
-            rewind(fp);
-            printf_note("ftell:%ld\n", ftell(fp));
+            //rewind(fp);
+            //printf_note("ftell:%ld\n", ftell(fp));
             break;
         }
         ptr = buffer[cn];
-        offset = _xspm_find_header(buffer[cn], 0xaa55, rc);
+        offset = 0;//_xspm_find_header(buffer[cn], 0xaa55, rc);
         if(offset < 0){ 
             printf_note("find header err\n");
             continue;
@@ -441,7 +441,7 @@ static ssize_t xspm_stream_read_from_file(int type, int ch, void **data, size_t 
         //print_array(data[cn], len[cn]);
         cn++;
     }while(cn < STRAM_READ_BLOCK_COUNT);
-    usleep(100);
+    usleep(600);
     return cn;
 }
 
@@ -901,7 +901,11 @@ static int xspm_read_xdma_data_over(int ch,  void *arg,  int type)
 
 static int xspm_read_xdma_fft_data_over(int ch,  void *arg)
 {
+#ifdef DEBUG_TEST
+    return 0;
+#else
     return xspm_read_xdma_data_over(ch, arg, STREAM_FFT);
+#endif
 }
 
 static  float get_side_band_rate(uint32_t bandwidth)

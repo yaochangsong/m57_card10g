@@ -1,7 +1,7 @@
 #ifndef _BSP_H
 #define _BSP_H
 
-//#define DEBUG_TEST
+#define DEBUG_TEST
 //#define LOAD_FILE_ASYN 1
 #define TCP_DATA_SEND_BY_THREADS 0
 

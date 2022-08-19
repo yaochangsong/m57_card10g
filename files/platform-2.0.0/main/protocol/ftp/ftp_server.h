@@ -16,6 +16,7 @@ typedef struct ftp_server_s{
 typedef struct ftp_client_s{
     int fd;
     int retr_idx;
+    int pasv_fd;
     struct sockaddr_in client_address;
     ftp_server_t *server;
 }ftp_client_t;

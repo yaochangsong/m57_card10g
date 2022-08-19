@@ -21,6 +21,12 @@
 
 
 #define DIST_RAW_XDMA 0 
+
+typedef struct _distributor_buffer_s{
+    int len;
+    void *ptr;
+    void *tail;
+}_distributor_buffer_t;
 struct _distributor_type_attr_s{
     char *name;
     /* The max number of distributor consume thread */
@@ -32,6 +38,7 @@ struct _distributor_type_attr_s{
     int (*distributor_loop)(void *);
     void *pkt_queue[8];
     spm_dist_statistics_t stat;
+    _distributor_buffer_t buffer;
     pthread_t tid;
 } xdma_dist_type[] = {
     {"xdma", 4, DIST_RAW_XDMA, 264, 8, 0x5157, NULL},
@@ -148,6 +155,21 @@ static int _get_idx_by_type(int type)
         return 0;
     return -1;
 }
+
+static int _get_type_by_idx(int idx)
+{
+    if(idx == 0)
+        return 0;
+    if(idx == 1)
+        return 1;
+    if(idx == 2)
+        return 7;
+    if(idx == 3)
+        return 6;
+    return -1;
+}
+
+
 ssize_t _distributor_analysis(int type, uint8_t *mbufs, size_t len, struct _distributor_type_attr_s *dtype)
 {
     uint8_t *ptr = mbufs;
@@ -163,7 +185,9 @@ ssize_t _distributor_analysis(int type, uint8_t *mbufs, size_t len, struct _dist
             break;
 
         if(data_len < dtype->pkt_len){
-            //print_array(ptr, data_len);
+            if(data_len == 0){
+                break;
+            }
             printf_note("data len too short: %ld\n", data_len);
             dirty_offset = _find_header(ptr, dtype->pkt_header_flags, dtype->pkt_len);
             if(dirty_offset < 0){
@@ -177,7 +201,7 @@ ssize_t _distributor_analysis(int type, uint8_t *mbufs, size_t len, struct _dist
             }
             break;
         }
-        //print_array(ptr, 8);
+
         if(header->header_flags != dtype->pkt_header_flags){
             dirty_offset = _find_header(ptr, dtype->pkt_header_flags, dtype->pkt_len);
             //printf_note("fft header[0x%x] error, offset len:%ld\n", header->header_flags, dirty_offset);
@@ -256,16 +280,35 @@ ssize_t _distributor_analysis(int type, uint8_t *mbufs, size_t len, struct _dist
 }
 
 
+#if 0
 static ssize_t _distributor_process(int type, size_t count, uint8_t **mbufs, size_t len[])
 {
     ssize_t consume_size = 0;
+    uint8_t *ptr;
+    struct _distributor_type_attr_s *dtype = &xdma_dist_type[0];
+    int consume_left_size = 0;
 
-     for(int i = 0; i < count; i++){
-        consume_size += _distributor_analysis(type, mbufs[i], len[i], &xdma_dist_type[0]);
-        printf_note("consume size:%ld[%lu], %ld\n", consume_size, len[i], len[i]-consume_size);
-        //if(len[i]-consume_size > 0){
-        //    exit(1);
-        //}
+    for(int i = 0; i < count; i++){
+        if(dtype->buffer.len){
+            if(len[i] > dtype->pkt_len - dtype->buffer.len){
+                memcpy(dtype->buffer.tail, mbufs[i], dtype->pkt_len - dtype->buffer.len);
+                consume_size += _distributor_analysis(type, dtype->buffer.ptr, dtype->pkt_len, dtype);
+                dtype->buffer.len = 0;
+                dtype->buffer.tail = NULL;
+            } else{
+                break;
+            }
+        }
+
+        consume_size += _distributor_analysis(type, mbufs[i], len[i], dtype);
+        consume_left_size = len[i]-consume_size;
+        printf_note("consume size:%ld[%lu], %ld\n", consume_size, len[i], consume_left_size);
+        if(consume_left_size > 0 && consume_left_size < 4096){
+            ptr = (uint8_t *)mbufs[i] + consume_size;
+            memcpy(dtype->buffer.ptr, ptr, consume_left_size);
+            dtype->buffer.len = consume_left_size;
+            dtype->buffer.tail = dtype->buffer.ptr + consume_left_size;
+        }
     }
     //(count > 1){
     //   printf_warn("count:%lu, consume_size:%ld, [%p]len0:%lu, [%p]len1:%lu\n", count,consume_size, mbufs[0], len[0], mbufs[1],len[1]);
@@ -273,6 +316,27 @@ static ssize_t _distributor_process(int type, size_t count, uint8_t **mbufs, siz
 
     return consume_size;
 }
+#endif
+
+static ssize_t _distributor_process(int type, size_t count, uint8_t **mbufs, size_t len[])
+{
+    ssize_t consume_size = 0;
+    struct _distributor_type_attr_s *dtype = &xdma_dist_type[0];
+    int consume_left_size = 0;
+
+    for(int i = 0; i < count; i++){
+        consume_size += _distributor_analysis(type, mbufs[i], len[i], dtype);
+        consume_left_size = len[i]-consume_size;
+        if(consume_left_size > 0)
+            printf_note("consume size:%ld[%lu], %d\n", consume_size, len[i], consume_left_size);
+    }
+    //(count > 1){
+    //   printf_warn("count:%lu, consume_size:%ld, [%p]len0:%lu, [%p]len1:%lu\n", count,consume_size, mbufs[0], len[0], mbufs[1],len[1]);
+    //}
+
+    return consume_size;
+}
+
 
 static void _distributor_wait_consume_over(struct _distributor_type_attr_s *dtype)
 {
@@ -339,6 +403,34 @@ static int _distributor_data_uplink_prod(void *s)
     return 0;
 }
 
+static int _send_data_header(char *header, int fd, int idx)
+{
+    /*
+        XWKJ 1.0\r\n         数据协议标示 
+        TYPE: 0\r\n         数据类型，十进制字符表示
+        \r\n                数据头与原始数据分割
+    */
+
+    char *ptr;
+    char type_str[32] = {0};
+    int type = _get_type_by_idx(idx), r = 0;
+    printf_note("idx:%d, type：%d\n", idx, type);
+    ptr = header;
+    
+    strcat(ptr, "XWKJ 1.0\r\n");
+    snprintf(type_str, sizeof(type_str) -1, "TYPE: %d\r\n", type);
+    strcat(ptr, type_str);
+    strcat(ptr, "\r\n");
+
+    //printf_note("[%ld] %s", strlen(header), header);
+    struct spm_context *pctx = get_spm_ctx();
+    if(!pctx)
+        return -1;
+    if(pctx->ops->send_data_by_fd)
+        r = pctx->ops->send_data_by_fd(fd, header, strlen(header), NULL);
+    
+    return r;
+}
 static int _distributor_data_uplink_init(void *args)
 {
     printf_note("XDMA Start\n");
@@ -380,10 +472,12 @@ static ssize_t _distributor_data_uplink_consume(int fd, void *args)
     ptr = pkt->pkt_buffer_ptr;
     len = pkt->pkt_len;
     //printf_note("idx:%d, ptr: %p, len: %lu\n", idx, ptr, len);
-    
+
+    //print_array(ptr, 8);
     if(pctx->ops->send_data_by_fd)
         r = pctx->ops->send_data_by_fd(fd, ptr, len, NULL);
-    
+
+    _safe_free_(pkt);
     return r;
 }
 
@@ -582,6 +676,13 @@ static int data_pre_handle(int rw, void *args)
         if(is_read == 0){
             int ret = -1;
             pthread_t tid = 0;
+
+            if(args){
+                ftp_client_t *c = args;
+                char buffer[128] = {0};
+                _send_data_header(buffer, c->pasv_fd, c->retr_idx);
+            }
+            
             is_read = 1;
             printf_note("Start Distributor...\n");
             ret =  pthread_create_detach (NULL,_distributor_data_uplink_init, 
@@ -602,6 +703,7 @@ static int data_pre_handle(int rw, void *args)
 static int data_post_handle(int rw, void *args)
 {
     if(rw == MISC_READ){
+        printf_note("Post Handle %p,%ld\n", args, ftp_client_idx_weight(args));
         if((args && ftp_client_idx_weight(args)  == 0) || args == NULL){ 
             /* all or  one client read over */
             printf_note("stop thread tid:%lu\n", xdma_dist_type[0].tid);
@@ -640,6 +742,8 @@ const struct misc_ops * misc_create_ctx(void)
     ctx = &misc_reg;
     for(int i = 0; i < xdma_dist_type[0].idx_num; i++)
         xdma_dist_type[0].pkt_queue[i] = queue_create_ctx();
+    xdma_dist_type[0].buffer.len = 0;
+    xdma_dist_type[0].buffer.ptr = calloc(1, 4096);
     return ctx;
 }
 

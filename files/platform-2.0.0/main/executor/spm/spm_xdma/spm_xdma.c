@@ -355,7 +355,7 @@ static int xspm_stram_write_align(int ch, const void *data, size_t len)
     return nwrite;
 }
 
-static ssize_t _xspm_find_header(uint8_t *ptr, uint16_t header, size_t len)
+static ssize_t _xspm_find_header_(uint8_t *ptr, uint16_t header, size_t len)
 {
     ssize_t offset = 0;
     do{
@@ -373,14 +373,37 @@ static ssize_t _xspm_find_header(uint8_t *ptr, uint16_t header, size_t len)
     return offset;
 }
 
+static ssize_t _xspm_find_header(uint8_t *ptr, uint16_t header, size_t len)
+{
+    size_t offset = 0;
+    do{
+        if(ptr != NULL && *(uint16_t *)ptr != header){
+            ptr += 1;
+            offset += 1;
+        }else{
+            break;
+        }
+    }while(offset < len);
+
+    if(offset >= len || ptr == NULL)
+        return -1;
+
+    if(offset >= 6){
+        return (offset - 6);
+    }
+
+    return offset;
+}
+
+
 
 static ssize_t xspm_stream_read_from_file(int type, int ch, void **data, size_t *len, void *args)
 {
-    #define STRAM_IQ_FILE_PATH CONFIG_PROTOCOL_FTP_PATH"/512m.data"
+    #define STRAM_IQ_FILE_PATH CONFIG_PROTOCOL_FTP_PATH"/recv.dat"
     #define STRAM_FFT_FILE_PATH CONFIG_PROTOCOL_FTP_PATH"/fft512.dat"
     //#define STRAM_FFT_FILE_PATH "/home/ycs/share/platform-2.0.0/files/platform-2.0.0/DEV0_CH1_FFT8K.raw"
-    #define STRAM_READ_BLOCK_SIZE  1*1024*1024 //528
-    #define STRAM_READ_BLOCK_COUNT 1
+    #define STRAM_READ_BLOCK_SIZE  264
+    #define STRAM_READ_BLOCK_COUNT 4
 
     size_t rc = 0, rc2 = 0;
     static FILE * fp = NULL;
@@ -416,21 +439,23 @@ static ssize_t xspm_stream_read_from_file(int type, int ch, void **data, size_t 
         rc2 = 0;
         rc = fread(buffer[cn], 1, STRAM_READ_BLOCK_SIZE, fp);
         if(rc == 0){ /* read over */
-            printf_note("Read over!%d\n", feof(fp));
+            //printf_note("Read over!%d\n", feof(fp));
             //rewind(fp);
             //printf_note("ftell:%ld\n", ftell(fp));
             break;
         }
         ptr = buffer[cn];
-        offset = 0;//_xspm_find_header(buffer[cn], 0xaa55, rc);
+        offset = _xspm_find_header(buffer[cn], 0x5157, rc);
         if(offset < 0){ 
             printf_note("find header err\n");
+            printf_note("ftell:%ld\n", ftell(fp));
             continue;
         }
         else{
+            //printf_note("offset:%ld, rc:%lu\n", offset, rc);
             ptr += rc;
             if(offset > 0){
-                printf_note("[%02x]rc=%lu, offset=%ld, %lu\n", *ptr, rc, offset, rc - offset);
+                //printf_note("[%02x]rc=%lu, offset=%ld, %lu\n", *ptr, rc, offset, rc - offset);
                 rc2 = fread((void *)ptr, 1, offset , fp);
             }
         }
@@ -441,7 +466,7 @@ static ssize_t xspm_stream_read_from_file(int type, int ch, void **data, size_t 
         //print_array(data[cn], len[cn]);
         cn++;
     }while(cn < STRAM_READ_BLOCK_COUNT);
-    usleep(600);
+    //usleep(600);
     return cn;
 }
 

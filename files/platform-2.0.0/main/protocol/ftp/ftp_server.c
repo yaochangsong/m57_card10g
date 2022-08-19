@@ -115,6 +115,8 @@ void ftp_server_init(int port)
         server->downlink_cb = m->write_handle;
     if(m->read_handle)
         server->uplink_cb = m->read_handle;
+    if(m->usr1_handle)
+        server->usr1_handle = m->usr1_handle;
 
     int ret;
     pthread_t work_id;

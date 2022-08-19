@@ -10,6 +10,7 @@ typedef struct ftp_server_s{
     ssize_t (*uplink_cb)(int, void *);
     ssize_t (*downlink_cb)(int, const void *, size_t);
     int (*post_cb)(int, void *);
+    int (*usr1_handle)(int,void *);
     DECLARE_BITMAP(map, FTP_MAX_CLIENT_NUM);
 }ftp_server_t;
 

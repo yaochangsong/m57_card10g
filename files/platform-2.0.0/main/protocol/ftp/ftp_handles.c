@@ -110,6 +110,7 @@ void response(Command *cmd, State *state)
     case ABOR: ftp_abor(state); break;
 //    case QUIT: ftp_quit(state); break;
     case TYPE: ftp_type(cmd,state); break;
+    case USR1: ftp_usr1(cmd, state); break;
     case NOOP:
         if(state->logged_in){
             state->message = "200 Nice to NOOP you!\n";
@@ -607,6 +608,25 @@ void ftp_stor2(Command *cmd, State *state)
     write_state(state);
 }
 
+void ftp_usr1(Command *cmd, State *state)
+{
+    if(state->logged_in){
+        ftp_client_t *c = state->private_args;
+        if(cmd->arg[0]=='0'){
+            state->message = "200 board 3F1.\n";
+            c->server->usr1_handle(0, NULL);
+        }else if(cmd->arg[0]=='1'){
+            state->message = "200 main board.\n";
+            c->server->usr1_handle(1, NULL);
+        }else{
+            state->message = "504 Command not implemented for that parameter.\n";
+        }
+    }else{
+        state->message = "530 Please login with USER and PASS.\n";
+    }
+    write_state(state);
+
+}
 
 /** ABOR command */
 void ftp_abor(State *state)

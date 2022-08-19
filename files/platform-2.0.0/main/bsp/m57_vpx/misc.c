@@ -39,6 +39,7 @@ struct _distributor_type_attr_s{
     void *pkt_queue[8];
     spm_dist_statistics_t stat;
     _distributor_buffer_t buffer;
+    int dst_board;
     pthread_t tid;
 } xdma_dist_type[] = {
     {"xdma", 4, DIST_RAW_XDMA, 264, 8, 0x5157, NULL},
@@ -660,6 +661,29 @@ static ssize_t data_downlink_handle(int fd, const void *data, size_t len)
 
 volatile int is_read = 0, is_write = 0;
 
+static int write_dst_board(int id, void *args)
+{
+    printf_note("write dst id: %d\n", id);
+    xdma_dist_type[0].dst_board = id;
+    return 0;
+}
+
+static void write_dst_board_reg(void)
+{
+#ifdef DEBUG_TEST
+    return;
+#endif
+#ifdef SET_SRIO_SRC_DST_ID2
+    if(xdma_dist_type[0].dst_board == 1){
+        SET_SRIO_SRC_DST_ID2(get_fpga_reg(), 0x00060007);
+    }
+    else{
+        SET_SRIO_SRC_DST_ID2(get_fpga_reg(), 0x00070006); 
+    }
+#endif
+}
+
+
 static int data_pre_handle(int rw, void *args)
 {
     struct spm_context *pctx = get_spm_ctx();
@@ -667,9 +691,7 @@ static int data_pre_handle(int rw, void *args)
         return -1;
     if(rw == MISC_WRITE){
         is_write = 1;
-#ifdef SET_SRIO_SRC_DST_ID2
-        SET_SRIO_SRC_DST_ID2(get_fpga_reg(), 0x00070006); //SRIO1_ID
-#endif
+        write_dst_board_reg();
         gbuffer = malloc_align(_MAX_BUFFER_LEN_BYTE);
     }
     if(rw == MISC_READ){
@@ -731,6 +753,7 @@ static const struct misc_ops misc_reg = {
     .pre_handle = data_pre_handle,
     .write_handle = data_downlink_handle,
     .read_handle = _distributor_data_uplink_consume, //data_uplink_handle,
+    .usr1_handle = write_dst_board,
 };
 
 const struct misc_ops * misc_create_ctx(void)
@@ -742,8 +765,9 @@ const struct misc_ops * misc_create_ctx(void)
     ctx = &misc_reg;
     for(int i = 0; i < xdma_dist_type[0].idx_num; i++)
         xdma_dist_type[0].pkt_queue[i] = queue_create_ctx();
-    xdma_dist_type[0].buffer.len = 0;
-    xdma_dist_type[0].buffer.ptr = calloc(1, 4096);
+    //xdma_dist_type[0].buffer.len = 0;
+    //xdma_dist_type[0].buffer.ptr = calloc(1, 4096);
+    xdma_dist_type[0].dst_board = 0;
     return ctx;
 }
 

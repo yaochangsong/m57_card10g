@@ -18,6 +18,7 @@ struct misc_ops {
     int (*post_handle)(int, void *);
     ssize_t (*write_handle)(int, const void *, size_t);
     ssize_t (*read_handle)(int, void *);
+    int (*usr1_handle)(int, void *);
 };
 
 extern int misc_init(void);

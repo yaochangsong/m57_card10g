@@ -402,8 +402,8 @@ static ssize_t xspm_stream_read_from_file(int type, int ch, void **data, size_t 
     #define STRAM_IQ_FILE_PATH CONFIG_PROTOCOL_FTP_PATH"/recv.dat"
     #define STRAM_FFT_FILE_PATH CONFIG_PROTOCOL_FTP_PATH"/fft512.dat"
     //#define STRAM_FFT_FILE_PATH "/home/ycs/share/platform-2.0.0/files/platform-2.0.0/DEV0_CH1_FFT8K.raw"
-    #define STRAM_READ_BLOCK_SIZE  264
-    #define STRAM_READ_BLOCK_COUNT 4
+    #define STRAM_READ_BLOCK_SIZE  1*1024*1024 //264
+    #define STRAM_READ_BLOCK_COUNT 1
 
     size_t rc = 0, rc2 = 0;
     static FILE * fp = NULL;
@@ -445,7 +445,7 @@ static ssize_t xspm_stream_read_from_file(int type, int ch, void **data, size_t 
             break;
         }
         ptr = buffer[cn];
-        offset = _xspm_find_header(buffer[cn], 0x5157, rc);
+        offset = 0;//_xspm_find_header(buffer[cn], 0x5157, rc);
         if(offset < 0){ 
             printf_note("find header err\n");
             printf_note("ftell:%ld\n", ftell(fp));

@@ -102,12 +102,10 @@ static ssize_t _find_header(uint8_t *ptr, uint16_t header, size_t len)
     if(offset >= len || ptr == NULL)
         return -1;
 
-    printf_note("offset:%lu, %ld\n", offset, sizeof(struct _data_frame_pkt_s)-2);
     if(offset >= sizeof(struct _data_frame_pkt_s)-2){
         return (offset - (sizeof(struct _data_frame_pkt_s) -2));
     } else{
         printf_note("offset too short\n");
-        //exit(1);
     }
 
     return offset;
@@ -193,15 +191,17 @@ ssize_t _distributor_analysis(int type, uint8_t *mbufs, size_t len, struct _dist
             if(data_len == 0){
                 break;
             }
-            printf_note("data len too short: %ld\n", data_len);
-            dirty_offset = _find_header(ptr, dtype->pkt_header_flags, dtype->pkt_len);
+            //printf_note("data len too short: %ld\n", data_len);
+            dirty_offset = _find_header(ptr, dtype->pkt_header_flags, data_len);
             if(dirty_offset < 0){
                 ptr += data_len;
-                data_len = 0;
                 consume_len += data_len;
-                printf_note("not find header in remain data len:%ld\n", data_len);
+                data_len = 0;
+                printf_debug("not find header in remain data len:%ld\n", data_len);
+                printf_note("Maybe read over, read len:%ld\n", dtype->stat.read_bytes + consume_len);
             } else {
-                printf_note("find header,offset:%ld\n", dirty_offset);
+                printf_debug("find header,offset:%ld,consume_len:0x%lx\n", dirty_offset, consume_len);
+                //print_array(ptr, 16);
                 ptr += dirty_offset;
                 data_len -= dirty_offset;
                 consume_len += dirty_offset;
@@ -210,17 +210,15 @@ ssize_t _distributor_analysis(int type, uint8_t *mbufs, size_t len, struct _dist
         }
 
         if(header->header_flags != dtype->pkt_header_flags){
-            print_array(ptr, 32);
+            printf_info("find err header,  offset: 0x%lx\n", consume_len+dtype->stat.read_bytes);
             dirty_offset = _find_header(ptr, dtype->pkt_header_flags, dtype->pkt_len);
-            printf_note("fft header[0x%x] error, offset len:%ld, consume_len:0x%lx\n", header->header_flags, dirty_offset,consume_len);
+            //printf_note("fft header[0x%x] error, offset len:%ld, consume_len:0x%lx\n", header->header_flags, dirty_offset,consume_len);
             if(dirty_offset >= 0){
-                print_array(ptr, dirty_offset);
+               // print_array(ptr, dirty_offset);
                 ptr += dirty_offset;
                 data_len -= dirty_offset;
                 consume_len += dirty_offset;
-                
-                //exit(0);
-                printf_debug("find header, offset:%ld, consume_len:%ld\n", dirty_offset, consume_len);
+                printf_debug("find header, offset:%ld, consume_len:%ld[0x%lx], 0x%lx\n", dirty_offset, consume_len, consume_len, dtype->stat.read_bytes);
                 continue;
             }else{
                 /* find faild */
@@ -306,19 +304,14 @@ static ssize_t _distributor_process_v2(int type, size_t count, uint8_t **mbufs, 
             buffer_copy_len = dtype->pkt_len - dtype->buffer.len;
             if(buffer_copy_len > 0){    /* 新数据包填充部分头数据到buffer中，保证buffer有一包完成的数据帧 */
                 memcpy(dtype->buffer.tail, mbufs[i], buffer_copy_len);
-                //printf_note("copy PKT data to buffer\n");
-                //print_array(mbufs[i], buffer_copy_len);
-                //print_array(dtype->buffer.ptr, dtype->pkt_len);
+                printf_debug("copy PKT data len[0x%lx] to buffer\n", buffer_copy_len);
             }
             else{
                 printf_warn("buffer len too long:%d\n", dtype->buffer.len);
                 continue;
             }
             /* 消费buffer全部数据 */
-            printf_note("consume buffer\n");
-            //print_array(dtype->buffer.ptr,dtype->pkt_len);
             _distributor_analysis(type, dtype->buffer.ptr,dtype->pkt_len, dtype);
-            printf_note("consume buffer over\n");
             /*  清空buffer数据长度 */
             dtype->buffer.len = 0;
             dtype->buffer.tail = dtype->buffer.ptr;
@@ -330,23 +323,22 @@ static ssize_t _distributor_process_v2(int type, size_t count, uint8_t **mbufs, 
             prepare_consume_len = len[i];
         }
         /* 消费数据包数据 */
-        printf_note("prepare consume PKT, len %lu\n", prepare_consume_len);
-        print_array(ptr, 16);
         consume_len = _distributor_analysis(type, ptr,prepare_consume_len, dtype);
+        printf_debug("PKT prepare_consume_len:%lu, consume_len:%lu\n", prepare_consume_len, consume_len);
         remain_len = prepare_consume_len - consume_len;
         /* 未消费完毕，说明有剩余数据（保证长度<pkt_len）待消费，且包含数据头 */
         if(remain_len > 0 && remain_len < dtype->pkt_len){
             /* 未消费数据拷贝到buffer中,待下一包数据填充buffer为完整一包（pkt_len） */
             ptr = ptr + (prepare_consume_len - remain_len);
-            printf_note("COPY remain data[len: %ld] to buffer\n", remain_len);
+            printf_debug("COPY remain data[len: %ld] to buffer\n", remain_len);
             memcpy(dtype->buffer.ptr, ptr, remain_len);
-            //print_array(dtype->buffer.ptr, remain_len);
             dtype->buffer.tail = dtype->buffer.ptr + remain_len;
             dtype->buffer.len = remain_len;
         } else if(remain_len > dtype->pkt_len){
             printf_warn("remain len too long:%ld\n", remain_len);
-        } else {
-            printf_warn("remain len err:%ld\n", remain_len);
+        } else if((remain_len < 0)) {
+            printf_note("remain len err,prepare_consume_len:%lu, remain_len:%ld, consume_len:%lu, buffer_copy_len:%ld\n",
+                    prepare_consume_len, remain_len, consume_len, buffer_copy_len);
         }
         /* 拷贝到buffer中的数据，可认为是已被消费数据 */
         total_consume_len += len[i];
@@ -432,11 +424,7 @@ static int _distributor_data_uplink_prod(void *s)
     if(consume_len > 0){
         _distributor_wait_consume_over(disp);
     }
-    static size_t t_consume = 0, c= 0;
-    t_consume += consume_len;
-    printf_note("Total read len:%lu[0x%lx], count=%lu\n", t_consume, t_consume,c);
-    //if(c++ > 10)
-    //    exit(0);
+
     if(_ctx->ops->read_raw_over_deal)
         _ctx->ops->read_raw_over_deal(-1, STREAM_XDMA_READ, &consume_len);
     
@@ -808,6 +796,7 @@ const struct misc_ops * misc_create_ctx(void)
     xdma_dist_type[0].buffer.ptr = calloc(1, 4096);
     xdma_dist_type[0].buffer.tail = xdma_dist_type[0].buffer.ptr;
     xdma_dist_type[0].dst_board = 0;
+    xdma_dist_type[0].stat.read_bytes = 0;
     return ctx;
 }
 

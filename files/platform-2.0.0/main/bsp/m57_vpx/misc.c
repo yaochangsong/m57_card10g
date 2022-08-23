@@ -390,6 +390,12 @@ static void _distributor_wait_consume_over(struct _distributor_type_attr_s *dtyp
         timeout = _tv_diff(&now, &start);
         if(timeout > 2000){
             printf_warn("Wait TimeOut[%dms]!, %d\n",2000,   _tv_diff(&now, &start));
+            for(int ch = 0; ch < dtype->idx_num; ch++){
+                pkt_q = (queue_ctx_t *)dtype->pkt_queue[ch];
+                if(!pkt_q->ops->is_empty(pkt_q)){
+                    printf_note("ch:%d is not consume over!\n", ch);
+                }
+            }
             _distributor_reset(-1);
             break;
         }
@@ -397,7 +403,6 @@ static void _distributor_wait_consume_over(struct _distributor_type_attr_s *dtyp
         if(not_consume_over == 0)
             break;
     }while(1);
-    //printf_note("Consume over!\n");
 }
 
 

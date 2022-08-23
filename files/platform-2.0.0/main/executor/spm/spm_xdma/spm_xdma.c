@@ -402,7 +402,7 @@ static ssize_t xspm_stream_read_from_file(int type, int ch, void **data, size_t 
     #define STRAM_IQ_FILE_PATH CONFIG_PROTOCOL_FTP_PATH"/recv.dat"
     #define STRAM_FFT_FILE_PATH CONFIG_PROTOCOL_FTP_PATH"/fft512.dat"
     //#define STRAM_FFT_FILE_PATH "/home/ycs/share/platform-2.0.0/files/platform-2.0.0/DEV0_CH1_FFT8K.raw"
-    #define STRAM_READ_BLOCK_SIZE  1*1024*1024 //264
+    #define STRAM_READ_BLOCK_SIZE  1024*1024 //264
     #define STRAM_READ_BLOCK_COUNT 1
 
     size_t rc = 0, rc2 = 0;
@@ -440,7 +440,7 @@ static ssize_t xspm_stream_read_from_file(int type, int ch, void **data, size_t 
         rc = fread(buffer[cn], 1, STRAM_READ_BLOCK_SIZE, fp);
         if(rc == 0){ /* read over */
             //printf_note("Read over!%d\n", feof(fp));
-            //rewind(fp);
+           // rewind(fp);
             //printf_note("ftell:%ld\n", ftell(fp));
             break;
         }
@@ -464,6 +464,8 @@ static ssize_t xspm_stream_read_from_file(int type, int ch, void **data, size_t 
 
         //printf_note("cn:%u, data=%p, len:%lu,offset:%ld, rc=%lu, %lu, sn=%d\n", cn, data[cn], len[cn], offset, rc, rc2, *((uint8_t *)data[cn]+2));
         //print_array(data[cn], len[cn]);
+        update_dma_readbytes(0, len[cn]);
+        update_dma_read_pkts(0, 1);
         cn++;
     }while(cn < STRAM_READ_BLOCK_COUNT);
     //usleep(600);

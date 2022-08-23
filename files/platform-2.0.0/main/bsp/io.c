@@ -1307,8 +1307,10 @@ uint32_t get_fpga_version(void)
 {
     int32_t ret = 0;
     uint32_t args = 0;
+#ifndef DEBUG_TEST
 #ifdef GET_SYS_FPGA_VER
     args=GET_SYS_FPGA_VER(get_fpga_reg());
+#endif
 #endif
     return args;
 }

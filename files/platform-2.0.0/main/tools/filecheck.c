@@ -19,7 +19,7 @@
 #define min(x, y) (((x) < (y)) ? (x) : (y))
 #define max(x, y) (((x) > (y)) ? (x) : (y))
 
-static bool check_inc_file(char *filename)
+static bool check_int8_inc_file(char *filename)
 {
     FILE *file;
 
@@ -37,14 +37,49 @@ static bool check_inc_file(char *filename)
     fseek(file, 0, SEEK_SET);
     for(long long i = 0; i < size; i++){
         fread(&buffer, 1, 1, file);
-        if(data != buffer)
+        if(data != buffer){
+            printf("offset=%llu[0x%llx], 0x%x!=0x%x\n", i, i, data, buffer);
             return false;
+        }
         data ++;
     }
 
     fclose(file);
     return true;
 }
+
+static bool check_int32_inc_file(char *filename)
+{
+    FILE *file;
+
+    unsigned int data = 0, buffer;
+    size_t rc = 0;
+    long long size;
+    file = fopen(filename, "rb");
+    if(!file){
+        printf("Open file error!\n");
+        return false;
+    }
+    
+    fseek(file, 0, SEEK_END);
+    size = ftell(file);
+    printf("file size=%llu\n", size);
+    fseek(file, 0, SEEK_SET);
+    for(long long i = 0; i < size; i+=4){
+        rc= fread(&buffer, sizeof(unsigned int), 1, file);
+        if(rc == 0)
+            break;
+        if(data != buffer){
+            printf("offset=%llu[0x%llx], 0x%x!=0x%x\n", i, i, data, buffer);
+            return false;
+        }
+        data ++;
+    }
+
+    fclose(file);
+    return true;
+}
+
 
 
 static ssize_t _find_header(uint8_t *ptr, uint16_t header, size_t len)
@@ -178,7 +213,9 @@ int m57_vpx_data_check_write(char *filename, char *outfilename)
 static void usage(const char *prog)
 {
     fprintf(stderr, "Usage: %s [option]\n"
-        "          -t --type [N]          N=0(default): increase file; =1:M57 VPX data file\n"
+        "          -t --type [N]          N=0(default): check 32bit increase file; "
+        "                                 N=1: check and output M57 VPX data file; \n"
+        "                                 N=2: check 8bit increase file;\n"
         "          -o --of   [file]       output file after removing information\n"
         "          -i --if   [file]       raw input file\n"
         "          -h --help\n", prog);
@@ -222,7 +259,7 @@ int main(int argc, char **argv)
         exit(1);
     }
     if(type == 0){
-        if(check_inc_file(infile)){
+        if(check_int32_inc_file(infile)){
             printf("OK\n");
         }else{
             printf("Failed\n");
@@ -233,7 +270,13 @@ int main(int argc, char **argv)
         } else {
             printf("Failed\n");
         }
-    } else {
+    } else if(type == 2){
+        if(check_int8_inc_file(infile)){
+            printf("OK\n");
+        }else{
+            printf("Failed\n");
+        }
+    }else {
         usage(argv[0]);
     }
     return 0;

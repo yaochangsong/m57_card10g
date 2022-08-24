@@ -76,7 +76,8 @@ void write_state(State *state)
 */
 void gen_port(Port *port)
 {
-    srand(time(NULL));
+    static int k = 0;
+    srand(time(NULL) + k++);
     port->p1 = 128 + (rand() % 64);
     port->p2 = rand() % 0xff;
 
@@ -101,9 +102,13 @@ void response(Command *cmd, State *state)
     case PWD:  ftp_pwd(cmd,state); break;
     case MKD:  ftp_mkd(cmd,state); break;
     case RMD:  ftp_rmd(cmd,state); break;
-    case RETR: ftp_retr2(cmd,state); break;
+    case RETR: ftp_retr(cmd,state); break;
+    case STOR: ftp_stor(cmd,state); break;
+#ifdef FTP_DATA_MULTI_THREAD
+    case RET2: ftp_retr2_thread(cmd,state); break;
+#else
     case RET2: ftp_retr2(cmd,state); break;
-    case STOR: ftp_stor2(cmd,state); break;
+#endif
     case STO2: ftp_stor2(cmd,state); break;
     case DELE: ftp_dele(cmd,state); break;
     case SIZE: ftp_size(cmd,state); break;
@@ -424,7 +429,7 @@ static void set_sock_buf(int sock)
         printf("getsockopt error\n");
         return;
     }
-    printf("Current tcp default send buffer size is:%d\n", defrcvbufsize);
+    //printf("Current tcp default send buffer size is:%d\n", defrcvbufsize);
     if(setsockopt(sock, SOL_SOCKET, SO_SNDBUF, &nSnd_buffer, optlen) < 0)
     {
         printf("set tcp recive buffer size failed.\n");
@@ -435,7 +440,7 @@ static void set_sock_buf(int sock)
         printf("getsockopt error\n");
         return;
     }
-    printf("Now set tcp send buffer size to:%dByte\n",defrcvbufsize);
+    //printf("Now set tcp send buffer size to:%dByte\n",defrcvbufsize);
 }
 
 static inline int is_socket_disconnect(int fd)
@@ -465,7 +470,7 @@ void ftp_retr2(Command *cmd, State *state)
             connection = accept_connection(state->sock_pasv);
             close(state->sock_pasv);
             c->retr_idx = ftp_client_get_idx(c->server);
-
+            printf_note("retr_idx=%d\n", c->retr_idx);
             state->message = "150 Opening BINARY mode data connection.\n";
             write_state(state);
             c->pasv_fd = connection;
@@ -493,6 +498,61 @@ void ftp_retr2(Command *cmd, State *state)
     }
     close(connection);
     write_state(state);
+}
+
+static int ftp_data_exit_cb(void *args)
+{
+    char message[]= "226 File send OK.\n";
+    ftp_client_data_t *d = args;
+    ftp_client_t *c = d->client;
+
+    write(c->fd, message, strlen(message));
+    printf_note("FTP client[%d] exit! thread exit!!\n", d->idx);
+    close(d->pasv_fd);
+    if(d){
+        printf_debug("Free data thread:%p\n", d);
+        free(d);
+        d = NULL;
+    }
+    return 0;
+}
+
+void ftp_retr2_thread(Command *cmd, State *state)
+{
+    int connection;
+    ftp_client_t *c = state->private_args;
+    int launch_thread = 0;
+    
+    if(state->logged_in){
+        /* Passive mode */
+        if(state->mode == SERVER){
+            connection = accept_connection(state->sock_pasv);
+            close(state->sock_pasv);
+            c->data_thread = calloc(1, sizeof(ftp_client_data_t));
+            c->data_thread->client = c;
+            printf_debug("client:%p, Malloc data thread:%p\n", c, c->data_thread);
+            c->data_thread->idx = ftp_client_get_idx(c->server);
+            printf_debug("idx=%d\n", c->data_thread->idx);
+            state->message = "150 Opening BINARY mode data connection.\n";
+            write_state(state);
+            c->data_thread->pasv_fd = connection;
+            c->data_thread->rw = MISC_READ;
+            c->data_thread->exit_cb = ftp_data_exit_cb;
+            set_sock_buf(connection);
+            printf_note("Launch Thread:%d to handle data!\n", c->data_thread->idx);
+            if(c->server->thread_handle)
+                c->server->thread_handle(c->data_thread);
+            launch_thread = 1;
+        }else{
+            state->message = "550 Please use PASV instead of PORT.\n";
+        }
+    }else{
+        state->message = "530 Please login with USER and PASS.\n";
+    }
+    if(launch_thread == 0){
+        close(connection);
+        write_state(state);
+    }
 }
 
 

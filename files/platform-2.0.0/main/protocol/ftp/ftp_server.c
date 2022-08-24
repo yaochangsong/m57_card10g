@@ -56,7 +56,7 @@ void* communication(void* _c) {
             perror("server:read");
         }
     }
-    printf_debug("Client disconnected.\n");
+    printf_note("Client:%d, disconnected.\n", connection);
     close(connection);
     free(c);
     c = NULL;
@@ -117,6 +117,8 @@ void ftp_server_init(int port)
         server->uplink_cb = m->read_handle;
     if(m->usr1_handle)
         server->usr1_handle = m->usr1_handle;
+    if(m->thread_handle)
+        server->thread_handle = m->thread_handle;
 
     int ret;
     pthread_t work_id;

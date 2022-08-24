@@ -27,6 +27,9 @@
 #endif
 //定义服务器根目录
 #define SERVERROOTPATH "/home/"
+//FTP数据下载多线程支持
+#define FTP_DATA_MULTI_THREAD
+
 
 typedef struct Port
 {
@@ -122,6 +125,7 @@ void ftp_pasv(Command *, State *);
 void ftp_list(Command *, State *);
 void ftp_retr(Command *, State *);
 void ftp_retr2(Command *cmd, State *state);
+void ftp_retr2_thread(Command *cmd, State *state);
 void ftp_stor(Command *, State *);
 void ftp_stor2(Command *, State *);
 void ftp_dele(Command *, State *);

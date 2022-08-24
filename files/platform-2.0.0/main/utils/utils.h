@@ -117,6 +117,6 @@ extern int thread_bind_cpu(int cpuindex);
 extern char *get_version(void);
 extern ssize_t read_file_whole(void *pdata, char *filename);
 extern int writen(int fd, const uint8_t *buf, int buflen);
-
+extern ssize_t readn(int fd, void *ptr, size_t n);
 #endif
 

@@ -11,8 +11,20 @@ typedef struct ftp_server_s{
     ssize_t (*downlink_cb)(int, const void *, size_t);
     int (*post_cb)(int, void *);
     int (*usr1_handle)(int,void *);
+    int (*thread_handle)(void *);
     DECLARE_BITMAP(map, FTP_MAX_CLIENT_NUM);
 }ftp_server_t;
+
+typedef struct ftp_client_data_s{
+    int idx;
+    int pasv_fd;
+    int rw;
+    ftp_server_t *server;
+    int (*exit_cb)(void *);
+    void *client;
+    pthread_t tid;
+}ftp_client_data_t;
+
 
 typedef struct ftp_client_s{
     int fd;
@@ -20,6 +32,7 @@ typedef struct ftp_client_s{
     int pasv_fd;
     struct sockaddr_in client_address;
     ftp_server_t *server;
+    ftp_client_data_t *data_thread;
 }ftp_client_t;
 
 static inline void ftp_client_init_idx(ftp_server_t *s)

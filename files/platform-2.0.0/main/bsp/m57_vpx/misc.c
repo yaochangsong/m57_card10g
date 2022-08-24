@@ -15,6 +15,7 @@
 #include "config.h"
 #include "bsp.h"
 #include "misc.h"
+#include <netinet/tcp.h>
 #include "../main/utils/queue.h"
 #include "../main/utils/lqueue.h"
 #include "../main/utils/thread.h"
@@ -447,7 +448,7 @@ static int _send_data_header(char *header, int fd, int idx)
     char *ptr;
     char type_str[32] = {0};
     int type = _get_type_by_idx(idx), r = 0;
-    printf_note("idx:%d, type：%d\n", idx, type);
+
     ptr = header;
     
     strcat(ptr, "XWKJ 1.0\r\n");
@@ -461,7 +462,6 @@ static int _send_data_header(char *header, int fd, int idx)
         return -1;
     if(pctx->ops->send_data_by_fd)
         r = pctx->ops->send_data_by_fd(fd, header, strlen(header), NULL);
-    
     return r;
 }
 static int _distributor_data_uplink_init(void *args)
@@ -509,12 +509,9 @@ static ssize_t _distributor_data_uplink_consume(int fd, void *args)
     //print_array(ptr, 8);
     if(pctx->ops->send_data_by_fd)
         r = pctx->ops->send_data_by_fd(fd, ptr, len, NULL);
-
     _safe_free_(pkt);
     return r;
 }
-
-
 
 static ssize_t data_uplink_handle(int fd, void *args)
 {
@@ -745,7 +742,7 @@ static int data_pre_handle(int rw, void *args)
                                             "Distributor", &xdma_dist_type[0],
                                             &xdma_dist_type[0], &tid);
             if(ret != 0){
-                perror("pthread save file thread!!");
+                printf("pthread create thread error!!");
             }
             xdma_dist_type[0].tid = tid;
             printf_note("start thread tid:%lu\n", tid);
@@ -780,12 +777,141 @@ static int data_post_handle(int rw, void *args)
 }
 
 
+static int data_consume_thread_init(void *args)
+{
+    struct spm_context *pctx = get_spm_ctx();
+    if(!pctx || !args)
+        return -1;
+
+    ftp_client_data_t *d = args;
+    int rw = d->rw;
+
+    if(rw == MISC_READ){
+        //printf_debug("is_read:%d, pasv_fd=%d, idx=%d\n",is_read, d->pasv_fd, d->idx);
+        char buffer[128] = {0};
+        _send_data_header(buffer, d->pasv_fd, d->idx);
+        if(is_read == 0){
+            int ret = -1;
+            pthread_t tid = 0;
+            is_read = 1;
+            printf_note("Start Distributor Thread...\n");
+            ret =  pthread_create_detach (NULL,_distributor_data_uplink_init, 
+                                            _distributor_data_uplink_prod,
+                                            _distributor_data_uplink_exit,
+                                            "Distributor", &xdma_dist_type[0],
+                                            &xdma_dist_type[0], &tid);
+            if(ret != 0){
+                perror("pthread save file thread!!");
+            }
+            xdma_dist_type[0].tid = tid;
+            printf_debug("start thread tid:%lu\n", tid);
+        }
+    }
+     return 0;
+}
+
+static inline int is_socket_disconnect(int fd)
+{
+    socklen_t val;
+    int rv_len = sizeof(val);
+
+    struct tcp_info info;
+    int len = sizeof(info);
+    getsockopt(fd, IPPROTO_TCP, TCP_INFO, &info, (socklen_t *)&len);
+    if(info.tcpi_state != TCP_ESTABLISHED){
+        return -1;
+    }
+
+    return 0;
+}
+
+
+static int data_consume_thread_run(void *args)
+{
+    if(!args)
+        return -1;
+
+    ftp_client_data_t *d = args;
+    int ret = 0, rw = d->rw, r = 0;
+
+    if(rw == MISC_READ){
+        if((ret = is_socket_disconnect(d->pasv_fd)) == -1){
+            printf_note("socket: %d[idx:%d] disconnect\n", d->pasv_fd, d->idx);
+        }else{
+            ret = _distributor_data_uplink_consume(d->pasv_fd, &d->idx);
+        }
+
+        if(ret < 0){
+            printf_info("Client[fd:%d, idx:%d] exit OR Some error occurred! Thread Exit!\n",d->pasv_fd,  d->idx);
+            printf_debug("cannel thread id:%ld\n", d->tid);
+            pthread_cancel_by_tid(d->tid);
+            usleep(1000);
+        }
+    } else{
+        printf_warn("Unknow active\n");
+    }
+    return ret;
+}
+
+
+static void data_consume_thread_exit(void *args)
+{
+    if(!args)
+        return;
+
+    ftp_client_data_t *d = args;
+    ftp_client_t *c = d->client;
+    int ret = 0, rw = d->rw, r = 0;
+    if(rw == MISC_READ){
+        ftp_client_idx_clear(d->idx, c->server);
+        printf_info("%d Thead Exit %ld\n",d->idx, ftp_client_idx_weight(c->server));
+        if((c->server && ftp_client_idx_weight(c->server)  == 0) || c->server == NULL){ 
+            /* all or  one client read over */
+            printf_debug("Stop thread tid:%lu\n", xdma_dist_type[0].tid);
+            pthread_cancel_by_tid(xdma_dist_type[0].tid);
+            is_read = 0;
+        }
+    }
+    if(d->exit_cb)
+        d->exit_cb(d);
+#ifndef DEBUG_TEST
+    if(is_read == 0 && is_write == 0)
+        SET_CHANNEL_SEL(get_fpga_reg(), 0);
+#endif
+    return;
+
+}
+
+
+
+int data_consume_thread(void *args)
+{
+    ftp_client_data_t *d = args;
+    pthread_t tid = 0;
+    char name[128] = {0};
+    snprintf(name, sizeof(name) - 1, "Consume_%d", d->idx);
+    printf_info("Start Consume thread:%s\n", name);
+    int ret =  pthread_create_detach (NULL,
+                                    data_consume_thread_init, 
+                                    data_consume_thread_run,
+                                    data_consume_thread_exit,
+                                    name, args, args, &tid);
+    if(ret != 0){
+        perror("pthread thread error!");
+        return -1;
+    }
+    printf_debug("Thread tid:%ld\n", tid);
+    d->tid = tid;
+    return 0;
+}
+
 static const struct misc_ops misc_reg = {
     .post_handle = data_post_handle,
     .pre_handle = data_pre_handle,
     .write_handle = data_downlink_handle,
     .read_handle = _distributor_data_uplink_consume, //data_uplink_handle,
     .usr1_handle = write_dst_board,
+    .thread_handle = data_consume_thread,
 };
 
 const struct misc_ops * misc_create_ctx(void)
